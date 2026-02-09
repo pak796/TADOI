@@ -1,4 +1,11 @@
-export type ThemeId = "default" | "retro" | "highContrast" | "neonHacker";
+export type ThemeId =
+  | "default"
+  | "retro"
+  | "highContrast"
+  | "neonHacker"
+  | "rotating";
+
+export type ConcreteThemeId = Exclude<ThemeId, "rotating">;
 
 export type ThemeTokens = {
   bg: string;
@@ -71,10 +78,34 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     danger: "#ff29c3",
     selectionBg: "#1a4a36",
     selectionText: "#05090b"
+  },
+  // "rotating" is a virtual mode; this fallback prevents invalid lookups before
+  // runtime rotation applies a concrete palette.
+  rotating: {
+    bg: "#0b0f14",
+    panel: "#1a202c",
+    text: "#f2f2f2",
+    mutedText: "#b0b6bf",
+    border: "#3b4049",
+    accent: "#f4a259",
+    accent2: "#5dade2",
+    ok: "#2ecc71",
+    warn: "#f1c40f",
+    danger: "#e74c3c",
+    selectionBg: "#9b59b6",
+    selectionText: "#0b0f14"
   }
 };
 
 export const THEME_ORDER: ThemeId[] = [
+  "default",
+  "retro",
+  "highContrast",
+  "neonHacker",
+  "rotating"
+];
+
+export const ROTATING_THEME_ORDER: ConcreteThemeId[] = [
   "default",
   "retro",
   "highContrast",
@@ -93,6 +124,7 @@ export function isThemeId(value: unknown): value is ThemeId {
     (value === "default" ||
       value === "retro" ||
       value === "highContrast" ||
-      value === "neonHacker")
+      value === "neonHacker" ||
+      value === "rotating")
   );
 }

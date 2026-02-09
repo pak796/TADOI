@@ -157,6 +157,57 @@ describe("safeLoadState", () => {
       expect(backupExists).toBe(true);
     }
   });
+
+  it("creates at most one backup per session for the same corrupt path", async () => {
+    const dir = await makeTempDir();
+    const filePath = path.join(dir, "todui_data.json");
+    await fs.writeFile(filePath, "{broken json", "utf8");
+
+    const fsOps: PersistenceFsOps = {
+      ...fs,
+      rename: async () => {
+        throw Object.assign(new Error("rename failed"), { code: "EXDEV" });
+      }
+    };
+
+    await safeLoadState({
+      filePath,
+      now: new Date("2026-02-09T14:00:00"),
+      fsOps
+    });
+    await safeLoadState({
+      filePath,
+      now: new Date("2026-02-09T14:10:00"),
+      fsOps
+    });
+
+    const files = await fs.readdir(dir);
+    const backups = files.filter((name) =>
+      name.startsWith("todui_data.json.corrupt.")
+    );
+    expect(backups).toHaveLength(1);
+  });
+
+  it("allows separate backups for different corrupt paths in the same session", async () => {
+    const dir = await makeTempDir();
+    const firstPath = path.join(dir, "todui_data_a.json");
+    const secondPath = path.join(dir, "todui_data_b.json");
+    await fs.writeFile(firstPath, "{broken", "utf8");
+    await fs.writeFile(secondPath, "{broken", "utf8");
+
+    await safeLoadState({
+      filePath: firstPath,
+      now: new Date("2026-02-09T15:00:00")
+    });
+    await safeLoadState({
+      filePath: secondPath,
+      now: new Date("2026-02-09T15:01:00")
+    });
+
+    const files = await fs.readdir(dir);
+    const backups = files.filter((name) => name.includes(".corrupt."));
+    expect(backups).toHaveLength(2);
+  });
 });
 
 describe("saveStateDebounced", () => {
@@ -215,5 +266,70 @@ describe("saveStateDebounced", () => {
       .then(() => true)
       .catch(() => false);
     expect(exists).toBe(true);
+  });
+
+  it("emits save result callback on success", async () => {
+    const dir = await makeTempDir();
+    const filePath = path.join(dir, "todui_data.json");
+    const events: Array<{ ok: boolean; filePath: string; savedAt?: number }> = [];
+
+    saveStateDebounced(
+      {
+        schemaVersion: 2,
+        tasks: [{ id: "ok", title: "ok", status: "open", createdAt: 1, updatedAt: 1, tags: [] }],
+        tagIndex: {}
+      } satisfies LoadedData,
+      25,
+      filePath,
+      fs,
+      (result) => {
+        events.push({
+          ok: result.ok,
+          filePath: result.filePath,
+          savedAt: result.ok ? result.savedAt : undefined
+        });
+      }
+    );
+
+    await sleep(100);
+    expect(events).toHaveLength(1);
+    expect(events[0].ok).toBe(true);
+    expect(events[0].filePath).toBe(filePath);
+    expect(typeof events[0].savedAt).toBe("number");
+  });
+
+  it("emits save result callback on failure", async () => {
+    const dir = await makeTempDir();
+    const filePath = path.join(dir, "todui_data.json");
+    const errors: Error[] = [];
+    const fsOps: PersistenceFsOps = {
+      ...fs,
+      writeFile: async () => {
+        throw new Error("disk full");
+      }
+    };
+
+    saveStateDebounced(
+      {
+        schemaVersion: 2,
+        tasks: [
+          { id: "fail", title: "fail", status: "open", createdAt: 1, updatedAt: 1, tags: [] }
+        ],
+        tagIndex: {}
+      } satisfies LoadedData,
+      25,
+      filePath,
+      fsOps,
+      (result) => {
+        if (!result.ok) {
+          errors.push(result.error);
+          expect(result.filePath).toBe(filePath);
+        }
+      }
+    );
+
+    await sleep(100);
+    expect(errors).toHaveLength(1);
+    expect(errors[0].message).toContain("disk full");
   });
 });

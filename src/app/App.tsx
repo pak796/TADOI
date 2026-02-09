@@ -36,7 +36,8 @@ import {
   getDataFilePath,
   CURRENT_SCHEMA_VERSION,
   saveStateDebounced,
-  type LoadedData
+  type LoadedData,
+  type SaveStateResult
 } from "../state/persistence";
 import {
   formatTagForDisplay,
@@ -47,14 +48,17 @@ import {
   updateTagIndex
 } from "../domain/tagIndex";
 import { AppState, FocusTarget, Mode, Task } from "../domain/models";
-import { THEMES, ThemeId } from "../theme/themes";
+import { ROTATING_THEME_ORDER, THEMES, ThemeId } from "../theme/themes";
 import { saveSettingsDebounced } from "../settings/settings";
 import { settingsReducer } from "../state/settingsStore";
 import { isEditorMode } from "../ui/modeFocus";
 import { initialUIState, uiReducer, unwind } from "../ui/state";
 import { APP_VERSION } from "./version";
+import { getTerminalSizeWarning, isTerminalSizeSupported } from "./layoutGuard";
 
 const TICKER_INTERVAL_MS = 6000;
+const ROTATING_THEME_INTERVAL_MS = 15000;
+const PERF_DEBUG_ENABLED = process.env.TODUI_PERF_DEBUG === "1";
 
 function getTagQuery(tagsText: string): string | null {
   if (/[\s,]$/.test(tagsText)) return null;
@@ -206,10 +210,15 @@ export function App({
   const [pulseOn, setPulseOn] = useState(false);
   const [fastPulseOn, setFastPulseOn] = useState(false);
   const [showTagTicker, setShowTagTicker] = useState(false);
+  const [rotatingThemeIndex, setRotatingThemeIndex] = useState(0);
   const [timeSuggestion, setTimeSuggestion] = useState<SuggestedTime | null>(null);
+  const [saveFailureBanner, setSaveFailureBanner] = useState<string | null>(null);
   const skipInitialSaveRef = useRef(skipInitialSave);
   const skipSettingsSaveRef = useRef(true);
+  const lastSuccessfulSaveAtRef = useRef<number | undefined>(undefined);
   const { height: terminalHeight, width: terminalWidth } = useTerminalDimensions();
+  const terminalIsSupported = isTerminalSizeSupported(terminalWidth, terminalHeight);
+  const terminalSizeWarning = getTerminalSizeWarning(terminalWidth, terminalHeight);
 
   const now = Date.now();
   const dayKey = startOfLocalDayMs(now);
@@ -220,7 +229,10 @@ export function App({
   const listHeaderHeight = 2;
   const topBarHeight = 4;
   const bottomBarHeight = 3;
-  const startupBannerHeight = startupBanner ? 1 : 0;
+  const activeBanners = [startupBanner, saveFailureBanner].filter(
+    (value): value is string => Boolean(value)
+  );
+  const bannerHeight = activeBanners.length;
   const listPanelBorder = 2;
   const listPanelPadding = 2;
   const searchHeight = uiState.mode === Mode.SEARCH ? 3 : 0;
@@ -229,7 +241,7 @@ export function App({
     terminalHeight -
     topBarHeight -
     bottomBarHeight -
-    startupBannerHeight -
+    bannerHeight -
     listHeaderHeight -
     listPanelBorder -
     listPanelPadding -
@@ -300,7 +312,11 @@ export function App({
   const tagInlineSuggestion = tagQuery
     ? getTagCompletion(tagQuery, tagSuggestions)
     : null;
-  const activeThemeTokens = THEMES[settingsState.themeId];
+  const activeThemeId =
+    settingsState.themeId === "rotating"
+      ? ROTATING_THEME_ORDER[rotatingThemeIndex % ROTATING_THEME_ORDER.length]
+      : settingsState.themeId;
+  const activeThemeTokens = THEMES[activeThemeId];
   const dueSuggestion =
     uiState.focus === FocusTarget.EDITOR_DUE_DATE && state.editor
       ? getDueSuggestion(state.editor.dueText, now)
@@ -320,6 +336,35 @@ export function App({
       : timeAutocompleteStep === "minute" && timeSuggestion
         ? `→ ${timeSuggestion.hh}:${timeSuggestion.mm}`
         : null;
+  const renderStartMs = Date.now();
+
+  function formatSaveTimestamp(epochMs: number): string {
+    const date = new Date(epochMs);
+    const yyyy = String(date.getFullYear());
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const dd = String(date.getDate()).padStart(2, "0");
+    const hh = String(date.getHours()).padStart(2, "0");
+    const mi = String(date.getMinutes()).padStart(2, "0");
+    const ss = String(date.getSeconds()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
+  }
+
+  function handleSaveResult(result: SaveStateResult): void {
+    if (result.ok) {
+      lastSuccessfulSaveAtRef.current = result.savedAt;
+      setSaveFailureBanner(null);
+      return;
+    }
+
+    const lastSavedAt = result.lastSuccessfulSaveAt ?? lastSuccessfulSaveAtRef.current;
+    const summary = result.error.message || "Unknown persistence error";
+    const lastSaveText = lastSavedAt
+      ? ` | Last successful save: ${formatSaveTimestamp(lastSavedAt)}`
+      : "";
+    setSaveFailureBanner(
+      `Save failed: ${summary} | Path: ${result.filePath}${lastSaveText}`
+    );
+  }
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -360,8 +405,24 @@ export function App({
   }, []);
 
   useEffect(() => {
-    applyTheme(settingsState.themeId);
+    if (settingsState.themeId === "rotating") return;
+    const index = ROTATING_THEME_ORDER.indexOf(settingsState.themeId);
+    if (index >= 0) {
+      setRotatingThemeIndex(index);
+    }
   }, [settingsState.themeId]);
+
+  useEffect(() => {
+    if (settingsState.themeId !== "rotating") return;
+    const id = setInterval(() => {
+      setRotatingThemeIndex((prev) => (prev + 1) % ROTATING_THEME_ORDER.length);
+    }, ROTATING_THEME_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [settingsState.themeId]);
+
+  useEffect(() => {
+    applyTheme(activeThemeId);
+  }, [activeThemeId]);
 
   useEffect(() => {
     if (skipSettingsSaveRef.current) {
@@ -380,12 +441,26 @@ export function App({
       skipInitialSaveRef.current = false;
       return;
     }
-    saveStateDebounced({
-      schemaVersion: CURRENT_SCHEMA_VERSION,
-      tasks: state.tasks,
-      tagIndex: state.tagIndex
-    });
+    saveStateDebounced(
+      {
+        schemaVersion: CURRENT_SCHEMA_VERSION,
+        tasks: state.tasks,
+        tagIndex: state.tagIndex
+      },
+      350,
+      undefined,
+      undefined,
+      handleSaveResult
+    );
   }, [state.tasks, state.tagIndex]);
+
+  useEffect(() => {
+    if (!PERF_DEBUG_ENABLED) return;
+    const durationMs = Date.now() - renderStartMs;
+    console.log(
+      `[ToDui][perf] render=${durationMs}ms terminal=${terminalWidth}x${terminalHeight} visibleRows=${visibleRows} visibleTasks=${visibleTasks.length}`
+    );
+  });
 
   useEffect(() => {
     if (visibleTasks.length === 0) {
@@ -537,6 +612,13 @@ export function App({
   }
 
   useKeyboard((key) => {
+    if (!terminalIsSupported) {
+      if ((key.name ?? "") === "q") {
+        process.exit(0);
+      }
+      return;
+    }
+
     const actions = handleKey(
       {
         name: key.name ?? "",
@@ -795,6 +877,39 @@ export function App({
     dispatch({ type: "updateEditor", patch: { tagsText: nextValue } });
   }
 
+  if (!terminalIsSupported) {
+    return (
+      <box
+        style={{
+          height: "100%",
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: theme.bg,
+          color: theme.text
+        }}
+      >
+        <box
+          style={{
+            border: true,
+            borderStyle: "single",
+            borderColor: theme.warn,
+            backgroundColor: theme.panel,
+            paddingLeft: 2,
+            paddingRight: 2,
+            paddingTop: 1,
+            paddingBottom: 1,
+            flexDirection: "column",
+            alignItems: "center"
+          }}
+        >
+          <text style={{ color: theme.warn, fontWeight: "bold" }}>{terminalSizeWarning}</text>
+          <text style={{ color: theme.muted }}>Resize terminal to continue.</text>
+          <text style={{ color: theme.muted }}>Press q to quit.</text>
+        </box>
+      </box>
+    );
+  }
+
   return (
     <box
       style={{
@@ -963,18 +1078,22 @@ export function App({
           </box>
         </box>
 
-        {startupBanner ? (
-          <box
-            style={{
-              height: 1,
-              backgroundColor: theme.warn,
-              paddingLeft: 1,
-              paddingRight: 1
-            }}
-          >
-            <text style={{ color: theme.bg }}>{startupBanner}</text>
-          </box>
-        ) : null}
+        {activeBanners.map((message, index) => {
+          const isSaveFailure = message.startsWith("Save failed:");
+          return (
+            <box
+              key={`${index}:${message}`}
+              style={{
+                height: 1,
+                backgroundColor: isSaveFailure ? theme.danger : theme.warn,
+                paddingLeft: 1,
+                paddingRight: 1
+              }}
+            >
+              <text style={{ color: theme.bg }}>{message}</text>
+            </box>
+          );
+        })}
 
         <box
           style={{
@@ -1080,7 +1199,15 @@ export function App({
             <text>q: quit</text>
             <text>esc: close</text>
             <text>App Version: {APP_VERSION}</text>
-            <text>Theme: {settingsState.themeId}</text>
+            <text>
+              Theme:{" "}
+              {settingsState.themeId === "rotating"
+                ? `rotating (${activeThemeId})`
+                : settingsState.themeId}
+            </text>
+            {settingsState.themeId === "rotating" ? (
+              <text>Auto-rotate: every 15s</text>
+            ) : null}
             <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
               <box
                 style={{

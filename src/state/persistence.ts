@@ -47,6 +47,22 @@ export type SafeLoadResult = {
   didMigrate: boolean;
 };
 
+export type SaveStateResult =
+  | {
+      ok: true;
+      filePath: string;
+      savedAt: number;
+      lastSuccessfulSaveAt: number;
+    }
+  | {
+      ok: false;
+      filePath: string;
+      error: Error;
+      lastSuccessfulSaveAt?: number;
+    };
+
+export type SaveStateResultCallback = (result: SaveStateResult) => void;
+
 function pathApiForPlatform(platform: NodeJS.Platform): PathApi {
   return platform === "win32" ? path.win32 : path.posix;
 }
@@ -88,6 +104,8 @@ const DATA_FILE = resolveDataPath();
 const DEFAULT_FS_OPS: PersistenceFsOps = fs;
 export const CURRENT_SCHEMA_VERSION = 2;
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
+let lastSuccessfulSaveAt: number | undefined;
+const corruptionRecoveryByPath = new Map<string, string | undefined>();
 
 function emptyData(): LoadedData {
   return { schemaVersion: CURRENT_SCHEMA_VERSION, tasks: [], tagIndex: {} };
@@ -200,7 +218,23 @@ async function recoverFromCorruption(
   now: Date,
   fsOps: PersistenceFsOps
 ): Promise<SafeLoadResult> {
+  if (corruptionRecoveryByPath.has(filePath)) {
+    const previousBackupPath = corruptionRecoveryByPath.get(filePath);
+    const backupName = previousBackupPath
+      ? path.basename(previousBackupPath)
+      : "backup-unavailable";
+    return {
+      data: emptyData(),
+      resolvedPath: filePath,
+      bannerMessage: `Data file was corrupt and was backed up to ${backupName}`,
+      corruptBackupPath: previousBackupPath,
+      shouldPersistRecoveredState: true,
+      didMigrate: false
+    };
+  }
+
   const backupPath = await backupCorruptFile(filePath, now, fsOps);
+  corruptionRecoveryByPath.set(filePath, backupPath);
   const backupName = backupPath ? path.basename(backupPath) : "backup-unavailable";
   return {
     data: emptyData(),
@@ -289,14 +323,37 @@ export function saveStateDebounced(
   data: LoadedData,
   delay = 350,
   filePath = DATA_FILE,
-  fsOps: PersistenceFsOps = DEFAULT_FS_OPS
+  fsOps: PersistenceFsOps = DEFAULT_FS_OPS,
+  onResult?: SaveStateResultCallback
 ): void {
   if (saveTimer) {
     clearTimeout(saveTimer);
   }
   saveTimer = setTimeout(() => {
-    void writeState(data, filePath, fsOps);
-    saveTimer = null;
+    void (async () => {
+      try {
+        await writeState(data, filePath, fsOps);
+        const savedAt = Date.now();
+        lastSuccessfulSaveAt = savedAt;
+        onResult?.({
+          ok: true,
+          filePath,
+          savedAt,
+          lastSuccessfulSaveAt: savedAt
+        });
+      } catch (error: unknown) {
+        const normalizedError =
+          error instanceof Error ? error : new Error(String(error));
+        onResult?.({
+          ok: false,
+          filePath,
+          error: normalizedError,
+          lastSuccessfulSaveAt
+        });
+      } finally {
+        saveTimer = null;
+      }
+    })();
   }, delay);
 }
 

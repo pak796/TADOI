@@ -1,16 +1,27 @@
 import { describe, expect, it } from "bun:test";
-import { THEME_ORDER, THEMES, cycleTheme } from "./themes";
+import { ROTATING_THEME_ORDER, THEME_ORDER, THEMES, cycleTheme } from "./themes";
 
 describe("theme registry", () => {
   it("cycles through all themes in declared order", () => {
     expect(cycleTheme("default")).toBe("retro");
     expect(cycleTheme("retro")).toBe("highContrast");
     expect(cycleTheme("highContrast")).toBe("neonHacker");
-    expect(cycleTheme("neonHacker")).toBe("default");
+    expect(cycleTheme("neonHacker")).toBe("rotating");
+    expect(cycleTheme("rotating")).toBe("default");
   });
 
   it("keeps theme order stable", () => {
     expect(THEME_ORDER).toEqual([
+      "default",
+      "retro",
+      "highContrast",
+      "neonHacker",
+      "rotating"
+    ]);
+  });
+
+  it("keeps rotating theme order limited to concrete palettes", () => {
+    expect(ROTATING_THEME_ORDER).toEqual([
       "default",
       "retro",
       "highContrast",

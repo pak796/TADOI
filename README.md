@@ -14,6 +14,18 @@ bun install
 bun run dev
 ```
 
+## Supported Environments
+
+Verified baseline terminals:
+- macOS Terminal.app
+- iTerm2
+- Windows Terminal
+- GNOME Terminal (Linux baseline)
+
+Minimum supported terminal size:
+- `80x24`
+- Below this size, ToDui shows a centered `Terminal too small (min 80x24)` screen and pauses normal interactions until resized.
+
 ## Data File
 
 Tasks persist to `todui_data.json` using the following resolution order:
@@ -26,6 +38,8 @@ Tasks persist to `todui_data.json` using the following resolution order:
 - Windows fallback: `$HOME\\AppData\\Roaming\\todui\\todui_data.json`
 
 The resolved path is shown in startup logs and in the in-app Help panel.
+
+If a save fails (permissions/disk/IO), ToDui keeps running and shows a persistent banner with the error and resolved data path. Saves retry on the next domain mutation (not on UI-only ticks).
 
 ## Keybindings
 
@@ -59,4 +73,12 @@ Local equivalents:
 bun run test
 bun run test:coverage
 bun run typecheck
+```
+
+## Optional Perf Debug
+
+Enable lightweight render metrics logging:
+
+```bash
+TODUI_PERF_DEBUG=1 bun run dev
 ```

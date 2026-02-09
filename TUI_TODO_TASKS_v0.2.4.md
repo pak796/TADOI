@@ -9,6 +9,7 @@
 v0.2.4 scope note:
 - This version focuses on foundation polish for real users: platform contract, reliability hardening, and performance envelope.
 - It does not add major new features; it adds explicit support boundaries, failure-mode handling, and performance targets.
+- It keeps all completed phases through v0.2.3 and tracks Phase 13 foundation work for v0.2.4.
 
 ---
 
@@ -1043,6 +1044,22 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 **DoD**
 - Logo area is visually separated from metadata and menu content.
 
+## T11.7 Rotating theme mode (auto-cycle)
+**Status**: Complete
+**Implement**
+- Extend theme ids to include `rotating`.
+- Include `rotating` in `THEME_ORDER` while keeping concrete palette order as:
+- `default`, `retro`, `highContrast`, `neonHacker`
+- When `rotating` is selected, auto-cycle concrete themes every 15 seconds.
+- Keep settings persistence on `themeId` and allow `rotating` as a saved value.
+- Update Help pane theme line to show `rotating (<activeTheme>)` and auto-rotate hint.
+
+**DoD**
+- Theme cycling from Help includes `rotating`.
+- In rotating mode, palette changes automatically every 15 seconds.
+- Restart preserves rotating mode when selected.
+- Theme tests cover new cycle order including `rotating`.
+
 ---
 
 # Phase 12 — v0.2.3 Routing Hardening + Version Surfaces
@@ -1076,6 +1093,18 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 - Help pane displays `App Version: v0.2.3`.
 - `package.json` version is `0.2.3`.
 
+## T12.3 Version surfaces sync to v0.2.4
+**Status**: Complete
+**Implement**
+- Update `APP_VERSION` to `v0.2.4`.
+- Update `package.json` version to `0.2.4`.
+- Keep left rail and help pane bound to centralized `APP_VERSION`.
+
+**DoD**
+- Left rail shows `v0.2.4`.
+- Help pane displays `App Version: v0.2.4`.
+- `package.json` version is `0.2.4`.
+
 ---
 
 # Phase 13 — v0.2.4 Foundation Polish (Platform Contract + Reliability + Performance)
@@ -1083,7 +1112,7 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 > Scope note: this phase tightens “real user” robustness without adding major new features.
 
 ## T13.1 Document supported terminals + min size contract
-**Status**: Pending
+**Status**: Complete
 **Implement**
 - Update README (or spec-facing docs) to explicitly list supported terminals:
   - macOS Terminal.app + iTerm2
@@ -1096,8 +1125,12 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 - Docs clearly state support matrix and 80×24 minimum.
 - Below-min-size message behavior is described and consistent with UI behavior.
 
+**Implementation notes**
+- README updated with support matrix, minimum size contract, and below-min-size behavior.
+- Linux baseline fixed as GNOME Terminal.
+
 ## T13.2 Below-min-size guard behavior
-**Status**: Pending
+**Status**: Complete
 **Implement**
 - Add a guard in layout/render pipeline:
   - If terminal < 80×24: render a single centered warning screen.
@@ -1108,8 +1141,12 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 - Shrinking below 80×24 shows a stable “Terminal too small” message.
 - Growing back restores UI with no crash and preserves selection if possible.
 
+**Implementation notes**
+- Added `src/app/layoutGuard.ts` with pure size guard helpers + tests.
+- `App` now renders a centered guard screen below `80x24` and blocks normal key routing while too small.
+
 ## T13.3 Persistence save-failure handling + banner
-**Status**: Pending
+**Status**: Complete
 **Implement**
 - In persistence layer, catch write errors (permissions, disk full, IO).
 - Surface a persistent banner containing:
@@ -1125,8 +1162,13 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 - App does not spam retries or create repeated corrupt backups.
 - When path becomes writable again (or env override changed), next domain mutation successfully saves and banner clears (or updates).
 
+**Implementation notes**
+- `saveStateDebounced` now supports callback results for success/failure payloads.
+- App tracks a persistent save-failure banner with resolved path + optional last successful save time.
+- Retry behavior remains mutation-driven only (no UI-tick-triggered writes).
+
 ## T13.4 Corruption recovery loop prevention test
-**Status**: Pending
+**Status**: Complete
 **Implement**
 - Add unit test(s) to ensure corruption recovery does not generate unbounded `.corrupt.*` backups in one session.
 - Introduce a simple session-scoped guard in safe-load orchestration (if not already present).
@@ -1135,8 +1177,12 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 - Tests confirm at most one backup per startup attempt for a given resolved data path.
 - No repeated `.corrupt.*` creation on subsequent save failures during the same run.
 
+**Implementation notes**
+- Added session-scoped recovery map keyed by resolved path in persistence layer.
+- Added tests for same-path single-backup behavior and separate-path backup behavior.
+
 ## T13.5 Performance target + debug measurement hook (optional)
-**Status**: Pending
+**Status**: Complete
 **Implement**
 - Add an optional debug flag (env) that logs:
   - render/update durations (ms)
@@ -1148,3 +1194,7 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 - With debug flag enabled, logs show basic timing + counts.
 - Large list (2,000 tasks) remains navigable with no perceptible lag.
 - No behavior changes when debug flag is disabled.
+
+**Implementation notes**
+- Added `TODUI_PERF_DEBUG=1` hook in `App` that logs render duration + terminal/window counts.
+- No behavior change when flag is disabled.

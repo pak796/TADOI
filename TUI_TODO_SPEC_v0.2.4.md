@@ -5,9 +5,10 @@
 Build a keyboard-first terminal TUI todo app with a **retro Star Trek / LCARS-inspired layout**, using **OpenTUI** + **@opentui/react** on **Bun**.
 Naming: replace LCARS with **ToDui** in the app UI and filenames.
 
-v0.2.3 scope note:
-- This version finalizes centralized app-level keyboard routing with strict mode/focus dispatch to prevent key leakage.
-- It also synchronizes visible app version surfaces (left rail + help pane + package metadata).
+v0.2.4 scope note:
+- This version focuses on foundation polish for real users: platform contract, reliability hardening, and performance envelope.
+- It does not add major new features; it adds explicit support boundaries, failure-mode handling, and performance targets.
+- It carries forward all accepted v0.2.3 routing/version work and appends new v0.2.4 foundation requirements.
 
 - Runtime: Bun (OpenTUI quick start uses Bun; `bun create tui`)  [oai_citation:0‡GitHub](https://github.com/anomalyco/opentui?utm_source=chatgpt.com)
 - UI binding: @opentui/react provides React reconciler + patterns like `createRoot` and `useKeyboard`.  [oai_citation:1‡npm](https://www.npmjs.com/package/%40opentui/react?utm_source=chatgpt.com)
@@ -79,6 +80,8 @@ Deliverables:
 54. **Help palette preview**: Help pane shows current theme and a mini preview row for `accent`, `warn`, and `ok`.
 55. **Left rail logo separator**: render a horizontal ASCII separator under TODUI logo before version/menu metadata.
 56. **Help pane app version**: show the current app version in the Help overlay.
+57. **Rotating theme mode**: support a `rotating` theme option that auto-cycles concrete palettes every 15 seconds.
+58. **v0.2.4 version surfaces**: app version indicators and package metadata are aligned to `v0.2.4` / `0.2.4`.
 
 ### Non-Goals (MVP)
 - Sync, accounts, multi-device
@@ -136,7 +139,7 @@ Required token shape:
 - `selectionBg`, `selectionText`
 
 Theme ids:
-- `default`, `retro`, `highContrast`, `neonHacker`
+- `default`, `retro`, `highContrast`, `neonHacker`, `rotating`
 
 Runtime compatibility:
 - Existing component color usage may continue using runtime aliases (`accentOrange`, `accentBlue`, `accentPurple`, `dueSoon`, `dueLater`, `muted`, `outline`) as long as they resolve from active semantic tokens.
@@ -525,7 +528,7 @@ Single source of truth:
 - `src/theme/themes.ts`
 
 Contracts:
-- `ThemeId = "default" | "retro" | "highContrast" | "neonHacker"`
+- `ThemeId = "default" | "retro" | "highContrast" | "neonHacker" | "rotating"`
 - `ThemeTokens` semantic keys:
 - `bg`, `panel`, `text`, `mutedText`, `border`
 - `accent`, `accent2`
@@ -533,6 +536,8 @@ Contracts:
 - `selectionBg`, `selectionText`
 - `THEMES: Record<ThemeId, ThemeTokens>`
 - `THEME_ORDER` fixed order:
+- `["default", "retro", "highContrast", "neonHacker", "rotating"]`
+- `ROTATING_THEME_ORDER` concrete cycle order:
 - `["default", "retro", "highContrast", "neonHacker"]`
 - `cycleTheme(current)` returns the next theme in order and wraps.
 
@@ -547,6 +552,7 @@ Runtime adapter:
 - `src/app/theme.ts` exports `applyTheme(themeId)` and a mutable runtime `theme`.
 - Existing components continue using current keys; adapter remaps them from semantic tokens.
 - Theme updates are immediate and do not require app restart.
+- When selected theme is `rotating`, runtime applies a concrete theme from `ROTATING_THEME_ORDER` and auto-advances every 15 seconds.
 
 ## D3) Settings Persistence
 
@@ -567,6 +573,7 @@ Behavior:
 Help interactions:
 - `h` or `H` while Help is open cycles theme.
 - Help displays current theme id.
+- For rotating mode, Help shows `rotating (<activeTheme>)` and a `15s` auto-rotate hint.
 - Help displays a palette preview row using `accent`, `warn`, and `ok` swatches.
 
 ## D5) Left Rail Visual Separator
@@ -597,7 +604,7 @@ Version contract:
 - App version is centralized in `src/app/version.ts` as `APP_VERSION`.
 - Left rail displays `APP_VERSION`.
 - Help pane displays `App Version: <APP_VERSION>`.
-- Package metadata in `package.json` matches the same release (`0.2.3`).
+- Package metadata in `package.json` matches the same release (`0.2.4`).
 
 ---
 
@@ -613,11 +620,14 @@ No new feature sets (sync/recurrence/etc.) are introduced in v0.2.4.
 ToDui must be verified on these baseline environments:
 - macOS: Terminal.app and iTerm2
 - Windows: Windows Terminal
-- Linux: at least one common terminal (e.g., GNOME Terminal or Kitty)
+- Linux: GNOME Terminal (baseline)
 
 ### Minimum terminal geometry
 - Minimum supported size remains **80×24**.
-- If below minimum, show a clear “Terminal too small” message and avoid layout overlap.
+- If below minimum, show a centered warning screen:
+  - `Terminal too small (min 80x24) | Current: <WxH>`
+- While below minimum, normal app interactions are paused to avoid layout churn.
+- When the terminal returns to supported size, full UI rendering and interaction resume with current in-memory state.
 
 ### Data path troubleshooting surface
 - The resolved **task data path** (from Appendix B) must be visible for troubleshooting in at least one user-visible place:
@@ -654,6 +664,7 @@ Define a baseline target for v0.2.4:
 - Add an optional debug mode (env flag) to log:
   - render tick duration (ms)
   - visible task count and window size
+- Env flag: `TODUI_PERF_DEBUG=1`
 - Avoid heavy profiling systems; keep this as console/log output only.
 
 ### Rendering constraints
