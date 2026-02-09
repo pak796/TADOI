@@ -13,6 +13,7 @@ export type KeyRouterContext = {
   hasTagInlineSuggestion: boolean;
   hasDueSuggestion: boolean;
   timeAutocompleteStep: "hour" | "minute" | "none" | "invalid";
+  hasPendingGPrefix: boolean;
 };
 
 export type KeyRouterAction =
@@ -22,9 +23,19 @@ export type KeyRouterAction =
   | { scope: "ui"; type: "OPEN_SEARCH" }
   | { scope: "ui"; type: "CLOSE_SEARCH" }
   | { scope: "ui"; type: "MOVE_EDITOR_FOCUS"; direction: 1 | -1 }
+  | { scope: "ui"; type: "SET_G_PREFIX"; active: boolean }
   | { scope: "ui"; type: "CYCLE_THEME" }
   | { scope: "domain"; type: "EXIT_APP" }
   | { scope: "domain"; type: "MOVE_SELECTION"; delta: 1 | -1 }
+  | { scope: "domain"; type: "MOVE_SELECTION_PAGE"; direction: 1 | -1 }
+  | { scope: "domain"; type: "JUMP_TOP" }
+  | { scope: "domain"; type: "JUMP_BOTTOM" }
+  | {
+      scope: "domain";
+      type: "JUMP_TO_ATTENTION";
+      kind: "overdue" | "today";
+      direction: 1 | -1;
+    }
   | { scope: "domain"; type: "TOGGLE_SELECTED" }
   | { scope: "domain"; type: "OPEN_ADD" }
   | { scope: "domain"; type: "OPEN_EDIT" }
@@ -38,6 +49,81 @@ export type KeyRouterAction =
   | { scope: "domain"; type: "APPLY_TIME_AUTOCOMPLETE" }
   | { scope: "domain"; type: "ACCEPT_DUE_SUGGESTION" }
   | { scope: "domain"; type: "ACCEPT_TAG_INLINE" };
+
+function isLowerG(name: string, sequence: string, ctrl: boolean, shift: boolean): boolean {
+  return !ctrl && !shift && (name === "g" || sequence === "g");
+}
+
+function isUpperG(name: string, sequence: string, ctrl: boolean): boolean {
+  return !ctrl && (sequence === "G" || name === "G");
+}
+
+function isPageUpKey(name: string, ctrl: boolean): boolean {
+  return (
+    (ctrl && name === "u") ||
+    name === "pageup" ||
+    name === "page_up" ||
+    name === "prior"
+  );
+}
+
+function isPageDownKey(name: string, ctrl: boolean): boolean {
+  return (
+    (ctrl && name === "d") ||
+    name === "pagedown" ||
+    name === "page_down" ||
+    name === "next"
+  );
+}
+
+function listModeActions(key: KeyInput): KeyRouterAction[] {
+  const { name, sequence, ctrl } = key;
+  if (sequence === "?") return [{ scope: "ui", type: "OPEN_HELP" }];
+  if (name === "q") return [{ scope: "domain", type: "EXIT_APP" }];
+  if (isUpperG(name, sequence, ctrl)) return [{ scope: "domain", type: "JUMP_BOTTOM" }];
+  if (isPageUpKey(name, ctrl)) {
+    return [{ scope: "domain", type: "MOVE_SELECTION_PAGE", direction: -1 }];
+  }
+  if (isPageDownKey(name, ctrl)) {
+    return [{ scope: "domain", type: "MOVE_SELECTION_PAGE", direction: 1 }];
+  }
+  if (sequence === "]" || name === "]") {
+    return [
+      { scope: "domain", type: "JUMP_TO_ATTENTION", kind: "overdue", direction: 1 }
+    ];
+  }
+  if (sequence === "[" || name === "[") {
+    return [
+      { scope: "domain", type: "JUMP_TO_ATTENTION", kind: "overdue", direction: -1 }
+    ];
+  }
+  if (sequence === "}" || name === "}") {
+    return [
+      { scope: "domain", type: "JUMP_TO_ATTENTION", kind: "today", direction: 1 }
+    ];
+  }
+  if (sequence === "{" || name === "{") {
+    return [
+      { scope: "domain", type: "JUMP_TO_ATTENTION", kind: "today", direction: -1 }
+    ];
+  }
+  if (name === "j" || name === "down") {
+    return [{ scope: "domain", type: "MOVE_SELECTION", delta: 1 }];
+  }
+  if (name === "k" || name === "up") {
+    return [{ scope: "domain", type: "MOVE_SELECTION", delta: -1 }];
+  }
+  if (name === "space") return [{ scope: "domain", type: "TOGGLE_SELECTED" }];
+  if (name === "a") return [{ scope: "domain", type: "OPEN_ADD" }];
+  if (name === "e") return [{ scope: "domain", type: "OPEN_EDIT" }];
+  if (name === "c") return [{ scope: "domain", type: "OPEN_DUPLICATE" }];
+  if (!ctrl && name === "d") return [{ scope: "domain", type: "OPEN_DELETE_CONFIRM" }];
+  if (name === "/") return [{ scope: "ui", type: "OPEN_SEARCH" }];
+  if (name === "f") return [{ scope: "domain", type: "CYCLE_STATUS" }];
+  if (!ctrl && name === "g") return [{ scope: "domain", type: "CYCLE_DUE" }];
+  if (name === "t") return [{ scope: "domain", type: "TOGGLE_TAG_FILTER" }];
+  return [];
+}
 
 function isThemeCycleKey(name: string, sequence: string): boolean {
   return name.toLowerCase() === "h" || sequence === "h" || sequence === "H";
@@ -56,10 +142,19 @@ export function handleKey(
   context: KeyRouterContext
 ): KeyRouterAction[] {
   const { name, sequence, ctrl, shift } = key;
-  const { uiState, hasTagInlineSuggestion, hasDueSuggestion, timeAutocompleteStep } = context;
+  const {
+    uiState,
+    hasTagInlineSuggestion,
+    hasDueSuggestion,
+    timeAutocompleteStep,
+    hasPendingGPrefix
+  } = context;
   const { mode, focus } = uiState;
 
   if (name === "escape") {
+    if (hasPendingGPrefix) {
+      return [{ scope: "ui", type: "SET_G_PREFIX", active: false }];
+    }
     return [{ scope: "ui", type: "UNWIND" }];
   }
 
@@ -156,22 +251,29 @@ export function handleKey(
     return [];
   }
 
-  if (sequence === "?") return [{ scope: "ui", type: "OPEN_HELP" }];
-  if (name === "q") return [{ scope: "domain", type: "EXIT_APP" }];
-  if (name === "j" || name === "down") {
-    return [{ scope: "domain", type: "MOVE_SELECTION", delta: 1 }];
+  if (hasPendingGPrefix) {
+    if (isLowerG(name, sequence, ctrl, shift)) {
+      return [
+        { scope: "ui", type: "SET_G_PREFIX", active: false },
+        { scope: "domain", type: "JUMP_TOP" }
+      ];
+    }
+    if (isUpperG(name, sequence, ctrl)) {
+      return [
+        { scope: "ui", type: "SET_G_PREFIX", active: false },
+        { scope: "domain", type: "JUMP_BOTTOM" }
+      ];
+    }
+    return [
+      { scope: "ui", type: "SET_G_PREFIX", active: false },
+      { scope: "domain", type: "CYCLE_DUE" },
+      ...listModeActions(key)
+    ];
   }
-  if (name === "k" || name === "up") {
-    return [{ scope: "domain", type: "MOVE_SELECTION", delta: -1 }];
+
+  if (isLowerG(name, sequence, ctrl, shift)) {
+    return [{ scope: "ui", type: "SET_G_PREFIX", active: true }];
   }
-  if (name === "space") return [{ scope: "domain", type: "TOGGLE_SELECTED" }];
-  if (name === "a") return [{ scope: "domain", type: "OPEN_ADD" }];
-  if (name === "e") return [{ scope: "domain", type: "OPEN_EDIT" }];
-  if (name === "c") return [{ scope: "domain", type: "OPEN_DUPLICATE" }];
-  if (name === "d") return [{ scope: "domain", type: "OPEN_DELETE_CONFIRM" }];
-  if (name === "/") return [{ scope: "ui", type: "OPEN_SEARCH" }];
-  if (name === "f") return [{ scope: "domain", type: "CYCLE_STATUS" }];
-  if (name === "g") return [{ scope: "domain", type: "CYCLE_DUE" }];
-  if (name === "t") return [{ scope: "domain", type: "TOGGLE_TAG_FILTER" }];
-  return [];
+
+  return listModeActions(key);
 }

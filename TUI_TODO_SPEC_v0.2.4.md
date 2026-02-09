@@ -82,6 +82,7 @@ Deliverables:
 56. **Help pane app version**: show the current app version in the Help overlay.
 57. **Rotating theme mode**: support a `rotating` theme option that auto-cycles concrete palettes every 15 seconds.
 58. **v0.2.4 version surfaces**: app version indicators and package metadata are aligned to `v0.2.4` / `0.2.4`.
+59. **Daily-driver list navigation primitives**: add `gg` (top), `G` (bottom), page navigation (`ctrl+u` / `ctrl+d`, plus PageUp/PageDown), and attention jumps (`[`/`]` for overdue, `{`/`}` for due-today).
 
 ### Non-Goals (MVP)
 - Sync, accounts, multi-device
@@ -275,6 +276,13 @@ Implementation status:
    - ADD/EDIT → cancel draft and return to LIST
 5. Routing precedence is centralized in a single router:
    - `MODAL_CONFIRM` → `HELP` → `SEARCH` → `ADD/EDIT` → `LIST`.
+6. Advanced list navigation keys are LIST+TASK_LIST only:
+   - `gg`: jump to top
+   - `G`: jump to bottom
+   - `ctrl+u` / `ctrl+d` (and PageUp/PageDown where supported): page up/down
+   - `[` / `]`: previous/next overdue task
+   - `{` / `}`: previous/next due-today task
+   - If no match exists for attention jumps, show a brief non-modal banner.
 
 ### Visible focus indicator
 - Left rail shows **MODE** (already) and also a short **FOCUS** indicator (e.g., `FOCUS: LIST`, `FOCUS: TITLE`, `FOCUS: DELETE`) OR highlight the active section strongly enough to be unambiguous.
@@ -326,6 +334,15 @@ Call `ensureSelectedVisible()` whenever:
 - In a list longer than the viewport, holding `j`/`k` keeps the selected row on-screen.
 - After filtering or deleting, selection is clamped and visible.
 - Resizing the terminal keeps the selection visible and avoids crashes.
+
+### Daily-driver navigation behavior
+- `gg` selects first visible task and keeps it visible.
+- `G` selects last visible task and keeps it visible.
+- Page navigation moves by `visibleRows - 1` and clamps in-range.
+- Attention jumps use current due semantics:
+  - Overdue uses date-only and explicit-time same-day overdue rules.
+  - Due-today uses local-day today.
+- Attention jumps wrap and show a brief banner when no target exists.
 
 ## A5) v0.2.0 Quality Gates (manual, required)
 1. **Focus routing**: in ADD/EDIT, typing never moves list selection; in LIST, typing does not “leak” into inputs.

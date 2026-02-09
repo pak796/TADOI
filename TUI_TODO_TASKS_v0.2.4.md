@@ -167,6 +167,26 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 **DoD**
 - Pressing down on last item selects first; up on first selects last
 
+### T3.16 Daily-driver navigation primitives
+**Status**: Complete
+**Implement**
+- Add list-only jump/page shortcuts:
+  - `gg`: top
+  - `G`: bottom
+  - `ctrl+u` / `ctrl+d` and PageUp/PageDown: page navigation
+- Add attention jumps:
+  - `]` / `[` for next/previous overdue
+  - `}` / `{` for next/previous due-today
+- Keep strict mode/focus routing so these keys do not leak into SEARCH/ADD/EDIT/HELP/MODAL.
+- Add a brief non-modal banner when no matching attention item exists.
+- Add pure unit tests for next/previous matching-index logic.
+
+**DoD**
+- All shortcuts work in long lists and selection remains visible.
+- Shortcuts are inert outside LIST mode with TASK_LIST focus.
+- Help overlay documents the new shortcuts.
+- Tests cover matching-index search and due-attention predicates.
+
 ### T3.3 Sorting + filtering + search pipeline
 **Status**: Complete
 **Implement**

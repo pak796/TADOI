@@ -19,6 +19,7 @@ function run(
     hasTagInlineSuggestion: false,
     hasDueSuggestion: false,
     timeAutocompleteStep: "none",
+    hasPendingGPrefix: false,
     ...contextOverrides
   };
   return handleKey(input, context);
@@ -39,6 +40,12 @@ describe("handleKey", () => {
         }
       )
     ).toEqual([{ scope: "ui", type: "UNWIND" }]);
+    expect(
+      run(
+        { name: "escape" },
+        { hasPendingGPrefix: true }
+      )
+    ).toEqual([{ scope: "ui", type: "SET_G_PREFIX", active: false }]);
   });
 
   it("blocks non-modal keys while modal is open", () => {
@@ -76,6 +83,49 @@ describe("handleKey", () => {
         }
       )
     ).toEqual([]);
+  });
+
+  it("routes jump and paging keys in list mode", () => {
+    expect(run({ name: "g", sequence: "g" })).toEqual([
+      { scope: "ui", type: "SET_G_PREFIX", active: true }
+    ]);
+    expect(
+      run(
+        { name: "g", sequence: "g" },
+        { hasPendingGPrefix: true }
+      )
+    ).toEqual([
+      { scope: "ui", type: "SET_G_PREFIX", active: false },
+      { scope: "domain", type: "JUMP_TOP" }
+    ]);
+    expect(run({ name: "G", sequence: "G" })).toEqual([
+      { scope: "domain", type: "JUMP_BOTTOM" }
+    ]);
+    expect(run({ ctrl: true, name: "u" })).toEqual([
+      { scope: "domain", type: "MOVE_SELECTION_PAGE", direction: -1 }
+    ]);
+    expect(run({ ctrl: true, name: "d" })).toEqual([
+      { scope: "domain", type: "MOVE_SELECTION_PAGE", direction: 1 }
+    ]);
+    expect(run({ sequence: "]", name: "]" })).toEqual([
+      { scope: "domain", type: "JUMP_TO_ATTENTION", kind: "overdue", direction: 1 }
+    ]);
+    expect(run({ sequence: "{", name: "{" })).toEqual([
+      { scope: "domain", type: "JUMP_TO_ATTENTION", kind: "today", direction: -1 }
+    ]);
+  });
+
+  it("flushes pending g to due-cycle when next key is not g/G", () => {
+    expect(
+      run(
+        { name: "j", sequence: "j" },
+        { hasPendingGPrefix: true }
+      )
+    ).toEqual([
+      { scope: "ui", type: "SET_G_PREFIX", active: false },
+      { scope: "domain", type: "CYCLE_DUE" },
+      { scope: "domain", type: "MOVE_SELECTION", delta: 1 }
+    ]);
   });
 
   it("prevents list-key leakage while typing in search", () => {

@@ -12,6 +12,11 @@ import { DetailsPane } from "../components/DetailsPane";
 import { EditorPane } from "../components/EditorPane";
 import { LeftRail } from "../components/LeftRail";
 import { diffLocalDays, startOfLocalDayMs } from "../domain/dates";
+import {
+  findNextMatchingIndex,
+  isTaskDueToday,
+  isTaskOverdue
+} from "../domain/navigation";
 import { clampScrollOffset, ensureSelectedVisible } from "../domain/scroll";
 import { computeTopTagStats } from "../domain/tagStats";
 import {
@@ -58,6 +63,8 @@ import { getTerminalSizeWarning, isTerminalSizeSupported } from "./layoutGuard";
 
 const TICKER_INTERVAL_MS = 6000;
 const ROTATING_THEME_INTERVAL_MS = 15000;
+const G_PREFIX_TIMEOUT_MS = 280;
+const NAV_BANNER_TIMEOUT_MS = 1800;
 const PERF_DEBUG_ENABLED = process.env.TODUI_PERF_DEBUG === "1";
 
 function getTagQuery(tagsText: string): string | null {
@@ -213,9 +220,13 @@ export function App({
   const [rotatingThemeIndex, setRotatingThemeIndex] = useState(0);
   const [timeSuggestion, setTimeSuggestion] = useState<SuggestedTime | null>(null);
   const [saveFailureBanner, setSaveFailureBanner] = useState<string | null>(null);
+  const [navigationBanner, setNavigationBanner] = useState<string | null>(null);
+  const [pendingGPrefix, setPendingGPrefix] = useState(false);
   const skipInitialSaveRef = useRef(skipInitialSave);
   const skipSettingsSaveRef = useRef(true);
   const lastSuccessfulSaveAtRef = useRef<number | undefined>(undefined);
+  const gPrefixTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const navBannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { height: terminalHeight, width: terminalWidth } = useTerminalDimensions();
   const terminalIsSupported = isTerminalSizeSupported(terminalWidth, terminalHeight);
   const terminalSizeWarning = getTerminalSizeWarning(terminalWidth, terminalHeight);
@@ -229,7 +240,7 @@ export function App({
   const listHeaderHeight = 2;
   const topBarHeight = 4;
   const bottomBarHeight = 3;
-  const activeBanners = [startupBanner, saveFailureBanner].filter(
+  const activeBanners = [startupBanner, saveFailureBanner, navigationBanner].filter(
     (value): value is string => Boolean(value)
   );
   const bannerHeight = activeBanners.length;
@@ -405,6 +416,23 @@ export function App({
   }, []);
 
   useEffect(() => {
+    return () => {
+      if (gPrefixTimerRef.current) {
+        clearTimeout(gPrefixTimerRef.current);
+      }
+      if (navBannerTimerRef.current) {
+        clearTimeout(navBannerTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (uiState.mode !== Mode.LIST || uiState.focus !== FocusTarget.TASK_LIST) {
+      clearPendingGPrefix();
+    }
+  }, [uiState.mode, uiState.focus]);
+
+  useEffect(() => {
     if (settingsState.themeId === "rotating") return;
     const index = ROTATING_THEME_ORDER.indexOf(settingsState.themeId);
     if (index >= 0) {
@@ -539,6 +567,13 @@ export function App({
           focus: nextEditorFocusTarget(uiState.focus, action.direction)
         });
         return;
+      case "SET_G_PREFIX":
+        if (action.active) {
+          armPendingGPrefix();
+        } else {
+          clearPendingGPrefix();
+        }
+        return;
       case "CYCLE_THEME":
         settingsDispatch({ type: "cycleTheme" });
         return;
@@ -547,6 +582,18 @@ export function App({
         return;
       case "MOVE_SELECTION":
         moveSelection(action.delta);
+        return;
+      case "MOVE_SELECTION_PAGE":
+        moveSelectionPage(action.direction);
+        return;
+      case "JUMP_TOP":
+        jumpToTop();
+        return;
+      case "JUMP_BOTTOM":
+        jumpToBottom();
+        return;
+      case "JUMP_TO_ATTENTION":
+        jumpToAttention(action.kind, action.direction);
         return;
       case "TOGGLE_SELECTED":
         toggleSelected();
@@ -630,7 +677,8 @@ export function App({
         uiState,
         hasTagInlineSuggestion: Boolean(tagInlineSuggestion),
         hasDueSuggestion: Boolean(dueSuggestion),
-        timeAutocompleteStep
+        timeAutocompleteStep,
+        hasPendingGPrefix: pendingGPrefix
       }
     );
 
@@ -640,6 +688,7 @@ export function App({
   });
 
   function openHelp() {
+    clearPendingGPrefix();
     uiDispatch({
       type: "captureReturnContext",
       mode: uiState.mode,
@@ -654,6 +703,7 @@ export function App({
   }
 
   function closeSearch() {
+    clearPendingGPrefix();
     uiDispatch({ type: "setMode", mode: Mode.LIST });
     uiDispatch({ type: "setFocus", focus: FocusTarget.TASK_LIST });
   }
@@ -680,6 +730,89 @@ export function App({
     const safeIndex = currentIndex === -1 ? 0 : currentIndex;
     const nextIndex = (safeIndex + delta + visibleTasks.length) % visibleTasks.length;
     dispatch({ type: "setSelected", id: visibleTasks[nextIndex].id });
+  }
+
+  function setSelectedByIndex(index: number) {
+    if (visibleTasks.length === 0) return;
+    const nextIndex = Math.max(0, Math.min(index, visibleTasks.length - 1));
+    dispatch({ type: "setSelected", id: visibleTasks[nextIndex].id });
+  }
+
+  function jumpToTop() {
+    setSelectedByIndex(0);
+  }
+
+  function jumpToBottom() {
+    setSelectedByIndex(visibleTasks.length - 1);
+  }
+
+  function moveSelectionPage(direction: 1 | -1) {
+    if (visibleTasks.length === 0) return;
+    const pageStep = Math.max(1, visibleRows - 1);
+    const currentIndex = visibleTasks.findIndex((task) => task.id === state.selectedId);
+    const safeIndex = currentIndex === -1 ? 0 : currentIndex;
+    setSelectedByIndex(safeIndex + direction * pageStep);
+  }
+
+  function showShortNavigationBanner(message: string) {
+    setNavigationBanner(message);
+    if (navBannerTimerRef.current) {
+      clearTimeout(navBannerTimerRef.current);
+    }
+    navBannerTimerRef.current = setTimeout(() => {
+      setNavigationBanner(null);
+      navBannerTimerRef.current = null;
+    }, NAV_BANNER_TIMEOUT_MS);
+  }
+
+  function jumpToAttention(kind: "overdue" | "today", direction: 1 | -1) {
+    if (visibleTasks.length === 0) {
+      showShortNavigationBanner(
+        kind === "overdue" ? "No overdue tasks" : "No due-today tasks"
+      );
+      return;
+    }
+
+    const currentIndex = visibleTasks.findIndex((task) => task.id === state.selectedId);
+    const safeIndex = currentIndex === -1 ? 0 : currentIndex;
+    const matcher =
+      kind === "overdue"
+        ? (task: Task) => isTaskOverdue(task, now)
+        : (task: Task) => isTaskDueToday(task, now);
+    const nextIndex = findNextMatchingIndex(
+      visibleTasks,
+      safeIndex,
+      direction,
+      matcher,
+      true
+    );
+
+    if (nextIndex === null) {
+      showShortNavigationBanner(
+        kind === "overdue" ? "No overdue tasks" : "No due-today tasks"
+      );
+      return;
+    }
+
+    setSelectedByIndex(nextIndex);
+  }
+
+  function clearPendingGPrefix() {
+    setPendingGPrefix(false);
+    if (gPrefixTimerRef.current) {
+      clearTimeout(gPrefixTimerRef.current);
+      gPrefixTimerRef.current = null;
+    }
+  }
+
+  function armPendingGPrefix() {
+    clearPendingGPrefix();
+    setPendingGPrefix(true);
+    gPrefixTimerRef.current = setTimeout(() => {
+      setPendingGPrefix(false);
+      gPrefixTimerRef.current = null;
+      cycleDue();
+    }, G_PREFIX_TIMEOUT_MS);
   }
 
   function toggleSelected() {
@@ -737,6 +870,7 @@ export function App({
   }
 
   function cancelEditor() {
+    clearPendingGPrefix();
     setTimeSuggestion(null);
     uiDispatch({ type: "setMode", mode: Mode.LIST });
     uiDispatch({ type: "setFocus", focus: FocusTarget.TASK_LIST });
@@ -1080,12 +1214,17 @@ export function App({
 
         {activeBanners.map((message, index) => {
           const isSaveFailure = message.startsWith("Save failed:");
+          const isNavigationNotice = message.startsWith("No ");
           return (
             <box
               key={`${index}:${message}`}
               style={{
                 height: 1,
-                backgroundColor: isSaveFailure ? theme.danger : theme.warn,
+                backgroundColor: isSaveFailure
+                  ? theme.danger
+                  : isNavigationNotice
+                    ? theme.accentBlue
+                    : theme.warn,
                 paddingLeft: 1,
                 paddingRight: 1
               }}
@@ -1186,6 +1325,11 @@ export function App({
           <box style={{ flexDirection: "column" }}>
             <text>KEYBINDINGS</text>
             <text>j/k or arrows: move</text>
+            <text>gg: top</text>
+            <text>G: bottom</text>
+            <text>ctrl+u / ctrl+d: page up/down</text>
+            <text>[ ]: prev/next overdue</text>
+            <text>{'{'} {'}'}: prev/next due today</text>
             <text>a: add</text>
             <text>e: edit</text>
             <text>c: copy</text>
