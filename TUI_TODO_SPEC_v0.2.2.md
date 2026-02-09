@@ -6,8 +6,8 @@ Build a keyboard-first terminal TUI todo app with a **retro Star Trek / LCARS-in
 Naming: replace LCARS with **ToDui** in the app UI and filenames.
 
 v0.2.2 scope note:
-- This version focuses on automated tests and CI merge gates.
-- No net-new user-facing features are introduced in v0.2.2.
+- This version focuses on automated tests/CI merge gates and lightweight theming polish.
+- User-facing additions in this version are limited to theme switching and cosmetic palette/layout refinements.
 
 - Runtime: Bun (OpenTUI quick start uses Bun; `bun create tui`)  [oai_citation:0‡GitHub](https://github.com/anomalyco/opentui?utm_source=chatgpt.com)
 - UI binding: @opentui/react provides React reconciler + patterns like `createRoot` and `useKeyboard`.  [oai_citation:1‡npm](https://www.npmjs.com/package/%40opentui/react?utm_source=chatgpt.com)
@@ -73,6 +73,11 @@ Deliverables:
 48. **Selection-following scroll**: task list auto-scrolls so the selected row stays visible.
 49. **Details due time**: when a task has an explicit time, show `DUE TIME: HH:mm` in the details pane.
 50. **Add-time autocomplete**: in Add mode, show a right-arrow hint to complete a suggested time (1 hour ahead, preserves minutes); Right Arrow completes hour first, then minutes.
+51. **Theme switcher (MVP)**: support `default`, `retro`, `highContrast`, and `neonHacker` palettes with no visual change to `default`.
+52. **Theme keybind in Help**: while Help is open, pressing `h` or `H` cycles to the next palette.
+53. **Theme persistence**: persist selected theme in `settings.json` with startup load and debounced saves.
+54. **Help palette preview**: Help pane shows current theme and a mini preview row for `accent`, `warn`, and `ok`.
+55. **Left rail logo separator**: render a horizontal ASCII separator under TODUI logo before version/menu metadata.
 
 ### Non-Goals (MVP)
 - Sync, accounts, multi-device
@@ -121,10 +126,24 @@ Use OpenTUI flex layout with nested `<box>` containers.
 - Maintain readability in 80×24.
 
 ### 3.3 Theme tokens
-Define a single `theme.ts` with colors + spacing:
-- `bg`, `panel`, `accentOrange`, `accentPurple`, `accentBlue`, `ok`, `warn`, `text`, `muted`
+Define semantic tokens in `src/theme/themes.ts` and map runtime aliases in `src/app/theme.ts`.
 
-(Exact hex values are up to implementation; keep consistent.)
+Required token shape:
+- `bg`, `panel`, `text`, `mutedText`, `border`
+- `accent`, `accent2`
+- `ok`, `warn`, `danger`
+- `selectionBg`, `selectionText`
+
+Theme ids:
+- `default`, `retro`, `highContrast`, `neonHacker`
+
+Runtime compatibility:
+- Existing component color usage may continue using runtime aliases (`accentOrange`, `accentBlue`, `accentPurple`, `dueSoon`, `dueLater`, `muted`, `outline`) as long as they resolve from active semantic tokens.
+
+Behavior:
+- `default` must match existing release visuals.
+- Theme changes should re-render immediately.
+- Theme switching is available from Help with `h/H`.
 
 ---
 
@@ -486,3 +505,62 @@ Runner baseline:
 Execution:
 - install dependencies with `bun install --frozen-lockfile`
 - run required merge gates listed above
+
+
+# Appendix D — v0.2.2 Theme Switching & Settings Persistence
+
+This appendix defines the lightweight palette switcher delivered in v0.2.2.
+
+## D1) Theme Registry
+
+Single source of truth:
+- `src/theme/themes.ts`
+
+Contracts:
+- `ThemeId = "default" | "retro" | "highContrast" | "neonHacker"`
+- `ThemeTokens` semantic keys:
+- `bg`, `panel`, `text`, `mutedText`, `border`
+- `accent`, `accent2`
+- `ok`, `warn`, `danger`
+- `selectionBg`, `selectionText`
+- `THEMES: Record<ThemeId, ThemeTokens>`
+- `THEME_ORDER` fixed order:
+- `["default", "retro", "highContrast", "neonHacker"]`
+- `cycleTheme(current)` returns the next theme in order and wraps.
+
+Palette notes:
+- `default` mirrors existing release colors.
+- `retro` uses SNES-style cool greys.
+- `neonHacker` uses a dark-green left rail and greener panel background.
+
+## D2) Runtime Theme Application
+
+Runtime adapter:
+- `src/app/theme.ts` exports `applyTheme(themeId)` and a mutable runtime `theme`.
+- Existing components continue using current keys; adapter remaps them from semantic tokens.
+- Theme updates are immediate and do not require app restart.
+
+## D3) Settings Persistence
+
+Settings model:
+- `ToduiSettings = { themeId }`
+
+File location:
+- Primary: `~/.config/todui/settings.json`
+- Fallback: `~/.todui/settings.json`
+
+Behavior:
+- Startup: load settings, merge with defaults, apply theme before first render.
+- Save: debounce writes (`150ms`) and persist the most recent theme.
+- If primary write fails, attempt fallback path.
+
+## D4) Help Pane UX
+
+Help interactions:
+- `h` or `H` while Help is open cycles theme.
+- Help displays current theme id.
+- Help displays a palette preview row using `accent`, `warn`, and `ok` swatches.
+
+## D5) Left Rail Visual Separator
+
+The left rail renders an ASCII horizontal separator directly below the TODUI logo to clearly separate branding from version/date/time/menu metadata.

@@ -7,8 +7,8 @@
 - Keep "domain" logic pure; write unit tests where appropriate.
 
 v0.2.2 scope note:
-- This version focuses on automated tests and CI merge gates.
-- No net-new user-facing features are introduced in v0.2.2.
+- This version focuses on automated tests/CI merge gates and lightweight theming polish.
+- User-facing additions are limited to theme switching and small visual refinements.
 
 ---
 
@@ -678,7 +678,7 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 - Multi-tag filter (AND)
 - Notes multiline (textarea if available)
 - Import/export JSON
-- Color theme switching
+- User-defined/custom-imported color palettes
 - SQLite persistence
 
 
@@ -956,3 +956,81 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 
 **DoD**
 - Logo reads clearly as `TODUI` with tighter spacing and no visual clipping/wrapping.
+
+---
+
+# Phase 11 — v0.2.2 Theme Switcher + Palette Polish
+
+> Scope note: this phase adds lightweight theme selection and persistence with minimal UI changes.
+
+## T11.1 Theme registry and cycling contract
+**Status**: Complete
+**Implement**
+- Add `src/theme/themes.ts` with:
+- `ThemeId = "default" | "retro" | "highContrast" | "neonHacker"`
+- `ThemeTokens`
+- `THEMES`
+- `THEME_ORDER`
+- `cycleTheme(current)`
+- Keep `default` palette equivalent to existing release colors.
+
+**DoD**
+- Theme IDs and semantic tokens compile as a single source of truth.
+- Cycling order is deterministic and wraps.
+- Default palette remains visually unchanged.
+
+## T11.2 Runtime theme adapter compatibility
+**Status**: Complete
+**Implement**
+- Refactor `src/app/theme.ts` to support semantic themes with `applyTheme(themeId)`.
+- Preserve existing runtime keys used across components (`accentOrange`, `accentBlue`, `accentPurple`, `dueSoon`, `dueLater`, `muted`, `outline`) via adapter mapping.
+
+**DoD**
+- Existing UI components render without broad refactors.
+- Theme changes apply immediately at runtime.
+
+## T11.3 Settings persistence for theme selection
+**Status**: Complete
+**Implement**
+- Add `src/settings/settings.ts` with:
+- `ToduiSettings = { themeId }`
+- `resolveSettingsPaths()` using:
+- primary: `~/.config/todui/settings.json`
+- fallback: `~/.todui/settings.json`
+- `loadSettings()` with default merge/validation
+- `saveSettingsDebounced()` with 150ms debounce and fallback-write behavior
+- Add `src/state/settingsStore.ts` reducer with `setTheme` + `cycleTheme`.
+
+**DoD**
+- Startup loads saved theme and applies it before first render.
+- Theme changes persist and restore across app restarts.
+- Save failures on primary path attempt fallback path.
+
+## T11.4 Help pane theme control and preview
+**Status**: Complete
+**Implement**
+- In Help mode, bind `h` and `H` to theme cycling.
+- Show current theme in Help.
+- Add preview swatches for `accent`, `warn`, and `ok`.
+
+**DoD**
+- Pressing `h` in Help cycles through all 4 palettes.
+- Help reflects the active theme and preview colors.
+
+## T11.5 Palette tuning pass
+**Status**: Complete
+**Implement**
+- Update `retro` palette to SNES-inspired cool greys.
+- Update `neonHacker` with dark-green left rail and greener list/details panel backgrounds.
+
+**DoD**
+- Retro theme reads as grayscale SNES-style.
+- Neon Hacker left rail and panels match requested green styling.
+
+## T11.6 Left rail logo separator
+**Status**: Complete
+**Implement**
+- Add a horizontal ASCII separator directly beneath TODUI logo artwork in left rail before version/date/time and menu metadata.
+
+**DoD**
+- Logo area is visually separated from metadata and menu content.
