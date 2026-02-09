@@ -3,13 +3,12 @@ import { getDueInLabel, getDueLabel } from "./store";
 import { Task } from "../domain/models";
 
 function makeTask(partial: Partial<Task> & Pick<Task, "id" | "title">): Task {
-  const now = Date.now();
   return {
     id: partial.id,
     title: partial.title,
     status: partial.status ?? "open",
-    createdAt: partial.createdAt ?? now,
-    updatedAt: partial.updatedAt ?? now,
+    createdAt: partial.createdAt ?? 1,
+    updatedAt: partial.updatedAt ?? 1,
     dueAt: partial.dueAt,
     hasExplicitTime: partial.hasExplicitTime,
     closedAt: partial.closedAt,
@@ -54,6 +53,18 @@ describe("due labels with optional time", () => {
       hasExplicitTime: true
     });
     expect(getDueInLabel(dueTask, now)).toBe("OVERDUE BY 2 HOURS");
+  });
+
+  it("uses minutes for overdue-by labels when under an hour", () => {
+    const now = new Date(2026, 1, 9, 10, 45, 0, 0).getTime();
+    const dueEarlier = new Date(2026, 1, 9, 10, 20, 0, 0).getTime();
+    const dueTask = makeTask({
+      id: "overdue-minutes",
+      title: "overdue-minutes",
+      dueAt: dueEarlier,
+      hasExplicitTime: true
+    });
+    expect(getDueInLabel(dueTask, now)).toBe("OVERDUE BY 25 MIN");
   });
 
   it("keeps date-only today behavior", () => {

@@ -1,49 +1,36 @@
 import { describe, expect, it } from "bun:test";
+import { promises as fs } from "fs";
 import { migratePersistedStateToCurrent } from "./migrations";
 import { LoadedData } from "./persistence";
+import { validatePersistedState } from "./validation";
+
+async function loadFixture(name: string): Promise<LoadedData> {
+  const fixturePath = decodeURIComponent(
+    new URL(`./__fixtures__/${name}`, import.meta.url).pathname
+  );
+  const raw = await fs.readFile(fixturePath, "utf8");
+  return JSON.parse(raw) as LoadedData;
+}
 
 describe("migratePersistedStateToCurrent", () => {
-  it("keeps current schema input unchanged", () => {
-    const input: LoadedData = {
-      schemaVersion: 2,
-      tasks: [
-        {
-          id: "a",
-          title: "task a",
-          status: "open",
-          createdAt: 1,
-          updatedAt: 1,
-          hasExplicitTime: false,
-          tags: ["work"]
-        }
-      ],
-      tagIndex: {}
-    };
+  it("keeps current schema fixture unchanged", async () => {
+    const input = await loadFixture("persisted.v2.json");
 
     const migrated = migratePersistedStateToCurrent(input, 2);
     expect(migrated).toEqual(input);
+    const validated = validatePersistedState(migrated, "strict");
+    expect(validated.ok).toBe(true);
   });
 
-  it("migrates legacy v1 to v2", () => {
-    const input: LoadedData = {
-      schemaVersion: 1,
-      tasks: [
-        {
-          id: "a",
-          title: "task a",
-          status: "open",
-          createdAt: 1,
-          updatedAt: 1,
-          tags: ["#Work", "work"]
-        }
-      ],
-      tagIndex: {}
-    };
+  it("migrates legacy v1 fixture to v2 and validates", async () => {
+    const input = await loadFixture("persisted.v1.json");
 
     const migrated = migratePersistedStateToCurrent(input, 2);
     expect(migrated.schemaVersion).toBe(2);
-    expect(migrated.tasks[0].hasExplicitTime).toBe(false);
-    expect(migrated.tasks[0].tags).toEqual(["work"]);
+    expect(migrated.tasks[0]?.hasExplicitTime).toBe(false);
+    expect(migrated.tasks[0]?.tags).toEqual(["alpha", "work"]);
+    const validated = validatePersistedState(migrated, "strict");
+    expect(validated.ok).toBe(true);
   });
 
   it("throws on unsupported future schema", () => {

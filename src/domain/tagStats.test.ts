@@ -4,13 +4,12 @@ import { Task } from "./models";
 import { computeTopTagStats } from "./tagStats";
 
 function makeTask(partial: Partial<Task>): Task {
-  const now = Date.now();
   return {
     id: partial.id ?? "t",
     title: partial.title ?? "Task",
     status: partial.status ?? "open",
-    createdAt: partial.createdAt ?? now,
-    updatedAt: partial.updatedAt ?? now,
+    createdAt: partial.createdAt ?? 1,
+    updatedAt: partial.updatedAt ?? 1,
     dueAt: partial.dueAt,
     hasExplicitTime: partial.hasExplicitTime,
     closedAt: partial.closedAt,

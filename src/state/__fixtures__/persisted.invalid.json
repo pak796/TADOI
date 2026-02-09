@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 2,
+  "tasks": [
+    {
+      "id": "broken-1",
+      "title": "Broken Task",
+      "status": "invalid-status",
+      "createdAt": "not-a-number",
+      "updatedAt": 1700000000000,
+      "tags": "work"
+    }
+  ],
+  "tagIndex": {}
+}

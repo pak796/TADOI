@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "tasks": [
+    {
+      "id": "legacy-1",
+      "title": "Legacy Task",
+      "status": "open",
+      "createdAt": 1700000000000,
+      "updatedAt": 1700000000000,
+      "tags": ["#Work", "work", "ALPHA"]
+    }
+  ],
+  "tagIndex": {
+    "work": {
+      "tagName": "Work",
+      "usageCount": 2,
+      "lastUsedAt": 1700000000000
+    }
+  }
+}

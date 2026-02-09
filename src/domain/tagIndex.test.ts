@@ -40,6 +40,12 @@ describe("tag normalization", () => {
     expect(result?.length).toBe(MAX_TAG_LENGTH);
   });
 
+  it("applies max length, dedupe, and sorting in one pass", () => {
+    const long = `${"z".repeat(MAX_TAG_LENGTH + 8)}🔥`;
+    const result = normalizeTagsFromInput(`${long} #work #Work #alpha`);
+    expect(result).toEqual(["alpha", "work", "z".repeat(MAX_TAG_LENGTH)]);
+  });
+
   it("drops tags that become empty after normalization", () => {
     const result = normalizeTags(["🔥", "#", "  "]);
     expect(result).toEqual([]);

@@ -4,13 +4,12 @@ import { filterTasks, sortTasks } from "./query";
 import { Filters, Task } from "./models";
 
 function makeTask(partial: Partial<Task> & Pick<Task, "id" | "title">): Task {
-  const now = Date.now();
   return {
     id: partial.id,
     title: partial.title,
     status: partial.status ?? "open",
-    createdAt: partial.createdAt ?? now,
-    updatedAt: partial.updatedAt ?? now,
+    createdAt: partial.createdAt ?? 1,
+    updatedAt: partial.updatedAt ?? 1,
     dueAt: partial.dueAt,
     hasExplicitTime: partial.hasExplicitTime,
     closedAt: partial.closedAt,
@@ -33,6 +32,50 @@ describe("filterTasks next7/THIS WEEK boundaries", () => {
     expect(result).toContain("t0");
     expect(result).toContain("t7");
     expect(result).not.toContain("t8");
+  });
+});
+
+describe("filterTasks due=today boundaries", () => {
+  it("includes tasks due today and excludes yesterday/tomorrow", () => {
+    const now = new Date(2026, 1, 8, 12, 0, 0, 0).getTime();
+    const start = startOfLocalDayMs(now);
+    const tasks: Task[] = [
+      makeTask({ id: "yesterday", title: "yesterday", dueAt: addLocalDaysMs(start, -1) }),
+      makeTask({ id: "today", title: "today", dueAt: start }),
+      makeTask({ id: "tomorrow", title: "tomorrow", dueAt: addLocalDaysMs(start, 1) })
+    ];
+    const filters: Filters = { status: "all", due: "today" };
+    const result = filterTasks(tasks, filters, now).map((task) => task.id);
+    expect(result).toEqual(["today"]);
+  });
+});
+
+describe("filterTasks due=overdue boundaries", () => {
+  it("includes tasks before today and explicit-time tasks passed today", () => {
+    const now = new Date(2026, 1, 8, 12, 0, 0, 0).getTime();
+    const start = startOfLocalDayMs(now);
+    const tasks: Task[] = [
+      makeTask({ id: "yesterday", title: "yesterday", dueAt: addLocalDaysMs(start, -1) }),
+      makeTask({
+        id: "today-past-time",
+        title: "today-past-time",
+        dueAt: new Date(2026, 1, 8, 9, 0, 0, 0).getTime(),
+        hasExplicitTime: true
+      }),
+      makeTask({
+        id: "today-future-time",
+        title: "today-future-time",
+        dueAt: new Date(2026, 1, 8, 13, 0, 0, 0).getTime(),
+        hasExplicitTime: true
+      }),
+      makeTask({ id: "tomorrow", title: "tomorrow", dueAt: addLocalDaysMs(start, 1) })
+    ];
+    const filters: Filters = { status: "all", due: "overdue" };
+    const result = filterTasks(tasks, filters, now).map((task) => task.id);
+    expect(result).toContain("yesterday");
+    expect(result).toContain("today-past-time");
+    expect(result).not.toContain("today-future-time");
+    expect(result).not.toContain("tomorrow");
   });
 });
 
@@ -62,5 +105,7 @@ describe("sortTasks with explicit time on same day", () => {
 
     const sorted = sortTasks(tasks, now).map((task) => task.id);
     expect(sorted).toEqual(["time-early", "time-late", "date-only"]);
+    expect(sorted.indexOf("time-early")).toBeLessThan(sorted.indexOf("time-late"));
+    expect(sorted.indexOf("time-late")).toBeLessThan(sorted.indexOf("date-only"));
   });
 });

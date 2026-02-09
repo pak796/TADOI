@@ -285,12 +285,17 @@ async function writeState(
   await fsOps.rename(tmpFile, filePath);
 }
 
-export function saveStateDebounced(data: LoadedData, delay = 350, filePath = DATA_FILE): void {
+export function saveStateDebounced(
+  data: LoadedData,
+  delay = 350,
+  filePath = DATA_FILE,
+  fsOps: PersistenceFsOps = DEFAULT_FS_OPS
+): void {
   if (saveTimer) {
     clearTimeout(saveTimer);
   }
   saveTimer = setTimeout(() => {
-    void writeState(data, filePath);
+    void writeState(data, filePath, fsOps);
     saveTimer = null;
   }, delay);
 }

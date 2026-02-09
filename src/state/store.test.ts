@@ -6,13 +6,12 @@ import { Task } from "../domain/models";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function makeTask(partial: Partial<Task> & Pick<Task, "id" | "title">): Task {
-  const now = Date.now();
   return {
     id: partial.id,
     title: partial.title,
     status: partial.status ?? "open",
-    createdAt: partial.createdAt ?? now,
-    updatedAt: partial.updatedAt ?? now,
+    createdAt: partial.createdAt ?? 1,
+    updatedAt: partial.updatedAt ?? 1,
     dueAt: partial.dueAt,
     closedAt: partial.closedAt,
     notes: partial.notes,

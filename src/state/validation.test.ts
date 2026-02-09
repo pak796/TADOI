@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { promises as fs } from "fs";
 import { validatePersistedState } from "./validation";
 
 const BASE_STATE = {
@@ -84,5 +85,15 @@ describe("validatePersistedState", () => {
       "strict"
     );
     expect(result.ok).toBe(true);
+  });
+
+  it("rejects invalid fixture shape", async () => {
+    const fixturePath = decodeURIComponent(
+      new URL("./__fixtures__/persisted.invalid.json", import.meta.url).pathname
+    );
+    const raw = await fs.readFile(fixturePath, "utf8");
+    const fixture = JSON.parse(raw) as unknown;
+    const result = validatePersistedState(fixture, "strict");
+    expect(result.ok).toBe(false);
   });
 });

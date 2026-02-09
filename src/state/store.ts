@@ -52,7 +52,7 @@ export function applyArchiveAging(
 ): { data: LoadedData; changed: boolean } {
   const threshold = 7 * 24 * 60 * 60 * 1000;
   let changed = false;
-  const tasks = data.tasks.map((task) => {
+  const tasks: Task[] = data.tasks.map((task): Task => {
     if (task.status !== "done") return task;
     const closedAt = task.closedAt ?? task.updatedAt;
     if (now - closedAt >= threshold) {

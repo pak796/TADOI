@@ -21,7 +21,7 @@ function getModeLabel(mode: Mode): string {
     case "help":
       return "HELP";
     case "modal_confirm":
-      return "MODAL";
+      return "DELETE";
     default:
       return "LIST";
   }
@@ -34,7 +34,7 @@ function getFocusLabel(focus: FocusTarget): string {
     case "search_input":
       return "SEARCH";
     case "modal":
-      return "MODAL";
+      return "DELETE";
     case "editor_title":
       return "TITLE";
     case "editor_due_date":
@@ -55,7 +55,7 @@ function getFocusLabel(focus: FocusTarget): string {
 }
 
 export function LeftRail({ mode, focus, filters, fastPulseOn }: LeftRailProps) {
-  const version = "v0.2.1";
+  const version = "v0.2.2";
   const now = new Date();
   const todayLabel = formatDate(now.getTime());
   const timeLabel = `${String(now.getHours()).padStart(2, "0")}:${String(
@@ -64,7 +64,7 @@ export function LeftRail({ mode, focus, filters, fastPulseOn }: LeftRailProps) {
   const modeLabel = getModeLabel(mode);
   const focusLabel = getFocusLabel(focus);
 
-  const menuItems = ["LIST", "ADD", "EDIT", "SEARCH", "HELP", "MODAL"];
+  const menuItems = ["LIST", "ADD", "EDIT", "SEARCH", "HELP", "DELETE"];
   const statusLabel = filters.status === "all" ? "ACTIVE" : filters.status.toUpperCase();
   const statusBg =
     filters.status === "done"
@@ -90,11 +90,11 @@ export function LeftRail({ mode, focus, filters, fastPulseOn }: LeftRailProps) {
   const dueText = dueBg === "transparent" ? theme.text : theme.bg;
 
   const logoLines = [
-    " _____   ___  ____  _   _ ___ ",
-    "|_   _| / _ \\|  _ \\| | | |_ _|",
-    "  | |  | | | | | | | | | || | ",
-    "  | |  | |_| | |_| | |_| || | ",
-    "  |_|   \\___/|____/ \\___/|___|"
+    " _____  ___  ____  _   _ ___ ",
+    "|_   _|/ _ \\|  _ \\| | | |_ _|",
+    "  | | | | | | | | | | | || | ",
+    "  | | | |_| | |_| | |_| || | ",
+    "  |_|  \\___/|____/ \\___/|___|"
   ];
 
   return (

@@ -44,3 +44,19 @@ The resolved path is shown in startup logs and in the in-app Help panel.
 ## Tag Autocomplete
 
 Type `#` in the Tags field to get suggestions ranked by usage. Selecting a suggestion fills the current tag token.
+
+## Quality Gates / CI
+
+ToDui uses GitHub Actions merge gates on pull requests and pushes to `main`.
+
+Required checks:
+- `test`: `bun run test` and `bun run test:coverage`
+- `typecheck`: `bun run typecheck`
+
+Local equivalents:
+
+```bash
+bun run test
+bun run test:coverage
+bun run typecheck
+```

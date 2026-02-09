@@ -3,6 +3,7 @@ import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
 import {
+  LoadedData,
   PersistenceFsOps,
   resolveDataPath,
   safeLoadState,
@@ -15,6 +16,13 @@ function sleep(ms: number): Promise<void> {
 
 async function makeTempDir(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), "todui-persist-test-"));
+}
+
+async function loadFixture(name: string): Promise<string> {
+  const fixturePath = decodeURIComponent(
+    new URL(`./__fixtures__/${name}`, import.meta.url).pathname
+  );
+  return fs.readFile(fixturePath, "utf8");
 }
 
 describe("resolveDataPath", () => {
@@ -100,11 +108,12 @@ describe("safeLoadState", () => {
   it("routes invalid shape to corruption recovery path", async () => {
     const dir = await makeTempDir();
     const filePath = path.join(dir, "todui_data.json");
-    await fs.writeFile(filePath, JSON.stringify({ schemaVersion: 2, tasks: "bad" }), "utf8");
+    await fs.writeFile(filePath, await loadFixture("persisted.invalid.json"), "utf8");
 
     const result = await safeLoadState({ filePath, now: new Date("2026-02-09T11:00:00") });
     expect(result.shouldPersistRecoveredState).toBe(true);
     expect(result.data.tasks).toHaveLength(0);
+    expect(result.bannerMessage).toContain("Data file was corrupt and was backed up to");
   });
 
   it("routes migration failures to corruption recovery path", async () => {
@@ -154,12 +163,12 @@ describe("saveStateDebounced", () => {
   it("coalesces rapid writes and persists latest payload", async () => {
     const dir = await makeTempDir();
     const filePath = path.join(dir, "todui_data.json");
-    const first = {
+    const first: LoadedData = {
       schemaVersion: 2,
       tasks: [{ id: "a", title: "a", status: "open", createdAt: 1, updatedAt: 1, tags: [] }],
       tagIndex: {}
     };
-    const second = {
+    const second: LoadedData = {
       schemaVersion: 2,
       tasks: [{ id: "b", title: "b", status: "open", createdAt: 1, updatedAt: 1, tags: [] }],
       tagIndex: {}
@@ -172,5 +181,39 @@ describe("saveStateDebounced", () => {
     const raw = await fs.readFile(filePath, "utf8");
     const parsed = JSON.parse(raw) as { tasks: Array<{ id: string }> };
     expect(parsed.tasks[0].id).toBe("b");
+  });
+
+  it("creates parent directories for nested save paths", async () => {
+    const dir = await makeTempDir();
+    const nestedFilePath = path.join(dir, "nested", "deep", "todui_data.json");
+    const mkdirCalls: string[] = [];
+    const fsOps: PersistenceFsOps = {
+      ...fs,
+      mkdir: (async (targetPath, options) => {
+        mkdirCalls.push(String(targetPath));
+        return fs.mkdir(targetPath, options as Parameters<typeof fs.mkdir>[1]);
+      }) as PersistenceFsOps["mkdir"]
+    };
+
+    saveStateDebounced(
+      {
+        schemaVersion: 2,
+        tasks: [
+          { id: "nested", title: "nested", status: "open", createdAt: 1, updatedAt: 1, tags: [] }
+        ],
+        tagIndex: {}
+      } satisfies LoadedData,
+      25,
+      nestedFilePath,
+      fsOps
+    );
+
+    await sleep(100);
+    expect(mkdirCalls.some((call) => call.endsWith(path.join("nested", "deep")))).toBe(true);
+    const exists = await fs
+      .stat(nestedFilePath)
+      .then(() => true)
+      .catch(() => false);
+    expect(exists).toBe(true);
   });
 });
