@@ -16,7 +16,16 @@ bun run dev
 
 ## Data File
 
-Tasks persist to `todui_data.json` in the project root.
+Tasks persist to `todui_data.json` using the following resolution order:
+
+- `TODUI_DATA_PATH` override (absolute or relative path)
+- Linux: `$XDG_DATA_HOME/todui/todui_data.json`
+- Linux fallback: `$HOME/.local/share/todui/todui_data.json`
+- macOS: `$HOME/Library/Application Support/todui/todui_data.json`
+- Windows: `%APPDATA%\\todui\\todui_data.json`
+- Windows fallback: `$HOME\\AppData\\Roaming\\todui\\todui_data.json`
+
+The resolved path is shown in startup logs and in the in-app Help panel.
 
 ## Keybindings
 

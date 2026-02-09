@@ -4,6 +4,7 @@ import {
   combineLocalDateAndTime,
   diffLocalDays,
   isSameLocalDay,
+  normalizeTimeTextInput,
   parseTimeToMinutes,
   parseDateToLocalMidnight,
   startOfLocalDayMs,
@@ -27,10 +28,16 @@ describe("date-only helpers", () => {
 
   it("parses HH:mm time strictly", () => {
     expect(parseTimeToMinutes("09:30")).toBe(570);
+    expect(parseTimeToMinutes("9:30")).toBe(570);
     expect(parseTimeToMinutes("23:59")).toBe(1439);
     expect(parseTimeToMinutes("24:00")).toBeUndefined();
-    expect(parseTimeToMinutes("9:30")).toBeUndefined();
     expect(parseTimeToMinutes("12:60")).toBeUndefined();
+  });
+
+  it("normalizes one-digit hour input with colon", () => {
+    expect(normalizeTimeTextInput("9:30")).toBe("09:30");
+    expect(normalizeTimeTextInput("9:")).toBe("09:");
+    expect(normalizeTimeTextInput("14:30")).toBe("14:30");
   });
 
   it("combines local date + time", () => {

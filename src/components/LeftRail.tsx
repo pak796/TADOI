@@ -55,7 +55,7 @@ function getFocusLabel(focus: FocusTarget): string {
 }
 
 export function LeftRail({ mode, focus, filters, fastPulseOn }: LeftRailProps) {
-  const version = "v0.1.3";
+  const version = "v0.2.1";
   const now = new Date();
   const todayLabel = formatDate(now.getTime());
   const timeLabel = `${String(now.getHours()).padStart(2, "0")}:${String(

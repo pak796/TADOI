@@ -3,11 +3,16 @@ import { createRoot } from "@opentui/react";
 import { App } from "./app/App";
 import { startOfLocalDayMs } from "./domain/dates";
 import { normalizeTagIndex, normalizeTags } from "./domain/tagIndex";
-import { CURRENT_SCHEMA_VERSION, loadState } from "./state/persistence";
+import { CURRENT_SCHEMA_VERSION, safeLoadState } from "./state/persistence";
 import { applyArchiveAging } from "./state/store";
 
 const renderer = await createCliRenderer({ exitOnCtrlC: true });
-const loaded = await loadState();
+const loadResult = await safeLoadState();
+const loaded = loadResult.data;
+console.log(`[ToDui] data path: ${loadResult.resolvedPath}`);
+if (loadResult.bannerMessage) {
+  console.warn(`[ToDui] ${loadResult.bannerMessage}`);
+}
 let tasksChanged = false;
 const normalizedTasks = loaded.tasks.map((task) => {
   const nextTags = normalizeTags(task.tags ?? []);
@@ -46,7 +51,6 @@ const normalizedTasks = loaded.tasks.map((task) => {
 const normalizedTagIndex = normalizeTagIndex(loaded.tagIndex ?? {});
 const tagIndexChanged =
   JSON.stringify(normalizedTagIndex) !== JSON.stringify(loaded.tagIndex ?? {});
-const schemaChanged = loaded.schemaVersion !== CURRENT_SCHEMA_VERSION;
 const normalizedLoaded = {
   schemaVersion: CURRENT_SCHEMA_VERSION,
   tasks: normalizedTasks,
@@ -59,7 +63,15 @@ const { data: agedData, changed: archiveChanged } = applyArchiveAging(
   now
 );
 const shouldSaveInitial =
-  tasksChanged || tagIndexChanged || archiveChanged || schemaChanged;
+  tasksChanged ||
+  tagIndexChanged ||
+  archiveChanged ||
+  loadResult.didMigrate ||
+  loadResult.shouldPersistRecoveredState;
 createRoot(renderer).render(
-  <App initialData={agedData} skipInitialSave={!shouldSaveInitial} />
+  <App
+    initialData={agedData}
+    skipInitialSave={!shouldSaveInitial}
+    startupBanner={loadResult.bannerMessage}
+  />
 );

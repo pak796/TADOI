@@ -49,10 +49,18 @@ export function formatLocalTimeHHmm(epochMs: number): string {
   return `${hh}:${mm}`;
 }
 
-export function parseTimeToMinutes(input: string): number | undefined {
+export function normalizeTimeTextInput(input: string): string {
   const trimmed = input.trim();
-  if (!trimmed) return undefined;
-  const match = /^(\d{2}):(\d{2})$/.exec(trimmed);
+  if (/^\d:/.test(trimmed)) {
+    return `0${trimmed}`;
+  }
+  return trimmed;
+}
+
+export function parseTimeToMinutes(input: string): number | undefined {
+  const normalized = normalizeTimeTextInput(input);
+  if (!normalized) return undefined;
+  const match = /^(\d{2}):(\d{2})$/.exec(normalized);
   if (!match) return undefined;
   const hours = Number(match[1]);
   const minutes = Number(match[2]);

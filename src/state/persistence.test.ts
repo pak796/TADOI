@@ -1,0 +1,176 @@
+import { describe, expect, it } from "bun:test";
+import { promises as fs } from "fs";
+import os from "os";
+import path from "path";
+import {
+  PersistenceFsOps,
+  resolveDataPath,
+  safeLoadState,
+  saveStateDebounced
+} from "./persistence";
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function makeTempDir(): Promise<string> {
+  return fs.mkdtemp(path.join(os.tmpdir(), "todui-persist-test-"));
+}
+
+describe("resolveDataPath", () => {
+  it("uses TODUI_DATA_PATH override when set", () => {
+    const resolved = resolveDataPath({
+      platform: "linux",
+      env: { TODUI_DATA_PATH: "data/custom.json" },
+      cwd: "/repo",
+      homeDir: "/home/patrick"
+    });
+    expect(resolved).toBe("/repo/data/custom.json");
+  });
+
+  it("uses linux XDG path when set", () => {
+    const resolved = resolveDataPath({
+      platform: "linux",
+      env: { XDG_DATA_HOME: "/xdg/data" },
+      homeDir: "/home/patrick"
+    });
+    expect(resolved).toBe("/xdg/data/todui/todui_data.json");
+  });
+
+  it("uses linux fallback path when XDG_DATA_HOME is unset", () => {
+    const resolved = resolveDataPath({
+      platform: "linux",
+      env: {},
+      homeDir: "/home/patrick"
+    });
+    expect(resolved).toBe("/home/patrick/.local/share/todui/todui_data.json");
+  });
+
+  it("uses macOS app support path", () => {
+    const resolved = resolveDataPath({
+      platform: "darwin",
+      env: {},
+      homeDir: "/Users/patrick"
+    });
+    expect(resolved).toBe("/Users/patrick/Library/Application Support/todui/todui_data.json");
+  });
+
+  it("uses windows APPDATA or fallback", () => {
+    const withAppData = resolveDataPath({
+      platform: "win32",
+      env: { APPDATA: "C:\\\\Users\\\\Patrick\\\\AppData\\\\Roaming" },
+      homeDir: "C:\\\\Users\\\\Patrick",
+      cwd: "C:\\\\repo"
+    });
+    expect(withAppData).toBe("C:\\Users\\Patrick\\AppData\\Roaming\\todui\\todui_data.json");
+
+    const fallback = resolveDataPath({
+      platform: "win32",
+      env: {},
+      homeDir: "C:\\\\Users\\\\Patrick",
+      cwd: "C:\\\\repo"
+    });
+    expect(fallback).toBe("C:\\Users\\Patrick\\AppData\\Roaming\\todui\\todui_data.json");
+  });
+});
+
+describe("safeLoadState", () => {
+  it("returns empty state when file is missing", async () => {
+    const dir = await makeTempDir();
+    const filePath = path.join(dir, "missing.json");
+    const result = await safeLoadState({ filePath });
+    expect(result.data.tasks).toHaveLength(0);
+    expect(result.bannerMessage).toBeUndefined();
+    expect(result.shouldPersistRecoveredState).toBe(false);
+  });
+
+  it("backs up malformed JSON and returns recovery state with banner", async () => {
+    const dir = await makeTempDir();
+    const filePath = path.join(dir, "todui_data.json");
+    await fs.writeFile(filePath, "{broken json", "utf8");
+
+    const result = await safeLoadState({ filePath, now: new Date("2026-02-09T10:00:00") });
+    expect(result.shouldPersistRecoveredState).toBe(true);
+    expect(result.bannerMessage).toContain("Data file was corrupt and was backed up to");
+
+    const files = await fs.readdir(dir);
+    expect(files.some((name) => name.startsWith("todui_data.json.corrupt."))).toBe(true);
+  });
+
+  it("routes invalid shape to corruption recovery path", async () => {
+    const dir = await makeTempDir();
+    const filePath = path.join(dir, "todui_data.json");
+    await fs.writeFile(filePath, JSON.stringify({ schemaVersion: 2, tasks: "bad" }), "utf8");
+
+    const result = await safeLoadState({ filePath, now: new Date("2026-02-09T11:00:00") });
+    expect(result.shouldPersistRecoveredState).toBe(true);
+    expect(result.data.tasks).toHaveLength(0);
+  });
+
+  it("routes migration failures to corruption recovery path", async () => {
+    const dir = await makeTempDir();
+    const filePath = path.join(dir, "todui_data.json");
+    await fs.writeFile(
+      filePath,
+      JSON.stringify({ schemaVersion: 99, tasks: [], tagIndex: {} }),
+      "utf8"
+    );
+
+    const result = await safeLoadState({ filePath, now: new Date("2026-02-09T12:00:00") });
+    expect(result.shouldPersistRecoveredState).toBe(true);
+    expect(result.data.tasks).toHaveLength(0);
+  });
+
+  it("falls back to copy when rename backup fails", async () => {
+    const dir = await makeTempDir();
+    const filePath = path.join(dir, "todui_data.json");
+    await fs.writeFile(filePath, "{broken json", "utf8");
+
+    const fsOps: PersistenceFsOps = {
+      ...fs,
+      rename: async () => {
+        throw Object.assign(new Error("rename failed"), { code: "EXDEV" });
+      }
+    };
+
+    const result = await safeLoadState({
+      filePath,
+      now: new Date("2026-02-09T13:00:00"),
+      fsOps
+    });
+    expect(result.shouldPersistRecoveredState).toBe(true);
+    expect(result.corruptBackupPath).toBeDefined();
+    if (result.corruptBackupPath) {
+      const backupExists = await fs
+        .stat(result.corruptBackupPath)
+        .then(() => true)
+        .catch(() => false);
+      expect(backupExists).toBe(true);
+    }
+  });
+});
+
+describe("saveStateDebounced", () => {
+  it("coalesces rapid writes and persists latest payload", async () => {
+    const dir = await makeTempDir();
+    const filePath = path.join(dir, "todui_data.json");
+    const first = {
+      schemaVersion: 2,
+      tasks: [{ id: "a", title: "a", status: "open", createdAt: 1, updatedAt: 1, tags: [] }],
+      tagIndex: {}
+    };
+    const second = {
+      schemaVersion: 2,
+      tasks: [{ id: "b", title: "b", status: "open", createdAt: 1, updatedAt: 1, tags: [] }],
+      tagIndex: {}
+    };
+
+    saveStateDebounced(first, 25, filePath);
+    saveStateDebounced(second, 25, filePath);
+
+    await sleep(100);
+    const raw = await fs.readFile(filePath, "utf8");
+    const parsed = JSON.parse(raw) as { tasks: Array<{ id: string }> };
+    expect(parsed.tasks[0].id).toBe("b");
+  });
+});

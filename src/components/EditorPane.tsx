@@ -1,6 +1,7 @@
 import { EditorDraft, EditorFocus, Mode } from "../domain/models";
 import { theme } from "../app/theme";
 import { TagInput } from "./TagInput";
+import { normalizeTimeTextInput } from "../domain/dates";
 
 type EditorPaneProps = {
   mode: Mode;
@@ -58,18 +59,18 @@ export function EditorPane({
 
       <box style={{ flexDirection: "column", marginTop: 1 }}>
         <text style={{ color: theme.muted }}>TIME (HH:mm, optional)</text>
-        <box style={{ flexDirection: "row", justifyContent: "space-between" }}>
-          <input
-            value={draft.timeText}
-            onChange={(value) => onUpdate({ timeText: value })}
-            focused={focus === "time"}
-            placeholder="14:30"
-            style={{ backgroundColor: theme.bg, color: theme.text }}
-          />
-          {timeSuggestionHint ? (
+        <input
+          value={draft.timeText}
+          onChange={(value) => onUpdate({ timeText: normalizeTimeTextInput(value) })}
+          focused={focus === "time"}
+          placeholder="14:30"
+          style={{ backgroundColor: theme.bg, color: theme.text, width: "100%" }}
+        />
+        {timeSuggestionHint ? (
+          <box style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 1 }}>
             <text style={{ color: theme.muted }}>{timeSuggestionHint}</text>
-          ) : null}
-        </box>
+          </box>
+        ) : null}
       </box>
 
       <box style={{ flexDirection: "column", marginTop: 1 }}>

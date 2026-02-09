@@ -175,6 +175,7 @@ function buildTagTickerSegments(
 type AppProps = {
   initialData?: LoadedData;
   skipInitialSave?: boolean;
+  startupBanner?: string;
 };
 
 function initState(data?: LoadedData): AppState {
@@ -185,7 +186,7 @@ function initState(data?: LoadedData): AppState {
   };
 }
 
-export function App({ initialData, skipInitialSave = false }: AppProps) {
+export function App({ initialData, skipInitialSave = false, startupBanner }: AppProps) {
   const [state, dispatch] = useReducer(reducer, initialData, initState);
   const [pulseOn, setPulseOn] = useState(false);
   const [fastPulseOn, setFastPulseOn] = useState(false);
@@ -206,6 +207,7 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
   const listHeaderHeight = 2;
   const topBarHeight = 4;
   const bottomBarHeight = 3;
+  const startupBannerHeight = startupBanner ? 1 : 0;
   const listPanelBorder = 2;
   const listPanelPadding = 2;
   const searchHeight = state.mode === "search" ? 3 : 0;
@@ -214,6 +216,7 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
     terminalHeight -
     topBarHeight -
     bottomBarHeight -
+    startupBannerHeight -
     listHeaderHeight -
     listPanelBorder -
     listPanelPadding -
@@ -979,6 +982,19 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
             </box>
           </box>
         </box>
+
+        {startupBanner ? (
+          <box
+            style={{
+              height: 1,
+              backgroundColor: theme.warn,
+              paddingLeft: 1,
+              paddingRight: 1
+            }}
+          >
+            <text style={{ color: theme.bg }}>{startupBanner}</text>
+          </box>
+        ) : null}
 
         <box
           style={{
