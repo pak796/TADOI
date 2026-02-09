@@ -1,6 +1,6 @@
 import React, { useEffect, useReducer, useRef, useState } from "react";
 import { useKeyboard, useTerminalDimensions } from "@opentui/react";
-import { colorForTag, theme, layout } from "./theme";
+import { applyTheme, colorForTag, theme, layout } from "./theme";
 import {
   getNextSelectedIdAfterDelete,
   isEditorMode,
@@ -50,6 +50,9 @@ import {
   updateTagIndex
 } from "../domain/tagIndex";
 import { AppState, FocusTarget, Mode, Task } from "../domain/models";
+import { THEMES, ThemeId } from "../theme/themes";
+import { saveSettingsDebounced } from "../settings/settings";
+import { settingsReducer } from "../state/settingsStore";
 
 const TICKER_INTERVAL_MS = 6000;
 
@@ -176,6 +179,8 @@ type AppProps = {
   initialData?: LoadedData;
   skipInitialSave?: boolean;
   startupBanner?: string;
+  initialThemeId?: ThemeId;
+  settingsPath?: string;
 };
 
 function initState(data?: LoadedData): AppState {
@@ -186,8 +191,17 @@ function initState(data?: LoadedData): AppState {
   };
 }
 
-export function App({ initialData, skipInitialSave = false, startupBanner }: AppProps) {
+export function App({
+  initialData,
+  skipInitialSave = false,
+  startupBanner,
+  initialThemeId = "default",
+  settingsPath
+}: AppProps) {
   const [state, dispatch] = useReducer(reducer, initialData, initState);
+  const [settingsState, settingsDispatch] = useReducer(settingsReducer, {
+    themeId: initialThemeId
+  });
   const [pulseOn, setPulseOn] = useState(false);
   const [fastPulseOn, setFastPulseOn] = useState(false);
   const [showTagTicker, setShowTagTicker] = useState(false);
@@ -195,6 +209,7 @@ export function App({ initialData, skipInitialSave = false, startupBanner }: App
   const [helpReturnMode, setHelpReturnMode] = useState<Mode>("list");
   const [helpReturnFocus, setHelpReturnFocus] = useState<FocusTarget>("task_list");
   const skipInitialSaveRef = useRef(skipInitialSave);
+  const skipSettingsSaveRef = useRef(true);
   const [scrollOffset, setScrollOffset] = useState(0);
   const { height: terminalHeight, width: terminalWidth } = useTerminalDimensions();
 
@@ -287,6 +302,7 @@ export function App({ initialData, skipInitialSave = false, startupBanner }: App
   const tagInlineSuggestion = tagQuery
     ? getTagCompletion(tagQuery, tagSuggestions)
     : null;
+  const activeThemeTokens = THEMES[settingsState.themeId];
   const dueSuggestion =
     state.focus === "editor_due_date" && state.editor
       ? getDueSuggestion(state.editor.dueText, now)
@@ -346,6 +362,22 @@ export function App({ initialData, skipInitialSave = false, startupBanner }: App
   }, []);
 
   useEffect(() => {
+    applyTheme(settingsState.themeId);
+  }, [settingsState.themeId]);
+
+  useEffect(() => {
+    if (skipSettingsSaveRef.current) {
+      skipSettingsSaveRef.current = false;
+      return;
+    }
+    saveSettingsDebounced(
+      { themeId: settingsState.themeId },
+      150,
+      settingsPath ? { filePath: settingsPath } : {}
+    );
+  }, [settingsPath, settingsState.themeId]);
+
+  useEffect(() => {
     if (skipInitialSaveRef.current) {
       skipInitialSaveRef.current = false;
       return;
@@ -394,6 +426,14 @@ export function App({ initialData, skipInitialSave = false, startupBanner }: App
         handleModalKey(name, sequence);
         return;
       case "help":
+        if (
+          name.toLowerCase() === "h" ||
+          sequence === "h" ||
+          sequence === "H"
+        ) {
+          settingsDispatch({ type: "cycleTheme" });
+          return;
+        }
         if (shouldCloseHelp(name, sequence)) {
           closeHelp();
         }
@@ -1096,8 +1136,39 @@ export function App({ initialData, skipInitialSave = false, startupBanner }: App
             <text>f: cycle status</text>
             <text>g: cycle due</text>
             <text>t: tag filter</text>
+            <text>H: cycle theme</text>
             <text>q: quit</text>
             <text>esc: close</text>
+            <text>Theme: {settingsState.themeId}</text>
+            <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
+              <box
+                style={{
+                  backgroundColor: activeThemeTokens.accent,
+                  paddingLeft: 1,
+                  paddingRight: 1
+                }}
+              >
+                <text style={{ color: activeThemeTokens.selectionText }}>ACCENT</text>
+              </box>
+              <box
+                style={{
+                  backgroundColor: activeThemeTokens.warn,
+                  paddingLeft: 1,
+                  paddingRight: 1
+                }}
+              >
+                <text style={{ color: activeThemeTokens.selectionText }}>WARN</text>
+              </box>
+              <box
+                style={{
+                  backgroundColor: activeThemeTokens.ok,
+                  paddingLeft: 1,
+                  paddingRight: 1
+                }}
+              >
+                <text style={{ color: activeThemeTokens.selectionText }}>OK</text>
+              </box>
+            </box>
             <text>Data file:</text>
             <text>{getDataFilePath()}</text>
             <text style={{ marginTop: 1 }}>

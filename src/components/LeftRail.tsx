@@ -56,6 +56,7 @@ function getFocusLabel(focus: FocusTarget): string {
 
 export function LeftRail({ mode, focus, filters, fastPulseOn }: LeftRailProps) {
   const version = "v0.2.2";
+  const logoDivider = "--------------------------------";
   const now = new Date();
   const todayLabel = formatDate(now.getTime());
   const timeLabel = `${String(now.getHours()).padStart(2, "0")}:${String(
@@ -105,7 +106,8 @@ export function LeftRail({ mode, focus, filters, fastPulseOn }: LeftRailProps) {
             {line}
           </text>
         ))}
-        <text style={{ color: theme.muted, marginTop: 1 }}>{version}</text>
+        <text style={{ color: theme.outline }}>{logoDivider}</text>
+        <text style={{ color: theme.muted }}>{version}</text>
         <text style={{ color: theme.muted, marginTop: 1 }}>DATE: {todayLabel}</text>
         <text style={{ color: theme.muted }}>TIME: {timeLabel}</text>
       </box>

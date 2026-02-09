@@ -1,17 +1,52 @@
-export const theme = {
-  bg: "#0b0f14",
-  panel: "#1a202c",
-  accentOrange: "#f4a259",
-  accentPurple: "#9b59b6",
-  accentBlue: "#5dade2",
-  ok: "#2ecc71",
-  warn: "#e74c3c",
-  dueSoon: "#f1c40f",
-  dueLater: "#5dade2",
-  text: "#f2f2f2",
-  muted: "#b0b6bf",
-  outline: "#3b4049"
+import { THEMES, ThemeId, ThemeTokens } from "../theme/themes";
+
+type RuntimeTheme = {
+  bg: string;
+  panel: string;
+  accentOrange: string;
+  accentPurple: string;
+  accentBlue: string;
+  accent: string;
+  accent2: string;
+  ok: string;
+  warn: string;
+  danger: string;
+  dueSoon: string;
+  dueLater: string;
+  text: string;
+  muted: string;
+  mutedText: string;
+  outline: string;
+  border: string;
+  selectionBg: string;
+  selectionText: string;
 };
+
+function runtimeThemeFromTokens(tokens: ThemeTokens): RuntimeTheme {
+  return {
+    bg: tokens.bg,
+    panel: tokens.panel,
+    accentOrange: tokens.accent,
+    accentPurple: tokens.selectionBg,
+    accentBlue: tokens.accent2,
+    accent: tokens.accent,
+    accent2: tokens.accent2,
+    ok: tokens.ok,
+    warn: tokens.danger,
+    danger: tokens.danger,
+    dueSoon: tokens.warn,
+    dueLater: tokens.accent2,
+    text: tokens.text,
+    muted: tokens.mutedText,
+    mutedText: tokens.mutedText,
+    outline: tokens.border,
+    border: tokens.border,
+    selectionBg: tokens.selectionBg,
+    selectionText: tokens.selectionText
+  };
+}
+
+export const theme: RuntimeTheme = runtimeThemeFromTokens(THEMES.default);
 
 export const layout = {
   railWidth: 36,
@@ -45,6 +80,22 @@ export const styles = {
     color: theme.bg
   }
 };
+
+function syncStyles(): void {
+  styles.heading.color = theme.text;
+  styles.muted.color = theme.muted;
+  styles.badge.backgroundColor = theme.accentOrange;
+  styles.badge.color = theme.bg;
+  styles.button.backgroundColor = theme.accentBlue;
+  styles.button.color = theme.bg;
+  styles.buttonDanger.backgroundColor = theme.warn;
+  styles.buttonDanger.color = theme.bg;
+}
+
+export function applyTheme(themeId: ThemeId): void {
+  Object.assign(theme, runtimeThemeFromTokens(THEMES[themeId]));
+  syncStyles();
+}
 
 const tagPalette = [
   "#f4a259",
