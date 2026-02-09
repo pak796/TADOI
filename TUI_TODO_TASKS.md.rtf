@@ -388,6 +388,18 @@ Refs: `useKeyboard` patterns.  [oai_citation:9\'87GitHub](https://github.com/rem
 - Time input accepts `14:30` and rejects invalid values\
 - Date-only tasks behave as before\
 \
+### T4.3c Add-mode time autocomplete\
+**Status**: Complete\
+**Implement**\
+- When Add Task opens, compute a suggested time one hour ahead (preserve minutes)\
+- Show right-arrow hint; Right Arrow completes hour, then minutes\
+- Hide hint for complete valid times or invalid input\
+\
+**DoD**\
+- `12:45` suggests `13:45` and `23:30` suggests `00:30`\
+- Right Arrow completes hour then minutes in two steps\
+- No effect for invalid or complete times\
+\
 ### T4.4 Closed date display\
 **Status**: Complete\
 **Implement**\
@@ -661,6 +673,84 @@ Refs: `useKeyboard` patterns.  [oai_citation:9\'87GitHub](https://github.com/rem
   - run commands\
   - data file location\
   - keybindings\
+\
+---\
+\
+## Phase 8 \'97 v0.2.0 Polished MVP (Focus + Modals + Scroll)\
+\
+Scope note: this phase is about predictability (focus + modals) and readability (scroll), not new product features.\
+\
+### T8.1 Formalize mode + focus state machine\
+**Status**: Pending\
+**Implement**\
+- Define `Mode` enum: `LIST | ADD | EDIT | SEARCH | HELP | MODAL_CONFIRM`\
+- Define `FocusTarget` enum (at minimum): `TASK_LIST | SEARCH_INPUT | MODAL | EDITOR_TITLE | EDITOR_DUE_DATE | EDITOR_DUE_TIME | EDITOR_TAGS | EDITOR_NOTES`\
+- Store mode/focus in UI state (not persisted)\
+- Add a single key routing function that dispatches based on `(mode, focus)`\
+\
+**DoD**\
+- In LIST mode, `j/k` moves selection.\
+- In ADD/EDIT, typing does not move selection and list keys do not leak.\
+- `Esc` unwinds exactly one layer (modal/help/search/editor) back to LIST as specified in Appendix A.\
+\
+### T8.2 Visible focus indicator / highlight\
+**Status**: Pending\
+**Implement**\
+- Add a clear, always-visible indication of current focus target:\
+  - either a `FOCUS:` line in left rail, or strong highlight of the active section\
+- Ensure focus indication updates immediately on focus changes\
+\
+**DoD**\
+- User can tell where keystrokes will go (list vs editor field vs modal) at a glance.\
+\
+### T8.3 Modal correctness: hard-block key routing\
+**Status**: Pending\
+**Implement**\
+- When modal is open, all non-modal key handlers must be disabled/ignored\
+- Only accept modal keys: `y`, `n`, `Esc` (and optionally Enter mapped to `y`)\
+\
+**DoD**\
+- With modal open, selection cannot change and inputs cannot be edited.\
+- `y` deletes, `n`/`Esc` cancels, and app returns to LIST.\
+\
+### T8.4 Post-delete selection clamping + visibility\
+**Status**: Pending\
+**Implement**\
+- After delete, clamp `selectedIndex` using the Appendix A rules\
+- Immediately call `ensureSelectedVisible()` to keep selection visible\
+\
+**DoD**\
+- Deleting the last item selects the previous one (if any)\
+- Deleting an item in the middle keeps selection index and shows the next item\
+- Selection never becomes invalid or invisible\
+\
+### T8.5 Scroll correctness hardening (ensureSelectedVisible)\
+**Status**: Pending\
+**Implement**\
+- Centralize `ensureSelectedVisible(selectedIndex, scrollOffset, visibleRows, taskCount)`\
+- Use it on:\
+  - navigation\
+  - filter/search changes\
+  - list length changes\
+  - resize\
+- Ensure `scrollOffset` is UI-only state\
+\
+**DoD**\
+- Holding `j` or `k` through a long list always keeps the selected row visible.\
+- Filtering/clearing filters keeps selection visible and stable (no jumps unless needed).\
+\
+### T8.6 Resize hook: recompute visibleRows, clamp, and re-scroll\
+**Status**: Pending\
+**Implement**\
+- On terminal resize:\
+  - recompute list pane height \uc0\u8594  `visibleRows`\
+  - clamp `selectedIndex` to `[0, taskCount-1]` (or none if empty)\
+  - clamp `scrollOffset`\
+  - call `ensureSelectedVisible()`\
+\
+**DoD**\
+- Resizing smaller/larger does not crash.\
+- Selected row remains visible after resize.\
 \
 ---\
 \

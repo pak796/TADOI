@@ -8,6 +8,7 @@ type EditorPaneProps = {
   focus: EditorFocus;
   tagInlineSuggestion?: { full: string; remainder: string } | null;
   dueSuggestionHint?: string | null;
+  timeSuggestionHint?: string | null;
   onUpdate: (patch: Partial<EditorDraft>) => void;
   onSave: () => void;
   onCancel: () => void;
@@ -19,6 +20,7 @@ export function EditorPane({
   focus,
   tagInlineSuggestion,
   dueSuggestionHint,
+  timeSuggestionHint,
   onUpdate,
   onSave,
   onCancel
@@ -56,13 +58,18 @@ export function EditorPane({
 
       <box style={{ flexDirection: "column", marginTop: 1 }}>
         <text style={{ color: theme.muted }}>TIME (HH:mm, optional)</text>
-        <input
-          value={draft.timeText}
-          onChange={(value) => onUpdate({ timeText: value })}
-          focused={focus === "time"}
-          placeholder="14:30"
-          style={{ backgroundColor: theme.bg, color: theme.text }}
-        />
+        <box style={{ flexDirection: "row", justifyContent: "space-between" }}>
+          <input
+            value={draft.timeText}
+            onChange={(value) => onUpdate({ timeText: value })}
+            focused={focus === "time"}
+            placeholder="14:30"
+            style={{ backgroundColor: theme.bg, color: theme.text }}
+          />
+          {timeSuggestionHint ? (
+            <text style={{ color: theme.muted }}>{timeSuggestionHint}</text>
+          ) : null}
+        </box>
       </box>
 
       <box style={{ flexDirection: "column", marginTop: 1 }}>

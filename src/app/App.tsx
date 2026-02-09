@@ -9,6 +9,12 @@ import { diffLocalDays, startOfLocalDayMs } from "../domain/dates";
 import { ensureSelectedVisible } from "../domain/scroll";
 import { computeTopTagStats } from "../domain/tagStats";
 import {
+  applyAutocomplete,
+  getAutocompleteStep,
+  getSuggestedTime,
+  type SuggestedTime
+} from "../domain/timeAutocomplete";
+import {
   applyArchiveAging,
   combineDueDateTime,
   createDraftFromTask,
@@ -191,6 +197,7 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
   const [pulseOn, setPulseOn] = useState(false);
   const [fastPulseOn, setFastPulseOn] = useState(false);
   const [showTagTicker, setShowTagTicker] = useState(false);
+  const [timeSuggestion, setTimeSuggestion] = useState<SuggestedTime | null>(null);
   const skipInitialSaveRef = useRef(skipInitialSave);
   const [scrollOffset, setScrollOffset] = useState(0);
   const { height: terminalHeight, width: terminalWidth } = useTerminalDimensions();
@@ -287,6 +294,20 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
       ? getDueSuggestion(state.editor.dueText, now)
       : null;
   const dueSuggestionHint = dueSuggestion ? `→ ${dueSuggestion} (press →)` : null;
+
+  const timeAutocompleteStep =
+    state.mode === "add" &&
+    state.editorFocus === "time" &&
+    state.editor &&
+    timeSuggestion
+      ? getAutocompleteStep(state.editor.timeText, timeSuggestion)
+      : "none";
+  const timeSuggestionHint =
+    timeAutocompleteStep === "hour" && timeSuggestion
+      ? `→ ${timeSuggestion.hh}`
+      : timeAutocompleteStep === "minute" && timeSuggestion
+        ? `→ ${timeSuggestion.hh}:${timeSuggestion.mm}`
+        : null;
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -473,6 +494,23 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
     }
 
     if (name === "right") {
+      if (
+        state.editorFocus === "time" &&
+        state.mode === "add" &&
+        state.editor &&
+        timeSuggestion
+      ) {
+        const step = getAutocompleteStep(state.editor.timeText, timeSuggestion);
+        if (step === "hour" || step === "minute") {
+          const nextValue = applyAutocomplete(
+            state.editor.timeText,
+            timeSuggestion,
+            step
+          );
+          dispatch({ type: "updateEditor", patch: { timeText: nextValue } });
+          return;
+        }
+      }
       if (state.editorFocus === "due" && dueSuggestion) {
         dispatch({ type: "updateEditor", patch: { dueText: dueSuggestion } });
         return;
@@ -549,12 +587,14 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
   }
 
   function openAdd() {
+    setTimeSuggestion(getSuggestedTime(new Date()));
     dispatch({ type: "setMode", mode: "add" });
     dispatch({ type: "setEditor", editor: createEmptyDraft(), focus: "title" });
   }
 
   function openEdit() {
     if (!selectedTask) return;
+    setTimeSuggestion(null);
     dispatch({ type: "setMode", mode: "edit" });
     dispatch({ type: "setEditor", editor: createDraftFromTask(selectedTask), focus: "title" });
   }
@@ -567,6 +607,7 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
         ? formatDate(now)
         : baseDraft.dueText;
     const timeText = selectedTask.status === "done" ? "" : baseDraft.timeText;
+    setTimeSuggestion(getSuggestedTime(new Date()));
     dispatch({ type: "setMode", mode: "add" });
     dispatch({
       type: "setEditor",
@@ -576,6 +617,7 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
   }
 
   function cancelEditor() {
+    setTimeSuggestion(null);
     dispatch({ type: "setMode", mode: "list" });
     dispatch({ type: "setEditor", editor: null });
   }
@@ -866,6 +908,7 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
                     state.editorFocus === "tags" ? tagInlineSuggestion : null
                   }
                   dueSuggestionHint={dueSuggestionHint}
+                  timeSuggestionHint={timeSuggestionHint}
                   onUpdate={(patch) => dispatch({ type: "updateEditor", patch })}
                   onSave={saveEditor}
                   onCancel={cancelEditor}
