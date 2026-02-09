@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { ensureSelectedVisible } from "./scroll";
+import { clampScrollOffset, clampSelectedIndex, ensureSelectedVisible } from "./scroll";
 
 describe("ensureSelectedVisible", () => {
   it("keeps selection visible near top", () => {
@@ -40,5 +40,25 @@ describe("ensureSelectedVisible", () => {
       itemCount: 0
     });
     expect(offset).toBe(0);
+  });
+
+  it("clamps selected index and scroll offset", () => {
+    expect(clampSelectedIndex(-2, 10)).toBe(0);
+    expect(clampSelectedIndex(50, 10)).toBe(9);
+    expect(clampSelectedIndex(0, 0)).toBe(0);
+
+    expect(clampScrollOffset(-3, 5, 20)).toBe(0);
+    expect(clampScrollOffset(99, 5, 20)).toBe(15);
+    expect(clampScrollOffset(2, 5, 0)).toBe(0);
+  });
+
+  it("handles visibleRows changes without invalid offset", () => {
+    const offset = ensureSelectedVisible({
+      selectedIndex: 8,
+      scrollOffset: 6,
+      visibleRows: 2,
+      itemCount: 9
+    });
+    expect(offset).toBe(7);
   });
 });

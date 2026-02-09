@@ -1,12 +1,21 @@
 import React, { useEffect, useReducer, useRef, useState } from "react";
 import { useKeyboard, useTerminalDimensions } from "@opentui/react";
 import { colorForTag, theme, layout } from "./theme";
+import {
+  getNextSelectedIdAfterDelete,
+  isEditorMode,
+  nextEditorFocusTarget,
+  resolveModalAction,
+  shouldCloseHelp,
+  shouldCloseSearch,
+  toEditorFocus
+} from "./uiState";
 import { TaskList } from "../components/TaskList";
 import { DetailsPane } from "../components/DetailsPane";
 import { EditorPane } from "../components/EditorPane";
 import { LeftRail } from "../components/LeftRail";
 import { diffLocalDays, startOfLocalDayMs } from "../domain/dates";
-import { ensureSelectedVisible } from "../domain/scroll";
+import { clampScrollOffset, ensureSelectedVisible } from "../domain/scroll";
 import { computeTopTagStats } from "../domain/tagStats";
 import {
   applyAutocomplete,
@@ -40,25 +49,9 @@ import {
   rankTags,
   updateTagIndex
 } from "../domain/tagIndex";
-import { AppState, EditorFocus, Task } from "../domain/models";
-
-const focusOrder: EditorFocus[] = [
-  "title",
-  "due",
-  "time",
-  "tags",
-  "notes",
-  "save",
-  "cancel"
-];
+import { AppState, FocusTarget, Mode, Task } from "../domain/models";
 
 const TICKER_INTERVAL_MS = 6000;
-
-function nextFocus(current: EditorFocus, direction: 1 | -1): EditorFocus {
-  const index = focusOrder.indexOf(current);
-  const nextIndex = (index + direction + focusOrder.length) % focusOrder.length;
-  return focusOrder[nextIndex];
-}
 
 function getTagQuery(tagsText: string): string | null {
   if (/[\s,]$/.test(tagsText)) return null;
@@ -198,6 +191,8 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
   const [fastPulseOn, setFastPulseOn] = useState(false);
   const [showTagTicker, setShowTagTicker] = useState(false);
   const [timeSuggestion, setTimeSuggestion] = useState<SuggestedTime | null>(null);
+  const [helpReturnMode, setHelpReturnMode] = useState<Mode>("list");
+  const [helpReturnFocus, setHelpReturnFocus] = useState<FocusTarget>("task_list");
   const skipInitialSaveRef = useRef(skipInitialSave);
   const [scrollOffset, setScrollOffset] = useState(0);
   const { height: terminalHeight, width: terminalWidth } = useTerminalDimensions();
@@ -213,7 +208,7 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
   const bottomBarHeight = 3;
   const listPanelBorder = 2;
   const listPanelPadding = 2;
-  const searchHeight = state.searchActive ? 3 : 0;
+  const searchHeight = state.mode === "search" ? 3 : 0;
   const taskRowHeight = 3; // Keep in sync with TaskRow layout height.
   const listContentHeight =
     terminalHeight -
@@ -290,14 +285,14 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
     ? getTagCompletion(tagQuery, tagSuggestions)
     : null;
   const dueSuggestion =
-    state.editorFocus === "due" && state.editor
+    state.focus === "editor_due_date" && state.editor
       ? getDueSuggestion(state.editor.dueText, now)
       : null;
   const dueSuggestionHint = dueSuggestion ? `→ ${dueSuggestion} (press →)` : null;
 
   const timeAutocompleteStep =
     state.mode === "add" &&
-    state.editorFocus === "time" &&
+    state.focus === "editor_due_time" &&
     state.editor &&
     timeSuggestion
       ? getAutocompleteStep(state.editor.timeText, timeSuggestion)
@@ -373,13 +368,10 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
   }, [visibleTasks, state.selectedId]);
 
   useEffect(() => {
-    if (visibleTasks.length === 0) {
-      if (scrollOffset !== 0) setScrollOffset(0);
-      return;
-    }
+    const clamped = clampScrollOffset(scrollOffset, visibleRows, visibleTasks.length);
     const nextOffset = ensureSelectedVisible({
       selectedIndex: selectedIndex === -1 ? 0 : selectedIndex,
-      scrollOffset,
+      scrollOffset: clamped,
       visibleRows,
       itemCount: visibleTasks.length
     });
@@ -391,38 +383,35 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
   useKeyboard((key) => {
     const name = key.name ?? "";
     const sequence = key.sequence ?? "";
+    const ctrl = key.ctrl === true;
+    const shift = key.shift === true;
 
-    if (state.helpOpen) {
-      if (name === "escape" || sequence === "?") {
-        dispatch({ type: "setHelpOpen", value: false });
-      }
-      return;
+    switch (state.mode) {
+      case "modal_confirm":
+        handleModalKey(name, sequence);
+        return;
+      case "help":
+        if (shouldCloseHelp(name, sequence)) {
+          closeHelp();
+        }
+        return;
+      case "search":
+        if (shouldCloseSearch(name)) {
+          closeSearch();
+        }
+        return;
+      case "add":
+      case "edit":
+        handleEditorKey(name, sequence, ctrl, shift);
+        return;
+      default:
+        handleListKey(name, sequence);
     }
+  });
 
-    if (state.confirmDelete) {
-      if (sequence === "y" || name === "y") {
-        handleDeleteSelected();
-      }
-      if (sequence === "n" || name === "n" || name === "escape") {
-        dispatch({ type: "setConfirmDelete", value: false });
-      }
-      return;
-    }
-
-    if (state.mode !== "list") {
-      handleEditorKey(name, sequence, key.ctrl === true, key.shift === true);
-      return;
-    }
-
-    if (state.searchActive) {
-      if (name === "escape" || name === "return" || name === "enter") {
-        dispatch({ type: "setSearchActive", value: false });
-      }
-      return;
-    }
-
+  function handleListKey(name: string, sequence: string) {
     if (sequence === "?") {
-      dispatch({ type: "setHelpOpen", value: true });
+      openHelp();
       return;
     }
 
@@ -432,50 +421,112 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
 
     if (name === "j" || name === "down") {
       moveSelection(1);
+      return;
     }
 
     if (name === "k" || name === "up") {
       moveSelection(-1);
+      return;
     }
 
     if (name === "space") {
       toggleSelected();
+      return;
     }
 
     if (name === "a") {
       openAdd();
+      return;
     }
 
     if (name === "e") {
       openEdit();
+      return;
     }
 
     if (name === "c") {
       openDuplicate();
+      return;
     }
 
     if (name === "d") {
-      if (selectedTask) {
-        dispatch({ type: "setConfirmDelete", value: true });
-      }
+      openDeleteConfirm();
+      return;
     }
 
     if (name === "/") {
-      dispatch({ type: "setSearchActive", value: true });
+      dispatch({ type: "setMode", mode: "search" });
+      dispatch({ type: "setFocus", focus: "search_input" });
+      return;
     }
 
     if (name === "f") {
       cycleStatus();
+      return;
     }
 
     if (name === "g") {
       cycleDue();
+      return;
     }
 
     if (name === "t") {
       toggleTagFilter();
     }
-  });
+  }
+
+  function handleModalKey(name: string, sequence: string) {
+    const action = resolveModalAction(name, sequence);
+    if (action === "none") return;
+    if (action === "confirm") {
+      handleDeleteSelected();
+      return;
+    }
+    closeModal();
+  }
+
+  function openHelp() {
+    setHelpReturnMode(state.mode);
+    setHelpReturnFocus(state.focus);
+    dispatch({ type: "setMode", mode: "help" });
+  }
+
+  function closeHelp() {
+    dispatch({ type: "setMode", mode: helpReturnMode });
+    dispatch({ type: "setFocus", focus: helpReturnFocus });
+  }
+
+  function closeSearch() {
+    dispatch({ type: "setMode", mode: "list" });
+    dispatch({ type: "setFocus", focus: "task_list" });
+  }
+
+  function openDeleteConfirm() {
+    if (!selectedTask) return;
+    dispatch({
+      type: "setModal",
+      modal: {
+        type: "delete",
+        taskId: selectedTask.id,
+        taskTitle: selectedTask.title,
+        previousMode: "list",
+        previousFocus: state.focus
+      }
+    });
+    dispatch({ type: "setMode", mode: "modal_confirm" });
+    dispatch({ type: "setFocus", focus: "modal" });
+  }
+
+  function closeModal() {
+    if (!state.modal) {
+      dispatch({ type: "setMode", mode: "list" });
+      dispatch({ type: "setFocus", focus: "task_list" });
+      return;
+    }
+    dispatch({ type: "setMode", mode: state.modal.previousMode });
+    dispatch({ type: "setFocus", focus: state.modal.previousFocus });
+    dispatch({ type: "setModal", modal: null });
+  }
 
   function handleEditorKey(
     name: string,
@@ -495,7 +546,7 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
 
     if (name === "right") {
       if (
-        state.editorFocus === "time" &&
+        state.focus === "editor_due_time" &&
         state.mode === "add" &&
         state.editor &&
         timeSuggestion
@@ -511,18 +562,18 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
           return;
         }
       }
-      if (state.editorFocus === "due" && dueSuggestion) {
+      if (state.focus === "editor_due_date" && dueSuggestion) {
         dispatch({ type: "updateEditor", patch: { dueText: dueSuggestion } });
         return;
       }
-      if (state.editorFocus === "tags" && tagInlineSuggestion) {
+      if (state.focus === "editor_tags" && tagInlineSuggestion) {
         handlePickTag(tagInlineSuggestion.full);
         return;
       }
     }
 
     if (name === "tab") {
-      if (state.editorFocus === "tags" && tagInlineSuggestion) {
+      if (state.focus === "editor_tags" && tagInlineSuggestion) {
         const nextValue = replaceLastTagToken(
           state.editor?.tagsText ?? "",
           tagInlineSuggestion.full
@@ -531,13 +582,13 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
       }
       const direction: 1 | -1 = shift ? -1 : 1;
       dispatch({
-        type: "setEditorFocus",
-        focus: nextFocus(state.editorFocus, direction)
+        type: "setFocus",
+        focus: nextEditorFocusTarget(state.focus, direction)
       });
       return;
     }
 
-    if ((name === "return" || name === "enter") && state.editorFocus === "tags") {
+    if ((name === "return" || name === "enter") && state.focus === "editor_tags") {
       if (tagInlineSuggestion) {
         const nextValue = replaceLastTagToken(
           state.editor?.tagsText ?? "",
@@ -548,17 +599,17 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
       }
     }
 
-    if ((name === "return" || name === "enter") && state.editorFocus === "save") {
+    if ((name === "return" || name === "enter") && state.focus === "editor_save") {
       saveEditor();
       return;
     }
 
-    if ((name === "return" || name === "enter") && state.editorFocus === "cancel") {
+    if ((name === "return" || name === "enter") && state.focus === "editor_cancel") {
       cancelEditor();
     }
 
     if (sequence === "?" && state.mode !== "list") {
-      dispatch({ type: "setHelpOpen", value: true });
+      openHelp();
     }
   }
 
@@ -589,14 +640,18 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
   function openAdd() {
     setTimeSuggestion(getSuggestedTime(new Date()));
     dispatch({ type: "setMode", mode: "add" });
-    dispatch({ type: "setEditor", editor: createEmptyDraft(), focus: "title" });
+    dispatch({ type: "setEditor", editor: createEmptyDraft(), focus: "editor_title" });
   }
 
   function openEdit() {
     if (!selectedTask) return;
     setTimeSuggestion(null);
     dispatch({ type: "setMode", mode: "edit" });
-    dispatch({ type: "setEditor", editor: createDraftFromTask(selectedTask), focus: "title" });
+    dispatch({
+      type: "setEditor",
+      editor: createDraftFromTask(selectedTask),
+      focus: "editor_title"
+    });
   }
 
   function openDuplicate() {
@@ -612,13 +667,14 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
     dispatch({
       type: "setEditor",
       editor: { ...baseDraft, id: undefined, dueText, timeText },
-      focus: "title"
+      focus: "editor_title"
     });
   }
 
   function cancelEditor() {
     setTimeSuggestion(null);
     dispatch({ type: "setMode", mode: "list" });
+    dispatch({ type: "setFocus", focus: "task_list" });
     dispatch({ type: "setEditor", editor: null });
   }
 
@@ -681,16 +737,23 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
     }
 
     dispatch({ type: "setMode", mode: "list" });
+    dispatch({ type: "setFocus", focus: "task_list" });
     dispatch({ type: "setEditor", editor: null });
   }
 
   function handleDeleteSelected() {
-    if (!selectedTask) return;
+    const modal = state.modal;
+    if (!modal || modal.type !== "delete") return;
+    const visibleIds = visibleTasks.map((task) => task.id);
+    const nextSelectedId = getNextSelectedIdAfterDelete(visibleIds, modal.taskId);
     dispatch({
       type: "setTasks",
-      tasks: state.tasks.filter((task) => task.id !== selectedTask.id)
+      tasks: state.tasks.filter((task) => task.id !== modal.taskId)
     });
-    dispatch({ type: "setConfirmDelete", value: false });
+    dispatch({ type: "setSelected", id: nextSelectedId });
+    dispatch({ type: "setModal", modal: null });
+    dispatch({ type: "setMode", mode: modal.previousMode });
+    dispatch({ type: "setFocus", focus: modal.previousFocus });
   }
 
   function cycleStatus() {
@@ -770,8 +833,7 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
       >
         <LeftRail
           mode={state.mode}
-          searchActive={state.searchActive}
-          helpOpen={state.helpOpen}
+          focus={state.focus}
           filters={state.filters}
           fastPulseOn={fastPulseOn}
         />
@@ -846,13 +908,13 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
               }}
             >
               <box style={{ flexDirection: "column", flexGrow: 1 }}>
-                {state.searchActive ? (
+                {state.mode === "search" ? (
                   <box style={{ flexDirection: "column", marginBottom: 1 }}>
                     <text style={{ color: theme.muted }}>SEARCH</text>
                 <input
                   value={state.filters.searchText ?? ""}
                   onChange={updateSearch}
-                  focused
+                  focused={state.focus === "search_input"}
                   placeholder="Search for tasks and tags then press enter"
                   style={{ backgroundColor: theme.bg, color: theme.text }}
                 />
@@ -892,20 +954,13 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
                 borderColor: theme.outline
               }}
             >
-              {state.mode === "list" ? (
-                <DetailsPane
-                  task={selectedTask}
-                  now={now}
-                  pulseOn={pulseOn}
-                  fastPulseOn={fastPulseOn}
-                />
-              ) : state.editor ? (
+              {isEditorMode(state.mode) && state.editor ? (
                 <EditorPane
                   mode={state.mode}
                   draft={state.editor}
-                  focus={state.editorFocus}
+                  focus={toEditorFocus(state.focus)}
                   tagInlineSuggestion={
-                    state.editorFocus === "tags" ? tagInlineSuggestion : null
+                    state.focus === "editor_tags" ? tagInlineSuggestion : null
                   }
                   dueSuggestionHint={dueSuggestionHint}
                   timeSuggestionHint={timeSuggestionHint}
@@ -913,7 +968,14 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
                   onSave={saveEditor}
                   onCancel={cancelEditor}
                 />
-              ) : null}
+              ) : (
+                <DetailsPane
+                  task={selectedTask}
+                  now={now}
+                  pulseOn={pulseOn}
+                  fastPulseOn={fastPulseOn}
+                />
+              )}
             </box>
           </box>
         </box>
@@ -975,7 +1037,7 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
         </box>
       </box>
 
-      {state.confirmDelete ? (
+      {state.mode === "modal_confirm" && state.modal?.type === "delete" ? (
         <box
           style={{
             position: "absolute",
@@ -989,11 +1051,13 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
         >
           <box style={{ padding: 2, backgroundColor: theme.warn, color: theme.bg }}>
             <text>DELETE SELECTED TASK? (y/n)</text>
+            <text>{state.modal.taskTitle}</text>
+            <text>ID: {state.modal.taskId.slice(0, 8)}</text>
           </box>
         </box>
       ) : null}
 
-      {state.helpOpen ? (
+      {state.mode === "help" ? (
         <box
           style={{
             position: "absolute",

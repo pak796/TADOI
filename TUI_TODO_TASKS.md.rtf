@@ -681,7 +681,7 @@ Refs: `useKeyboard` patterns.  [oai_citation:9\'87GitHub](https://github.com/rem
 Scope note: this phase is about predictability (focus + modals) and readability (scroll), not new product features.\
 \
 ### T8.1 Formalize mode + focus state machine\
-**Status**: Pending\
+**Status**: Complete\
 **Implement**\
 - Define `Mode` enum: `LIST | ADD | EDIT | SEARCH | HELP | MODAL_CONFIRM`\
 - Define `FocusTarget` enum (at minimum): `TASK_LIST | SEARCH_INPUT | MODAL | EDITOR_TITLE | EDITOR_DUE_DATE | EDITOR_DUE_TIME | EDITOR_TAGS | EDITOR_NOTES`\
@@ -694,7 +694,7 @@ Scope note: this phase is about predictability (focus + modals) and readability 
 - `Esc` unwinds exactly one layer (modal/help/search/editor) back to LIST as specified in Appendix A.\
 \
 ### T8.2 Visible focus indicator / highlight\
-**Status**: Pending\
+**Status**: Complete\
 **Implement**\
 - Add a clear, always-visible indication of current focus target:\
   - either a `FOCUS:` line in left rail, or strong highlight of the active section\
@@ -704,7 +704,7 @@ Scope note: this phase is about predictability (focus + modals) and readability 
 - User can tell where keystrokes will go (list vs editor field vs modal) at a glance.\
 \
 ### T8.3 Modal correctness: hard-block key routing\
-**Status**: Pending\
+**Status**: Complete\
 **Implement**\
 - When modal is open, all non-modal key handlers must be disabled/ignored\
 - Only accept modal keys: `y`, `n`, `Esc` (and optionally Enter mapped to `y`)\
@@ -714,7 +714,7 @@ Scope note: this phase is about predictability (focus + modals) and readability 
 - `y` deletes, `n`/`Esc` cancels, and app returns to LIST.\
 \
 ### T8.4 Post-delete selection clamping + visibility\
-**Status**: Pending\
+**Status**: Complete\
 **Implement**\
 - After delete, clamp `selectedIndex` using the Appendix A rules\
 - Immediately call `ensureSelectedVisible()` to keep selection visible\
@@ -725,7 +725,7 @@ Scope note: this phase is about predictability (focus + modals) and readability 
 - Selection never becomes invalid or invisible\
 \
 ### T8.5 Scroll correctness hardening (ensureSelectedVisible)\
-**Status**: Pending\
+**Status**: Complete\
 **Implement**\
 - Centralize `ensureSelectedVisible(selectedIndex, scrollOffset, visibleRows, taskCount)`\
 - Use it on:\
@@ -740,7 +740,7 @@ Scope note: this phase is about predictability (focus + modals) and readability 
 - Filtering/clearing filters keeps selection visible and stable (no jumps unless needed).\
 \
 ### T8.6 Resize hook: recompute visibleRows, clamp, and re-scroll\
-**Status**: Pending\
+**Status**: Complete\
 **Implement**\
 - On terminal resize:\
   - recompute list pane height \uc0\u8594  `visibleRows`\

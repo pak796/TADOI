@@ -1,34 +1,70 @@
-import { Filters, Mode } from "../domain/models";
+import { Filters, FocusTarget, Mode } from "../domain/models";
 import { formatDate } from "../state/store";
 import { colorForTag, theme, styles } from "../app/theme";
 import { formatTagForDisplay } from "../domain/tagIndex";
 
 type LeftRailProps = {
   mode: Mode;
-  searchActive: boolean;
-  helpOpen: boolean;
+  focus: FocusTarget;
   filters: Filters;
   fastPulseOn: boolean;
 };
 
-export function LeftRail({ mode, searchActive, helpOpen, filters, fastPulseOn }: LeftRailProps) {
+function getModeLabel(mode: Mode): string {
+  switch (mode) {
+    case "add":
+      return "ADD";
+    case "edit":
+      return "EDIT";
+    case "search":
+      return "SEARCH";
+    case "help":
+      return "HELP";
+    case "modal_confirm":
+      return "MODAL";
+    default:
+      return "LIST";
+  }
+}
+
+function getFocusLabel(focus: FocusTarget): string {
+  switch (focus) {
+    case "task_list":
+      return "LIST";
+    case "search_input":
+      return "SEARCH";
+    case "modal":
+      return "MODAL";
+    case "editor_title":
+      return "TITLE";
+    case "editor_due_date":
+      return "DUE DATE";
+    case "editor_due_time":
+      return "DUE TIME";
+    case "editor_tags":
+      return "TAGS";
+    case "editor_notes":
+      return "NOTES";
+    case "editor_save":
+      return "SAVE";
+    case "editor_cancel":
+      return "CANCEL";
+    default:
+      return "LIST";
+  }
+}
+
+export function LeftRail({ mode, focus, filters, fastPulseOn }: LeftRailProps) {
   const version = "v0.1.3";
   const now = new Date();
   const todayLabel = formatDate(now.getTime());
   const timeLabel = `${String(now.getHours()).padStart(2, "0")}:${String(
     now.getMinutes()
   ).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
-  const modeLabel = helpOpen
-    ? "HELP"
-    : searchActive
-      ? "SEARCH"
-      : mode === "add"
-        ? "ADD"
-        : mode === "edit"
-          ? "EDIT"
-          : "LIST";
+  const modeLabel = getModeLabel(mode);
+  const focusLabel = getFocusLabel(focus);
 
-  const menuItems = ["LIST", "ADD", "EDIT", "SEARCH", "HELP"];
+  const menuItems = ["LIST", "ADD", "EDIT", "SEARCH", "HELP", "MODAL"];
   const statusLabel = filters.status === "all" ? "ACTIVE" : filters.status.toUpperCase();
   const statusBg =
     filters.status === "done"
@@ -78,6 +114,7 @@ export function LeftRail({ mode, searchActive, helpOpen, filters, fastPulseOn }:
       <box style={{ backgroundColor: theme.accentPurple, paddingLeft: 1, paddingRight: 1 }}>
         <text style={{ color: theme.bg }}>{modeLabel}</text>
       </box>
+      <text style={{ ...styles.muted, marginTop: 1 }}>FOCUS: {focusLabel}</text>
 
       <box style={{ marginTop: 1, flexDirection: "column", gap: 0 }}>
         <text style={styles.muted}>MENU</text>

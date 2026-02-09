@@ -10,8 +10,9 @@ import {
 import { formatTagForDisplay } from "../domain/tagIndex";
 import {
   AppState,
+  ConfirmModal,
   EditorDraft,
-  EditorFocus,
+  FocusTarget,
   Filters,
   Mode,
   TagIndexEntry,
@@ -23,13 +24,11 @@ export type Action =
   | { type: "load"; data: LoadedData }
   | { type: "setSelected"; id?: string }
   | { type: "setMode"; mode: Mode }
-  | { type: "setSearchActive"; value: boolean }
-  | { type: "setHelpOpen"; value: boolean }
-  | { type: "setConfirmDelete"; value: boolean }
+  | { type: "setFocus"; focus: FocusTarget }
+  | { type: "setModal"; modal: ConfirmModal | null }
   | { type: "setFilters"; filters: Partial<Filters> }
-  | { type: "setEditor"; editor: EditorDraft | null; focus?: EditorFocus }
+  | { type: "setEditor"; editor: EditorDraft | null; focus?: FocusTarget }
   | { type: "updateEditor"; patch: Partial<EditorDraft> }
-  | { type: "setEditorFocus"; focus: EditorFocus }
   | { type: "setTasks"; tasks: Task[] }
   | { type: "setTagIndex"; tagIndex: Record<string, TagIndexEntry> };
 
@@ -42,11 +41,9 @@ export const initialState: AppState = {
   },
   selectedId: undefined,
   mode: "list",
-  searchActive: false,
-  helpOpen: false,
-  confirmDelete: false,
+  focus: "task_list",
+  modal: null,
   editor: null,
-  editorFocus: "title"
 };
 
 export function applyArchiveAging(
@@ -83,26 +80,22 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, selectedId: action.id };
     case "setMode":
       return { ...state, mode: action.mode };
-    case "setSearchActive":
-      return { ...state, searchActive: action.value };
-    case "setHelpOpen":
-      return { ...state, helpOpen: action.value };
-    case "setConfirmDelete":
-      return { ...state, confirmDelete: action.value };
+    case "setFocus":
+      return { ...state, focus: action.focus };
+    case "setModal":
+      return { ...state, modal: action.modal };
     case "setFilters":
       return { ...state, filters: { ...state.filters, ...action.filters } };
     case "setEditor":
       return {
         ...state,
         editor: action.editor,
-        editorFocus: action.focus ?? state.editorFocus
+        focus: action.focus ?? state.focus
       };
     case "updateEditor":
       return state.editor
         ? { ...state, editor: { ...state.editor, ...action.patch } }
         : state;
-    case "setEditorFocus":
-      return { ...state, editorFocus: action.focus };
     case "setTasks":
       return { ...state, tasks: action.tasks };
     case "setTagIndex":
