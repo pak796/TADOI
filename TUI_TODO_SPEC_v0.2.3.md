@@ -5,9 +5,9 @@
 Build a keyboard-first terminal TUI todo app with a **retro Star Trek / LCARS-inspired layout**, using **OpenTUI** + **@opentui/react** on **Bun**.
 Naming: replace LCARS with **ToDui** in the app UI and filenames.
 
-v0.2.2 scope note:
-- This version focuses on automated tests/CI merge gates and lightweight theming polish.
-- User-facing additions in this version are limited to theme switching and cosmetic palette/layout refinements.
+v0.2.3 scope note:
+- This version finalizes centralized app-level keyboard routing with strict mode/focus dispatch to prevent key leakage.
+- It also synchronizes visible app version surfaces (left rail + help pane + package metadata).
 
 - Runtime: Bun (OpenTUI quick start uses Bun; `bun create tui`)  [oai_citation:0‡GitHub](https://github.com/anomalyco/opentui?utm_source=chatgpt.com)
 - UI binding: @opentui/react provides React reconciler + patterns like `createRoot` and `useKeyboard`.  [oai_citation:1‡npm](https://www.npmjs.com/package/%40opentui/react?utm_source=chatgpt.com)
@@ -78,6 +78,7 @@ Deliverables:
 53. **Theme persistence**: persist selected theme in `settings.json` with startup load and debounced saves.
 54. **Help palette preview**: Help pane shows current theme and a mini preview row for `accent`, `warn`, and `ok`.
 55. **Left rail logo separator**: render a horizontal ASCII separator under TODUI logo before version/menu metadata.
+56. **Help pane app version**: show the current app version in the Help overlay.
 
 ### Non-Goals (MVP)
 - Sync, accounts, multi-device
@@ -224,7 +225,7 @@ This appendix defines the “Layer 1” hardening work for v0.2.0. It is intenti
 - **Scroll correctness**: selection-following scroll that works under navigation, filtering, and resize.
 
 Implementation status:
-- v0.2.2 Step 1 implemented formal `Mode`/`FocusTarget` constants in `src/ui/modeFocus.ts`, UI-only state/reducer in `src/ui/state.ts`, a unified key router (`routeKey`), and centralized Esc unwind behavior.
+- v0.2.3 Step 1 implemented formal `Mode`/`FocusTarget` constants in `src/ui/modeFocus.ts`, UI-only state/reducer in `src/ui/state.ts`, a centralized key router (`handleKey`) that returns routed actions, and centralized Esc unwind behavior.
 
 ## A1) UI State vs Domain State
 
@@ -571,3 +572,29 @@ Help interactions:
 ## D5) Left Rail Visual Separator
 
 The left rail renders an ASCII horizontal separator directly below the TODUI logo to clearly separate branding from version/date/time/menu metadata.
+
+# Appendix E — v0.2.3 Routing Hardening & Version Surfaces
+
+This appendix captures the v0.2.3 hardening pass and release metadata alignment.
+
+## E1) Central Key Routing
+
+Routing contract:
+- `src/app/keyRouter.ts` exports `handleKey(key, context)`.
+- The function is pure and returns routed actions only (no side effects).
+- `src/app/App.tsx` has a single `useKeyboard` entrypoint that:
+- calls `handleKey(...)`
+- dispatches returned UI/domain actions
+
+Rules enforced:
+- `MODAL_CONFIRM` blocks background keys and only resolves modal keys (`y`, `n`, `Esc`).
+- `SEARCH` and editor input modes do not leak list navigation keys.
+- `Esc` always routes to unwind behavior and exits one layer.
+
+## E2) Version Surfaces
+
+Version contract:
+- App version is centralized in `src/app/version.ts` as `APP_VERSION`.
+- Left rail displays `APP_VERSION`.
+- Help pane displays `App Version: <APP_VERSION>`.
+- Package metadata in `package.json` matches the same release (`0.2.3`).

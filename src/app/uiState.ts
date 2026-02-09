@@ -1,55 +1,62 @@
-import { EditorFocus, FocusTarget, Mode } from "../domain/models";
+import {
+  ConfirmModal,
+  EditorFocus,
+  FocusTarget,
+  Mode
+} from "../domain/models";
 
 const editorFocusOrder: FocusTarget[] = [
-  "editor_title",
-  "editor_due_date",
-  "editor_due_time",
-  "editor_tags",
-  "editor_notes",
-  "editor_save",
-  "editor_cancel"
+  FocusTarget.EDITOR_TITLE,
+  FocusTarget.EDITOR_DUE_DATE,
+  FocusTarget.EDITOR_DUE_TIME,
+  FocusTarget.EDITOR_TAGS,
+  FocusTarget.EDITOR_NOTES,
+  FocusTarget.EDITOR_SAVE,
+  FocusTarget.EDITOR_CANCEL
 ];
 
-export function isEditorMode(mode: Mode): mode is "add" | "edit" {
-  return mode === "add" || mode === "edit";
+export function isEditorMode(
+  mode: Mode
+): mode is typeof Mode.ADD | typeof Mode.EDIT {
+  return mode === Mode.ADD || mode === Mode.EDIT;
 }
 
 export function toFocusTarget(editorFocus: EditorFocus): FocusTarget {
   switch (editorFocus) {
     case "title":
-      return "editor_title";
+      return FocusTarget.EDITOR_TITLE;
     case "due":
-      return "editor_due_date";
+      return FocusTarget.EDITOR_DUE_DATE;
     case "time":
-      return "editor_due_time";
+      return FocusTarget.EDITOR_DUE_TIME;
     case "tags":
-      return "editor_tags";
+      return FocusTarget.EDITOR_TAGS;
     case "notes":
-      return "editor_notes";
+      return FocusTarget.EDITOR_NOTES;
     case "save":
-      return "editor_save";
+      return FocusTarget.EDITOR_SAVE;
     case "cancel":
-      return "editor_cancel";
+      return FocusTarget.EDITOR_CANCEL;
     default:
-      return "editor_title";
+      return FocusTarget.EDITOR_TITLE;
   }
 }
 
 export function toEditorFocus(focus: FocusTarget): EditorFocus {
   switch (focus) {
-    case "editor_title":
+    case FocusTarget.EDITOR_TITLE:
       return "title";
-    case "editor_due_date":
+    case FocusTarget.EDITOR_DUE_DATE:
       return "due";
-    case "editor_due_time":
+    case FocusTarget.EDITOR_DUE_TIME:
       return "time";
-    case "editor_tags":
+    case FocusTarget.EDITOR_TAGS:
       return "tags";
-    case "editor_notes":
+    case FocusTarget.EDITOR_NOTES:
       return "notes";
-    case "editor_save":
+    case FocusTarget.EDITOR_SAVE:
       return "save";
-    case "editor_cancel":
+    case FocusTarget.EDITOR_CANCEL:
       return "cancel";
     default:
       return "title";
@@ -81,6 +88,68 @@ export function shouldCloseHelp(name: string, sequence: string): boolean {
 
 export function shouldCloseSearch(name: string): boolean {
   return name === "escape" || name === "return" || name === "enter";
+}
+
+export type EscUnwindTarget = {
+  mode: Mode;
+  focus: FocusTarget;
+  clearEditor: boolean;
+  clearModal: boolean;
+};
+
+export function resolveEscUnwindTarget(params: {
+  mode: Mode;
+  modal: ConfirmModal | null;
+  helpReturnMode: Mode;
+  helpReturnFocus: FocusTarget;
+}): EscUnwindTarget | null {
+  const { mode, modal, helpReturnMode, helpReturnFocus } = params;
+
+  if (mode === Mode.MODAL_CONFIRM) {
+    if (modal) {
+      return {
+        mode: modal.previousMode,
+        focus: modal.previousFocus,
+        clearEditor: false,
+        clearModal: true
+      };
+    }
+    return {
+      mode: Mode.LIST,
+      focus: FocusTarget.TASK_LIST,
+      clearEditor: false,
+      clearModal: true
+    };
+  }
+
+  if (mode === Mode.HELP) {
+    return {
+      mode: helpReturnMode,
+      focus: helpReturnFocus,
+      clearEditor: false,
+      clearModal: false
+    };
+  }
+
+  if (mode === Mode.SEARCH) {
+    return {
+      mode: Mode.LIST,
+      focus: FocusTarget.TASK_LIST,
+      clearEditor: false,
+      clearModal: false
+    };
+  }
+
+  if (mode === Mode.ADD || mode === Mode.EDIT) {
+    return {
+      mode: Mode.LIST,
+      focus: FocusTarget.TASK_LIST,
+      clearEditor: true,
+      clearModal: false
+    };
+  }
+
+  return null;
 }
 
 export function getNextSelectedIdAfterDelete(

@@ -5,9 +5,9 @@
 Build a keyboard-first terminal TUI todo app with a **retro Star Trek / LCARS-inspired layout**, using **OpenTUI** + **@opentui/react** on **Bun**.
 Naming: replace LCARS with **ToDui** in the app UI and filenames.
 
-v0.2.2 scope note:
-- This version focuses on automated tests/CI merge gates and lightweight theming polish.
-- User-facing additions in this version are limited to theme switching and cosmetic palette/layout refinements.
+v0.2.3 scope note:
+- This version finalizes centralized app-level keyboard routing with strict mode/focus dispatch to prevent key leakage.
+- It also synchronizes visible app version surfaces (left rail + help pane + package metadata).
 
 - Runtime: Bun (OpenTUI quick start uses Bun; `bun create tui`)  [oai_citation:0‡GitHub](https://github.com/anomalyco/opentui?utm_source=chatgpt.com)
 - UI binding: @opentui/react provides React reconciler + patterns like `createRoot` and `useKeyboard`.  [oai_citation:1‡npm](https://www.npmjs.com/package/%40opentui/react?utm_source=chatgpt.com)
@@ -78,6 +78,7 @@ Deliverables:
 53. **Theme persistence**: persist selected theme in `settings.json` with startup load and debounced saves.
 54. **Help palette preview**: Help pane shows current theme and a mini preview row for `accent`, `warn`, and `ok`.
 55. **Left rail logo separator**: render a horizontal ASCII separator under TODUI logo before version/menu metadata.
+56. **Help pane app version**: show the current app version in the Help overlay.
 
 ### Non-Goals (MVP)
 - Sync, accounts, multi-device
@@ -224,7 +225,7 @@ This appendix defines the “Layer 1” hardening work for v0.2.0. It is intenti
 - **Scroll correctness**: selection-following scroll that works under navigation, filtering, and resize.
 
 Implementation status:
-- v0.2.2 Step 1 implemented formal `Mode`/`FocusTarget` constants in `src/ui/modeFocus.ts`, UI-only state/reducer in `src/ui/state.ts`, a unified key router (`routeKey`), and centralized Esc unwind behavior.
+- v0.2.3 Step 1 implemented formal `Mode`/`FocusTarget` constants in `src/ui/modeFocus.ts`, UI-only state/reducer in `src/ui/state.ts`, a centralized key router (`handleKey`) that returns routed actions, and centralized Esc unwind behavior.
 
 ## A1) UI State vs Domain State
 
@@ -571,3 +572,97 @@ Help interactions:
 ## D5) Left Rail Visual Separator
 
 The left rail renders an ASCII horizontal separator directly below the TODUI logo to clearly separate branding from version/date/time/menu metadata.
+
+# Appendix E — v0.2.3 Routing Hardening & Version Surfaces
+
+This appendix captures the v0.2.3 hardening pass and release metadata alignment.
+
+## E1) Central Key Routing
+
+Routing contract:
+- `src/app/keyRouter.ts` exports `handleKey(key, context)`.
+- The function is pure and returns routed actions only (no side effects).
+- `src/app/App.tsx` has a single `useKeyboard` entrypoint that:
+- calls `handleKey(...)`
+- dispatches returned UI/domain actions
+
+Rules enforced:
+- `MODAL_CONFIRM` blocks background keys and only resolves modal keys (`y`, `n`, `Esc`).
+- `SEARCH` and editor input modes do not leak list navigation keys.
+- `Esc` always routes to unwind behavior and exits one layer.
+
+## E2) Version Surfaces
+
+Version contract:
+- App version is centralized in `src/app/version.ts` as `APP_VERSION`.
+- Left rail displays `APP_VERSION`.
+- Help pane displays `App Version: <APP_VERSION>`.
+- Package metadata in `package.json` matches the same release (`0.2.3`).
+
+---
+
+# Appendix F — v0.2.4 Foundation Polish (Platform Contract + Reliability + Performance)
+
+This appendix captures the “Section 1” foundation work required to move from a polished MVP to a more robust product.
+Scope is **clarification + hardening**: documented support boundaries, stronger failure-mode behavior, and explicit performance targets.
+No new feature sets (sync/recurrence/etc.) are introduced in v0.2.4.
+
+## F1) Platform Contract (Supported Environments)
+
+### Supported terminals (documented)
+ToDui must be verified on these baseline environments:
+- macOS: Terminal.app and iTerm2
+- Windows: Windows Terminal
+- Linux: at least one common terminal (e.g., GNOME Terminal or Kitty)
+
+### Minimum terminal geometry
+- Minimum supported size remains **80×24**.
+- If below minimum, show a clear “Terminal too small” message and avoid layout overlap.
+
+### Data path troubleshooting surface
+- The resolved **task data path** (from Appendix B) must be visible for troubleshooting in at least one user-visible place:
+  - Help overlay line OR left-rail debug line OR startup log.
+
+## F2) Reliability Hardening (Failure Modes)
+
+### Save failure behavior (must not crash)
+If persistence write fails (permissions, disk full, IO error):
+- Keep app running (no crash).
+- Show a persistent banner message containing:
+  - short error summary
+  - resolved data path
+  - last successful save timestamp (if tracked)
+- Do not spin/loop retries aggressively; retry only on the next domain mutation or on a manual “retry save” command if you add one later.
+
+### Corruption recovery loop prevention
+Corruption recovery (Appendix B) must not create unbounded `.corrupt.*` files:
+- If a corrupt file was already backed up on this startup attempt, do not back up again in the same session unless the user explicitly points at another path.
+- If an empty-state save fails, do not attempt repeated backup cycles.
+
+### “Persist only on change” enforcement
+UI-only ticks (clock, ticker, pulses) must never trigger writes.
+Only domain mutations that change persisted state may schedule a save.
+
+## F3) Performance Envelope (Explicit Targets)
+
+### Performance target
+Define a baseline target for v0.2.4:
+- **2,000 tasks** (mixed due states, tags) should allow smooth list navigation without perceptible lag.
+- Navigation latency target: selection update visible within ~50ms on typical laptop hardware.
+
+### Measurement approach (lightweight)
+- Add an optional debug mode (env flag) to log:
+  - render tick duration (ms)
+  - visible task count and window size
+- Avoid heavy profiling systems; keep this as console/log output only.
+
+### Rendering constraints
+- Task list should render only visible rows (windowing/virtualization) using `scrollOffset` + `visibleRows`.
+- Sorting/filtering should be pure and efficient; avoid recomputing heavy indexes on every render tick.
+
+## F4) v0.2.4 Manual QA Additions
+
+In addition to existing quality gates:
+1. **Below-min-size behavior**: shrink terminal below 80×24; verify clean “too small” message, no crash.
+2. **Save failure**: point data path to an unwritable location; verify banner and continued operation.
+3. **Large list**: load/generate 2k tasks; verify navigation remains responsive and selection-following scroll remains correct.

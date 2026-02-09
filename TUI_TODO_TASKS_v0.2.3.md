@@ -6,9 +6,9 @@
 - Implement in small, reviewable commits.
 - Keep "domain" logic pure; write unit tests where appropriate.
 
-v0.2.2 scope note:
-- This version focuses on automated tests/CI merge gates and lightweight theming polish.
-- User-facing additions are limited to theme switching and small visual refinements.
+v0.2.3 scope note:
+- This version hardens centralized keyboard routing by mode/focus to prevent input leakage.
+- It also aligns all visible app-version surfaces and release metadata.
 
 ---
 
@@ -1042,3 +1042,36 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 
 **DoD**
 - Logo area is visually separated from metadata and menu content.
+
+---
+
+# Phase 12 — v0.2.3 Routing Hardening + Version Surfaces
+
+> Scope note: this phase focuses on keyboard-routing determinism and release/version consistency only.
+
+## T12.1 Central key router with action output
+**Status**: Complete
+**Implement**
+- Replace scattered per-mode keyboard handlers with a single pure router:
+- `src/app/keyRouter.ts` exports `handleKey(key, context)`.
+- Router returns action lists split by scope (`ui` and `domain`) and has no side effects.
+- `src/app/App.tsx` uses one `useKeyboard` entrypoint that executes routed actions.
+
+**DoD**
+- Modal mode blocks all background keys except modal keys (`y`, `n`, `Esc`).
+- Typing in SEARCH/ADD/EDIT does not move list selection.
+- LIST mode keybinds continue to work.
+- `Esc` consistently unwinds one layer.
+
+## T12.2 Version bump and help-pane version display
+**Status**: Complete
+**Implement**
+- Bump package version to `0.2.3`.
+- Centralize app display version in `src/app/version.ts` (`APP_VERSION = "v0.2.3"`).
+- Use `APP_VERSION` in left rail version label.
+- Add app version line in Help pane.
+
+**DoD**
+- Left rail shows `v0.2.3`.
+- Help pane displays `App Version: v0.2.3`.
+- `package.json` version is `0.2.3`.

@@ -10,11 +10,8 @@ import {
 import { formatTagForDisplay } from "../domain/tagIndex";
 import {
   AppState,
-  ConfirmModal,
   EditorDraft,
-  FocusTarget,
   Filters,
-  Mode,
   TagIndexEntry,
   Task
 } from "../domain/models";
@@ -23,11 +20,8 @@ import type { LoadedData } from "./persistence";
 export type Action =
   | { type: "load"; data: LoadedData }
   | { type: "setSelected"; id?: string }
-  | { type: "setMode"; mode: Mode }
-  | { type: "setFocus"; focus: FocusTarget }
-  | { type: "setModal"; modal: ConfirmModal | null }
   | { type: "setFilters"; filters: Partial<Filters> }
-  | { type: "setEditor"; editor: EditorDraft | null; focus?: FocusTarget }
+  | { type: "setEditor"; editor: EditorDraft | null }
   | { type: "updateEditor"; patch: Partial<EditorDraft> }
   | { type: "setTasks"; tasks: Task[] }
   | { type: "setTagIndex"; tagIndex: Record<string, TagIndexEntry> };
@@ -40,9 +34,6 @@ export const initialState: AppState = {
     due: "any"
   },
   selectedId: undefined,
-  mode: "list",
-  focus: "task_list",
-  modal: null,
   editor: null,
 };
 
@@ -78,19 +69,12 @@ export function reducer(state: AppState, action: Action): AppState {
       };
     case "setSelected":
       return { ...state, selectedId: action.id };
-    case "setMode":
-      return { ...state, mode: action.mode };
-    case "setFocus":
-      return { ...state, focus: action.focus };
-    case "setModal":
-      return { ...state, modal: action.modal };
     case "setFilters":
       return { ...state, filters: { ...state.filters, ...action.filters } };
     case "setEditor":
       return {
         ...state,
-        editor: action.editor,
-        focus: action.focus ?? state.focus
+        editor: action.editor
       };
     case "updateEditor":
       return state.editor

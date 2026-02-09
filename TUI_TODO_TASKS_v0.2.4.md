@@ -6,9 +6,9 @@
 - Implement in small, reviewable commits.
 - Keep "domain" logic pure; write unit tests where appropriate.
 
-v0.2.2 scope note:
-- This version focuses on automated tests/CI merge gates and lightweight theming polish.
-- User-facing additions are limited to theme switching and small visual refinements.
+v0.2.4 scope note:
+- This version focuses on foundation polish for real users: platform contract, reliability hardening, and performance envelope.
+- It does not add major new features; it adds explicit support boundaries, failure-mode handling, and performance targets.
 
 ---
 
@@ -1042,3 +1042,109 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 
 **DoD**
 - Logo area is visually separated from metadata and menu content.
+
+---
+
+# Phase 12 — v0.2.3 Routing Hardening + Version Surfaces
+
+> Scope note: this phase focuses on keyboard-routing determinism and release/version consistency only.
+
+## T12.1 Central key router with action output
+**Status**: Complete
+**Implement**
+- Replace scattered per-mode keyboard handlers with a single pure router:
+- `src/app/keyRouter.ts` exports `handleKey(key, context)`.
+- Router returns action lists split by scope (`ui` and `domain`) and has no side effects.
+- `src/app/App.tsx` uses one `useKeyboard` entrypoint that executes routed actions.
+
+**DoD**
+- Modal mode blocks all background keys except modal keys (`y`, `n`, `Esc`).
+- Typing in SEARCH/ADD/EDIT does not move list selection.
+- LIST mode keybinds continue to work.
+- `Esc` consistently unwinds one layer.
+
+## T12.2 Version bump and help-pane version display
+**Status**: Complete
+**Implement**
+- Bump package version to `0.2.3`.
+- Centralize app display version in `src/app/version.ts` (`APP_VERSION = "v0.2.3"`).
+- Use `APP_VERSION` in left rail version label.
+- Add app version line in Help pane.
+
+**DoD**
+- Left rail shows `v0.2.3`.
+- Help pane displays `App Version: v0.2.3`.
+- `package.json` version is `0.2.3`.
+
+---
+
+# Phase 13 — v0.2.4 Foundation Polish (Platform Contract + Reliability + Performance)
+
+> Scope note: this phase tightens “real user” robustness without adding major new features.
+
+## T13.1 Document supported terminals + min size contract
+**Status**: Pending
+**Implement**
+- Update README (or spec-facing docs) to explicitly list supported terminals:
+  - macOS Terminal.app + iTerm2
+  - Windows Terminal
+  - Linux baseline terminal (choose one and name it)
+- Re-affirm minimum terminal size: 80×24.
+- Ensure below-min-size behavior is documented (message, no overlap).
+
+**DoD**
+- Docs clearly state support matrix and 80×24 minimum.
+- Below-min-size message behavior is described and consistent with UI behavior.
+
+## T13.2 Below-min-size guard behavior
+**Status**: Pending
+**Implement**
+- Add a guard in layout/render pipeline:
+  - If terminal < 80×24: render a single centered warning screen.
+  - Disable other interactions to avoid crashes/layout churn.
+- Ensure resizing back above min restores the full UI.
+
+**DoD**
+- Shrinking below 80×24 shows a stable “Terminal too small” message.
+- Growing back restores UI with no crash and preserves selection if possible.
+
+## T13.3 Persistence save-failure handling + banner
+**Status**: Pending
+**Implement**
+- In persistence layer, catch write errors (permissions, disk full, IO).
+- Surface a persistent banner containing:
+  - short error summary
+  - resolved data path
+  - last successful save timestamp (if tracked; otherwise omit)
+- Ensure failure does not crash the app.
+- Ensure retries are not aggressive:
+  - retry only on next domain mutation or explicit retry action (no automatic tight loop).
+
+**DoD**
+- With data path set to an unwritable location, app continues running and shows banner.
+- App does not spam retries or create repeated corrupt backups.
+- When path becomes writable again (or env override changed), next domain mutation successfully saves and banner clears (or updates).
+
+## T13.4 Corruption recovery loop prevention test
+**Status**: Pending
+**Implement**
+- Add unit test(s) to ensure corruption recovery does not generate unbounded `.corrupt.*` backups in one session.
+- Introduce a simple session-scoped guard in safe-load orchestration (if not already present).
+
+**DoD**
+- Tests confirm at most one backup per startup attempt for a given resolved data path.
+- No repeated `.corrupt.*` creation on subsequent save failures during the same run.
+
+## T13.5 Performance target + debug measurement hook (optional)
+**Status**: Pending
+**Implement**
+- Add an optional debug flag (env) that logs:
+  - render/update durations (ms)
+  - visible rows / total task count
+- Ensure the task list renders only visible rows (windowed) using existing `scrollOffset` + `visibleRows` state.
+- Avoid adding heavy profiling dependencies.
+
+**DoD**
+- With debug flag enabled, logs show basic timing + counts.
+- Large list (2,000 tasks) remains navigable with no perceptible lag.
+- No behavior changes when debug flag is disabled.

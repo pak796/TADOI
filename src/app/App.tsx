@@ -3,13 +3,10 @@ import { useKeyboard, useTerminalDimensions } from "@opentui/react";
 import { applyTheme, colorForTag, theme, layout } from "./theme";
 import {
   getNextSelectedIdAfterDelete,
-  isEditorMode,
   nextEditorFocusTarget,
-  resolveModalAction,
-  shouldCloseHelp,
-  shouldCloseSearch,
   toEditorFocus
 } from "./uiState";
+import { handleKey, type KeyRouterAction } from "./keyRouter";
 import { TaskList } from "../components/TaskList";
 import { DetailsPane } from "../components/DetailsPane";
 import { EditorPane } from "../components/EditorPane";
@@ -53,6 +50,9 @@ import { AppState, FocusTarget, Mode, Task } from "../domain/models";
 import { THEMES, ThemeId } from "../theme/themes";
 import { saveSettingsDebounced } from "../settings/settings";
 import { settingsReducer } from "../state/settingsStore";
+import { isEditorMode } from "../ui/modeFocus";
+import { initialUIState, uiReducer, unwind } from "../ui/state";
+import { APP_VERSION } from "./version";
 
 const TICKER_INTERVAL_MS = 6000;
 
@@ -202,22 +202,20 @@ export function App({
   const [settingsState, settingsDispatch] = useReducer(settingsReducer, {
     themeId: initialThemeId
   });
+  const [uiState, uiDispatch] = useReducer(uiReducer, initialUIState);
   const [pulseOn, setPulseOn] = useState(false);
   const [fastPulseOn, setFastPulseOn] = useState(false);
   const [showTagTicker, setShowTagTicker] = useState(false);
   const [timeSuggestion, setTimeSuggestion] = useState<SuggestedTime | null>(null);
-  const [helpReturnMode, setHelpReturnMode] = useState<Mode>("list");
-  const [helpReturnFocus, setHelpReturnFocus] = useState<FocusTarget>("task_list");
   const skipInitialSaveRef = useRef(skipInitialSave);
   const skipSettingsSaveRef = useRef(true);
-  const [scrollOffset, setScrollOffset] = useState(0);
   const { height: terminalHeight, width: terminalWidth } = useTerminalDimensions();
 
   const now = Date.now();
   const dayKey = startOfLocalDayMs(now);
   const visibleTasks = getVisibleTasks(state, now);
   const selectedTask = visibleTasks.find((task) => task.id === state.selectedId) ?? visibleTasks[0];
-  const selectedIndex = visibleTasks.findIndex((task) => task.id === state.selectedId);
+  const computedSelectedIndex = visibleTasks.findIndex((task) => task.id === state.selectedId);
 
   const listHeaderHeight = 2;
   const topBarHeight = 4;
@@ -225,7 +223,7 @@ export function App({
   const startupBannerHeight = startupBanner ? 1 : 0;
   const listPanelBorder = 2;
   const listPanelPadding = 2;
-  const searchHeight = state.mode === "search" ? 3 : 0;
+  const searchHeight = uiState.mode === Mode.SEARCH ? 3 : 0;
   const taskRowHeight = 3; // Keep in sync with TaskRow layout height.
   const listContentHeight =
     terminalHeight -
@@ -304,14 +302,14 @@ export function App({
     : null;
   const activeThemeTokens = THEMES[settingsState.themeId];
   const dueSuggestion =
-    state.focus === "editor_due_date" && state.editor
+    uiState.focus === FocusTarget.EDITOR_DUE_DATE && state.editor
       ? getDueSuggestion(state.editor.dueText, now)
       : null;
   const dueSuggestionHint = dueSuggestion ? `→ ${dueSuggestion} (press →)` : null;
 
   const timeAutocompleteStep =
-    state.mode === "add" &&
-    state.focus === "editor_due_time" &&
+    uiState.mode === Mode.ADD &&
+    uiState.focus === FocusTarget.EDITOR_DUE_TIME &&
     state.editor &&
     timeSuggestion
       ? getAutocompleteStep(state.editor.timeText, timeSuggestion)
@@ -394,7 +392,7 @@ export function App({
       if (state.selectedId) {
         dispatch({ type: "setSelected", id: undefined });
       }
-      setScrollOffset(0);
+      uiDispatch({ type: "setScrollOffset", scrollOffset: 0 });
       return;
     }
     if (!state.selectedId || !visibleTasks.some((task) => task.id === state.selectedId)) {
@@ -403,257 +401,195 @@ export function App({
   }, [visibleTasks, state.selectedId]);
 
   useEffect(() => {
-    const clamped = clampScrollOffset(scrollOffset, visibleRows, visibleTasks.length);
+    const safeIndex =
+      visibleTasks.length === 0
+        ? 0
+        : computedSelectedIndex === -1
+          ? 0
+          : computedSelectedIndex;
+    if (uiState.selectedIndex !== safeIndex) {
+      uiDispatch({ type: "setSelectedIndex", selectedIndex: safeIndex });
+    }
+  }, [computedSelectedIndex, uiState.selectedIndex, visibleTasks.length]);
+
+  useEffect(() => {
+    const clamped = clampScrollOffset(
+      uiState.scrollOffset,
+      visibleRows,
+      visibleTasks.length
+    );
     const nextOffset = ensureSelectedVisible({
-      selectedIndex: selectedIndex === -1 ? 0 : selectedIndex,
+      selectedIndex: uiState.selectedIndex,
       scrollOffset: clamped,
       visibleRows,
       itemCount: visibleTasks.length
     });
-    if (nextOffset !== scrollOffset) {
-      setScrollOffset(nextOffset);
+    if (nextOffset !== uiState.scrollOffset) {
+      uiDispatch({ type: "setScrollOffset", scrollOffset: nextOffset });
     }
-  }, [selectedIndex, visibleRows, visibleTasks.length, scrollOffset]);
+  }, [uiState.scrollOffset, uiState.selectedIndex, visibleRows, visibleTasks.length]);
 
-  useKeyboard((key) => {
-    const name = key.name ?? "";
-    const sequence = key.sequence ?? "";
-    const ctrl = key.ctrl === true;
-    const shift = key.shift === true;
+  function applyEscUnwind(): boolean {
+    const next = unwind(uiState);
+    if (!next) return false;
+    if (next.clearEditorDraft) {
+      setTimeSuggestion(null);
+      dispatch({ type: "setEditor", editor: null });
+    }
+    uiDispatch({ type: "replace", state: next.state });
+    return true;
+  }
 
-    switch (state.mode) {
-      case "modal_confirm":
-        handleModalKey(name, sequence);
+  function runRoutedAction(action: KeyRouterAction) {
+    switch (action.type) {
+      case "UNWIND":
+        applyEscUnwind();
         return;
-      case "help":
+      case "OPEN_HELP":
+        openHelp();
+        return;
+      case "CLOSE_HELP":
+        closeHelp();
+        return;
+      case "OPEN_SEARCH":
+        uiDispatch({ type: "setMode", mode: Mode.SEARCH });
+        uiDispatch({ type: "setFocus", focus: FocusTarget.SEARCH_INPUT });
+        return;
+      case "CLOSE_SEARCH":
+        closeSearch();
+        return;
+      case "MOVE_EDITOR_FOCUS":
+        uiDispatch({
+          type: "setFocus",
+          focus: nextEditorFocusTarget(uiState.focus, action.direction)
+        });
+        return;
+      case "CYCLE_THEME":
+        settingsDispatch({ type: "cycleTheme" });
+        return;
+      case "EXIT_APP":
+        process.exit(0);
+        return;
+      case "MOVE_SELECTION":
+        moveSelection(action.delta);
+        return;
+      case "TOGGLE_SELECTED":
+        toggleSelected();
+        return;
+      case "OPEN_ADD":
+        openAdd();
+        return;
+      case "OPEN_EDIT":
+        openEdit();
+        return;
+      case "OPEN_DUPLICATE":
+        openDuplicate();
+        return;
+      case "OPEN_DELETE_CONFIRM":
+        openDeleteConfirm();
+        return;
+      case "MODAL_CONFIRM_DELETE":
+        handleDeleteSelected();
+        return;
+      case "CYCLE_STATUS":
+        cycleStatus();
+        return;
+      case "CYCLE_DUE":
+        cycleDue();
+        return;
+      case "TOGGLE_TAG_FILTER":
+        toggleTagFilter();
+        return;
+      case "SAVE_EDITOR":
+        saveEditor();
+        return;
+      case "APPLY_TIME_AUTOCOMPLETE":
         if (
-          name.toLowerCase() === "h" ||
-          sequence === "h" ||
-          sequence === "H"
+          uiState.mode === Mode.ADD &&
+          uiState.focus === FocusTarget.EDITOR_DUE_TIME &&
+          state.editor &&
+          timeSuggestion
         ) {
-          settingsDispatch({ type: "cycleTheme" });
-          return;
-        }
-        if (shouldCloseHelp(name, sequence)) {
-          closeHelp();
+          const step = getAutocompleteStep(state.editor.timeText, timeSuggestion);
+          if (step === "hour" || step === "minute") {
+            const nextValue = applyAutocomplete(
+              state.editor.timeText,
+              timeSuggestion,
+              step
+            );
+            dispatch({ type: "updateEditor", patch: { timeText: nextValue } });
+          }
         }
         return;
-      case "search":
-        if (shouldCloseSearch(name)) {
-          closeSearch();
+      case "ACCEPT_DUE_SUGGESTION":
+        if (dueSuggestion) {
+          dispatch({ type: "updateEditor", patch: { dueText: dueSuggestion } });
         }
         return;
-      case "add":
-      case "edit":
-        handleEditorKey(name, sequence, ctrl, shift);
+      case "ACCEPT_TAG_INLINE":
+        if (tagInlineSuggestion) {
+          handlePickTag(tagInlineSuggestion.full);
+        }
         return;
       default:
-        handleListKey(name, sequence);
+        return;
+    }
+  }
+
+  useKeyboard((key) => {
+    const actions = handleKey(
+      {
+        name: key.name ?? "",
+        sequence: key.sequence ?? "",
+        ctrl: key.ctrl === true,
+        shift: key.shift === true
+      },
+      {
+        uiState,
+        hasTagInlineSuggestion: Boolean(tagInlineSuggestion),
+        hasDueSuggestion: Boolean(dueSuggestion),
+        timeAutocompleteStep
+      }
+    );
+
+    for (const action of actions) {
+      runRoutedAction(action);
     }
   });
 
-  function handleListKey(name: string, sequence: string) {
-    if (sequence === "?") {
-      openHelp();
-      return;
-    }
-
-    if (name === "q") {
-      process.exit(0);
-    }
-
-    if (name === "j" || name === "down") {
-      moveSelection(1);
-      return;
-    }
-
-    if (name === "k" || name === "up") {
-      moveSelection(-1);
-      return;
-    }
-
-    if (name === "space") {
-      toggleSelected();
-      return;
-    }
-
-    if (name === "a") {
-      openAdd();
-      return;
-    }
-
-    if (name === "e") {
-      openEdit();
-      return;
-    }
-
-    if (name === "c") {
-      openDuplicate();
-      return;
-    }
-
-    if (name === "d") {
-      openDeleteConfirm();
-      return;
-    }
-
-    if (name === "/") {
-      dispatch({ type: "setMode", mode: "search" });
-      dispatch({ type: "setFocus", focus: "search_input" });
-      return;
-    }
-
-    if (name === "f") {
-      cycleStatus();
-      return;
-    }
-
-    if (name === "g") {
-      cycleDue();
-      return;
-    }
-
-    if (name === "t") {
-      toggleTagFilter();
-    }
-  }
-
-  function handleModalKey(name: string, sequence: string) {
-    const action = resolveModalAction(name, sequence);
-    if (action === "none") return;
-    if (action === "confirm") {
-      handleDeleteSelected();
-      return;
-    }
-    closeModal();
-  }
-
   function openHelp() {
-    setHelpReturnMode(state.mode);
-    setHelpReturnFocus(state.focus);
-    dispatch({ type: "setMode", mode: "help" });
+    uiDispatch({
+      type: "captureReturnContext",
+      mode: uiState.mode,
+      focus: uiState.focus
+    });
+    uiDispatch({ type: "setMode", mode: Mode.HELP });
   }
 
   function closeHelp() {
-    dispatch({ type: "setMode", mode: helpReturnMode });
-    dispatch({ type: "setFocus", focus: helpReturnFocus });
+    uiDispatch({ type: "setMode", mode: uiState.previousMode });
+    uiDispatch({ type: "setFocus", focus: uiState.previousFocus });
   }
 
   function closeSearch() {
-    dispatch({ type: "setMode", mode: "list" });
-    dispatch({ type: "setFocus", focus: "task_list" });
+    uiDispatch({ type: "setMode", mode: Mode.LIST });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.TASK_LIST });
   }
 
   function openDeleteConfirm() {
     if (!selectedTask) return;
-    dispatch({
+    uiDispatch({
       type: "setModal",
       modal: {
         type: "delete",
         taskId: selectedTask.id,
         taskTitle: selectedTask.title,
-        previousMode: "list",
-        previousFocus: state.focus
+        previousMode: Mode.LIST,
+        previousFocus: uiState.focus
       }
     });
-    dispatch({ type: "setMode", mode: "modal_confirm" });
-    dispatch({ type: "setFocus", focus: "modal" });
-  }
-
-  function closeModal() {
-    if (!state.modal) {
-      dispatch({ type: "setMode", mode: "list" });
-      dispatch({ type: "setFocus", focus: "task_list" });
-      return;
-    }
-    dispatch({ type: "setMode", mode: state.modal.previousMode });
-    dispatch({ type: "setFocus", focus: state.modal.previousFocus });
-    dispatch({ type: "setModal", modal: null });
-  }
-
-  function handleEditorKey(
-    name: string,
-    sequence: string,
-    ctrl: boolean,
-    shift: boolean
-  ) {
-    if (name === "escape") {
-      cancelEditor();
-      return;
-    }
-
-    if (ctrl && name === "s") {
-      saveEditor();
-      return;
-    }
-
-    if (name === "right") {
-      if (
-        state.focus === "editor_due_time" &&
-        state.mode === "add" &&
-        state.editor &&
-        timeSuggestion
-      ) {
-        const step = getAutocompleteStep(state.editor.timeText, timeSuggestion);
-        if (step === "hour" || step === "minute") {
-          const nextValue = applyAutocomplete(
-            state.editor.timeText,
-            timeSuggestion,
-            step
-          );
-          dispatch({ type: "updateEditor", patch: { timeText: nextValue } });
-          return;
-        }
-      }
-      if (state.focus === "editor_due_date" && dueSuggestion) {
-        dispatch({ type: "updateEditor", patch: { dueText: dueSuggestion } });
-        return;
-      }
-      if (state.focus === "editor_tags" && tagInlineSuggestion) {
-        handlePickTag(tagInlineSuggestion.full);
-        return;
-      }
-    }
-
-    if (name === "tab") {
-      if (state.focus === "editor_tags" && tagInlineSuggestion) {
-        const nextValue = replaceLastTagToken(
-          state.editor?.tagsText ?? "",
-          tagInlineSuggestion.full
-        );
-        dispatch({ type: "updateEditor", patch: { tagsText: nextValue } });
-      }
-      const direction: 1 | -1 = shift ? -1 : 1;
-      dispatch({
-        type: "setFocus",
-        focus: nextEditorFocusTarget(state.focus, direction)
-      });
-      return;
-    }
-
-    if ((name === "return" || name === "enter") && state.focus === "editor_tags") {
-      if (tagInlineSuggestion) {
-        const nextValue = replaceLastTagToken(
-          state.editor?.tagsText ?? "",
-          tagInlineSuggestion.full
-        );
-        dispatch({ type: "updateEditor", patch: { tagsText: nextValue } });
-        return;
-      }
-    }
-
-    if ((name === "return" || name === "enter") && state.focus === "editor_save") {
-      saveEditor();
-      return;
-    }
-
-    if ((name === "return" || name === "enter") && state.focus === "editor_cancel") {
-      cancelEditor();
-    }
-
-    if (sequence === "?" && state.mode !== "list") {
-      openHelp();
-    }
+    uiDispatch({ type: "setMode", mode: Mode.MODAL_CONFIRM });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.MODAL });
   }
 
   function moveSelection(delta: number) {
@@ -682,18 +618,22 @@ export function App({
 
   function openAdd() {
     setTimeSuggestion(getSuggestedTime(new Date()));
-    dispatch({ type: "setMode", mode: "add" });
-    dispatch({ type: "setEditor", editor: createEmptyDraft(), focus: "editor_title" });
+    uiDispatch({ type: "setMode", mode: Mode.ADD });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.EDITOR_TITLE });
+    dispatch({
+      type: "setEditor",
+      editor: createEmptyDraft()
+    });
   }
 
   function openEdit() {
     if (!selectedTask) return;
     setTimeSuggestion(null);
-    dispatch({ type: "setMode", mode: "edit" });
+    uiDispatch({ type: "setMode", mode: Mode.EDIT });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.EDITOR_TITLE });
     dispatch({
       type: "setEditor",
-      editor: createDraftFromTask(selectedTask),
-      focus: "editor_title"
+      editor: createDraftFromTask(selectedTask)
     });
   }
 
@@ -706,18 +646,18 @@ export function App({
         : baseDraft.dueText;
     const timeText = selectedTask.status === "done" ? "" : baseDraft.timeText;
     setTimeSuggestion(getSuggestedTime(new Date()));
-    dispatch({ type: "setMode", mode: "add" });
+    uiDispatch({ type: "setMode", mode: Mode.ADD });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.EDITOR_TITLE });
     dispatch({
       type: "setEditor",
-      editor: { ...baseDraft, id: undefined, dueText, timeText },
-      focus: "editor_title"
+      editor: { ...baseDraft, id: undefined, dueText, timeText }
     });
   }
 
   function cancelEditor() {
     setTimeSuggestion(null);
-    dispatch({ type: "setMode", mode: "list" });
-    dispatch({ type: "setFocus", focus: "task_list" });
+    uiDispatch({ type: "setMode", mode: Mode.LIST });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.TASK_LIST });
     dispatch({ type: "setEditor", editor: null });
   }
 
@@ -739,7 +679,7 @@ export function App({
     const tags = normalizeTagsFromInput(state.editor.tagsText);
     const notes = state.editor.notes.trim() || undefined;
 
-    if (state.mode === "add") {
+    if (uiState.mode === Mode.ADD) {
       const newTask: Task = {
         id: crypto.randomUUID(),
         title,
@@ -759,7 +699,7 @@ export function App({
       dispatch({ type: "setSelected", id: newTask.id });
     }
 
-    if (state.mode === "edit" && state.editor.id) {
+    if (uiState.mode === Mode.EDIT && state.editor.id) {
       const updatedTasks = state.tasks.map((task) => {
         if (task.id !== state.editor?.id) return task;
         return {
@@ -779,13 +719,13 @@ export function App({
       });
     }
 
-    dispatch({ type: "setMode", mode: "list" });
-    dispatch({ type: "setFocus", focus: "task_list" });
+    uiDispatch({ type: "setMode", mode: Mode.LIST });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.TASK_LIST });
     dispatch({ type: "setEditor", editor: null });
   }
 
   function handleDeleteSelected() {
-    const modal = state.modal;
+    const modal = uiState.modal;
     if (!modal || modal.type !== "delete") return;
     const visibleIds = visibleTasks.map((task) => task.id);
     const nextSelectedId = getNextSelectedIdAfterDelete(visibleIds, modal.taskId);
@@ -794,9 +734,9 @@ export function App({
       tasks: state.tasks.filter((task) => task.id !== modal.taskId)
     });
     dispatch({ type: "setSelected", id: nextSelectedId });
-    dispatch({ type: "setModal", modal: null });
-    dispatch({ type: "setMode", mode: modal.previousMode });
-    dispatch({ type: "setFocus", focus: modal.previousFocus });
+    uiDispatch({ type: "setModal", modal: null });
+    uiDispatch({ type: "setMode", mode: modal.previousMode });
+    uiDispatch({ type: "setFocus", focus: modal.previousFocus });
   }
 
   function cycleStatus() {
@@ -875,8 +815,8 @@ export function App({
         }}
       >
         <LeftRail
-          mode={state.mode}
-          focus={state.focus}
+          mode={uiState.mode}
+          focus={uiState.focus}
           filters={state.filters}
           fastPulseOn={fastPulseOn}
         />
@@ -951,13 +891,13 @@ export function App({
               }}
             >
               <box style={{ flexDirection: "column", flexGrow: 1 }}>
-                {state.mode === "search" ? (
+        {uiState.mode === Mode.SEARCH ? (
                   <box style={{ flexDirection: "column", marginBottom: 1 }}>
                     <text style={{ color: theme.muted }}>SEARCH</text>
                 <input
                   value={state.filters.searchText ?? ""}
                   onChange={updateSearch}
-                  focused={state.focus === "search_input"}
+                  focused={uiState.focus === FocusTarget.SEARCH_INPUT}
                   placeholder="Search for tasks and tags then press enter"
                   style={{ backgroundColor: theme.bg, color: theme.text }}
                 />
@@ -969,7 +909,7 @@ export function App({
                   now={now}
                   pulseOn={pulseOn}
                   fastPulseOn={fastPulseOn}
-                  scrollOffset={scrollOffset}
+                  scrollOffset={uiState.scrollOffset}
                   visibleRows={visibleRows}
                   visibleLines={visibleLines}
                 />
@@ -997,13 +937,13 @@ export function App({
                 borderColor: theme.outline
               }}
             >
-              {isEditorMode(state.mode) && state.editor ? (
+              {isEditorMode(uiState.mode) && state.editor ? (
                 <EditorPane
-                  mode={state.mode}
+                  mode={uiState.mode}
                   draft={state.editor}
-                  focus={toEditorFocus(state.focus)}
+                  focus={toEditorFocus(uiState.focus)}
                   tagInlineSuggestion={
-                    state.focus === "editor_tags" ? tagInlineSuggestion : null
+                    uiState.focus === FocusTarget.EDITOR_TAGS ? tagInlineSuggestion : null
                   }
                   dueSuggestionHint={dueSuggestionHint}
                   timeSuggestionHint={timeSuggestionHint}
@@ -1093,7 +1033,7 @@ export function App({
         </box>
       </box>
 
-      {state.mode === "modal_confirm" && state.modal?.type === "delete" ? (
+      {uiState.mode === Mode.MODAL_CONFIRM && uiState.modal?.type === "delete" ? (
         <box
           style={{
             position: "absolute",
@@ -1107,13 +1047,13 @@ export function App({
         >
           <box style={{ padding: 2, backgroundColor: theme.warn, color: theme.bg }}>
             <text>DELETE SELECTED TASK? (y/n)</text>
-            <text>{state.modal.taskTitle}</text>
-            <text>ID: {state.modal.taskId.slice(0, 8)}</text>
+            <text>{uiState.modal.taskTitle}</text>
+            <text>ID: {uiState.modal.taskId.slice(0, 8)}</text>
           </box>
         </box>
       ) : null}
 
-      {state.mode === "help" ? (
+      {uiState.mode === Mode.HELP ? (
         <box
           style={{
             position: "absolute",
@@ -1139,6 +1079,7 @@ export function App({
             <text>H: cycle theme</text>
             <text>q: quit</text>
             <text>esc: close</text>
+            <text>App Version: {APP_VERSION}</text>
             <text>Theme: {settingsState.themeId}</text>
             <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
               <box

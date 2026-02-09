@@ -2,6 +2,7 @@ import { Filters, FocusTarget, Mode } from "../domain/models";
 import { formatDate } from "../state/store";
 import { colorForTag, theme, styles } from "../app/theme";
 import { formatTagForDisplay } from "../domain/tagIndex";
+import { APP_VERSION } from "../app/version";
 
 type LeftRailProps = {
   mode: Mode;
@@ -12,15 +13,15 @@ type LeftRailProps = {
 
 function getModeLabel(mode: Mode): string {
   switch (mode) {
-    case "add":
+    case Mode.ADD:
       return "ADD";
-    case "edit":
+    case Mode.EDIT:
       return "EDIT";
-    case "search":
+    case Mode.SEARCH:
       return "SEARCH";
-    case "help":
+    case Mode.HELP:
       return "HELP";
-    case "modal_confirm":
+    case Mode.MODAL_CONFIRM:
       return "DELETE";
     default:
       return "LIST";
@@ -29,25 +30,25 @@ function getModeLabel(mode: Mode): string {
 
 function getFocusLabel(focus: FocusTarget): string {
   switch (focus) {
-    case "task_list":
+    case FocusTarget.TASK_LIST:
       return "LIST";
-    case "search_input":
+    case FocusTarget.SEARCH_INPUT:
       return "SEARCH";
-    case "modal":
+    case FocusTarget.MODAL:
       return "DELETE";
-    case "editor_title":
+    case FocusTarget.EDITOR_TITLE:
       return "TITLE";
-    case "editor_due_date":
+    case FocusTarget.EDITOR_DUE_DATE:
       return "DUE DATE";
-    case "editor_due_time":
+    case FocusTarget.EDITOR_DUE_TIME:
       return "DUE TIME";
-    case "editor_tags":
+    case FocusTarget.EDITOR_TAGS:
       return "TAGS";
-    case "editor_notes":
+    case FocusTarget.EDITOR_NOTES:
       return "NOTES";
-    case "editor_save":
+    case FocusTarget.EDITOR_SAVE:
       return "SAVE";
-    case "editor_cancel":
+    case FocusTarget.EDITOR_CANCEL:
       return "CANCEL";
     default:
       return "LIST";
@@ -55,7 +56,7 @@ function getFocusLabel(focus: FocusTarget): string {
 }
 
 export function LeftRail({ mode, focus, filters, fastPulseOn }: LeftRailProps) {
-  const version = "v0.2.2";
+  const version = APP_VERSION;
   const logoDivider = "--------------------------------";
   const now = new Date();
   const todayLabel = formatDate(now.getTime());
@@ -112,9 +113,11 @@ export function LeftRail({ mode, focus, filters, fastPulseOn }: LeftRailProps) {
         <text style={{ color: theme.muted }}>TIME: {timeLabel}</text>
       </box>
 
-      <text style={{ ...styles.muted, marginTop: 1 }}>MODE</text>
-      <box style={{ backgroundColor: theme.accentPurple, paddingLeft: 1, paddingRight: 1 }}>
-        <text style={{ color: theme.bg }}>{modeLabel}</text>
+      <box style={{ marginTop: 1, flexDirection: "row", alignItems: "center", gap: 1 }}>
+        <text style={styles.muted}>MODE:</text>
+        <box style={{ backgroundColor: theme.accentPurple, paddingLeft: 1, paddingRight: 1 }}>
+          <text style={{ color: theme.bg }}>{modeLabel}</text>
+        </box>
       </box>
       <text style={{ ...styles.muted, marginTop: 1 }}>FOCUS: {focusLabel}</text>
 

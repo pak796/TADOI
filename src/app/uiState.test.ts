@@ -1,7 +1,9 @@
 import { describe, expect, it } from "bun:test";
+import { FocusTarget, Mode } from "../domain/models";
 import {
   getNextSelectedIdAfterDelete,
   nextEditorFocusTarget,
+  resolveEscUnwindTarget,
   resolveModalAction,
   shouldCloseHelp,
   shouldCloseSearch,
@@ -31,13 +33,17 @@ describe("uiState routing helpers", () => {
 
 describe("uiState editor focus mapping", () => {
   it("maps editor focus round-trip", () => {
-    expect(toEditorFocus("editor_due_date")).toBe("due");
-    expect(toFocusTarget("time")).toBe("editor_due_time");
+    expect(toEditorFocus(FocusTarget.EDITOR_DUE_DATE)).toBe("due");
+    expect(toFocusTarget("time")).toBe(FocusTarget.EDITOR_DUE_TIME);
   });
 
   it("cycles editor focus with tab order", () => {
-    expect(nextEditorFocusTarget("editor_title", 1)).toBe("editor_due_date");
-    expect(nextEditorFocusTarget("editor_title", -1)).toBe("editor_cancel");
+    expect(nextEditorFocusTarget(FocusTarget.EDITOR_TITLE, 1)).toBe(
+      FocusTarget.EDITOR_DUE_DATE
+    );
+    expect(nextEditorFocusTarget(FocusTarget.EDITOR_TITLE, -1)).toBe(
+      FocusTarget.EDITOR_CANCEL
+    );
   });
 });
 
@@ -52,5 +58,72 @@ describe("uiState delete selection rules", () => {
 
   it("keeps same index (next item) when deleting middle", () => {
     expect(getNextSelectedIdAfterDelete(["a", "b", "c"], "b")).toBe("c");
+  });
+});
+
+describe("uiState esc unwind target", () => {
+  it("unwinds modal to previous context", () => {
+    const target = resolveEscUnwindTarget({
+      mode: Mode.MODAL_CONFIRM,
+      modal: {
+        type: "delete",
+        taskId: "t1",
+        taskTitle: "task",
+        previousMode: Mode.SEARCH,
+        previousFocus: FocusTarget.SEARCH_INPUT
+      },
+      helpReturnMode: Mode.LIST,
+      helpReturnFocus: FocusTarget.TASK_LIST
+    });
+    expect(target).toEqual({
+      mode: Mode.SEARCH,
+      focus: FocusTarget.SEARCH_INPUT,
+      clearEditor: false,
+      clearModal: true
+    });
+  });
+
+  it("unwinds help/search/editor one layer", () => {
+    expect(
+      resolveEscUnwindTarget({
+        mode: Mode.HELP,
+        modal: null,
+        helpReturnMode: Mode.EDIT,
+        helpReturnFocus: FocusTarget.EDITOR_NOTES
+      })
+    ).toEqual({
+      mode: Mode.EDIT,
+      focus: FocusTarget.EDITOR_NOTES,
+      clearEditor: false,
+      clearModal: false
+    });
+
+    expect(
+      resolveEscUnwindTarget({
+        mode: Mode.SEARCH,
+        modal: null,
+        helpReturnMode: Mode.LIST,
+        helpReturnFocus: FocusTarget.TASK_LIST
+      })
+    ).toEqual({
+      mode: Mode.LIST,
+      focus: FocusTarget.TASK_LIST,
+      clearEditor: false,
+      clearModal: false
+    });
+
+    expect(
+      resolveEscUnwindTarget({
+        mode: Mode.ADD,
+        modal: null,
+        helpReturnMode: Mode.LIST,
+        helpReturnFocus: FocusTarget.TASK_LIST
+      })
+    ).toEqual({
+      mode: Mode.LIST,
+      focus: FocusTarget.TASK_LIST,
+      clearEditor: true,
+      clearModal: false
+    });
   });
 });
