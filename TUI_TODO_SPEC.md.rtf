@@ -1,0 +1,190 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2867
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica-Light;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 # SPEC.md \'97 ToDui (TypeScript + OpenTUI)\
+\
+## 0) Summary\
+\
+Build a keyboard-first terminal TUI todo app with a **retro Star Trek / LCARS-inspired layout**, using **OpenTUI** + **@opentui/react** on **Bun**.\
+Naming: replace LCARS with **ToDui** in the app UI and filenames.\
+\
+- Runtime: Bun (OpenTUI quick start uses Bun; `bun create tui`)  [oai_citation:0\'87GitHub](https://github.com/anomalyco/opentui?utm_source=chatgpt.com)\
+- UI binding: @opentui/react provides React reconciler + patterns like `createRoot` and `useKeyboard`.  [oai_citation:1\'87npm](https://www.npmjs.com/package/%40opentui/react?utm_source=chatgpt.com)\
+- OpenTUI is in development / not production-ready; MVP should keep dependencies minimal and tolerate API drift.  [oai_citation:2\'87GitHub](https://github.com/anomalyco/opentui?utm_source=chatgpt.com)\
+\
+Deliverables:\
+- Fully functional MVP (no sync) with **tag autocomplete**.\
+- Local persistence (JSON file) with safe writes.\
+- Single-screen ToDui layout with list + details/edit + left \'93rail\'94.\
+\
+---\
+\
+## 1) Goals / Non-Goals\
+\
+### Goals (MVP)\
+1. **Task CRUD**: add, edit, toggle done, delete.\
+2. **Fast navigation** via keyboard-only.\
+3. **Filters**: status + due bucket + single-tag include (MVP).\
+4. **Search**: substring match on title and tags (live).\
+5. **Tag autocomplete**: `#`-triggered suggestions with ranking by prefix + usage.\
+6. **Persistence**: disk-backed JSON and load on startup.\
+7. **Date autocomplete**: right-arrow completes due date incrementally (year \uc0\u8594  month \u8594  day).\
+8. **Inline tag autocomplete**: as you type tags, show a right-arrow accept suggestion for prior tags.\
+9. **Colored tags**: tags display with automatically assigned colors (consistent per tag).\
+10. **Status colors**: default color coding for complete vs. incomplete tasks.\
+11. **Menu focus highlight**: selected menus are visibly highlighted to indicate current section.\
+12. **Selected task top bar**: selected task name shown in a centered top bar above the task list + details pane (not the left rail).\
+13. **Due-today pulse**: tasks due today and not complete should flash.\
+14. **Layout placement**: \'93TODUI\'94 stays at the top of the left rail, and the top/bottom bars span only above/below the task list + details pane.\
+15. **Bottom bar**: add a bottom bar under the task list + details pane for future data/tabs/buttons.\
+16. **Section labels**: \'93TASK LIST\'94 and \'93DETAILS\'94 labels float above their respective borders.\
+17. **Pane outlines**: thin outlines for left rail, task list, and details pane.\
+18. **ToDui ASCII logo**: compact ASCII logo in the left rail.\
+19. **Due-soon/due-later colors**: tasks due tomorrow\'96next 7 days are yellow; tasks due 8+ days out are blue.\
+20. **Closed date display**: completed tasks show closed date in details and list.\
+21. **Quick copy**: `c` duplicates a task into a new draft (completed \uc0\u8594  due today, future due date \u8594  same); user must save or Esc to cancel.\
+22. **Due-in indicator**: open tasks show \'93DUE IN # DAYS\'94 on the right of the list row.\
+23. **Overdue flash**: overdue tasks flash more aggressively (red/yellow).\
+24. **Selected indicator**: a left-side marker shows the selected row.\
+25. **Wrap-around navigation**: list navigation wraps from end to start and vice versa.\
+26. **Left rail version**: a small version string appears under the logo.\
+27. **Top bar emphasis**: top bar text is visually emphasized (larger/stronger).\
+28. **Due label rules**: due today shows \'93DUE TODAY\'94; overdue shows \'93N DAYS OVERDUE\'94; due-in shows \'93DUE TODAY\'94 instead of \'93DUE IN 0 DAYS\'94.\
+29. **Top bar due info**: top bar shows task name with due label beneath it.\
+30. **Bottom bar summary**: show counts labeled RED (overdue), DUE TODAY (yellow), and DUE THIS WEEK (blue).\
+31. **Bottom bar completed**: add \'93N COMPLETED THIS WEEK\'94 (green).\
+32. **Left rail date**: show `TODAY: YYYY-MM-DD` under the version label.\
+33. **Archive rules**: tasks completed >7 days ago become ARCHIVED; archived tasks are excluded from \'93ALL\'94 and only appear under ARCHIVED filter.\
+34. **Top bar center**: task name is centered and displayed in uppercase; due label centered beneath.\
+35. **Due-today color**: due-today uses yellow (not red) across list/details/top bar; top bar is static (no pulsing).\
+36. **Details emphasis**: when a due/overdue task is selected, highlight due date and status in the details pane.\
+37. **Filter highlights (status)**: in the left rail filters, STATUS shows colored highlight (DONE=green, OPEN=blue, ARCHIVED=grey).\
+38. **Filter highlights (due)**: in the left rail filters, DUE shows colored highlight (OVERDUE flashes red/yellow, TODAY=yellow, THIS WEEK=blue).\
+39. **Due label update**: left rail DUE label shows \'93THIS WEEK\'94 for the rolling next-7-days filter.\
+40. **Task list flash scope**: only due-date and overdue/due-today indicators flash; task rows remain static.\
+41. **Selected overdue row**: if the selected task is overdue, the row highlight is red.\
+42. **Due-today right label**: the right-side \'93DUE TODAY\'94 label is always yellow-highlighted (even when not selected).\
+43. **Startup archive aging**: on app startup load, apply archive aging before first render; only persist if changes occur.\
+44. **Date-only due semantics**: due dates are stored at local midnight and all comparisons use local calendar days (not time-of-day).\
+45. **Tag normalization**: tags are normalized to lowercase ASCII `[a-z0-9_-]`, max length 24, deduped per task, and sorted alphabetically.\
+46. **Optional due time**: due dates can include an optional HH:mm time; same-day labels become time-based and overdue can be time-based.\
+47. **Selection-following scroll**: task list auto-scrolls so the selected row stays visible.\
+\
+### Non-Goals (MVP)\
+- Sync, accounts, multi-device\
+- Collaboration, sharing\
+- Advanced NLP date parsing (keep to ISO or explicit shortcut)\
+- Recurring tasks\
+- Multi-tag boolean logic (AND/OR) beyond \'93single include tag\'94\
+\
+---\
+\
+## 2) Tech Stack\
+\
+### Required\
+- Bun runtime\
+- OpenTUI core: `@opentui/core`\
+- OpenTUI React: `@opentui/react`  [oai_citation:3\'87GitHub](https://github.com/anomalyco/opentui?utm_source=chatgpt.com)\
+\
+### Optional (v1.1)\
+- SQLite (if JSON becomes limiting)\
+- Component library add-ons (e.g., awesome-opentui list)  [oai_citation:4\'87GitHub](https://github.com/msmps/awesome-opentui?utm_source=chatgpt.com)\
+\
+---\
+\
+## 3) App UX / Layout (LCARS)\
+\
+### 3.1 Layout regions (single screen)\
+Use OpenTUI flex layout with nested `<box>` containers.\
+\
+- **Left Rail (fixed width ~18\'9624 cols)**\
+  - App title\
+  - Mode indicator (LIST / ADD / EDIT / HELP / SEARCH)\
+  - Filter summary badges\
+  - Quick hotkey hints (minimal)\
+- **Center Main (flexGrow: 1)**\
+  - Task list (scrollable)\
+- **Right Pane (width ~38\'9650 cols)**\
+  - Details view (default)\
+  - Editor form (when adding/editing)\
+  - Tag autocomplete dropdown anchored to tag field when active\
+\
+### 3.2 LCARS visual rules\
+- Prefer **solid blocks** over ASCII borders.\
+- Use rounded borders sparingly (only major panes).\
+- All-caps headings.\
+- \'93Buttons\'94 = colored box with centered label.\
+- Maintain readability in 80\'d724.\
+\
+### 3.3 Theme tokens\
+Define a single `theme.ts` with colors + spacing:\
+- `bg`, `panel`, `accentOrange`, `accentPurple`, `accentBlue`, `ok`, `warn`, `text`, `muted`\
+\
+(Exact hex values are up to implementation; keep consistent.)\
+\
+---\
+\
+## 4) Data Model\
+\
+### 4.1 Types\
+```ts\
+type TaskStatus = "open" | "done" | "archived";\
+\
+type Task = \{\
+  id: string;          // uuid\
+  title: string;       // required\
+  status: TaskStatus;  // open|done|archived\
+  createdAt: number;   // epoch ms\
+  updatedAt: number;   // epoch ms\
+  dueAt?: number;      // epoch ms at local midnight or explicit local time\
+  hasExplicitTime?: boolean; // distinguishes date-only from real time\
+  closedAt?: number;   // epoch ms (when marked done)\
+  notes?: string;      // multiline\
+  tags: string[];      // normalized, deduped, sorted\
+\};\
+\
+type TagIndexEntry = \{\
+  tagName: string;     // canonical lower-case\
+  usageCount: number;\
+  lastUsedAt: number;  // epoch ms\
+\};\
+\
+type Filters = \{\
+  status: "all" | "open" | "done" | "archived";\
+  due: "any" | "overdue" | "today" | "next7"; // "next7" == THIS WEEK (rolling next 7 days incl. today)\
+  tag?: string;        // single include tag (MVP)\
+  searchText?: string; // live search\
+\};\
+\
+Persistence:\
+- Save data with `schemaVersion` for migrations.\
+- Migration sets `hasExplicitTime=false` for legacy tasks without time.\
+\
+THIS WEEK definition:\
+- Rolling next 7 days including today, based on local-day boundaries (not calendar week).\
+\
+Archive rule:\
+- If a task is done and its closed date is >7 days ago, mark it ARCHIVED.\
+- \'93ALL\'94 excludes archived; ARCHIVED view only appears when filter is set to archived.\
+\
+Startup archive aging:\
+- Apply archive aging immediately after loading persisted data and before first render.\
+- Persist only if archiving actually changed any task.\
+\
+Due-date semantics:\
+- Store due dates at local midnight for the selected date.\
+- Compare due buckets using local-day boundaries (today/overdue/this week).\
+- If a time is provided, store `hasExplicitTime=true` and combine date+time into `dueAt`.\
+- Same-day overdue is time-based when explicit time exists; otherwise date-only rules apply.\
+- When due dates share the same local day, explicit-time tasks sort before date-only tasks; times sort ascending.\
+- For due-today with explicit time, label uses \'93DUE IN N HOURS/MIN\'94 or \'93OVERDUE BY N HOURS/MIN\'94.\
+\
+Tag normalization rules:\
+- Trim whitespace, remove leading `#`, lowercase.\
+- Allow characters: `[a-z0-9_-]` only; remove everything else (including emojis).\
+- Truncate to max length 24; discard if empty.\
+- Dedupe per task and sort alphabetically for stable ordering.\
+}
