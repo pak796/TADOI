@@ -1,4 +1,5 @@
 import { diffLocalDays, startOfLocalDayMs } from "../domain/dates";
+import { formatTagForDisplay } from "../domain/tagIndex";
 import { Task } from "../domain/models";
 import { formatDate, getDueInLabel } from "../state/store";
 import { colorForTag, theme } from "../app/theme";
@@ -222,7 +223,7 @@ function TaskRow({ task, selected, now, pulseOn, fastPulseOn }: TaskRowProps) {
                     paddingRight: 1
                   }}
                 >
-                  <text>#{tag}</text>
+                  <text>{formatTagForDisplay(tag)}</text>
                 </box>
               ))
             ) : (

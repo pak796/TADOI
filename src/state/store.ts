@@ -7,6 +7,7 @@ import {
   parseTimeToMinutes,
   startOfLocalDayMs
 } from "../domain/dates";
+import { formatTagForDisplay } from "../domain/tagIndex";
 import {
   AppState,
   EditorDraft,
@@ -132,7 +133,7 @@ export function createDraftFromTask(task: Task): EditorDraft {
     title: task.title,
     dueText: task.dueAt ? formatDate(task.dueAt) : "",
     timeText: task.hasExplicitTime && task.dueAt ? formatLocalTimeHHmm(task.dueAt) : "",
-    tagsText: task.tags.map((tag) => `#${tag}`).join(" "),
+    tagsText: task.tags.map((tag) => formatTagForDisplay(tag)).join(" "),
     notes: task.notes ?? ""
   };
 }

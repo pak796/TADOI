@@ -1,56 +1,41 @@
 import { theme } from "../app/theme";
+import { formatTagForDisplay } from "../domain/tagIndex";
 
 type TagInputProps = {
   value: string;
   focused: boolean;
-  suggestionActive: boolean;
-  suggestions: string[];
-  suggestionHint?: string | null;
+  inlineSuggestion?: { full: string; remainder: string } | null;
   onChange: (value: string) => void;
-  onPick: (tag: string) => void;
 };
 
 export function TagInput({
   value,
   focused,
-  suggestionActive,
-  suggestions,
-  suggestionHint,
+  inlineSuggestion,
   onChange,
-  onPick
 }: TagInputProps) {
-  const options = suggestions.map((tag) => ({
-    name: `#${tag}`,
-    description: "",
-    value: tag
-  }));
+  const hasSuggestion = inlineSuggestion && inlineSuggestion.remainder.length > 0;
+  const prefix = hasSuggestion
+    ? inlineSuggestion.full.slice(0, inlineSuggestion.full.length - inlineSuggestion.remainder.length)
+    : "";
+  const displayPrefix = formatTagForDisplay(prefix);
 
   return (
     <box style={{ flexDirection: "column" }}>
       <input
         value={value}
         onChange={onChange}
-        focused={focused && !suggestionActive}
+        focused={focused}
         placeholder="#work #home"
         style={{ backgroundColor: theme.bg, color: theme.text }}
       />
-      {suggestionActive && options.length > 0 ? (
-        <box style={{ marginTop: 1 }}>
-          <select
-            focused
-            options={options}
-            onChange={(_, option) => {
-              if (option?.value) {
-                onPick(String(option.value));
-              }
-            }}
-            showScrollIndicator
-            style={{ flexGrow: 1, height: Math.min(5, options.length + 1) }}
-          />
+      {hasSuggestion ? (
+        <box style={{ flexDirection: "row", gap: 0, marginTop: 1 }}>
+          <text style={{ color: theme.muted }}>→ </text>
+          <text style={{ color: theme.text }}>{displayPrefix}</text>
+          <text style={{ color: theme.muted }}>{inlineSuggestion?.remainder}</text>
+          <text style={{ color: theme.muted }}> (press →)</text>
         </box>
-      ) : null}
-      {suggestionHint ? (
-        <text style={{ color: theme.muted, marginTop: 1 }}>{suggestionHint}</text>
       ) : null}
     </box>
   );

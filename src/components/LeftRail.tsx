@@ -1,6 +1,7 @@
 import { Filters, Mode } from "../domain/models";
 import { formatDate } from "../state/store";
 import { colorForTag, theme, styles } from "../app/theme";
+import { formatTagForDisplay } from "../domain/tagIndex";
 
 type LeftRailProps = {
   mode: Mode;
@@ -28,7 +29,7 @@ export function LeftRail({ mode, searchActive, helpOpen, filters, fastPulseOn }:
           : "LIST";
 
   const menuItems = ["LIST", "ADD", "EDIT", "SEARCH", "HELP"];
-  const statusLabel = filters.status.toUpperCase();
+  const statusLabel = filters.status === "all" ? "ACTIVE" : filters.status.toUpperCase();
   const statusBg =
     filters.status === "done"
       ? theme.ok
@@ -134,7 +135,7 @@ export function LeftRail({ mode, searchActive, helpOpen, filters, fastPulseOn }:
                 paddingRight: 1
               }}
             >
-              <text style={{ color: theme.bg }}>#{filters.tag}</text>
+              <text style={{ color: theme.bg }}>{formatTagForDisplay(filters.tag)}</text>
             </box>
           </box>
         ) : (

@@ -32,7 +32,7 @@ Deliverables:\
 5. **Tag autocomplete**: `#`-triggered suggestions with ranking by prefix + usage.\
 6. **Persistence**: disk-backed JSON and load on startup.\
 7. **Date autocomplete**: right-arrow completes due date incrementally (year \uc0\u8594  month \u8594  day).\
-8. **Inline tag autocomplete**: as you type tags, show a right-arrow accept suggestion for prior tags.\
+8. **Inline tag autocomplete**: as you type tags (with or without `#`), show a right-arrow inline completion for the remainder (e.g., `#wo` \uc0\u8594  `#work`); right arrow accepts.\
 9. **Colored tags**: tags display with automatically assigned colors (consistent per tag).\
 10. **Status colors**: default color coding for complete vs. incomplete tasks.\
 11. **Menu focus highlight**: selected menus are visibly highlighted to indicate current section.\
@@ -56,22 +56,24 @@ Deliverables:\
 29. **Top bar due info**: top bar shows task name with due label beneath it.\
 30. **Bottom bar summary**: show counts labeled RED (overdue), DUE TODAY (yellow), and DUE THIS WEEK (blue).\
 31. **Bottom bar completed**: add \'93N COMPLETED THIS WEEK\'94 (green).\
-32. **Left rail date**: show `TODAY: YYYY-MM-DD` under the version label.\
-33. **Archive rules**: tasks completed >7 days ago become ARCHIVED; archived tasks are excluded from \'93ALL\'94 and only appear under ARCHIVED filter.\
-34. **Top bar center**: task name is centered and displayed in uppercase; due label centered beneath.\
-35. **Due-today color**: due-today uses yellow (not red) across list/details/top bar; top bar is static (no pulsing).\
-36. **Details emphasis**: when a due/overdue task is selected, highlight due date and status in the details pane.\
-37. **Filter highlights (status)**: in the left rail filters, STATUS shows colored highlight (DONE=green, OPEN=blue, ARCHIVED=grey).\
-38. **Filter highlights (due)**: in the left rail filters, DUE shows colored highlight (OVERDUE flashes red/yellow, TODAY=yellow, THIS WEEK=blue).\
-39. **Due label update**: left rail DUE label shows \'93THIS WEEK\'94 for the rolling next-7-days filter.\
-40. **Task list flash scope**: only due-date and overdue/due-today indicators flash; task rows remain static.\
-41. **Selected overdue row**: if the selected task is overdue, the row highlight is red.\
-42. **Due-today right label**: the right-side \'93DUE TODAY\'94 label is always yellow-highlighted (even when not selected).\
-43. **Startup archive aging**: on app startup load, apply archive aging before first render; only persist if changes occur.\
-44. **Date-only due semantics**: due dates are stored at local midnight and all comparisons use local calendar days (not time-of-day).\
-45. **Tag normalization**: tags are normalized to lowercase ASCII `[a-z0-9_-]`, max length 24, deduped per task, and sorted alphabetically.\
-46. **Optional due time**: due dates can include an optional HH:mm time; same-day labels become time-based and overdue can be time-based.\
-47. **Selection-following scroll**: task list auto-scrolls so the selected row stays visible.\
+32. **Bottom bar ticker**: auto-rotate every 6s between summary and top tags (top 5 tags with total counts, rendered as a single tag-colored pill: `N #tag`).\
+33. **Left rail date/time**: show `DATE: YYYY-MM-DD` and `TIME: HH:mm:ss` under the version label.\
+34. **Archive rules**: tasks completed >7 days ago become ARCHIVED; archived tasks are excluded from \'93ACTIVE\'94 and only appear under ARCHIVED filter.\
+35. **Top bar center**: task name is centered and displayed in uppercase; due label centered beneath.\
+36. **Due-today color**: due-today uses yellow (not red) across list/details/top bar; top bar is static (no pulsing).\
+37. **Details emphasis**: when a due/overdue task is selected, highlight due date and status in the details pane.\
+38. **Filter highlights (status)**: in the left rail filters, STATUS shows colored highlight (DONE=green, OPEN=blue, ARCHIVED=grey).\
+39. **Filter highlights (due)**: in the left rail filters, DUE shows colored highlight (OVERDUE flashes red/yellow, TODAY=yellow, THIS WEEK=blue).\
+40. **Due label update**: left rail DUE label shows \'93THIS WEEK\'94 for the rolling next-7-days filter.\
+41. **Task list flash scope**: only due-date and overdue/due-today indicators flash; task rows remain static.\
+42. **Selected overdue row**: if the selected task is overdue, the row highlight is red.\
+43. **Due-today right label**: the right-side \'93DUE TODAY\'94 label is always yellow-highlighted (even when not selected).\
+44. **Startup archive aging**: on app startup load, apply archive aging before first render; only persist if changes occur.\
+45. **Date-only due semantics**: due dates are stored at local midnight and all comparisons use local calendar days (not time-of-day).\
+46. **Tag normalization**: tags are normalized to lowercase ASCII `[a-z0-9_-]`, max length 24, deduped per task, and sorted alphabetically.\
+47. **Optional due time**: due dates can include an optional HH:mm time; same-day labels become time-based and overdue can be time-based.\
+48. **Selection-following scroll**: task list auto-scrolls so the selected row stays visible.\
+49. **Details due time**: when a task has an explicit time, show `DUE TIME: HH:mm` in the details pane.\
 \
 ### Non-Goals (MVP)\
 - Sync, accounts, multi-device\
@@ -168,7 +170,7 @@ THIS WEEK definition:\
 \
 Archive rule:\
 - If a task is done and its closed date is >7 days ago, mark it ARCHIVED.\
-- \'93ALL\'94 excludes archived; ARCHIVED view only appears when filter is set to archived.\
+- \'93ACTIVE\'94 excludes archived; ARCHIVED view only appears when filter is set to archived.\
 \
 Startup archive aging:\
 - Apply archive aging immediately after loading persisted data and before first render.\
@@ -187,4 +189,5 @@ Tag normalization rules:\
 - Allow characters: `[a-z0-9_-]` only; remove everything else (including emojis).\
 - Truncate to max length 24; discard if empty.\
 - Dedupe per task and sort alphabetically for stable ordering.\
+- Display tags with exactly one leading `#` (stored tags remain bare).\
 }

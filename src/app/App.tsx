@@ -1,12 +1,13 @@
 import React, { useEffect, useReducer, useRef, useState } from "react";
 import { useKeyboard, useTerminalDimensions } from "@opentui/react";
-import { theme, layout } from "./theme";
+import { colorForTag, theme, layout } from "./theme";
 import { TaskList } from "../components/TaskList";
 import { DetailsPane } from "../components/DetailsPane";
 import { EditorPane } from "../components/EditorPane";
 import { LeftRail } from "../components/LeftRail";
 import { diffLocalDays, startOfLocalDayMs } from "../domain/dates";
 import { ensureSelectedVisible } from "../domain/scroll";
+import { computeTopTagStats } from "../domain/tagStats";
 import {
   applyArchiveAging,
   combineDueDateTime,
@@ -26,7 +27,9 @@ import {
   type LoadedData
 } from "../state/persistence";
 import {
-  normalizeTagQuery,
+  formatTagForDisplay,
+  getTagCompletion,
+  normalizeTagPrefix,
   normalizeTagsFromInput,
   rankTags,
   updateTagIndex
@@ -43,6 +46,8 @@ const focusOrder: EditorFocus[] = [
   "cancel"
 ];
 
+const TICKER_INTERVAL_MS = 6000;
+
 function nextFocus(current: EditorFocus, direction: 1 | -1): EditorFocus {
   const index = focusOrder.indexOf(current);
   const nextIndex = (index + direction + focusOrder.length) % focusOrder.length;
@@ -50,11 +55,12 @@ function nextFocus(current: EditorFocus, direction: 1 | -1): EditorFocus {
 }
 
 function getTagQuery(tagsText: string): string | null {
-  const tokens = tagsText.split(/\s+/).filter(Boolean);
+  if (/[\s,]$/.test(tagsText)) return null;
+  const tokens = tagsText.split(/[\s,]+/).filter(Boolean);
   if (tokens.length === 0) return null;
   const lastToken = tokens[tokens.length - 1];
-  if (!lastToken.startsWith("#")) return null;
-  return normalizeTagQuery(lastToken.slice(1));
+  const normalized = normalizeTagPrefix(lastToken);
+  return normalized.length ? normalized : null;
 }
 
 function getDueSuggestion(dueText: string, now: number): string | null {
@@ -103,13 +109,68 @@ function getDueSuggestion(dueText: string, now: number): string | null {
   return null;
 }
 
-function replaceLastTagToken(tagsText: string, tag: string): string {
-  const tokens = tagsText.split(/\s+/).filter(Boolean);
+function replaceLastTagToken(tagsText: string, tag: string, appendSpace = false): string {
+  const tokens = tagsText.split(/[\s,]+/).filter(Boolean);
   if (tokens.length === 0) {
-    return `#${tag}`;
+    return `${formatTagForDisplay(tag)}${appendSpace ? " " : ""}`;
   }
-  tokens[tokens.length - 1] = `#${tag}`;
-  return `${tokens.join(" ")} `;
+  tokens[tokens.length - 1] = formatTagForDisplay(tag);
+  return `${tokens.join(" ")}${appendSpace ? " " : ""}`;
+}
+
+type TagTickerSegment = {
+  tag: string;
+  total: number;
+  dueThisWeek: number;
+  displayTag: string;
+};
+
+const TAG_PILL_PADDING = 2;
+
+function truncateTagDisplay(value: string, maxLen: number): string {
+  if (value.length <= maxLen) return value;
+  if (maxLen <= 1) return "#";
+  if (maxLen === 2) return "#~";
+  return `${value.slice(0, maxLen - 1)}~`;
+}
+
+function buildTagTickerSegments(
+  stats: ReturnType<typeof computeTopTagStats>,
+  maxWidth: number
+): TagTickerSegment[] {
+  const separator = "  ";
+  const segments: TagTickerSegment[] = [];
+  let used = 0;
+
+  for (const stat of stats) {
+    const displayTag = formatTagForDisplay(stat.tag);
+    const countText = String(stat.total);
+    const segmentText = `${countText} ${displayTag}`;
+    let segmentLen = segmentText.length + TAG_PILL_PADDING;
+    const extra = segments.length ? separator.length : 0;
+
+    if (used + extra + segmentLen <= maxWidth) {
+      segments.push({ ...stat, displayTag });
+      used += extra + segmentLen;
+      continue;
+    }
+
+    const available = maxWidth - used - extra;
+    if (available <= 0) break;
+    const nonTagLen = countText.length + TAG_PILL_PADDING;
+    const maxTagLen = available - nonTagLen;
+    if (maxTagLen <= 1) break;
+
+    const truncatedTag = truncateTagDisplay(displayTag, maxTagLen);
+    const truncatedText = `${countText} ${truncatedTag}`;
+    segmentLen = truncatedText.length + TAG_PILL_PADDING;
+    if (used + extra + segmentLen <= maxWidth) {
+      segments.push({ ...stat, displayTag: truncatedTag });
+    }
+    break;
+  }
+
+  return segments;
 }
 
 type AppProps = {
@@ -129,11 +190,13 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
   const [state, dispatch] = useReducer(reducer, initialData, initState);
   const [pulseOn, setPulseOn] = useState(false);
   const [fastPulseOn, setFastPulseOn] = useState(false);
+  const [showTagTicker, setShowTagTicker] = useState(false);
   const skipInitialSaveRef = useRef(skipInitialSave);
   const [scrollOffset, setScrollOffset] = useState(0);
-  const { height: terminalHeight } = useTerminalDimensions();
+  const { height: terminalHeight, width: terminalWidth } = useTerminalDimensions();
 
   const now = Date.now();
+  const dayKey = startOfLocalDayMs(now);
   const visibleTasks = getVisibleTasks(state, now);
   const selectedTask = visibleTasks.find((task) => task.id === state.selectedId) ?? visibleTasks[0];
   const selectedIndex = visibleTasks.findIndex((task) => task.id === state.selectedId);
@@ -155,7 +218,7 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
     searchHeight;
   const visibleLines = Math.max(1, listContentHeight);
   const visibleRows = Math.max(1, Math.floor(visibleLines / taskRowHeight));
-  const startOfToday = startOfLocalDayMs(now);
+  const startOfToday = dayKey;
   const selectedDayDiff =
     selectedTask && selectedTask.status === "open" && selectedTask.dueAt !== undefined
       ? diffLocalDays(selectedTask.dueAt, startOfToday)
@@ -202,17 +265,23 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
     { overdue: 0, today: 0, next7: 0, completed7: 0 }
   );
 
+  const tagStats = React.useMemo(
+    () => computeTopTagStats(state.tasks, dayKey, 5),
+    [state.tasks, dayKey]
+  );
+
+  const bottomBarWidth = Math.max(0, terminalWidth - layout.railWidth);
+  const bottomBarContentWidth = Math.max(0, bottomBarWidth - 2);
+  const tagTickerSegments = React.useMemo(
+    () => buildTagTickerSegments(tagStats, bottomBarContentWidth),
+    [tagStats, bottomBarContentWidth]
+  );
+
   const tagQuery = state.editor ? getTagQuery(state.editor.tagsText) : null;
-  const tagSuggestions = tagQuery !== null ? rankTags(state.tagIndex, tagQuery) : [];
-  const tagSuggestionActive = tagQuery !== null && tagSuggestions.length > 0;
-  const tagInlineSuggestion =
-    tagQuery !== null && tagSuggestions.length > 0 && tagSuggestions[0] !== tagQuery
-      ? tagSuggestions[0]
-      : null;
-  const tagSuggestionHint =
-    state.editorFocus === "tags" && tagInlineSuggestion
-      ? `→ #${tagInlineSuggestion} (press →)`
-      : null;
+  const tagSuggestions = tagQuery ? rankTags(state.tagIndex, tagQuery) : [];
+  const tagInlineSuggestion = tagQuery
+    ? getTagCompletion(tagQuery, tagSuggestions)
+    : null;
   const dueSuggestion =
     state.editorFocus === "due" && state.editor
       ? getDueSuggestion(state.editor.dueText, now)
@@ -247,6 +316,13 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
     const id = setInterval(() => {
       setFastPulseOn((prev) => !prev);
     }, 700);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setShowTagTicker((prev) => !prev);
+    }, TICKER_INTERVAL_MS);
     return () => clearInterval(id);
   }, []);
 
@@ -402,18 +478,36 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
         return;
       }
       if (state.editorFocus === "tags" && tagInlineSuggestion) {
-        handlePickTag(tagInlineSuggestion);
+        handlePickTag(tagInlineSuggestion.full);
         return;
       }
     }
 
     if (name === "tab") {
+      if (state.editorFocus === "tags" && tagInlineSuggestion) {
+        const nextValue = replaceLastTagToken(
+          state.editor?.tagsText ?? "",
+          tagInlineSuggestion.full
+        );
+        dispatch({ type: "updateEditor", patch: { tagsText: nextValue } });
+      }
       const direction: 1 | -1 = shift ? -1 : 1;
       dispatch({
         type: "setEditorFocus",
         focus: nextFocus(state.editorFocus, direction)
       });
       return;
+    }
+
+    if ((name === "return" || name === "enter") && state.editorFocus === "tags") {
+      if (tagInlineSuggestion) {
+        const nextValue = replaceLastTagToken(
+          state.editor?.tagsText ?? "",
+          tagInlineSuggestion.full
+        );
+        dispatch({ type: "updateEditor", patch: { tagsText: nextValue } });
+        return;
+      }
     }
 
     if ((name === "return" || name === "enter") && state.editorFocus === "save") {
@@ -768,14 +862,13 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
                   mode={state.mode}
                   draft={state.editor}
                   focus={state.editorFocus}
-                  tagSuggestions={tagSuggestions}
-                  tagSuggestionActive={tagSuggestionActive}
-                  tagSuggestionHint={tagSuggestionHint}
+                  tagInlineSuggestion={
+                    state.editorFocus === "tags" ? tagInlineSuggestion : null
+                  }
                   dueSuggestionHint={dueSuggestionHint}
                   onUpdate={(patch) => dispatch({ type: "updateEditor", patch })}
                   onSave={saveEditor}
                   onCancel={cancelEditor}
-                  onPickTag={handlePickTag}
                 />
               ) : null}
             </box>
@@ -793,22 +886,49 @@ export function App({ initialData, skipInitialSave = false }: AppProps) {
             alignItems: "center"
           }}
         >
-          <box style={{ flexDirection: "row", gap: 2 }}>
-            <box style={{ backgroundColor: theme.warn, paddingLeft: 1, paddingRight: 1 }}>
-              <text style={{ color: theme.bg }}>{summary.overdue} OVERDUE</text>
+          {showTagTicker ? (
+            <box style={{ flexDirection: "row", gap: 0 }}>
+              {tagTickerSegments.length === 0 ? (
+                <text style={{ color: theme.muted }}>NO TAGS</text>
+              ) : (
+                tagTickerSegments.map((segment, index) => (
+                  <box key={segment.tag} style={{ flexDirection: "row", gap: 0 }}>
+                    {index > 0 ? (
+                      <text style={{ color: theme.muted }}>  </text>
+                    ) : null}
+                    <box
+                      style={{
+                        backgroundColor: colorForTag(segment.tag),
+                        paddingLeft: 1,
+                        paddingRight: 1
+                      }}
+                    >
+                      <text style={{ color: theme.bg }}>
+                        {segment.total} {segment.displayTag}
+                      </text>
+                    </box>
+                  </box>
+                ))
+              )}
             </box>
-            <box style={{ backgroundColor: theme.dueSoon, paddingLeft: 1, paddingRight: 1 }}>
-              <text style={{ color: theme.bg }}>{summary.today} DUE TODAY</text>
+          ) : (
+            <box style={{ flexDirection: "row", gap: 2 }}>
+              <box style={{ backgroundColor: theme.warn, paddingLeft: 1, paddingRight: 1 }}>
+                <text style={{ color: theme.bg }}>{summary.overdue} OVERDUE</text>
+              </box>
+              <box style={{ backgroundColor: theme.dueSoon, paddingLeft: 1, paddingRight: 1 }}>
+                <text style={{ color: theme.bg }}>{summary.today} DUE TODAY</text>
+              </box>
+              <box style={{ backgroundColor: theme.dueLater, paddingLeft: 1, paddingRight: 1 }}>
+                <text style={{ color: theme.bg }}>{summary.next7} DUE THIS WEEK</text>
+              </box>
+              <box style={{ backgroundColor: theme.ok, paddingLeft: 1, paddingRight: 1 }}>
+                <text style={{ color: theme.bg }}>
+                  {summary.completed7} COMPLETED THIS WEEK
+                </text>
+              </box>
             </box>
-            <box style={{ backgroundColor: theme.dueLater, paddingLeft: 1, paddingRight: 1 }}>
-              <text style={{ color: theme.bg }}>{summary.next7} DUE THIS WEEK</text>
-            </box>
-            <box style={{ backgroundColor: theme.ok, paddingLeft: 1, paddingRight: 1 }}>
-              <text style={{ color: theme.bg }}>
-                {summary.completed7} COMPLETED THIS WEEK
-              </text>
-            </box>
-          </box>
+          )}
         </box>
       </box>
 

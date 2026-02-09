@@ -6,28 +6,22 @@ type EditorPaneProps = {
   mode: Mode;
   draft: EditorDraft;
   focus: EditorFocus;
-  tagSuggestions: string[];
-  tagSuggestionActive: boolean;
-  tagSuggestionHint?: string | null;
+  tagInlineSuggestion?: { full: string; remainder: string } | null;
   dueSuggestionHint?: string | null;
   onUpdate: (patch: Partial<EditorDraft>) => void;
   onSave: () => void;
   onCancel: () => void;
-  onPickTag: (tag: string) => void;
 };
 
 export function EditorPane({
   mode,
   draft,
   focus,
-  tagSuggestions,
-  tagSuggestionActive,
-  tagSuggestionHint,
+  tagInlineSuggestion,
   dueSuggestionHint,
   onUpdate,
   onSave,
-  onCancel,
-  onPickTag
+  onCancel
 }: EditorPaneProps) {
   const heading = mode === "add" ? "ADD TASK" : "EDIT TASK";
 
@@ -76,11 +70,8 @@ export function EditorPane({
         <TagInput
           value={draft.tagsText}
           focused={focus === "tags"}
-          suggestionActive={focus === "tags" && tagSuggestionActive}
-          suggestions={tagSuggestions}
-          suggestionHint={tagSuggestionHint}
+          inlineSuggestion={focus === "tags" ? tagInlineSuggestion : null}
           onChange={(value) => onUpdate({ tagsText: value })}
-          onPick={onPickTag}
         />
       </box>
 

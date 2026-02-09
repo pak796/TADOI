@@ -1,4 +1,5 @@
 import { diffLocalDays, formatLocalTimeHHmm, startOfLocalDayMs } from "../domain/dates";
+import { formatTagForDisplay } from "../domain/tagIndex";
 import { Task } from "../domain/models";
 import { formatDate, getDueLabel } from "../state/store";
 import { colorForTag, theme } from "../app/theme";
@@ -125,7 +126,7 @@ export function DetailsPane({ task, now, pulseOn, fastPulseOn }: DetailsPaneProp
                   paddingRight: 1
                 }}
               >
-                <text>#{tag}</text>
+                <text>{formatTagForDisplay(tag)}</text>
               </box>
             ))}
           </box>

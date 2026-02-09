@@ -12,11 +12,20 @@ export function normalizeTag(raw: string): string | null {
   return truncated.length ? truncated : null;
 }
 
-export function normalizeTagQuery(raw: string): string {
+export function normalizeTagPrefix(raw: string): string {
   const trimmed = raw.trim().replace(/^#+/, "");
   const lowered = trimmed.toLowerCase();
   const normalized = lowered.replace(/[^a-z0-9_-]/g, "");
   return normalized.slice(0, MAX_TAG_LENGTH);
+}
+
+export function normalizeTagQuery(raw: string): string {
+  return normalizeTagPrefix(raw);
+}
+
+export function formatTagForDisplay(tag: string): string {
+  const trimmed = tag.trim().replace(/^#+/, "");
+  return trimmed ? `#${trimmed}` : "#";
 }
 
 export function normalizeTags(tags: string[]): string[] {
@@ -28,8 +37,21 @@ export function normalizeTags(tags: string[]): string[] {
 }
 
 export function normalizeTagsFromInput(input: string): string[] {
-  const tokens = input.split(/\s+/).filter(Boolean);
+  const tokens = input.split(/[\s,]+/).filter(Boolean);
   return normalizeTags(tokens);
+}
+
+export function getTagCompletion(
+  prefix: string,
+  tags: string[]
+): { full: string; remainder: string } | null {
+  const normalizedPrefix = normalizeTagPrefix(prefix);
+  if (!normalizedPrefix) return null;
+  const match = tags.find((tag) => tag.startsWith(normalizedPrefix));
+  if (!match) return null;
+  const remainder = match.slice(normalizedPrefix.length);
+  if (!remainder) return null;
+  return { full: match, remainder };
 }
 
 export function normalizeTagIndex(
@@ -87,7 +109,7 @@ export function rankTags(
   tagIndex: Record<string, TagIndexEntry>,
   query: string
 ): string[] {
-  const normalizedQuery = normalizeTagQuery(query);
+  const normalizedQuery = normalizeTagPrefix(query);
   const entries = Object.values(tagIndex);
   const filtered = normalizedQuery
     ? entries.filter((entry) => entry.tagName.startsWith(normalizedQuery))

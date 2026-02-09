@@ -96,10 +96,10 @@ Refs: OpenTUI quick start (`bun create tui`).  [oai_citation:8\'87GitHub](https:
 **Status**: Complete\
 **Implement**\
 - When a task is done and its closed date is >7 days ago, mark it ARCHIVED\
-- Archived tasks are excluded from \'93ALL\'94 and only shown when status filter is ARCHIVED\
+- Archived tasks are excluded from \'93ACTIVE\'94 and only shown when status filter is ARCHIVED\
 \
 **DoD**\
-- Done tasks older than 7 days disappear from ALL/OPEN/DONE views\
+- Done tasks older than 7 days disappear from ACTIVE/OPEN/DONE views\
 - ARCHIVED view shows only archived tasks\
 \
 ### T2.5 Startup archive aging\
@@ -341,6 +341,14 @@ Refs: `useKeyboard` patterns.  [oai_citation:9\'87GitHub](https://github.com/rem
 **DoD**\
 - Due date and status are visually emphasized for due/overdue selections\
 \
+### T4.1c Details due time display\
+**Status**: Complete\
+**Implement**\
+- When a task has an explicit time, show `DUE TIME: HH:mm` in the details pane\
+\
+**DoD**\
+- Details pane shows a due time line for tasks with explicit time\
+\
 ### T4.2 Add/Edit form skeleton\
 **Status**: Complete\
 **Implement**\
@@ -437,23 +445,23 @@ Refs: `useKeyboard` patterns.  [oai_citation:9\'87GitHub](https://github.com/rem
 **DoD**\
 - Suggestions align with normalized tags (no emoji/invalid chars)\
 \
-### T5.3 Suggestions dropdown UI\
+### T5.3 Inline suggestions UI\
 **Status**: Complete\
 **Implement**\
-- Use `<select>` for suggestion list anchored near tags input.\
-- Support Up/Down selection and Enter to apply.\
-Refs: `<select>` navigation and selection semantics.  [oai_citation:10\'87GitHub](https://github.com/remorses/ghostty-opentui?utm_source=chatgpt.com)\
+- Show an inline tag suggestion while typing without stealing input focus\
+- Keep dropdown optional; inline suggestion is primary\
 \
 **DoD**\
-- Suggestions appear when query active and tags exist.\
-- Enter applies selection; typing tags still allows new tag creation when no suggestions match.\
-- After save, tagIndex updates usageCount/lastUsedAt.\
+- Inline suggestion appears when a prefix matches a known tag\
+- Input remains focused and typing continues smoothly\
 \
 ### T5.4 Inline tag autocomplete (right-arrow accept)\
 **Status**: Complete\
 **Implement**\
-- While typing tags, show inline suggestion for previously used tags\
-- Right arrow accepts the suggestion into the current tag token\
+- Support typing tags with or without leading `#`\
+- Right arrow accepts the inline suggestion into the current token\
+- Space or comma can delimit multiple tags\
+- Display tags with exactly one leading `#`\
 \
 **DoD**\
 - As user types `#wo`, a suggestion like `#work` appears inline\
@@ -543,6 +551,18 @@ Refs: `<select>` navigation and selection semantics.  [oai_citation:10\'87GitHub
 **DoD**\
 - Bottom bar displays four labels with correct colors and counts\
 \
+### T6.13b Bottom bar info ticker\
+**Status**: Complete\
+**Implement**\
+- Auto-rotate every 6 seconds between summary view and a top-tags view\
+- Top-tags view shows top 5 tags as a single colored pill `N #tag` using canonical tag colors\
+- Truncate or drop tags to avoid wrapping\
+\
+**DoD**\
+- Bottom bar alternates between summary and top-tags without flicker\
+- Tag name color matches canonical tag color\
+- Tag count and tag name share the same colored pill\
+\
 ### T6.14 Filter highlight colors\
 **Status**: Complete\
 **Implement**\
@@ -591,13 +611,14 @@ Refs: `<select>` navigation and selection semantics.  [oai_citation:10\'87GitHub
 **DoD**\
 - Version string is visible and easy to update\
 \
-### T6.10b Left rail today date\
+### T6.10b Left rail date/time\
 **Status**: Complete\
 **Implement**\
-- Add `TODAY: YYYY-MM-DD` under the version label\
+- Add `DATE: YYYY-MM-DD` under the version label\
+- Add `TIME: HH:mm:ss` under the date\
 \
 **DoD**\
-- Today\'92s date is visible in the left rail\
+- Date and time (with seconds) are visible in the left rail\
 \
 ### T6.11 Top bar emphasis\
 **Status**: Complete\
