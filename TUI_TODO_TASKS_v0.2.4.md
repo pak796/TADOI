@@ -743,15 +743,24 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 ## Phase 7 — Quality Gates
 
 ### T7.1 80x24 & resize smoke test
-**Status**: Pending
+**Status**: Complete
 **DoD**
 - UI usable at 80x24.
 - Resize does not crash or overlap catastrophically.
+**QA Notes (2026-02-09 CST)**
+- Verified baseline render at `80x24` using `stty size` and `bun run dev`; full rail/list/details layout rendered and remained interactive.
+- Verified `<80x24` guard at `79x23`; app rendered centered warning: `Terminal too small (min 80x24). Current: 79x23.` with `Resize terminal to continue` and `Press q to quit`.
+- After returning terminal to `80x24`, normal UI resumed on next launch with no crash and no broken persisted state.
 
 ### T7.2 Persistence corruption prevention test
-**Status**: Pending
+**Status**: Complete
 **DoD**
 - Kill app mid-use (Ctrl+C), restart: JSON still parseable and tasks mostly intact (atomic rename prevents partial file).
+**QA Notes (2026-02-09 CST)**
+- Ran app with isolated path: `TODUI_DATA_PATH=/tmp/todui-qa-interrupt.json`.
+- Created task `alpha task`, then interrupted app with `Ctrl+C` during active runtime.
+- Verified persisted file exists and parses: `schemaVersion 3`, `tasks 1`, first task title `alpha task`.
+- Restarted app with same data path and confirmed task reloaded in UI (`ALPHA TASK` shown in top bar/details).
 
 ### T7.3 Packaging / run docs
 **Status**: Complete
@@ -761,6 +770,12 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
   - run commands
   - data file location
   - keybindings
+**Implementation notes**
+- README keybindings were synchronized to the centralized key router behavior:
+  - list navigation (`gg`, `G`, `ctrl+u/d`, `[]`, `{}`),
+  - sort cycling (`s`),
+  - saved views (`v`, `ctrl+s`, `1..9`),
+  - and global active-task tag-cycle behavior for `t`.
 
 ---
 

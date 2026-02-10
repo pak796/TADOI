@@ -43,17 +43,43 @@ If a save fails (permissions/disk/IO), ToDui keeps running and shows a persisten
 
 ## Keybindings
 
-- `j`/`k` or arrows: move selection
-- `a`: add task
-- `e`: edit task
-- `space`: toggle done
-- `d`: delete (confirm with `y`/`n`)
-- `/`: search
-- `f`: cycle status filter
-- `g`: cycle due filter
-- `t`: toggle tag filter (uses selected task tag)
-- `?`: help
-- `q`: quit
+- LIST mode navigation:
+  - `j`/`k` or `up`/`down`: move selection
+  - `gg`: jump to top
+  - `G`: jump to bottom
+  - `ctrl+u` / `PageUp`: page up
+  - `ctrl+d` / `PageDown`: page down
+  - `[` / `]`: previous/next overdue task
+  - `{` / `}`: previous/next due-today task
+- LIST mode task actions:
+  - `a`: add task
+  - `e`: edit selected task
+  - `c`: duplicate selected task
+  - `space`: toggle selected task done/open
+  - `d`: delete selected task (confirm modal `y` / `n` / `Esc`)
+  - `/`: open search
+  - `f`: cycle status filter
+  - `s`: cycle sort mode
+  - `g`: cycle due filter
+  - `t`: cycle tag filter across tags on all active (open) tasks
+- Saved views:
+  - `v`: toggle saved-views overlay
+  - `ctrl+s`: open "save current filters as view"
+  - `1..9`: apply saved view by slot
+  - In overlay: `j`/`k` or arrows move, `Enter` apply, `d` delete, `Esc`/`v` close
+- Editor mode:
+  - `Tab` / `Shift+Tab`: move between fields
+  - `ctrl+s`: save
+  - `Esc`: cancel and return to list
+  - `right arrow`: accept date/tag/time inline suggestions when present
+- Search mode:
+  - Type to filter task titles/tags
+  - `Enter` or `Esc`: return to list
+- Help mode:
+  - `H`: cycle theme
+  - `Esc` or `?`: close help
+- Quit:
+  - `q` in LIST mode
 
 ## Tag Autocomplete
 

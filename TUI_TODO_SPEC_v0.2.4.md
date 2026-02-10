@@ -751,3 +751,19 @@ In addition to existing quality gates:
 1. **Below-min-size behavior**: shrink terminal below 80×24; verify clean “too small” message, no crash.
 2. **Save failure**: point data path to an unwritable location; verify banner and continued operation.
 3. **Large list**: load/generate 2k tasks; verify navigation remains responsive and selection-following scroll remains correct.
+
+## F5) v0.2.4 Readiness Execution Log
+
+Execution snapshot (2026-02-09 CST):
+- Manual quality gate `T7.1` executed and passed:
+  - Verified normal layout and interaction at `80x24`.
+  - Verified centered guard at `79x23` with message:
+    - `Terminal too small (min 80x24). Current: 79x23.`
+  - Verified safe recovery to normal UI after restoring supported size.
+- Manual quality gate `T7.2` executed and passed:
+  - Ran with isolated persistence path (`TODUI_DATA_PATH=/tmp/todui-qa-interrupt.json`).
+  - Created task data, interrupted runtime with `Ctrl+C`, restarted, and confirmed persisted JSON remained parseable and task data loaded.
+- Documentation sync:
+  - README keybindings now reflect current router behavior, including:
+    - `gg` / `G`, paging (`ctrl+u` / `ctrl+d`), attention jumps (`[]`, `{}`),
+      sort cycling (`s`), saved views (`v`, `ctrl+s`, `1..9`), and global active-tag cycling (`t`).
