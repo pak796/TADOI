@@ -1,0 +1,19 @@
+{
+  "tasks": [
+    {
+      "id": "legacy-no-schema-1",
+      "title": "Legacy No Schema",
+      "status": "open",
+      "createdAt": 1700000000000,
+      "updatedAt": 1700000000500,
+      "tags": ["#Work", "work", "ALPHA"]
+    }
+  ],
+  "tagIndex": {
+    "work": {
+      "tagName": "work",
+      "usageCount": 1,
+      "lastUsedAt": 1700000000500
+    }
+  }
+}

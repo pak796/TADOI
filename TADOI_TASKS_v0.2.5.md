@@ -782,7 +782,6 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 ## Nice-to-haves (v1.1)
 - Multi-tag filter (AND)
 - Notes multiline (textarea if available)
-- Import/export JSON
 - User-defined/custom-imported color palettes
 - SQLite persistence
 
@@ -1406,3 +1405,67 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 **DoD**
 - Signed installer artifacts are produced in CI for macOS/Windows targets.
 - Installer QA matrix and rollback strategy are documented.
+
+---
+
+# Phase 15 — v0.2.5 Data Portability (Import/Export)
+
+> Scope note: this phase adds CLI-based full-state portability only. No interactive import/export UI is added to runtime TUI flows.
+
+## T15.1 CLI export command
+**Status**: Complete
+**Implement**
+- Add `tadoi export --out <path> [--format json] [--pretty] [--redact]`.
+- Load local state through strict pipeline (`parse -> validate -> migrate -> validate`) without corruption-recovery side effects.
+- Export current schema envelope and settings sidecar.
+- Write output atomically (temp + rename).
+- Add optional redaction (blank title/notes) for share-safe exports.
+
+**DoD**
+- Export writes file to `--out` and exits non-zero on validation/load/write failures.
+- Success summary prints out path, task count, and schemaVersion.
+
+## T15.2 CLI import command (merge/replace, backup, dry-run)
+**Status**: Complete
+**Implement**
+- Add `tadoi import --in <path> [--mode merge|replace] [--backup|--backup=false|--no-backup] [--dry-run] [--yes] [--pretty]`.
+- Default mode is `merge`; default backup is enabled.
+- `replace` requires explicit `--yes`.
+- Accept missing `schemaVersion` by coercing to `0` then migrate stepwise to current schema.
+- Merge tasks by `id` with conflict policy:
+  - newest `updatedAt` wins,
+  - then newest `createdAt`,
+  - final tie-breaker: incoming wins.
+- Saved views merge by name with newest `updatedAt`; incoming wins ties.
+- Recompute `tagIndex` from resulting tasks for deterministic drift-free state.
+- Replace mode overwrites persisted state after optional backup.
+- Dry-run executes full pipeline and summary only; no writes.
+
+**DoD**
+- Merge mode applies deterministic conflict resolution and writes validated current schema state.
+- Replace mode refuses to run without `--yes`.
+- Backup precedes overwrite and import aborts if backup creation fails.
+- Settings sidecar is applied when present; settings-write failure returns non-zero with explicit partial-success message.
+
+## T15.3 Help overlay data portability docs
+**Status**: Complete
+**Implement**
+- Update Help overlay with `DATA: IMPORT / EXPORT` section.
+- Show resolved data path.
+- Include export/import command examples and safety notes (merge conflict policy, replace overwrite caution, redaction guidance).
+
+**DoD**
+- Help overlay presents copyable command examples and current resolved data path.
+- Merge/replace safety semantics are visible in-app.
+
+## T15.4 Portability test coverage + fixtures
+**Status**: Complete
+**Implement**
+- Add pure-function tests for merge conflict resolution, missing timestamp handling, deterministic tie-breakers, tag-index recompute, and redaction behavior.
+- Add CLI parser tests for required args, unknown flags, default mode/backup behavior, and replace `--yes` guard.
+- Add legacy import fixture without `schemaVersion` and verify migration to current schema.
+- Add import integration test for backup naming/content prior to replace overwrite.
+
+**DoD**
+- Tests cover conflict/tie policy, guard rails, legacy migration, and backup behavior.
+- `bun run test`, `bun run test:coverage`, `bun run typecheck`, and `bun run brand:check` remain green.

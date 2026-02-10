@@ -7,6 +7,7 @@ import {
   resetSettingsStateForTests,
   resolveSettingsPaths,
   saveSettingsDebounced,
+  saveSettingsStrict,
   type SettingsFsOps
 } from "./settings";
 
@@ -137,5 +138,51 @@ describe("saveSettingsDebounced", () => {
     expect(fallbackExists).toBe(true);
     const fallbackRaw = await fs.readFile(fallback, "utf8");
     expect(JSON.parse(fallbackRaw)).toEqual({ themeId: "retro" });
+  });
+});
+
+describe("saveSettingsStrict", () => {
+  it("writes settings immediately to preferred path", async () => {
+    const homeDir = await makeTempDir();
+    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
+
+    const result = await saveSettingsStrict(
+      { themeId: "retro" },
+      { filePath: primary, homeDir, platform: "linux" }
+    );
+
+    expect(result.resolvedPath).toBe(primary);
+    expect(result.usedFallback).toBe(false);
+    const raw = await fs.readFile(primary, "utf8");
+    expect(JSON.parse(raw)).toEqual({ themeId: "retro" });
+  });
+
+  it("falls back from primary to fallback path when primary write fails", async () => {
+    const homeDir = await makeTempDir();
+    const { primary, fallback } = resolveSettingsPaths({ homeDir, platform: "linux" });
+
+    const fsOps: SettingsFsOps = {
+      ...fs,
+      writeFile: (async (targetPath, data, encoding) => {
+        if (String(targetPath) === primary) {
+          throw new Error("primary write failed");
+        }
+        return fs.writeFile(
+          targetPath,
+          data as Parameters<typeof fs.writeFile>[1],
+          encoding as Parameters<typeof fs.writeFile>[2]
+        );
+      }) as SettingsFsOps["writeFile"]
+    };
+
+    const result = await saveSettingsStrict(
+      { themeId: "highContrast" },
+      { homeDir, platform: "linux", fsOps }
+    );
+
+    expect(result.resolvedPath).toBe(fallback);
+    expect(result.usedFallback).toBe(true);
+    const raw = await fs.readFile(fallback, "utf8");
+    expect(JSON.parse(raw)).toEqual({ themeId: "highContrast" });
   });
 });

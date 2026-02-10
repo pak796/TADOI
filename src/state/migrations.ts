@@ -4,9 +4,19 @@ import type { LoadedData } from "./persistence";
 type MigrationFn = (state: LoadedData) => LoadedData;
 
 const migrations: Record<number, MigrationFn> = {
+  0: migrateV0ToV1,
   1: migrateV1ToV2,
   2: migrateV2ToV3
 };
+
+function migrateV0ToV1(state: LoadedData): LoadedData {
+  return {
+    schemaVersion: 1,
+    tasks: Array.isArray(state.tasks) ? state.tasks : [],
+    tagIndex: normalizeTagIndex(state.tagIndex ?? {}),
+    savedViews: []
+  };
+}
 
 function migrateV1ToV2(state: LoadedData): LoadedData {
   const tasks = state.tasks.map((task) => {

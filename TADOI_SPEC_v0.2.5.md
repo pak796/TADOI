@@ -842,3 +842,84 @@ Future requirements (outside this phase):
 - macOS signing + notarization pipeline.
 - Windows code signing + installer toolchain selection.
 - CI secrets and release hardening for installer generation.
+
+---
+
+# Appendix H — v0.2.5 Data Portability (Import/Export)
+
+This appendix defines CLI-only portability for full persisted state transfer.
+Scope is import/export tooling and documentation only; no interactive in-app import/export workflow is included.
+
+## H1) CLI Surface
+
+Export:
+- `tadoi export --out <path> [--format json] [--pretty] [--redact]`
+
+Import:
+- `tadoi import --in <path> [--mode merge|replace] [--backup|--backup=false|--no-backup] [--dry-run] [--yes] [--pretty]`
+
+Replace guard:
+- `--mode replace` must include `--yes` or import exits non-zero.
+
+## H2) Portability Payload Contract
+
+Export payload includes:
+- Persisted envelope: `{ schemaVersion, tasks, tagIndex, savedViews }`
+- Settings sidecar: `{ settings }` where `settings.themeId` is persisted when available
+
+Notes:
+- Filters remain runtime/UI state and are not imported/exported because they are not persisted in the primary data envelope.
+- Unknown extra fields remain tolerated by strict validation behavior.
+
+## H3) Import Validation + Migration Pipeline
+
+Required pipeline:
+1. Parse JSON
+2. Minimal validation
+3. Migrate stepwise to current schema
+4. Strict validation
+
+Legacy handling:
+- Missing `schemaVersion` is coerced to `0` and then migrated through required steps to current schema.
+- Import fails non-zero if migration or strict validation fails.
+
+## H4) Merge/Replace Policy
+
+### Merge mode (default)
+- Tasks are merged by `id`.
+- Task conflict resolution:
+1. Newest `updatedAt` wins (`missing => 0`)
+2. If tied, newest `createdAt` wins (`missing => 0`)
+3. If still tied, incoming wins (deterministic)
+- Saved views merge by name (case-insensitive):
+1. Newest `updatedAt` wins
+2. If tied, incoming wins
+- `tagIndex` is recomputed from merged tasks (stored tagIndex is not merged) for deterministic drift-free output.
+
+### Replace mode
+- Imported state replaces local persisted envelope.
+- Requires `--yes`.
+- Backup is performed before overwrite when enabled.
+
+## H5) Backup + Write Safety
+
+Backup behavior:
+- Default backup is enabled for merge and replace.
+- Backup filename pattern:
+  - `tadoi_data.json.backup.YYYYMMDD-HHMMSS`
+  - with numeric suffix (`.1`, `.2`, …) on collisions
+- If backup creation fails, import aborts and does not overwrite local data.
+
+Write behavior:
+- State writes are atomic (temp + rename).
+- Dry-run performs parse/validate/migrate/merge summary only; no backup/write side effects.
+- If settings apply fails after state write, import exits non-zero with explicit partial-success messaging.
+
+## H6) Help Overlay Documentation Contract
+
+Help overlay must include a `DATA: IMPORT / EXPORT` section with:
+- resolved data path
+- export/import examples
+- merge conflict note (`updatedAt` winner policy)
+- replace overwrite warning + backup note
+- sharing caution with `--redact`

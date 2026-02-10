@@ -4,8 +4,11 @@ import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
 import {
+  createDataBackup,
   LoadedData,
+  loadStateStrict,
   PersistenceFsOps,
+  nextTimestampedSiblingPath,
   resolveDataPath,
   safeLoadState,
   saveStateDebounced
@@ -206,6 +209,74 @@ describe("safeLoadState", () => {
     const files = await fs.readdir(dir);
     const backups = files.filter((name) => name.includes(".corrupt."));
     expect(backups).toHaveLength(2);
+  });
+});
+
+describe("loadStateStrict", () => {
+  it("returns empty state when file is missing", async () => {
+    const dir = await makeTempDir();
+    const filePath = path.join(dir, "missing.json");
+    const result = await loadStateStrict({ filePath });
+    expect(result.data.tasks).toHaveLength(0);
+    expect(result.didMigrate).toBe(false);
+  });
+
+  it("throws on malformed json without mutating files", async () => {
+    const dir = await makeTempDir();
+    const filePath = path.join(dir, "tadoi_data.json");
+    await fs.writeFile(filePath, "{broken", "utf8");
+
+    await expect(loadStateStrict({ filePath })).rejects.toThrow("Failed to parse JSON");
+    const files = await fs.readdir(dir);
+    expect(files.some((name) => name.includes(".corrupt."))).toBe(false);
+  });
+});
+
+describe("backup helpers", () => {
+  it("creates timestamped backup copies with deterministic suffixing", async () => {
+    const dir = await makeTempDir();
+    const filePath = path.join(dir, "tadoi_data.json");
+    await fs.writeFile(filePath, "{\"ok\":true}", "utf8");
+
+    const now = new Date("2026-02-10T12:34:56");
+    const firstBackup = await createDataBackup(filePath, { now });
+    const secondBackup = await createDataBackup(filePath, { now });
+
+    expect(firstBackup).toBeDefined();
+    expect(secondBackup).toBeDefined();
+    expect(path.basename(firstBackup as string)).toMatch(
+      /^tadoi_data\.json\.backup\.20260210-123456$/
+    );
+    expect(path.basename(secondBackup as string)).toMatch(
+      /^tadoi_data\.json\.backup\.20260210-123456\.1$/
+    );
+
+    const copiedRaw = await fs.readFile(firstBackup as string, "utf8");
+    expect(copiedRaw).toBe("{\"ok\":true}");
+  });
+
+  it("returns undefined when source backup file is missing", async () => {
+    const dir = await makeTempDir();
+    const filePath = path.join(dir, "missing.json");
+    const backup = await createDataBackup(filePath, { now: new Date("2026-02-10T00:00:00") });
+    expect(backup).toBeUndefined();
+  });
+
+  it("builds next timestamped sibling path for backup and corrupt labels", async () => {
+    const dir = await makeTempDir();
+    const filePath = path.join(dir, "tadoi_data.json");
+    await fs.writeFile(path.join(dir, "tadoi_data.json.backup.20260210-120000"), "", "utf8");
+    await fs.writeFile(path.join(dir, "tadoi_data.json.corrupt.20260210-120000"), "", "utf8");
+
+    const backupPath = await nextTimestampedSiblingPath(filePath, "backup", {
+      now: new Date("2026-02-10T12:00:00")
+    });
+    const corruptPath = await nextTimestampedSiblingPath(filePath, "corrupt", {
+      now: new Date("2026-02-10T12:00:00")
+    });
+
+    expect(path.basename(backupPath)).toBe("tadoi_data.json.backup.20260210-120000.1");
+    expect(path.basename(corruptPath)).toBe("tadoi_data.json.corrupt.20260210-120000.1");
   });
 });
 

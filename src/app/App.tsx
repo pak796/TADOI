@@ -1666,6 +1666,16 @@ export function App({
             </box>
             <text>Data file:</text>
             <text>{getDataFilePath()}</text>
+            <text>DATA: IMPORT / EXPORT</text>
+            <text>Resolved data path: {getDataFilePath()}</text>
+            <text>tadoi export --out ./tadoi_export.json --pretty</text>
+            <text>tadoi export --out ./tadoi_export_redacted.json --redact --pretty</text>
+            <text>tadoi import --in ./tadoi_export.json --mode merge --dry-run</text>
+            <text>tadoi import --in ./tadoi_export.json --mode merge --backup --pretty</text>
+            <text>tadoi import --in ./tadoi_export.json --mode replace --backup --yes</text>
+            <text>MERGE conflicts: newest updatedAt wins (then incoming tie-break).</text>
+            <text>REPLACE overwrites local data; backups are created first.</text>
+            <text>Use --redact before sharing exports.</text>
             <text style={{ marginTop: 1 }}>
               Vibe coded by Patrick Kazar and GPT-5.2-Codex
             </text>

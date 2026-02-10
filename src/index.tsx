@@ -7,6 +7,7 @@ import { normalizeTagIndex, normalizeTags } from "./domain/tagIndex";
 import { loadSettings } from "./settings/settings";
 import { CURRENT_SCHEMA_VERSION, safeLoadState } from "./state/persistence";
 import { applyArchiveAging } from "./state/store";
+import { runPortabilityCommand } from "./cli/portabilityCommands";
 import {
   APP_NAME,
   APP_TAGLINE,
@@ -34,17 +35,30 @@ function printHelp(showLogo: boolean): void {
   console.log(APP_TAGLINE);
   console.log("");
   console.log(`Usage: ${CLI_NAME} [options]`);
+  console.log(`       ${CLI_NAME} <command> [options]`);
   console.log("");
   console.log("Options:");
   console.log("  -h, --help     Show this help");
   console.log("      --no-logo  Hide ASCII logo in app header");
+  console.log("");
+  console.log("Commands:");
+  console.log("  export          Export full persisted state (plus settings)");
+  console.log("  import          Import state from a JSON export");
+  console.log(`  Run '${CLI_NAME} <command> --help' for command-specific flags`);
   console.log("");
   console.log("Environment:");
   console.log(`  ${ENV_VARS.DATA_PATH}=<path>   Override data file location`);
   console.log(`  ${ENV_VARS.PERF_DEBUG}=1        Enable perf debug logs`);
 }
 
-const cliOptions = parseCliOptions(process.argv.slice(2));
+const argv = process.argv.slice(2);
+const command = argv[0];
+if (command === "export" || command === "import") {
+  const exitCode = await runPortabilityCommand(command, argv.slice(1));
+  process.exit(exitCode);
+}
+
+const cliOptions = parseCliOptions(argv);
 if (cliOptions.showHelp) {
   printHelp(cliOptions.showLogo);
   process.exit(0);

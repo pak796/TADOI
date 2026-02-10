@@ -64,6 +64,27 @@ export type SaveStateResult =
     };
 
 export type SaveStateResultCallback = (result: SaveStateResult) => void;
+export type StrictLoadOptions = {
+  filePath?: string;
+  fsOps?: PersistenceFsOps;
+};
+
+export type StrictLoadResult = {
+  data: LoadedData;
+  resolvedPath: string;
+  didMigrate: boolean;
+};
+
+export type WriteJsonAtomicOptions = {
+  filePath?: string;
+  fsOps?: PersistenceFsOps;
+  pretty?: boolean;
+};
+
+export type CreateDataBackupOptions = {
+  now?: Date;
+  fsOps?: PersistenceFsOps;
+};
 
 function pathApiForPlatform(platform: NodeJS.Platform): PathApi {
   return platform === "win32" ? path.win32 : path.posix;
@@ -145,18 +166,7 @@ async function nextBackupPath(
   now: Date,
   fsOps: PersistenceFsOps
 ): Promise<string> {
-  const dir = path.dirname(filePath);
-  const base = path.basename(filePath);
-  const stamp = formatBackupTimestamp(now);
-  let candidate = path.join(dir, `${base}.corrupt.${stamp}`);
-  let suffix = 1;
-
-  while (await pathExists(candidate, fsOps)) {
-    candidate = path.join(dir, `${base}.corrupt.${stamp}.${suffix}`);
-    suffix += 1;
-  }
-
-  return candidate;
+  return nextTimestampedSiblingPath(filePath, "corrupt", { now, fsOps });
 }
 
 async function findExistingBackup(
@@ -304,20 +314,140 @@ export async function loadState(): Promise<LoadedData> {
   return result.data;
 }
 
+export async function loadStateStrict(options: StrictLoadOptions = {}): Promise<StrictLoadResult> {
+  const filePath = options.filePath ?? DATA_FILE;
+  const fsOps = options.fsOps ?? DEFAULT_FS_OPS;
+  let raw = "";
+
+  try {
+    raw = await fsOps.readFile(filePath, "utf8");
+  } catch (error: unknown) {
+    if (isMissingFileError(error)) {
+      return {
+        data: emptyData(),
+        resolvedPath: filePath,
+        didMigrate: false
+      };
+    }
+    throw new Error(
+      `Failed to read data file at ${filePath}: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error: unknown) {
+    throw new Error(
+      `Failed to parse JSON at ${filePath}: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+
+  const preValidation = validatePersistedState(parsed, "minimal");
+  if (!preValidation.ok) {
+    throw new Error(
+      `Minimal validation failed for ${filePath}: ${preValidation.errors.join("; ")}`
+    );
+  }
+
+  let migrated: LoadedData;
+  try {
+    migrated = migratePersistedStateToCurrent(
+      preValidation.data,
+      CURRENT_SCHEMA_VERSION
+    );
+  } catch (error: unknown) {
+    throw new Error(
+      `Migration failed for ${filePath}: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+
+  const postValidation = validatePersistedState(migrated, "strict");
+  if (!postValidation.ok) {
+    throw new Error(
+      `Strict validation failed for ${filePath}: ${postValidation.errors.join("; ")}`
+    );
+  }
+
+  return {
+    data: postValidation.data,
+    resolvedPath: filePath,
+    didMigrate: preValidation.data.schemaVersion !== postValidation.data.schemaVersion
+  };
+}
+
+export async function writeJsonAtomic(
+  payload: unknown,
+  options: WriteJsonAtomicOptions = {}
+): Promise<void> {
+  const filePath = options.filePath ?? DATA_FILE;
+  const fsOps = options.fsOps ?? DEFAULT_FS_OPS;
+  const pretty = options.pretty !== false;
+  await fsOps.mkdir(path.dirname(filePath), { recursive: true });
+  const tmpFile = `${filePath}.tmp`;
+  const content = pretty
+    ? JSON.stringify(payload, null, 2)
+    : JSON.stringify(payload);
+  await fsOps.writeFile(tmpFile, content, "utf8");
+  await fsOps.rename(tmpFile, filePath);
+}
+
+export async function nextTimestampedSiblingPath(
+  filePath: string,
+  label: "corrupt" | "backup",
+  options: CreateDataBackupOptions = {}
+): Promise<string> {
+  const fsOps = options.fsOps ?? DEFAULT_FS_OPS;
+  const now = options.now ?? new Date();
+  const dir = path.dirname(filePath);
+  const base = path.basename(filePath);
+  const stamp = formatBackupTimestamp(now);
+  let candidate = path.join(dir, `${base}.${label}.${stamp}`);
+  let suffix = 1;
+
+  while (await pathExists(candidate, fsOps)) {
+    candidate = path.join(dir, `${base}.${label}.${stamp}.${suffix}`);
+    suffix += 1;
+  }
+
+  return candidate;
+}
+
+export async function createDataBackup(
+  filePath: string,
+  options: CreateDataBackupOptions = {}
+): Promise<string | undefined> {
+  const fsOps = options.fsOps ?? DEFAULT_FS_OPS;
+  const now = options.now ?? new Date();
+
+  try {
+    await fsOps.access(filePath);
+  } catch (error: unknown) {
+    if (isMissingFileError(error)) {
+      return undefined;
+    }
+    throw new Error(
+      `Unable to access source data file for backup at ${filePath}: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+
+  const backupPath = await nextTimestampedSiblingPath(filePath, "backup", {
+    now,
+    fsOps
+  });
+  await fsOps.copyFile(filePath, backupPath);
+  return backupPath;
+}
+
 async function writeState(
   data: LoadedData,
   filePath = DATA_FILE,
   fsOps: PersistenceFsOps = DEFAULT_FS_OPS
 ): Promise<void> {
-  await fsOps.mkdir(path.dirname(filePath), { recursive: true });
-  const tmpFile = `${filePath}.tmp`;
-  const payload = JSON.stringify(
+  await writeJsonAtomic(
     { ...data, schemaVersion: data.schemaVersion ?? CURRENT_SCHEMA_VERSION },
-    null,
-    2
+    { filePath, fsOps, pretty: true }
   );
-  await fsOps.writeFile(tmpFile, payload, "utf8");
-  await fsOps.rename(tmpFile, filePath);
 }
 
 export function saveStateDebounced(

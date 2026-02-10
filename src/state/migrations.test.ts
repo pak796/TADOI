@@ -33,6 +33,24 @@ describe("migratePersistedStateToCurrent", () => {
     expect(validated.ok).toBe(true);
   });
 
+  it("migrates legacy schema-0 payload to v3 and validates", async () => {
+    const fixturePath = fileURLToPath(
+      new URL("./__fixtures__/persisted.legacy.no-schema.json", import.meta.url).href
+    );
+    const raw = await fs.readFile(fixturePath, "utf8");
+    const parsed = JSON.parse(raw) as Omit<LoadedData, "schemaVersion">;
+    const input: LoadedData = {
+      ...parsed,
+      schemaVersion: 0
+    };
+
+    const migrated = migratePersistedStateToCurrent(input, 3);
+    expect(migrated.schemaVersion).toBe(3);
+    expect(migrated.tasks[0]?.tags).toEqual(["alpha", "work"]);
+    const validated = validatePersistedState(migrated, "strict");
+    expect(validated.ok).toBe(true);
+  });
+
   it("throws on unsupported future schema", () => {
     const input: LoadedData = {
       schemaVersion: 99,

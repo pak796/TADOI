@@ -34,6 +34,11 @@ export type LoadSettingsResult = {
   resolvedPath: string;
 };
 
+export type SaveSettingsStrictResult = {
+  resolvedPath: string;
+  usedFallback: boolean;
+};
+
 const DEFAULT_SETTINGS: TadoiSettings = {
   themeId: "default"
 };
@@ -150,6 +155,42 @@ export function saveSettingsDebounced(
       }
     })();
   }, delayMs);
+}
+
+export async function saveSettingsStrict(
+  settings: TadoiSettings,
+  options: SaveSettingsOptions = {}
+): Promise<SaveSettingsStrictResult> {
+  const fsOps = options.fsOps ?? DEFAULT_FS_OPS;
+  const { primary, fallback } = resolveSettingsPaths(options);
+  const preferredPath = options.filePath ?? lastResolvedPath ?? primary;
+  const normalized = normalizeSettings(settings);
+
+  try {
+    await writeSettings(normalized, preferredPath, fsOps);
+    lastResolvedPath = preferredPath;
+    return { resolvedPath: preferredPath, usedFallback: false };
+  } catch (primaryError: unknown) {
+    if (preferredPath === primary) {
+      try {
+        await writeSettings(normalized, fallback, fsOps);
+        lastResolvedPath = fallback;
+        return { resolvedPath: fallback, usedFallback: true };
+      } catch (fallbackError: unknown) {
+        const primaryMessage =
+          primaryError instanceof Error ? primaryError.message : String(primaryError);
+        const fallbackMessage =
+          fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+        throw new Error(
+          `Failed to write settings to ${primary} (${primaryMessage}) and fallback ${fallback} (${fallbackMessage})`
+        );
+      }
+    }
+
+    const preferredMessage =
+      primaryError instanceof Error ? primaryError.message : String(primaryError);
+    throw new Error(`Failed to write settings to ${preferredPath}: ${preferredMessage}`);
+  }
 }
 
 export function getDefaultSettings(): TadoiSettings {
