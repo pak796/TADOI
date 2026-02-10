@@ -313,6 +313,24 @@ describe("handleKey", () => {
       focus: FocusTarget.TASK_LIST
     };
     expect(run({ name: "j", sequence: "j" }, { uiState: helpState })).toEqual([]);
+    expect(run({ name: "up" }, { uiState: helpState })).toEqual([
+      { scope: "ui", type: "HELP_MOVE_SECTION_FOCUS", delta: -1 }
+    ]);
+    expect(run({ name: "down" }, { uiState: helpState })).toEqual([
+      { scope: "ui", type: "HELP_MOVE_SECTION_FOCUS", delta: 1 }
+    ]);
+    expect(run({ name: "left" }, { uiState: helpState })).toEqual([
+      { scope: "ui", type: "HELP_SET_FOCUSED_SECTION_EXPANDED", expanded: false }
+    ]);
+    expect(run({ name: "right" }, { uiState: helpState })).toEqual([
+      { scope: "ui", type: "HELP_SET_FOCUSED_SECTION_EXPANDED", expanded: true }
+    ]);
+    expect(run({ name: "space" }, { uiState: helpState })).toEqual([
+      { scope: "ui", type: "HELP_TOGGLE_FOCUSED_SECTION" }
+    ]);
+    expect(run({ name: "enter" }, { uiState: helpState })).toEqual([
+      { scope: "ui", type: "HELP_TOGGLE_FOCUSED_SECTION" }
+    ]);
     expect(run({ name: "h", sequence: "h" }, { uiState: helpState })).toEqual([
       { scope: "ui", type: "CYCLE_THEME" }
     ]);

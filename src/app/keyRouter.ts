@@ -44,6 +44,13 @@ export type KeyRouterAction =
   | { scope: "ui"; type: "CANCEL_SAVE_VIEW_PROMPT" }
   | { scope: "ui"; type: "MOVE_DASHBOARD_TAG_SELECTION"; delta: 1 | -1 }
   | { scope: "ui"; type: "SCROLL_EDITOR_PAGE"; direction: 1 | -1 }
+  | { scope: "ui"; type: "HELP_MOVE_SECTION_FOCUS"; delta: 1 | -1 }
+  | { scope: "ui"; type: "HELP_TOGGLE_FOCUSED_SECTION" }
+  | {
+      scope: "ui";
+      type: "HELP_SET_FOCUSED_SECTION_EXPANDED";
+      expanded: boolean;
+    }
   | { scope: "ui"; type: "CYCLE_THEME" }
   | { scope: "ui"; type: "TOGGLE_FLASH_MODE" }
   | { scope: "domain"; type: "EXIT_APP" }
@@ -241,6 +248,25 @@ export function handleKey(
   }
 
   if (mode === Mode.HELP) {
+    if (name === "up") {
+      return [{ scope: "ui", type: "HELP_MOVE_SECTION_FOCUS", delta: -1 }];
+    }
+    if (name === "down") {
+      return [{ scope: "ui", type: "HELP_MOVE_SECTION_FOCUS", delta: 1 }];
+    }
+    if (name === "left") {
+      return [
+        { scope: "ui", type: "HELP_SET_FOCUSED_SECTION_EXPANDED", expanded: false }
+      ];
+    }
+    if (name === "right") {
+      return [
+        { scope: "ui", type: "HELP_SET_FOCUSED_SECTION_EXPANDED", expanded: true }
+      ];
+    }
+    if (name === "space" || name === "return" || name === "enter") {
+      return [{ scope: "ui", type: "HELP_TOGGLE_FOCUSED_SECTION" }];
+    }
     if (sequence === "1" || name === "1") {
       return [{ scope: "ui", type: "OPEN_BACKUP_CENTER" }];
     }

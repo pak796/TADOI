@@ -1,4 +1,5 @@
 import React, { useEffect, useReducer, useRef, useState } from "react";
+import type { ScrollBoxRenderable } from "@opentui/core";
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/react";
 import { applyTheme, colorForTag, theme, layout } from "./theme";
 import {
@@ -71,7 +72,7 @@ import {
 import { reconcileSelectionById } from "../domain/selection";
 import { buildVisibleTaskRows, type VisibleTaskRow } from "../domain/taskRows";
 import { AppState, FocusTarget, Mode, SavedView, Task } from "../domain/models";
-import { ROTATING_THEME_ORDER, THEMES, ThemeId } from "../theme/themes";
+import { ROTATING_THEME_ORDER, ThemeId } from "../theme/themes";
 import {
   applySavedView,
   DEFAULT_VIEW_FILTERS,
@@ -115,6 +116,177 @@ const VIEW_NAME_MAX_LENGTH = 40;
 const DASHBOARD_TOP_TAG_MIN = 5;
 const DASHBOARD_TOP_TAG_MAX = 8;
 const PERF_DEBUG_ENABLED = process.env[ENV_VARS.PERF_DEBUG] === "1";
+const HELP_PANEL_MIN_WIDTH = 56;
+const HELP_PANEL_MAX_WIDTH = 96;
+const HELP_PANEL_MIN_HEIGHT = 12;
+const HELP_PANEL_HORIZONTAL_MARGIN = 4;
+const HELP_PANEL_VERTICAL_MARGIN = 2;
+const HELP_PANEL_CHROME_ROWS = 6;
+
+type HelpMenuItem = {
+  title: string;
+  description?: string;
+};
+
+type HelpMenuSection = {
+  title: string;
+  items: HelpMenuItem[];
+};
+
+type HelpRow =
+  | { kind: "section_header"; sectionIndex: number }
+  | { kind: "item_title"; sectionIndex: number; itemIndex: number }
+  | { kind: "item_description"; sectionIndex: number; itemIndex: number };
+
+/*
+ * Help menu structure:
+ * - Edit HELP_MENU_SECTIONS to add/remove categories and items.
+ * - Help keyboard routing is in src/app/keyRouter.ts (Mode.HELP branch).
+ */
+const HELP_MENU_SECTIONS: HelpMenuSection[] = [
+  {
+    title: "Getting Started",
+    items: [
+      {
+        title: "Open Help with ?",
+        description: "Press ? from list/dashboard to open or close this menu."
+      },
+      {
+        title: "Move around with arrows",
+        description: "Use Up/Down to focus sections and Enter/Space to toggle."
+      },
+      {
+        title: "Close with Esc",
+        description: "Esc returns to the previous mode/focus."
+      }
+    ]
+  },
+  {
+    title: "Navigation & Keybindings",
+    items: [
+      {
+        title: "List navigation: j/k, arrows, gg, G",
+        description: "Jump and browse tasks quickly."
+      },
+      {
+        title: "Page movement: Ctrl+U / Ctrl+D",
+        description: "Page up/down through long task lists."
+      },
+      {
+        title: "Attention jumps: [ ] and { }",
+        description: "Cycle overdue and due-today tasks."
+      }
+    ]
+  },
+  {
+    title: "Tasks (create/edit/complete)",
+    items: [
+      { title: "a add, e edit, E edit series, c copy" },
+      { title: "Space toggle done/open, d delete" },
+      {
+        title: "Recurring controls: x skip, z snooze",
+        description: "Skip or push the selected recurring occurrence by one day."
+      }
+    ]
+  },
+  {
+    title: "Tags & Filters",
+    items: [
+      {
+        title: "f status, s sort, g due, t tag",
+        description: "Cycles primary filters without leaving list mode."
+      },
+      {
+        title: "Bottom quick filters are clickable",
+        description: "Click buckets/tags to apply; click again to clear."
+      },
+      {
+        title: "Saved views: v overlay, Ctrl+S save, 1..9 apply",
+        description: "Pressing an active slot hotkey again resets to default view."
+      }
+    ]
+  },
+  {
+    title: "Data (Import/Export/Backup)",
+    items: [
+      {
+        title: "Press 1 in Help to open Backup Center",
+        description: "Guided flow: path -> mode -> confirm -> dry-run -> commit."
+      },
+      {
+        title: "CLI export/import commands available",
+        description: "Use backup exports for portability and recovery."
+      },
+      {
+        title: "Cloud sync integrations (placeholder)",
+        description: "Reserved for future workspace sync options."
+      }
+    ]
+  },
+  {
+    title: "Settings & Themes",
+    items: [
+      {
+        title: "h/H cycle theme",
+        description: "Includes rotating mode support."
+      },
+      {
+        title: "m/M toggle flash mode",
+        description: "Switch between static and pulsing urgency cues."
+      }
+    ]
+  },
+  {
+    title: "Troubleshooting / Support",
+    items: [
+      {
+        title: "Resize terminal if layout feels cramped",
+        description: "Minimum supported terminal is 80x24."
+      },
+      {
+        title: "Check app version and data path",
+        description: "Useful when reporting issues or validating environment."
+      },
+      {
+        title: "License & usage",
+        description: "See LICENSE for PolyForm Noncommercial terms."
+      }
+    ]
+  }
+];
+
+function createDefaultHelpExpandedState(): boolean[] {
+  return HELP_MENU_SECTIONS.map((_, index) => index === 0);
+}
+
+function clampToBounds(value: number, min: number, max: number): number {
+  if (max <= min) return max;
+  return Math.max(min, Math.min(value, max));
+}
+
+function buildHelpRows(expandedBySection: boolean[]): {
+  rows: HelpRow[];
+  headerRowIndexes: number[];
+} {
+  const rows: HelpRow[] = [];
+  const headerRowIndexes: number[] = [];
+
+  HELP_MENU_SECTIONS.forEach((section, sectionIndex) => {
+    headerRowIndexes[sectionIndex] = rows.length;
+    rows.push({ kind: "section_header", sectionIndex });
+    if (!expandedBySection[sectionIndex]) {
+      return;
+    }
+    section.items.forEach((item, itemIndex) => {
+      rows.push({ kind: "item_title", sectionIndex, itemIndex });
+      if (item.description) {
+        rows.push({ kind: "item_description", sectionIndex, itemIndex });
+      }
+    });
+  });
+
+  return { rows, headerRowIndexes };
+}
 
 function resolveDashboardTopTagLimit(panelHeight: number): number {
   const availableRows = Math.max(1, panelHeight - 8);
@@ -307,11 +479,17 @@ export function App({
   const [saveViewPromptOpen, setSaveViewPromptOpen] = useState(false);
   const [saveViewName, setSaveViewName] = useState("");
   const [dashboardTagSelection, setDashboardTagSelection] = useState(0);
+  const [helpExpandedBySection, setHelpExpandedBySection] = useState<boolean[]>(
+    createDefaultHelpExpandedState
+  );
+  const [helpFocusedSectionIndex, setHelpFocusedSectionIndex] = useState(0);
+  const [helpScrollOffset, setHelpScrollOffset] = useState(0);
   const skipInitialSaveRef = useRef(skipInitialSave);
   const skipSettingsSaveRef = useRef(true);
   const lastSuccessfulSaveAtRef = useRef<number | undefined>(undefined);
   const gPrefixTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navBannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const helpScrollRef = useRef<ScrollBoxRenderable | null>(null);
   const { height: terminalHeight, width: terminalWidth } = useTerminalDimensions();
   const terminalIsSupported = isTerminalSizeSupported(terminalWidth, terminalHeight);
   const terminalSizeWarning = getTerminalSizeWarning(terminalWidth, terminalHeight);
@@ -333,6 +511,30 @@ export function App({
   const selectedTask =
     visibleTaskRows.find((task) => task.id === state.selectedId) ?? visibleTaskRows[0];
   const sortModeLabel = getSortModeLabel(state.sortMode);
+  const clampedHelpFocusedSectionIndex = Math.max(
+    0,
+    Math.min(helpFocusedSectionIndex, HELP_MENU_SECTIONS.length - 1)
+  );
+  const { rows: helpRows, headerRowIndexes: helpHeaderRowIndexes } = React.useMemo(
+    () => buildHelpRows(helpExpandedBySection),
+    [helpExpandedBySection]
+  );
+  const focusedHelpHeaderRow = helpHeaderRowIndexes[clampedHelpFocusedSectionIndex] ?? 0;
+  const helpPanelMaxWidth = Math.max(20, terminalWidth - HELP_PANEL_HORIZONTAL_MARGIN * 2);
+  const helpPanelWidth = clampToBounds(
+    HELP_PANEL_MAX_WIDTH,
+    Math.min(HELP_PANEL_MIN_WIDTH, helpPanelMaxWidth),
+    helpPanelMaxWidth
+  );
+  const helpPanelMaxHeight = Math.max(8, terminalHeight - HELP_PANEL_VERTICAL_MARGIN * 2);
+  const helpPanelDesiredHeight = helpRows.length + HELP_PANEL_CHROME_ROWS;
+  const helpPanelHeight = clampToBounds(
+    helpPanelDesiredHeight,
+    Math.min(HELP_PANEL_MIN_HEIGHT, helpPanelMaxHeight),
+    helpPanelMaxHeight
+  );
+  const helpContentVisibleRows = Math.max(1, helpPanelHeight - HELP_PANEL_CHROME_ROWS);
+  const helpHasOverflow = helpRows.length > helpContentVisibleRows;
 
   function findTaskById(taskId: string | undefined): Task | undefined {
     if (!taskId) return undefined;
@@ -523,7 +725,6 @@ export function App({
     settingsState.themeId === "rotating"
       ? ROTATING_THEME_ORDER[rotatingThemeIndex % ROTATING_THEME_ORDER.length]
       : settingsState.themeId;
-  const activeThemeTokens = THEMES[activeThemeId];
   const dueSuggestion =
     uiState.focus === FocusTarget.EDITOR_DUE_DATE && state.editor
       ? getDueSuggestion(state.editor.dueText, now)
@@ -770,6 +971,47 @@ export function App({
     }
   }, [dashboardTagSelection, dashboardTopTags.length]);
 
+  useEffect(() => {
+    if (clampedHelpFocusedSectionIndex !== helpFocusedSectionIndex) {
+      setHelpFocusedSectionIndex(clampedHelpFocusedSectionIndex);
+    }
+  }, [clampedHelpFocusedSectionIndex, helpFocusedSectionIndex]);
+
+  useEffect(() => {
+    const clamped = clampScrollOffset(
+      helpScrollOffset,
+      helpContentVisibleRows,
+      helpRows.length
+    );
+    if (clamped !== helpScrollOffset) {
+      setHelpScrollOffset(clamped);
+    }
+  }, [helpContentVisibleRows, helpRows.length, helpScrollOffset]);
+
+  useEffect(() => {
+    if (uiState.mode !== Mode.HELP) return;
+    const nextOffset = ensureSelectedVisible({
+      selectedIndex: focusedHelpHeaderRow,
+      scrollOffset: helpScrollOffset,
+      visibleRows: helpContentVisibleRows,
+      itemCount: helpRows.length
+    });
+    if (nextOffset !== helpScrollOffset) {
+      setHelpScrollOffset(nextOffset);
+    }
+  }, [
+    focusedHelpHeaderRow,
+    helpContentVisibleRows,
+    helpRows.length,
+    helpScrollOffset,
+    uiState.mode
+  ]);
+
+  useEffect(() => {
+    if (uiState.mode !== Mode.HELP) return;
+    helpScrollRef.current?.scrollTo({ x: 0, y: helpScrollOffset });
+  }, [helpScrollOffset, uiState.mode]);
+
   function applyEscUnwind(): boolean {
     const next = unwind(uiState);
     if (!next) return false;
@@ -966,6 +1208,15 @@ export function App({
         return;
       case "CLOSE_HELP":
         closeHelp();
+        return;
+      case "HELP_MOVE_SECTION_FOCUS":
+        moveHelpSectionFocus(action.delta);
+        return;
+      case "HELP_TOGGLE_FOCUSED_SECTION":
+        toggleFocusedHelpSection();
+        return;
+      case "HELP_SET_FOCUSED_SECTION_EXPANDED":
+        setFocusedHelpSectionExpanded(action.expanded);
         return;
       case "BACKUP_PRIMARY":
         handleBackupPrimaryAction();
@@ -1186,6 +1437,9 @@ export function App({
 
   function openHelp() {
     clearPendingGPrefix();
+    setHelpExpandedBySection(createDefaultHelpExpandedState());
+    setHelpFocusedSectionIndex(0);
+    setHelpScrollOffset(0);
     uiDispatch({
       type: "captureReturnContext",
       mode: uiState.mode,
@@ -1239,6 +1493,46 @@ export function App({
   function closeHelp() {
     uiDispatch({ type: "setMode", mode: uiState.previousMode });
     uiDispatch({ type: "setFocus", focus: uiState.previousFocus });
+  }
+
+  function moveHelpSectionFocus(delta: 1 | -1) {
+    setHelpFocusedSectionIndex((prev) =>
+      Math.max(0, Math.min(prev + delta, HELP_MENU_SECTIONS.length - 1))
+    );
+  }
+
+  function setHelpSectionExpanded(sectionIndex: number, expanded: boolean) {
+    setHelpExpandedBySection((prev) => {
+      if (sectionIndex < 0 || sectionIndex >= prev.length) return prev;
+      if (prev[sectionIndex] === expanded) return prev;
+      const next = [...prev];
+      next[sectionIndex] = expanded;
+      return next;
+    });
+  }
+
+  function toggleHelpSection(sectionIndex: number) {
+    setHelpExpandedBySection((prev) => {
+      if (sectionIndex < 0 || sectionIndex >= prev.length) return prev;
+      const next = [...prev];
+      next[sectionIndex] = !next[sectionIndex];
+      return next;
+    });
+  }
+
+  function toggleFocusedHelpSection() {
+    toggleHelpSection(clampedHelpFocusedSectionIndex);
+  }
+
+  function setFocusedHelpSectionExpanded(expanded: boolean) {
+    setHelpSectionExpanded(clampedHelpFocusedSectionIndex, expanded);
+  }
+
+  function handleHelpSectionHeaderClick(sectionIndex: number) {
+    setHelpFocusedSectionIndex(
+      Math.max(0, Math.min(sectionIndex, HELP_MENU_SECTIONS.length - 1))
+    );
+    toggleHelpSection(sectionIndex);
   }
 
   function openListMode() {
@@ -2190,6 +2484,14 @@ export function App({
     uiDispatch({ type: "setFocus", focus: modal.previousFocus });
   }
 
+  function confirmDeleteSelectedFromModal() {
+    handleDeleteSelected();
+  }
+
+  function cancelDeleteSelectedFromModal() {
+    applyEscUnwind();
+  }
+
   function cycleStatus() {
     const order: Array<"all" | "open" | "done" | "archived"> = [
       "all",
@@ -2781,6 +3083,34 @@ export function App({
             <text>DELETE SELECTED TASK? (y/n)</text>
             <text>{uiState.modal.taskTitle}</text>
             <text>ID: {uiState.modal.taskId.slice(0, 8)}</text>
+            <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
+              <box
+                style={{
+                  backgroundColor: theme.bg,
+                  paddingLeft: 2,
+                  paddingRight: 2
+                }}
+                onMouseDown={(event) => {
+                  if (event.button !== 0) return;
+                  confirmDeleteSelectedFromModal();
+                }}
+              >
+                <text style={{ color: theme.warn, fontWeight: "bold" }}>YES</text>
+              </box>
+              <box
+                style={{
+                  backgroundColor: theme.bg,
+                  paddingLeft: 2,
+                  paddingRight: 2
+                }}
+                onMouseDown={(event) => {
+                  if (event.button !== 0) return;
+                  cancelDeleteSelectedFromModal();
+                }}
+              >
+                <text style={{ color: theme.warn, fontWeight: "bold" }}>NO</text>
+              </box>
+            </box>
           </box>
         </box>
       ) : null}
@@ -2879,124 +3209,110 @@ export function App({
         <box
           style={{
             position: "absolute",
-            top: 2,
-            left: 10,
-            padding: 2,
-            backgroundColor: theme.accentBlue,
-            color: theme.bg
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            justifyContent: "center",
+            alignItems: "center"
           }}
         >
-          <box style={{ flexDirection: "column" }}>
-            <text>KEYBINDINGS</text>
-            <text>1: DATA: Backup / Export / Import</text>
-            <text>j/k or arrows: move</text>
-            <text>gg: top</text>
-            <text>G: bottom</text>
-            <text>ctrl+u / ctrl+d: page up/down</text>
-            <text>[ ]: prev/next overdue</text>
-            <text>{'{'} {'}'}: prev/next due today</text>
-            <text>a: add</text>
-            <text>e: edit (recurring occurrence => edit occurrence)</text>
-            <text>E: edit recurring series</text>
-            <text>c: copy</text>
-            <text>space: toggle done</text>
-            <text>x: skip selected recurring occurrence</text>
-            <text>z: snooze selected recurring occurrence (+1 day)</text>
-            <text>d: delete</text>
-            <text>/: search</text>
-            <text>b: toggle dashboard</text>
-            <text>f: cycle status</text>
-            <text>s: cycle sort ({sortModeLabel})</text>
-            <text>DUE sort priority: OPEN+due first, then OPEN no-due, then DONE/ARCHIVED groups.</text>
-            <text>g: cycle due</text>
-            <text>t: tag filter</text>
-            <text>Mouse: bottom bar buckets/tags toggle quick filters (click again to clear).</text>
-            <text>v: views overlay</text>
-            <text>ctrl+s: save current view</text>
-            <text>1..9: apply view slot</text>
-            <text>H: cycle theme</text>
-            <text>M: toggle flash mode</text>
-            <text>q: quit</text>
-            <text>esc: close</text>
-            <text>DASHBOARD</text>
-            <text>Uses the same filtered dataset as TASK LIST.</text>
-            <text>KPI STRIP: OVD(overdue), TOD(today), N7(next7), OPN(open), D7(done7d).</text>
-            <text>KPI meters use Unicode block bars and compact to abbreviations on narrow widths.</text>
-            <text>KPI colors: OVD/TOD/N7/OPN=blue, D7=green.</text>
-            <text>D7 uses the current filtered set; status filters can reduce it to zero.</text>
-            <text>Widgets: due buckets (OVD/TOD/+1..+6) and TOP TAGS (OPEN).</text>
-            <text>In dashboard: b returns to list, f/g/t cycle shared filters.</text>
-            <text>Top tags: up/down select row, Enter applies tag filter.</text>
-            <text>App Version: {APP_VERSION}</text>
-            <text>{APP_NAME}</text>
-            <text>{APP_TAGLINE}</text>
-            <text>License: PolyForm Noncommercial 1.0.0</text>
-            <text>See ./LICENSE for full terms.</text>
-            <text>Noncommercial use only (no selling or paid bundling).</text>
-            <text>
-              Theme:{" "}
-              {settingsState.themeId === "rotating"
-                ? `rotating (${activeThemeId})`
-                : settingsState.themeId}
-            </text>
-            {settingsState.themeId === "rotating" ? (
-              <text>Auto-rotate: every 15s</text>
-            ) : null}
-            <text>Flash mode: {settingsState.flashMode}</text>
-            {settingsState.flashMode === "static" ? (
-              <text>Static: overdue indicators are solid red.</text>
-            ) : (
-              <text>Slow: due-today and overdue indicators pulse.</text>
-            )}
-            <text>Recurring tasks: RRULE-based series with sparse occurrence materialization.</text>
-            <text>Occurrence completion creates done history rows without closing the series.</text>
-            <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
-              <box
-                style={{
-                  backgroundColor: activeThemeTokens.accent,
-                  paddingLeft: 1,
-                  paddingRight: 1
-                }}
-              >
-                <text style={{ color: activeThemeTokens.selectionText }}>ACCENT</text>
-              </box>
-              <box
-                style={{
-                  backgroundColor: activeThemeTokens.warn,
-                  paddingLeft: 1,
-                  paddingRight: 1
-                }}
-              >
-                <text style={{ color: activeThemeTokens.selectionText }}>WARN</text>
-              </box>
-              <box
-                style={{
-                  backgroundColor: activeThemeTokens.ok,
-                  paddingLeft: 1,
-                  paddingRight: 1
-                }}
-              >
-                <text style={{ color: activeThemeTokens.selectionText }}>OK</text>
-              </box>
+          <box
+            style={{
+              width: helpPanelWidth,
+              height: helpPanelHeight,
+              maxWidth: "100%",
+              flexDirection: "column",
+              backgroundColor: theme.panel,
+              border: true,
+              borderStyle: "single",
+              borderColor: theme.outline
+            }}
+          >
+            <box style={{ flexDirection: "column", paddingLeft: 1, paddingRight: 1 }}>
+              <text style={{ color: theme.text, fontWeight: "bold" }}>Help</text>
+              <text style={{ color: theme.muted }}>
+                {APP_NAME} {APP_VERSION} · {APP_TAGLINE}
+              </text>
             </box>
-            <text>Data file:</text>
-            <text>{getDataFilePath()}</text>
-            <text>DATA: IMPORT / EXPORT</text>
-            <text>Resolved data path: {getDataFilePath()}</text>
-            <text>In-app: press 1 to open Backup Center.</text>
-            <text>Backup Center flow: path -> mode -> (REPLACE confirm) -> dry-run -> commit.</text>
-            <text>Dry-run is always shown before commit; no write happens during dry-run.</text>
-            <text>tadoi export --out ./tadoi_export.json --pretty</text>
-            <text>tadoi export --out ./tadoi_export_redacted.json --redact --pretty</text>
-            <text>tadoi import --in ./tadoi_export.json --mode merge --dry-run</text>
-            <text>tadoi import --in ./tadoi_export.json --mode merge --backup --pretty</text>
-            <text>tadoi import --in ./tadoi_export.json --mode replace --backup --yes</text>
-            <text>MERGE conflicts: newest updatedAt wins (then incoming tie-break).</text>
-            <text>REPLACE overwrites local data; backups are created first.</text>
-            <text>Use --redact before sharing exports.</text>
-            <text style={{ marginTop: 1 }}>
-              Vibe coded by Patrick Kazar and GPT-5.2-Codex
-            </text>
+            <box style={{ paddingLeft: 1, paddingRight: 1 }}>
+              <text style={{ color: theme.outline }}>
+                {"─".repeat(Math.max(1, helpPanelWidth - 4))}
+              </text>
+            </box>
+            <box style={{ flexGrow: 1, minHeight: 0, paddingLeft: 1, paddingRight: 1 }}>
+              <scrollbox
+                ref={helpScrollRef}
+                scrollY
+                style={{
+                  height: "100%",
+                  minHeight: 0,
+                  rootOptions: { backgroundColor: "transparent" },
+                  wrapperOptions: { backgroundColor: "transparent" },
+                  viewportOptions: { backgroundColor: "transparent" },
+                  contentOptions: { backgroundColor: "transparent" }
+                }}
+              >
+                <box style={{ flexDirection: "column" }}>
+                  {helpRows.map((row, rowIndex) => {
+                    if (row.kind === "section_header") {
+                      const section = HELP_MENU_SECTIONS[row.sectionIndex];
+                      const expanded = helpExpandedBySection[row.sectionIndex] === true;
+                      const focused = row.sectionIndex === clampedHelpFocusedSectionIndex;
+                      return (
+                        <box
+                          key={`help-header-${row.sectionIndex}`}
+                          style={{
+                            flexDirection: "row",
+                            marginTop: row.sectionIndex === 0 ? 0 : 1,
+                            backgroundColor: focused ? theme.accentBlue : "transparent",
+                            paddingLeft: 1,
+                            paddingRight: 1
+                          }}
+                          onMouseDown={(event) => {
+                            if (event.button !== 0) return;
+                            handleHelpSectionHeaderClick(row.sectionIndex);
+                          }}
+                        >
+                          <text
+                            style={{
+                              color: focused ? theme.bg : theme.text,
+                              fontWeight: focused ? "bold" : "normal"
+                            }}
+                          >
+                            {expanded ? "▾" : "▸"} {section.title}
+                          </text>
+                        </box>
+                      );
+                    }
+
+                    const section = HELP_MENU_SECTIONS[row.sectionIndex];
+                    const item = section.items[row.itemIndex];
+                    return row.kind === "item_title" ? (
+                      <text key={`help-row-${rowIndex}`} style={{ color: theme.text }}>
+                        {"  • "} {item.title}
+                      </text>
+                    ) : (
+                      <text key={`help-row-${rowIndex}`} style={{ color: theme.muted }}>
+                        {"    "}
+                        {item.description}
+                      </text>
+                    );
+                  })}
+                </box>
+              </scrollbox>
+            </box>
+            <box style={{ paddingLeft: 1, paddingRight: 1, paddingBottom: 1 }}>
+              <text style={{ color: theme.muted }}>
+                {helpHasOverflow
+                  ? "↑/↓ focus · Enter/Space toggle · ←/→ collapse/expand · Esc close · scroll inside"
+                  : "↑/↓ focus · Enter/Space toggle · ←/→ collapse/expand · Esc close"}
+              </text>
+              <text style={{ color: theme.muted }}>
+                1: Backup Center · h/H: theme · m/M: flash · current sort: {sortModeLabel}
+              </text>
+              <text style={{ color: theme.muted }}>Data path: {getDataFilePath()}</text>
+            </box>
           </box>
         </box>
       ) : null}
