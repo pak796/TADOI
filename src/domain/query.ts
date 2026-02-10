@@ -1,5 +1,69 @@
 import { diffLocalDays, getLocalDayNumber, startOfLocalDayMs } from "./dates";
-import { Filters, Task } from "./models";
+import { Filters, SortMode, Task } from "./models";
+
+export const SORT_MODE_ORDER: SortMode[] = ["due", "updated", "created", "title"];
+
+export function getSortModeLabel(sortMode: SortMode): string {
+  switch (sortMode) {
+    case "updated":
+      return "UPDATED";
+    case "created":
+      return "CREATED";
+    case "title":
+      return "TITLE";
+    default:
+      return "DUE";
+  }
+}
+
+function compareStableFallback(a: Task, b: Task): number {
+  const updatedDiff = b.updatedAt - a.updatedAt;
+  if (updatedDiff !== 0) return updatedDiff;
+  const createdDiff = b.createdAt - a.createdAt;
+  if (createdDiff !== 0) return createdDiff;
+  return a.id.localeCompare(b.id);
+}
+
+function compareByDue(a: Task, b: Task): number {
+  const dueDayA =
+    a.dueAt !== undefined ? getLocalDayNumber(a.dueAt) : Number.MAX_SAFE_INTEGER;
+  const dueDayB =
+    b.dueAt !== undefined ? getLocalDayNumber(b.dueAt) : Number.MAX_SAFE_INTEGER;
+  if (dueDayA !== dueDayB) {
+    return dueDayA - dueDayB;
+  }
+
+  if (a.dueAt !== undefined && b.dueAt !== undefined) {
+    const aHasTime = a.hasExplicitTime === true;
+    const bHasTime = b.hasExplicitTime === true;
+    if (aHasTime !== bHasTime) {
+      return aHasTime ? -1 : 1;
+    }
+    if (aHasTime && bHasTime && a.dueAt !== b.dueAt) {
+      return a.dueAt - b.dueAt;
+    }
+  }
+
+  return compareStableFallback(a, b);
+}
+
+function compareByUpdated(a: Task, b: Task): number {
+  const updatedDiff = b.updatedAt - a.updatedAt;
+  if (updatedDiff !== 0) return updatedDiff;
+  return compareStableFallback(a, b);
+}
+
+function compareByCreated(a: Task, b: Task): number {
+  const createdDiff = b.createdAt - a.createdAt;
+  if (createdDiff !== 0) return createdDiff;
+  return compareStableFallback(a, b);
+}
+
+function compareByTitle(a: Task, b: Task): number {
+  const titleDiff = a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
+  if (titleDiff !== 0) return titleDiff;
+  return compareStableFallback(a, b);
+}
 
 export function filterTasks(tasks: Task[], filters: Filters, now: number): Task[] {
   const start = startOfLocalDayMs(now);
@@ -44,41 +108,14 @@ export function filterTasks(tasks: Task[], filters: Filters, now: number): Task[
   });
 }
 
-export function sortTasks(tasks: Task[], now: number): Task[] {
-  const start = startOfLocalDayMs(now);
-
-  return [...tasks].sort((a, b) => {
-    const statusRankA = a.status === "open" ? 0 : 1;
-    const statusRankB = b.status === "open" ? 0 : 1;
-    if (statusRankA !== statusRankB) {
-      return statusRankA - statusRankB;
-    }
-
-    const dueDayA =
-      a.dueAt !== undefined ? getLocalDayNumber(a.dueAt) : Number.MAX_SAFE_INTEGER;
-    const dueDayB =
-      b.dueAt !== undefined ? getLocalDayNumber(b.dueAt) : Number.MAX_SAFE_INTEGER;
-    if (dueDayA !== dueDayB) {
-      return dueDayA - dueDayB;
-    }
-
-    if (a.dueAt !== undefined && b.dueAt !== undefined) {
-      const aHasTime = a.hasExplicitTime === true;
-      const bHasTime = b.hasExplicitTime === true;
-      if (aHasTime !== bHasTime) {
-        return aHasTime ? -1 : 1;
-      }
-      if (aHasTime && bHasTime && a.dueAt !== b.dueAt) {
-        return a.dueAt - b.dueAt;
-      }
-    }
-
-    if (a.dueAt && a.dueAt < start && b.dueAt && b.dueAt < start) {
-      return a.dueAt - b.dueAt;
-    }
-
-    const updatedDiff = b.updatedAt - a.updatedAt;
-    if (updatedDiff !== 0) return updatedDiff;
-    return a.id.localeCompare(b.id);
-  });
+export function sortTasks(tasks: Task[], _now: number, sortMode: SortMode = "due"): Task[] {
+  const comparator =
+    sortMode === "updated"
+      ? compareByUpdated
+      : sortMode === "created"
+        ? compareByCreated
+        : sortMode === "title"
+          ? compareByTitle
+          : compareByDue;
+  return [...tasks].sort(comparator);
 }

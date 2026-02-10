@@ -59,7 +59,8 @@ const tagIndexChanged =
 const normalizedLoaded = {
   schemaVersion: CURRENT_SCHEMA_VERSION,
   tasks: normalizedTasks,
-  tagIndex: normalizedTagIndex
+  tagIndex: normalizedTagIndex,
+  savedViews: Array.isArray(loaded.savedViews) ? loaded.savedViews : []
 };
 const now = Date.now();
 // Apply archive aging before first render (rolling 7+ days since closed).

@@ -14,6 +14,8 @@ export type KeyRouterContext = {
   hasDueSuggestion: boolean;
   timeAutocompleteStep: "hour" | "minute" | "none" | "invalid";
   hasPendingGPrefix: boolean;
+  viewsOverlayOpen: boolean;
+  saveViewPromptOpen: boolean;
 };
 
 export type KeyRouterAction =
@@ -24,12 +26,21 @@ export type KeyRouterAction =
   | { scope: "ui"; type: "CLOSE_SEARCH" }
   | { scope: "ui"; type: "MOVE_EDITOR_FOCUS"; direction: 1 | -1 }
   | { scope: "ui"; type: "SET_G_PREFIX"; active: boolean }
+  | { scope: "ui"; type: "TOGGLE_VIEWS_OVERLAY" }
+  | { scope: "ui"; type: "CLOSE_VIEWS_OVERLAY" }
+  | { scope: "ui"; type: "MOVE_VIEW_SELECTION"; delta: 1 | -1 }
+  | { scope: "ui"; type: "OPEN_SAVE_VIEW_PROMPT" }
+  | { scope: "ui"; type: "CONFIRM_SAVE_VIEW_PROMPT" }
+  | { scope: "ui"; type: "CANCEL_SAVE_VIEW_PROMPT" }
   | { scope: "ui"; type: "CYCLE_THEME" }
   | { scope: "domain"; type: "EXIT_APP" }
   | { scope: "domain"; type: "MOVE_SELECTION"; delta: 1 | -1 }
   | { scope: "domain"; type: "MOVE_SELECTION_PAGE"; direction: 1 | -1 }
   | { scope: "domain"; type: "JUMP_TOP" }
   | { scope: "domain"; type: "JUMP_BOTTOM" }
+  | { scope: "domain"; type: "APPLY_VIEW_SLOT"; slot: number }
+  | { scope: "domain"; type: "APPLY_SELECTED_VIEW" }
+  | { scope: "domain"; type: "DELETE_SELECTED_VIEW" }
   | {
       scope: "domain";
       type: "JUMP_TO_ATTENTION";
@@ -43,6 +54,7 @@ export type KeyRouterAction =
   | { scope: "domain"; type: "OPEN_DELETE_CONFIRM" }
   | { scope: "domain"; type: "MODAL_CONFIRM_DELETE" }
   | { scope: "domain"; type: "CYCLE_STATUS" }
+  | { scope: "domain"; type: "CYCLE_SORT" }
   | { scope: "domain"; type: "CYCLE_DUE" }
   | { scope: "domain"; type: "TOGGLE_TAG_FILTER" }
   | { scope: "domain"; type: "SAVE_EDITOR" }
@@ -114,12 +126,18 @@ function listModeActions(key: KeyInput): KeyRouterAction[] {
     return [{ scope: "domain", type: "MOVE_SELECTION", delta: -1 }];
   }
   if (name === "space") return [{ scope: "domain", type: "TOGGLE_SELECTED" }];
+  if (name === "v") return [{ scope: "ui", type: "TOGGLE_VIEWS_OVERLAY" }];
+  if (ctrl && name === "s") return [{ scope: "ui", type: "OPEN_SAVE_VIEW_PROMPT" }];
+  if (/^[1-9]$/.test(sequence)) {
+    return [{ scope: "domain", type: "APPLY_VIEW_SLOT", slot: Number(sequence) - 1 }];
+  }
   if (name === "a") return [{ scope: "domain", type: "OPEN_ADD" }];
   if (name === "e") return [{ scope: "domain", type: "OPEN_EDIT" }];
   if (name === "c") return [{ scope: "domain", type: "OPEN_DUPLICATE" }];
   if (!ctrl && name === "d") return [{ scope: "domain", type: "OPEN_DELETE_CONFIRM" }];
   if (name === "/") return [{ scope: "ui", type: "OPEN_SEARCH" }];
   if (name === "f") return [{ scope: "domain", type: "CYCLE_STATUS" }];
+  if (!ctrl && name === "s") return [{ scope: "domain", type: "CYCLE_SORT" }];
   if (!ctrl && name === "g") return [{ scope: "domain", type: "CYCLE_DUE" }];
   if (name === "t") return [{ scope: "domain", type: "TOGGLE_TAG_FILTER" }];
   return [];
@@ -147,13 +165,21 @@ export function handleKey(
     hasTagInlineSuggestion,
     hasDueSuggestion,
     timeAutocompleteStep,
-    hasPendingGPrefix
+    hasPendingGPrefix,
+    viewsOverlayOpen,
+    saveViewPromptOpen
   } = context;
   const { mode, focus } = uiState;
 
   if (name === "escape") {
     if (hasPendingGPrefix) {
       return [{ scope: "ui", type: "SET_G_PREFIX", active: false }];
+    }
+    if (mode === Mode.LIST && saveViewPromptOpen) {
+      return [{ scope: "ui", type: "CANCEL_SAVE_VIEW_PROMPT" }];
+    }
+    if (mode === Mode.LIST && viewsOverlayOpen) {
+      return [{ scope: "ui", type: "CLOSE_VIEWS_OVERLAY" }];
     }
     return [{ scope: "ui", type: "UNWIND" }];
   }
@@ -248,6 +274,33 @@ export function handleKey(
   }
 
   if (mode !== Mode.LIST || focus !== FocusTarget.TASK_LIST) {
+    return [];
+  }
+
+  if (saveViewPromptOpen) {
+    if (name === "escape") return [{ scope: "ui", type: "CANCEL_SAVE_VIEW_PROMPT" }];
+    if (name === "return" || name === "enter") {
+      return [{ scope: "ui", type: "CONFIRM_SAVE_VIEW_PROMPT" }];
+    }
+    return [];
+  }
+
+  if (viewsOverlayOpen) {
+    if (name === "escape" || name === "v") return [{ scope: "ui", type: "CLOSE_VIEWS_OVERLAY" }];
+    if (name === "j" || name === "down") {
+      return [{ scope: "ui", type: "MOVE_VIEW_SELECTION", delta: 1 }];
+    }
+    if (name === "k" || name === "up") {
+      return [{ scope: "ui", type: "MOVE_VIEW_SELECTION", delta: -1 }];
+    }
+    if (name === "d") return [{ scope: "domain", type: "DELETE_SELECTED_VIEW" }];
+    if (name === "return" || name === "enter") {
+      return [{ scope: "domain", type: "APPLY_SELECTED_VIEW" }];
+    }
+    if (/^[1-9]$/.test(sequence)) {
+      return [{ scope: "domain", type: "APPLY_VIEW_SLOT", slot: Number(sequence) - 1 }];
+    }
+    if (ctrl && name === "s") return [{ scope: "ui", type: "OPEN_SAVE_VIEW_PROMPT" }];
     return [];
   }
 

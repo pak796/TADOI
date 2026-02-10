@@ -29,6 +29,16 @@ export type Filters = {
   searchText?: string;
 };
 
+export type SortMode = "due" | "updated" | "created" | "title";
+
+export type SavedView = {
+  id: string;
+  name: string;
+  filters: Filters;
+  createdAt: number;
+  updatedAt: number;
+};
+
 export type EditorDraft = {
   id?: string;
   title: string;
@@ -45,7 +55,9 @@ export type ConfirmModal = UIConfirmModal;
 export type AppState = {
   tasks: Task[];
   tagIndex: Record<string, TagIndexEntry>;
+  savedViews: SavedView[];
   filters: Filters;
+  sortMode: SortMode;
   selectedId?: string;
   editor: EditorDraft | null;
 };

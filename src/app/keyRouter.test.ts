@@ -20,6 +20,8 @@ function run(
     hasDueSuggestion: false,
     timeAutocompleteStep: "none",
     hasPendingGPrefix: false,
+    viewsOverlayOpen: false,
+    saveViewPromptOpen: false,
     ...contextOverrides
   };
   return handleKey(input, context);
@@ -46,6 +48,18 @@ describe("handleKey", () => {
         { hasPendingGPrefix: true }
       )
     ).toEqual([{ scope: "ui", type: "SET_G_PREFIX", active: false }]);
+    expect(
+      run(
+        { name: "escape" },
+        { viewsOverlayOpen: true }
+      )
+    ).toEqual([{ scope: "ui", type: "CLOSE_VIEWS_OVERLAY" }]);
+    expect(
+      run(
+        { name: "escape" },
+        { saveViewPromptOpen: true }
+      )
+    ).toEqual([{ scope: "ui", type: "CANCEL_SAVE_VIEW_PROMPT" }]);
   });
 
   it("blocks non-modal keys while modal is open", () => {
@@ -107,6 +121,18 @@ describe("handleKey", () => {
     expect(run({ ctrl: true, name: "d" })).toEqual([
       { scope: "domain", type: "MOVE_SELECTION_PAGE", direction: 1 }
     ]);
+    expect(run({ name: "v", sequence: "v" })).toEqual([
+      { scope: "ui", type: "TOGGLE_VIEWS_OVERLAY" }
+    ]);
+    expect(run({ ctrl: true, name: "s" })).toEqual([
+      { scope: "ui", type: "OPEN_SAVE_VIEW_PROMPT" }
+    ]);
+    expect(run({ name: "s", sequence: "s" })).toEqual([
+      { scope: "domain", type: "CYCLE_SORT" }
+    ]);
+    expect(run({ sequence: "3", name: "3" })).toEqual([
+      { scope: "domain", type: "APPLY_VIEW_SLOT", slot: 2 }
+    ]);
     expect(run({ sequence: "]", name: "]" })).toEqual([
       { scope: "domain", type: "JUMP_TO_ATTENTION", kind: "overdue", direction: 1 }
     ]);
@@ -126,6 +152,48 @@ describe("handleKey", () => {
       { scope: "domain", type: "CYCLE_DUE" },
       { scope: "domain", type: "MOVE_SELECTION", delta: 1 }
     ]);
+  });
+
+  it("routes view overlay keys without leaking list movement", () => {
+    expect(
+      run(
+        { name: "j", sequence: "j" },
+        { viewsOverlayOpen: true }
+      )
+    ).toEqual([{ scope: "ui", type: "MOVE_VIEW_SELECTION", delta: 1 }]);
+    expect(
+      run(
+        { name: "d", sequence: "d" },
+        { viewsOverlayOpen: true }
+      )
+    ).toEqual([{ scope: "domain", type: "DELETE_SELECTED_VIEW" }]);
+    expect(
+      run(
+        { name: "enter" },
+        { viewsOverlayOpen: true }
+      )
+    ).toEqual([{ scope: "domain", type: "APPLY_SELECTED_VIEW" }]);
+  });
+
+  it("routes save-view prompt keys only to prompt actions", () => {
+    expect(
+      run(
+        { name: "enter" },
+        { saveViewPromptOpen: true }
+      )
+    ).toEqual([{ scope: "ui", type: "CONFIRM_SAVE_VIEW_PROMPT" }]);
+    expect(
+      run(
+        { name: "escape" },
+        { saveViewPromptOpen: true }
+      )
+    ).toEqual([{ scope: "ui", type: "CANCEL_SAVE_VIEW_PROMPT" }]);
+    expect(
+      run(
+        { name: "j", sequence: "j" },
+        { saveViewPromptOpen: true }
+      )
+    ).toEqual([]);
   });
 
   it("prevents list-key leakage while typing in search", () => {

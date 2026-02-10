@@ -12,6 +12,8 @@ import {
   AppState,
   EditorDraft,
   Filters,
+  SavedView,
+  SortMode,
   TagIndexEntry,
   Task
 } from "../domain/models";
@@ -24,15 +26,19 @@ export type Action =
   | { type: "setEditor"; editor: EditorDraft | null }
   | { type: "updateEditor"; patch: Partial<EditorDraft> }
   | { type: "setTasks"; tasks: Task[] }
+  | { type: "setSavedViews"; savedViews: SavedView[] }
+  | { type: "setSortMode"; sortMode: SortMode }
   | { type: "setTagIndex"; tagIndex: Record<string, TagIndexEntry> };
 
 export const initialState: AppState = {
   tasks: [],
   tagIndex: {},
+  savedViews: [],
   filters: {
     status: "all",
     due: "any"
   },
+  sortMode: "due",
   selectedId: undefined,
   editor: null,
 };
@@ -56,7 +62,10 @@ export function applyArchiveAging(
 }
 
 export function archiveOldDoneTasks(tasks: Task[], now: number): Task[] {
-  return applyArchiveAging({ schemaVersion: 1, tasks, tagIndex: {} }, now).data.tasks;
+  return applyArchiveAging(
+    { schemaVersion: 3, tasks, tagIndex: {}, savedViews: [] },
+    now
+  ).data.tasks;
 }
 
 export function reducer(state: AppState, action: Action): AppState {
@@ -65,7 +74,8 @@ export function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         tasks: action.data.tasks,
-        tagIndex: action.data.tagIndex
+        tagIndex: action.data.tagIndex,
+        savedViews: action.data.savedViews
       };
     case "setSelected":
       return { ...state, selectedId: action.id };
@@ -82,6 +92,10 @@ export function reducer(state: AppState, action: Action): AppState {
         : state;
     case "setTasks":
       return { ...state, tasks: action.tasks };
+    case "setSavedViews":
+      return { ...state, savedViews: action.savedViews };
+    case "setSortMode":
+      return { ...state, sortMode: action.sortMode };
     case "setTagIndex":
       return { ...state, tagIndex: action.tagIndex };
     default:
@@ -91,7 +105,7 @@ export function reducer(state: AppState, action: Action): AppState {
 
 export function getVisibleTasks(state: AppState, now: number): Task[] {
   const filtered = filterTasks(state.tasks, state.filters, now);
-  return sortTasks(filtered, now);
+  return sortTasks(filtered, now, state.sortMode);
 }
 
 export function createEmptyDraft(): EditorDraft {

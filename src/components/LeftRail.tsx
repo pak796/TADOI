@@ -1,13 +1,15 @@
-import { Filters, FocusTarget, Mode } from "../domain/models";
+import { Filters, FocusTarget, Mode, SortMode } from "../domain/models";
 import { formatDate } from "../state/store";
 import { colorForTag, theme, styles } from "../app/theme";
 import { formatTagForDisplay } from "../domain/tagIndex";
 import { APP_VERSION } from "../app/version";
+import { getSortModeLabel } from "../domain/query";
 
 type LeftRailProps = {
   mode: Mode;
   focus: FocusTarget;
   filters: Filters;
+  sortMode: SortMode;
   fastPulseOn: boolean;
 };
 
@@ -55,7 +57,7 @@ function getFocusLabel(focus: FocusTarget): string {
   }
 }
 
-export function LeftRail({ mode, focus, filters, fastPulseOn }: LeftRailProps) {
+export function LeftRail({ mode, focus, filters, sortMode, fastPulseOn }: LeftRailProps) {
   const version = APP_VERSION;
   const logoDivider = "--------------------------------";
   const now = new Date();
@@ -65,6 +67,7 @@ export function LeftRail({ mode, focus, filters, fastPulseOn }: LeftRailProps) {
   ).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
   const modeLabel = getModeLabel(mode);
   const focusLabel = getFocusLabel(focus);
+  const sortLabel = getSortModeLabel(sortMode);
 
   const menuItems = ["LIST", "ADD", "EDIT", "SEARCH", "HELP", "DELETE"];
   const statusLabel = filters.status === "all" ? "ACTIVE" : filters.status.toUpperCase();
@@ -186,6 +189,7 @@ export function LeftRail({ mode, focus, filters, fastPulseOn }: LeftRailProps) {
         <text style={{ color: theme.text }}>
           SEARCH: {filters.searchText?.trim() ? filters.searchText : "(none)"}
         </text>
+        <text style={{ color: theme.text }}>SORT: {sortLabel}</text>
       </box>
 
       <box style={{ marginTop: 1, flexDirection: "column", gap: 0 }}>
@@ -198,6 +202,7 @@ export function LeftRail({ mode, focus, filters, fastPulseOn }: LeftRailProps) {
         <text style={{ color: theme.text }}>d: DELETE</text>
         <text style={{ color: theme.text }}>/: SEARCH</text>
         <text style={{ color: theme.text }}>f: STATUS</text>
+        <text style={{ color: theme.text }}>s: SORT</text>
         <text style={{ color: theme.text }}>g: DUE</text>
         <text style={{ color: theme.text }}>t: TAG FILTER</text>
         <text style={{ color: theme.text }}>?: HELP</text>

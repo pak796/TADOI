@@ -121,7 +121,7 @@ describe("safeLoadState", () => {
     const filePath = path.join(dir, "todui_data.json");
     await fs.writeFile(
       filePath,
-      JSON.stringify({ schemaVersion: 99, tasks: [], tagIndex: {} }),
+      JSON.stringify({ schemaVersion: 99, tasks: [], tagIndex: {}, savedViews: [] }),
       "utf8"
     );
 
@@ -215,14 +215,16 @@ describe("saveStateDebounced", () => {
     const dir = await makeTempDir();
     const filePath = path.join(dir, "todui_data.json");
     const first: LoadedData = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       tasks: [{ id: "a", title: "a", status: "open", createdAt: 1, updatedAt: 1, tags: [] }],
-      tagIndex: {}
+      tagIndex: {},
+      savedViews: []
     };
     const second: LoadedData = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       tasks: [{ id: "b", title: "b", status: "open", createdAt: 1, updatedAt: 1, tags: [] }],
-      tagIndex: {}
+      tagIndex: {},
+      savedViews: []
     };
 
     saveStateDebounced(first, 25, filePath);
@@ -248,11 +250,12 @@ describe("saveStateDebounced", () => {
 
     saveStateDebounced(
       {
-        schemaVersion: 2,
+        schemaVersion: 3,
         tasks: [
           { id: "nested", title: "nested", status: "open", createdAt: 1, updatedAt: 1, tags: [] }
         ],
-        tagIndex: {}
+        tagIndex: {},
+        savedViews: []
       } satisfies LoadedData,
       25,
       nestedFilePath,
@@ -275,9 +278,10 @@ describe("saveStateDebounced", () => {
 
     saveStateDebounced(
       {
-        schemaVersion: 2,
+        schemaVersion: 3,
         tasks: [{ id: "ok", title: "ok", status: "open", createdAt: 1, updatedAt: 1, tags: [] }],
-        tagIndex: {}
+        tagIndex: {},
+        savedViews: []
       } satisfies LoadedData,
       25,
       filePath,
@@ -311,11 +315,12 @@ describe("saveStateDebounced", () => {
 
     saveStateDebounced(
       {
-        schemaVersion: 2,
+        schemaVersion: 3,
         tasks: [
           { id: "fail", title: "fail", status: "open", createdAt: 1, updatedAt: 1, tags: [] }
         ],
-        tagIndex: {}
+        tagIndex: {},
+        savedViews: []
       } satisfies LoadedData,
       25,
       filePath,

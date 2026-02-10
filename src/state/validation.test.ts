@@ -3,7 +3,7 @@ import { promises as fs } from "fs";
 import { validatePersistedState } from "./validation";
 
 const BASE_STATE = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   tasks: [
     {
       id: "a",
@@ -14,7 +14,8 @@ const BASE_STATE = {
       tags: ["work"]
     }
   ],
-  tagIndex: {}
+  tagIndex: {},
+  savedViews: []
 };
 
 describe("validatePersistedState", () => {

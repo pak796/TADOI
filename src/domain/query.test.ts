@@ -109,3 +109,47 @@ describe("sortTasks with explicit time on same day", () => {
     expect(sorted.indexOf("time-late")).toBeLessThan(sorted.indexOf("date-only"));
   });
 });
+
+describe("sortTasks by mode", () => {
+  it("sorts by updatedAt descending in UPDATED mode", () => {
+    const now = new Date(2026, 1, 8, 12, 0, 0, 0).getTime();
+    const tasks: Task[] = [
+      makeTask({ id: "older", title: "older", updatedAt: 100 }),
+      makeTask({ id: "newest", title: "newest", updatedAt: 300 }),
+      makeTask({ id: "middle", title: "middle", updatedAt: 200 })
+    ];
+    expect(sortTasks(tasks, now, "updated").map((task) => task.id)).toEqual([
+      "newest",
+      "middle",
+      "older"
+    ]);
+  });
+
+  it("sorts by createdAt descending in CREATED mode", () => {
+    const now = new Date(2026, 1, 8, 12, 0, 0, 0).getTime();
+    const tasks: Task[] = [
+      makeTask({ id: "older", title: "older", createdAt: 100, updatedAt: 100 }),
+      makeTask({ id: "newest", title: "newest", createdAt: 300, updatedAt: 100 }),
+      makeTask({ id: "middle", title: "middle", createdAt: 200, updatedAt: 100 })
+    ];
+    expect(sortTasks(tasks, now, "created").map((task) => task.id)).toEqual([
+      "newest",
+      "middle",
+      "older"
+    ]);
+  });
+
+  it("sorts title case-insensitively in TITLE mode with stable fallback", () => {
+    const now = new Date(2026, 1, 8, 12, 0, 0, 0).getTime();
+    const tasks: Task[] = [
+      makeTask({ id: "b", title: "beta", updatedAt: 1, createdAt: 1 }),
+      makeTask({ id: "a2", title: "Alpha", updatedAt: 1, createdAt: 1 }),
+      makeTask({ id: "a1", title: "alpha", updatedAt: 1, createdAt: 1 })
+    ];
+    expect(sortTasks(tasks, now, "title").map((task) => task.id)).toEqual([
+      "a1",
+      "a2",
+      "b"
+    ]);
+  });
+});

@@ -7,7 +7,7 @@ Naming: replace LCARS with **ToDui** in the app UI and filenames.
 
 v0.2.4 scope note:
 - This version focuses on foundation polish for real users: platform contract, reliability hardening, and performance envelope.
-- It does not add major new features; it adds explicit support boundaries, failure-mode handling, and performance targets.
+- It adds daily-driver navigation and saved-view ergonomics while keeping persistence and routing discipline strict.
 - It carries forward all accepted v0.2.3 routing/version work and appends new v0.2.4 foundation requirements.
 
 - Runtime: Bun (OpenTUI quick start uses Bun; `bun create tui`)  [oai_citation:0‡GitHub](https://github.com/anomalyco/opentui?utm_source=chatgpt.com)
@@ -83,6 +83,10 @@ Deliverables:
 57. **Rotating theme mode**: support a `rotating` theme option that auto-cycles concrete palettes every 15 seconds.
 58. **v0.2.4 version surfaces**: app version indicators and package metadata are aligned to `v0.2.4` / `0.2.4`.
 59. **Daily-driver list navigation primitives**: add `gg` (top), `G` (bottom), page navigation (`ctrl+u` / `ctrl+d`, plus PageUp/PageDown), and attention jumps (`[`/`]` for overdue, `{`/`}` for due-today).
+60. **Saved Views (filter presets)**: users can save/apply/delete up to 9 filter presets (`v`, `ctrl+s`, `1..9`) with persistence and schema migration support.
+61. **Global active-tag cycle filter**: `t` cycles through tags from all active (open) tasks, not only the selected task.
+62. **Sort toggles**: `s` cycles list sorting (`DUE`, `UPDATED`, `CREATED`, `TITLE`) and current sort is visible in UI.
+63. **Selection stability by task id**: on filter/search/sort changes, keep the same selected task id when possible; otherwise clamp to nearest valid index.
 
 ### Non-Goals (MVP)
 - Sync, accounts, multi-device
@@ -184,9 +188,22 @@ type Filters = {
   searchText?: string; // live search
 };
 
+type SortMode = "due" | "updated" | "created" | "title";
+
+type SavedView = {
+  id: string;          // uuid
+  name: string;        // display label (case-preserving)
+  filters: Filters;    // snapshot at save-time
+  createdAt: number;   // epoch ms
+  updatedAt: number;   // epoch ms
+};
+
 Persistence:
 - Save data with `schemaVersion` for migrations.
+- Persisted envelope is `{ schemaVersion, tasks, tagIndex, savedViews }`.
 - Migration sets `hasExplicitTime=false` for legacy tasks without time.
+- Migration `2 -> 3` introduces `savedViews: []` for older files.
+- Sort mode is runtime state (not persisted) and defaults to `due` on startup.
 
 THIS WEEK definition:
 - Rolling next 7 days including today, based on local-day boundaries (not calendar week).
@@ -216,6 +233,13 @@ Tag normalization rules:
 
 Tag colors:
 - Tag color palette supports up to 16 distinct colors.
+
+Saved Views (v0.2.4 daily-driver #2):
+- A saved view captures `{ status, due, tag, searchText }`.
+- It does not capture UI-only state (selection index, scroll offset, mode/focus).
+- Current MVP does not persist sort mode because list sort is fixed by due/priority rules.
+- Name dedupe policy is case-insensitive update-by-name.
+- Max saved views is 9.
 ```
 
 
@@ -339,10 +363,37 @@ Call `ensureSelectedVisible()` whenever:
 - `gg` selects first visible task and keeps it visible.
 - `G` selects last visible task and keeps it visible.
 - Page navigation moves by `visibleRows - 1` and clamps in-range.
+- `s` cycles sort mode in this order:
+  - `DUE`: due date asc; within day explicit-time tasks first, then time asc, then date-only, then stable fallback.
+  - `UPDATED`: `updatedAt` desc.
+  - `CREATED`: `createdAt` desc.
+  - `TITLE`: title asc (case-insensitive).
+- `t` cycles tag include-filter through the global active-task tag pool (open tasks), then clears.
 - Attention jumps use current due semantics:
   - Overdue uses date-only and explicit-time same-day overdue rules.
   - Due-today uses local-day today.
 - Attention jumps wrap and show a brief banner when no target exists.
+
+### Selection reconciliation behavior
+- Selection tracks task identity (`selectedId`) across sort/filter/search changes.
+- If `selectedId` remains visible after list recompute, keep that task selected.
+- If `selectedId` disappears, select the nearest valid index using prior list index clamped to new bounds.
+- After reconciliation, run visibility guard so the selected row remains in viewport.
+
+### Daily-driver saved views behavior
+- List-mode keys:
+  - `v`: toggle Saved Views overlay.
+  - `ctrl+s`: open save prompt for current filter snapshot.
+  - `1..9`: apply saved view slot directly when overlay is closed.
+- Overlay keys:
+  - `j/k` or arrows: move selected saved view.
+  - `enter`: apply selected view.
+  - `d`: delete selected view (non-modal confirm in MVP).
+  - `esc` or `v`: close overlay.
+- Save prompt keys:
+  - `enter`: save/update view.
+  - `esc`: cancel save prompt.
+- Applying a view updates filters immediately and relies on existing selection clamp + scroll-visibility behavior.
 
 ## A5) v0.2.0 Quality Gates (manual, required)
 1. **Focus routing**: in ADD/EDIT, typing never moves list selection; in LIST, typing does not “leak” into inputs.
@@ -432,6 +483,12 @@ After successful load/migration, the following invariants must hold:
 - Timestamp fields are numeric when present:
 - `dueAt`, `closedAt`, `createdAt`, `updatedAt`
 - `hasExplicitTime` is boolean when present.
+- `savedViews` is an array when present.
+- Each saved view has non-empty `id` and `name`.
+- Saved-view filters stay in allowed domains:
+  - `status`: `{all, open, done, archived}`
+  - `due`: `{any, overdue, today, next7}`
+  - `tag`/`searchText` are strings when present.
 - Unknown fields are tolerated and ignored unless they break parsing/validation.
 
 ## B5) Persistence Interfaces (Spec Guidance)
@@ -452,8 +509,8 @@ safeLoadState(): {
 }
 ```
 
-Persisted envelope remains unchanged:
-- `{ schemaVersion, tasks, tagIndex }`
+Persisted envelope:
+- `{ schemaVersion, tasks, tagIndex, savedViews }`
 
 
 # Appendix C — v0.2.2 Automated Tests & CI Gates

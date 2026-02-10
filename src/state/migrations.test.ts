@@ -14,21 +14,22 @@ async function loadFixture(name: string): Promise<LoadedData> {
 
 describe("migratePersistedStateToCurrent", () => {
   it("keeps current schema fixture unchanged", async () => {
-    const input = await loadFixture("persisted.v2.json");
+    const input = await loadFixture("persisted.v3.json");
 
-    const migrated = migratePersistedStateToCurrent(input, 2);
+    const migrated = migratePersistedStateToCurrent(input, 3);
     expect(migrated).toEqual(input);
     const validated = validatePersistedState(migrated, "strict");
     expect(validated.ok).toBe(true);
   });
 
-  it("migrates legacy v1 fixture to v2 and validates", async () => {
+  it("migrates legacy v1 fixture to v3 and validates", async () => {
     const input = await loadFixture("persisted.v1.json");
 
-    const migrated = migratePersistedStateToCurrent(input, 2);
-    expect(migrated.schemaVersion).toBe(2);
+    const migrated = migratePersistedStateToCurrent(input, 3);
+    expect(migrated.schemaVersion).toBe(3);
     expect(migrated.tasks[0]?.hasExplicitTime).toBe(false);
     expect(migrated.tasks[0]?.tags).toEqual(["alpha", "work"]);
+    expect(migrated.savedViews).toEqual([]);
     const validated = validatePersistedState(migrated, "strict");
     expect(validated.ok).toBe(true);
   });
@@ -37,10 +38,11 @@ describe("migratePersistedStateToCurrent", () => {
     const input: LoadedData = {
       schemaVersion: 99,
       tasks: [],
-      tagIndex: {}
+      tagIndex: {},
+      savedViews: []
     };
 
-    expect(() => migratePersistedStateToCurrent(input, 2)).toThrow(
+    expect(() => migratePersistedStateToCurrent(input, 3)).toThrow(
       "Unsupported schemaVersion"
     );
   });

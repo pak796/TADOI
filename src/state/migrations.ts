@@ -4,7 +4,8 @@ import type { LoadedData } from "./persistence";
 type MigrationFn = (state: LoadedData) => LoadedData;
 
 const migrations: Record<number, MigrationFn> = {
-  1: migrateV1ToV2
+  1: migrateV1ToV2,
+  2: migrateV2ToV3
 };
 
 function migrateV1ToV2(state: LoadedData): LoadedData {
@@ -23,7 +24,17 @@ function migrateV1ToV2(state: LoadedData): LoadedData {
   return {
     schemaVersion: 2,
     tasks,
-    tagIndex: normalizeTagIndex(state.tagIndex ?? {})
+    tagIndex: normalizeTagIndex(state.tagIndex ?? {}),
+    savedViews: []
+  };
+}
+
+function migrateV2ToV3(state: LoadedData): LoadedData {
+  return {
+    schemaVersion: 3,
+    tasks: state.tasks,
+    tagIndex: normalizeTagIndex(state.tagIndex ?? {}),
+    savedViews: []
   };
 }
 
@@ -40,7 +51,8 @@ export function migratePersistedStateToCurrent(
   let next = {
     ...input,
     tasks: Array.isArray(input.tasks) ? input.tasks : [],
-    tagIndex: input.tagIndex ?? {}
+    tagIndex: input.tagIndex ?? {},
+    savedViews: Array.isArray(input.savedViews) ? input.savedViews : []
   };
 
   while (next.schemaVersion < currentVersion) {

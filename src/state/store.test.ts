@@ -23,7 +23,7 @@ describe("applyArchiveAging startup behavior", () => {
   it("archives done tasks older than 7 days and leaves others", () => {
     const now = new Date(2026, 1, 8, 12, 0, 0, 0).getTime();
     const data: LoadedData = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       tasks: [
         makeTask({
           id: "old",
@@ -43,7 +43,8 @@ describe("applyArchiveAging startup behavior", () => {
           status: "open"
         })
       ],
-      tagIndex: {}
+      tagIndex: {},
+      savedViews: []
     };
 
     const result = applyArchiveAging(data, now);

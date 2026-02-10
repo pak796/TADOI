@@ -1,7 +1,7 @@
 import os from "os";
 import { promises as fs } from "fs";
 import path from "path";
-import { TagIndexEntry, Task } from "../domain/models";
+import { SavedView, TagIndexEntry, Task } from "../domain/models";
 import { migratePersistedStateToCurrent } from "./migrations";
 import { validatePersistedState } from "./validation";
 
@@ -9,6 +9,7 @@ export type LoadedData = {
   schemaVersion: number;
   tasks: Task[];
   tagIndex: Record<string, TagIndexEntry>;
+  savedViews: SavedView[];
 };
 
 export type ResolveDataPathOptions = {
@@ -102,13 +103,18 @@ export function resolveDataPath(options: ResolveDataPathOptions = {}): string {
 
 const DATA_FILE = resolveDataPath();
 const DEFAULT_FS_OPS: PersistenceFsOps = fs;
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 let lastSuccessfulSaveAt: number | undefined;
 const corruptionRecoveryByPath = new Map<string, string | undefined>();
 
 function emptyData(): LoadedData {
-  return { schemaVersion: CURRENT_SCHEMA_VERSION, tasks: [], tagIndex: {} };
+  return {
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    tasks: [],
+    tagIndex: {},
+    savedViews: []
+  };
 }
 
 function isMissingFileError(error: unknown): boolean {

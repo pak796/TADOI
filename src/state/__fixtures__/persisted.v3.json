@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 3,
+  "tasks": [
+    {
+      "id": "current-1",
+      "title": "Current Task",
+      "status": "open",
+      "createdAt": 1700000000000,
+      "updatedAt": 1700000000000,
+      "hasExplicitTime": false,
+      "tags": [
+        "alpha",
+        "work"
+      ]
+    }
+  ],
+  "tagIndex": {
+    "work": {
+      "tagName": "work",
+      "usageCount": 1,
+      "lastUsedAt": 1700000000000
+    }
+  },
+  "savedViews": [
+    {
+      "id": "view-1",
+      "name": "Today Focus",
+      "filters": {
+        "status": "open",
+        "due": "today",
+        "tag": "work",
+        "searchText": "priority"
+      },
+      "createdAt": 1700000000000,
+      "updatedAt": 1700000000000
+    }
+  ]
+}

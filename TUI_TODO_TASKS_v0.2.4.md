@@ -8,7 +8,7 @@
 
 v0.2.4 scope note:
 - This version focuses on foundation polish for real users: platform contract, reliability hardening, and performance envelope.
-- It does not add major new features; it adds explicit support boundaries, failure-mode handling, and performance targets.
+- It adds daily-driver navigation and saved-view ergonomics while keeping routing and persistence discipline strict.
 - It keeps all completed phases through v0.2.3 and tracks Phase 13 foundation work for v0.2.4.
 
 ---
@@ -186,6 +186,75 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 - Shortcuts are inert outside LIST mode with TASK_LIST focus.
 - Help overlay documents the new shortcuts.
 - Tests cover matching-index search and due-attention predicates.
+
+### T3.17 Daily-driver saved views (filter presets)
+**Status**: Complete
+**Implement**
+- Add saved-view model and persistence:
+  - `SavedView` type in domain state
+  - persisted envelope includes `savedViews`
+  - schema migration `2 -> 3` introduces `savedViews: []`
+- Add saved-view domain helpers:
+  - snapshot/apply filters
+  - save by name (case-insensitive update)
+  - delete by index
+  - max 9 views
+- Add LIST-mode UX:
+  - `v`: toggle views overlay
+  - `ctrl+s`: open save prompt for current filters
+  - `1..9`: apply view slots
+  - overlay controls: `j/k` move, `enter` apply, `d` delete, `esc`/`v` close
+- Ensure applying a view updates filters immediately and existing selection clamp/visibility logic keeps selection valid.
+- Add tests for:
+  - apply/snapshot behavior
+  - create/update/full/delete flows
+  - migration and validation with `savedViews`
+
+**DoD**
+- User can save a view, restart app, and apply it from persisted data.
+- Applying a view updates list filters (`status`, `due`, `tag`, `searchText`) immediately.
+- Saved views do not persist UI-only state (selection/scroll/mode/focus).
+- `bun test` and `bun run typecheck` pass.
+
+### T3.18 Global active-tag filter cycle
+**Status**: Complete
+**Implement**
+- Update `t` tag-filter behavior to cycle through tags from all active (open) tasks, not just tags on the currently selected task.
+- Keep cycle order deterministic (alphabetical), and clear the tag filter after the last tag.
+
+**DoD**
+- Pressing `t` iterates through global active-task tags regardless of current selection.
+- After the last tag, the next `t` clears the tag filter.
+
+### T3.19 Sort toggles (LIST mode)
+**Status**: Complete
+**Implement**
+- Add LIST-mode key `s` to cycle sort modes:
+  - `DUE` (default)
+  - `UPDATED`
+  - `CREATED`
+  - `TITLE`
+- Update query sorting pipeline so visible tasks are sorted by active `sortMode`.
+- Show current sort mode in UI (left rail/help).
+
+**DoD**
+- Pressing `s` cycles all sort modes in order and updates list ordering immediately.
+- `ctrl+s` behavior for Saved Views remains unchanged.
+- Help and left rail show sort key/mode info.
+
+### T3.20 Selection stability across list changes
+**Status**: Complete
+**Implement**
+- Reconcile selection by task id on visible-list recompute:
+  - keep same task when still visible
+  - if missing, clamp to nearest valid index
+- Keep selection visible by running scroll-visibility guard after reconciliation.
+- Add pure unit tests for selection reconciliation behavior.
+
+**DoD**
+- Sort/filter/search changes keep selection on the same task id when possible.
+- If selected task disappears, selection moves to nearest valid item (not forced to top).
+- Selection remains visible after list changes.
 
 ### T3.3 Sorting + filtering + search pipeline
 **Status**: Complete

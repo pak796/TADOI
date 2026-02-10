@@ -43,6 +43,11 @@ export function validatePersistedState(
     errors.push("tagIndex must be an object when present");
   }
 
+  const savedViews = input.savedViews;
+  if (savedViews !== undefined && !Array.isArray(savedViews)) {
+    errors.push("savedViews must be an array when present");
+  }
+
   if (errors.length > 0) {
     return { ok: false, errors };
   }
@@ -50,7 +55,8 @@ export function validatePersistedState(
   const normalized: LoadedData = {
     schemaVersion: schemaVersion as number,
     tasks: tasks as LoadedData["tasks"],
-    tagIndex: (tagIndex as LoadedData["tagIndex"]) ?? {}
+    tagIndex: (tagIndex as LoadedData["tagIndex"]) ?? {},
+    savedViews: Array.isArray(savedViews) ? (savedViews as LoadedData["savedViews"]) : []
   };
 
   if (mode === "minimal") {
@@ -110,6 +116,48 @@ export function validatePersistedState(
       normalizedTags.some((tag, index) => tag !== task.tags[index])
     ) {
       errors.push(`task.tags must be normalized/deduped/sorted (${String(task.id)})`);
+    }
+  }
+
+  for (const view of normalized.savedViews) {
+    if (!isRecord(view)) {
+      errors.push("savedView entry must be an object");
+      continue;
+    }
+
+    if (typeof view.id !== "string" || view.id.trim().length === 0) {
+      errors.push("savedView.id must be a non-empty string");
+    }
+
+    if (typeof view.name !== "string" || view.name.trim().length === 0) {
+      errors.push("savedView.name must be a non-empty string");
+    }
+
+    if (!isFiniteNumber(view.createdAt) || !isFiniteNumber(view.updatedAt)) {
+      errors.push(`savedView timestamps must be numeric (${String(view.id)})`);
+    }
+
+    if (!isRecord(view.filters)) {
+      errors.push(`savedView.filters must be an object (${String(view.id)})`);
+      continue;
+    }
+    if (!["all", "open", "done", "archived"].includes(String(view.filters.status))) {
+      errors.push(`savedView.filters.status invalid (${String(view.id)})`);
+    }
+    if (!["any", "overdue", "today", "next7"].includes(String(view.filters.due))) {
+      errors.push(`savedView.filters.due invalid (${String(view.id)})`);
+    }
+    if (
+      view.filters.tag !== undefined &&
+      typeof view.filters.tag !== "string"
+    ) {
+      errors.push(`savedView.filters.tag must be string (${String(view.id)})`);
+    }
+    if (
+      view.filters.searchText !== undefined &&
+      typeof view.filters.searchText !== "string"
+    ) {
+      errors.push(`savedView.filters.searchText must be string (${String(view.id)})`);
     }
   }
 

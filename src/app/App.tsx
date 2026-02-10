@@ -52,8 +52,19 @@ import {
   rankTags,
   updateTagIndex
 } from "../domain/tagIndex";
-import { AppState, FocusTarget, Mode, Task } from "../domain/models";
+import {
+  getSortModeLabel,
+  SORT_MODE_ORDER
+} from "../domain/query";
+import { reconcileSelectionById } from "../domain/selection";
+import { AppState, FocusTarget, Mode, SavedView, Task } from "../domain/models";
 import { ROTATING_THEME_ORDER, THEMES, ThemeId } from "../theme/themes";
+import {
+  applySavedView,
+  MAX_SAVED_VIEWS,
+  saveViewByName,
+  deleteViewAtIndex
+} from "../domain/savedViews";
 import { saveSettingsDebounced } from "../settings/settings";
 import { settingsReducer } from "../state/settingsStore";
 import { isEditorMode } from "../ui/modeFocus";
@@ -65,6 +76,7 @@ const TICKER_INTERVAL_MS = 6000;
 const ROTATING_THEME_INTERVAL_MS = 15000;
 const G_PREFIX_TIMEOUT_MS = 280;
 const NAV_BANNER_TIMEOUT_MS = 1800;
+const VIEW_NAME_MAX_LENGTH = 40;
 const PERF_DEBUG_ENABLED = process.env.TODUI_PERF_DEBUG === "1";
 
 function getTagQuery(tagsText: string): string | null {
@@ -186,6 +198,13 @@ function buildTagTickerSegments(
   return segments;
 }
 
+function summarizeViewFilters(filters: SavedView["filters"]): string {
+  const search = filters.searchText?.trim();
+  const searchLabel = search ? ` search=${search}` : "";
+  const tagLabel = filters.tag ? ` tag=#${filters.tag}` : "";
+  return `status=${filters.status} due=${filters.due}${tagLabel}${searchLabel}`;
+}
+
 type AppProps = {
   initialData?: LoadedData;
   skipInitialSave?: boolean;
@@ -198,7 +217,8 @@ function initState(data?: LoadedData): AppState {
   return {
     ...initialState,
     tasks: data?.tasks ?? [],
-    tagIndex: data?.tagIndex ?? {}
+    tagIndex: data?.tagIndex ?? {},
+    savedViews: data?.savedViews ?? []
   };
 }
 
@@ -222,6 +242,10 @@ export function App({
   const [saveFailureBanner, setSaveFailureBanner] = useState<string | null>(null);
   const [navigationBanner, setNavigationBanner] = useState<string | null>(null);
   const [pendingGPrefix, setPendingGPrefix] = useState(false);
+  const [viewsOverlayOpen, setViewsOverlayOpen] = useState(false);
+  const [selectedViewIndex, setSelectedViewIndex] = useState(0);
+  const [saveViewPromptOpen, setSaveViewPromptOpen] = useState(false);
+  const [saveViewName, setSaveViewName] = useState("");
   const skipInitialSaveRef = useRef(skipInitialSave);
   const skipSettingsSaveRef = useRef(true);
   const lastSuccessfulSaveAtRef = useRef<number | undefined>(undefined);
@@ -235,7 +259,7 @@ export function App({
   const dayKey = startOfLocalDayMs(now);
   const visibleTasks = getVisibleTasks(state, now);
   const selectedTask = visibleTasks.find((task) => task.id === state.selectedId) ?? visibleTasks[0];
-  const computedSelectedIndex = visibleTasks.findIndex((task) => task.id === state.selectedId);
+  const sortModeLabel = getSortModeLabel(state.sortMode);
 
   const listHeaderHeight = 2;
   const topBarHeight = 4;
@@ -383,7 +407,8 @@ export function App({
         {
           schemaVersion: CURRENT_SCHEMA_VERSION,
           tasks: state.tasks,
-          tagIndex: state.tagIndex
+          tagIndex: state.tagIndex,
+          savedViews: state.savedViews
         },
         Date.now()
       );
@@ -429,8 +454,20 @@ export function App({
   useEffect(() => {
     if (uiState.mode !== Mode.LIST || uiState.focus !== FocusTarget.TASK_LIST) {
       clearPendingGPrefix();
+      setViewsOverlayOpen(false);
+      setSaveViewPromptOpen(false);
     }
   }, [uiState.mode, uiState.focus]);
+
+  useEffect(() => {
+    if (state.savedViews.length === 0) {
+      setSelectedViewIndex(0);
+      return;
+    }
+    if (selectedViewIndex >= state.savedViews.length) {
+      setSelectedViewIndex(state.savedViews.length - 1);
+    }
+  }, [selectedViewIndex, state.savedViews.length]);
 
   useEffect(() => {
     if (settingsState.themeId === "rotating") return;
@@ -473,14 +510,15 @@ export function App({
       {
         schemaVersion: CURRENT_SCHEMA_VERSION,
         tasks: state.tasks,
-        tagIndex: state.tagIndex
+        tagIndex: state.tagIndex,
+        savedViews: state.savedViews
       },
       350,
       undefined,
       undefined,
       handleSaveResult
     );
-  }, [state.tasks, state.tagIndex]);
+  }, [state.tasks, state.tagIndex, state.savedViews]);
 
   useEffect(() => {
     if (!PERF_DEBUG_ENABLED) return;
@@ -491,29 +529,22 @@ export function App({
   });
 
   useEffect(() => {
-    if (visibleTasks.length === 0) {
-      if (state.selectedId) {
-        dispatch({ type: "setSelected", id: undefined });
-      }
-      uiDispatch({ type: "setScrollOffset", scrollOffset: 0 });
-      return;
-    }
-    if (!state.selectedId || !visibleTasks.some((task) => task.id === state.selectedId)) {
-      dispatch({ type: "setSelected", id: visibleTasks[0].id });
-    }
-  }, [visibleTasks, state.selectedId]);
+    const reconciled = reconcileSelectionById(
+      visibleTasks,
+      state.selectedId,
+      uiState.selectedIndex
+    );
 
-  useEffect(() => {
-    const safeIndex =
-      visibleTasks.length === 0
-        ? 0
-        : computedSelectedIndex === -1
-          ? 0
-          : computedSelectedIndex;
-    if (uiState.selectedIndex !== safeIndex) {
-      uiDispatch({ type: "setSelectedIndex", selectedIndex: safeIndex });
+    if (reconciled.selectedId !== state.selectedId) {
+      dispatch({ type: "setSelected", id: reconciled.selectedId });
     }
-  }, [computedSelectedIndex, uiState.selectedIndex, visibleTasks.length]);
+    if (reconciled.selectedIndex !== uiState.selectedIndex) {
+      uiDispatch({ type: "setSelectedIndex", selectedIndex: reconciled.selectedIndex });
+    }
+    if (visibleTasks.length === 0 && uiState.scrollOffset !== 0) {
+      uiDispatch({ type: "setScrollOffset", scrollOffset: 0 });
+    }
+  }, [visibleTasks, state.selectedId, uiState.selectedIndex, uiState.scrollOffset]);
 
   useEffect(() => {
     const clamped = clampScrollOffset(
@@ -574,6 +605,24 @@ export function App({
           clearPendingGPrefix();
         }
         return;
+      case "TOGGLE_VIEWS_OVERLAY":
+        toggleViewsOverlay();
+        return;
+      case "CLOSE_VIEWS_OVERLAY":
+        closeViewsOverlay();
+        return;
+      case "MOVE_VIEW_SELECTION":
+        moveViewSelection(action.delta);
+        return;
+      case "OPEN_SAVE_VIEW_PROMPT":
+        openSaveViewPrompt();
+        return;
+      case "CONFIRM_SAVE_VIEW_PROMPT":
+        confirmSaveViewPrompt();
+        return;
+      case "CANCEL_SAVE_VIEW_PROMPT":
+        cancelSaveViewPrompt();
+        return;
       case "CYCLE_THEME":
         settingsDispatch({ type: "cycleTheme" });
         return;
@@ -595,6 +644,15 @@ export function App({
       case "JUMP_TO_ATTENTION":
         jumpToAttention(action.kind, action.direction);
         return;
+      case "APPLY_VIEW_SLOT":
+        applyViewAtSlot(action.slot);
+        return;
+      case "APPLY_SELECTED_VIEW":
+        applySelectedView();
+        return;
+      case "DELETE_SELECTED_VIEW":
+        deleteSelectedView();
+        return;
       case "TOGGLE_SELECTED":
         toggleSelected();
         return;
@@ -615,6 +673,9 @@ export function App({
         return;
       case "CYCLE_STATUS":
         cycleStatus();
+        return;
+      case "CYCLE_SORT":
+        cycleSort();
         return;
       case "CYCLE_DUE":
         cycleDue();
@@ -678,7 +739,9 @@ export function App({
         hasTagInlineSuggestion: Boolean(tagInlineSuggestion),
         hasDueSuggestion: Boolean(dueSuggestion),
         timeAutocompleteStep,
-        hasPendingGPrefix: pendingGPrefix
+        hasPendingGPrefix: pendingGPrefix,
+        viewsOverlayOpen,
+        saveViewPromptOpen
       }
     );
 
@@ -710,6 +773,7 @@ export function App({
 
   function openDeleteConfirm() {
     if (!selectedTask) return;
+    closeViewsOverlay();
     uiDispatch({
       type: "setModal",
       modal: {
@@ -815,6 +879,123 @@ export function App({
     }, G_PREFIX_TIMEOUT_MS);
   }
 
+  function closeViewsOverlay() {
+    setViewsOverlayOpen(false);
+    setSaveViewPromptOpen(false);
+    setSaveViewName("");
+  }
+
+  function toggleViewsOverlay() {
+    clearPendingGPrefix();
+    if (viewsOverlayOpen) {
+      closeViewsOverlay();
+      return;
+    }
+    setViewsOverlayOpen(true);
+    setSaveViewPromptOpen(false);
+    setSelectedViewIndex((prev) =>
+      state.savedViews.length === 0
+        ? 0
+        : Math.max(0, Math.min(prev, state.savedViews.length - 1))
+    );
+  }
+
+  function moveViewSelection(delta: 1 | -1) {
+    if (state.savedViews.length === 0) return;
+    setSelectedViewIndex((prev) => {
+      const next = (prev + delta + state.savedViews.length) % state.savedViews.length;
+      return next;
+    });
+  }
+
+  function applyView(view: SavedView) {
+    const nextFilters = applySavedView(view);
+    dispatch({
+      type: "setFilters",
+      filters: {
+        status: nextFilters.status,
+        due: nextFilters.due,
+        tag: nextFilters.tag,
+        searchText: nextFilters.searchText
+      }
+    });
+    closeViewsOverlay();
+    showShortNavigationBanner(`Applied view: ${view.name}`);
+  }
+
+  function applyViewAtSlot(slot: number) {
+    if (slot < 0 || slot >= state.savedViews.length) {
+      showShortNavigationBanner(`No saved view in slot ${slot + 1}`);
+      return;
+    }
+    applyView(state.savedViews[slot]);
+  }
+
+  function applySelectedView() {
+    if (state.savedViews.length === 0) {
+      showShortNavigationBanner("No saved views");
+      return;
+    }
+    const index = Math.max(0, Math.min(selectedViewIndex, state.savedViews.length - 1));
+    applyView(state.savedViews[index]);
+  }
+
+  function deleteSelectedView() {
+    if (state.savedViews.length === 0) {
+      showShortNavigationBanner("No saved views to delete");
+      return;
+    }
+    const index = Math.max(0, Math.min(selectedViewIndex, state.savedViews.length - 1));
+    const target = state.savedViews[index];
+    const next = deleteViewAtIndex(state.savedViews, index);
+    dispatch({ type: "setSavedViews", savedViews: next });
+    setSelectedViewIndex(Math.max(0, Math.min(index, next.length - 1)));
+    showShortNavigationBanner(`Deleted view: ${target.name}`);
+  }
+
+  function openSaveViewPrompt() {
+    clearPendingGPrefix();
+    setViewsOverlayOpen(true);
+    setSaveViewPromptOpen(true);
+    setSaveViewName("");
+  }
+
+  function cancelSaveViewPrompt() {
+    setSaveViewPromptOpen(false);
+    setSaveViewName("");
+  }
+
+  function confirmSaveViewPrompt() {
+    const nowMs = Date.now();
+    const result = saveViewByName(
+      state.savedViews,
+      saveViewName,
+      state.filters,
+      nowMs,
+      MAX_SAVED_VIEWS
+    );
+
+    if (result.kind === "invalid_name") {
+      showShortNavigationBanner("View name is required");
+      return;
+    }
+    if (result.kind === "full") {
+      showShortNavigationBanner(`Saved view limit reached (${MAX_SAVED_VIEWS})`);
+      return;
+    }
+
+    dispatch({ type: "setSavedViews", savedViews: result.savedViews });
+    const idx = result.savedViews.findIndex((view) => view.id === result.view.id);
+    setSelectedViewIndex(idx >= 0 ? idx : 0);
+    setSaveViewPromptOpen(false);
+    setSaveViewName("");
+    showShortNavigationBanner(
+      result.kind === "created"
+        ? `Saved view: ${result.view.name}`
+        : `Updated view: ${result.view.name}`
+    );
+  }
+
   function toggleSelected() {
     if (!selectedTask) return;
     const now = Date.now();
@@ -832,6 +1013,7 @@ export function App({
   }
 
   function openAdd() {
+    closeViewsOverlay();
     setTimeSuggestion(getSuggestedTime(new Date()));
     uiDispatch({ type: "setMode", mode: Mode.ADD });
     uiDispatch({ type: "setFocus", focus: FocusTarget.EDITOR_TITLE });
@@ -843,6 +1025,7 @@ export function App({
 
   function openEdit() {
     if (!selectedTask) return;
+    closeViewsOverlay();
     setTimeSuggestion(null);
     uiDispatch({ type: "setMode", mode: Mode.EDIT });
     uiDispatch({ type: "setFocus", focus: FocusTarget.EDITOR_TITLE });
@@ -854,6 +1037,7 @@ export function App({
 
   function openDuplicate() {
     if (!selectedTask) return;
+    closeViewsOverlay();
     const baseDraft = createDraftFromTask(selectedTask);
     const dueText =
       selectedTask.status === "done"
@@ -967,6 +1151,14 @@ export function App({
     dispatch({ type: "setFilters", filters: { status: next } });
   }
 
+  function cycleSort() {
+    const currentIndex = SORT_MODE_ORDER.indexOf(state.sortMode);
+    const safeIndex = currentIndex === -1 ? 0 : currentIndex;
+    const nextSortMode = SORT_MODE_ORDER[(safeIndex + 1) % SORT_MODE_ORDER.length];
+    dispatch({ type: "setSortMode", sortMode: nextSortMode });
+    showShortNavigationBanner(`Sort: ${getSortModeLabel(nextSortMode)}`);
+  }
+
   function cycleDue() {
     const order: Array<"any" | "overdue" | "today" | "next7"> = [
       "any",
@@ -980,25 +1172,32 @@ export function App({
   }
 
   function toggleTagFilter() {
-    if (!selectedTask || selectedTask.tags.length === 0) {
+    const activeTags = Array.from(
+      new Set(
+        state.tasks
+          .filter((task) => task.status === "open")
+          .flatMap((task) => task.tags)
+      )
+    ).sort((left, right) => left.localeCompare(right));
+
+    if (activeTags.length === 0) {
       dispatch({ type: "setFilters", filters: { tag: undefined } });
       return;
     }
 
-    const tags = selectedTask.tags;
     const currentTag = state.filters.tag;
-    const currentIndex = currentTag ? tags.indexOf(currentTag) : -1;
+    const currentIndex = currentTag ? activeTags.indexOf(currentTag) : -1;
     const nextIndex = currentIndex + 1;
 
-    if (nextIndex >= tags.length || currentIndex === -1) {
+    if (nextIndex >= activeTags.length || currentIndex === -1) {
       dispatch({
         type: "setFilters",
-        filters: { tag: currentIndex === -1 ? tags[0] : undefined }
+        filters: { tag: currentIndex === -1 ? activeTags[0] : undefined }
       });
       return;
     }
 
-    dispatch({ type: "setFilters", filters: { tag: tags[nextIndex] } });
+    dispatch({ type: "setFilters", filters: { tag: activeTags[nextIndex] } });
   }
 
   function updateSearch(value: string) {
@@ -1009,6 +1208,10 @@ export function App({
     if (!state.editor) return;
     const nextValue = replaceLastTagToken(state.editor.tagsText, tag);
     dispatch({ type: "updateEditor", patch: { tagsText: nextValue } });
+  }
+
+  function updateSaveViewName(value: string) {
+    setSaveViewName(value.slice(0, VIEW_NAME_MAX_LENGTH));
   }
 
   if (!terminalIsSupported) {
@@ -1067,6 +1270,7 @@ export function App({
           mode={uiState.mode}
           focus={uiState.focus}
           filters={state.filters}
+          sortMode={state.sortMode}
           fastPulseOn={fastPulseOn}
         />
       </box>
@@ -1311,6 +1515,71 @@ export function App({
         </box>
       ) : null}
 
+      {viewsOverlayOpen ? (
+        <box
+          style={{
+            position: "absolute",
+            top: 3,
+            left: layout.railWidth + 3,
+            padding: 1,
+            backgroundColor: theme.panel,
+            border: true,
+            borderStyle: "single",
+            borderColor: theme.outline,
+            minWidth: 58
+          }}
+        >
+          <box style={{ flexDirection: "column" }}>
+            <text style={{ color: theme.text, fontWeight: "bold" }}>
+              SAVED VIEWS ({state.savedViews.length}/{MAX_SAVED_VIEWS})
+            </text>
+            <text style={{ color: theme.muted }}>
+              enter: apply  d: delete  ctrl+s: save current  v/esc: close
+            </text>
+            {state.savedViews.length === 0 ? (
+              <text style={{ color: theme.muted, marginTop: 1 }}>No saved views yet.</text>
+            ) : (
+              <box style={{ flexDirection: "column", marginTop: 1 }}>
+                {state.savedViews.map((view, index) => {
+                  const selected = index === selectedViewIndex;
+                  const slot = String(index + 1);
+                  return (
+                    <box
+                      key={view.id}
+                      style={{
+                        paddingLeft: 1,
+                        paddingRight: 1,
+                        backgroundColor: selected ? theme.accentBlue : "transparent"
+                      }}
+                    >
+                      <text style={{ color: selected ? theme.bg : theme.text }}>
+                        [{slot}] {view.name} - {summarizeViewFilters(view.filters)}
+                      </text>
+                    </box>
+                  );
+                })}
+              </box>
+            )}
+
+            {saveViewPromptOpen ? (
+              <box style={{ flexDirection: "column", marginTop: 1 }}>
+                <text style={{ color: theme.text }}>Save current filters as view name:</text>
+                <input
+                  value={saveViewName}
+                  onChange={updateSaveViewName}
+                  focused
+                  placeholder="e.g. TODAY FOCUS"
+                  style={{ backgroundColor: theme.bg, color: theme.text }}
+                />
+                <text style={{ color: theme.muted }}>
+                  Enter: save, Esc: cancel ({saveViewName.length}/{VIEW_NAME_MAX_LENGTH})
+                </text>
+              </box>
+            ) : null}
+          </box>
+        </box>
+      ) : null}
+
       {uiState.mode === Mode.HELP ? (
         <box
           style={{
@@ -1337,8 +1606,12 @@ export function App({
             <text>d: delete</text>
             <text>/: search</text>
             <text>f: cycle status</text>
+            <text>s: cycle sort ({sortModeLabel})</text>
             <text>g: cycle due</text>
             <text>t: tag filter</text>
+            <text>v: views overlay</text>
+            <text>ctrl+s: save current view</text>
+            <text>1..9: apply view slot</text>
             <text>H: cycle theme</text>
             <text>q: quit</text>
             <text>esc: close</text>
