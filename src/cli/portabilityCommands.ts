@@ -1,29 +1,11 @@
-import { promises as fs } from "fs";
-import path from "path";
 import { CLI_NAME } from "../brand/brand";
 import {
-  CURRENT_SCHEMA_VERSION,
-  createDataBackup,
-  loadStateStrict,
-  resolveDataPath,
-  writeJsonAtomic,
-  type LoadedData
-} from "../state/persistence";
-import { migratePersistedStateToCurrent } from "../state/migrations";
-import { validatePersistedState } from "../state/validation";
-import {
-  importState,
-  redactStateForExport,
-  type ImportMode,
-  type PortableExportPayload
-} from "../state/portability";
-import {
-  isFlashMode,
-  loadSettings,
-  saveSettingsStrict,
-  type TadoiSettings
-} from "../settings/settings";
-import { isThemeId } from "../theme/themes";
+  BackupImportPartialError,
+  exportBackup,
+  importBackup,
+  type BackupImportSummary
+} from "../state/backupService";
+import type { ImportMode } from "../state/portability";
 
 type ParseResult<T> =
   | { ok: true; value: T }
@@ -47,41 +29,6 @@ export type ImportCommandOptions = {
   help: boolean;
 };
 
-type ImportSummary = {
-  mode: ImportMode;
-  dryRun: boolean;
-  schemaVersion: number;
-  resolvedDataPath: string;
-  backupPath?: string;
-  tasks: {
-    added: number;
-    updated: number;
-    unchanged: number;
-    removed: number;
-  };
-  conflictsResolvedByUpdatedAt: number;
-  savedViews: {
-    added: number;
-    updated: number;
-    unchanged: number;
-  };
-  settings: {
-    includedInImport: boolean;
-    applied: boolean;
-    path?: string;
-    error?: string;
-  };
-};
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function resolveFromCwd(filePath: string): string {
-  if (path.isAbsolute(filePath)) return path.normalize(filePath);
-  return path.resolve(process.cwd(), filePath);
-}
-
 function requireNextArg(args: string[], index: number, flag: string): ParseResult<string> {
   const next = args[index + 1];
   if (!next || next.startsWith("-")) {
@@ -99,6 +46,10 @@ function parseBooleanLike(value: string): ParseResult<boolean> {
     return { ok: true, value: false };
   }
   return { ok: false, error: `Invalid boolean value: ${value}` };
+}
+
+function toErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 export function parseExportArgs(args: string[]): ParseResult<ExportCommandOptions> {
@@ -317,7 +268,7 @@ function printImportHelp(): void {
   console.log("  -h, --help               Show import help");
 }
 
-function printImportSummary(summary: ImportSummary, pretty: boolean): void {
+function printImportSummary(summary: BackupImportSummary, pretty: boolean): void {
   if (pretty) {
     console.log(JSON.stringify(summary, null, 2));
     return;
@@ -340,126 +291,27 @@ function printImportSummary(summary: ImportSummary, pretty: boolean): void {
   );
 }
 
-function withSchemaVersionZeroIfMissing(input: unknown): unknown {
-  if (!isRecord(input)) return input;
-  if (typeof input.schemaVersion === "number") return input;
-  return {
-    ...input,
-    schemaVersion: 0
-  };
-}
-
-function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | undefined> {
-  if (!isRecord(input) || input.settings === undefined) {
-    return { ok: true, value: undefined };
-  }
-
-  const settings = input.settings;
-  if (!isRecord(settings)) {
-    return { ok: false, error: "settings must be an object when present" };
-  }
-
-  const themeId = settings.themeId;
-  if (!isThemeId(themeId)) {
-    return { ok: false, error: "settings.themeId is invalid" };
-  }
-  const flashModeRaw = settings.flashMode;
-  if (flashModeRaw !== undefined && !isFlashMode(flashModeRaw)) {
-    return { ok: false, error: "settings.flashMode is invalid" };
-  }
-
-  return {
-    ok: true,
-    value: {
-      themeId,
-      flashMode: isFlashMode(flashModeRaw) ? flashModeRaw : "slow"
-    }
-  };
-}
-
 async function runExport(parsed: ExportCommandOptions): Promise<number> {
   if (parsed.help) {
     printExportHelp();
     return 0;
   }
 
-  const outPath = resolveFromCwd(parsed.outPath);
-  const resolvedDataPath = resolveDataPath();
-
   try {
-    const stateResult = await loadStateStrict({ filePath: resolvedDataPath });
-    const settingsResult = await loadSettings();
-
-    const payload: PortableExportPayload = {
-      schemaVersion: stateResult.data.schemaVersion,
-      tasks: stateResult.data.tasks,
-      tagIndex: stateResult.data.tagIndex,
-      savedViews: stateResult.data.savedViews,
-      settings: settingsResult.settings
-    };
-
-    const exportPayload = parsed.redact ? redactStateForExport(payload) : payload;
-
-    await writeJsonAtomic(exportPayload, {
-      filePath: outPath,
-      pretty: parsed.pretty
+    const result = await exportBackup({
+      outputPath: parsed.outPath,
+      pretty: parsed.pretty,
+      redact: parsed.redact
     });
 
-    console.log(`[export] wrote: ${outPath}`);
-    console.log(`[export] tasks: ${exportPayload.tasks.length}`);
-    console.log(`[export] schemaVersion: ${exportPayload.schemaVersion}`);
+    console.log(`[export] wrote: ${result.outputPath}`);
+    console.log(`[export] tasks: ${result.taskCount}`);
+    console.log(`[export] schemaVersion: ${result.schemaVersion}`);
     return 0;
   } catch (error: unknown) {
-    console.error(
-      `[export] failed: ${error instanceof Error ? error.message : String(error)}`
-    );
+    console.error(`[export] failed: ${toErrorMessage(error)}`);
     return 1;
   }
-}
-
-async function parseIncomingStateFromFile(inPath: string): Promise<{
-  state: LoadedData;
-  settings?: TadoiSettings;
-}> {
-  const raw = await fs.readFile(inPath, "utf8");
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (error: unknown) {
-    throw new Error(
-      `Failed to parse import JSON at ${inPath}: ${error instanceof Error ? error.message : String(error)}`
-    );
-  }
-
-  const incomingSettingsResult = extractIncomingSettings(parsed);
-  if (!incomingSettingsResult.ok) {
-    throw new Error(`Invalid import settings payload: ${incomingSettingsResult.error}`);
-  }
-
-  const normalizedStateInput = withSchemaVersionZeroIfMissing(parsed);
-  const preValidation = validatePersistedState(normalizedStateInput, "minimal");
-  if (!preValidation.ok) {
-    throw new Error(`Import minimal validation failed: ${preValidation.errors.join("; ")}`);
-  }
-
-  let migrated: LoadedData;
-  try {
-    migrated = migratePersistedStateToCurrent(preValidation.data, CURRENT_SCHEMA_VERSION);
-  } catch (error: unknown) {
-    throw new Error(
-      `Import migration failed: ${error instanceof Error ? error.message : String(error)}`
-    );
-  }
-
-  const postValidation = validatePersistedState(migrated, "strict");
-  if (!postValidation.ok) {
-    throw new Error(`Import strict validation failed: ${postValidation.errors.join("; ")}`);
-  }
-
-  return {
-    state: postValidation.data,
-    settings: incomingSettingsResult.value
-  };
 }
 
 async function runImport(parsed: ImportCommandOptions): Promise<number> {
@@ -473,83 +325,24 @@ async function runImport(parsed: ImportCommandOptions): Promise<number> {
     return 1;
   }
 
-  const inPath = resolveFromCwd(parsed.inPath);
-  const resolvedDataPath = resolveDataPath();
-
   try {
-    const currentState = await loadStateStrict({ filePath: resolvedDataPath });
-    const currentSettings = await loadSettings();
-    const incoming = await parseIncomingStateFromFile(inPath);
-
-    const importResult = importState(currentState.data, incoming.state, {
-      mode: parsed.mode,
-      now: Date.now()
-    });
-
-    const summary: ImportSummary = {
+    const summary = await importBackup({
+      inputPath: parsed.inPath,
       mode: parsed.mode,
       dryRun: parsed.dryRun,
-      schemaVersion: importResult.stats.schemaVersion,
-      resolvedDataPath,
-      tasks: importResult.stats.tasks,
-      conflictsResolvedByUpdatedAt: importResult.stats.conflictsResolvedByUpdatedAt,
-      savedViews: importResult.stats.savedViews,
-      settings: {
-        includedInImport: Boolean(incoming.settings),
-        applied: false
-      }
-    };
-
-    if (parsed.dryRun) {
-      printImportSummary(summary, parsed.pretty);
-      return 0;
-    }
-
-    if (parsed.backup) {
-      try {
-        const backupPath = await createDataBackup(resolvedDataPath, {
-          now: new Date()
-        });
-        if (backupPath) {
-          summary.backupPath = backupPath;
-        }
-      } catch (error: unknown) {
-        console.error(
-          `[import] backup failed: ${error instanceof Error ? error.message : String(error)}`
-        );
-        return 1;
-      }
-    }
-
-    await writeJsonAtomic(importResult.nextState, {
-      filePath: resolvedDataPath,
-      pretty: true
+      backup: parsed.backup
     });
-
-    if (incoming.settings) {
-      try {
-        const settingsWriteResult = await saveSettingsStrict(incoming.settings, {
-          filePath: currentSettings.resolvedPath
-        });
-        summary.settings.applied = true;
-        summary.settings.path = settingsWriteResult.resolvedPath;
-      } catch (error: unknown) {
-        summary.settings.error =
-          error instanceof Error ? error.message : String(error);
-        printImportSummary(summary, parsed.pretty);
-        console.error(
-          `[import] data import succeeded but settings apply failed: ${summary.settings.error}`
-        );
-        return 1;
-      }
-    }
 
     printImportSummary(summary, parsed.pretty);
     return 0;
   } catch (error: unknown) {
-    console.error(
-      `[import] failed: ${error instanceof Error ? error.message : String(error)}`
-    );
+    if (error instanceof BackupImportPartialError) {
+      printImportSummary(error.summary, parsed.pretty);
+      console.error(`[import] ${error.message}`);
+      return 1;
+    }
+
+    console.error(`[import] failed: ${toErrorMessage(error)}`);
     return 1;
   }
 }

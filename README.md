@@ -77,6 +77,25 @@ Corrupt backups created by recovery look like:
 - `tadoi_data.json.corrupt.YYYYMMDD-HHMMSS`
 - `tadoi_data.json.corrupt.YYYYMMDD-HHMMSS.1` (or higher suffix when needed)
 
+### In-app Backup Center (Recommended)
+
+Open the guided in-app flow from Help:
+- `?` to open Help
+- `1` to open `DATA: Backup / Export / Import`
+
+Backup Center flow:
+- `Export backup`: creates a timestamped backup in the default backups folder.
+- `Import data...`: path input -> mode select (`merge` or `replace`) -> dry-run summary -> commit.
+- `Show data path`: displays the exact runtime data path.
+
+Safety checks:
+- `replace` requires typed confirmation: `REPLACE`.
+- Import commit is gated behind dry-run (dry-run always runs first).
+- Commit creates a pre-import backup by default.
+
+Reference:
+- [`docs/backup-center.md`](./docs/backup-center.md)
+
 ## Keybindings
 
 - LIST mode navigation:
@@ -143,9 +162,15 @@ Corrupt backups created by recovery look like:
   - Type to filter task titles/tags
   - `Enter` or `Esc`: return to list
 - Help mode:
+  - `1`: open Backup Center (`DATA: Backup / Export / Import`)
   - `H`: cycle theme
   - `M`: toggle flash mode (`slow` / `static`)
   - `Esc` or `?`: close help
+- Backup Center mode:
+  - `1` / `2` / `3`: choose menu option
+  - `j` / `k`: move menu selection
+  - `Enter`: confirm current step
+  - `Esc`: back (or close Backup Center from menu)
 - Quit:
   - `q` in LIST mode (graceful terminal teardown)
   - `Ctrl+C` (handled by OpenTUI renderer)

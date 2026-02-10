@@ -10,6 +10,7 @@ import type { FlashMode } from "../settings/settings";
 export type LeftRailMenuItem =
   | "LIST"
   | "DASHBOARD"
+  | "BACKUP"
   | "ADD"
   | "EDIT"
   | "SEARCH"
@@ -55,6 +56,8 @@ function getModeLabel(mode: Mode): string {
       return "EDIT";
     case Mode.SEARCH:
       return "SEARCH";
+    case Mode.BACKUP_CENTER:
+      return "BACKUP";
     case Mode.HELP:
       return "HELP";
     case Mode.MODAL_CONFIRM:
@@ -68,6 +71,8 @@ function getFocusLabel(focus: FocusTarget): string {
   switch (focus) {
     case FocusTarget.DASHBOARD:
       return "DASHBOARD";
+    case FocusTarget.BACKUP_CENTER:
+      return "BACKUP";
     case FocusTarget.TASK_LIST:
       return "LIST";
     case FocusTarget.SEARCH_INPUT:
@@ -146,6 +151,7 @@ export function LeftRail({
   const menuItems: LeftRailMenuItem[] = [
     "LIST",
     "DASHBOARD",
+    "BACKUP",
     "ADD",
     "EDIT",
     "SEARCH",

@@ -6,10 +6,16 @@ The format is based on Keep a Changelog.
 
 ## [Unreleased]
 ### Added
-- (none yet)
+- In-app `Backup Center` flow (Help -> `1` -> `DATA: Backup / Export / Import`) with:
+  - timestamped backup export
+  - guided import flow (path -> mode -> optional `REPLACE` confirmation -> dry-run -> commit)
+  - in-app data-path readout
+  - replace confirmation gate and dry-run-before-commit enforcement
+- Shared portability service (`src/state/backupService.ts`) used by both CLI and TUI, preserving existing import/export semantics.
 
 ### Changed
-- (none yet)
+- Backup Center copy/layout polish for clearer step labels, safety messaging, and action hints.
+- Documentation refreshed for Backup Center usage and keybindings (`README.md`, in-app Help text).
 
 ### Fixed
 - (none yet)

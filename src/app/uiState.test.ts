@@ -102,6 +102,20 @@ describe("uiState esc unwind target", () => {
 
     expect(
       resolveEscUnwindTarget({
+        mode: Mode.BACKUP_CENTER,
+        modal: null,
+        helpReturnMode: Mode.SEARCH,
+        helpReturnFocus: FocusTarget.SEARCH_INPUT
+      })
+    ).toEqual({
+      mode: Mode.SEARCH,
+      focus: FocusTarget.SEARCH_INPUT,
+      clearEditor: false,
+      clearModal: false
+    });
+
+    expect(
+      resolveEscUnwindTarget({
         mode: Mode.SEARCH,
         modal: null,
         helpReturnMode: Mode.LIST,

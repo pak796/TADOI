@@ -12,6 +12,7 @@ import { DetailsPane } from "../components/DetailsPane";
 import { EditorPane } from "../components/EditorPane";
 import { LeftRail, type LeftRailMenuItem } from "../components/LeftRail";
 import { DashboardPane } from "../components/DashboardPane";
+import { BackupCenterScreen } from "../components/BackupCenterScreen";
 import { diffLocalDays, startOfLocalDayMs } from "../domain/dates";
 import { computeTopTagsOpen } from "../domain/dashboard";
 import {
@@ -50,6 +51,7 @@ import {
 import {
   getDataFilePath,
   CURRENT_SCHEMA_VERSION,
+  loadStateStrict,
   saveStateDebounced,
   type LoadedData,
   type SaveStateResult
@@ -76,10 +78,27 @@ import {
   saveViewByName,
   deleteViewAtIndex
 } from "../domain/savedViews";
-import { saveSettingsDebounced, type FlashMode } from "../settings/settings";
+import {
+  loadSettings,
+  saveSettingsDebounced,
+  type FlashMode
+} from "../settings/settings";
 import { settingsReducer } from "../state/settingsStore";
 import { isEditorMode } from "../ui/modeFocus";
 import { initialUIState, uiReducer, unwind } from "../ui/state";
+import {
+  backupCenterReducer,
+  hasMatchingDryRun,
+  initialBackupCenterState,
+  isReplaceConfirmationValid
+} from "../state/backupCenterFlow";
+import {
+  BackupImportPartialError,
+  buildTimestampedBackupPath,
+  exportBackup,
+  getResolvedDataPath,
+  importBackup
+} from "../state/backupService";
 import { APP_VERSION } from "./version";
 import { getTerminalSizeWarning, isTerminalSizeSupported } from "./layoutGuard";
 import { APP_NAME, APP_TAGLINE, ENV_VARS } from "../brand/brand";
@@ -156,6 +175,11 @@ function getDueSuggestion(dueText: string, now: number): string | null {
   }
 
   return null;
+}
+
+function normalizeErrorDetail(error: unknown): string {
+  const detail = error instanceof Error ? error.message : String(error);
+  return detail.replace(/\s+/g, " ").trim();
 }
 
 function replaceLastTagToken(tagsText: string, tag: string, appendSpace = false): string {
@@ -264,6 +288,10 @@ export function App({
     flashMode: initialFlashMode
   });
   const [uiState, uiDispatch] = useReducer(uiReducer, initialUIState);
+  const [backupState, backupDispatch] = useReducer(
+    backupCenterReducer,
+    initialBackupCenterState
+  );
   const [pulseOn, setPulseOn] = useState(false);
   const [fastPulseOn, setFastPulseOn] = useState(false);
   const [showTagTicker, setShowTagTicker] = useState(false);
@@ -395,21 +423,24 @@ export function App({
     selectedDayDiff !== null && (selectedDayDiff < 0 || selectedTimeOverdue);
   const isStaticFlashMode = settingsState.flashMode === "static";
   const isDashboardMode = uiState.mode === Mode.DASHBOARD;
-  const selectedHeaderBackground = selectedOverdue
-    ? isStaticFlashMode
-      ? theme.warn
-      : fastPulseOn
+  const isBackupMode = uiState.mode === Mode.BACKUP_CENTER;
+  const selectedHeaderBackground = isBackupMode
+    ? theme.accentBlue
+    : selectedOverdue
+      ? isStaticFlashMode
         ? theme.warn
-        : theme.dueSoon
-    : selectedDueToday
-      ? theme.dueSoon
-      : selectedDueSoon
+        : fastPulseOn
+          ? theme.warn
+          : theme.dueSoon
+      : selectedDueToday
         ? theme.dueSoon
-        : selectedDueLater
-          ? theme.dueLater
-          : selectedTask?.status === "done"
-            ? theme.ok
-            : theme.accentOrange;
+        : selectedDueSoon
+          ? theme.dueSoon
+          : selectedDueLater
+            ? theme.dueLater
+            : selectedTask?.status === "done"
+              ? theme.ok
+              : theme.accentOrange;
 
   const summaryOverdueRows = React.useMemo(
     () => buildVisibleTaskRows(state.tasks, { status: "open", due: "overdue" }, state.sortMode, now),
@@ -740,6 +771,9 @@ export function App({
   function applyEscUnwind(): boolean {
     const next = unwind(uiState);
     if (!next) return false;
+    if (uiState.mode === Mode.BACKUP_CENTER) {
+      backupDispatch({ type: "reset" });
+    }
     if (next.clearEditorDraft) {
       setTimeSuggestion(null);
       dispatch({ type: "setEditor", editor: null });
@@ -753,6 +787,167 @@ export function App({
     return true;
   }
 
+  function openBackupError(message: string, error?: unknown) {
+    backupDispatch({
+      type: "setError",
+      message,
+      detail: error ? normalizeErrorDetail(error) : undefined
+    });
+  }
+
+  async function refreshRuntimeStateFromDisk() {
+    const dataPath = getResolvedDataPath();
+    const stateResult = await loadStateStrict({ filePath: dataPath });
+    dispatch({ type: "load", data: stateResult.data });
+    const settingsResult = await loadSettings();
+    settingsDispatch({ type: "setTheme", themeId: settingsResult.settings.themeId });
+    settingsDispatch({
+      type: "setFlashMode",
+      flashMode: settingsResult.settings.flashMode
+    });
+  }
+
+  function runBackupExportFlow() {
+    if (backupState.screen === "exporting") return;
+    backupDispatch({ type: "startExport" });
+    void (async () => {
+      try {
+        const outputPath = await buildTimestampedBackupPath();
+        const result = await exportBackup({
+          outputPath,
+          pretty: true
+        });
+        backupDispatch({ type: "exportSucceeded", outputPath: result.outputPath });
+      } catch (error: unknown) {
+        openBackupError("Export failed", error);
+      }
+    })();
+  }
+
+  function runBackupDryRunFlow(options: {
+    inputPath?: string;
+    mode?: "merge" | "replace";
+    replaceConfirmed?: boolean;
+  } = {}) {
+    const inputPath = (options.inputPath ?? backupState.importPathInput).trim();
+    const mode = options.mode ?? backupState.importMode;
+    const replaceConfirmed = options.replaceConfirmed ?? backupState.replaceConfirmed;
+
+    if (!inputPath) {
+      openBackupError("Import path is required.");
+      return;
+    }
+
+    if (mode === "replace" && !replaceConfirmed) {
+      backupDispatch({ type: "openImportConfirm" });
+      return;
+    }
+
+    void (async () => {
+      try {
+        const summary = await importBackup({
+          inputPath,
+          mode,
+          dryRun: true
+        });
+        backupDispatch({ type: "dryRunSucceeded", summary, inputPath });
+      } catch (error: unknown) {
+        openBackupError("Dry-run failed", error);
+      }
+    })();
+  }
+
+  function runBackupImportCommitFlow() {
+    if (!hasMatchingDryRun(backupState)) {
+      openBackupError("Dry-run summary is required before commit.");
+      return;
+    }
+    if (backupState.importMode === "replace" && !backupState.replaceConfirmed) {
+      backupDispatch({ type: "openImportConfirm" });
+      return;
+    }
+
+    backupDispatch({ type: "startImporting" });
+    void (async () => {
+      try {
+        const summary = await importBackup({
+          inputPath: backupState.importPathInput.trim(),
+          mode: backupState.importMode,
+          dryRun: false,
+          backup: true
+        });
+        backupDispatch({ type: "importSucceeded", summary });
+        await refreshRuntimeStateFromDisk();
+      } catch (error: unknown) {
+        if (error instanceof BackupImportPartialError) {
+          try {
+            await refreshRuntimeStateFromDisk();
+          } catch {
+            // Best effort refresh for partial success paths.
+          }
+        }
+        openBackupError("Import failed", error);
+      }
+    })();
+  }
+
+  function handleBackupMenuSelect(index: 0 | 1 | 2) {
+    switch (index) {
+      case 0:
+        runBackupExportFlow();
+        return;
+      case 1:
+        backupDispatch({ type: "openImportPath" });
+        return;
+      case 2:
+        backupDispatch({ type: "showDataPath", path: getResolvedDataPath() });
+        return;
+      default:
+        return;
+    }
+  }
+
+  function handleBackupPrimaryAction() {
+    switch (backupState.screen) {
+      case "menu":
+        handleBackupMenuSelect(backupState.menuIndex);
+        return;
+      case "export_done":
+      case "import_done":
+      case "show_path":
+      case "error":
+        backupDispatch({ type: "openMenu" });
+        return;
+      case "import_path":
+        if (!backupState.importPathInput.trim()) {
+          openBackupError("Import path is required.");
+          return;
+        }
+        backupDispatch({ type: "openImportMode" });
+        return;
+      case "import_mode":
+        runBackupDryRunFlow();
+        return;
+      case "import_confirm":
+        if (!isReplaceConfirmationValid(backupState)) {
+          backupDispatch({ type: "replaceConfirmRejected" });
+          return;
+        }
+        backupDispatch({ type: "replaceConfirmAccepted" });
+        runBackupDryRunFlow({
+          replaceConfirmed: true
+        });
+        return;
+      case "import_dryrun":
+        runBackupImportCommitFlow();
+        return;
+      case "exporting":
+      case "importing":
+      default:
+        return;
+    }
+  }
+
   function runRoutedAction(action: KeyRouterAction) {
     switch (action.type) {
       case "UNWIND":
@@ -764,8 +959,31 @@ export function App({
       case "OPEN_HELP":
         openHelp();
         return;
+      case "OPEN_BACKUP_CENTER":
+        openBackupCenter();
+        return;
       case "CLOSE_HELP":
         closeHelp();
+        return;
+      case "BACKUP_PRIMARY":
+        handleBackupPrimaryAction();
+        return;
+      case "BACKUP_BACK":
+        if (backupState.screen === "menu") {
+          applyEscUnwind();
+        } else {
+          backupDispatch({ type: "back" });
+        }
+        return;
+      case "BACKUP_MOVE_MENU_SELECTION":
+        backupDispatch({ type: "moveMenuIndex", delta: action.delta });
+        return;
+      case "BACKUP_SELECT_MENU_OPTION":
+        backupDispatch({ type: "setMenuIndex", index: action.index });
+        handleBackupMenuSelect(action.index);
+        return;
+      case "BACKUP_SET_IMPORT_MODE":
+        backupDispatch({ type: "setImportMode", mode: action.mode });
         return;
       case "OPEN_SEARCH":
         uiDispatch({ type: "setMode", mode: Mode.SEARCH });
@@ -954,7 +1172,8 @@ export function App({
         timeAutocompleteStep,
         hasPendingGPrefix: pendingGPrefix,
         viewsOverlayOpen,
-        saveViewPromptOpen
+        saveViewPromptOpen,
+        backupScreen: uiState.mode === Mode.BACKUP_CENTER ? backupState.screen : null
       }
     );
 
@@ -971,6 +1190,27 @@ export function App({
       focus: uiState.focus
     });
     uiDispatch({ type: "setMode", mode: Mode.HELP });
+  }
+
+  function openBackupCenter() {
+    clearPendingGPrefix();
+    closeViewsOverlay();
+    if (uiState.modal) {
+      uiDispatch({ type: "setModal", modal: null });
+    }
+    if (isEditorMode(uiState.mode)) {
+      setTimeSuggestion(null);
+      dispatch({ type: "setEditor", editor: null });
+      uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
+    }
+    backupDispatch({ type: "reset" });
+    uiDispatch({
+      type: "captureReturnContext",
+      mode: uiState.mode,
+      focus: uiState.focus
+    });
+    uiDispatch({ type: "setMode", mode: Mode.BACKUP_CENTER });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.BACKUP_CENTER });
   }
 
   function toggleDashboard() {
@@ -1053,6 +1293,9 @@ export function App({
         return;
       case "DASHBOARD":
         openDashboardMode();
+        return;
+      case "BACKUP":
+        openBackupCenter();
         return;
       case "ADD":
         openAdd();
@@ -2168,6 +2411,8 @@ export function App({
             >
               {isDashboardMode
                 ? "DASHBOARD MODE"
+                : isBackupMode
+                  ? "BACKUP CENTER"
                 : selectedTask
                   ? selectedTask.title.toUpperCase()
                   : "NO TASK SELECTED"}
@@ -2182,6 +2427,8 @@ export function App({
             >
               {isDashboardMode
                 ? `FILTERED TASKS: ${visibleTaskRows.length}`
+                : isBackupMode
+                  ? "SAFE IMPORT / EXPORT FLOW"
                 : selectedTask
                   ? getDueInLabel(selectedTask, now)
                   : ""}
@@ -2587,6 +2834,31 @@ export function App({
         </box>
       ) : null}
 
+      {uiState.mode === Mode.BACKUP_CENTER ? (
+        <box
+          style={{
+            position: "absolute",
+            top: 2,
+            left: 8,
+            right: 8,
+            bottom: 2,
+            justifyContent: "center",
+            alignItems: "center"
+          }}
+        >
+          <BackupCenterScreen
+            state={backupState}
+            dataPath={getDataFilePath()}
+            onImportPathChange={(value) =>
+              backupDispatch({ type: "setImportPath", value })
+            }
+            onReplaceConfirmChange={(value) =>
+              backupDispatch({ type: "setReplaceConfirmInput", value })
+            }
+          />
+        </box>
+      ) : null}
+
       {uiState.mode === Mode.HELP ? (
         <box
           style={{
@@ -2600,6 +2872,7 @@ export function App({
         >
           <box style={{ flexDirection: "column" }}>
             <text>KEYBINDINGS</text>
+            <text>1: DATA: Backup / Export / Import</text>
             <text>j/k or arrows: move</text>
             <text>gg: top</text>
             <text>G: bottom</text>
@@ -2694,6 +2967,9 @@ export function App({
             <text>{getDataFilePath()}</text>
             <text>DATA: IMPORT / EXPORT</text>
             <text>Resolved data path: {getDataFilePath()}</text>
+            <text>In-app: press 1 to open Backup Center.</text>
+            <text>Backup Center flow: path -> mode -> (REPLACE confirm) -> dry-run -> commit.</text>
+            <text>Dry-run is always shown before commit; no write happens during dry-run.</text>
             <text>tadoi export --out ./tadoi_export.json --pretty</text>
             <text>tadoi export --out ./tadoi_export_redacted.json --redact --pretty</text>
             <text>tadoi import --in ./tadoi_export.json --mode merge --dry-run</text>

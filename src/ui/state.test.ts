@@ -55,6 +55,26 @@ describe("unwind", () => {
     });
   });
 
+  it("returns to previous captured context from backup center", () => {
+    const result = unwind({
+      ...initialUIState,
+      mode: Mode.BACKUP_CENTER,
+      previousMode: Mode.SEARCH,
+      previousFocus: FocusTarget.SEARCH_INPUT
+    });
+
+    expect(result).toEqual({
+      state: {
+        ...initialUIState,
+        mode: Mode.SEARCH,
+        focus: FocusTarget.SEARCH_INPUT,
+        previousMode: Mode.SEARCH,
+        previousFocus: FocusTarget.SEARCH_INPUT
+      },
+      clearEditorDraft: false
+    });
+  });
+
   it("closes search back to list/task list", () => {
     const result = unwind({
       ...initialUIState,

@@ -22,6 +22,7 @@ function run(
     hasPendingGPrefix: false,
     viewsOverlayOpen: false,
     saveViewPromptOpen: false,
+    backupScreen: null,
     ...contextOverrides
   };
   return handleKey(input, context);
@@ -60,6 +61,19 @@ describe("handleKey", () => {
         { saveViewPromptOpen: true }
       )
     ).toEqual([{ scope: "ui", type: "CANCEL_SAVE_VIEW_PROMPT" }]);
+    expect(
+      run(
+        { name: "escape" },
+        {
+          uiState: {
+            ...initialUIState,
+            mode: Mode.BACKUP_CENTER,
+            focus: FocusTarget.BACKUP_CENTER
+          },
+          backupScreen: "menu"
+        }
+      )
+    ).toEqual([{ scope: "ui", type: "BACKUP_BACK" }]);
   });
 
   it("blocks non-modal keys while modal is open", () => {
@@ -305,9 +319,51 @@ describe("handleKey", () => {
     expect(run({ name: "m", sequence: "m" }, { uiState: helpState })).toEqual([
       { scope: "ui", type: "TOGGLE_FLASH_MODE" }
     ]);
+    expect(run({ name: "1", sequence: "1" }, { uiState: helpState })).toEqual([
+      { scope: "ui", type: "OPEN_BACKUP_CENTER" }
+    ]);
     expect(run({ name: "escape" }, { uiState: helpState })).toEqual([
       { scope: "ui", type: "UNWIND" }
     ]);
+  });
+
+  it("routes backup center actions by screen", () => {
+    const backupState = {
+      ...initialUIState,
+      mode: Mode.BACKUP_CENTER,
+      focus: FocusTarget.BACKUP_CENTER
+    };
+
+    expect(
+      run(
+        { name: "1", sequence: "1" },
+        { uiState: backupState, backupScreen: "menu" }
+      )
+    ).toEqual([{ scope: "ui", type: "BACKUP_SELECT_MENU_OPTION", index: 0 }]);
+    expect(
+      run(
+        { name: "down" },
+        { uiState: backupState, backupScreen: "menu" }
+      )
+    ).toEqual([{ scope: "ui", type: "BACKUP_MOVE_MENU_SELECTION", delta: 1 }]);
+    expect(
+      run(
+        { name: "2", sequence: "2" },
+        { uiState: backupState, backupScreen: "import_mode" }
+      )
+    ).toEqual([{ scope: "ui", type: "BACKUP_SET_IMPORT_MODE", mode: "replace" }]);
+    expect(
+      run(
+        { name: "enter" },
+        { uiState: backupState, backupScreen: "import_dryrun" }
+      )
+    ).toEqual([{ scope: "ui", type: "BACKUP_PRIMARY" }]);
+    expect(
+      run(
+        { name: "3", sequence: "3" },
+        { uiState: backupState, backupScreen: "import_path" }
+      )
+    ).toEqual([]);
   });
 
   it("prevents list-key leakage in add/edit text-input modes", () => {

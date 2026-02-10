@@ -96,7 +96,7 @@ export function unwind(state: UIState): UnwindResult | null {
     };
   }
 
-  if (state.mode === Mode.HELP) {
+  if (state.mode === Mode.HELP || state.mode === Mode.BACKUP_CENTER) {
     return {
       state: {
         ...state,

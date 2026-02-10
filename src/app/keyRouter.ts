@@ -1,5 +1,7 @@
 import { FocusTarget, Mode } from "../domain/models";
 import { UIState } from "../ui/state";
+import type { BackupCenterScreen } from "../state/backupCenterFlow";
+import type { ImportMode } from "../state/portability";
 
 export type KeyInput = {
   name: string;
@@ -16,15 +18,22 @@ export type KeyRouterContext = {
   hasPendingGPrefix: boolean;
   viewsOverlayOpen: boolean;
   saveViewPromptOpen: boolean;
+  backupScreen: BackupCenterScreen | null;
 };
 
 export type KeyRouterAction =
   | { scope: "ui"; type: "UNWIND" }
   | { scope: "ui"; type: "TOGGLE_DASHBOARD" }
   | { scope: "ui"; type: "OPEN_HELP" }
+  | { scope: "ui"; type: "OPEN_BACKUP_CENTER" }
   | { scope: "ui"; type: "CLOSE_HELP" }
   | { scope: "ui"; type: "OPEN_SEARCH" }
   | { scope: "ui"; type: "CLOSE_SEARCH" }
+  | { scope: "ui"; type: "BACKUP_PRIMARY" }
+  | { scope: "ui"; type: "BACKUP_BACK" }
+  | { scope: "ui"; type: "BACKUP_MOVE_MENU_SELECTION"; delta: 1 | -1 }
+  | { scope: "ui"; type: "BACKUP_SELECT_MENU_OPTION"; index: 0 | 1 | 2 }
+  | { scope: "ui"; type: "BACKUP_SET_IMPORT_MODE"; mode: ImportMode }
   | { scope: "ui"; type: "MOVE_EDITOR_FOCUS"; direction: 1 | -1 }
   | { scope: "ui"; type: "SET_G_PREFIX"; active: boolean }
   | { scope: "ui"; type: "TOGGLE_VIEWS_OVERLAY" }
@@ -188,13 +197,17 @@ export function handleKey(
     timeAutocompleteStep,
     hasPendingGPrefix,
     viewsOverlayOpen,
-    saveViewPromptOpen
+    saveViewPromptOpen,
+    backupScreen
   } = context;
   const { mode, focus } = uiState;
 
   if (name === "escape") {
     if (hasPendingGPrefix) {
       return [{ scope: "ui", type: "SET_G_PREFIX", active: false }];
+    }
+    if (mode === Mode.BACKUP_CENTER) {
+      return [{ scope: "ui", type: "BACKUP_BACK" }];
     }
     if (mode === Mode.LIST && saveViewPromptOpen) {
       return [{ scope: "ui", type: "CANCEL_SAVE_VIEW_PROMPT" }];
@@ -220,12 +233,17 @@ export function handleKey(
       mode === Mode.SEARCH ||
       mode === Mode.ADD ||
       mode === Mode.EDIT ||
+      mode === Mode.HELP ||
+      mode === Mode.BACKUP_CENTER ||
       saveViewPromptOpen;
     if (inTextEntryContext) return [];
     return [{ scope: "ui", type: "TOGGLE_DASHBOARD" }];
   }
 
   if (mode === Mode.HELP) {
+    if (sequence === "1" || name === "1") {
+      return [{ scope: "ui", type: "OPEN_BACKUP_CENTER" }];
+    }
     if (isThemeCycleKey(name, sequence)) {
       return [{ scope: "ui", type: "CYCLE_THEME" }];
     }
@@ -235,6 +253,41 @@ export function handleKey(
     if (isHelpCloseKey(name, sequence)) {
       return [{ scope: "ui", type: "CLOSE_HELP" }];
     }
+    return [];
+  }
+
+  if (mode === Mode.BACKUP_CENTER) {
+    if (backupScreen === "menu") {
+      if (sequence === "1" || name === "1") {
+        return [{ scope: "ui", type: "BACKUP_SELECT_MENU_OPTION", index: 0 }];
+      }
+      if (sequence === "2" || name === "2") {
+        return [{ scope: "ui", type: "BACKUP_SELECT_MENU_OPTION", index: 1 }];
+      }
+      if (sequence === "3" || name === "3") {
+        return [{ scope: "ui", type: "BACKUP_SELECT_MENU_OPTION", index: 2 }];
+      }
+      if (name === "j" || name === "down") {
+        return [{ scope: "ui", type: "BACKUP_MOVE_MENU_SELECTION", delta: 1 }];
+      }
+      if (name === "k" || name === "up") {
+        return [{ scope: "ui", type: "BACKUP_MOVE_MENU_SELECTION", delta: -1 }];
+      }
+    }
+
+    if (backupScreen === "import_mode") {
+      if (sequence === "1" || name === "1") {
+        return [{ scope: "ui", type: "BACKUP_SET_IMPORT_MODE", mode: "merge" }];
+      }
+      if (sequence === "2" || name === "2") {
+        return [{ scope: "ui", type: "BACKUP_SET_IMPORT_MODE", mode: "replace" }];
+      }
+    }
+
+    if (name === "return" || name === "enter") {
+      return [{ scope: "ui", type: "BACKUP_PRIMARY" }];
+    }
+
     return [];
   }
 
