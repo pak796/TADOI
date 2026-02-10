@@ -28,15 +28,15 @@ v0.2.4 scope note:
 
 Refs: OpenTUI quick start (`bun create tui`).  [oai_citation:8‡GitHub](https://github.com/anomalyco/opentui?utm_source=chatgpt.com)
 
-### T0.2 Rename LCARS -> TADOI in app and files
+### T0.2 Confirm TADOI naming in app and files
 **Status**: Complete
 **Implement**
 - Update UI titles/labels to "TADOI"
 - Rename data file to `tadoi_data.json` and update any references
-- Update README and any filenames/mentions that include "LCARS"
+- Update README and any filenames/mentions that include legacy name tokens
 
 **DoD**
-- No visible "LCARS" in the app UI or file names (except historical notes in specs).
+- No visible legacy name tokens in the app UI or file names.
 
 ---
 

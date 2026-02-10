@@ -6,10 +6,6 @@
 - Implement in small, reviewable commits.
 - Keep "domain" logic pure; write unit tests where appropriate.
 
-v0.2.1 scope note:
-- This version focuses on data safety and schema discipline.
-- No net-new user-facing features are introduced in v0.2.1.
-
 ---
 
 ## Phase 0 — Bootstrap
@@ -27,15 +23,15 @@ v0.2.1 scope note:
 
 Refs: OpenTUI quick start (`bun create tui`).  [oai_citation:8‡GitHub](https://github.com/anomalyco/opentui?utm_source=chatgpt.com)
 
-### T0.2 Rename LCARS -> TADOI in app and files
+### T0.2 Confirm TADOI naming in app and files
 **Status**: Complete
 **Implement**
 - Update UI titles/labels to "TADOI"
 - Rename data file to `tadoi_data.json` and update any references
-- Update README and any filenames/mentions that include "LCARS"
+- Update README and any filenames/mentions that include legacy name tokens
 
 **DoD**
-- No visible "LCARS" in the app UI or file names (except historical notes in specs).
+- No visible legacy name tokens in the app UI or file names.
 
 ---
 
@@ -759,87 +755,3 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 **DoD**
 - Resizing smaller/larger does not crash.
 - Selected row remains visible after resize.
-
----
-
-# Phase 9 — v0.2.1 Data Safety & Schema Discipline
-
-> Scope note: this phase is reliability-only (data safety, path resolution, schema discipline). No new end-user features.
-
-## T9.1 Resolve data file path (platform defaults + env override)
-**Status**: Complete
-**Implement**
-- Add `resolveDataPath()` in `src/state/persistence.ts`.
-- Resolution order:
-- `TADOI_DATA_PATH` override (always wins).
-- Linux: `$XDG_DATA_HOME/tadoi/tadoi_data.json`, fallback `$HOME/.local/share/tadoi/tadoi_data.json`.
-- macOS: `$HOME/Library/Application Support/tadoi/tadoi_data.json`.
-- Windows: `%APPDATA%\\tadoi\\tadoi_data.json`, fallback `$HOME\\AppData\\Roaming\\tadoi\\tadoi_data.json`.
-- Ensure parent directories are created before writes.
-- Surface resolved path in a debug-visible location (log and/or help/status line).
-
-**DoD**
-- With `TADOI_DATA_PATH` set, TADOI always uses that path.
-- Without override, platform defaults resolve correctly (Linux XDG, macOS App Support, Windows AppData).
-- Save path directory is auto-created when missing.
-
-## T9.2 Safe load with corruption backup + banner
-**Status**: Complete
-**Implement**
-- Add safe-load orchestration in `src/state/persistence.ts`.
-- On parse/validation/migration failure:
-- move file to `tadoi_data.json.corrupt.YYYYMMDD-HHMMSS` in same directory.
-- if rename fails, attempt copy and keep original.
-- start empty state at current `schemaVersion`.
-- expose persistent banner text in UI state/message channel:
-- `Data file was corrupt and was backed up to <filename>`.
-- Prevent infinite backup loops if recovery save fails.
-
-**DoD**
-- Given intentionally corrupt JSON, app starts, backs up file, and remains usable.
-- Recovery path never overwrites corrupt data before backup.
-- Banner/message remains visible long enough for user troubleshooting.
-
-## T9.3 Schema validation + migration pipeline
-**Status**: Complete
-**Implement**
-- Add `validatePersistedState()` in `src/state/validation.ts`.
-- Add `migratePersistedStateToCurrent()` in `src/state/migrations.ts`.
-- Enforce load sequence in `src/state/persistence.ts`:
-1. parse
-2. minimal shape validation
-3. stepwise migration (`N -> N+1` until current)
-4. post-migration validation
-5. hydrate
-- Require `schemaVersion` in persisted envelope.
-- Keep persisted envelope stable: `{ schemaVersion, tasks, tagIndex }`.
-
-**DoD**
-- Legacy fixtures migrate to latest schema and pass validation.
-- Invalid shape/migration errors route to corruption recovery path.
-- Unknown extra fields are tolerated unless parsing/validation fails.
-
-## T9.4 Migration fixture tests
-**Status**: Complete
-**Implement**
-- Add fixture-driven tests in existing state test area and/or `src/state/__fixtures__/`.
-- Cover:
-- current schema fixture loads unchanged.
-- legacy schema fixture migrates stepwise to latest.
-- malformed JSON / invalid shape / migration throw trigger recovery decision path.
-- Include path resolution matrix tests where practical (override + OS default branches).
-
-**DoD**
-- `bun test` passes reliably with migration and recovery fixture coverage.
-- Boundary cases are deterministic and do not rely on wall-clock timing.
-
-## T9.5 Persist-only-on-change guard
-**Status**: Complete
-**Implement**
-- Ensure persistence writes only when domain state changes.
-- Confirm ticker/clock/renders and other UI-only updates never trigger disk writes.
-- Add/adjust tests around save scheduling behavior in `src/state/persistence.ts` tests.
-
-**DoD**
-- Running app idle does not rewrite `tadoi_data.json` repeatedly.
-- Saves occur only after task/tag/filter domain mutations that affect persisted data.

@@ -134,6 +134,38 @@ bun add -g ./dist/tarball/tadoi-0.2.5.tgz
 tadoi --help
 ```
 
+### Cross-platform test install (macOS / Windows / Linux)
+
+Build machine (create artifact):
+
+```bash
+bun run pack:dry
+```
+
+Copy `dist/tarball/tadoi-0.2.5.tgz` to the target test machine, then install:
+
+macOS/Linux:
+
+```bash
+bun --version
+bun add -g ./tadoi-0.2.5.tgz
+tadoi --help
+tadoi
+```
+
+Windows (PowerShell):
+
+```powershell
+bun --version
+bun add -g .\tadoi-0.2.5.tgz
+tadoi --help
+tadoi
+```
+
+If `tadoi` is not found, ensure Bun's global bin is on `PATH`:
+- macOS/Linux: `export PATH="$HOME/.bun/bin:$PATH"`
+- Windows PowerShell: `$env:Path += ";$env:USERPROFILE\.bun\bin"`
+
 Release-candidate gate (local):
 
 ```bash

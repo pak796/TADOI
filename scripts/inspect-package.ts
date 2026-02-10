@@ -11,9 +11,8 @@ const REQUIRED_FILES = [
 const FORBIDDEN_PATH_PATTERNS: RegExp[] = [
   /^tadoi_data\.json$/,
   /^tadoi_data_.*\.json$/,
-  /^tui_todo_data\.json$/,
-  /^TUI_TODO_SPEC.*$/,
-  /^TUI_TODO_TASKS.*$/
+  /^TADOI_SPEC.*$/,
+  /^TADOI_TASKS.*$/
 ];
 
 function fail(message: string): never {

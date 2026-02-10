@@ -6,10 +6,9 @@
 - Implement in small, reviewable commits.
 - Keep "domain" logic pure; write unit tests where appropriate.
 
-v0.2.5 scope note:
-- This version focuses on foundation polish for real users: platform contract, reliability hardening, and performance envelope.
-- It adds daily-driver navigation and saved-view ergonomics while keeping routing and persistence discipline strict.
-- It keeps all completed phases through v0.2.3 and tracks Phase 13 foundation work for v0.2.5.
+v0.2.2 scope note:
+- This version focuses on automated tests/CI merge gates and lightweight theming polish.
+- User-facing additions are limited to theme switching and small visual refinements.
 
 ---
 
@@ -28,15 +27,15 @@ v0.2.5 scope note:
 
 Refs: OpenTUI quick start (`bun create tui`).  [oai_citation:8‡GitHub](https://github.com/anomalyco/opentui?utm_source=chatgpt.com)
 
-### T0.2 Rename LCARS -> TADOI in app and files
+### T0.2 Confirm TADOI naming in app and files
 **Status**: Complete
 **Implement**
 - Update UI titles/labels to "TADOI"
 - Rename data file to `tadoi_data.json` and update any references
-- Update README and any filenames/mentions that include "LCARS"
+- Update README and any filenames/mentions that include legacy name tokens
 
 **DoD**
-- No visible "LCARS" in the app UI or file names (except historical notes in specs).
+- No visible legacy name tokens in the app UI or file names.
 
 ---
 
@@ -166,95 +165,6 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 
 **DoD**
 - Pressing down on last item selects first; up on first selects last
-
-### T3.16 Daily-driver navigation primitives
-**Status**: Complete
-**Implement**
-- Add list-only jump/page shortcuts:
-  - `gg`: top
-  - `G`: bottom
-  - `ctrl+u` / `ctrl+d` and PageUp/PageDown: page navigation
-- Add attention jumps:
-  - `]` / `[` for next/previous overdue
-  - `}` / `{` for next/previous due-today
-- Keep strict mode/focus routing so these keys do not leak into SEARCH/ADD/EDIT/HELP/MODAL.
-- Add a brief non-modal banner when no matching attention item exists.
-- Add pure unit tests for next/previous matching-index logic.
-
-**DoD**
-- All shortcuts work in long lists and selection remains visible.
-- Shortcuts are inert outside LIST mode with TASK_LIST focus.
-- Help overlay documents the new shortcuts.
-- Tests cover matching-index search and due-attention predicates.
-
-### T3.17 Daily-driver saved views (filter presets)
-**Status**: Complete
-**Implement**
-- Add saved-view model and persistence:
-  - `SavedView` type in domain state
-  - persisted envelope includes `savedViews`
-  - schema migration `2 -> 3` introduces `savedViews: []`
-- Add saved-view domain helpers:
-  - snapshot/apply filters
-  - save by name (case-insensitive update)
-  - delete by index
-  - max 9 views
-- Add LIST-mode UX:
-  - `v`: toggle views overlay
-  - `ctrl+s`: open save prompt for current filters
-  - `1..9`: apply view slots
-  - overlay controls: `j/k` move, `enter` apply, `d` delete, `esc`/`v` close
-- Ensure applying a view updates filters immediately and existing selection clamp/visibility logic keeps selection valid.
-- Add tests for:
-  - apply/snapshot behavior
-  - create/update/full/delete flows
-  - migration and validation with `savedViews`
-
-**DoD**
-- User can save a view, restart app, and apply it from persisted data.
-- Applying a view updates list filters (`status`, `due`, `tag`, `searchText`) immediately.
-- Saved views do not persist UI-only state (selection/scroll/mode/focus).
-- `bun test` and `bun run typecheck` pass.
-
-### T3.18 Global active-tag filter cycle
-**Status**: Complete
-**Implement**
-- Update `t` tag-filter behavior to cycle through tags from all active (open) tasks, not just tags on the currently selected task.
-- Keep cycle order deterministic (alphabetical), and clear the tag filter after the last tag.
-
-**DoD**
-- Pressing `t` iterates through global active-task tags regardless of current selection.
-- After the last tag, the next `t` clears the tag filter.
-
-### T3.19 Sort toggles (LIST mode)
-**Status**: Complete
-**Implement**
-- Add LIST-mode key `s` to cycle sort modes:
-  - `DUE` (default)
-  - `UPDATED`
-  - `CREATED`
-  - `TITLE`
-- Update query sorting pipeline so visible tasks are sorted by active `sortMode`.
-- Show current sort mode in UI (left rail/help).
-
-**DoD**
-- Pressing `s` cycles all sort modes in order and updates list ordering immediately.
-- `ctrl+s` behavior for Saved Views remains unchanged.
-- Help and left rail show sort key/mode info.
-
-### T3.20 Selection stability across list changes
-**Status**: Complete
-**Implement**
-- Reconcile selection by task id on visible-list recompute:
-  - keep same task when still visible
-  - if missing, clamp to nearest valid index
-- Keep selection visible by running scroll-visibility guard after reconciliation.
-- Add pure unit tests for selection reconciliation behavior.
-
-**DoD**
-- Sort/filter/search changes keep selection on the same task id when possible.
-- If selected task disappears, selection moves to nearest valid item (not forced to top).
-- Selection remains visible after list changes.
 
 ### T3.3 Sorting + filtering + search pipeline
 **Status**: Complete
@@ -743,24 +653,15 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 ## Phase 7 — Quality Gates
 
 ### T7.1 80x24 & resize smoke test
-**Status**: Complete
+**Status**: Pending
 **DoD**
 - UI usable at 80x24.
 - Resize does not crash or overlap catastrophically.
-**QA Notes (2026-02-09 CST)**
-- Verified baseline render at `80x24` using `stty size` and `bun run dev`; full rail/list/details layout rendered and remained interactive.
-- Verified `<80x24` guard at `79x23`; app rendered centered warning: `Terminal too small (min 80x24). Current: 79x23.` with `Resize terminal to continue` and `Press q to quit`.
-- After returning terminal to `80x24`, normal UI resumed on next launch with no crash and no broken persisted state.
 
 ### T7.2 Persistence corruption prevention test
-**Status**: Complete
+**Status**: Pending
 **DoD**
 - Kill app mid-use (Ctrl+C), restart: JSON still parseable and tasks mostly intact (atomic rename prevents partial file).
-**QA Notes (2026-02-09 CST)**
-- Ran app with isolated path: `TADOI_DATA_PATH=/tmp/tadoi-qa-interrupt.json`.
-- Created task `alpha task`, then interrupted app with `Ctrl+C` during active runtime.
-- Verified persisted file exists and parses: `schemaVersion 3`, `tasks 1`, first task title `alpha task`.
-- Restarted app with same data path and confirmed task reloaded in UI (`ALPHA TASK` shown in top bar/details).
 
 ### T7.3 Packaging / run docs
 **Status**: Complete
@@ -770,12 +671,6 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
   - run commands
   - data file location
   - keybindings
-**Implementation notes**
-- README keybindings were synchronized to the centralized key router behavior:
-  - list navigation (`gg`, `G`, `ctrl+u/d`, `[]`, `{}`),
-  - sort cycling (`s`),
-  - saved views (`v`, `ctrl+s`, `1..9`),
-  - and global active-task tag-cycle behavior for `t`.
 
 ---
 
@@ -1147,258 +1042,3 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 
 **DoD**
 - Logo area is visually separated from metadata and menu content.
-
-## T11.7 Rotating theme mode (auto-cycle)
-**Status**: Complete
-**Implement**
-- Extend theme ids to include `rotating`.
-- Include `rotating` in `THEME_ORDER` while keeping concrete palette order as:
-- `default`, `retro`, `highContrast`, `neonHacker`
-- When `rotating` is selected, auto-cycle concrete themes every 15 seconds.
-- Keep settings persistence on `themeId` and allow `rotating` as a saved value.
-- Update Help pane theme line to show `rotating (<activeTheme>)` and auto-rotate hint.
-
-**DoD**
-- Theme cycling from Help includes `rotating`.
-- In rotating mode, palette changes automatically every 15 seconds.
-- Restart preserves rotating mode when selected.
-- Theme tests cover new cycle order including `rotating`.
-
----
-
-# Phase 12 — v0.2.3 Routing Hardening + Version Surfaces
-
-> Scope note: this phase focuses on keyboard-routing determinism and release/version consistency only.
-
-## T12.1 Central key router with action output
-**Status**: Complete
-**Implement**
-- Replace scattered per-mode keyboard handlers with a single pure router:
-- `src/app/keyRouter.ts` exports `handleKey(key, context)`.
-- Router returns action lists split by scope (`ui` and `domain`) and has no side effects.
-- `src/app/App.tsx` uses one `useKeyboard` entrypoint that executes routed actions.
-
-**DoD**
-- Modal mode blocks all background keys except modal keys (`y`, `n`, `Esc`).
-- Typing in SEARCH/ADD/EDIT does not move list selection.
-- LIST mode keybinds continue to work.
-- `Esc` consistently unwinds one layer.
-
-## T12.2 Version bump and help-pane version display
-**Status**: Complete
-**Implement**
-- Bump package version to `0.2.3`.
-- Centralize app display version in `src/app/version.ts` (`APP_VERSION = "v0.2.3"`).
-- Use `APP_VERSION` in left rail version label.
-- Add app version line in Help pane.
-
-**DoD**
-- Left rail shows `v0.2.3`.
-- Help pane displays `App Version: v0.2.3`.
-- `package.json` version is `0.2.3`.
-
-## T12.3 Version surfaces sync to v0.2.5
-**Status**: Complete
-**Implement**
-- Update `APP_VERSION` to `v0.2.5`.
-- Update `package.json` version to `0.2.5`.
-- Keep left rail and help pane bound to centralized `APP_VERSION`.
-
-**DoD**
-- Left rail shows `v0.2.5`.
-- Help pane displays `App Version: v0.2.5`.
-- `package.json` version is `0.2.5`.
-
----
-
-# Phase 13 — v0.2.5 Foundation Polish (Platform Contract + Reliability + Performance)
-
-> Scope note: this phase tightens “real user” robustness without adding major new features.
-
-## T13.1 Document supported terminals + min size contract
-**Status**: Complete
-**Implement**
-- Update README (or spec-facing docs) to explicitly list supported terminals:
-  - macOS Terminal.app + iTerm2
-  - Windows Terminal
-  - Linux baseline terminal (choose one and name it)
-- Re-affirm minimum terminal size: 80×24.
-- Ensure below-min-size behavior is documented (message, no overlap).
-
-**DoD**
-- Docs clearly state support matrix and 80×24 minimum.
-- Below-min-size message behavior is described and consistent with UI behavior.
-
-**Implementation notes**
-- README updated with support matrix, minimum size contract, and below-min-size behavior.
-- Linux baseline fixed as GNOME Terminal.
-
-## T13.2 Below-min-size guard behavior
-**Status**: Complete
-**Implement**
-- Add a guard in layout/render pipeline:
-  - If terminal < 80×24: render a single centered warning screen.
-  - Disable other interactions to avoid crashes/layout churn.
-- Ensure resizing back above min restores the full UI.
-
-**DoD**
-- Shrinking below 80×24 shows a stable “Terminal too small” message.
-- Growing back restores UI with no crash and preserves selection if possible.
-
-**Implementation notes**
-- Added `src/app/layoutGuard.ts` with pure size guard helpers + tests.
-- `App` now renders a centered guard screen below `80x24` and blocks normal key routing while too small.
-
-## T13.3 Persistence save-failure handling + banner
-**Status**: Complete
-**Implement**
-- In persistence layer, catch write errors (permissions, disk full, IO).
-- Surface a persistent banner containing:
-  - short error summary
-  - resolved data path
-  - last successful save timestamp (if tracked; otherwise omit)
-- Ensure failure does not crash the app.
-- Ensure retries are not aggressive:
-  - retry only on next domain mutation or explicit retry action (no automatic tight loop).
-
-**DoD**
-- With data path set to an unwritable location, app continues running and shows banner.
-- App does not spam retries or create repeated corrupt backups.
-- When path becomes writable again (or env override changed), next domain mutation successfully saves and banner clears (or updates).
-
-**Implementation notes**
-- `saveStateDebounced` now supports callback results for success/failure payloads.
-- App tracks a persistent save-failure banner with resolved path + optional last successful save time.
-- Retry behavior remains mutation-driven only (no UI-tick-triggered writes).
-
-## T13.4 Corruption recovery loop prevention test
-**Status**: Complete
-**Implement**
-- Add unit test(s) to ensure corruption recovery does not generate unbounded `.corrupt.*` backups in one session.
-- Introduce a simple session-scoped guard in safe-load orchestration (if not already present).
-
-**DoD**
-- Tests confirm at most one backup per startup attempt for a given resolved data path.
-- No repeated `.corrupt.*` creation on subsequent save failures during the same run.
-
-**Implementation notes**
-- Added session-scoped recovery map keyed by resolved path in persistence layer.
-- Added tests for same-path single-backup behavior and separate-path backup behavior.
-
-## T13.5 Performance target + debug measurement hook (optional)
-**Status**: Complete
-**Implement**
-- Add an optional debug flag (env) that logs:
-  - render/update durations (ms)
-  - visible rows / total task count
-- Ensure the task list renders only visible rows (windowed) using existing `scrollOffset` + `visibleRows` state.
-- Avoid adding heavy profiling dependencies.
-
-**DoD**
-- With debug flag enabled, logs show basic timing + counts.
-- Large list (2,000 tasks) remains navigable with no perceptible lag.
-- No behavior changes when debug flag is disabled.
-
-**Implementation notes**
-- Added `TADOI_PERF_DEBUG=1` hook in `App` that logs render duration + terminal/window counts.
-- No behavior change when flag is disabled.
-
----
-
-# Phase 14 — v0.2.5 Packaging Readiness (Non-Live + Future Installer Scaffolding)
-
-> Scope note: this phase adds packaging infrastructure only. No public publish and no end-user feature changes.
-
-## T14.1 Non-live tarball packaging workflow
-**Status**: Complete
-**Implement**
-- Keep `package.json` as `"private": true` (no live publish).
-- Add deterministic packaging scripts:
-  - `pack:dry`
-  - `pack:inspect`
-  - `pack:smoke`
-  - `release:rc:check`
-- Add package `files` allowlist and Bun engine contract.
-
-**DoD**
-- Tarball can be generated locally in `dist/tarball/`.
-- Tarball workflow is usable without publishing to a registry.
-- Public publish remains disabled.
-
-**Implementation notes**
-- Added scripts in `package.json` and runtime file allowlist.
-- Added Bun engine requirement and retained private package policy.
-
-## T14.2 Package content validation guard
-**Status**: Complete
-**Implement**
-- Add `scripts/inspect-package.ts` to validate dry-run package contents.
-- Assert required runtime files exist and forbidden local/doc/data files are excluded.
-
-**DoD**
-- `bun run pack:inspect` fails when required files are missing.
-- `bun run pack:inspect` fails when forbidden files are included.
-
-**Implementation notes**
-- Inspection now parses `bun pm pack --dry-run` output and enforces file-set guardrails.
-
-## T14.3 Tarball install smoke test
-**Status**: Complete
-**Implement**
-- Add `scripts/package-smoke-test.ts`:
-  - extract generated tarball in a temporary workspace
-  - run packaged CLI entry with `--help`
-  - assert expected help output contract
-
-**DoD**
-- `bun run pack:smoke` validates packaged CLI payload and basic CLI execution.
-- Failure output is explicit and blocks release-check flow.
-
-**Implementation notes**
-- Smoke test now checks app name/tagline/usage text from extracted tarball CLI payload.
-
-## T14.4 CI packaging gate
-**Status**: Complete
-**Implement**
-- Extend `.github/workflows/ci.yml` with `package` job running:
-  - `bun run pack:dry`
-  - `bun run pack:inspect`
-  - `bun run pack:smoke`
-- Keep existing `test` and `typecheck` jobs unchanged.
-
-**DoD**
-- PR and `main` push runs now include packaging verification.
-- Packaging failures block CI.
-
-**Implementation notes**
-- Added dedicated package job with `needs: [test, typecheck]`.
-
-## T14.5 Future installer scaffolding (DMG/EXE preparation)
-**Status**: Complete
-**Implement**
-- Add scaffold script `scripts/build-binary.ts` with stable interface:
-  - `--target macos|windows`
-  - `--format raw|installer`
-- Add planning docs:
-  - `packaging/macos/README.md`
-  - `packaging/windows/README.md`
-- Add release target matrix:
-  - `packaging/release-targets.json`
-
-**DoD**
-- Scaffold commands exist and produce planning artifacts only.
-- No real DMG/EXE/MSI generation in this phase.
-
-**Implementation notes**
-- Added `build:bin:mac` / `build:bin:win` scripts that generate scaffold outputs under `dist/`.
-
-## T14.6 Actual installer generation (future phase)
-**Status**: Pending
-**Implement**
-- Implement real binary build pipeline.
-- Implement macOS DMG packaging with signing/notarization.
-- Implement Windows EXE/MSI packaging with signing.
-
-**DoD**
-- Signed installer artifacts are produced in CI for macOS/Windows targets.
-- Installer QA matrix and rollback strategy are documented.

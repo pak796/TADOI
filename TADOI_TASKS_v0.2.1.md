@@ -6,9 +6,9 @@
 - Implement in small, reviewable commits.
 - Keep "domain" logic pure; write unit tests where appropriate.
 
-v0.2.2 scope note:
-- This version focuses on automated tests/CI merge gates and lightweight theming polish.
-- User-facing additions are limited to theme switching and small visual refinements.
+v0.2.1 scope note:
+- This version focuses on data safety and schema discipline.
+- No net-new user-facing features are introduced in v0.2.1.
 
 ---
 
@@ -27,15 +27,15 @@ v0.2.2 scope note:
 
 Refs: OpenTUI quick start (`bun create tui`).  [oai_citation:8‡GitHub](https://github.com/anomalyco/opentui?utm_source=chatgpt.com)
 
-### T0.2 Rename LCARS -> TADOI in app and files
+### T0.2 Confirm TADOI naming in app and files
 **Status**: Complete
 **Implement**
 - Update UI titles/labels to "TADOI"
 - Rename data file to `tadoi_data.json` and update any references
-- Update README and any filenames/mentions that include "LCARS"
+- Update README and any filenames/mentions that include legacy name tokens
 
 **DoD**
-- No visible "LCARS" in the app UI or file names (except historical notes in specs).
+- No visible legacy name tokens in the app UI or file names.
 
 ---
 
@@ -678,7 +678,7 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 - Multi-tag filter (AND)
 - Notes multiline (textarea if available)
 - Import/export JSON
-- User-defined/custom-imported color palettes
+- Color theme switching
 - SQLite persistence
 
 
@@ -689,20 +689,12 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 > Scope note: this phase is about **predictability** (focus + modals) and **readability** (scroll), not new product features.
 
 ## T8.1 Formalize mode + focus state machine
-**Status**: Complete
+**Status**: Pending
 **Implement**
 - Define `Mode` enum: `LIST | ADD | EDIT | SEARCH | HELP | MODAL_CONFIRM`
 - Define `FocusTarget` enum (at minimum): `TASK_LIST | SEARCH_INPUT | MODAL | EDITOR_TITLE | EDITOR_DUE_DATE | EDITOR_DUE_TIME | EDITOR_TAGS | EDITOR_NOTES`
 - Store mode/focus in UI state (not persisted)
 - Add a single key routing function that dispatches based on `(mode, focus)`
-- Implemented in:
-- `src/ui/modeFocus.ts` (formal mode/focus constants + predicates)
-- `src/ui/state.ts` (`UIState`, `uiReducer`, and `unwind(state)`)
-- `src/domain/models.ts` (mode/focus re-export for app/component compatibility)
-- `src/app/keyRouter.ts` (pure routing resolver)
-- `src/app/App.tsx` (single keyboard entrypoint using router)
-- `src/app/uiState.ts` (focus mapping and modal/list helpers)
-- `src/app/keyRouter.test.ts`, `src/app/uiState.test.ts`, and `src/ui/state.test.ts` (mode/focus + unwind tests)
 
 **DoD**
 - In LIST mode, `j/k` moves selection.
@@ -710,7 +702,7 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 - `Esc` unwinds exactly one layer (modal/help/search/editor) back to LIST as specified in Appendix A.
 
 ## T8.2 Visible focus indicator / highlight
-**Status**: Complete
+**Status**: Pending
 **Implement**
 - Add a clear, always-visible indication of current focus target:
   - either a `FOCUS:` line in left rail, or strong highlight of the active section
@@ -720,7 +712,7 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 - User can tell where keystrokes will go (list vs editor field vs modal) at a glance.
 
 ## T8.3 Modal correctness: hard-block key routing
-**Status**: Complete
+**Status**: Pending
 **Implement**
 - When modal is open, all non-modal key handlers must be disabled/ignored
 - Only accept modal keys: `y`, `n`, `Esc` (and optionally Enter mapped to `y`)
@@ -730,7 +722,7 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 - `y` deletes, `n`/`Esc` cancels, and app returns to LIST.
 
 ## T8.4 Post-delete selection clamping + visibility
-**Status**: Complete
+**Status**: Pending
 **Implement**
 - After delete, clamp `selectedIndex` using the Appendix A rules
 - Immediately call `ensureSelectedVisible()` to keep selection visible
@@ -741,7 +733,7 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 - Selection never becomes invalid or invisible
 
 ## T8.5 Scroll correctness hardening (ensureSelectedVisible)
-**Status**: Complete
+**Status**: Pending
 **Implement**
 - Centralize `ensureSelectedVisible(selectedIndex, scrollOffset, visibleRows, taskCount)`
 - Use it on:
@@ -756,7 +748,7 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 - Filtering/clearing filters keeps selection visible and stable (no jumps unless needed).
 
 ## T8.6 Resize hook: recompute visibleRows, clamp, and re-scroll
-**Status**: Complete
+**Status**: Pending
 **Implement**
 - On terminal resize:
   - recompute list pane height → `visibleRows`
@@ -851,194 +843,3 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 **DoD**
 - Running app idle does not rewrite `tadoi_data.json` repeatedly.
 - Saves occur only after task/tag/filter domain mutations that affect persisted data.
-
----
-
-# Phase 10 — v0.2.2 Automated Tests + CI
-
-> Scope note: this phase adds automated verification and CI merge gates only. No new user-facing features.
-
-## T10.1 Test harness structure + deterministic clock helpers
-**Status**: Complete
-**Implement**
-- Standardize test execution via package scripts:
-- `bun run test`
-- `bun run test:coverage`
-- `bun run typecheck`
-- Keep test placement under `src/**/*.test.ts`.
-- Remove `Date.now()` dependence from test setup defaults where unnecessary and use fixed timestamps.
-
-**DoD**
-- `bun run test` executes all test files locally and in CI.
-- New tests use deterministic timestamps and do not rely on wall-clock time.
-
-## T10.2 Domain query + due-time + label tests
-**Status**: Complete
-**Implement**
-- Expand `src/domain/query.test.ts` with:
-- due filter boundaries for `today` and `overdue`
-- rolling-window coverage for `next7/THIS WEEK`
-- same-day sort assertions (explicit-time before date-only, ascending explicit time)
-- Expand due label tests for explicit-time minute-level overdue cases.
-- Extend tag normalization tests for combined max-length + dedupe + sorting behavior.
-
-**DoD**
-- Domain behavior boundaries are covered for due filters, ordering, and labels.
-- Tag normalization invariants are enforced with explicit tests.
-
-## T10.3 Schema/migration/validation tests with fixtures
-**Status**: Complete
-**Implement**
-- Add fixture files under `src/state/__fixtures__/`:
-- `persisted.v1.json`
-- `persisted.v2.json`
-- `persisted.invalid.json`
-- Use fixtures in migration/validation tests to verify stepwise migration and strict validation.
-
-**DoD**
-- Legacy fixture migrates to current schema and validates.
-- Invalid fixture fails validation predictably.
-
-## T10.4 Corruption recovery + backup path tests (mock FS boundary)
-**Status**: Complete
-**Implement**
-- Cover corruption decision logic in `src/state/persistence.test.ts`:
-- parse failure
-- validation failure
-- migration failure
-- Assert backup path branch and banner behavior.
-- Verify rename failure path falls back to copy.
-
-**DoD**
-- Recovery path behavior is deterministic and tested without requiring fragile integration setup.
-
-## T10.5 Data path resolution tests (platform/env + dir creation)
-**Status**: Complete
-**Implement**
-- Verify `resolveDataPath()` precedence and platform defaults.
-- Add explicit test asserting parent directory creation for nested save path via mocked `fsOps.mkdir`.
-
-**DoD**
-- `TADOI_DATA_PATH` override wins.
-- Linux/macOS/Windows defaults are tested.
-- Save path directory creation is verified.
-
-## T10.6 GitHub Actions CI workflow (setup bun + install + test + typecheck)
-**Status**: Complete
-**Implement**
-- Add `.github/workflows/ci.yml`:
-- triggers: `pull_request`, `push` to `main`
-- Bun setup via `oven-sh/setup-bun@v2` pinned to `1.3.9`
-- install: `bun install --frozen-lockfile`
-- gates: `bun run test`, `bun run typecheck`
-- Add concurrency cancellation for in-progress superseded runs.
-
-**DoD**
-- CI fails on test or typecheck errors.
-- CI runs automatically on PRs and pushes to `main`.
-
-## T10.7 Coverage step in CI
-**Status**: Complete
-**Implement**
-- Add CI coverage command: `bun run test:coverage`.
-- Expose coverage output in CI logs without enforcing a percentage threshold.
-
-**DoD**
-- CI logs include coverage output.
-- Coverage collection does not destabilize required gates.
-
-## T10.8 Left rail modal label terminology
-**Status**: Complete
-**Implement**
-- Update left-rail terminology so modal confirmation displays as `DELETE` instead of `MODAL`.
-- Keep internal mode naming unchanged (`modal_confirm`) for state machine compatibility.
-
-**DoD**
-- Left rail MODE and MENU display `DELETE` when delete-confirm modal is active.
-- Spec wording reflects `DELETE` as the UI label for modal confirm state.
-
-## T10.9 ASCII logo spacing polish
-**Status**: Complete
-**Implement**
-- Tighten spacing between logo characters in the left-rail ASCII `TADOI` mark (notably between `T` and `O`) while preserving logo alignment.
-
-**DoD**
-- Logo reads clearly as `TADOI` with tighter spacing and no visual clipping/wrapping.
-
----
-
-# Phase 11 — v0.2.2 Theme Switcher + Palette Polish
-
-> Scope note: this phase adds lightweight theme selection and persistence with minimal UI changes.
-
-## T11.1 Theme registry and cycling contract
-**Status**: Complete
-**Implement**
-- Add `src/theme/themes.ts` with:
-- `ThemeId = "default" | "retro" | "highContrast" | "neonHacker"`
-- `ThemeTokens`
-- `THEMES`
-- `THEME_ORDER`
-- `cycleTheme(current)`
-- Keep `default` palette equivalent to existing release colors.
-
-**DoD**
-- Theme IDs and semantic tokens compile as a single source of truth.
-- Cycling order is deterministic and wraps.
-- Default palette remains visually unchanged.
-
-## T11.2 Runtime theme adapter compatibility
-**Status**: Complete
-**Implement**
-- Refactor `src/app/theme.ts` to support semantic themes with `applyTheme(themeId)`.
-- Preserve existing runtime keys used across components (`accentOrange`, `accentBlue`, `accentPurple`, `dueSoon`, `dueLater`, `muted`, `outline`) via adapter mapping.
-
-**DoD**
-- Existing UI components render without broad refactors.
-- Theme changes apply immediately at runtime.
-
-## T11.3 Settings persistence for theme selection
-**Status**: Complete
-**Implement**
-- Add `src/settings/settings.ts` with:
-- `TadoiSettings = { themeId }`
-- `resolveSettingsPaths()` using:
-- primary: `~/.config/tadoi/settings.json`
-- fallback: `~/.tadoi/settings.json`
-- `loadSettings()` with default merge/validation
-- `saveSettingsDebounced()` with 150ms debounce and fallback-write behavior
-- Add `src/state/settingsStore.ts` reducer with `setTheme` + `cycleTheme`.
-
-**DoD**
-- Startup loads saved theme and applies it before first render.
-- Theme changes persist and restore across app restarts.
-- Save failures on primary path attempt fallback path.
-
-## T11.4 Help pane theme control and preview
-**Status**: Complete
-**Implement**
-- In Help mode, bind `h` and `H` to theme cycling.
-- Show current theme in Help.
-- Add preview swatches for `accent`, `warn`, and `ok`.
-
-**DoD**
-- Pressing `h` in Help cycles through all 4 palettes.
-- Help reflects the active theme and preview colors.
-
-## T11.5 Palette tuning pass
-**Status**: Complete
-**Implement**
-- Update `retro` palette to SNES-inspired cool greys.
-- Update `neonHacker` with dark-green left rail and greener list/details panel backgrounds.
-
-**DoD**
-- Retro theme reads as grayscale SNES-style.
-- Neon Hacker left rail and panels match requested green styling.
-
-## T11.6 Left rail logo separator
-**Status**: Complete
-**Implement**
-- Add a horizontal ASCII separator directly beneath TADOI logo artwork in left rail before version/date/time and menu metadata.
-
-**DoD**
-- Logo area is visually separated from metadata and menu content.

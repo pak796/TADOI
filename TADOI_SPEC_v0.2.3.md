@@ -2,8 +2,8 @@
 
 ## 0) Summary
 
-Build a keyboard-first terminal TUI todo app with a **retro Star Trek / LCARS-inspired layout**, using **OpenTUI** + **@opentui/react** on **Bun**.
-Naming: replace LCARS with **TADOI** in the app UI and filenames.
+Build a keyboard-first terminal TUI todo app with a **retro Star Trek-inspired layout**, using **OpenTUI** + **@opentui/react** on **Bun**.
+Naming: use **TADOI** consistently in the app UI and filenames.
 
 v0.2.5 scope note:
 - This version focuses on foundation polish for real users: platform contract, reliability hardening, and performance envelope.
@@ -110,7 +110,7 @@ Deliverables:
 
 ---
 
-## 3) App UX / Layout (LCARS)
+## 3) App UX / Layout
 
 ### 3.1 Layout regions (single screen)
 Use OpenTUI flex layout with nested `<box>` containers.
@@ -127,7 +127,7 @@ Use OpenTUI flex layout with nested `<box>` containers.
   - Editor form (when adding/editing)
   - Tag autocomplete dropdown anchored to tag field when active
 
-### 3.2 LCARS visual rules
+### 3.2 Visual rules
 - Prefer **solid blocks** over ASCII borders.
 - Use rounded borders sparingly (only major panes).
 - All-caps headings.

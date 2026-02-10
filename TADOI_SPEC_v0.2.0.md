@@ -2,13 +2,13 @@
 
 ## 0) Summary
 
-Build a keyboard-first terminal TUI todo app with a **retro Star Trek / LCARS-inspired layout**, using **OpenTUI** + **@opentui/react** on **Bun**.
-Naming: replace LCARS with **TADOI** in the app UI and filenames.
+Build a keyboard-first terminal TUI todo app with a **retro Star Trek-inspired layout**, using **OpenTUI** + **@opentui/react** on **Bun**.
+Naming: use **TADOI** consistently in the app UI and filenames.
 
-v0.2.4 scope note:
+v0.2.5 scope note:
 - This version focuses on foundation polish for real users: platform contract, reliability hardening, and performance envelope.
 - It adds daily-driver navigation and saved-view ergonomics while keeping persistence and routing discipline strict.
-- It carries forward all accepted v0.2.3 routing/version work and appends new v0.2.4 foundation requirements.
+- It carries forward all accepted v0.2.3 routing/version work and appends new v0.2.5 foundation requirements.
 
 - Runtime: Bun (OpenTUI quick start uses Bun; `bun create tui`)  [oai_citation:0‡GitHub](https://github.com/anomalyco/opentui?utm_source=chatgpt.com)
 - UI binding: @opentui/react provides React reconciler + patterns like `createRoot` and `useKeyboard`.  [oai_citation:1‡npm](https://www.npmjs.com/package/%40opentui/react?utm_source=chatgpt.com)
@@ -81,7 +81,7 @@ Deliverables:
 55. **Left rail logo separator**: render a horizontal ASCII separator under TADOI logo before version/menu metadata.
 56. **Help pane app version**: show the current app version in the Help overlay.
 57. **Rotating theme mode**: support a `rotating` theme option that auto-cycles concrete palettes every 15 seconds.
-58. **v0.2.4 version surfaces**: app version indicators and package metadata are aligned to `v0.2.4` / `0.2.4`.
+58. **v0.2.5 version surfaces**: app version indicators and package metadata are aligned to `v0.2.5` / `0.2.5`.
 59. **Daily-driver list navigation primitives**: add `gg` (top), `G` (bottom), page navigation (`ctrl+u` / `ctrl+d`, plus PageUp/PageDown), and attention jumps (`[`/`]` for overdue, `{`/`}` for due-today).
 60. **Saved Views (filter presets)**: users can save/apply/delete up to 9 filter presets (`v`, `ctrl+s`, `1..9`) with persistence and schema migration support.
 61. **Global active-tag cycle filter**: `t` cycles through tags from all active (open) tasks, not only the selected task.
@@ -110,7 +110,7 @@ Deliverables:
 
 ---
 
-## 3) App UX / Layout (LCARS)
+## 3) App UX / Layout
 
 ### 3.1 Layout regions (single screen)
 Use OpenTUI flex layout with nested `<box>` containers.
@@ -127,7 +127,7 @@ Use OpenTUI flex layout with nested `<box>` containers.
   - Editor form (when adding/editing)
   - Tag autocomplete dropdown anchored to tag field when active
 
-### 3.2 LCARS visual rules
+### 3.2 Visual rules
 - Prefer **solid blocks** over ASCII borders.
 - Use rounded borders sparingly (only major panes).
 - All-caps headings.
@@ -234,7 +234,7 @@ Tag normalization rules:
 Tag colors:
 - Tag color palette supports up to 16 distinct colors.
 
-Saved Views (v0.2.4 daily-driver #2):
+Saved Views (v0.2.5 daily-driver #2):
 - A saved view captures `{ status, due, tag, searchText }`.
 - It does not capture UI-only state (selection index, scroll offset, mode/focus).
 - Current MVP does not persist sort mode because list sort is fixed by due/priority rules.
@@ -678,15 +678,15 @@ Version contract:
 - App version is centralized in `src/app/version.ts` as `APP_VERSION`.
 - Left rail displays `APP_VERSION`.
 - Help pane displays `App Version: <APP_VERSION>`.
-- Package metadata in `package.json` matches the same release (`0.2.4`).
+- Package metadata in `package.json` matches the same release (`0.2.5`).
 
 ---
 
-# Appendix F — v0.2.4 Foundation Polish (Platform Contract + Reliability + Performance)
+# Appendix F — v0.2.5 Foundation Polish (Platform Contract + Reliability + Performance)
 
 This appendix captures the “Section 1” foundation work required to move from a polished MVP to a more robust product.
 Scope is **clarification + hardening**: documented support boundaries, stronger failure-mode behavior, and explicit performance targets.
-No new feature sets (sync/recurrence/etc.) are introduced in v0.2.4.
+No new feature sets (sync/recurrence/etc.) are introduced in v0.2.5.
 
 ## F1) Platform Contract (Supported Environments)
 
@@ -730,7 +730,7 @@ Only domain mutations that change persisted state may schedule a save.
 ## F3) Performance Envelope (Explicit Targets)
 
 ### Performance target
-Define a baseline target for v0.2.4:
+Define a baseline target for v0.2.5:
 - **2,000 tasks** (mixed due states, tags) should allow smooth list navigation without perceptible lag.
 - Navigation latency target: selection update visible within ~50ms on typical laptop hardware.
 
@@ -745,14 +745,14 @@ Define a baseline target for v0.2.4:
 - Task list should render only visible rows (windowing/virtualization) using `scrollOffset` + `visibleRows`.
 - Sorting/filtering should be pure and efficient; avoid recomputing heavy indexes on every render tick.
 
-## F4) v0.2.4 Manual QA Additions
+## F4) v0.2.5 Manual QA Additions
 
 In addition to existing quality gates:
 1. **Below-min-size behavior**: shrink terminal below 80×24; verify clean “too small” message, no crash.
 2. **Save failure**: point data path to an unwritable location; verify banner and continued operation.
 3. **Large list**: load/generate 2k tasks; verify navigation remains responsive and selection-following scroll remains correct.
 
-## F5) v0.2.4 Readiness Execution Log
+## F5) v0.2.5 Readiness Execution Log
 
 Execution snapshot (2026-02-09 CST):
 - Manual quality gate `T7.1` executed and passed:
@@ -767,3 +767,71 @@ Execution snapshot (2026-02-09 CST):
   - README keybindings now reflect current router behavior, including:
     - `gg` / `G`, paging (`ctrl+u` / `ctrl+d`), attention jumps (`[]`, `{}`),
       sort cycling (`s`), saved views (`v`, `ctrl+s`, `1..9`), and global active-tag cycling (`t`).
+
+---
+
+# Appendix G — v0.2.5 Packaging Readiness (Non-Live + Installer Scaffolding)
+
+This appendix defines the packaging contract for pre-release distribution.
+Scope is packaging infrastructure only. No public release or feature changes are included.
+
+## G1) Non-Live Distribution Policy
+
+- `package.json` remains `"private": true`.
+- No `npm publish` / `bun publish` in this phase.
+- Primary distribution artifact is a local/private npm tarball.
+- CLI command remains `tadoi`.
+- Runtime expectation remains Bun-based for CLI execution (`#!/usr/bin/env bun`).
+
+## G2) Artifact Layout Contract
+
+Standardized output paths:
+- Tarball artifacts: `dist/tarball/*.tgz`
+- Binary scaffolds (future): `dist/bin/macos/*`, `dist/bin/windows/*`
+- Installer scaffolds (future): `dist/installers/*`
+
+Release target matrix:
+- `packaging/release-targets.json` tracks target ids and statuses:
+  - `tarball` = active
+  - `binary-macos` = planned
+  - `binary-windows` = planned
+
+## G3) Packaging Script Contract
+
+Required scripts:
+- `bun run pack:dry`
+  - Builds tarball into `dist/tarball/`.
+- `bun run pack:inspect`
+  - Validates package file set using `bun pm pack --dry-run`.
+  - Confirms required runtime files and rejects forbidden local/data/doc artifacts.
+- `bun run pack:smoke`
+  - Extracts the generated tarball into a temporary directory and runs `tadoi --help` via the packaged CLI entry.
+  - Fails if CLI help output contract is broken.
+- `bun run release:rc:check`
+  - Runs pre-release gate sequence: test, typecheck, branding guard, tarball build, inspect, smoke.
+
+## G4) CI Packaging Gate
+
+CI workflow (`.github/workflows/ci.yml`) includes a `package` job that runs:
+- `bun run pack:dry`
+- `bun run pack:inspect`
+- `bun run pack:smoke`
+
+Policy:
+- Packaging job runs on `pull_request` and `push` to `main`.
+- Merge must remain blocked on package gate failures.
+
+## G5) Future DMG/EXE Track (Scaffold Only)
+
+Scaffold scripts:
+- `bun run build:bin:mac`
+- `bun run build:bin:win`
+
+Current behavior:
+- Scripts create planning artifacts only.
+- No real binary, DMG, EXE, or MSI is produced yet.
+
+Future requirements (outside this phase):
+- macOS signing + notarization pipeline.
+- Windows code signing + installer toolchain selection.
+- CI secrets and release hardening for installer generation.

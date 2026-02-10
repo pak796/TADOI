@@ -38,7 +38,7 @@ export function EditorPane({
           value={draft.title}
           onChange={(value) => onUpdate({ title: value })}
           focused={focus === "title"}
-          placeholder="Ship LCARS update"
+          placeholder="Ship TADOI update"
           style={{ backgroundColor: theme.bg, color: theme.text }}
         />
       </box>
