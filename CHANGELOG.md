@@ -9,12 +9,26 @@ The format is based on Keep a Changelog.
 - Flash mode preference (`slow`/`static`) with persistence in `settings.json` and Help-panel toggle (`M`).
 - Task-list row mouse selection (left-click) using the same highlighted row hitbox.
 - Left-rail `MENU` row mouse actions (left-click) using the same highlighted menu-row hitbox.
+- Dashboard `TOP TAGS (OPEN)` widget with keyboard selection (`up`/`down`) and Enter drilldown to the shared `tag` filter.
+- Dashboard KPI strip above widgets:
+  - `OVERDUE`, `TODAY`, `NEXT7`, `OPEN`, `DONE7D`
+  - Unicode block-element meters with compact fallback on narrow terminals
+- Bottom rotating info bar quick filters:
+  - clickable due buckets (`OVERDUE`, `DUE TODAY`, `DUE THIS WEEK`)
+  - clickable tag pills
+  - click-active-again clears the applied quick filter
 
 ### Changed
 - Added versioned planning artifacts for `v0.2.7`: `TADOI_SPEC_v0.2.7.md` and `TADOI_TASKS_v0.2.7.md`.
 - Dashboard layout robustness improved:
   - adaptive 2:1 split with stacked fallback when narrow
   - due-bucket minimum-width guard with friendly placeholder rendering when too narrow
+- Dashboard right panel changed from backlog trend to `TOP TAGS (OPEN)` Pareto-style bars with aligned label/bar columns.
+- KPI strip now uses full-width cell distribution so all KPI columns fill the strip container consistently.
+- KPI styling now uses semantic colors:
+  - `OVERDUE`, `TODAY`, `NEXT7`, `OPEN` in blue
+  - `DONE7D` in green
+- Default `DUE` sorting now prioritizes open tasks with due dates at the top before other status/due combinations.
 - In `static` flash mode, overdue indicators render as solid red (no pulsing).
 - `b` / `B` dashboard toggle is now ignored in text-entry contexts (`SEARCH`, `ADD`, `EDIT`, and save-view name prompt).
 
@@ -22,6 +36,7 @@ The format is based on Keep a Changelog.
 - Replaced direct `process.exit(...)` usage in interactive app exit paths with OpenTUI renderer teardown (`renderer.destroy()`), improving terminal state cleanup on quit.
 - Border/frame redraw reliability after dashboard mode toggles and terminal resizes.
 - Editor Save/Cancel mouse interactions now use OpenTUI mouse events (`onMouseDown`) instead of unsupported `onClick`.
+- Bottom rotating info-bar pill borders now size correctly without pushing content out of the bar region.
 
 ## [0.2.7]
 ### Added

@@ -110,6 +110,28 @@ describe("sortTasks with explicit time on same day", () => {
   });
 });
 
+describe("sortTasks due mode priority", () => {
+  it("keeps open+due tasks at the top before other status/due combinations", () => {
+    const now = new Date(2026, 1, 8, 12, 0, 0, 0).getTime();
+    const start = startOfLocalDayMs(now);
+    const tasks: Task[] = [
+      makeTask({ id: "done-due", title: "done-due", status: "done", dueAt: addLocalDaysMs(start, -1) }),
+      makeTask({ id: "open-no-due", title: "open-no-due", status: "open" }),
+      makeTask({ id: "open-due-later", title: "open-due-later", status: "open", dueAt: addLocalDaysMs(start, 1) }),
+      makeTask({ id: "open-due-soon", title: "open-due-soon", status: "open", dueAt: addLocalDaysMs(start, 0) }),
+      makeTask({ id: "done-no-due", title: "done-no-due", status: "done" })
+    ];
+
+    expect(sortTasks(tasks, now).map((task) => task.id)).toEqual([
+      "open-due-soon",
+      "open-due-later",
+      "open-no-due",
+      "done-due",
+      "done-no-due"
+    ]);
+  });
+});
+
 describe("sortTasks by mode", () => {
   it("sorts by updatedAt descending in UPDATED mode", () => {
     const now = new Date(2026, 1, 8, 12, 0, 0, 0).getTime();

@@ -94,6 +94,13 @@ Deliverables:
 67. **Task-row mouse selection**: clicking within the task-row highlight area selects that task.
 68. **Left-rail menu mouse selection**: clicking within a highlighted MENU row triggers that menu action.
 69. **Editor button mouse support**: SAVE/CANCEL mouse interaction uses OpenTUI-supported mouse events.
+70. **Bottom-bar quick-filter mouse toggles**: clicking due-summary buckets and top-tag pills toggles filters; clicking active item again clears.
+71. **Dashboard top-tags panel**: replace backlog trend with `TOP TAGS (OPEN)` Pareto bars using fixed label/bar alignment.
+72. **Dashboard top-tags drilldown**: `up`/`down` selects tag rows and `Enter` applies selected tag to shared filter state.
+73. **Dashboard KPI strip**: add top strip with `OVERDUE`, `TODAY`, `NEXT7`, `OPEN`, `DONE7D` and block-element meters.
+74. **KPI compact fallback**: at narrow widths, KPI strip falls back to abbreviated compact text instead of wrapping.
+75. **KPI color semantics**: `OVERDUE`/`TODAY`/`NEXT7`/`OPEN` render blue, `DONE7D` renders green.
+76. **Due-sort priority refinement**: default `DUE` sorting keeps open tasks with due dates at the top before other status/due combinations.
 
 ### Non-Goals (MVP)
 - Sync, accounts, multi-device
@@ -244,7 +251,7 @@ Tag colors:
 Saved Views (v0.2.5 daily-driver #2):
 - A saved view captures `{ status, due, tag, searchText }`.
 - It does not capture UI-only state (selection index, scroll offset, mode/focus).
-- Current MVP does not persist sort mode because list sort is fixed by due/priority rules.
+- Sort mode is runtime-only and is not persisted in saved views or state files.
 - Name dedupe policy is case-insensitive update-by-name.
 - Max saved views is 9.
 ```
@@ -371,7 +378,7 @@ Call `ensureSelectedVisible()` whenever:
 - `G` selects last visible task and keeps it visible.
 - Page navigation moves by `visibleRows - 1` and clamps in-range.
 - `s` cycles sort mode in this order:
-  - `DUE`: due date asc; within day explicit-time tasks first, then time asc, then date-only, then stable fallback.
+  - `DUE`: priority groups `open+due`, `open+no due`, `done+due`, `done+no due`, then archived groups; within same due day explicit-time tasks first, then time asc, then date-only, then stable fallback.
   - `UPDATED`: `updatedAt` desc.
   - `CREATED`: `createdAt` desc.
   - `TITLE`: title asc (case-insensitive).
@@ -936,10 +943,10 @@ Help overlay must include a `DATA: IMPORT / EXPORT` section with:
 
 ---
 
-# Appendix I — v0.2.5 Dashboard MVP (Mode + Widgets + Layout Robustness)
+# Appendix I — Dashboard Runtime Contract (Current)
 
-This appendix defines the Dashboard MVP shipped in runtime UI.
-Scope is read-only dashboard analytics; there is no interactive import/export or drill-down workflow in dashboard mode.
+This appendix defines the dashboard behavior currently shipped in runtime UI.
+Scope includes interactive top-tag drilldown and KPI-strip rendering; dashboard state remains UI-only.
 
 ## I1) Mode + Key Routing Contract
 
@@ -953,15 +960,20 @@ Toggle behavior:
 - Dashboard toggle is also blocked while SEARCH/ADD/EDIT or save-view name prompt is active.
 
 Dashboard key contract:
-- Allowed: `b`/`B`, `f`, `g`, `t`, `?`, `q`
-- Blocked: list navigation/action keys (for example `j/k`, arrows, paging, jump keys)
+- Allowed: `b`/`B`, `f`, `g`, `t`, `up`, `down`, `enter`, `?`, `q`
+- Blocked: list navigation/action keys (for example `j/k`, paging, jump keys)
 - Routing remains centralized in `src/app/keyRouter.ts`.
-- Exit teardown must be graceful: `q` routes to renderer teardown (`renderer.destroy()`), not direct `process.exit(...)` from interactive app handlers.
+- Exit teardown is graceful: `q` routes to renderer teardown (`renderer.destroy()`), not direct `process.exit(...)` from interactive app handlers.
 - `Ctrl+C` behavior remains renderer-managed via `createCliRenderer({ exitOnCtrlC: true })`.
+
+Top-tags interaction:
+- `up`/`down` changes selected `TOP TAGS (OPEN)` row.
+- `enter` applies selected tag to shared filter state (`filters.tag = selectedTag`).
+- If status is `done`/`archived`, enter shows an availability hint instead of applying a tag.
 
 ## I2) Filter Parity Contract
 
-Dashboard widgets must use the exact same filtered dataset as task list rendering:
+Dashboard widgets use the exact same filtered dataset as task-list rendering:
 - `visibleTasks = getVisibleTasks(state, now)`
 - shared semantics for:
   - `status`
@@ -976,7 +988,8 @@ Single source of truth:
 
 Pure domain functions:
 - `computeDueBuckets8(tasks, now): [number, number, number, number, number, number, number, number]`
-- `computeBacklogTrend7(tasks, now): [number, number, number, number, number, number, number]`
+- `computeTopTagsOpen(tasks, limit): Array<{ tag: string; count: number }>`
+- `computeDashboardKpis(tasks, nowMs): { overdue, today, next7, open, done7d }`
 
 Due bucket contract (`computeDueBuckets8`):
 - Buckets map to:
@@ -991,48 +1004,68 @@ Due bucket contract (`computeDueBuckets8`):
 - Tasks with `dueAt` undefined are excluded.
 - Uses local-day boundaries consistent with existing date helpers.
 
-Backlog trend contract (`computeBacklogTrend7`):
-- Returns open backlog at end-of-day for the last 7 local days (oldest -> today).
-- Inclusion rule per day:
-  - `createdAt <= dayEnd`
-  - task is not closed on/before `dayEnd`
-- Effective close time:
-  - `closedAt` when present
-  - otherwise `updatedAt` for non-open tasks
-  - otherwise undefined
+Top tags contract (`computeTopTagsOpen`):
+- Counts tags from open tasks only.
+- Sort order is count descending, then tag ascending.
+- Non-positive limits return empty output.
+
+KPI contract (`computeDashboardKpis`):
+- `overdue`: open tasks overdue (day-based or explicit-time same-day overdue)
+- `today`: open tasks due today
+- `next7`: open tasks due within `[today..today+6]`
+- `open`: open task count
+- `done7d`: done/closed tasks in last 7 local days from current filtered dataset
 
 ## I4) Rendering + UX Contract
 
 Layout behavior:
-- In dashboard mode, the main content pane renders dashboard widgets instead of list/details split.
+- In dashboard mode, main content renders dashboard widgets instead of list/details split.
 - Left rail, top bar, and bottom bar remain active.
-- Top bar shows dashboard mode context and current filtered task count.
-- Widget layout uses a 2:1 split (due buckets left, trend right) with stacked fallback when width is too narrow.
-- Due-bucket panel enforces minimum render width; if chart width is too small it shows a friendly placeholder.
+- Top bar shows dashboard context and current filtered task count.
+- Dashboard has three visualization zones:
+  - top: KPI strip
+  - left panel: due buckets
+  - right panel: `TOP TAGS (OPEN)` chart
+- Body uses 2:1 split (due buckets left, top tags right) with stacked fallback when width is too narrow.
+- Due-bucket panel enforces minimum render width; if too narrow it shows a friendly placeholder.
+
+KPI strip rendering:
+- KPI strip appears above both body panels.
+- KPI cells distribute width across the full strip (no trailing unused gap).
+- KPI colors:
+  - `OVERDUE`, `TODAY`, `NEXT7`, `OPEN`: blue
+  - `DONE7D`: green
+- Meters use Unicode block elements and compact to abbreviated text at narrow widths.
+
+Top tags rendering:
+- Rows use fixed label and bar alignment so bars start at a consistent x-position.
+- Long tags truncate with ellipsis without shifting bar starts.
+- If status filter is `done` or `archived`, panel shows `(Top tags available for OPEN tasks only)`.
 
 Readability:
 - Must remain legible at minimum supported `80x24`.
 - Existing below-min-size guard behavior remains the governing fallback.
 
 Mode-transition redraw:
-- Entering/leaving dashboard must invalidate stale layout/border artifacts and force a fresh frame render.
-- Border drawing must remain stable after mode toggles and terminal resizes.
+- Entering/leaving dashboard invalidates stale layout/border artifacts and forces fresh frame render.
+- Border drawing remains stable after mode toggles and terminal resizes.
 
 ## I5) Documentation + Tests Contract
 
 Docs:
 - README keybindings include dashboard toggle and dashboard-mode key behavior.
-- Help overlay includes a dashboard section describing:
+- Help overlay includes dashboard section describing:
   - toggle behavior
   - shared filter parity
-  - widget meaning
+  - KPI + due-buckets + top-tags meaning
+  - top-tags `up`/`down` + `enter` drilldown
 
 Tests:
-- Domain unit tests cover dashboard due-bucket and backlog-trend aggregation behavior.
+- Domain unit tests cover dashboard due-bucket, top-tags, and KPI aggregation behavior.
 - Key-router tests verify:
   - `b`/`B` toggle routing
   - text-entry guard for `b`/`B` (SEARCH/ADD/EDIT/save-view prompt)
-  - dashboard mode key allowlist
+  - dashboard mode key allowlist (including `up`/`down` + `enter`)
   - list-key leakage prevention while dashboard is focused
 
 ---
@@ -1076,3 +1109,25 @@ This appendix defines interaction-polish contracts added after dashboard MVP sco
 - Flash mode persists in settings (`settings.json`) with startup restore.
 - In `static` mode, due/overdue pulsing is disabled.
 - In `static` mode, overdue indicators remain solid red across list/details/left-rail due surfaces.
+
+## J6) Bottom-Bar Quick-Filter Mouse Contract
+
+- Bottom rotating info-bar pills are mouse-clickable:
+  - due summary buckets (`OVERDUE`, `DUE TODAY`, `DUE THIS WEEK`)
+  - top tag pills
+- Clicking a quick-filter pill applies the corresponding shared list/dashboard filter.
+- Clicking an already-active quick-filter pill clears that quick filter and resets to baseline.
+- Pill hitboxes match highlighted pill rectangles; border/padding must not cause overflow or line-wrap artifacts.
+
+## J7) Default DUE Sort Priority Contract
+
+- Default `DUE` sort mode prioritizes by status/due presence before date/time ordering:
+  1. open tasks with due date
+  2. open tasks without due date
+  3. done tasks with due date
+  4. done tasks without due date
+  5. archived tasks (same due/no-due grouping)
+- Within equal-priority tasks sharing local due day:
+  - explicit-time tasks sort before date-only tasks
+  - explicit-time tasks sort by ascending time
+  - final fallback uses stable deterministic tie-breaks

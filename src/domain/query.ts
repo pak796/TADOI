@@ -24,7 +24,19 @@ function compareStableFallback(a: Task, b: Task): number {
   return a.id.localeCompare(b.id);
 }
 
+function getDueSortPriority(task: Task): number {
+  const statusPriority =
+    task.status === "open" ? 0 : task.status === "done" ? 2 : 4;
+  const duePriority = task.dueAt !== undefined ? 0 : 1;
+  return statusPriority + duePriority;
+}
+
 function compareByDue(a: Task, b: Task): number {
+  const priorityDiff = getDueSortPriority(a) - getDueSortPriority(b);
+  if (priorityDiff !== 0) {
+    return priorityDiff;
+  }
+
   const dueDayA =
     a.dueAt !== undefined ? getLocalDayNumber(a.dueAt) : Number.MAX_SAFE_INTEGER;
   const dueDayB =

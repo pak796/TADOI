@@ -2013,6 +2013,7 @@ export function App({
             <text>b: toggle dashboard</text>
             <text>f: cycle status</text>
             <text>s: cycle sort ({sortModeLabel})</text>
+            <text>DUE sort priority: OPEN+due first, then OPEN no-due, then DONE/ARCHIVED groups.</text>
             <text>g: cycle due</text>
             <text>t: tag filter</text>
             <text>Mouse: bottom bar buckets/tags toggle quick filters (click again to clear).</text>
@@ -2025,6 +2026,10 @@ export function App({
             <text>esc: close</text>
             <text>DASHBOARD</text>
             <text>Uses the same filtered dataset as TASK LIST.</text>
+            <text>KPI STRIP: OVD(overdue), TOD(today), N7(next7), OPN(open), D7(done7d).</text>
+            <text>KPI meters use Unicode block bars and compact to abbreviations on narrow widths.</text>
+            <text>KPI colors: OVD/TOD/N7/OPN=blue, D7=green.</text>
+            <text>D7 uses the current filtered set; status filters can reduce it to zero.</text>
             <text>Widgets: due buckets (OVD/TOD/+1..+6) and TOP TAGS (OPEN).</text>
             <text>In dashboard: b returns to list, f/g/t cycle shared filters.</text>
             <text>Top tags: up/down select row, Enter applies tag filter.</text>

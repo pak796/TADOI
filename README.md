@@ -92,7 +92,7 @@ Corrupt backups created by recovery look like:
   - `d`: delete selected task (confirm modal `y` / `n` / `Esc`)
   - `/`: open search
   - `f`: cycle status filter
-  - `s`: cycle sort mode
+  - `s`: cycle sort mode (`DUE` default keeps open tasks with due dates at the top)
   - `g`: cycle due filter
   - `t`: cycle tag filter across tags on all active (open) tasks
 - Dashboard mode:
@@ -105,6 +105,15 @@ Corrupt backups created by recovery look like:
   - `?`: open help
   - `q`: quit (graceful terminal teardown)
   - Dashboard widgets always use the exact same filtered task set as the task list (including `searchText`).
+  - `TOP TAGS (OPEN)` counts open tasks only; when status is `done`/`archived`, it shows an availability hint.
+  - Dashboard KPI strip:
+    - `OVERDUE`: open tasks overdue (date or explicit-time overdue)
+    - `TODAY`: open tasks due today
+    - `NEXT7`: open tasks due in rolling next 7 days (today..+6)
+    - `OPEN`: open task count in current filtered dataset
+    - `DONE7D`: done/closed tasks in last 7 local days from the current filtered dataset
+    - KPI bars use Unicode block meters and compact to abbreviated text on narrow widths.
+    - KPI colors: `OVERDUE`, `TODAY`, `NEXT7`, `OPEN` use blue; `DONE7D` uses green.
 - Saved views:
   - `v`: toggle saved-views overlay
   - `ctrl+s`: open "save current filters as view"

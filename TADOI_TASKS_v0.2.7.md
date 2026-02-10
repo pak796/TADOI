@@ -1498,6 +1498,7 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 
 ## T16.2 Dashboard analytics widgets and pure domain aggregations
 **Status**: Complete
+**Note**: Superseded in current runtime by Phase 18 (`TOP TAGS (OPEN)` replaces backlog trend panel).
 **Implement**
 - Add pure aggregation module `src/domain/dashboard.ts`:
   - `computeDueBuckets8(tasks, now)`
@@ -1598,3 +1599,82 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 - Left-click on a MENU row triggers the same action as the corresponding keyboard flow.
 - Click target matches the highlighted MENU row area exactly.
 - Clicking `HELP` while already in Help is a safe no-op.
+
+---
+
+# Phase 18 — Post-v0.2.7 Dashboard + UX Alignment
+
+> Scope note: this phase captures runtime enhancements shipped after the initial dashboard MVP and interaction polish pass.
+
+## T18.1 Replace trend panel with TOP TAGS (OPEN) + drilldown
+**Status**: Complete
+**Implement**
+- Replace dashboard right panel (`BACKLOG TREND`) with `TOP TAGS (OPEN)` Pareto bars.
+- Add deterministic aggregation (`computeTopTagsOpen`) and tests.
+- Add keyboard selection in dashboard (`up`/`down`) and Enter drilldown to apply selected tag filter.
+- Keep filter source-of-truth parity with task list (`status`, `due`, `tag`, `searchText`).
+
+**DoD**
+- Right panel renders top tags by open-task count with aligned label/bar columns.
+- Enter applies selected tag filter immediately.
+- `done`/`archived` status shows open-only availability hint.
+
+## T18.2 Add KPI strip above dashboard panels
+**Status**: Complete
+**Implement**
+- Add top KPI strip with `OVERDUE`, `TODAY`, `NEXT7`, `OPEN`, `DONE7D`.
+- Add pure KPI aggregation (`computeDashboardKpis`) with date-boundary tests.
+- Render Unicode block-element meters with narrow-width compact fallback.
+- Render KPI value on same line as each meter.
+
+**DoD**
+- KPI strip appears above both dashboard panels.
+- KPI updates stay in sync with shared filtered dataset.
+- Compact fallback is readable at narrow widths.
+
+## T18.3 KPI/dashboard visual polish and width consistency
+**Status**: Complete
+**Implement**
+- Apply KPI color semantics:
+  - `OVERDUE`, `TODAY`, `NEXT7`, `OPEN` in blue
+  - `DONE7D` in green
+- Ensure KPI cells fill strip width without trailing gap.
+- Align KPI strip container width with dashboard panel-region width.
+
+**DoD**
+- KPI colors are consistent with design contract.
+- Dashboard strip/panel widths align with no border drift.
+- No meter/value wrapping artifacts in normal supported widths.
+
+## T18.4 Bottom info-bar quick-filter clickability
+**Status**: Complete
+**Implement**
+- Make rotating bottom-bar status buckets and tag pills clickable quick filters.
+- Clicking active quick filter again clears/reset filter state.
+- Fix pill border/padding sizing so bar region remains properly fitted.
+
+**DoD**
+- Status/tag quick filters toggle from mouse input.
+- Re-click clears active quick filter.
+- Pill borders render without overflow or mis-sized container artifacts.
+
+## T18.5 Default DUE sort priority refinement
+**Status**: Complete
+**Implement**
+- Update due-mode comparator to prioritize open tasks with due dates at the top.
+- Preserve same-day explicit-time ordering and stable fallback behavior.
+- Add/extend domain unit tests to lock priority ordering.
+
+**DoD**
+- Default `DUE` sort order prioritizes `open+due` before other status/due combinations.
+- Existing sort mode behavior (`UPDATED`, `CREATED`, `TITLE`) remains unchanged.
+
+## T18.6 Documentation synchronization
+**Status**: Complete
+**Implement**
+- Update README dashboard/sort notes for latest runtime behavior.
+- Update changelog unreleased notes for dashboard/KPI/quick-filter/sort changes.
+- Align dashboard/spec/task planning docs with implemented functionality.
+
+**DoD**
+- Documentation matches shipped behavior for dashboard widgets, drilldown keys, KPI semantics, quick-filter mouse flows, and due-sort priority.
