@@ -1028,18 +1028,22 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 - Linux/macOS/Windows defaults are tested.
 - Save path directory creation is verified.
 
-## T10.6 GitHub Actions CI workflow (setup bun + install + test + typecheck)
+## T10.6 GitHub Actions CI workflow (cross-platform matrix)
 **Status**: Complete
 **Implement**
 - Add `.github/workflows/ci.yml`:
 - triggers: `pull_request`, `push` to `main`
+- single `ci` job with matrix runners:
+  - `ubuntu-latest`
+  - `macos-latest`
+  - `windows-latest`
 - Bun setup via `oven-sh/setup-bun@v2` pinned to `1.3.9`
 - install: `bun install --frozen-lockfile`
-- gates: `bun run test`, `bun run typecheck`
+- gates: `bun run test`, `bun run test:coverage`, `bun run typecheck`, `bun run brand:check`
 - Add concurrency cancellation for in-progress superseded runs.
 
 **DoD**
-- CI fails on test or typecheck errors.
+- CI fails on test, coverage, typecheck, or branding errors.
 - CI runs automatically on PRs and pushes to `main`.
 
 ## T10.7 Coverage step in CI
@@ -1360,18 +1364,18 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 ## T14.4 CI packaging gate
 **Status**: Complete
 **Implement**
-- Extend `.github/workflows/ci.yml` with `package` job running:
+- Extend `.github/workflows/ci.yml` matrix `ci` job with Ubuntu-only packaging steps:
   - `bun run pack:dry`
   - `bun run pack:inspect`
   - `bun run pack:smoke`
-- Keep existing `test` and `typecheck` jobs unchanged.
+- Keep packaging checks required while avoiding OS-specific packaging fragility on non-Ubuntu runners.
 
 **DoD**
-- PR and `main` push runs now include packaging verification.
+- PR and `main` push matrix runs include packaging verification on the Ubuntu leg.
 - Packaging failures block CI.
 
 **Implementation notes**
-- Added dedicated package job with `needs: [test, typecheck]`.
+- Added conditional packaging steps (`if: matrix.os == 'ubuntu-latest'`) in the matrix `ci` job.
 
 ## T14.5 Future installer scaffolding (DMG/EXE preparation)
 **Status**: Complete

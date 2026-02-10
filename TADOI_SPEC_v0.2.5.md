@@ -521,8 +521,9 @@ Scope is quality gates only: no new end-user product features.
 ## C1) Required Merge Gates
 
 All pull requests and pushes to `main` must pass these checks:
-- `test`: `bun run test` and `bun run test:coverage`
-- `typecheck`: `bun run typecheck`
+- `ci (ubuntu-latest)`: `bun run test`, `bun run test:coverage`, `bun run typecheck`, `bun run brand:check`, `bun run pack:dry`, `bun run pack:inspect`, `bun run pack:smoke`
+- `ci (macos-latest)`: `bun run test`, `bun run test:coverage`, `bun run typecheck`, `bun run brand:check`
+- `ci (windows-latest)`: `bun run test`, `bun run test:coverage`, `bun run typecheck`, `bun run brand:check`
 
 Merge policy:
 - CI must be green before merge.
@@ -568,6 +569,10 @@ Run locally before opening/merging a PR:
 bun run test
 bun run test:coverage
 bun run typecheck
+bun run brand:check
+bun run pack:dry
+bun run pack:inspect
+bun run pack:smoke
 ```
 
 Coverage:
@@ -584,12 +589,13 @@ Triggers:
 - `push` to `main`
 
 Runner baseline:
-- `ubuntu-latest`
+- Matrix: `ubuntu-latest`, `macos-latest`, `windows-latest`
 - Bun setup via `oven-sh/setup-bun@v2` (pinned Bun `1.3.9`)
 
 Execution:
 - install dependencies with `bun install --frozen-lockfile`
 - run required merge gates listed above
+- run packaging commands (`pack:dry`, `pack:inspect`, `pack:smoke`) on the Ubuntu matrix leg
 
 
 # Appendix D — v0.2.2 Theme Switching & Settings Persistence
@@ -812,13 +818,14 @@ Required scripts:
 
 ## G4) CI Packaging Gate
 
-CI workflow (`.github/workflows/ci.yml`) includes a `package` job that runs:
+CI workflow (`.github/workflows/ci.yml`) includes a cross-platform `ci` matrix job (`ubuntu-latest`, `macos-latest`, `windows-latest`).
+Packaging commands run on the Ubuntu matrix leg:
 - `bun run pack:dry`
 - `bun run pack:inspect`
 - `bun run pack:smoke`
 
 Policy:
-- Packaging job runs on `pull_request` and `push` to `main`.
+- Matrix job runs on `pull_request` and `push` to `main`.
 - Merge must remain blocked on package gate failures.
 
 ## G5) Future DMG/EXE Track (Scaffold Only)

@@ -60,7 +60,7 @@ How to back it up:
 macOS/Linux (replace `<resolved-path>`):
 ```bash
 mkdir -p ~/tadoi-backups
-cp "<resolved-path>" "~/tadoi-backups/tadoi_data.$(date +%Y%m%d-%H%M%S).json"
+cp "<resolved-path>" "$HOME/tadoi-backups/tadoi_data.$(date +%Y%m%d-%H%M%S).json"
 ```
 
 Windows PowerShell (replace `<resolved-path>`):
