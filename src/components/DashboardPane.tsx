@@ -249,19 +249,16 @@ export function DashboardPane({
                 const selected = index === clampedTagIndex;
                 return (
                   <box key={`top-tag-${index}`} style={{ flexDirection: "row" }}>
-                    <text
-                      style={
-                        selected
-                          ? {
-                              backgroundColor: colorForTag(row.tag),
-                              color: theme.bg,
-                              fontWeight: "bold"
-                            }
-                          : { color: theme.text }
-                      }
-                    >
-                      {row.label}
-                    </text>
+                    <box style={{ backgroundColor: colorForTag(row.tag) }}>
+                      <text
+                        style={{
+                          color: theme.bg,
+                          fontWeight: selected ? "bold" : "normal"
+                        }}
+                      >
+                        {row.label}
+                      </text>
+                    </box>
                     {row.labelPad > 0 ? (
                       <text style={{ color: theme.text }}>{" ".repeat(row.labelPad)}</text>
                     ) : null}
@@ -303,19 +300,16 @@ export function DashboardPane({
                 const selected = index === clampedTagIndex;
                 return (
                   <box key={`top-tag-${index}`} style={{ flexDirection: "row" }}>
-                    <text
-                      style={
-                        selected
-                          ? {
-                              backgroundColor: colorForTag(row.tag),
-                              color: theme.bg,
-                              fontWeight: "bold"
-                            }
-                          : { color: theme.text }
-                      }
-                    >
-                      {row.label}
-                    </text>
+                    <box style={{ backgroundColor: colorForTag(row.tag) }}>
+                      <text
+                        style={{
+                          color: theme.bg,
+                          fontWeight: selected ? "bold" : "normal"
+                        }}
+                      >
+                        {row.label}
+                      </text>
+                    </box>
                     {row.labelPad > 0 ? (
                       <text style={{ color: theme.text }}>{" ".repeat(row.labelPad)}</text>
                     ) : null}
