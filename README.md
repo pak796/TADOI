@@ -119,12 +119,20 @@ Type `#` in the Tags field to get suggestions ranked by usage. Selecting a sugge
 
 ## Quality Gates / CI
 
-TADOI uses GitHub Actions merge gates on pull requests and pushes to `main`.
+TADOI uses a GitHub Actions cross-platform matrix on pull requests and pushes to `main`.
+CI runs on:
+- `ubuntu-latest`
+- `macos-latest`
+- `windows-latest`
+
+All matrix legs must be green for merges.
 
 Required checks:
-- `test`: `bun run test` and `bun run test:coverage`
-- `typecheck`: `bun run typecheck`
-- `package`: `bun run pack:dry`, `bun run pack:inspect`, and `bun run pack:smoke`
+- `ci (ubuntu-latest)`: Bun setup, install, test, coverage, typecheck, brand check, and packaging validation
+- `ci (macos-latest)`: Bun setup, install, test, coverage, typecheck, and brand check
+- `ci (windows-latest)`: Bun setup, install, test, coverage, typecheck, and brand check
+
+Packaging validation (`pack:dry`, `pack:inspect`, `pack:smoke`) runs on the Ubuntu matrix leg.
 
 Local equivalents:
 
@@ -132,6 +140,7 @@ Local equivalents:
 bun run test
 bun run test:coverage
 bun run typecheck
+bun run brand:check
 bun run pack:dry
 bun run pack:inspect
 bun run pack:smoke

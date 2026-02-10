@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
+import { fileURLToPath } from "url";
 import {
   LoadedData,
   PersistenceFsOps,
@@ -19,9 +20,7 @@ async function makeTempDir(): Promise<string> {
 }
 
 async function loadFixture(name: string): Promise<string> {
-  const fixturePath = decodeURIComponent(
-    new URL(`./__fixtures__/${name}`, import.meta.url).pathname
-  );
+  const fixturePath = fileURLToPath(new URL(`./__fixtures__/${name}`, import.meta.url).href);
   return fs.readFile(fixturePath, "utf8");
 }
 
