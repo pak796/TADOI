@@ -379,6 +379,14 @@ export function App({
     () => buildTagTickerSegments(tagStats, bottomBarContentWidth),
     [tagStats, bottomBarContentWidth]
   );
+  const overdueQuickFilterActive =
+    state.filters.status === "open" && state.filters.due === "overdue";
+  const todayQuickFilterActive =
+    state.filters.status === "open" && state.filters.due === "today";
+  const next7QuickFilterActive =
+    state.filters.status === "open" && state.filters.due === "next7";
+  const doneQuickFilterActive =
+    state.filters.status === "done" && state.filters.due === "any";
 
   const tagQuery = state.editor ? getTagQuery(state.editor.tagsText) : null;
   const tagSuggestions = tagQuery ? rankTags(state.tagIndex, tagQuery) : [];
@@ -1329,6 +1337,57 @@ export function App({
     dispatch({ type: "setFilters", filters: { due: next } });
   }
 
+  function toggleBottomDueQuickFilter(targetDue: "overdue" | "today" | "next7") {
+    const alreadyActive =
+      state.filters.status === "open" && state.filters.due === targetDue;
+    if (alreadyActive) {
+      dispatch({ type: "setFilters", filters: { status: "all", due: "any" } });
+      showShortNavigationBanner("Quick filter cleared");
+      return;
+    }
+
+    dispatch({
+      type: "setFilters",
+      filters: {
+        status: "open",
+        due: targetDue
+      }
+    });
+    showShortNavigationBanner(`Quick filter: OPEN + ${targetDue.toUpperCase()}`);
+  }
+
+  function toggleBottomCompletedQuickFilter() {
+    const alreadyActive =
+      state.filters.status === "done" && state.filters.due === "any";
+    if (alreadyActive) {
+      dispatch({ type: "setFilters", filters: { status: "all" } });
+      showShortNavigationBanner("Quick filter cleared");
+      return;
+    }
+
+    dispatch({
+      type: "setFilters",
+      filters: {
+        status: "done",
+        due: "any"
+      }
+    });
+    showShortNavigationBanner("Quick filter: DONE");
+  }
+
+  function toggleBottomTagQuickFilter(tag: string) {
+    const alreadyActive = state.filters.tag === tag;
+    dispatch({
+      type: "setFilters",
+      filters: { tag: alreadyActive ? undefined : tag }
+    });
+    showShortNavigationBanner(
+      alreadyActive
+        ? "Tag quick filter cleared"
+        : `Tag quick filter: ${formatTagForDisplay(tag)}`
+    );
+  }
+
   function toggleTagFilter() {
     const activeTags = Array.from(
       new Set(
@@ -1664,8 +1723,19 @@ export function App({
                         paddingLeft: 1,
                         paddingRight: 1
                       }}
+                      onMouseDown={(event) => {
+                        if (event.button !== 0) return;
+                        toggleBottomTagQuickFilter(segment.tag);
+                      }}
                     >
-                      <text style={{ color: theme.bg }}>
+                      <text
+                        style={{
+                          color:
+                            state.filters.tag === segment.tag ? theme.text : theme.bg,
+                          fontWeight:
+                            state.filters.tag === segment.tag ? "bold" : "normal"
+                        }}
+                      >
                         {segment.total} {segment.displayTag}
                       </text>
                     </box>
@@ -1675,17 +1745,83 @@ export function App({
             </box>
           ) : (
             <box style={{ flexDirection: "row", gap: 2 }}>
-              <box style={{ backgroundColor: theme.warn, paddingLeft: 1, paddingRight: 1 }}>
-                <text style={{ color: theme.bg }}>{summary.overdue} OVERDUE</text>
+              <box
+                style={{
+                  backgroundColor: theme.warn,
+                  paddingLeft: 1,
+                  paddingRight: 1
+                }}
+                onMouseDown={(event) => {
+                  if (event.button !== 0) return;
+                  toggleBottomDueQuickFilter("overdue");
+                }}
+              >
+                <text
+                  style={{
+                    color: overdueQuickFilterActive ? theme.text : theme.bg,
+                    fontWeight: overdueQuickFilterActive ? "bold" : "normal"
+                  }}
+                >
+                  {summary.overdue} OVERDUE
+                </text>
               </box>
-              <box style={{ backgroundColor: theme.dueSoon, paddingLeft: 1, paddingRight: 1 }}>
-                <text style={{ color: theme.bg }}>{summary.today} DUE TODAY</text>
+              <box
+                style={{
+                  backgroundColor: theme.dueSoon,
+                  paddingLeft: 1,
+                  paddingRight: 1
+                }}
+                onMouseDown={(event) => {
+                  if (event.button !== 0) return;
+                  toggleBottomDueQuickFilter("today");
+                }}
+              >
+                <text
+                  style={{
+                    color: todayQuickFilterActive ? theme.text : theme.bg,
+                    fontWeight: todayQuickFilterActive ? "bold" : "normal"
+                  }}
+                >
+                  {summary.today} DUE TODAY
+                </text>
               </box>
-              <box style={{ backgroundColor: theme.dueLater, paddingLeft: 1, paddingRight: 1 }}>
-                <text style={{ color: theme.bg }}>{summary.next7} DUE THIS WEEK</text>
+              <box
+                style={{
+                  backgroundColor: theme.dueLater,
+                  paddingLeft: 1,
+                  paddingRight: 1
+                }}
+                onMouseDown={(event) => {
+                  if (event.button !== 0) return;
+                  toggleBottomDueQuickFilter("next7");
+                }}
+              >
+                <text
+                  style={{
+                    color: next7QuickFilterActive ? theme.text : theme.bg,
+                    fontWeight: next7QuickFilterActive ? "bold" : "normal"
+                  }}
+                >
+                  {summary.next7} DUE THIS WEEK
+                </text>
               </box>
-              <box style={{ backgroundColor: theme.ok, paddingLeft: 1, paddingRight: 1 }}>
-                <text style={{ color: theme.bg }}>
+              <box
+                style={{
+                  backgroundColor: theme.ok,
+                  paddingLeft: 1,
+                  paddingRight: 1
+                }}
+                onMouseDown={(event) => {
+                  if (event.button !== 0) return;
+                  toggleBottomCompletedQuickFilter();
+                }}
+              >
+                <text
+                  style={{
+                    color: doneQuickFilterActive ? theme.text : theme.bg,
+                    fontWeight: doneQuickFilterActive ? "bold" : "normal"
+                  }}
+                >
                   {summary.completed7} COMPLETED THIS WEEK
                 </text>
               </box>
@@ -1809,6 +1945,7 @@ export function App({
             <text>s: cycle sort ({sortModeLabel})</text>
             <text>g: cycle due</text>
             <text>t: tag filter</text>
+            <text>Mouse: bottom bar buckets/tags toggle quick filters (click again to clear).</text>
             <text>v: views overlay</text>
             <text>ctrl+s: save current view</text>
             <text>1..9: apply view slot</text>

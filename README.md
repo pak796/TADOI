@@ -84,7 +84,7 @@ Corrupt backups created by recovery look like:
   - `[` / `]`: previous/next overdue task
   - `{` / `}`: previous/next due-today task
 - LIST mode task actions:
-  - `b` / `B`: toggle Dashboard mode
+  - `b` / `B`: toggle Dashboard mode (ignored in SEARCH/ADD/EDIT and save-view name prompt)
   - `a`: add task
   - `e`: edit selected task
   - `c`: duplicate selected task
@@ -124,6 +124,15 @@ Corrupt backups created by recovery look like:
   - `q` in LIST mode (graceful terminal teardown)
   - `Ctrl+C` (handled by OpenTUI renderer)
 
+## Mouse Interactions
+
+- Task list rows: click a task row to select that task.
+- Task-row click target: the full row area that receives selection highlight.
+- Left-rail MENU rows: click a row to trigger its action (`LIST`, `DASHBOARD`, `ADD`, `EDIT`, `SEARCH`, `HELP`, `DELETE`).
+- MENU click target: the full row area that receives menu highlight.
+- Editor actions: click `SAVE` or `CANCEL` in the editor pane.
+- Bottom rotating info bar: click summary buckets or tag pills to toggle quick filters; click the same item again to clear.
+
 ## Tag Autocomplete
 
 Type `#` in the Tags field to get suggestions ranked by usage. Selecting a suggestion fills the current tag token.
@@ -136,7 +145,7 @@ Theme and flash preferences are persisted in `settings.json`:
 
 Flash mode values:
 - `slow`: due-today and overdue indicators pulse (default)
-- `static`: flashing is disabled and overdue indicators stay red
+- `static`: flashing is disabled and overdue indicators stay solid red
 
 Example:
 

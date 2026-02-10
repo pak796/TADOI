@@ -88,6 +88,12 @@ Deliverables:
 61. **Global active-tag cycle filter**: `t` cycles through tags from all active (open) tasks, not only the selected task.
 62. **Sort toggles**: `s` cycles list sorting (`DUE`, `UPDATED`, `CREATED`, `TITLE`) and current sort is visible in UI.
 63. **Selection stability by task id**: on filter/search/sort changes, keep the same selected task id when possible; otherwise clamp to nearest valid index.
+64. **Flash mode toggle**: while Help is open, `m`/`M` toggles flash mode between `slow` and `static`, with persistence in settings.
+65. **Static overdue emphasis**: in `static` flash mode, overdue indicators remain solid red (no pulsing).
+66. **Dashboard-toggle input guard**: `b`/`B` must not switch modes while typing in SEARCH/ADD/EDIT or save-view name prompt.
+67. **Task-row mouse selection**: clicking within the task-row highlight area selects that task.
+68. **Left-rail menu mouse selection**: clicking within a highlighted MENU row triggers that menu action.
+69. **Editor button mouse support**: SAVE/CANCEL mouse interaction uses OpenTUI-supported mouse events.
 
 ### Non-Goals (MVP)
 - Sync, accounts, multi-device
@@ -350,7 +356,7 @@ When selection changes, the selected task row must remain visible in the task li
 
 ### Triggers
 Call `ensureSelectedVisible()` whenever:
-- selection changes (j/k, arrows, mouse click if supported)
+- selection changes (j/k, arrows, or mouse click in the task-row highlight hitbox)
 - filter/search changes visible list
 - list length changes (delete, archive aging, etc.)
 - terminal resizes (visibleRows changes)
@@ -638,23 +644,26 @@ Runtime adapter:
 ## D3) Settings Persistence
 
 Settings model:
-- `TadoiSettings = { themeId }`
+- `TadoiSettings = { themeId, flashMode }`
+- `flashMode` values: `"slow"` (default) or `"static"`
 
 File location:
 - Primary: `~/.config/tadoi/settings.json`
 - Fallback: `~/.tadoi/settings.json`
 
 Behavior:
-- Startup: load settings, merge with defaults, apply theme before first render.
-- Save: debounce writes (`150ms`) and persist the most recent theme.
+- Startup: load settings, merge with defaults, apply theme/flash mode before first render.
+- Save: debounce writes (`150ms`) and persist the most recent theme + flash mode.
 - If primary write fails, attempt fallback path.
 
 ## D4) Help Pane UX
 
 Help interactions:
 - `h` or `H` while Help is open cycles theme.
+- `m` or `M` while Help is open toggles flash mode (`slow` / `static`).
 - Help displays current theme id.
 - For rotating mode, Help shows `rotating (<activeTheme>)` and a `15s` auto-rotate hint.
+- Help displays current flash mode and static-mode overdue-red behavior.
 - Help displays a palette preview row using `accent`, `warn`, and `ok` swatches.
 
 ## D5) Left Rail Visual Separator
@@ -866,7 +875,7 @@ Replace guard:
 
 Export payload includes:
 - Persisted envelope: `{ schemaVersion, tasks, tagIndex, savedViews }`
-- Settings sidecar: `{ settings }` where `settings.themeId` is persisted when available
+- Settings sidecar: `{ settings }` where `settings.themeId` and `settings.flashMode` are persisted when available
 
 Notes:
 - Filters remain runtime/UI state and are not imported/exported because they are not persisted in the primary data envelope.
@@ -939,8 +948,9 @@ Mode/focus additions:
 - `FocusTarget.DASHBOARD`
 
 Toggle behavior:
-- `b` / `B` toggles `LIST <-> DASHBOARD` from non-modal flows.
+- `b` / `B` toggles `LIST <-> DASHBOARD` from non-modal, non-text-entry flows.
 - Dashboard toggle is blocked while modal-confirm is active (modal precedence remains highest).
+- Dashboard toggle is also blocked while SEARCH/ADD/EDIT or save-view name prompt is active.
 
 Dashboard key contract:
 - Allowed: `b`/`B`, `f`, `g`, `t`, `?`, `q`
@@ -1021,5 +1031,48 @@ Tests:
 - Domain unit tests cover dashboard due-bucket and backlog-trend aggregation behavior.
 - Key-router tests verify:
   - `b`/`B` toggle routing
+  - text-entry guard for `b`/`B` (SEARCH/ADD/EDIT/save-view prompt)
   - dashboard mode key allowlist
   - list-key leakage prevention while dashboard is focused
+
+---
+
+# Appendix J — v0.2.7 Interaction Polish (Mouse + Flash + Input Guard)
+
+This appendix defines interaction-polish contracts added after dashboard MVP scope.
+
+## J1) Editor Mouse Contract
+
+- Editor SAVE/CANCEL controls must respond to OpenTUI-supported mouse press handlers.
+- Runtime implementation uses `onMouseDown` (not `onClick`) for consistent behavior.
+- Left-click on SAVE routes to the same save flow as keyboard submit.
+- Left-click on CANCEL routes to the same unwind/cancel flow as keyboard `Esc`/cancel focus.
+
+## J2) Task List Mouse Selection Contract
+
+- Each rendered task row is mouse-selectable.
+- Click target is the same full rectangular row area that receives selection background highlight.
+- Left-click selects by task id and preserves existing selection-visibility guarantees (`ensureSelectedVisible()` path still applies via selection effects).
+
+## J3) Left-Rail MENU Mouse Contract
+
+- MENU rows are mouse-selectable for: `LIST`, `DASHBOARD`, `ADD`, `EDIT`, `SEARCH`, `HELP`, `DELETE`.
+- Click target is the same full rectangular row area used for menu highlight styling.
+- Left-click routes through the same action handlers used by keyboard flows.
+- `HELP` click while already in Help is a no-op to avoid overwriting return-context.
+
+## J4) Dashboard Toggle Text-Entry Guard Contract
+
+- `b`/`B` dashboard toggles are ignored while focus is in text-entry contexts:
+  - `SEARCH`
+  - `ADD`
+  - `EDIT`
+  - saved-view name prompt
+- This guard prevents accidental dashboard toggles while typing the letter `b`.
+
+## J5) Flash Mode Static Contract
+
+- Help key `m`/`M` toggles flash mode between `slow` and `static`.
+- Flash mode persists in settings (`settings.json`) with startup restore.
+- In `static` mode, due/overdue pulsing is disabled.
+- In `static` mode, overdue indicators remain solid red across list/details/left-rail due surfaces.

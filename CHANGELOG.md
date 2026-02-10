@@ -7,6 +7,8 @@ The format is based on Keep a Changelog.
 ## [Unreleased]
 ### Added
 - Flash mode preference (`slow`/`static`) with persistence in `settings.json` and Help-panel toggle (`M`).
+- Task-list row mouse selection (left-click) using the same highlighted row hitbox.
+- Left-rail `MENU` row mouse actions (left-click) using the same highlighted menu-row hitbox.
 
 ### Changed
 - Added versioned planning artifacts for `v0.2.7`: `TADOI_SPEC_v0.2.7.md` and `TADOI_TASKS_v0.2.7.md`.
@@ -14,6 +16,7 @@ The format is based on Keep a Changelog.
   - adaptive 2:1 split with stacked fallback when narrow
   - due-bucket minimum-width guard with friendly placeholder rendering when too narrow
 - In `static` flash mode, overdue indicators render as solid red (no pulsing).
+- `b` / `B` dashboard toggle is now ignored in text-entry contexts (`SEARCH`, `ADD`, `EDIT`, and save-view name prompt).
 
 ### Fixed
 - Replaced direct `process.exit(...)` usage in interactive app exit paths with OpenTUI renderer teardown (`renderer.destroy()`), improving terminal state cleanup on quit.

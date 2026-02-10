@@ -1107,33 +1107,37 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 - Existing UI components render without broad refactors.
 - Theme changes apply immediately at runtime.
 
-## T11.3 Settings persistence for theme selection
+## T11.3 Settings persistence for theme + flash selection
 **Status**: Complete
 **Implement**
 - Add `src/settings/settings.ts` with:
-- `TadoiSettings = { themeId }`
+- `TadoiSettings = { themeId, flashMode }`
+- `FlashMode = "slow" | "static"` with default `slow`
 - `resolveSettingsPaths()` using:
 - primary: `~/.config/tadoi/settings.json`
 - fallback: `~/.tadoi/settings.json`
 - `loadSettings()` with default merge/validation
 - `saveSettingsDebounced()` with 150ms debounce and fallback-write behavior
-- Add `src/state/settingsStore.ts` reducer with `setTheme` + `cycleTheme`.
+- Add `src/state/settingsStore.ts` reducer with `setTheme` + `cycleTheme` + flash-mode actions.
 
 **DoD**
-- Startup loads saved theme and applies it before first render.
-- Theme changes persist and restore across app restarts.
+- Startup loads saved theme/flash mode and applies them before first render.
+- Theme and flash-mode changes persist and restore across app restarts.
 - Save failures on primary path attempt fallback path.
 
-## T11.4 Help pane theme control and preview
+## T11.4 Help pane theme/flash controls and preview
 **Status**: Complete
 **Implement**
 - In Help mode, bind `h` and `H` to theme cycling.
+- In Help mode, bind `m` and `M` to flash-mode toggle (`slow` / `static`).
 - Show current theme in Help.
+- Show current flash mode in Help with static-mode overdue-red note.
 - Add preview swatches for `accent`, `warn`, and `ok`.
 
 **DoD**
 - Pressing `h` in Help cycles through all 4 palettes.
-- Help reflects the active theme and preview colors.
+- Pressing `m` in Help toggles flash mode and persists the setting.
+- Help reflects the active theme, flash mode, and preview colors.
 
 ## T11.5 Palette tuning pass
 **Status**: Complete
@@ -1488,6 +1492,7 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 
 **DoD**
 - `b` / `B` enters and exits dashboard mode reliably.
+- `b` / `B` does not toggle dashboard while typing in SEARCH/ADD/EDIT or save-view name prompt.
 - In dashboard mode, list navigation keys (`j/k`, arrows, paging/jump keys) do not move list selection.
 - `f`, `g`, `t`, `?`, and `q` continue to work in dashboard mode, with `q` using renderer teardown.
 
@@ -1553,3 +1558,43 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 **DoD**
 - Narrow dashboards never render garbled/overlapping chart text.
 - Border/frame elements render correctly after toggling `b` / `B` and after resizes.
+
+---
+
+# Phase 17 — v0.2.7 Interaction Polish (Mouse + Input Guard)
+
+> Scope note: this phase hardens mouse interaction parity and prevents keyboard mode-switch leakage while users are typing.
+
+## T17.1 Editor Save/Cancel mouse compatibility
+**Status**: Complete
+**Implement**
+- Replace unsupported `onClick` handlers on editor SAVE/CANCEL with OpenTUI-supported `onMouseDown`.
+- Keep button visuals and keyboard submit/cancel behavior unchanged.
+
+**DoD**
+- Left-click on SAVE runs the same save flow as keyboard save.
+- Left-click on CANCEL runs the same cancel/unwind flow as keyboard cancel.
+
+## T17.2 Task-list row mouse selection hitbox
+**Status**: Complete
+**Implement**
+- Make each task row mouse-selectable.
+- Use the row’s selection-highlight rectangle as the click hitbox.
+- Route click selection through existing selection-by-id logic.
+
+**DoD**
+- Left-clicking any visible row selects that task.
+- Click target matches the highlighted row area exactly.
+- Existing selection visibility/clamping behavior remains intact.
+
+## T17.3 Left-rail MENU row mouse actions
+**Status**: Complete
+**Implement**
+- Make left-rail `MENU` entries mouse-clickable for `LIST`, `DASHBOARD`, `ADD`, `EDIT`, `SEARCH`, `HELP`, `DELETE`.
+- Use the menu-row highlight rectangle as the click hitbox.
+- Route clicks through existing mode/action handlers.
+
+**DoD**
+- Left-click on a MENU row triggers the same action as the corresponding keyboard flow.
+- Click target matches the highlighted MENU row area exactly.
+- Clicking `HELP` while already in Help is a safe no-op.
