@@ -74,6 +74,8 @@ import { AppState, FocusTarget, Mode, SavedView, Task } from "../domain/models";
 import { ROTATING_THEME_ORDER, THEMES, ThemeId } from "../theme/themes";
 import {
   applySavedView,
+  DEFAULT_VIEW_FILTERS,
+  isSavedViewActive,
   MAX_SAVED_VIEWS,
   saveViewByName,
   deleteViewAtIndex
@@ -1494,7 +1496,21 @@ export function App({
       showShortNavigationBanner(`No saved view in slot ${slot + 1}`);
       return;
     }
-    applyView(state.savedViews[slot]);
+    const view = state.savedViews[slot];
+    if (isSavedViewActive(state.filters, view)) {
+      dispatch({
+        type: "setFilters",
+        filters: {
+          ...DEFAULT_VIEW_FILTERS,
+          tag: undefined,
+          searchText: undefined
+        }
+      });
+      closeViewsOverlay();
+      showShortNavigationBanner("Default view");
+      return;
+    }
+    applyView(view);
   }
 
   function applySelectedView() {

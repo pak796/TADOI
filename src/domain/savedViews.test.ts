@@ -1,9 +1,11 @@
 import { describe, expect, it } from "bun:test";
 import { Filters, SavedView } from "./models";
 import {
+  DEFAULT_VIEW_FILTERS,
   MAX_SAVED_VIEWS,
   applySavedView,
   deleteViewAtIndex,
+  isSavedViewActive,
   saveViewByName
 } from "./savedViews";
 
@@ -82,5 +84,25 @@ describe("saved views", () => {
     expect(after.map((view) => view.name)).toEqual(["One", "Three"]);
     expect(deleteViewAtIndex(views, -1)).toEqual(views);
     expect(deleteViewAtIndex(views, 99)).toEqual(views);
+  });
+
+  it("detects when a saved view is currently active", () => {
+    const view = makeView("Today", BASE_FILTERS);
+    expect(
+      isSavedViewActive(
+        { status: "open", due: "today", tag: "work", searchText: "important" },
+        view
+      )
+    ).toBe(true);
+    expect(
+      isSavedViewActive(
+        { status: "open", due: "today", tag: "work", searchText: "different" },
+        view
+      )
+    ).toBe(false);
+  });
+
+  it("exposes default view filters", () => {
+    expect(DEFAULT_VIEW_FILTERS).toEqual({ status: "all", due: "any" });
   });
 });

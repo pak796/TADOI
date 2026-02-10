@@ -1,6 +1,10 @@
 import { Filters, SavedView } from "./models";
 
 export const MAX_SAVED_VIEWS = 9;
+export const DEFAULT_VIEW_FILTERS: Pick<Filters, "status" | "due"> = {
+  status: "all",
+  due: "any"
+};
 
 function normalizeViewName(name: string): string {
   return name.trim();
@@ -23,6 +27,17 @@ export function snapshotFilters(filters: Filters): Filters {
 
 export function applySavedView(view: SavedView): Filters {
   return snapshotFilters(view.filters);
+}
+
+export function isSavedViewActive(currentFilters: Filters, view: SavedView): boolean {
+  const current = snapshotFilters(currentFilters);
+  const target = applySavedView(view);
+  return (
+    current.status === target.status &&
+    current.due === target.due &&
+    current.tag === target.tag &&
+    current.searchText === target.searchText
+  );
 }
 
 type SaveViewResult =
