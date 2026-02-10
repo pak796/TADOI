@@ -3,15 +3,23 @@ import { formatTagForDisplay } from "../domain/tagIndex";
 import { Task } from "../domain/models";
 import { formatDate, getDueLabel } from "../state/store";
 import { colorForTag, theme } from "../app/theme";
+import type { FlashMode } from "../settings/settings";
 
 type DetailsPaneProps = {
   task?: Task;
   now: number;
   pulseOn: boolean;
   fastPulseOn: boolean;
+  flashMode: FlashMode;
 };
 
-export function DetailsPane({ task, now, pulseOn, fastPulseOn }: DetailsPaneProps) {
+export function DetailsPane({
+  task,
+  now,
+  pulseOn,
+  fastPulseOn,
+  flashMode
+}: DetailsPaneProps) {
   if (!task) {
     return <text style={{ color: theme.muted }}>Select a task to view details.</text>;
   }
@@ -35,6 +43,7 @@ export function DetailsPane({ task, now, pulseOn, fastPulseOn }: DetailsPaneProp
   const isDueSoon =
     task.status === "open" && dayDiff !== null && dayDiff >= 1 && dayDiff <= 7;
   const isDueLater = task.status === "open" && dayDiff !== null && dayDiff >= 8;
+  const dueTodayPulseOn = flashMode !== "static" && pulseOn;
   const attentionColor = isOverdue
     ? theme.warn
     : isDueToday
@@ -45,15 +54,17 @@ export function DetailsPane({ task, now, pulseOn, fastPulseOn }: DetailsPaneProp
           ? theme.dueLater
           : theme.muted;
   const highlightBackground = isOverdue
-    ? fastPulseOn
+    ? flashMode === "static"
       ? theme.warn
-      : theme.dueSoon
-    : isDueToday && pulseOn
+      : fastPulseOn
+        ? theme.warn
+        : theme.dueSoon
+    : isDueToday && dueTodayPulseOn
       ? theme.dueSoon
       : "transparent";
   const highlightText = isOverdue
     ? theme.bg
-    : isDueToday && pulseOn
+    : isDueToday && dueTodayPulseOn
       ? theme.bg
       : attentionColor;
 
@@ -77,7 +88,7 @@ export function DetailsPane({ task, now, pulseOn, fastPulseOn }: DetailsPaneProp
                   ? theme.muted
                 : isOverdue
                   ? theme.bg
-                  : isDueToday && pulseOn
+                  : isDueToday && dueTodayPulseOn
                     ? theme.bg
                     : isDueToday
                       ? theme.dueSoon

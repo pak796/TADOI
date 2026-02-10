@@ -18,6 +18,7 @@ import {
   type PortableExportPayload
 } from "../state/portability";
 import {
+  isFlashMode,
   loadSettings,
   saveSettingsStrict,
   type TadoiSettings
@@ -362,11 +363,16 @@ function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | un
   if (!isThemeId(themeId)) {
     return { ok: false, error: "settings.themeId is invalid" };
   }
+  const flashModeRaw = settings.flashMode;
+  if (flashModeRaw !== undefined && !isFlashMode(flashModeRaw)) {
+    return { ok: false, error: "settings.flashMode is invalid" };
+  }
 
   return {
     ok: true,
     value: {
-      themeId
+      themeId,
+      flashMode: isFlashMode(flashModeRaw) ? flashModeRaw : "slow"
     }
   };
 }

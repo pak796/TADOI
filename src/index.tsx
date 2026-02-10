@@ -136,6 +136,7 @@ async function main(): Promise<number | undefined> {
       skipInitialSave={!shouldSaveInitial}
       startupBanner={loadResult.bannerMessage}
       initialThemeId={settingsResult.settings.themeId}
+      initialFlashMode={settingsResult.settings.flashMode}
       settingsPath={settingsResult.resolvedPath}
       showLogo={cliOptions.showLogo}
     />

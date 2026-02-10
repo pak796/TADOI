@@ -141,7 +141,7 @@ describe("handleKey", () => {
     ]);
   });
 
-  it("routes b/B to dashboard toggle outside modal mode", () => {
+  it("routes b/B to dashboard toggle outside text-entry contexts", () => {
     expect(run({ name: "b", sequence: "b" })).toEqual([
       { scope: "ui", type: "TOGGLE_DASHBOARD" }
     ]);
@@ -159,7 +159,27 @@ describe("handleKey", () => {
           }
         }
       )
-    ).toEqual([{ scope: "ui", type: "TOGGLE_DASHBOARD" }]);
+    ).toEqual([]);
+    expect(
+      run(
+        { name: "b", sequence: "b" },
+        {
+          uiState: {
+            ...initialUIState,
+            mode: Mode.ADD,
+            focus: FocusTarget.EDITOR_TITLE
+          }
+        }
+      )
+    ).toEqual([]);
+    expect(
+      run(
+        { name: "B", sequence: "B" },
+        {
+          saveViewPromptOpen: true
+        }
+      )
+    ).toEqual([]);
   });
 
   it("flushes pending g to due-cycle when next key is not g/G", () => {
@@ -252,6 +272,24 @@ describe("handleKey", () => {
     ]);
     expect(run({ sequence: "?" }, { uiState: dashboardState })).toEqual([
       { scope: "ui", type: "OPEN_HELP" }
+    ]);
+  });
+
+  it("routes help mode theme + flash toggles without leaking list navigation", () => {
+    const helpState = {
+      ...initialUIState,
+      mode: Mode.HELP,
+      focus: FocusTarget.TASK_LIST
+    };
+    expect(run({ name: "j", sequence: "j" }, { uiState: helpState })).toEqual([]);
+    expect(run({ name: "h", sequence: "h" }, { uiState: helpState })).toEqual([
+      { scope: "ui", type: "CYCLE_THEME" }
+    ]);
+    expect(run({ name: "m", sequence: "m" }, { uiState: helpState })).toEqual([
+      { scope: "ui", type: "TOGGLE_FLASH_MODE" }
+    ]);
+    expect(run({ name: "escape" }, { uiState: helpState })).toEqual([
+      { scope: "ui", type: "UNWIND" }
     ]);
   });
 

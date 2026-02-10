@@ -5,6 +5,7 @@ import { formatTagForDisplay } from "../domain/tagIndex";
 import { APP_VERSION } from "../app/version";
 import { getSortModeLabel } from "../domain/query";
 import { APP_TAGLINE, getAsciiLogoLines, getHeaderLogoVariant } from "../brand/brand";
+import type { FlashMode } from "../settings/settings";
 
 type LeftRailProps = {
   mode: Mode;
@@ -12,6 +13,7 @@ type LeftRailProps = {
   filters: Filters;
   sortMode: SortMode;
   fastPulseOn: boolean;
+  flashMode: FlashMode;
   terminalWidth: number;
   showLogo?: boolean;
 };
@@ -115,6 +117,7 @@ export function LeftRail({
   filters,
   sortMode,
   fastPulseOn,
+  flashMode,
   terminalWidth,
   showLogo = true
 }: LeftRailProps) {
@@ -144,9 +147,11 @@ export function LeftRail({
     filters.due === "next7" ? "THIS WEEK" : filters.due.toUpperCase();
   const dueBg =
     filters.due === "overdue"
-      ? fastPulseOn
+      ? flashMode === "static"
         ? theme.warn
-        : theme.dueSoon
+        : fastPulseOn
+          ? theme.warn
+          : theme.dueSoon
       : filters.due === "today"
         ? theme.dueSoon
         : filters.due === "next7"

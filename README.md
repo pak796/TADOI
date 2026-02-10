@@ -118,6 +118,7 @@ Corrupt backups created by recovery look like:
   - `Enter` or `Esc`: return to list
 - Help mode:
   - `H`: cycle theme
+  - `M`: toggle flash mode (`slow` / `static`)
   - `Esc` or `?`: close help
 - Quit:
   - `q` in LIST mode (graceful terminal teardown)
@@ -126,6 +127,25 @@ Corrupt backups created by recovery look like:
 ## Tag Autocomplete
 
 Type `#` in the Tags field to get suggestions ranked by usage. Selecting a suggestion fills the current tag token.
+
+## Settings File
+
+Theme and flash preferences are persisted in `settings.json`:
+- Primary: `~/.config/tadoi/settings.json`
+- Fallback: `~/.tadoi/settings.json`
+
+Flash mode values:
+- `slow`: due-today and overdue indicators pulse (default)
+- `static`: flashing is disabled and overdue indicators stay red
+
+Example:
+
+```json
+{
+  "themeId": "default",
+  "flashMode": "slow"
+}
+```
 
 ## Quality Gates / CI
 

@@ -178,7 +178,7 @@ describe("redactStateForExport", () => {
       ],
       tagIndex: {},
       savedViews: [],
-      settings: { themeId: "default" }
+      settings: { themeId: "default", flashMode: "slow" }
     };
 
     const redacted = redactStateForExport(payload);
@@ -187,5 +187,6 @@ describe("redactStateForExport", () => {
     expect(redacted.tasks[0]?.notes).toBe("");
     expect(redacted.tasks[0]?.id).toBe("a");
     expect(redacted.settings?.themeId).toBe("default");
+    expect(redacted.settings?.flashMode).toBe("slow");
   });
 });

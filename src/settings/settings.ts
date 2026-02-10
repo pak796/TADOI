@@ -10,7 +10,10 @@ import {
 
 export type TadoiSettings = {
   themeId: ThemeId;
+  flashMode: FlashMode;
 };
+
+export type FlashMode = "slow" | "static";
 
 export type SettingsFsOps = Pick<typeof fs, "mkdir" | "readFile" | "writeFile">;
 
@@ -40,7 +43,8 @@ export type SaveSettingsStrictResult = {
 };
 
 const DEFAULT_SETTINGS: TadoiSettings = {
-  themeId: "default"
+  themeId: "default",
+  flashMode: "slow"
 };
 
 const DEFAULT_DEBOUNCE_MS = 150;
@@ -67,15 +71,20 @@ export function resolveSettingsPaths(
   };
 }
 
+export function isFlashMode(value: unknown): value is FlashMode {
+  return value === "slow" || value === "static";
+}
+
 function normalizeSettings(input: unknown): TadoiSettings {
   if (typeof input !== "object" || input === null) {
     return DEFAULT_SETTINGS;
   }
   const maybeThemeId = (input as { themeId?: unknown }).themeId;
-  if (isThemeId(maybeThemeId)) {
-    return { themeId: maybeThemeId };
-  }
-  return DEFAULT_SETTINGS;
+  const maybeFlashMode = (input as { flashMode?: unknown }).flashMode;
+  return {
+    themeId: isThemeId(maybeThemeId) ? maybeThemeId : DEFAULT_SETTINGS.themeId,
+    flashMode: isFlashMode(maybeFlashMode) ? maybeFlashMode : DEFAULT_SETTINGS.flashMode
+  };
 }
 
 async function readSettingsFile(

@@ -42,11 +42,20 @@ describe("loadSettings", () => {
     const { primary, fallback } = resolveSettingsPaths({ homeDir, platform: "linux" });
     await fs.mkdir(path.dirname(primary), { recursive: true });
     await fs.mkdir(path.dirname(fallback), { recursive: true });
-    await fs.writeFile(primary, JSON.stringify({ themeId: "retro" }), "utf8");
-    await fs.writeFile(fallback, JSON.stringify({ themeId: "neonHacker" }), "utf8");
+    await fs.writeFile(
+      primary,
+      JSON.stringify({ themeId: "retro", flashMode: "static" }),
+      "utf8"
+    );
+    await fs.writeFile(
+      fallback,
+      JSON.stringify({ themeId: "neonHacker", flashMode: "slow" }),
+      "utf8"
+    );
 
     const result = await loadSettings({ homeDir, platform: "linux" });
     expect(result.settings.themeId).toBe("retro");
+    expect(result.settings.flashMode).toBe("static");
     expect(result.resolvedPath).toBe(primary);
   });
 
@@ -54,10 +63,15 @@ describe("loadSettings", () => {
     const homeDir = await makeTempDir();
     const { fallback } = resolveSettingsPaths({ homeDir, platform: "linux" });
     await fs.mkdir(path.dirname(fallback), { recursive: true });
-    await fs.writeFile(fallback, JSON.stringify({ themeId: "highContrast" }), "utf8");
+    await fs.writeFile(
+      fallback,
+      JSON.stringify({ themeId: "highContrast", flashMode: "static" }),
+      "utf8"
+    );
 
     const result = await loadSettings({ homeDir, platform: "linux" });
     expect(result.settings.themeId).toBe("highContrast");
+    expect(result.settings.flashMode).toBe("static");
     expect(result.resolvedPath).toBe(fallback);
   });
 
@@ -69,6 +83,24 @@ describe("loadSettings", () => {
 
     const result = await loadSettings({ homeDir, platform: "linux" });
     expect(result.settings.themeId).toBe("default");
+    expect(result.settings.flashMode).toBe("slow");
+  });
+
+  it("defaults flash mode when missing or invalid", async () => {
+    const homeDir = await makeTempDir();
+    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    await fs.mkdir(path.dirname(primary), { recursive: true });
+    await fs.writeFile(primary, JSON.stringify({ themeId: "retro" }), "utf8");
+    const missing = await loadSettings({ homeDir, platform: "linux" });
+    expect(missing.settings).toEqual({ themeId: "retro", flashMode: "slow" });
+
+    await fs.writeFile(
+      primary,
+      JSON.stringify({ themeId: "retro", flashMode: "fast" }),
+      "utf8"
+    );
+    const invalid = await loadSettings({ homeDir, platform: "linux" });
+    expect(invalid.settings).toEqual({ themeId: "retro", flashMode: "slow" });
   });
 });
 
@@ -77,33 +109,33 @@ describe("saveSettingsDebounced", () => {
     const homeDir = await makeTempDir();
     const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
     saveSettingsDebounced(
-      { themeId: "highContrast" },
+      { themeId: "highContrast", flashMode: "static" },
       20,
       { filePath: primary, homeDir, platform: "linux" }
     );
 
     await sleep(100);
     const raw = await fs.readFile(primary, "utf8");
-    expect(JSON.parse(raw)).toEqual({ themeId: "highContrast" });
+    expect(JSON.parse(raw)).toEqual({ themeId: "highContrast", flashMode: "static" });
   });
 
   it("coalesces rapid updates and persists only the latest value", async () => {
     const homeDir = await makeTempDir();
     const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
     saveSettingsDebounced(
-      { themeId: "retro" },
+      { themeId: "retro", flashMode: "slow" },
       20,
       { filePath: primary, homeDir, platform: "linux" }
     );
     saveSettingsDebounced(
-      { themeId: "neonHacker" },
+      { themeId: "neonHacker", flashMode: "static" },
       20,
       { filePath: primary, homeDir, platform: "linux" }
     );
 
     await sleep(100);
     const raw = await fs.readFile(primary, "utf8");
-    expect(JSON.parse(raw)).toEqual({ themeId: "neonHacker" });
+    expect(JSON.parse(raw)).toEqual({ themeId: "neonHacker", flashMode: "static" });
   });
 
   it("falls back to ~/.tadoi/settings.json when primary write fails", async () => {
@@ -125,7 +157,7 @@ describe("saveSettingsDebounced", () => {
     };
 
     saveSettingsDebounced(
-      { themeId: "retro" },
+      { themeId: "retro", flashMode: "static" },
       20,
       { homeDir, platform: "linux", fsOps }
     );
@@ -137,7 +169,7 @@ describe("saveSettingsDebounced", () => {
       .catch(() => false);
     expect(fallbackExists).toBe(true);
     const fallbackRaw = await fs.readFile(fallback, "utf8");
-    expect(JSON.parse(fallbackRaw)).toEqual({ themeId: "retro" });
+    expect(JSON.parse(fallbackRaw)).toEqual({ themeId: "retro", flashMode: "static" });
   });
 });
 
@@ -147,14 +179,14 @@ describe("saveSettingsStrict", () => {
     const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
 
     const result = await saveSettingsStrict(
-      { themeId: "retro" },
+      { themeId: "retro", flashMode: "slow" },
       { filePath: primary, homeDir, platform: "linux" }
     );
 
     expect(result.resolvedPath).toBe(primary);
     expect(result.usedFallback).toBe(false);
     const raw = await fs.readFile(primary, "utf8");
-    expect(JSON.parse(raw)).toEqual({ themeId: "retro" });
+    expect(JSON.parse(raw)).toEqual({ themeId: "retro", flashMode: "slow" });
   });
 
   it("falls back from primary to fallback path when primary write fails", async () => {
@@ -176,13 +208,13 @@ describe("saveSettingsStrict", () => {
     };
 
     const result = await saveSettingsStrict(
-      { themeId: "highContrast" },
+      { themeId: "highContrast", flashMode: "static" },
       { homeDir, platform: "linux", fsOps }
     );
 
     expect(result.resolvedPath).toBe(fallback);
     expect(result.usedFallback).toBe(true);
     const raw = await fs.readFile(fallback, "utf8");
-    expect(JSON.parse(raw)).toEqual({ themeId: "highContrast" });
+    expect(JSON.parse(raw)).toEqual({ themeId: "highContrast", flashMode: "static" });
   });
 });

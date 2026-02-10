@@ -34,6 +34,7 @@ export type KeyRouterAction =
   | { scope: "ui"; type: "CONFIRM_SAVE_VIEW_PROMPT" }
   | { scope: "ui"; type: "CANCEL_SAVE_VIEW_PROMPT" }
   | { scope: "ui"; type: "CYCLE_THEME" }
+  | { scope: "ui"; type: "TOGGLE_FLASH_MODE" }
   | { scope: "domain"; type: "EXIT_APP" }
   | { scope: "domain"; type: "MOVE_SELECTION"; delta: 1 | -1 }
   | { scope: "domain"; type: "MOVE_SELECTION_PAGE"; direction: 1 | -1 }
@@ -152,6 +153,10 @@ function isThemeCycleKey(name: string, sequence: string): boolean {
   return name.toLowerCase() === "h" || sequence === "h" || sequence === "H";
 }
 
+function isFlashModeToggleKey(name: string, sequence: string): boolean {
+  return name.toLowerCase() === "m" || sequence === "m" || sequence === "M";
+}
+
 function isSearchCloseKey(name: string): boolean {
   return name === "escape" || name === "return" || name === "enter";
 }
@@ -200,12 +205,21 @@ export function handleKey(
   }
 
   if (isDashboardToggleKey(name, sequence, ctrl)) {
+    const inTextEntryContext =
+      mode === Mode.SEARCH ||
+      mode === Mode.ADD ||
+      mode === Mode.EDIT ||
+      saveViewPromptOpen;
+    if (inTextEntryContext) return [];
     return [{ scope: "ui", type: "TOGGLE_DASHBOARD" }];
   }
 
   if (mode === Mode.HELP) {
     if (isThemeCycleKey(name, sequence)) {
       return [{ scope: "ui", type: "CYCLE_THEME" }];
+    }
+    if (isFlashModeToggleKey(name, sequence)) {
+      return [{ scope: "ui", type: "TOGGLE_FLASH_MODE" }];
     }
     if (isHelpCloseKey(name, sequence)) {
       return [{ scope: "ui", type: "CLOSE_HELP" }];

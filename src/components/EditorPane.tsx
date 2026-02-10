@@ -102,8 +102,9 @@ export function EditorPane({
             backgroundColor: focus === "save" ? theme.ok : theme.accentBlue,
             color: theme.bg
           }}
+          onMouseDown={onSave}
         >
-          <text onClick={onSave}>SAVE</text>
+          <text>SAVE</text>
         </box>
         <box
           style={{
@@ -112,8 +113,9 @@ export function EditorPane({
             backgroundColor: focus === "cancel" ? theme.warn : theme.accentOrange,
             color: theme.bg
           }}
+          onMouseDown={onCancel}
         >
-          <text onClick={onCancel}>CANCEL</text>
+          <text>CANCEL</text>
         </box>
       </box>
 

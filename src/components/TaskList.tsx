@@ -3,6 +3,7 @@ import { formatTagForDisplay } from "../domain/tagIndex";
 import { Task } from "../domain/models";
 import { formatDate, getDueInLabel } from "../state/store";
 import { colorForTag, theme } from "../app/theme";
+import type { FlashMode } from "../settings/settings";
 
 type TaskListProps = {
   tasks: Task[];
@@ -10,6 +11,7 @@ type TaskListProps = {
   now: number;
   pulseOn: boolean;
   fastPulseOn: boolean;
+  flashMode: FlashMode;
   scrollOffset: number;
   visibleRows: number;
   visibleLines: number;
@@ -25,6 +27,7 @@ export function TaskList({
   now,
   pulseOn,
   fastPulseOn,
+  flashMode,
   scrollOffset,
   visibleRows,
   visibleLines
@@ -56,6 +59,7 @@ export function TaskList({
               now={now}
               pulseOn={pulseOn}
               fastPulseOn={fastPulseOn}
+              flashMode={flashMode}
             />
           ))
         )}
@@ -90,9 +94,10 @@ type TaskRowProps = {
   now: number;
   pulseOn: boolean;
   fastPulseOn: boolean;
+  flashMode: FlashMode;
 };
 
-function TaskRow({ task, selected, now, pulseOn, fastPulseOn }: TaskRowProps) {
+function TaskRow({ task, selected, now, pulseOn, fastPulseOn, flashMode }: TaskRowProps) {
   const statusIcon = task.status === "done" ? "✓" : task.status === "archived" ? "✱" : "•";
   const closedText =
     task.status === "done" ? formatDate(task.closedAt ?? task.updatedAt) : "";
@@ -164,10 +169,13 @@ function TaskRow({ task, selected, now, pulseOn, fastPulseOn }: TaskRowProps) {
               ? theme.accentBlue
               : "transparent";
 
+  const dueTodayPulseOn = flashMode !== "static" && pulseOn;
   const dueHighlightBackground = isOverdue
-    ? fastPulseOn
+    ? flashMode === "static"
       ? theme.warn
-      : theme.dueSoon
+      : fastPulseOn
+        ? theme.warn
+        : theme.dueSoon
     : "transparent";
   const dueHighlightText = isOverdue ? theme.bg : baseOpenColor;
 
@@ -210,7 +218,7 @@ function TaskRow({ task, selected, now, pulseOn, fastPulseOn }: TaskRowProps) {
           ) : dueInDays !== null && dueInLabel ? (
             isDueToday ? (
               <box style={{ backgroundColor: theme.dueSoon }}>
-                <text style={{ color: pulseOn ? theme.bg : theme.text }}>{dueInLabel}</text>
+                <text style={{ color: dueTodayPulseOn ? theme.bg : theme.text }}>{dueInLabel}</text>
               </box>
             ) : (
               <text style={{ color: selected ? theme.bg : baseOpenColor }}>{dueInLabel}</text>

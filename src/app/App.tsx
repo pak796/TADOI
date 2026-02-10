@@ -66,7 +66,7 @@ import {
   saveViewByName,
   deleteViewAtIndex
 } from "../domain/savedViews";
-import { saveSettingsDebounced } from "../settings/settings";
+import { saveSettingsDebounced, type FlashMode } from "../settings/settings";
 import { settingsReducer } from "../state/settingsStore";
 import { isEditorMode } from "../ui/modeFocus";
 import { initialUIState, uiReducer, unwind } from "../ui/state";
@@ -75,6 +75,8 @@ import { getTerminalSizeWarning, isTerminalSizeSupported } from "./layoutGuard";
 import { APP_NAME, APP_TAGLINE, ENV_VARS } from "../brand/brand";
 
 const TICKER_INTERVAL_MS = 6000;
+const SLOW_PULSE_INTERVAL_MS = 2000;
+const FAST_PULSE_INTERVAL_MS = 700;
 const ROTATING_THEME_INTERVAL_MS = 15000;
 const G_PREFIX_TIMEOUT_MS = 280;
 const NAV_BANNER_TIMEOUT_MS = 1800;
@@ -212,6 +214,7 @@ type AppProps = {
   skipInitialSave?: boolean;
   startupBanner?: string;
   initialThemeId?: ThemeId;
+  initialFlashMode?: FlashMode;
   settingsPath?: string;
   showLogo?: boolean;
 };
@@ -230,13 +233,15 @@ export function App({
   skipInitialSave = false,
   startupBanner,
   initialThemeId = "default",
+  initialFlashMode = "slow",
   settingsPath,
   showLogo = true
 }: AppProps) {
   const renderer = useRenderer();
   const [state, dispatch] = useReducer(reducer, initialData, initState);
   const [settingsState, settingsDispatch] = useReducer(settingsReducer, {
-    themeId: initialThemeId
+    themeId: initialThemeId,
+    flashMode: initialFlashMode
   });
   const [uiState, uiDispatch] = useReducer(uiReducer, initialUIState);
   const [pulseOn, setPulseOn] = useState(false);
@@ -318,11 +323,14 @@ export function App({
   const selectedDueLater = selectedDayDiff !== null && selectedDayDiff >= 8;
   const selectedOverdue =
     selectedDayDiff !== null && (selectedDayDiff < 0 || selectedTimeOverdue);
+  const isStaticFlashMode = settingsState.flashMode === "static";
   const isDashboardMode = uiState.mode === Mode.DASHBOARD;
   const selectedHeaderBackground = selectedOverdue
-    ? fastPulseOn
+    ? isStaticFlashMode
       ? theme.warn
-      : theme.dueSoon
+      : fastPulseOn
+        ? theme.warn
+        : theme.dueSoon
     : selectedDueToday
       ? theme.dueSoon
       : selectedDueSoon
@@ -450,18 +458,26 @@ export function App({
   }, [state.tasks, state.tagIndex]);
 
   useEffect(() => {
+    if (isStaticFlashMode) {
+      setPulseOn(false);
+      return;
+    }
     const id = setInterval(() => {
       setPulseOn((prev) => !prev);
-    }, 2000);
+    }, SLOW_PULSE_INTERVAL_MS);
     return () => clearInterval(id);
-  }, []);
+  }, [isStaticFlashMode]);
 
   useEffect(() => {
+    if (isStaticFlashMode) {
+      setFastPulseOn(false);
+      return;
+    }
     const id = setInterval(() => {
       setFastPulseOn((prev) => !prev);
-    }, 700);
+    }, FAST_PULSE_INTERVAL_MS);
     return () => clearInterval(id);
-  }, []);
+  }, [isStaticFlashMode]);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -525,11 +541,14 @@ export function App({
       return;
     }
     saveSettingsDebounced(
-      { themeId: settingsState.themeId },
+      {
+        themeId: settingsState.themeId,
+        flashMode: settingsState.flashMode
+      },
       150,
       settingsPath ? { filePath: settingsPath } : {}
     );
-  }, [settingsPath, settingsState.themeId]);
+  }, [settingsPath, settingsState.themeId, settingsState.flashMode]);
 
   useEffect(() => {
     if (skipInitialSaveRef.current) {
@@ -659,6 +678,14 @@ export function App({
       case "CYCLE_THEME":
         settingsDispatch({ type: "cycleTheme" });
         return;
+      case "TOGGLE_FLASH_MODE": {
+        const nextMode: FlashMode = settingsState.flashMode === "slow" ? "static" : "slow";
+        settingsDispatch({ type: "toggleFlashMode" });
+        showShortNavigationBanner(
+          nextMode === "static" ? "Flash mode: static (overdue = red)" : "Flash mode: slow"
+        );
+        return;
+      }
       case "EXIT_APP":
         void renderer.destroy();
         return;
@@ -1324,6 +1351,7 @@ export function App({
           filters={state.filters}
           sortMode={state.sortMode}
           fastPulseOn={fastPulseOn}
+          flashMode={settingsState.flashMode}
           terminalWidth={terminalWidth}
           showLogo={showLogo}
         />
@@ -1449,6 +1477,7 @@ export function App({
                     now={now}
                     pulseOn={pulseOn}
                     fastPulseOn={fastPulseOn}
+                    flashMode={settingsState.flashMode}
                     scrollOffset={uiState.scrollOffset}
                     visibleRows={visibleRows}
                     visibleLines={visibleLines}
@@ -1497,6 +1526,7 @@ export function App({
                     now={now}
                     pulseOn={pulseOn}
                     fastPulseOn={fastPulseOn}
+                    flashMode={settingsState.flashMode}
                   />
                 )}
               </box>
@@ -1702,6 +1732,7 @@ export function App({
             <text>ctrl+s: save current view</text>
             <text>1..9: apply view slot</text>
             <text>H: cycle theme</text>
+            <text>M: toggle flash mode</text>
             <text>q: quit</text>
             <text>esc: close</text>
             <text>DASHBOARD</text>
@@ -1723,6 +1754,12 @@ export function App({
             {settingsState.themeId === "rotating" ? (
               <text>Auto-rotate: every 15s</text>
             ) : null}
+            <text>Flash mode: {settingsState.flashMode}</text>
+            {settingsState.flashMode === "static" ? (
+              <text>Static: overdue indicators are solid red.</text>
+            ) : (
+              <text>Slow: due-today and overdue indicators pulse.</text>
+            )}
             <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
               <box
                 style={{

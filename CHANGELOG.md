@@ -5,15 +5,20 @@ All notable changes to TADOI are documented in this file.
 The format is based on Keep a Changelog.
 
 ## [Unreleased]
+### Added
+- Flash mode preference (`slow`/`static`) with persistence in `settings.json` and Help-panel toggle (`M`).
+
 ### Changed
 - Added versioned planning artifacts for `v0.2.7`: `TADOI_SPEC_v0.2.7.md` and `TADOI_TASKS_v0.2.7.md`.
 - Dashboard layout robustness improved:
   - adaptive 2:1 split with stacked fallback when narrow
   - due-bucket minimum-width guard with friendly placeholder rendering when too narrow
+- In `static` flash mode, overdue indicators render as solid red (no pulsing).
 
 ### Fixed
 - Replaced direct `process.exit(...)` usage in interactive app exit paths with OpenTUI renderer teardown (`renderer.destroy()`), improving terminal state cleanup on quit.
 - Border/frame redraw reliability after dashboard mode toggles and terminal resizes.
+- Editor Save/Cancel mouse interactions now use OpenTUI mouse events (`onMouseDown`) instead of unsupported `onClick`.
 
 ## [0.2.7]
 ### Added
