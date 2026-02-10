@@ -118,6 +118,7 @@ bun run pack:smoke
 TADOI currently uses a non-live packaging workflow:
 - Public publish is intentionally disabled (`"private": true` in `package.json`).
 - Distribution for testers is done via local/private tarball install.
+- This project is source-available under PolyForm Noncommercial 1.0.0 (noncommercial use only).
 
 Build and validate packaging artifacts:
 
@@ -189,6 +190,14 @@ Current scaffold outputs:
 - `dist/bin/macos/`
 - `dist/bin/windows/`
 - `dist/installers/` (reserved for future DMG/EXE artifacts)
+
+## License
+This project is licensed under the PolyForm Noncommercial License 1.0.0.
+See the [`LICENSE`](./LICENSE) file for details.
+
+Plain-English summary:
+- Allowed: personal/noncommercial use; modification; redistribution under the license's terms
+- Not allowed: commercial use (including selling, bundling into paid products, or other commercial exploitation)
 
 ## Optional Perf Debug
 

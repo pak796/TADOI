@@ -1623,6 +1623,9 @@ export function App({
             <text>App Version: {APP_VERSION}</text>
             <text>{APP_NAME}</text>
             <text>{APP_TAGLINE}</text>
+            <text>License: PolyForm Noncommercial 1.0.0</text>
+            <text>See ./LICENSE for full terms.</text>
+            <text>Noncommercial use only (no selling or paid bundling).</text>
             <text>
               Theme:{" "}
               {settingsState.themeId === "rotating"

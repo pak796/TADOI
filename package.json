@@ -2,6 +2,7 @@
   "name": "tadoi",
   "description": "TADOI - Terminal Accessible Digital Organization Interface",
   "version": "0.2.5",
+  "license": "SEE LICENSE IN LICENSE",
   "private": true,
   "type": "module",
   "files": [
