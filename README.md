@@ -49,6 +49,30 @@ The resolved path is shown in startup logs and in the in-app Help panel.
 
 If a save fails (permissions/disk/IO), TADOI keeps running and shows a persistent banner with the error and resolved data path. Saves retry on the next domain mutation (not on UI-only ticks).
 
+### Data Backup and Corrupt Recovery
+
+Where your data lives:
+- Use the resolved data path shown at startup or in the Help panel.
+- By default, it follows the OS-specific locations listed above.
+
+How to back it up:
+
+macOS/Linux (replace `<resolved-path>`):
+```bash
+mkdir -p ~/tadoi-backups
+cp "<resolved-path>" "~/tadoi-backups/tadoi_data.$(date +%Y%m%d-%H%M%S).json"
+```
+
+Windows PowerShell (replace `<resolved-path>`):
+```powershell
+New-Item -ItemType Directory -Force "$HOME\\tadoi-backups" | Out-Null
+Copy-Item "<resolved-path>" "$HOME\\tadoi-backups\\tadoi_data.$(Get-Date -Format 'yyyyMMdd-HHmmss').json"
+```
+
+Corrupt backups created by recovery look like:
+- `tadoi_data.json.corrupt.YYYYMMDD-HHMMSS`
+- `tadoi_data.json.corrupt.YYYYMMDD-HHMMSS.1` (or higher suffix when needed)
+
 ## Keybindings
 
 - LIST mode navigation:
@@ -166,6 +190,17 @@ tadoi
 If `tadoi` is not found, ensure Bun's global bin is on `PATH`:
 - macOS/Linux: `export PATH="$HOME/.bun/bin:$PATH"`
 - Windows PowerShell: `$env:Path += ";$env:USERPROFILE\.bun\bin"`
+
+### Uninstall (Global Install)
+
+```bash
+bun remove -g tadoi
+```
+
+Windows PowerShell:
+```powershell
+bun remove -g tadoi
+```
 
 Release-candidate gate (local):
 
