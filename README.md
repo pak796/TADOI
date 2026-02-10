@@ -191,13 +191,15 @@ Current scaffold outputs:
 - `dist/bin/windows/`
 - `dist/installers/` (reserved for future DMG/EXE artifacts)
 
-## License
-This project is licensed under the PolyForm Noncommercial License 1.0.0.
-See the [`LICENSE`](./LICENSE) file for details.
+## License (Summary)
+Licensed under PolyForm Noncommercial 1.0.0.
+See [`./LICENSE`](./LICENSE).
 
-Plain-English summary:
-- Allowed: personal/noncommercial use; modification; redistribution under the license's terms
-- Not allowed: commercial use (including selling, bundling into paid products, or other commercial exploitation)
+- ✅ You may use and modify this software for noncommercial purposes.
+- ✅ You may share/redistribute it under the same license terms.
+- ❌ You may not use it for commercial purposes (including selling, bundling into paid products, or offering it as part of a paid service).
+
+The `LICENSE` file is the source of truth.
 
 ## Optional Perf Debug
 
