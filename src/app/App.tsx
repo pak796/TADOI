@@ -881,6 +881,13 @@ export function App({
     dispatch({ type: "setSelected", id: visibleTasks[nextIndex].id });
   }
 
+  function selectTaskById(taskId: string) {
+    const targetExists = visibleTasks.some((task) => task.id === taskId);
+    if (!targetExists) return;
+    clearPendingGPrefix();
+    dispatch({ type: "setSelected", id: taskId });
+  }
+
   function jumpToTop() {
     setSelectedByIndex(0);
   }
@@ -1478,6 +1485,7 @@ export function App({
                     pulseOn={pulseOn}
                     fastPulseOn={fastPulseOn}
                     flashMode={settingsState.flashMode}
+                    onSelectTask={selectTaskById}
                     scrollOffset={uiState.scrollOffset}
                     visibleRows={visibleRows}
                     visibleLines={visibleLines}

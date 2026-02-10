@@ -12,6 +12,7 @@ type TaskListProps = {
   pulseOn: boolean;
   fastPulseOn: boolean;
   flashMode: FlashMode;
+  onSelectTask: (taskId: string) => void;
   scrollOffset: number;
   visibleRows: number;
   visibleLines: number;
@@ -28,6 +29,7 @@ export function TaskList({
   pulseOn,
   fastPulseOn,
   flashMode,
+  onSelectTask,
   scrollOffset,
   visibleRows,
   visibleLines
@@ -60,6 +62,7 @@ export function TaskList({
               pulseOn={pulseOn}
               fastPulseOn={fastPulseOn}
               flashMode={flashMode}
+              onSelect={onSelectTask}
             />
           ))
         )}
@@ -95,9 +98,18 @@ type TaskRowProps = {
   pulseOn: boolean;
   fastPulseOn: boolean;
   flashMode: FlashMode;
+  onSelect: (taskId: string) => void;
 };
 
-function TaskRow({ task, selected, now, pulseOn, fastPulseOn, flashMode }: TaskRowProps) {
+function TaskRow({
+  task,
+  selected,
+  now,
+  pulseOn,
+  fastPulseOn,
+  flashMode,
+  onSelect
+}: TaskRowProps) {
   const statusIcon = task.status === "done" ? "✓" : task.status === "archived" ? "✱" : "•";
   const closedText =
     task.status === "done" ? formatDate(task.closedAt ?? task.updatedAt) : "";
@@ -186,6 +198,10 @@ function TaskRow({ task, selected, now, pulseOn, fastPulseOn, flashMode }: TaskR
         paddingRight: 1,
         backgroundColor: rowBackground,
         color: selected ? theme.bg : theme.text
+      }}
+      onMouseDown={(event) => {
+        if (event.button !== 0) return;
+        onSelect(task.id);
       }}
     >
       <box style={{ flexDirection: "row", flexGrow: 1 }}>
