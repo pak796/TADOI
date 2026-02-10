@@ -5,9 +5,10 @@
 Build a keyboard-first terminal TUI todo app with a **retro Star Trek / LCARS-inspired layout**, using **OpenTUI** + **@opentui/react** on **Bun**.
 Naming: replace LCARS with **TADOI** in the app UI and filenames.
 
-v0.2.1 scope note:
-- This version focuses on data safety and schema discipline.
-- No net-new user-facing features are introduced in v0.2.1.
+v0.2.5 scope note:
+- This version focuses on foundation polish for real users: platform contract, reliability hardening, and performance envelope.
+- It adds daily-driver navigation and saved-view ergonomics while keeping persistence and routing discipline strict.
+- It carries forward all accepted v0.2.3 routing/version work and appends new v0.2.5 foundation requirements.
 
 - Runtime: Bun (OpenTUI quick start uses Bun; `bun create tui`)  [oai_citation:0‡GitHub](https://github.com/anomalyco/opentui?utm_source=chatgpt.com)
 - UI binding: @opentui/react provides React reconciler + patterns like `createRoot` and `useKeyboard`.  [oai_citation:1‡npm](https://www.npmjs.com/package/%40opentui/react?utm_source=chatgpt.com)
@@ -40,7 +41,7 @@ Deliverables:
 15. **Bottom bar**: add a bottom bar under the task list + details pane for future data/tabs/buttons.
 16. **Section labels**: “TASK LIST” and “DETAILS” labels float above their respective borders.
 17. **Pane outlines**: thin outlines for left rail, task list, and details pane.
-18. **TADOI ASCII logo**: compact ASCII logo in the left rail.
+18. **TADOI ASCII logo**: compact ASCII logo in the left rail with tightened letter spacing.
 19. **Due-soon/due-later colors**: tasks due tomorrow–next 7 days are yellow; tasks due 8+ days out are blue.
 20. **Closed date display**: completed tasks show closed date in details and list.
 21. **Quick copy**: `c` duplicates a task into a new draft (completed → due today, future due date → same); user must save or Esc to cancel.
@@ -73,6 +74,19 @@ Deliverables:
 48. **Selection-following scroll**: task list auto-scrolls so the selected row stays visible.
 49. **Details due time**: when a task has an explicit time, show `DUE TIME: HH:mm` in the details pane.
 50. **Add-time autocomplete**: in Add mode, show a right-arrow hint to complete a suggested time (1 hour ahead, preserves minutes); Right Arrow completes hour first, then minutes.
+51. **Theme switcher (MVP)**: support `default`, `retro`, `highContrast`, and `neonHacker` palettes with no visual change to `default`.
+52. **Theme keybind in Help**: while Help is open, pressing `h` or `H` cycles to the next palette.
+53. **Theme persistence**: persist selected theme in `settings.json` with startup load and debounced saves.
+54. **Help palette preview**: Help pane shows current theme and a mini preview row for `accent`, `warn`, and `ok`.
+55. **Left rail logo separator**: render a horizontal ASCII separator under TADOI logo before version/menu metadata.
+56. **Help pane app version**: show the current app version in the Help overlay.
+57. **Rotating theme mode**: support a `rotating` theme option that auto-cycles concrete palettes every 15 seconds.
+58. **v0.2.5 version surfaces**: app version indicators and package metadata are aligned to `v0.2.5` / `0.2.5`.
+59. **Daily-driver list navigation primitives**: add `gg` (top), `G` (bottom), page navigation (`ctrl+u` / `ctrl+d`, plus PageUp/PageDown), and attention jumps (`[`/`]` for overdue, `{`/`}` for due-today).
+60. **Saved Views (filter presets)**: users can save/apply/delete up to 9 filter presets (`v`, `ctrl+s`, `1..9`) with persistence and schema migration support.
+61. **Global active-tag cycle filter**: `t` cycles through tags from all active (open) tasks, not only the selected task.
+62. **Sort toggles**: `s` cycles list sorting (`DUE`, `UPDATED`, `CREATED`, `TITLE`) and current sort is visible in UI.
+63. **Selection stability by task id**: on filter/search/sort changes, keep the same selected task id when possible; otherwise clamp to nearest valid index.
 
 ### Non-Goals (MVP)
 - Sync, accounts, multi-device
@@ -121,10 +135,24 @@ Use OpenTUI flex layout with nested `<box>` containers.
 - Maintain readability in 80×24.
 
 ### 3.3 Theme tokens
-Define a single `theme.ts` with colors + spacing:
-- `bg`, `panel`, `accentOrange`, `accentPurple`, `accentBlue`, `ok`, `warn`, `text`, `muted`
+Define semantic tokens in `src/theme/themes.ts` and map runtime aliases in `src/app/theme.ts`.
 
-(Exact hex values are up to implementation; keep consistent.)
+Required token shape:
+- `bg`, `panel`, `text`, `mutedText`, `border`
+- `accent`, `accent2`
+- `ok`, `warn`, `danger`
+- `selectionBg`, `selectionText`
+
+Theme ids:
+- `default`, `retro`, `highContrast`, `neonHacker`, `rotating`
+
+Runtime compatibility:
+- Existing component color usage may continue using runtime aliases (`accentOrange`, `accentBlue`, `accentPurple`, `dueSoon`, `dueLater`, `muted`, `outline`) as long as they resolve from active semantic tokens.
+
+Behavior:
+- `default` must match existing release visuals.
+- Theme changes should re-render immediately.
+- Theme switching is available from Help with `h/H`.
 
 ---
 
@@ -160,9 +188,22 @@ type Filters = {
   searchText?: string; // live search
 };
 
+type SortMode = "due" | "updated" | "created" | "title";
+
+type SavedView = {
+  id: string;          // uuid
+  name: string;        // display label (case-preserving)
+  filters: Filters;    // snapshot at save-time
+  createdAt: number;   // epoch ms
+  updatedAt: number;   // epoch ms
+};
+
 Persistence:
 - Save data with `schemaVersion` for migrations.
+- Persisted envelope is `{ schemaVersion, tasks, tagIndex, savedViews }`.
 - Migration sets `hasExplicitTime=false` for legacy tasks without time.
+- Migration `2 -> 3` introduces `savedViews: []` for older files.
+- Sort mode is runtime state (not persisted) and defaults to `due` on startup.
 
 THIS WEEK definition:
 - Rolling next 7 days including today, based on local-day boundaries (not calendar week).
@@ -192,6 +233,13 @@ Tag normalization rules:
 
 Tag colors:
 - Tag color palette supports up to 16 distinct colors.
+
+Saved Views (v0.2.5 daily-driver #2):
+- A saved view captures `{ status, due, tag, searchText }`.
+- It does not capture UI-only state (selection index, scroll offset, mode/focus).
+- Current MVP does not persist sort mode because list sort is fixed by due/priority rules.
+- Name dedupe policy is case-insensitive update-by-name.
+- Max saved views is 9.
 ```
 
 
@@ -204,6 +252,9 @@ This appendix defines the “Layer 1” hardening work for v0.2.0. It is intenti
 - **Modal correctness**: truly blocking modals with deterministic outcomes.
 - **Scroll correctness**: selection-following scroll that works under navigation, filtering, and resize.
 
+Implementation status:
+- v0.2.3 Step 1 implemented formal `Mode`/`FocusTarget` constants in `src/ui/modeFocus.ts`, UI-only state/reducer in `src/ui/state.ts`, a centralized key router (`handleKey`) that returns routed actions, and centralized Esc unwind behavior.
+
 ## A1) UI State vs Domain State
 
 ### Domain state (persisted)
@@ -211,10 +262,10 @@ This appendix defines the “Layer 1” hardening work for v0.2.0. It is intenti
 
 ### UI state (NOT persisted)
 - `mode` (LIST/ADD/EDIT/SEARCH/HELP/MODAL_CONFIRM)
-- `focus` (LEFT_RAIL / TASK_LIST / DETAILS / INPUT:<field> / MODAL)
+- `focus` (`TASK_LIST` / `SEARCH_INPUT` / `MODAL` / `EDITOR_TITLE` / `EDITOR_DUE_DATE` / `EDITOR_DUE_TIME` / `EDITOR_TAGS` / `EDITOR_NOTES`)
 - `selectedIndex`
 - `scrollOffset`
-- `modal` (type + payload)
+- `modal` (type + payload + previous mode/focus snapshot)
 - transient banner/status messages
 - ticker phase
 
@@ -235,6 +286,8 @@ This appendix defines the “Layer 1” hardening work for v0.2.0. It is intenti
 - `EDITOR_TITLE`, `EDITOR_DUE_DATE`, `EDITOR_DUE_TIME`, `EDITOR_TAGS`, `EDITOR_NOTES`
 - `SEARCH_INPUT`
 - `MODAL` (always captures input)
+- Temporary compatibility targets used by current editor controls:
+- `EDITOR_SAVE`, `EDITOR_CANCEL`
 
 ### Key routing rules
 1. If `mode === MODAL_CONFIRM`: **only** modal keys are handled; all other inputs are ignored.
@@ -245,9 +298,19 @@ This appendix defines the “Layer 1” hardening work for v0.2.0. It is intenti
    - HELP → return to previous mode
    - SEARCH → return to LIST (preserve search text, unless explicitly cleared)
    - ADD/EDIT → cancel draft and return to LIST
+5. Routing precedence is centralized in a single router:
+   - `MODAL_CONFIRM` → `HELP` → `SEARCH` → `ADD/EDIT` → `LIST`.
+6. Advanced list navigation keys are LIST+TASK_LIST only:
+   - `gg`: jump to top
+   - `G`: jump to bottom
+   - `ctrl+u` / `ctrl+d` (and PageUp/PageDown where supported): page up/down
+   - `[` / `]`: previous/next overdue task
+   - `{` / `}`: previous/next due-today task
+   - If no match exists for attention jumps, show a brief non-modal banner.
 
 ### Visible focus indicator
-- Left rail shows **MODE** (already) and also a short **FOCUS** indicator (e.g., `FOCUS: LIST`, `FOCUS: TITLE`, `FOCUS: MODAL`) OR highlight the active section strongly enough to be unambiguous.
+- Left rail shows **MODE** (already) and also a short **FOCUS** indicator (e.g., `FOCUS: LIST`, `FOCUS: TITLE`, `FOCUS: DELETE`) OR highlight the active section strongly enough to be unambiguous.
+- UI label rule: when internal mode is `MODAL_CONFIRM`, the left-rail mode/menu label should read `DELETE`.
 
 ## A3) Modal Correctness
 
@@ -295,6 +358,42 @@ Call `ensureSelectedVisible()` whenever:
 - In a list longer than the viewport, holding `j`/`k` keeps the selected row on-screen.
 - After filtering or deleting, selection is clamped and visible.
 - Resizing the terminal keeps the selection visible and avoids crashes.
+
+### Daily-driver navigation behavior
+- `gg` selects first visible task and keeps it visible.
+- `G` selects last visible task and keeps it visible.
+- Page navigation moves by `visibleRows - 1` and clamps in-range.
+- `s` cycles sort mode in this order:
+  - `DUE`: due date asc; within day explicit-time tasks first, then time asc, then date-only, then stable fallback.
+  - `UPDATED`: `updatedAt` desc.
+  - `CREATED`: `createdAt` desc.
+  - `TITLE`: title asc (case-insensitive).
+- `t` cycles tag include-filter through the global active-task tag pool (open tasks), then clears.
+- Attention jumps use current due semantics:
+  - Overdue uses date-only and explicit-time same-day overdue rules.
+  - Due-today uses local-day today.
+- Attention jumps wrap and show a brief banner when no target exists.
+
+### Selection reconciliation behavior
+- Selection tracks task identity (`selectedId`) across sort/filter/search changes.
+- If `selectedId` remains visible after list recompute, keep that task selected.
+- If `selectedId` disappears, select the nearest valid index using prior list index clamped to new bounds.
+- After reconciliation, run visibility guard so the selected row remains in viewport.
+
+### Daily-driver saved views behavior
+- List-mode keys:
+  - `v`: toggle Saved Views overlay.
+  - `ctrl+s`: open save prompt for current filter snapshot.
+  - `1..9`: apply saved view slot directly when overlay is closed.
+- Overlay keys:
+  - `j/k` or arrows: move selected saved view.
+  - `enter`: apply selected view.
+  - `d`: delete selected view (non-modal confirm in MVP).
+  - `esc` or `v`: close overlay.
+- Save prompt keys:
+  - `enter`: save/update view.
+  - `esc`: cancel save prompt.
+- Applying a view updates filters immediately and relies on existing selection clamp + scroll-visibility behavior.
 
 ## A5) v0.2.0 Quality Gates (manual, required)
 1. **Focus routing**: in ADD/EDIT, typing never moves list selection; in LIST, typing does not “leak” into inputs.
@@ -384,6 +483,12 @@ After successful load/migration, the following invariants must hold:
 - Timestamp fields are numeric when present:
 - `dueAt`, `closedAt`, `createdAt`, `updatedAt`
 - `hasExplicitTime` is boolean when present.
+- `savedViews` is an array when present.
+- Each saved view has non-empty `id` and `name`.
+- Saved-view filters stay in allowed domains:
+  - `status`: `{all, open, done, archived}`
+  - `due`: `{any, overdue, today, next7}`
+  - `tag`/`searchText` are strings when present.
 - Unknown fields are tolerated and ignored unless they break parsing/validation.
 
 ## B5) Persistence Interfaces (Spec Guidance)
@@ -404,5 +509,261 @@ safeLoadState(): {
 }
 ```
 
-Persisted envelope remains unchanged:
-- `{ schemaVersion, tasks, tagIndex }`
+Persisted envelope:
+- `{ schemaVersion, tasks, tagIndex, savedViews }`
+
+
+# Appendix C — v0.2.2 Automated Tests & CI Gates
+
+This appendix defines automated verification requirements for v0.2.2.
+Scope is quality gates only: no new end-user product features.
+
+## C1) Required Merge Gates
+
+All pull requests and pushes to `main` must pass these checks:
+- `test`: `bun run test` and `bun run test:coverage`
+- `typecheck`: `bun run typecheck`
+
+Merge policy:
+- CI must be green before merge.
+- Any failed required job blocks merge.
+
+## C2) Test Categories
+
+### Domain tests
+- Task filtering/sorting behavior:
+- due filter boundaries (`overdue`, `today`, `next7/THIS WEEK`)
+- same-day sorting (`hasExplicitTime=true` tasks before date-only tasks, time asc)
+- due label text rules:
+- date-only today: `DUE TODAY`
+- explicit-time today: `DUE IN N HOURS/MIN`
+- explicit-time overdue today: `OVERDUE BY N HOURS/MIN`
+- Tag normalization invariants:
+- allowed chars `[a-z0-9_-]`
+- max length 24
+- emoji/non-ASCII stripping
+- dedupe and alphabetical sort
+
+### Persistence/schema tests
+- Validation:
+- missing/invalid `schemaVersion` rejected
+- malformed task shape rejected
+- Migration:
+- legacy fixtures migrate stepwise to current schema and validate
+- unsupported future schema errors are handled by recovery path
+- Corruption recovery:
+- parse/validation/migration failures back up corrupt data and return clean empty state with banner
+- rename failure uses copy fallback path
+
+### Data path tests
+- `TADOI_DATA_PATH` override precedence.
+- Linux/macOS/Windows default path resolution.
+- Parent-directory creation before writes.
+
+## C3) Local Developer Commands
+
+Run locally before opening/merging a PR:
+
+```bash
+bun run test
+bun run test:coverage
+bun run typecheck
+```
+
+Coverage:
+- Coverage is reported in CI logs via `bun run test:coverage`.
+- No percentage threshold is enforced in v0.2.2.
+
+## C4) CI Workflow Contract
+
+Workflow location:
+- `.github/workflows/ci.yml`
+
+Triggers:
+- `pull_request`
+- `push` to `main`
+
+Runner baseline:
+- `ubuntu-latest`
+- Bun setup via `oven-sh/setup-bun@v2` (pinned Bun `1.3.9`)
+
+Execution:
+- install dependencies with `bun install --frozen-lockfile`
+- run required merge gates listed above
+
+
+# Appendix D — v0.2.2 Theme Switching & Settings Persistence
+
+This appendix defines the lightweight palette switcher delivered in v0.2.2.
+
+## D1) Theme Registry
+
+Single source of truth:
+- `src/theme/themes.ts`
+
+Contracts:
+- `ThemeId = "default" | "retro" | "highContrast" | "neonHacker" | "rotating"`
+- `ThemeTokens` semantic keys:
+- `bg`, `panel`, `text`, `mutedText`, `border`
+- `accent`, `accent2`
+- `ok`, `warn`, `danger`
+- `selectionBg`, `selectionText`
+- `THEMES: Record<ThemeId, ThemeTokens>`
+- `THEME_ORDER` fixed order:
+- `["default", "retro", "highContrast", "neonHacker", "rotating"]`
+- `ROTATING_THEME_ORDER` concrete cycle order:
+- `["default", "retro", "highContrast", "neonHacker"]`
+- `cycleTheme(current)` returns the next theme in order and wraps.
+
+Palette notes:
+- `default` mirrors existing release colors.
+- `retro` uses SNES-style cool greys.
+- `neonHacker` uses a dark-green left rail and greener panel background.
+
+## D2) Runtime Theme Application
+
+Runtime adapter:
+- `src/app/theme.ts` exports `applyTheme(themeId)` and a mutable runtime `theme`.
+- Existing components continue using current keys; adapter remaps them from semantic tokens.
+- Theme updates are immediate and do not require app restart.
+- When selected theme is `rotating`, runtime applies a concrete theme from `ROTATING_THEME_ORDER` and auto-advances every 15 seconds.
+
+## D3) Settings Persistence
+
+Settings model:
+- `TadoiSettings = { themeId }`
+
+File location:
+- Primary: `~/.config/tadoi/settings.json`
+- Fallback: `~/.tadoi/settings.json`
+
+Behavior:
+- Startup: load settings, merge with defaults, apply theme before first render.
+- Save: debounce writes (`150ms`) and persist the most recent theme.
+- If primary write fails, attempt fallback path.
+
+## D4) Help Pane UX
+
+Help interactions:
+- `h` or `H` while Help is open cycles theme.
+- Help displays current theme id.
+- For rotating mode, Help shows `rotating (<activeTheme>)` and a `15s` auto-rotate hint.
+- Help displays a palette preview row using `accent`, `warn`, and `ok` swatches.
+
+## D5) Left Rail Visual Separator
+
+The left rail renders an ASCII horizontal separator directly below the TADOI logo to clearly separate branding from version/date/time/menu metadata.
+
+# Appendix E — v0.2.3 Routing Hardening & Version Surfaces
+
+This appendix captures the v0.2.3 hardening pass and release metadata alignment.
+
+## E1) Central Key Routing
+
+Routing contract:
+- `src/app/keyRouter.ts` exports `handleKey(key, context)`.
+- The function is pure and returns routed actions only (no side effects).
+- `src/app/App.tsx` has a single `useKeyboard` entrypoint that:
+- calls `handleKey(...)`
+- dispatches returned UI/domain actions
+
+Rules enforced:
+- `MODAL_CONFIRM` blocks background keys and only resolves modal keys (`y`, `n`, `Esc`).
+- `SEARCH` and editor input modes do not leak list navigation keys.
+- `Esc` always routes to unwind behavior and exits one layer.
+
+## E2) Version Surfaces
+
+Version contract:
+- App version is centralized in `src/app/version.ts` as `APP_VERSION`.
+- Left rail displays `APP_VERSION`.
+- Help pane displays `App Version: <APP_VERSION>`.
+- Package metadata in `package.json` matches the same release (`0.2.5`).
+
+---
+
+# Appendix F — v0.2.5 Foundation Polish (Platform Contract + Reliability + Performance)
+
+This appendix captures the “Section 1” foundation work required to move from a polished MVP to a more robust product.
+Scope is **clarification + hardening**: documented support boundaries, stronger failure-mode behavior, and explicit performance targets.
+No new feature sets (sync/recurrence/etc.) are introduced in v0.2.5.
+
+## F1) Platform Contract (Supported Environments)
+
+### Supported terminals (documented)
+TADOI must be verified on these baseline environments:
+- macOS: Terminal.app and iTerm2
+- Windows: Windows Terminal
+- Linux: GNOME Terminal (baseline)
+
+### Minimum terminal geometry
+- Minimum supported size remains **80×24**.
+- If below minimum, show a centered warning screen:
+  - `Terminal too small (min 80x24) | Current: <WxH>`
+- While below minimum, normal app interactions are paused to avoid layout churn.
+- When the terminal returns to supported size, full UI rendering and interaction resume with current in-memory state.
+
+### Data path troubleshooting surface
+- The resolved **task data path** (from Appendix B) must be visible for troubleshooting in at least one user-visible place:
+  - Help overlay line OR left-rail debug line OR startup log.
+
+## F2) Reliability Hardening (Failure Modes)
+
+### Save failure behavior (must not crash)
+If persistence write fails (permissions, disk full, IO error):
+- Keep app running (no crash).
+- Show a persistent banner message containing:
+  - short error summary
+  - resolved data path
+  - last successful save timestamp (if tracked)
+- Do not spin/loop retries aggressively; retry only on the next domain mutation or on a manual “retry save” command if you add one later.
+
+### Corruption recovery loop prevention
+Corruption recovery (Appendix B) must not create unbounded `.corrupt.*` files:
+- If a corrupt file was already backed up on this startup attempt, do not back up again in the same session unless the user explicitly points at another path.
+- If an empty-state save fails, do not attempt repeated backup cycles.
+
+### “Persist only on change” enforcement
+UI-only ticks (clock, ticker, pulses) must never trigger writes.
+Only domain mutations that change persisted state may schedule a save.
+
+## F3) Performance Envelope (Explicit Targets)
+
+### Performance target
+Define a baseline target for v0.2.5:
+- **2,000 tasks** (mixed due states, tags) should allow smooth list navigation without perceptible lag.
+- Navigation latency target: selection update visible within ~50ms on typical laptop hardware.
+
+### Measurement approach (lightweight)
+- Add an optional debug mode (env flag) to log:
+  - render tick duration (ms)
+  - visible task count and window size
+- Env flag: `TADOI_PERF_DEBUG=1`
+- Avoid heavy profiling systems; keep this as console/log output only.
+
+### Rendering constraints
+- Task list should render only visible rows (windowing/virtualization) using `scrollOffset` + `visibleRows`.
+- Sorting/filtering should be pure and efficient; avoid recomputing heavy indexes on every render tick.
+
+## F4) v0.2.5 Manual QA Additions
+
+In addition to existing quality gates:
+1. **Below-min-size behavior**: shrink terminal below 80×24; verify clean “too small” message, no crash.
+2. **Save failure**: point data path to an unwritable location; verify banner and continued operation.
+3. **Large list**: load/generate 2k tasks; verify navigation remains responsive and selection-following scroll remains correct.
+
+## F5) v0.2.5 Readiness Execution Log
+
+Execution snapshot (2026-02-09 CST):
+- Manual quality gate `T7.1` executed and passed:
+  - Verified normal layout and interaction at `80x24`.
+  - Verified centered guard at `79x23` with message:
+    - `Terminal too small (min 80x24). Current: 79x23.`
+  - Verified safe recovery to normal UI after restoring supported size.
+- Manual quality gate `T7.2` executed and passed:
+  - Ran with isolated persistence path (`TADOI_DATA_PATH=/tmp/tadoi-qa-interrupt.json`).
+  - Created task data, interrupted runtime with `Ctrl+C`, restarted, and confirmed persisted JSON remained parseable and task data loaded.
+- Documentation sync:
+  - README keybindings now reflect current router behavior, including:
+    - `gg` / `G`, paging (`ctrl+u` / `ctrl+d`), attention jumps (`[]`, `{}`),
+      sort cycling (`s`), saved views (`v`, `ctrl+s`, `1..9`), and global active-tag cycling (`t`).

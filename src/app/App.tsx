@@ -71,13 +71,14 @@ import { isEditorMode } from "../ui/modeFocus";
 import { initialUIState, uiReducer, unwind } from "../ui/state";
 import { APP_VERSION } from "./version";
 import { getTerminalSizeWarning, isTerminalSizeSupported } from "./layoutGuard";
+import { APP_NAME, APP_TAGLINE, ENV_VARS } from "../brand/brand";
 
 const TICKER_INTERVAL_MS = 6000;
 const ROTATING_THEME_INTERVAL_MS = 15000;
 const G_PREFIX_TIMEOUT_MS = 280;
 const NAV_BANNER_TIMEOUT_MS = 1800;
 const VIEW_NAME_MAX_LENGTH = 40;
-const PERF_DEBUG_ENABLED = process.env.TODUI_PERF_DEBUG === "1";
+const PERF_DEBUG_ENABLED = process.env[ENV_VARS.PERF_DEBUG] === "1";
 
 function getTagQuery(tagsText: string): string | null {
   if (/[\s,]$/.test(tagsText)) return null;
@@ -211,6 +212,7 @@ type AppProps = {
   startupBanner?: string;
   initialThemeId?: ThemeId;
   settingsPath?: string;
+  showLogo?: boolean;
 };
 
 function initState(data?: LoadedData): AppState {
@@ -227,7 +229,8 @@ export function App({
   skipInitialSave = false,
   startupBanner,
   initialThemeId = "default",
-  settingsPath
+  settingsPath,
+  showLogo = true
 }: AppProps) {
   const [state, dispatch] = useReducer(reducer, initialData, initState);
   const [settingsState, settingsDispatch] = useReducer(settingsReducer, {
@@ -524,7 +527,7 @@ export function App({
     if (!PERF_DEBUG_ENABLED) return;
     const durationMs = Date.now() - renderStartMs;
     console.log(
-      `[ToDui][perf] render=${durationMs}ms terminal=${terminalWidth}x${terminalHeight} visibleRows=${visibleRows} visibleTasks=${visibleTasks.length}`
+      `[${APP_NAME}][perf] render=${durationMs}ms terminal=${terminalWidth}x${terminalHeight} visibleRows=${visibleRows} visibleTasks=${visibleTasks.length}`
     );
   });
 
@@ -1272,6 +1275,8 @@ export function App({
           filters={state.filters}
           sortMode={state.sortMode}
           fastPulseOn={fastPulseOn}
+          terminalWidth={terminalWidth}
+          showLogo={showLogo}
         />
       </box>
 
@@ -1616,6 +1621,8 @@ export function App({
             <text>q: quit</text>
             <text>esc: close</text>
             <text>App Version: {APP_VERSION}</text>
+            <text>{APP_NAME}</text>
+            <text>{APP_TAGLINE}</text>
             <text>
               Theme:{" "}
               {settingsState.themeId === "rotating"

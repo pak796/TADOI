@@ -7,16 +7,58 @@ import { normalizeTagIndex, normalizeTags } from "./domain/tagIndex";
 import { loadSettings } from "./settings/settings";
 import { CURRENT_SCHEMA_VERSION, safeLoadState } from "./state/persistence";
 import { applyArchiveAging } from "./state/store";
+import {
+  APP_NAME,
+  APP_TAGLINE,
+  CLI_NAME,
+  ENV_VARS,
+  getAsciiLogoLines
+} from "./brand/brand";
+
+type CliOptions = {
+  showLogo: boolean;
+  showHelp: boolean;
+};
+
+function parseCliOptions(argv: string[]): CliOptions {
+  const showHelp = argv.includes("--help") || argv.includes("-h");
+  const showLogo = !argv.includes("--no-logo");
+  return { showHelp, showLogo };
+}
+
+function printHelp(showLogo: boolean): void {
+  if (showLogo) {
+    console.log(getAsciiLogoLines("MICRO").join("\n"));
+  }
+  console.log(`${APP_NAME}`);
+  console.log(APP_TAGLINE);
+  console.log("");
+  console.log(`Usage: ${CLI_NAME} [options]`);
+  console.log("");
+  console.log("Options:");
+  console.log("  -h, --help     Show this help");
+  console.log("      --no-logo  Hide ASCII logo in app header");
+  console.log("");
+  console.log("Environment:");
+  console.log(`  ${ENV_VARS.DATA_PATH}=<path>   Override data file location`);
+  console.log(`  ${ENV_VARS.PERF_DEBUG}=1        Enable perf debug logs`);
+}
+
+const cliOptions = parseCliOptions(process.argv.slice(2));
+if (cliOptions.showHelp) {
+  printHelp(cliOptions.showLogo);
+  process.exit(0);
+}
 
 const renderer = await createCliRenderer({ exitOnCtrlC: true });
 const settingsResult = await loadSettings();
 applyTheme(settingsResult.settings.themeId);
 const loadResult = await safeLoadState();
 const loaded = loadResult.data;
-console.log(`[ToDui] data path: ${loadResult.resolvedPath}`);
-console.log(`[ToDui] settings path: ${settingsResult.resolvedPath}`);
+console.log(`[${APP_NAME}] data path: ${loadResult.resolvedPath}`);
+console.log(`[${APP_NAME}] settings path: ${settingsResult.resolvedPath}`);
 if (loadResult.bannerMessage) {
-  console.warn(`[ToDui] ${loadResult.bannerMessage}`);
+  console.warn(`[${APP_NAME}] ${loadResult.bannerMessage}`);
 }
 let tasksChanged = false;
 const normalizedTasks = loaded.tasks.map((task) => {
@@ -81,5 +123,6 @@ createRoot(renderer).render(
     startupBanner={loadResult.bannerMessage}
     initialThemeId={settingsResult.settings.themeId}
     settingsPath={settingsResult.resolvedPath}
+    showLogo={cliOptions.showLogo}
   />
 );

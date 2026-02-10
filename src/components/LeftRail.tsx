@@ -4,6 +4,7 @@ import { colorForTag, theme, styles } from "../app/theme";
 import { formatTagForDisplay } from "../domain/tagIndex";
 import { APP_VERSION } from "../app/version";
 import { getSortModeLabel } from "../domain/query";
+import { APP_TAGLINE, getAsciiLogoLines, getHeaderLogoVariant } from "../brand/brand";
 
 type LeftRailProps = {
   mode: Mode;
@@ -11,6 +12,8 @@ type LeftRailProps = {
   filters: Filters;
   sortMode: SortMode;
   fastPulseOn: boolean;
+  terminalWidth: number;
+  showLogo?: boolean;
 };
 
 function getModeLabel(mode: Mode): string {
@@ -57,7 +60,37 @@ function getFocusLabel(focus: FocusTarget): string {
   }
 }
 
-export function LeftRail({ mode, focus, filters, sortMode, fastPulseOn }: LeftRailProps) {
+function wrapWords(text: string, maxWidth: number): string[] {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [];
+  const lines: string[] = [];
+  let current = "";
+  for (const word of words) {
+    const next = current.length ? `${current} ${word}` : word;
+    if (next.length <= maxWidth) {
+      current = next;
+      continue;
+    }
+    if (current.length) {
+      lines.push(current);
+    }
+    current = word;
+  }
+  if (current.length) {
+    lines.push(current);
+  }
+  return lines;
+}
+
+export function LeftRail({
+  mode,
+  focus,
+  filters,
+  sortMode,
+  fastPulseOn,
+  terminalWidth,
+  showLogo = true
+}: LeftRailProps) {
   const version = APP_VERSION;
   const logoDivider = "--------------------------------";
   const now = new Date();
@@ -94,23 +127,32 @@ export function LeftRail({ mode, focus, filters, sortMode, fastPulseOn }: LeftRa
           : "transparent";
   const dueText = dueBg === "transparent" ? theme.text : theme.bg;
 
-  const logoLines = [
-    " _____  ___  ____  _   _ ___ ",
-    "|_   _|/ _ \\|  _ \\| | | |_ _|",
-    "  | | | | | | | | | | | || | ",
-    "  | | | |_| | |_| | |_| || | ",
-    "  |_|  \\___/|____/ \\___/|___|"
-  ];
+  const logoVariant = getHeaderLogoVariant(terminalWidth);
+  const logoLines = showLogo ? getAsciiLogoLines(logoVariant) : [];
+  const taglineLines = showLogo ? wrapWords(APP_TAGLINE, 32) : [];
 
   return (
     <box style={{ flexDirection: "column", gap: 0 }}>
       <box style={{ flexDirection: "column" }}>
-        {logoLines.map((line) => (
-          <text key={line} style={{ color: theme.text }}>
-            {line}
-          </text>
-        ))}
-        <text style={{ color: theme.outline }}>{logoDivider}</text>
+        {logoLines.length > 0
+          ? logoLines.map((line) => (
+              <text key={line} style={{ color: theme.text }}>
+                {line}
+              </text>
+            ))
+          : null}
+        {taglineLines.length > 0 ? (
+          <box style={{ flexDirection: "column", width: "100%", alignItems: "center" }}>
+            {taglineLines.map((line) => (
+              <text key={`tagline-${line}`} style={{ color: theme.muted }}>
+                {line}
+              </text>
+            ))}
+          </box>
+        ) : null}
+        {logoLines.length > 0 ? (
+          <text style={{ color: theme.outline }}>{logoDivider}</text>
+        ) : null}
         <text style={{ color: theme.muted }}>{version}</text>
         <text style={{ color: theme.muted, marginTop: 1 }}>DATE: {todayLabel}</text>
         <text style={{ color: theme.muted }}>TIME: {timeLabel}</text>

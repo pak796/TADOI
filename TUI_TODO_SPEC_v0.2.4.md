@@ -1,9 +1,9 @@
-# SPEC.md — ToDui (TypeScript + OpenTUI)
+# SPEC.md — TADOI (TypeScript + OpenTUI)
 
 ## 0) Summary
 
 Build a keyboard-first terminal TUI todo app with a **retro Star Trek / LCARS-inspired layout**, using **OpenTUI** + **@opentui/react** on **Bun**.
-Naming: replace LCARS with **ToDui** in the app UI and filenames.
+Naming: replace LCARS with **TADOI** in the app UI and filenames.
 
 v0.2.4 scope note:
 - This version focuses on foundation polish for real users: platform contract, reliability hardening, and performance envelope.
@@ -17,7 +17,7 @@ v0.2.4 scope note:
 Deliverables:
 - Fully functional MVP (no sync) with **tag autocomplete**.
 - Local persistence (JSON file) with safe writes.
-- Single-screen ToDui layout with list + details/edit + left “rail”.
+- Single-screen TADOI layout with list + details/edit + left “rail”.
 
 ---
 
@@ -37,11 +37,11 @@ Deliverables:
 11. **Menu focus highlight**: selected menus are visibly highlighted to indicate current section.
 12. **Selected task top bar**: selected task name shown in a centered top bar above the task list + details pane (not the left rail).
 13. **Due-today pulse**: tasks due today and not complete should flash.
-14. **Layout placement**: “TODUI” stays at the top of the left rail, and the top/bottom bars span only above/below the task list + details pane.
+14. **Layout placement**: “TADOI” stays at the top of the left rail, and the top/bottom bars span only above/below the task list + details pane.
 15. **Bottom bar**: add a bottom bar under the task list + details pane for future data/tabs/buttons.
 16. **Section labels**: “TASK LIST” and “DETAILS” labels float above their respective borders.
 17. **Pane outlines**: thin outlines for left rail, task list, and details pane.
-18. **ToDui ASCII logo**: compact ASCII logo in the left rail with tightened letter spacing.
+18. **TADOI ASCII logo**: compact ASCII logo in the left rail with tightened letter spacing.
 19. **Due-soon/due-later colors**: tasks due tomorrow–next 7 days are yellow; tasks due 8+ days out are blue.
 20. **Closed date display**: completed tasks show closed date in details and list.
 21. **Quick copy**: `c` duplicates a task into a new draft (completed → due today, future due date → same); user must save or Esc to cancel.
@@ -78,7 +78,7 @@ Deliverables:
 52. **Theme keybind in Help**: while Help is open, pressing `h` or `H` cycles to the next palette.
 53. **Theme persistence**: persist selected theme in `settings.json` with startup load and debounced saves.
 54. **Help palette preview**: Help pane shows current theme and a mini preview row for `accent`, `warn`, and `ok`.
-55. **Left rail logo separator**: render a horizontal ASCII separator under TODUI logo before version/menu metadata.
+55. **Left rail logo separator**: render a horizontal ASCII separator under TADOI logo before version/menu metadata.
 56. **Help pane app version**: show the current app version in the Help overlay.
 57. **Rotating theme mode**: support a `rotating` theme option that auto-cycles concrete palettes every 15 seconds.
 58. **v0.2.4 version surfaces**: app version indicators and package metadata are aligned to `v0.2.4` / `0.2.4`.
@@ -413,19 +413,19 @@ still maps to UI label `THIS WEEK` with rolling 7-day behavior).
 
 ### Resolution order
 1. Environment override (always wins):
-- `TODUI_DATA_PATH=/absolute/or/relative/path.json`
+- `TADOI_DATA_PATH=/absolute/or/relative/path.json`
 
-2. Default location (when `TODUI_DATA_PATH` is unset or empty):
+2. Default location (when `TADOI_DATA_PATH` is unset or empty):
 - Linux/XDG:
-- `$XDG_DATA_HOME/todui/todui_data.json`
+- `$XDG_DATA_HOME/tadoi/tadoi_data.json`
 - If `XDG_DATA_HOME` is unset/empty:
-- `$HOME/.local/share/todui/todui_data.json`
+- `$HOME/.local/share/tadoi/tadoi_data.json`
 - macOS:
-- `$HOME/Library/Application Support/todui/todui_data.json`
+- `$HOME/Library/Application Support/tadoi/tadoi_data.json`
 - Windows:
-- `%APPDATA%\\todui\\todui_data.json`
+- `%APPDATA%\\tadoi\\tadoi_data.json`
 - Fallback when `%APPDATA%` is unavailable:
-- `$HOME\\AppData\\Roaming\\todui\\todui_data.json`
+- `$HOME\\AppData\\Roaming\\tadoi\\tadoi_data.json`
 
 ### Requirements
 - Parent directories must be created if missing.
@@ -445,7 +445,7 @@ debug-visible location (startup log and/or status/help line).
 
 Then:
 - Back up the bad file in the same directory as:
-- `todui_data.json.corrupt.YYYYMMDD-HHMMSS`
+- `tadoi_data.json.corrupt.YYYYMMDD-HHMMSS`
 - If rename fails, attempt copy and keep original.
 - Do not crash.
 - Start with empty state at current `schemaVersion`.
@@ -556,7 +556,7 @@ Merge policy:
 - rename failure uses copy fallback path
 
 ### Data path tests
-- `TODUI_DATA_PATH` override precedence.
+- `TADOI_DATA_PATH` override precedence.
 - Linux/macOS/Windows default path resolution.
 - Parent-directory creation before writes.
 
@@ -631,11 +631,11 @@ Runtime adapter:
 ## D3) Settings Persistence
 
 Settings model:
-- `ToduiSettings = { themeId }`
+- `TadoiSettings = { themeId }`
 
 File location:
-- Primary: `~/.config/todui/settings.json`
-- Fallback: `~/.todui/settings.json`
+- Primary: `~/.config/tadoi/settings.json`
+- Fallback: `~/.tadoi/settings.json`
 
 Behavior:
 - Startup: load settings, merge with defaults, apply theme before first render.
@@ -652,7 +652,7 @@ Help interactions:
 
 ## D5) Left Rail Visual Separator
 
-The left rail renders an ASCII horizontal separator directly below the TODUI logo to clearly separate branding from version/date/time/menu metadata.
+The left rail renders an ASCII horizontal separator directly below the TADOI logo to clearly separate branding from version/date/time/menu metadata.
 
 # Appendix E — v0.2.3 Routing Hardening & Version Surfaces
 
@@ -691,7 +691,7 @@ No new feature sets (sync/recurrence/etc.) are introduced in v0.2.4.
 ## F1) Platform Contract (Supported Environments)
 
 ### Supported terminals (documented)
-ToDui must be verified on these baseline environments:
+TADOI must be verified on these baseline environments:
 - macOS: Terminal.app and iTerm2
 - Windows: Windows Terminal
 - Linux: GNOME Terminal (baseline)
@@ -738,7 +738,7 @@ Define a baseline target for v0.2.4:
 - Add an optional debug mode (env flag) to log:
   - render tick duration (ms)
   - visible task count and window size
-- Env flag: `TODUI_PERF_DEBUG=1`
+- Env flag: `TADOI_PERF_DEBUG=1`
 - Avoid heavy profiling systems; keep this as console/log output only.
 
 ### Rendering constraints
@@ -761,7 +761,7 @@ Execution snapshot (2026-02-09 CST):
     - `Terminal too small (min 80x24). Current: 79x23.`
   - Verified safe recovery to normal UI after restoring supported size.
 - Manual quality gate `T7.2` executed and passed:
-  - Ran with isolated persistence path (`TODUI_DATA_PATH=/tmp/todui-qa-interrupt.json`).
+  - Ran with isolated persistence path (`TADOI_DATA_PATH=/tmp/tadoi-qa-interrupt.json`).
   - Created task data, interrupted runtime with `Ctrl+C`, restarted, and confirmed persisted JSON remained parseable and task data loaded.
 - Documentation sync:
   - README keybindings now reflect current router behavior, including:

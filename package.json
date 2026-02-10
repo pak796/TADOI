@@ -1,12 +1,17 @@
 {
-  "name": "tui_todo",
-  "version": "0.2.4",
+  "name": "tadoi",
+  "description": "TADOI - Terminal Accessible Digital Organization Interface",
+  "version": "0.2.5",
   "private": true,
   "type": "module",
+  "bin": {
+    "tadoi": "bin/tadoi.js"
+  },
   "scripts": {
     "test": "bun test",
     "test:coverage": "bun test --coverage",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
+    "brand:check": "bun scripts/check-legacy-branding.ts",
     "dev": "bun src/index.tsx",
     "start": "bun src/index.tsx"
   },

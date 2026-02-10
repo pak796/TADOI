@@ -14,5 +14,6 @@ coverage/
 .cache/
 .turbo/
 
-todui_data.json
+tadoi_data.json
+tadoi_data_*.json
 tui_todo_data.json

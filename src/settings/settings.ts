@@ -2,8 +2,13 @@ import os from "os";
 import { promises as fs } from "fs";
 import path from "path";
 import { ThemeId, isThemeId } from "../theme/themes";
+import {
+  SETTINGS_DIR_NAME,
+  SETTINGS_FALLBACK_DIR_NAME,
+  SETTINGS_FILE_NAME
+} from "../brand/brand";
 
-export type ToduiSettings = {
+export type TadoiSettings = {
   themeId: ThemeId;
 };
 
@@ -25,11 +30,11 @@ export type SaveSettingsOptions = ResolveSettingsPathOptions & {
 };
 
 export type LoadSettingsResult = {
-  settings: ToduiSettings;
+  settings: TadoiSettings;
   resolvedPath: string;
 };
 
-const DEFAULT_SETTINGS: ToduiSettings = {
+const DEFAULT_SETTINGS: TadoiSettings = {
   themeId: "default"
 };
 
@@ -52,12 +57,12 @@ export function resolveSettingsPaths(
   const pathApi = pathApiForPlatform(platform);
 
   return {
-    primary: pathApi.join(homeDir, ".config", "todui", "settings.json"),
-    fallback: pathApi.join(homeDir, ".todui", "settings.json")
+    primary: pathApi.join(homeDir, ".config", SETTINGS_DIR_NAME, SETTINGS_FILE_NAME),
+    fallback: pathApi.join(homeDir, SETTINGS_FALLBACK_DIR_NAME, SETTINGS_FILE_NAME)
   };
 }
 
-function normalizeSettings(input: unknown): ToduiSettings {
+function normalizeSettings(input: unknown): TadoiSettings {
   if (typeof input !== "object" || input === null) {
     return DEFAULT_SETTINGS;
   }
@@ -71,7 +76,7 @@ function normalizeSettings(input: unknown): ToduiSettings {
 async function readSettingsFile(
   filePath: string,
   fsOps: SettingsFsOps
-): Promise<ToduiSettings | null> {
+): Promise<TadoiSettings | null> {
   try {
     const raw = await fsOps.readFile(filePath, "utf8");
     const parsed = JSON.parse(raw) as unknown;
@@ -82,7 +87,7 @@ async function readSettingsFile(
 }
 
 async function writeSettings(
-  settings: ToduiSettings,
+  settings: TadoiSettings,
   filePath: string,
   fsOps: SettingsFsOps
 ): Promise<void> {
@@ -113,7 +118,7 @@ export async function loadSettings(
 }
 
 export function saveSettingsDebounced(
-  settings: ToduiSettings,
+  settings: TadoiSettings,
   delayMs = DEFAULT_DEBOUNCE_MS,
   options: SaveSettingsOptions = {}
 ): void {
@@ -147,7 +152,7 @@ export function saveSettingsDebounced(
   }, delayMs);
 }
 
-export function getDefaultSettings(): ToduiSettings {
+export function getDefaultSettings(): TadoiSettings {
   return DEFAULT_SETTINGS;
 }
 

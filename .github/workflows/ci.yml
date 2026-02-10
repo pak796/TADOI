@@ -45,5 +45,8 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Branding guard
+        run: bun run brand:check
+
       - name: Typecheck
         run: bun run typecheck

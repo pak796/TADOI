@@ -15,7 +15,7 @@ function sleep(ms: number): Promise<void> {
 }
 
 async function makeTempDir(): Promise<string> {
-  return fs.mkdtemp(path.join(os.tmpdir(), "todui-persist-test-"));
+  return fs.mkdtemp(path.join(os.tmpdir(), "tadoi-persist-test-"));
 }
 
 async function loadFixture(name: string): Promise<string> {
@@ -26,10 +26,10 @@ async function loadFixture(name: string): Promise<string> {
 }
 
 describe("resolveDataPath", () => {
-  it("uses TODUI_DATA_PATH override when set", () => {
+  it("uses TADOI_DATA_PATH override when set", () => {
     const resolved = resolveDataPath({
       platform: "linux",
-      env: { TODUI_DATA_PATH: "data/custom.json" },
+      env: { TADOI_DATA_PATH: "data/custom.json" },
       cwd: "/repo",
       homeDir: "/home/patrick"
     });
@@ -42,7 +42,7 @@ describe("resolveDataPath", () => {
       env: { XDG_DATA_HOME: "/xdg/data" },
       homeDir: "/home/patrick"
     });
-    expect(resolved).toBe("/xdg/data/todui/todui_data.json");
+    expect(resolved).toBe("/xdg/data/tadoi/tadoi_data.json");
   });
 
   it("uses linux fallback path when XDG_DATA_HOME is unset", () => {
@@ -51,7 +51,7 @@ describe("resolveDataPath", () => {
       env: {},
       homeDir: "/home/patrick"
     });
-    expect(resolved).toBe("/home/patrick/.local/share/todui/todui_data.json");
+    expect(resolved).toBe("/home/patrick/.local/share/tadoi/tadoi_data.json");
   });
 
   it("uses macOS app support path", () => {
@@ -60,7 +60,7 @@ describe("resolveDataPath", () => {
       env: {},
       homeDir: "/Users/patrick"
     });
-    expect(resolved).toBe("/Users/patrick/Library/Application Support/todui/todui_data.json");
+    expect(resolved).toBe("/Users/patrick/Library/Application Support/tadoi/tadoi_data.json");
   });
 
   it("uses windows APPDATA or fallback", () => {
@@ -70,7 +70,7 @@ describe("resolveDataPath", () => {
       homeDir: "C:\\\\Users\\\\Patrick",
       cwd: "C:\\\\repo"
     });
-    expect(withAppData).toBe("C:\\Users\\Patrick\\AppData\\Roaming\\todui\\todui_data.json");
+    expect(withAppData).toBe("C:\\Users\\Patrick\\AppData\\Roaming\\tadoi\\tadoi_data.json");
 
     const fallback = resolveDataPath({
       platform: "win32",
@@ -78,7 +78,7 @@ describe("resolveDataPath", () => {
       homeDir: "C:\\\\Users\\\\Patrick",
       cwd: "C:\\\\repo"
     });
-    expect(fallback).toBe("C:\\Users\\Patrick\\AppData\\Roaming\\todui\\todui_data.json");
+    expect(fallback).toBe("C:\\Users\\Patrick\\AppData\\Roaming\\tadoi\\tadoi_data.json");
   });
 });
 
@@ -94,7 +94,7 @@ describe("safeLoadState", () => {
 
   it("backs up malformed JSON and returns recovery state with banner", async () => {
     const dir = await makeTempDir();
-    const filePath = path.join(dir, "todui_data.json");
+    const filePath = path.join(dir, "tadoi_data.json");
     await fs.writeFile(filePath, "{broken json", "utf8");
 
     const result = await safeLoadState({ filePath, now: new Date("2026-02-09T10:00:00") });
@@ -102,12 +102,12 @@ describe("safeLoadState", () => {
     expect(result.bannerMessage).toContain("Data file was corrupt and was backed up to");
 
     const files = await fs.readdir(dir);
-    expect(files.some((name) => name.startsWith("todui_data.json.corrupt."))).toBe(true);
+    expect(files.some((name) => name.startsWith("tadoi_data.json.corrupt."))).toBe(true);
   });
 
   it("routes invalid shape to corruption recovery path", async () => {
     const dir = await makeTempDir();
-    const filePath = path.join(dir, "todui_data.json");
+    const filePath = path.join(dir, "tadoi_data.json");
     await fs.writeFile(filePath, await loadFixture("persisted.invalid.json"), "utf8");
 
     const result = await safeLoadState({ filePath, now: new Date("2026-02-09T11:00:00") });
@@ -118,7 +118,7 @@ describe("safeLoadState", () => {
 
   it("routes migration failures to corruption recovery path", async () => {
     const dir = await makeTempDir();
-    const filePath = path.join(dir, "todui_data.json");
+    const filePath = path.join(dir, "tadoi_data.json");
     await fs.writeFile(
       filePath,
       JSON.stringify({ schemaVersion: 99, tasks: [], tagIndex: {}, savedViews: [] }),
@@ -132,7 +132,7 @@ describe("safeLoadState", () => {
 
   it("falls back to copy when rename backup fails", async () => {
     const dir = await makeTempDir();
-    const filePath = path.join(dir, "todui_data.json");
+    const filePath = path.join(dir, "tadoi_data.json");
     await fs.writeFile(filePath, "{broken json", "utf8");
 
     const fsOps: PersistenceFsOps = {
@@ -160,7 +160,7 @@ describe("safeLoadState", () => {
 
   it("creates at most one backup per session for the same corrupt path", async () => {
     const dir = await makeTempDir();
-    const filePath = path.join(dir, "todui_data.json");
+    const filePath = path.join(dir, "tadoi_data.json");
     await fs.writeFile(filePath, "{broken json", "utf8");
 
     const fsOps: PersistenceFsOps = {
@@ -183,15 +183,15 @@ describe("safeLoadState", () => {
 
     const files = await fs.readdir(dir);
     const backups = files.filter((name) =>
-      name.startsWith("todui_data.json.corrupt.")
+      name.startsWith("tadoi_data.json.corrupt.")
     );
     expect(backups).toHaveLength(1);
   });
 
   it("allows separate backups for different corrupt paths in the same session", async () => {
     const dir = await makeTempDir();
-    const firstPath = path.join(dir, "todui_data_a.json");
-    const secondPath = path.join(dir, "todui_data_b.json");
+    const firstPath = path.join(dir, "tadoi_data_a.json");
+    const secondPath = path.join(dir, "tadoi_data_b.json");
     await fs.writeFile(firstPath, "{broken", "utf8");
     await fs.writeFile(secondPath, "{broken", "utf8");
 
@@ -213,7 +213,7 @@ describe("safeLoadState", () => {
 describe("saveStateDebounced", () => {
   it("coalesces rapid writes and persists latest payload", async () => {
     const dir = await makeTempDir();
-    const filePath = path.join(dir, "todui_data.json");
+    const filePath = path.join(dir, "tadoi_data.json");
     const first: LoadedData = {
       schemaVersion: 3,
       tasks: [{ id: "a", title: "a", status: "open", createdAt: 1, updatedAt: 1, tags: [] }],
@@ -238,7 +238,7 @@ describe("saveStateDebounced", () => {
 
   it("creates parent directories for nested save paths", async () => {
     const dir = await makeTempDir();
-    const nestedFilePath = path.join(dir, "nested", "deep", "todui_data.json");
+    const nestedFilePath = path.join(dir, "nested", "deep", "tadoi_data.json");
     const mkdirCalls: string[] = [];
     const fsOps: PersistenceFsOps = {
       ...fs,
@@ -273,7 +273,7 @@ describe("saveStateDebounced", () => {
 
   it("emits save result callback on success", async () => {
     const dir = await makeTempDir();
-    const filePath = path.join(dir, "todui_data.json");
+    const filePath = path.join(dir, "tadoi_data.json");
     const events: Array<{ ok: boolean; filePath: string; savedAt?: number }> = [];
 
     saveStateDebounced(
@@ -304,7 +304,7 @@ describe("saveStateDebounced", () => {
 
   it("emits save result callback on failure", async () => {
     const dir = await makeTempDir();
-    const filePath = path.join(dir, "todui_data.json");
+    const filePath = path.join(dir, "tadoi_data.json");
     const errors: Error[] = [];
     const fsOps: PersistenceFsOps = {
       ...fs,

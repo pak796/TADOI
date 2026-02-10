@@ -4,6 +4,7 @@ import path from "path";
 import { SavedView, TagIndexEntry, Task } from "../domain/models";
 import { migratePersistedStateToCurrent } from "./migrations";
 import { validatePersistedState } from "./validation";
+import { BRAND_SLUG, DATA_FILE_NAME, ENV_VARS } from "../brand/brand";
 
 export type LoadedData = {
   schemaVersion: number;
@@ -74,7 +75,7 @@ export function resolveDataPath(options: ResolveDataPathOptions = {}): string {
   const cwd = options.cwd ?? process.cwd();
   const homeDir = options.homeDir ?? env.HOME ?? env.USERPROFILE ?? os.homedir() ?? cwd;
   const pathApi = pathApiForPlatform(platform);
-  const override = env.TODUI_DATA_PATH?.trim();
+  const override = env[ENV_VARS.DATA_PATH]?.trim();
 
   if (override) {
     return pathApi.isAbsolute(override)
@@ -84,21 +85,15 @@ export function resolveDataPath(options: ResolveDataPathOptions = {}): string {
 
   if (platform === "win32") {
     const appData = env.APPDATA?.trim() || pathApi.join(homeDir, "AppData", "Roaming");
-    return pathApi.join(appData, "todui", "todui_data.json");
+    return pathApi.join(appData, BRAND_SLUG, DATA_FILE_NAME);
   }
 
   if (platform === "darwin") {
-    return pathApi.join(
-      homeDir,
-      "Library",
-      "Application Support",
-      "todui",
-      "todui_data.json"
-    );
+    return pathApi.join(homeDir, "Library", "Application Support", BRAND_SLUG, DATA_FILE_NAME);
   }
 
   const xdgDataHome = env.XDG_DATA_HOME?.trim() || pathApi.join(homeDir, ".local", "share");
-  return pathApi.join(xdgDataHome, "todui", "todui_data.json");
+  return pathApi.join(xdgDataHome, BRAND_SLUG, DATA_FILE_NAME);
 }
 
 const DATA_FILE = resolveDataPath();

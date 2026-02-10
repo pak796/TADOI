@@ -1,4 +1,6 @@
-# ToDui
+# TADOI
+
+Terminal Accessible Digital Organization Interface
 
 Keyboard-first TUI todo list with due dates, completion, and tag autocomplete (OpenTUI + React on Bun).
 
@@ -14,6 +16,12 @@ bun install
 bun run dev
 ```
 
+CLI help:
+
+```bash
+bun run start -- --help
+```
+
 ## Supported Environments
 
 Verified baseline terminals:
@@ -24,22 +32,22 @@ Verified baseline terminals:
 
 Minimum supported terminal size:
 - `80x24`
-- Below this size, ToDui shows a centered `Terminal too small (min 80x24)` screen and pauses normal interactions until resized.
+- Below this size, TADOI shows a centered `Terminal too small (min 80x24)` screen and pauses normal interactions until resized.
 
 ## Data File
 
-Tasks persist to `todui_data.json` using the following resolution order:
+Tasks persist to `tadoi_data.json` using the following resolution order:
 
-- `TODUI_DATA_PATH` override (absolute or relative path)
-- Linux: `$XDG_DATA_HOME/todui/todui_data.json`
-- Linux fallback: `$HOME/.local/share/todui/todui_data.json`
-- macOS: `$HOME/Library/Application Support/todui/todui_data.json`
-- Windows: `%APPDATA%\\todui\\todui_data.json`
-- Windows fallback: `$HOME\\AppData\\Roaming\\todui\\todui_data.json`
+- `TADOI_DATA_PATH` override (absolute or relative path)
+- Linux: `$XDG_DATA_HOME/tadoi/tadoi_data.json`
+- Linux fallback: `$HOME/.local/share/tadoi/tadoi_data.json`
+- macOS: `$HOME/Library/Application Support/tadoi/tadoi_data.json`
+- Windows: `%APPDATA%\\tadoi\\tadoi_data.json`
+- Windows fallback: `$HOME\\AppData\\Roaming\\tadoi\\tadoi_data.json`
 
 The resolved path is shown in startup logs and in the in-app Help panel.
 
-If a save fails (permissions/disk/IO), ToDui keeps running and shows a persistent banner with the error and resolved data path. Saves retry on the next domain mutation (not on UI-only ticks).
+If a save fails (permissions/disk/IO), TADOI keeps running and shows a persistent banner with the error and resolved data path. Saves retry on the next domain mutation (not on UI-only ticks).
 
 ## Keybindings
 
@@ -87,7 +95,7 @@ Type `#` in the Tags field to get suggestions ranked by usage. Selecting a sugge
 
 ## Quality Gates / CI
 
-ToDui uses GitHub Actions merge gates on pull requests and pushes to `main`.
+TADOI uses GitHub Actions merge gates on pull requests and pushes to `main`.
 
 Required checks:
 - `test`: `bun run test` and `bun run test:coverage`
@@ -106,5 +114,5 @@ bun run typecheck
 Enable lightweight render metrics logging:
 
 ```bash
-TODUI_PERF_DEBUG=1 bun run dev
+TADOI_PERF_DEBUG=1 bun run dev
 ```

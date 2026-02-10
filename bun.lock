@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "tui_todo",
+      "name": "tadoi",
       "dependencies": {
         "@opentui/core": "latest",
         "@opentui/react": "latest",

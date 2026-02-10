@@ -15,7 +15,7 @@ function sleep(ms: number): Promise<void> {
 }
 
 async function makeTempDir(): Promise<string> {
-  return fs.mkdtemp(path.join(os.tmpdir(), "todui-settings-test-"));
+  return fs.mkdtemp(path.join(os.tmpdir(), "tadoi-settings-test-"));
 }
 
 beforeEach(() => {
@@ -32,7 +32,7 @@ describe("loadSettings", () => {
     const result = await loadSettings({ homeDir, platform: "linux" });
     expect(result.settings.themeId).toBe("default");
     expect(result.resolvedPath).toBe(
-      path.posix.join(homeDir, ".config", "todui", "settings.json")
+      path.posix.join(homeDir, ".config", "tadoi", "settings.json")
     );
   });
 
@@ -105,7 +105,7 @@ describe("saveSettingsDebounced", () => {
     expect(JSON.parse(raw)).toEqual({ themeId: "neonHacker" });
   });
 
-  it("falls back to ~/.todui/settings.json when primary write fails", async () => {
+  it("falls back to ~/.tadoi/settings.json when primary write fails", async () => {
     const homeDir = await makeTempDir();
     const { primary, fallback } = resolveSettingsPaths({ homeDir, platform: "linux" });
 

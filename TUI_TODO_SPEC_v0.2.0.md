@@ -1,9 +1,9 @@
-# SPEC.md — ToDui (TypeScript + OpenTUI)
+# SPEC.md — TADOI (TypeScript + OpenTUI)
 
 ## 0) Summary
 
 Build a keyboard-first terminal TUI todo app with a **retro Star Trek / LCARS-inspired layout**, using **OpenTUI** + **@opentui/react** on **Bun**.
-Naming: replace LCARS with **ToDui** in the app UI and filenames.
+Naming: replace LCARS with **TADOI** in the app UI and filenames.
 
 - Runtime: Bun (OpenTUI quick start uses Bun; `bun create tui`)  [oai_citation:0‡GitHub](https://github.com/anomalyco/opentui?utm_source=chatgpt.com)
 - UI binding: @opentui/react provides React reconciler + patterns like `createRoot` and `useKeyboard`.  [oai_citation:1‡npm](https://www.npmjs.com/package/%40opentui/react?utm_source=chatgpt.com)
@@ -12,7 +12,7 @@ Naming: replace LCARS with **ToDui** in the app UI and filenames.
 Deliverables:
 - Fully functional MVP (no sync) with **tag autocomplete**.
 - Local persistence (JSON file) with safe writes.
-- Single-screen ToDui layout with list + details/edit + left “rail”.
+- Single-screen TADOI layout with list + details/edit + left “rail”.
 
 ---
 
@@ -32,11 +32,11 @@ Deliverables:
 11. **Menu focus highlight**: selected menus are visibly highlighted to indicate current section.
 12. **Selected task top bar**: selected task name shown in a centered top bar above the task list + details pane (not the left rail).
 13. **Due-today pulse**: tasks due today and not complete should flash.
-14. **Layout placement**: “TODUI” stays at the top of the left rail, and the top/bottom bars span only above/below the task list + details pane.
+14. **Layout placement**: “TADOI” stays at the top of the left rail, and the top/bottom bars span only above/below the task list + details pane.
 15. **Bottom bar**: add a bottom bar under the task list + details pane for future data/tabs/buttons.
 16. **Section labels**: “TASK LIST” and “DETAILS” labels float above their respective borders.
 17. **Pane outlines**: thin outlines for left rail, task list, and details pane.
-18. **ToDui ASCII logo**: compact ASCII logo in the left rail.
+18. **TADOI ASCII logo**: compact ASCII logo in the left rail.
 19. **Due-soon/due-later colors**: tasks due tomorrow–next 7 days are yellow; tasks due 8+ days out are blue.
 20. **Closed date display**: completed tasks show closed date in details and list.
 21. **Quick copy**: `c` duplicates a task into a new draft (completed → due today, future due date → same); user must save or Esc to cancel.

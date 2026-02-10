@@ -1,4 +1,4 @@
-# TASKS.md — ToDui (Codex Task List)
+# TASKS.md — TADOI (Codex Task List)
 
 ## Conventions
 - Each task includes **Definition of Done (DoD)**.
@@ -27,11 +27,11 @@ v0.2.2 scope note:
 
 Refs: OpenTUI quick start (`bun create tui`).  [oai_citation:8‡GitHub](https://github.com/anomalyco/opentui?utm_source=chatgpt.com)
 
-### T0.2 Rename LCARS -> ToDui in app and files
+### T0.2 Rename LCARS -> TADOI in app and files
 **Status**: Complete
 **Implement**
-- Update UI titles/labels to "ToDui"
-- Rename data file to `todui_data.json` and update any references
+- Update UI titles/labels to "TADOI"
+- Rename data file to `tadoi_data.json` and update any references
 - Update README and any filenames/mentions that include "LCARS"
 
 **DoD**
@@ -49,7 +49,7 @@ Refs: OpenTUI quick start (`bun create tui`).  [oai_citation:8‡GitHub](https:/
 **DoD**
 - Theme imported and used by at least one component.
 
-### T1.2 ToDui shell layout
+### T1.2 TADOI shell layout
 **Status**: Complete
 **Implement**
 - Layout in `src/app/App.tsx`: left rail, center main, right pane using `<box>` flex.
@@ -535,11 +535,11 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 **Implement**
 - Display selected task name in a centered top bar above the task list and details pane only
 - Ensure the left rail is excluded from the top bar
-- Keep TODUI at the top of the left rail
+- Keep TADOI at the top of the left rail
 
 **DoD**
 - Selected task name is visible at the top center over list + details
-- Left rail remains separate with TODUI at its top
+- Left rail remains separate with TADOI at its top
 
 ### T6.6 Bottom bar scaffold
 **Status**: Complete
@@ -596,10 +596,10 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 **DoD**
 - TASK LIST and DETAILS labels appear above their respective bordered panels
 
-### T6.8 ToDui ASCII logo in left rail
+### T6.8 TADOI ASCII logo in left rail
 **Status**: Complete
 **Implement**
-- Replace plain TODUI text with the provided ASCII logo
+- Replace plain TADOI text with the provided ASCII logo
 - Ensure the left rail is wide enough to display it
 
 **DoD**
@@ -779,15 +779,15 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 **Implement**
 - Add `resolveDataPath()` in `src/state/persistence.ts`.
 - Resolution order:
-- `TODUI_DATA_PATH` override (always wins).
-- Linux: `$XDG_DATA_HOME/todui/todui_data.json`, fallback `$HOME/.local/share/todui/todui_data.json`.
-- macOS: `$HOME/Library/Application Support/todui/todui_data.json`.
-- Windows: `%APPDATA%\\todui\\todui_data.json`, fallback `$HOME\\AppData\\Roaming\\todui\\todui_data.json`.
+- `TADOI_DATA_PATH` override (always wins).
+- Linux: `$XDG_DATA_HOME/tadoi/tadoi_data.json`, fallback `$HOME/.local/share/tadoi/tadoi_data.json`.
+- macOS: `$HOME/Library/Application Support/tadoi/tadoi_data.json`.
+- Windows: `%APPDATA%\\tadoi\\tadoi_data.json`, fallback `$HOME\\AppData\\Roaming\\tadoi\\tadoi_data.json`.
 - Ensure parent directories are created before writes.
 - Surface resolved path in a debug-visible location (log and/or help/status line).
 
 **DoD**
-- With `TODUI_DATA_PATH` set, ToDui always uses that path.
+- With `TADOI_DATA_PATH` set, TADOI always uses that path.
 - Without override, platform defaults resolve correctly (Linux XDG, macOS App Support, Windows AppData).
 - Save path directory is auto-created when missing.
 
@@ -796,7 +796,7 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 **Implement**
 - Add safe-load orchestration in `src/state/persistence.ts`.
 - On parse/validation/migration failure:
-- move file to `todui_data.json.corrupt.YYYYMMDD-HHMMSS` in same directory.
+- move file to `tadoi_data.json.corrupt.YYYYMMDD-HHMMSS` in same directory.
 - if rename fails, attempt copy and keep original.
 - start empty state at current `schemaVersion`.
 - expose persistent banner text in UI state/message channel:
@@ -849,7 +849,7 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 - Add/adjust tests around save scheduling behavior in `src/state/persistence.ts` tests.
 
 **DoD**
-- Running app idle does not rewrite `todui_data.json` repeatedly.
+- Running app idle does not rewrite `tadoi_data.json` repeatedly.
 - Saves occur only after task/tag/filter domain mutations that affect persisted data.
 
 ---
@@ -919,7 +919,7 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 - Add explicit test asserting parent directory creation for nested save path via mocked `fsOps.mkdir`.
 
 **DoD**
-- `TODUI_DATA_PATH` override wins.
+- `TADOI_DATA_PATH` override wins.
 - Linux/macOS/Windows defaults are tested.
 - Save path directory creation is verified.
 
@@ -960,10 +960,10 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 ## T10.9 ASCII logo spacing polish
 **Status**: Complete
 **Implement**
-- Tighten spacing between logo characters in the left-rail ASCII `TODUI` mark (notably between `T` and `O`) while preserving logo alignment.
+- Tighten spacing between logo characters in the left-rail ASCII `TADOI` mark (notably between `T` and `O`) while preserving logo alignment.
 
 **DoD**
-- Logo reads clearly as `TODUI` with tighter spacing and no visual clipping/wrapping.
+- Logo reads clearly as `TADOI` with tighter spacing and no visual clipping/wrapping.
 
 ---
 
@@ -1001,10 +1001,10 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 **Status**: Complete
 **Implement**
 - Add `src/settings/settings.ts` with:
-- `ToduiSettings = { themeId }`
+- `TadoiSettings = { themeId }`
 - `resolveSettingsPaths()` using:
-- primary: `~/.config/todui/settings.json`
-- fallback: `~/.todui/settings.json`
+- primary: `~/.config/tadoi/settings.json`
+- fallback: `~/.tadoi/settings.json`
 - `loadSettings()` with default merge/validation
 - `saveSettingsDebounced()` with 150ms debounce and fallback-write behavior
 - Add `src/state/settingsStore.ts` reducer with `setTheme` + `cycleTheme`.
@@ -1038,7 +1038,7 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 ## T11.6 Left rail logo separator
 **Status**: Complete
 **Implement**
-- Add a horizontal ASCII separator directly beneath TODUI logo artwork in left rail before version/date/time and menu metadata.
+- Add a horizontal ASCII separator directly beneath TADOI logo artwork in left rail before version/date/time and menu metadata.
 
 **DoD**
 - Logo area is visually separated from metadata and menu content.

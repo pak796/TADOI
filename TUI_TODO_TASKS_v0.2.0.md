@@ -1,4 +1,4 @@
-# TASKS.md — ToDui (Codex Task List)
+# TASKS.md — TADOI (Codex Task List)
 
 ## Conventions
 - Each task includes **Definition of Done (DoD)**.
@@ -23,11 +23,11 @@
 
 Refs: OpenTUI quick start (`bun create tui`).  [oai_citation:8‡GitHub](https://github.com/anomalyco/opentui?utm_source=chatgpt.com)
 
-### T0.2 Rename LCARS -> ToDui in app and files
+### T0.2 Rename LCARS -> TADOI in app and files
 **Status**: Complete
 **Implement**
-- Update UI titles/labels to "ToDui"
-- Rename data file to `todui_data.json` and update any references
+- Update UI titles/labels to "TADOI"
+- Rename data file to `tadoi_data.json` and update any references
 - Update README and any filenames/mentions that include "LCARS"
 
 **DoD**
@@ -45,7 +45,7 @@ Refs: OpenTUI quick start (`bun create tui`).  [oai_citation:8‡GitHub](https:/
 **DoD**
 - Theme imported and used by at least one component.
 
-### T1.2 ToDui shell layout
+### T1.2 TADOI shell layout
 **Status**: Complete
 **Implement**
 - Layout in `src/app/App.tsx`: left rail, center main, right pane using `<box>` flex.
@@ -531,11 +531,11 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 **Implement**
 - Display selected task name in a centered top bar above the task list and details pane only
 - Ensure the left rail is excluded from the top bar
-- Keep TODUI at the top of the left rail
+- Keep TADOI at the top of the left rail
 
 **DoD**
 - Selected task name is visible at the top center over list + details
-- Left rail remains separate with TODUI at its top
+- Left rail remains separate with TADOI at its top
 
 ### T6.6 Bottom bar scaffold
 **Status**: Complete
@@ -592,10 +592,10 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 **DoD**
 - TASK LIST and DETAILS labels appear above their respective bordered panels
 
-### T6.8 ToDui ASCII logo in left rail
+### T6.8 TADOI ASCII logo in left rail
 **Status**: Complete
 **Implement**
-- Replace plain TODUI text with the provided ASCII logo
+- Replace plain TADOI text with the provided ASCII logo
 - Ensure the left rail is wide enough to display it
 
 **DoD**
