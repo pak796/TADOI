@@ -260,6 +260,12 @@ export function App({
   const terminalIsSupported = isTerminalSizeSupported(terminalWidth, terminalHeight);
   const terminalSizeWarning = getTerminalSizeWarning(terminalWidth, terminalHeight);
 
+  // Force a frame request on mode/size transitions so borders are repainted
+  // after layout shape changes (list/details <-> dashboard).
+  useEffect(() => {
+    renderer.requestRender();
+  }, [renderer, uiState.mode, terminalWidth, terminalHeight]);
+
   const now = Date.now();
   const dayKey = startOfLocalDayMs(now);
   const visibleTasks = getVisibleTasks(state, now);
@@ -1367,7 +1373,10 @@ export function App({
         </box>
 
         {isDashboardMode ? (
-          <box style={{ flexDirection: "column", flexGrow: 1 }}>
+          <box
+            key={`dashboard-pane-${terminalWidth}x${terminalHeight}`}
+            style={{ flexDirection: "column", flexGrow: 1 }}
+          >
             <box
               style={{
                 backgroundColor: theme.panel,
@@ -1397,7 +1406,10 @@ export function App({
             </box>
           </box>
         ) : (
-          <box style={{ flexDirection: "row", flexGrow: 1 }}>
+          <box
+            key={`list-pane-${terminalWidth}x${terminalHeight}`}
+            style={{ flexDirection: "row", flexGrow: 1 }}
+          >
             <box style={{ flexDirection: "column", flexGrow: 1 }}>
               <box
                 style={{

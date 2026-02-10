@@ -46,7 +46,7 @@
 - `Esc`: unwind overlays/help as usual
 
 #### Optional (recommended) drill-down
-- `←/→`: move selection across bars/points (within the focused widget)
+- `←/→`: move selection across bars (within the focused widget)
 - `Enter`: “drill to list” (applies a temporary due constraint and returns to LIST)
 
 > Note: Saved Views should apply equally to List and Dashboard since they snapshot filters.
@@ -130,8 +130,8 @@ For day `d`, a task contributes if:
   - delta vs 7 days ago (e.g., `Δ +3`)
 
 ### Notes on accuracy & performance
-- Historical reconstruction is O(tasks × days). This is OK for MVP if bounded and cached.
-- Cache the computed series until the next domain mutation (create/close/edit) or filter change; avoid thrashing on idle UI ticks.
+- Historical reconstruction is O(tasks × days). This is acceptable for MVP with bounded day range.
+- Recompute on domain mutation/filter change; avoid UI-only tick thrash.
 
 ---
 
@@ -159,8 +159,12 @@ export function computeBacklogTrend7(tasks: Task[], now: Date): number[]; // 7 p
 ### Suggested regions
 - Main pane replaces List content with:
   - Top: `DASHBOARD` header + filter summary chips (status/due/tag)
-  - Middle: **8‑bar bucket chart**
-  - Bottom: **burndown trend**
+  - Body: two framed panels in a **2:1 split** (chart left, trend right)
+
+### Layout robustness contract
+- Due-bucket panel enforces a minimum width (`MIN_DUE_BUCKET_CHART_WIDTH`) so labels/bars/counts remain legible.
+- If split layout cannot satisfy minimum widths for both panels, fallback to **stacked layout** (chart above trend).
+- If chart panel width drops below safe render size, show a friendly placeholder (e.g., `"(widen to view chart)"`) instead of corrupt output.
 
 - Left rail remains unchanged (logo/date/time/filters/mode indicators).
 
@@ -189,8 +193,13 @@ export function computeBacklogTrend7(tasks: Task[], now: Date): number[]; // 7 p
 - Trend line matches historical reconstruction using `createdAt` / `closedAt`.
 - Recomputes after domain mutations and filter changes; does not thrash on idle ticks.
 
-### D) UX + routing
+### D) Layout robustness
+- At wide widths, dashboard renders side-by-side chart/trend panels.
+- At narrow widths, dashboard falls back to stacked layout.
+- Chart never renders corrupted/overlapping content; it shows a friendly placeholder when too narrow.
+
+### E) UX + routing
 - No key leakage: list navigation keys do not fire while dashboard has focus contexts that should consume input.
 
-### E) 80×24
+### F) 80×24
 - Dashboard renders legibly at 80×24 and respects the below-min-size guard.

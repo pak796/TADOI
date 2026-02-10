@@ -927,7 +927,7 @@ Help overlay must include a `DATA: IMPORT / EXPORT` section with:
 
 ---
 
-# Appendix I — v0.2.5 Dashboard MVP (Mode + Aggregations)
+# Appendix I — v0.2.5 Dashboard MVP (Mode + Widgets + Layout Robustness)
 
 This appendix defines the Dashboard MVP shipped in runtime UI.
 Scope is read-only dashboard analytics; there is no interactive import/export or drill-down workflow in dashboard mode.
@@ -997,10 +997,16 @@ Layout behavior:
 - In dashboard mode, the main content pane renders dashboard widgets instead of list/details split.
 - Left rail, top bar, and bottom bar remain active.
 - Top bar shows dashboard mode context and current filtered task count.
+- Widget layout uses a 2:1 split (due buckets left, trend right) with stacked fallback when width is too narrow.
+- Due-bucket panel enforces minimum render width; if chart width is too small it shows a friendly placeholder.
 
 Readability:
 - Must remain legible at minimum supported `80x24`.
 - Existing below-min-size guard behavior remains the governing fallback.
+
+Mode-transition redraw:
+- Entering/leaving dashboard must invalidate stale layout/border artifacts and force a fresh frame render.
+- Border drawing must remain stable after mode toggles and terminal resizes.
 
 ## I5) Documentation + Tests Contract
 
@@ -1012,7 +1018,7 @@ Docs:
   - widget meaning
 
 Tests:
-- Domain unit tests cover both dashboard aggregation functions and edge cases.
+- Domain unit tests cover dashboard due-bucket and backlog-trend aggregation behavior.
 - Key-router tests verify:
   - `b`/`B` toggle routing
   - dashboard mode key allowlist

@@ -1500,10 +1500,12 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 - Add `src/components/DashboardPane.tsx` to render:
   - 8-bucket due chart (OVD, TOD, +1..+6)
   - 7-day backlog trend with compact sparkline text view
+  - adaptive layout: 2:1 split when wide, stacked fallback when narrow
 
 **DoD**
-- Dashboard shows both widgets and updates as underlying task data changes.
+- Dashboard renders both widgets and updates as underlying task data changes.
 - Aggregations are deterministic and local-day aware.
+- Due-bucket chart maintains minimum render width and uses friendly placeholder text when too narrow.
 
 ## T16.3 Shared filter parity with task list selector
 **Status**: Complete
@@ -1540,3 +1542,14 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 **DoD**
 - Dashboard tests pass in local and CI runs.
 - `bun run test`, `bun run test:coverage`, and `bun run typecheck` remain green after dashboard integration.
+
+## T16.6 Dashboard layout robustness and redraw reliability
+**Status**: Complete
+**Implement**
+- Enforce a minimum due-bucket chart width constant before rendering full bars/labels/counts.
+- Use stacked fallback layout when split-width constraints cannot be satisfied.
+- Trigger explicit redraw/invalidation on mode/resize transitions to avoid stale border artifacts.
+
+**DoD**
+- Narrow dashboards never render garbled/overlapping chart text.
+- Border/frame elements render correctly after toggling `b` / `B` and after resizes.
