@@ -19,6 +19,7 @@ type LeftRailProps = {
 const HINT_LINE_WIDTH = 18;
 const HINT_LINES = [
   "j/k: MOVE",
+  "b: DASHBOARD",
   "a: ADD",
   "e: EDIT",
   "c: COPY",
@@ -34,6 +35,8 @@ const HINT_LINES = [
 
 function getModeLabel(mode: Mode): string {
   switch (mode) {
+    case Mode.DASHBOARD:
+      return "DASHBOARD";
     case Mode.ADD:
       return "ADD";
     case Mode.EDIT:
@@ -51,6 +54,8 @@ function getModeLabel(mode: Mode): string {
 
 function getFocusLabel(focus: FocusTarget): string {
   switch (focus) {
+    case FocusTarget.DASHBOARD:
+      return "DASHBOARD";
     case FocusTarget.TASK_LIST:
       return "LIST";
     case FocusTarget.SEARCH_INPUT:
@@ -124,7 +129,7 @@ export function LeftRail({
   const focusLabel = getFocusLabel(focus);
   const sortLabel = getSortModeLabel(sortMode);
 
-  const menuItems = ["LIST", "ADD", "EDIT", "SEARCH", "HELP", "DELETE"];
+  const menuItems = ["LIST", "DASHBOARD", "ADD", "EDIT", "SEARCH", "HELP", "DELETE"];
   const statusLabel = filters.status === "all" ? "ACTIVE" : filters.status.toUpperCase();
   const statusBg =
     filters.status === "done"

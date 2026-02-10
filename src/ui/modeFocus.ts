@@ -1,5 +1,6 @@
 export const Mode = {
   LIST: "list",
+  DASHBOARD: "dashboard",
   ADD: "add",
   EDIT: "edit",
   SEARCH: "search",
@@ -11,6 +12,7 @@ export type Mode = (typeof Mode)[keyof typeof Mode];
 
 export const FocusTarget = {
   TASK_LIST: "task_list",
+  DASHBOARD: "dashboard",
   SEARCH_INPUT: "search_input",
   MODAL: "modal",
   EDITOR_TITLE: "editor_title",

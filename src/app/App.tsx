@@ -11,6 +11,7 @@ import { TaskList } from "../components/TaskList";
 import { DetailsPane } from "../components/DetailsPane";
 import { EditorPane } from "../components/EditorPane";
 import { LeftRail } from "../components/LeftRail";
+import { DashboardPane } from "../components/DashboardPane";
 import { diffLocalDays, startOfLocalDayMs } from "../domain/dates";
 import {
   findNextMatchingIndex,
@@ -286,6 +287,11 @@ export function App({
     searchHeight;
   const visibleLines = Math.max(1, listContentHeight);
   const visibleRows = Math.max(1, Math.floor(visibleLines / taskRowHeight));
+  const dashboardPaneWidth = Math.max(20, terminalWidth - layout.railWidth - 4);
+  const dashboardPaneHeight = Math.max(
+    8,
+    terminalHeight - topBarHeight - bottomBarHeight - bannerHeight - 4
+  );
   const startOfToday = dayKey;
   const selectedDayDiff =
     selectedTask && selectedTask.status === "open" && selectedTask.dueAt !== undefined
@@ -305,6 +311,20 @@ export function App({
   const selectedDueLater = selectedDayDiff !== null && selectedDayDiff >= 8;
   const selectedOverdue =
     selectedDayDiff !== null && (selectedDayDiff < 0 || selectedTimeOverdue);
+  const isDashboardMode = uiState.mode === Mode.DASHBOARD;
+  const selectedHeaderBackground = selectedOverdue
+    ? fastPulseOn
+      ? theme.warn
+      : theme.dueSoon
+    : selectedDueToday
+      ? theme.dueSoon
+      : selectedDueSoon
+        ? theme.dueSoon
+        : selectedDueLater
+          ? theme.dueLater
+          : selectedTask?.status === "done"
+            ? theme.ok
+            : theme.accentOrange;
 
   const summary = state.tasks.reduce(
     (acc, task) => {
@@ -582,6 +602,9 @@ export function App({
       case "UNWIND":
         applyEscUnwind();
         return;
+      case "TOGGLE_DASHBOARD":
+        toggleDashboard();
+        return;
       case "OPEN_HELP":
         openHelp();
         return;
@@ -761,6 +784,25 @@ export function App({
       focus: uiState.focus
     });
     uiDispatch({ type: "setMode", mode: Mode.HELP });
+  }
+
+  function toggleDashboard() {
+    clearPendingGPrefix();
+    closeViewsOverlay();
+
+    if (uiState.mode === Mode.DASHBOARD) {
+      uiDispatch({ type: "setMode", mode: Mode.LIST });
+      uiDispatch({ type: "setFocus", focus: FocusTarget.TASK_LIST });
+      return;
+    }
+
+    if (isEditorMode(uiState.mode)) {
+      setTimeSuggestion(null);
+      dispatch({ type: "setEditor", editor: null });
+    }
+
+    uiDispatch({ type: "setMode", mode: Mode.DASHBOARD });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.DASHBOARD });
   }
 
   function closeHelp() {
@@ -1284,19 +1326,7 @@ export function App({
         <box
           style={{
             height: 4,
-            backgroundColor: selectedOverdue
-              ? fastPulseOn
-                ? theme.warn
-                : theme.dueSoon
-              : selectedDueToday
-                ? theme.dueSoon
-                : selectedDueSoon
-                  ? theme.dueSoon
-                  : selectedDueLater
-                    ? theme.dueLater
-                    : selectedTask?.status === "done"
-                      ? theme.ok
-                      : theme.accentOrange,
+            backgroundColor: isDashboardMode ? theme.accentBlue : selectedHeaderBackground,
             justifyContent: "center",
             alignItems: "center",
             flexDirection: "column",
@@ -1312,7 +1342,11 @@ export function App({
                 fontWeight: "bold"
               }}
             >
-              {selectedTask ? selectedTask.title.toUpperCase() : "NO TASK SELECTED"}
+              {isDashboardMode
+                ? "DASHBOARD MODE"
+                : selectedTask
+                  ? selectedTask.title.toUpperCase()
+                  : "NO TASK SELECTED"}
             </text>
           </box>
           <box style={{ width: "100%", justifyContent: "center", alignItems: "center" }}>
@@ -1322,11 +1356,46 @@ export function App({
                 fontWeight: "bold"
               }}
             >
-              {selectedTask ? getDueInLabel(selectedTask, now) : ""}
+              {isDashboardMode
+                ? `FILTERED TASKS: ${visibleTasks.length}`
+                : selectedTask
+                  ? getDueInLabel(selectedTask, now)
+                  : ""}
             </text>
           </box>
         </box>
 
+        {isDashboardMode ? (
+          <box style={{ flexDirection: "column", flexGrow: 1 }}>
+            <box
+              style={{
+                backgroundColor: theme.panel,
+                paddingLeft: 3,
+                paddingTop: 1
+              }}
+            >
+              <text style={{ color: theme.muted }}>DASHBOARD</text>
+            </box>
+            <box
+              style={{
+                flexGrow: 1,
+                padding: 1,
+                backgroundColor: theme.panel,
+                border: true,
+                borderStyle: "single",
+                borderColor: theme.outline
+              }}
+            >
+              <DashboardPane
+                tasks={visibleTasks}
+                filters={state.filters}
+                now={now}
+                width={dashboardPaneWidth}
+                height={dashboardPaneHeight}
+              />
+            </box>
+          </box>
+        ) : (
           <box style={{ flexDirection: "row", flexGrow: 1 }}>
             <box style={{ flexDirection: "column", flexGrow: 1 }}>
               <box
@@ -1341,85 +1410,86 @@ export function App({
               <box
                 style={{
                   flexGrow: 1,
-                padding: 1,
-                backgroundColor: theme.panel,
-                border: true,
-                borderStyle: "single",
-                borderColor: theme.outline
-              }}
-            >
-              <box style={{ flexDirection: "column", flexGrow: 1 }}>
-        {uiState.mode === Mode.SEARCH ? (
-                  <box style={{ flexDirection: "column", marginBottom: 1 }}>
-                    <text style={{ color: theme.muted }}>SEARCH</text>
-                <input
-                  value={state.filters.searchText ?? ""}
-                  onChange={updateSearch}
-                  focused={uiState.focus === FocusTarget.SEARCH_INPUT}
-                  placeholder="Search for tasks and tags then press enter"
-                  style={{ backgroundColor: theme.bg, color: theme.text }}
-                />
-                  </box>
-                ) : null}
-                <TaskList
-                  tasks={visibleTasks}
-                  selectedId={state.selectedId}
-                  now={now}
-                  pulseOn={pulseOn}
-                  fastPulseOn={fastPulseOn}
-                  scrollOffset={uiState.scrollOffset}
-                  visibleRows={visibleRows}
-                  visibleLines={visibleLines}
-                />
+                  padding: 1,
+                  backgroundColor: theme.panel,
+                  border: true,
+                  borderStyle: "single",
+                  borderColor: theme.outline
+                }}
+              >
+                <box style={{ flexDirection: "column", flexGrow: 1 }}>
+                  {uiState.mode === Mode.SEARCH ? (
+                    <box style={{ flexDirection: "column", marginBottom: 1 }}>
+                      <text style={{ color: theme.muted }}>SEARCH</text>
+                      <input
+                        value={state.filters.searchText ?? ""}
+                        onChange={updateSearch}
+                        focused={uiState.focus === FocusTarget.SEARCH_INPUT}
+                        placeholder="Search for tasks and tags then press enter"
+                        style={{ backgroundColor: theme.bg, color: theme.text }}
+                      />
+                    </box>
+                  ) : null}
+                  <TaskList
+                    tasks={visibleTasks}
+                    selectedId={state.selectedId}
+                    now={now}
+                    pulseOn={pulseOn}
+                    fastPulseOn={fastPulseOn}
+                    scrollOffset={uiState.scrollOffset}
+                    visibleRows={visibleRows}
+                    visibleLines={visibleLines}
+                  />
+                </box>
+              </box>
+            </box>
+
+            <box style={{ flexDirection: "column", width: layout.rightWidth }}>
+              <box
+                style={{
+                  backgroundColor: theme.panel,
+                  paddingLeft: 3,
+                  paddingTop: 1
+                }}
+              >
+                <text style={{ color: theme.muted }}>DETAILS</text>
+              </box>
+              <box
+                style={{
+                  flexGrow: 1,
+                  padding: 1,
+                  backgroundColor: theme.panel,
+                  border: true,
+                  borderStyle: "single",
+                  borderColor: theme.outline
+                }}
+              >
+                {isEditorMode(uiState.mode) && state.editor ? (
+                  <EditorPane
+                    mode={uiState.mode}
+                    draft={state.editor}
+                    focus={toEditorFocus(uiState.focus)}
+                    tagInlineSuggestion={
+                      uiState.focus === FocusTarget.EDITOR_TAGS ? tagInlineSuggestion : null
+                    }
+                    dueSuggestionHint={dueSuggestionHint}
+                    timeSuggestionHint={timeSuggestionHint}
+                    onUpdate={(patch) => dispatch({ type: "updateEditor", patch })}
+                    onSave={saveEditor}
+                    onCancel={cancelEditor}
+                  />
+                ) : (
+                  <DetailsPane
+                    task={selectedTask}
+                    now={now}
+                    pulseOn={pulseOn}
+                    fastPulseOn={fastPulseOn}
+                  />
+                )}
               </box>
             </box>
           </box>
-
-          <box style={{ flexDirection: "column", width: layout.rightWidth }}>
-            <box
-              style={{
-                backgroundColor: theme.panel,
-                paddingLeft: 3,
-                paddingTop: 1
-              }}
-            >
-              <text style={{ color: theme.muted }}>DETAILS</text>
-            </box>
-            <box
-              style={{
-                flexGrow: 1,
-                padding: 1,
-                backgroundColor: theme.panel,
-                border: true,
-                borderStyle: "single",
-                borderColor: theme.outline
-              }}
-            >
-              {isEditorMode(uiState.mode) && state.editor ? (
-                <EditorPane
-                  mode={uiState.mode}
-                  draft={state.editor}
-                  focus={toEditorFocus(uiState.focus)}
-                  tagInlineSuggestion={
-                    uiState.focus === FocusTarget.EDITOR_TAGS ? tagInlineSuggestion : null
-                  }
-                  dueSuggestionHint={dueSuggestionHint}
-                  timeSuggestionHint={timeSuggestionHint}
-                  onUpdate={(patch) => dispatch({ type: "updateEditor", patch })}
-                  onSave={saveEditor}
-                  onCancel={cancelEditor}
-                />
-              ) : (
-                <DetailsPane
-                  task={selectedTask}
-                  now={now}
-                  pulseOn={pulseOn}
-                  fastPulseOn={fastPulseOn}
-                />
-              )}
-            </box>
-          </box>
-        </box>
+        )}
 
         {activeBanners.map((message, index) => {
           const isSaveFailure = message.startsWith("Save failed:");
@@ -1610,6 +1680,7 @@ export function App({
             <text>space: toggle done</text>
             <text>d: delete</text>
             <text>/: search</text>
+            <text>b: toggle dashboard</text>
             <text>f: cycle status</text>
             <text>s: cycle sort ({sortModeLabel})</text>
             <text>g: cycle due</text>
@@ -1620,6 +1691,10 @@ export function App({
             <text>H: cycle theme</text>
             <text>q: quit</text>
             <text>esc: close</text>
+            <text>DASHBOARD</text>
+            <text>Uses the same filtered dataset as TASK LIST.</text>
+            <text>Widgets: due buckets (OVD/TOD/+1..+6) and 7-day backlog trend.</text>
+            <text>In dashboard: b returns to list, f/g/t cycle shared filters.</text>
             <text>App Version: {APP_VERSION}</text>
             <text>{APP_NAME}</text>
             <text>{APP_TAGLINE}</text>

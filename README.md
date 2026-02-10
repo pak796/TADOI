@@ -84,6 +84,7 @@ Corrupt backups created by recovery look like:
   - `[` / `]`: previous/next overdue task
   - `{` / `}`: previous/next due-today task
 - LIST mode task actions:
+  - `b` / `B`: toggle Dashboard mode
   - `a`: add task
   - `e`: edit selected task
   - `c`: duplicate selected task
@@ -94,6 +95,14 @@ Corrupt backups created by recovery look like:
   - `s`: cycle sort mode
   - `g`: cycle due filter
   - `t`: cycle tag filter across tags on all active (open) tasks
+- Dashboard mode:
+  - `b` / `B`: return to list mode
+  - `f`: cycle status filter (shared with list)
+  - `g`: cycle due filter (shared with list)
+  - `t`: cycle tag filter (shared with list)
+  - `?`: open help
+  - `q`: quit
+  - Dashboard widgets always use the exact same filtered task set as the task list (including `searchText`).
 - Saved views:
   - `v`: toggle saved-views overlay
   - `ctrl+s`: open "save current filters as view"

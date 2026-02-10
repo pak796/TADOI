@@ -20,6 +20,7 @@ export type KeyRouterContext = {
 
 export type KeyRouterAction =
   | { scope: "ui"; type: "UNWIND" }
+  | { scope: "ui"; type: "TOGGLE_DASHBOARD" }
   | { scope: "ui"; type: "OPEN_HELP" }
   | { scope: "ui"; type: "CLOSE_HELP" }
   | { scope: "ui"; type: "OPEN_SEARCH" }
@@ -86,6 +87,10 @@ function isPageDownKey(name: string, ctrl: boolean): boolean {
     name === "page_down" ||
     name === "next"
   );
+}
+
+function isDashboardToggleKey(name: string, sequence: string, ctrl: boolean): boolean {
+  return !ctrl && (name === "b" || name === "B" || sequence === "b" || sequence === "B");
 }
 
 function listModeActions(key: KeyInput): KeyRouterAction[] {
@@ -194,6 +199,10 @@ export function handleKey(
     return [];
   }
 
+  if (isDashboardToggleKey(name, sequence, ctrl)) {
+    return [{ scope: "ui", type: "TOGGLE_DASHBOARD" }];
+  }
+
   if (mode === Mode.HELP) {
     if (isThemeCycleKey(name, sequence)) {
       return [{ scope: "ui", type: "CYCLE_THEME" }];
@@ -201,6 +210,15 @@ export function handleKey(
     if (isHelpCloseKey(name, sequence)) {
       return [{ scope: "ui", type: "CLOSE_HELP" }];
     }
+    return [];
+  }
+
+  if (mode === Mode.DASHBOARD) {
+    if (sequence === "?") return [{ scope: "ui", type: "OPEN_HELP" }];
+    if (name === "q") return [{ scope: "domain", type: "EXIT_APP" }];
+    if (name === "f") return [{ scope: "domain", type: "CYCLE_STATUS" }];
+    if (!ctrl && name === "g") return [{ scope: "domain", type: "CYCLE_DUE" }];
+    if (name === "t") return [{ scope: "domain", type: "TOGGLE_TAG_FILTER" }];
     return [];
   }
 

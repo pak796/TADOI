@@ -141,6 +141,27 @@ describe("handleKey", () => {
     ]);
   });
 
+  it("routes b/B to dashboard toggle outside modal mode", () => {
+    expect(run({ name: "b", sequence: "b" })).toEqual([
+      { scope: "ui", type: "TOGGLE_DASHBOARD" }
+    ]);
+    expect(run({ name: "B", sequence: "B" })).toEqual([
+      { scope: "ui", type: "TOGGLE_DASHBOARD" }
+    ]);
+    expect(
+      run(
+        { name: "b", sequence: "b" },
+        {
+          uiState: {
+            ...initialUIState,
+            mode: Mode.SEARCH,
+            focus: FocusTarget.SEARCH_INPUT
+          }
+        }
+      )
+    ).toEqual([{ scope: "ui", type: "TOGGLE_DASHBOARD" }]);
+  });
+
   it("flushes pending g to due-cycle when next key is not g/G", () => {
     expect(
       run(
@@ -205,6 +226,32 @@ describe("handleKey", () => {
     expect(run({ name: "j", sequence: "j" }, { uiState: searchState })).toEqual([]);
     expect(run({ name: "enter" }, { uiState: searchState })).toEqual([
       { scope: "ui", type: "CLOSE_SEARCH" }
+    ]);
+  });
+
+  it("routes dashboard mode keys and blocks list navigation leakage", () => {
+    const dashboardState = {
+      ...initialUIState,
+      mode: Mode.DASHBOARD,
+      focus: FocusTarget.DASHBOARD
+    };
+
+    expect(run({ name: "j", sequence: "j" }, { uiState: dashboardState })).toEqual([]);
+    expect(run({ name: "down" }, { uiState: dashboardState })).toEqual([]);
+    expect(run({ name: "f", sequence: "f" }, { uiState: dashboardState })).toEqual([
+      { scope: "domain", type: "CYCLE_STATUS" }
+    ]);
+    expect(run({ name: "g", sequence: "g" }, { uiState: dashboardState })).toEqual([
+      { scope: "domain", type: "CYCLE_DUE" }
+    ]);
+    expect(run({ name: "t", sequence: "t" }, { uiState: dashboardState })).toEqual([
+      { scope: "domain", type: "TOGGLE_TAG_FILTER" }
+    ]);
+    expect(run({ name: "q", sequence: "q" }, { uiState: dashboardState })).toEqual([
+      { scope: "domain", type: "EXIT_APP" }
+    ]);
+    expect(run({ sequence: "?" }, { uiState: dashboardState })).toEqual([
+      { scope: "ui", type: "OPEN_HELP" }
     ]);
   });
 
