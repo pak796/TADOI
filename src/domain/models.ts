@@ -3,6 +3,20 @@ export { FocusTarget, Mode } from "../ui/modeFocus";
 
 export type TaskStatus = "open" | "done" | "archived";
 
+export type RecurrenceFrequency = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
+
+export type TaskRecurrence = {
+  dtstart: string; // local floating ISO: YYYY-MM-DDTHH:mm:ss
+  rrule: string; // RRULE fragment, e.g. FREQ=WEEKLY;INTERVAL=1;BYDAY=MO,WE
+  exdates?: string[]; // local floating ISO timestamps
+  series_id: string;
+};
+
+export type TaskInstanceOf = {
+  series_id: string;
+  occurrence: string; // original scheduled local floating ISO timestamp
+};
+
 export type Task = {
   id: string;
   title: string;
@@ -14,6 +28,8 @@ export type Task = {
   closedAt?: number;
   notes?: string;
   tags: string[];
+  recurrence?: TaskRecurrence;
+  instance_of?: TaskInstanceOf;
 };
 
 export type TagIndexEntry = {
@@ -46,9 +62,36 @@ export type EditorDraft = {
   timeText: string;
   tagsText: string;
   notes: string;
+  repeatMode: "off" | "daily" | "weekly" | "monthly" | "custom";
+  repeatIntervalText: string;
+  repeatWeekdays: string[]; // MO,TU,WE,TH,FR,SA,SU
+  repeatMonthdayText: string;
+  repeatEndMode: "never" | "until" | "count";
+  repeatUntilText: string;
+  repeatCountText: string;
+  repeatCustomRRuleText: string;
+  editKind?: "regular" | "occurrence" | "series";
+  sourceTaskId?: string;
+  sourceSeriesId?: string;
+  occurrenceIso?: string;
 };
 
-export type EditorFocus = "title" | "due" | "time" | "tags" | "notes" | "save" | "cancel";
+export type EditorFocus =
+  | "title"
+  | "due"
+  | "time"
+  | "repeat_mode"
+  | "repeat_interval"
+  | "repeat_weekdays"
+  | "repeat_monthday"
+  | "repeat_end_mode"
+  | "repeat_until"
+  | "repeat_count"
+  | "repeat_custom"
+  | "tags"
+  | "notes"
+  | "save"
+  | "cancel";
 
 export type ConfirmModal = UIConfirmModal;
 

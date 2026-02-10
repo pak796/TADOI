@@ -1,12 +1,12 @@
 import { diffLocalDays, startOfLocalDayMs } from "../domain/dates";
 import { formatTagForDisplay } from "../domain/tagIndex";
-import { Task } from "../domain/models";
+import { VisibleTaskRow } from "../domain/taskRows";
 import { formatDate, getDueInLabel } from "../state/store";
 import { colorForTag, theme } from "../app/theme";
 import type { FlashMode } from "../settings/settings";
 
 type TaskListProps = {
-  tasks: Task[];
+  tasks: VisibleTaskRow[];
   selectedId?: string;
   now: number;
   pulseOn: boolean;
@@ -92,7 +92,7 @@ export function TaskList({
 }
 
 type TaskRowProps = {
-  task: Task;
+  task: VisibleTaskRow;
   selected: boolean;
   now: number;
   pulseOn: boolean;
@@ -111,6 +111,8 @@ function TaskRow({
   onSelect
 }: TaskRowProps) {
   const statusIcon = task.status === "done" ? "✓" : task.status === "archived" ? "✱" : "•";
+  const recurringIndicator =
+    task.rowKind !== "regular" || task.recurrence ? "↻" : "";
   const closedText =
     task.status === "done" ? formatDate(task.closedAt ?? task.updatedAt) : "";
   const startOfToday = startOfLocalDayMs(now);
@@ -213,6 +215,9 @@ function TaskRow({
         <box style={{ flexDirection: "column", flexGrow: 1 }}>
           <box style={{ flexDirection: "row", gap: 1 }}>
             <text style={{ color: statusColor }}>{statusIcon}</text>
+            {recurringIndicator ? (
+              <text style={{ color: selected ? theme.bg : theme.muted }}>{recurringIndicator}</text>
+            ) : null}
             <text style={{ color: titleColor }}>{task.title}</text>
           </box>
           <box style={{ flexDirection: "row", justifyContent: "space-between" }}>

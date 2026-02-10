@@ -8,6 +8,7 @@ import {
   startOfLocalDayMs
 } from "../domain/dates";
 import { formatTagForDisplay } from "../domain/tagIndex";
+import { parseRRule } from "../domain/recurrence/rruleAdapter";
 import {
   AppState,
   EditorDraft,
@@ -63,7 +64,7 @@ export function applyArchiveAging(
 
 export function archiveOldDoneTasks(tasks: Task[], now: number): Task[] {
   return applyArchiveAging(
-    { schemaVersion: 3, tasks, tagIndex: {}, savedViews: [] },
+    { schemaVersion: 4, tasks, tagIndex: {}, savedViews: [] },
     now
   ).data.tasks;
 }
@@ -114,18 +115,53 @@ export function createEmptyDraft(): EditorDraft {
     dueText: "",
     timeText: "",
     tagsText: "",
-    notes: ""
+    notes: "",
+    repeatMode: "off",
+    repeatIntervalText: "1",
+    repeatWeekdays: [],
+    repeatMonthdayText: "",
+    repeatEndMode: "never",
+    repeatUntilText: "",
+    repeatCountText: "",
+    repeatCustomRRuleText: ""
   };
 }
 
 export function createDraftFromTask(task: Task): EditorDraft {
+  const parsedRule = task.recurrence ? parseRRule(task.recurrence.rrule) : null;
+  const repeatMode = task.recurrence
+    ? parsedRule?.freq === "DAILY"
+      ? "daily"
+      : parsedRule?.freq === "WEEKLY"
+        ? "weekly"
+        : parsedRule?.freq === "MONTHLY"
+          ? "monthly"
+          : "custom"
+    : "off";
+  const repeatEndMode = parsedRule?.count
+    ? "count"
+    : parsedRule?.untilIso
+      ? "until"
+      : "never";
   return {
     id: task.id,
     title: task.title,
     dueText: task.dueAt ? formatDate(task.dueAt) : "",
     timeText: task.hasExplicitTime && task.dueAt ? formatLocalTimeHHmm(task.dueAt) : "",
     tagsText: task.tags.map((tag) => formatTagForDisplay(tag)).join(" "),
-    notes: task.notes ?? ""
+    notes: task.notes ?? "",
+    repeatMode,
+    repeatIntervalText: String(parsedRule?.interval ?? 1),
+    repeatWeekdays: parsedRule?.byday ?? [],
+    repeatMonthdayText: String(
+      parsedRule?.bymonthday?.[0] ??
+        (task.dueAt ? new Date(task.dueAt).getDate() : "")
+    ),
+    repeatEndMode,
+    repeatUntilText: parsedRule?.untilIso?.slice(0, 10) ?? "",
+    repeatCountText: parsedRule?.count ? String(parsedRule.count) : "",
+    repeatCustomRRuleText: task.recurrence?.rrule ?? "",
+    editKind: "regular"
   };
 }
 

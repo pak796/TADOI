@@ -285,13 +285,13 @@ describe("saveStateDebounced", () => {
     const dir = await makeTempDir();
     const filePath = path.join(dir, "tadoi_data.json");
     const first: LoadedData = {
-      schemaVersion: 3,
+      schemaVersion: 4,
       tasks: [{ id: "a", title: "a", status: "open", createdAt: 1, updatedAt: 1, tags: [] }],
       tagIndex: {},
       savedViews: []
     };
     const second: LoadedData = {
-      schemaVersion: 3,
+      schemaVersion: 4,
       tasks: [{ id: "b", title: "b", status: "open", createdAt: 1, updatedAt: 1, tags: [] }],
       tagIndex: {},
       savedViews: []
@@ -320,7 +320,7 @@ describe("saveStateDebounced", () => {
 
     saveStateDebounced(
       {
-        schemaVersion: 3,
+        schemaVersion: 4,
         tasks: [
           { id: "nested", title: "nested", status: "open", createdAt: 1, updatedAt: 1, tags: [] }
         ],
@@ -348,7 +348,7 @@ describe("saveStateDebounced", () => {
 
     saveStateDebounced(
       {
-        schemaVersion: 3,
+        schemaVersion: 4,
         tasks: [{ id: "ok", title: "ok", status: "open", createdAt: 1, updatedAt: 1, tags: [] }],
         tagIndex: {},
         savedViews: []
@@ -385,7 +385,7 @@ describe("saveStateDebounced", () => {
 
     saveStateDebounced(
       {
-        schemaVersion: 3,
+        schemaVersion: 4,
         tasks: [
           { id: "fail", title: "fail", status: "open", createdAt: 1, updatedAt: 1, tags: [] }
         ],

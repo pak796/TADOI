@@ -4,7 +4,7 @@ import { fileURLToPath } from "url";
 import { validatePersistedState } from "./validation";
 
 const BASE_STATE = {
-  schemaVersion: 3,
+  schemaVersion: 4,
   tasks: [
     {
       id: "a",
@@ -96,6 +96,62 @@ describe("validatePersistedState", () => {
     const raw = await fs.readFile(fixturePath, "utf8");
     const fixture = JSON.parse(raw) as unknown;
     const result = validatePersistedState(fixture, "strict");
+    expect(result.ok).toBe(false);
+  });
+
+  it("accepts valid recurrence + instance_of fields", () => {
+    const result = validatePersistedState(
+      {
+        ...BASE_STATE,
+        tasks: [
+          {
+            ...BASE_STATE.tasks[0],
+            id: "series",
+            recurrence: {
+              dtstart: "2026-02-10T09:00:00",
+              rrule: "FREQ=WEEKLY;INTERVAL=1;BYDAY=TU",
+              series_id: "series:series",
+              exdates: ["2026-02-17T09:00:00"]
+            }
+          },
+          {
+            ...BASE_STATE.tasks[0],
+            id: "instance",
+            status: "done",
+            instance_of: {
+              series_id: "series:series",
+              occurrence: "2026-02-17T09:00:00"
+            }
+          }
+        ]
+      },
+      "strict"
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it("rejects recurrence/instance normalization and mutual exclusivity violations", () => {
+    const result = validatePersistedState(
+      {
+        ...BASE_STATE,
+        tasks: [
+          {
+            ...BASE_STATE.tasks[0],
+            recurrence: {
+              dtstart: "2026-02-10T9:00:00",
+              rrule: "",
+              series_id: "",
+              exdates: ["2026-02-17T09:00:00", "2026-02-17T09:00:00"]
+            },
+            instance_of: {
+              series_id: "series:a",
+              occurrence: "2026-02-17T09:00:00"
+            }
+          }
+        ]
+      },
+      "strict"
+    );
     expect(result.ok).toBe(false);
   });
 });

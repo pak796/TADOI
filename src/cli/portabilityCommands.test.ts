@@ -103,7 +103,7 @@ describe("runPortabilityCommand", () => {
     const importPath = path.join(tempDir, "incoming.json");
 
     const localPayload = {
-      schemaVersion: 3,
+      schemaVersion: 4,
       tasks: [
         {
           id: "task-1",
@@ -118,7 +118,7 @@ describe("runPortabilityCommand", () => {
       savedViews: []
     };
     const incomingPayload = {
-      schemaVersion: 3,
+      schemaVersion: 4,
       tasks: [
         {
           id: "task-2",

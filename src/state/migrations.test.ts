@@ -13,19 +13,19 @@ async function loadFixture(name: string): Promise<LoadedData> {
 
 describe("migratePersistedStateToCurrent", () => {
   it("keeps current schema fixture unchanged", async () => {
-    const input = await loadFixture("persisted.v3.json");
+    const input = await loadFixture("persisted.v4.json");
 
-    const migrated = migratePersistedStateToCurrent(input, 3);
+    const migrated = migratePersistedStateToCurrent(input, 4);
     expect(migrated).toEqual(input);
     const validated = validatePersistedState(migrated, "strict");
     expect(validated.ok).toBe(true);
   });
 
-  it("migrates legacy v1 fixture to v3 and validates", async () => {
+  it("migrates legacy v1 fixture to v4 and validates", async () => {
     const input = await loadFixture("persisted.v1.json");
 
-    const migrated = migratePersistedStateToCurrent(input, 3);
-    expect(migrated.schemaVersion).toBe(3);
+    const migrated = migratePersistedStateToCurrent(input, 4);
+    expect(migrated.schemaVersion).toBe(4);
     expect(migrated.tasks[0]?.hasExplicitTime).toBe(false);
     expect(migrated.tasks[0]?.tags).toEqual(["alpha", "work"]);
     expect(migrated.savedViews).toEqual([]);
@@ -33,7 +33,7 @@ describe("migratePersistedStateToCurrent", () => {
     expect(validated.ok).toBe(true);
   });
 
-  it("migrates legacy schema-0 payload to v3 and validates", async () => {
+  it("migrates legacy schema-0 payload to v4 and validates", async () => {
     const fixturePath = fileURLToPath(
       new URL("./__fixtures__/persisted.legacy.no-schema.json", import.meta.url).href
     );
@@ -44,9 +44,42 @@ describe("migratePersistedStateToCurrent", () => {
       schemaVersion: 0
     };
 
-    const migrated = migratePersistedStateToCurrent(input, 3);
-    expect(migrated.schemaVersion).toBe(3);
+    const migrated = migratePersistedStateToCurrent(input, 4);
+    expect(migrated.schemaVersion).toBe(4);
     expect(migrated.tasks[0]?.tags).toEqual(["alpha", "work"]);
+    const validated = validatePersistedState(migrated, "strict");
+    expect(validated.ok).toBe(true);
+  });
+
+  it("migrates v3 recurrence payloads to v4 with normalized recurrence fields", async () => {
+    const input = await loadFixture("persisted.v3.json");
+    const recurringV3 = {
+      ...input,
+      tasks: [
+        ...input.tasks,
+        {
+          id: "legacy-series",
+          title: "legacy recurring",
+          status: "open",
+          createdAt: 1700000000000,
+          updatedAt: 1700000000000,
+          dueAt: 1700000000000,
+          hasExplicitTime: false,
+          tags: ["work"],
+          recurrence: {
+            dtstart: "2026-02-09T09:00:00",
+            rrule: "FREQ=DAILY;INTERVAL=1",
+            exdates: ["2026-02-10T09:00:00", "2026-02-10T09:00:00"]
+          }
+        }
+      ]
+    } as LoadedData;
+
+    const migrated = migratePersistedStateToCurrent(recurringV3, 4);
+    const migratedSeries = migrated.tasks.find((task) => task.id === "legacy-series");
+    expect(migratedSeries?.recurrence?.series_id).toBe("series:legacy-series");
+    expect(migratedSeries?.recurrence?.dtstart).toBe("2026-02-09T09:00:00");
+    expect(migratedSeries?.recurrence?.exdates).toEqual(["2026-02-10T09:00:00"]);
     const validated = validatePersistedState(migrated, "strict");
     expect(validated.ok).toBe(true);
   });
@@ -59,7 +92,7 @@ describe("migratePersistedStateToCurrent", () => {
       savedViews: []
     };
 
-    expect(() => migratePersistedStateToCurrent(input, 3)).toThrow(
+    expect(() => migratePersistedStateToCurrent(input, 4)).toThrow(
       "Unsupported schemaVersion"
     );
   });

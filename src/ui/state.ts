@@ -13,6 +13,7 @@ export type UIState = {
   focus: FocusTarget;
   selectedIndex: number;
   scrollOffset: number;
+  editorScrollOffset: number;
   modal: UIConfirmModal | null;
   previousMode: ModeType;
   previousFocus: FocusTarget;
@@ -24,6 +25,7 @@ export type UIAction =
   | { type: "setModal"; modal: UIConfirmModal | null }
   | { type: "setSelectedIndex"; selectedIndex: number }
   | { type: "setScrollOffset"; scrollOffset: number }
+  | { type: "setEditorScrollOffset"; scrollOffset: number }
   | { type: "captureReturnContext"; mode: ModeType; focus: FocusTarget }
   | { type: "replace"; state: UIState };
 
@@ -37,6 +39,7 @@ export const initialUIState: UIState = {
   focus: FocusTarget.TASK_LIST,
   selectedIndex: 0,
   scrollOffset: 0,
+  editorScrollOffset: 0,
   modal: null,
   previousMode: Mode.LIST,
   previousFocus: FocusTarget.TASK_LIST
@@ -54,6 +57,8 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
       return { ...state, selectedIndex: action.selectedIndex };
     case "setScrollOffset":
       return { ...state, scrollOffset: action.scrollOffset };
+    case "setEditorScrollOffset":
+      return { ...state, editorScrollOffset: action.scrollOffset };
     case "captureReturnContext":
       return {
         ...state,

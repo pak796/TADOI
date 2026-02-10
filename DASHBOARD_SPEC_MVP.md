@@ -1,9 +1,11 @@
 # DASHBOARD_SPEC_MVP — TADOI Dashboard Runtime Contract
 
-> Scope: dashboard mode renders a three-part analytics surface using the same filtered dataset as Task List:
+> Scope: dashboard mode renders a three-part analytics surface using the same filtered dataset as Task List (including recurrence-expanded occurrence rows):
 > 1) KPI strip (top)
 > 2) 8-bucket due chart (left panel)
 > 3) TOP TAGS (OPEN) Pareto chart (right panel)
+>
+> Release baseline: `v0.2.8`.
 
 ---
 
@@ -35,8 +37,9 @@ type Filters = {
 ```
 
 Single source of truth:
-- `visibleTasks = getVisibleTasks(state, now)`
+- `visibleTaskRows = buildVisibleTaskRows(state.tasks, state.filters, state.sortMode, now)`
 - Dashboard does not reimplement filter semantics.
+- Recurring series expand to virtual/materialized occurrence rows in the same selector.
 
 ---
 
@@ -109,6 +112,7 @@ Domain source: `computeTopTagsOpen(tasks, limit)`
 
 Rules:
 - Counts tags from open tasks only.
+- Recurrence rows are counted as task rows; materialized instance rows suppress matching virtual occurrences.
 - If active status filter is `done`/`archived`, panel shows:
   - `(Top tags available for OPEN tasks only)`
 - If no tagged open tasks:
@@ -147,6 +151,12 @@ computeDashboardKpis(tasks: Task[], nowMs: number): {
   open: number;
   done7d: number;
 };
+```
+
+Selector contract:
+
+```ts
+buildVisibleTaskRows(tasks: Task[], filters: Filters, sortMode: SortMode, now: number): VisibleTaskRow[];
 ```
 
 Performance:

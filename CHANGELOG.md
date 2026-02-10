@@ -6,6 +6,22 @@ The format is based on Keep a Changelog.
 
 ## [Unreleased]
 ### Added
+- (none yet)
+
+### Changed
+- (none yet)
+
+### Fixed
+- (none yet)
+
+## [0.2.8]
+### Added
+- Recurring tasks end-to-end (schema v4):
+  - RRULE-style recurrence metadata on tasks (`dtstart`, `rrule`, `exdates`, `series_id`)
+  - Materialized instance rows via `instance_of` for per-occurrence overrides/history
+  - Recurrence engine + selector with sparse virtual occurrence expansion
+  - New list actions: `x` (skip occurrence), `z` (snooze occurrence), `E` (edit series)
+  - Editor recurrence controls (daily/weekly/monthly/custom, end conditions, preview next 3)
 - Flash mode preference (`slow`/`static`) with persistence in `settings.json` and Help-panel toggle (`M`).
 - Task-list row mouse selection (left-click) using the same highlighted row hitbox.
 - Left-rail `MENU` row mouse actions (left-click) using the same highlighted menu-row hitbox.
@@ -17,9 +33,16 @@ The format is based on Keep a Changelog.
   - clickable due buckets (`OVERDUE`, `DUE TODAY`, `DUE THIS WEEK`)
   - clickable tag pills
   - click-active-again clears the applied quick filter
+- Add/Edit pane scroll containment:
+  - split editor into scrollable content region + fixed footer region
+  - focus-aware auto-scroll for editor fields
+  - editor page scrolling via `ctrl+u`/`ctrl+d` and `PageUp`/`PageDown`
 
 ### Changed
-- Added versioned planning artifacts for `v0.2.7`: `TADOI_SPEC_v0.2.7.md` and `TADOI_TASKS_v0.2.7.md`.
+- Task list/dashboard now render recurrence-aware visible rows (single source of truth for filters).
+- Dashboard/top-tags/KPI counts consume recurrence-expanded rows, keeping list and dashboard in sync for recurrence windows.
+- Persistence/validation/migration/portability updated for recurrence fields and schema version `4`.
+- Added versioned planning artifacts for `v0.2.8`: `TADOI_SPEC_v0.2.8.md` and `TADOI_TASKS_v0.2.8.md`.
 - Dashboard layout robustness improved:
   - adaptive 2:1 split with stacked fallback when narrow
   - due-bucket minimum-width guard with friendly placeholder rendering when too narrow
@@ -31,12 +54,15 @@ The format is based on Keep a Changelog.
 - Default `DUE` sorting now prioritizes open tasks with due dates at the top before other status/due combinations.
 - In `static` flash mode, overdue indicators render as solid red (no pulsing).
 - `b` / `B` dashboard toggle is now ignored in text-entry contexts (`SEARCH`, `ADD`, `EDIT`, and save-view name prompt).
+- Repeat mode selector chips (`OFF`, `DLY`, `WLY`, `MLY`, `CUS`) now use width-sharing layout to stay on one line in the editor pane.
+- Version surfaces are aligned to `0.2.8` / `v0.2.8`.
 
 ### Fixed
 - Replaced direct `process.exit(...)` usage in interactive app exit paths with OpenTUI renderer teardown (`renderer.destroy()`), improving terminal state cleanup on quit.
 - Border/frame redraw reliability after dashboard mode toggles and terminal resizes.
 - Editor Save/Cancel mouse interactions now use OpenTUI mouse events (`onMouseDown`) instead of unsupported `onClick`.
 - Bottom rotating info-bar pill borders now size correctly without pushing content out of the bar region.
+- Add/Edit pane fields no longer clip/overlap into footer hints at constrained heights; footer actions remain visible.
 
 ## [0.2.7]
 ### Added

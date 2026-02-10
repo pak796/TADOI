@@ -34,6 +34,7 @@ export type KeyRouterAction =
   | { scope: "ui"; type: "CONFIRM_SAVE_VIEW_PROMPT" }
   | { scope: "ui"; type: "CANCEL_SAVE_VIEW_PROMPT" }
   | { scope: "ui"; type: "MOVE_DASHBOARD_TAG_SELECTION"; delta: 1 | -1 }
+  | { scope: "ui"; type: "SCROLL_EDITOR_PAGE"; direction: 1 | -1 }
   | { scope: "ui"; type: "CYCLE_THEME" }
   | { scope: "ui"; type: "TOGGLE_FLASH_MODE" }
   | { scope: "domain"; type: "EXIT_APP" }
@@ -53,7 +54,10 @@ export type KeyRouterAction =
   | { scope: "domain"; type: "TOGGLE_SELECTED" }
   | { scope: "domain"; type: "OPEN_ADD" }
   | { scope: "domain"; type: "OPEN_EDIT" }
+  | { scope: "domain"; type: "OPEN_EDIT_SERIES" }
   | { scope: "domain"; type: "OPEN_DUPLICATE" }
+  | { scope: "domain"; type: "SKIP_SELECTED_OCCURRENCE" }
+  | { scope: "domain"; type: "SNOOZE_SELECTED_OCCURRENCE" }
   | { scope: "domain"; type: "OPEN_DELETE_CONFIRM" }
   | { scope: "domain"; type: "MODAL_CONFIRM_DELETE" }
   | { scope: "domain"; type: "CYCLE_STATUS" }
@@ -141,7 +145,12 @@ function listModeActions(key: KeyInput): KeyRouterAction[] {
   }
   if (name === "a") return [{ scope: "domain", type: "OPEN_ADD" }];
   if (name === "e") return [{ scope: "domain", type: "OPEN_EDIT" }];
+  if (name === "E" || sequence === "E") {
+    return [{ scope: "domain", type: "OPEN_EDIT_SERIES" }];
+  }
   if (name === "c") return [{ scope: "domain", type: "OPEN_DUPLICATE" }];
+  if (name === "x") return [{ scope: "domain", type: "SKIP_SELECTED_OCCURRENCE" }];
+  if (name === "z") return [{ scope: "domain", type: "SNOOZE_SELECTED_OCCURRENCE" }];
   if (!ctrl && name === "d") return [{ scope: "domain", type: "OPEN_DELETE_CONFIRM" }];
   if (name === "/") return [{ scope: "ui", type: "OPEN_SEARCH" }];
   if (name === "f") return [{ scope: "domain", type: "CYCLE_STATUS" }];
@@ -258,6 +267,14 @@ export function handleKey(
   if (mode === Mode.ADD || mode === Mode.EDIT) {
     if (ctrl && name === "s") {
       return [{ scope: "domain", type: "SAVE_EDITOR" }];
+    }
+
+    if (isPageUpKey(name, ctrl)) {
+      return [{ scope: "ui", type: "SCROLL_EDITOR_PAGE", direction: -1 }];
+    }
+
+    if (isPageDownKey(name, ctrl)) {
+      return [{ scope: "ui", type: "SCROLL_EDITOR_PAGE", direction: 1 }];
     }
 
     if (name === "tab") {

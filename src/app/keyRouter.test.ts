@@ -130,6 +130,15 @@ describe("handleKey", () => {
     expect(run({ name: "s", sequence: "s" })).toEqual([
       { scope: "domain", type: "CYCLE_SORT" }
     ]);
+    expect(run({ name: "x", sequence: "x" })).toEqual([
+      { scope: "domain", type: "SKIP_SELECTED_OCCURRENCE" }
+    ]);
+    expect(run({ name: "z", sequence: "z" })).toEqual([
+      { scope: "domain", type: "SNOOZE_SELECTED_OCCURRENCE" }
+    ]);
+    expect(run({ name: "E", sequence: "E" })).toEqual([
+      { scope: "domain", type: "OPEN_EDIT_SERIES" }
+    ]);
     expect(run({ sequence: "3", name: "3" })).toEqual([
       { scope: "domain", type: "APPLY_VIEW_SLOT", slot: 2 }
     ]);
@@ -311,6 +320,18 @@ describe("handleKey", () => {
     expect(run({ name: "down" }, { uiState: addState })).toEqual([]);
     expect(run({ ctrl: true, name: "s" }, { uiState: addState })).toEqual([
       { scope: "domain", type: "SAVE_EDITOR" }
+    ]);
+    expect(run({ name: "pageup" }, { uiState: addState })).toEqual([
+      { scope: "ui", type: "SCROLL_EDITOR_PAGE", direction: -1 }
+    ]);
+    expect(run({ name: "pagedown" }, { uiState: addState })).toEqual([
+      { scope: "ui", type: "SCROLL_EDITOR_PAGE", direction: 1 }
+    ]);
+    expect(run({ ctrl: true, name: "u" }, { uiState: addState })).toEqual([
+      { scope: "ui", type: "SCROLL_EDITOR_PAGE", direction: -1 }
+    ]);
+    expect(run({ ctrl: true, name: "d" }, { uiState: addState })).toEqual([
+      { scope: "ui", type: "SCROLL_EDITOR_PAGE", direction: 1 }
     ]);
   });
 

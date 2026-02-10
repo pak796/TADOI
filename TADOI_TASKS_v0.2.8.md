@@ -6,11 +6,11 @@
 - Implement in small, reviewable commits.
 - Keep "domain" logic pure; write unit tests where appropriate.
 
-v0.2.7 scope note:
+v0.2.8 scope note:
 - This version carries forward foundation polish, packaging readiness, portability, and dashboard work from prior increments.
 - It keeps routing and persistence discipline strict while aligning runtime and documentation to current release behavior.
 - It codifies graceful interactive exit teardown and renderer-managed `Ctrl+C` handling in implementation expectations.
-- Current app version surfaces are aligned to `v0.2.7` / `0.2.7`.
+- Current app version surfaces are aligned to `v0.2.8` / `0.2.8`.
 
 recurrence extension note:
 - Recurring tasks are now in scope and implemented with schema v4, RRULE-based series metadata, sparse materialization, and recurrence-aware list/dashboard selectors.
@@ -1276,17 +1276,17 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 - Help pane displays `App Version: v0.2.3`.
 - `package.json` version is `0.2.3`.
 
-## T12.3 Version surfaces sync to v0.2.7
+## T12.3 Version surfaces sync to v0.2.8
 **Status**: Complete
 **Implement**
-- Update `APP_VERSION` to `v0.2.7`.
-- Update `package.json` version to `0.2.7`.
+- Update `APP_VERSION` to `v0.2.8`.
+- Update `package.json` version to `0.2.8`.
 - Keep left rail and help pane bound to centralized `APP_VERSION`.
 
 **DoD**
-- Left rail shows `v0.2.7`.
-- Help pane displays `App Version: v0.2.7`.
-- `package.json` version is `0.2.7`.
+- Left rail shows `v0.2.8`.
+- Help pane displays `App Version: v0.2.8`.
+- `package.json` version is `0.2.8`.
 
 ---
 
@@ -1632,7 +1632,7 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 
 ---
 
-# Phase 17 — v0.2.7 Interaction Polish (Mouse + Input Guard)
+# Phase 17 — v0.2.8 Interaction Polish (Mouse + Input Guard)
 
 > Scope note: this phase hardens mouse interaction parity and prevents keyboard mode-switch leakage while users are typing.
 
@@ -1672,7 +1672,7 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 
 ---
 
-# Phase 18 — Post-v0.2.7 Dashboard + UX Alignment
+# Phase 18 — Post-v0.2.8 Dashboard + UX Alignment
 
 > Scope note: this phase captures runtime enhancements shipped after the initial dashboard MVP and interaction polish pass.
 
@@ -1743,8 +1743,23 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 **Status**: Complete
 **Implement**
 - Update README dashboard/sort notes for latest runtime behavior.
-- Update changelog unreleased notes for dashboard/KPI/quick-filter/sort changes.
+- Update changelog release notes for dashboard/KPI/quick-filter/sort changes.
 - Align dashboard/spec/task planning docs with implemented functionality.
 
 **DoD**
 - Documentation matches shipped behavior for dashboard widgets, drilldown keys, KPI semantics, quick-filter mouse flows, and due-sort priority.
+
+## T18.7 Add/Edit pane containment + recurrence-row fit polish
+**Status**: Complete
+**Implement**
+- Split Add/Edit pane into two explicit regions:
+  - scrollable content region for form fields
+  - fixed footer region for `SAVE`, `CANCEL`, and key hints
+- Prevent form rendering from drawing into footer region at constrained heights.
+- Add editor overflow controls (`ctrl+u`/`ctrl+d`, `PageUp`/`PageDown`) and focus-aware reveal behavior.
+- Keep repeat selector chips (`OFF`, `DLY`, `WLY`, `MLY`, `CUS`) on one line in supported widths.
+
+**DoD**
+- Add/Edit form fields never overlap footer hints/actions.
+- Footer remains visible while editor content scrolls.
+- Repeat selector chips render on one line without pushing surrounding fields out of alignment.

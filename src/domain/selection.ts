@@ -1,5 +1,3 @@
-import { Task } from "./models";
-
 export type SelectionReconcileResult = {
   selectedId?: string;
   selectedIndex: number;
@@ -11,24 +9,24 @@ function clampIndex(index: number, itemCount: number): number {
 }
 
 export function reconcileSelectionById(
-  visibleTasks: Task[],
+  visibleItems: Array<{ id: string }>,
   selectedId: string | undefined,
   previousIndex: number
 ): SelectionReconcileResult {
-  if (visibleTasks.length === 0) {
+  if (visibleItems.length === 0) {
     return { selectedId: undefined, selectedIndex: 0 };
   }
 
   if (selectedId) {
-    const nextIndex = visibleTasks.findIndex((task) => task.id === selectedId);
+    const nextIndex = visibleItems.findIndex((item) => item.id === selectedId);
     if (nextIndex >= 0) {
       return { selectedId, selectedIndex: nextIndex };
     }
   }
 
-  const fallbackIndex = clampIndex(previousIndex, visibleTasks.length);
+  const fallbackIndex = clampIndex(previousIndex, visibleItems.length);
   return {
-    selectedId: visibleTasks[fallbackIndex].id,
+    selectedId: visibleItems[fallbackIndex].id,
     selectedIndex: fallbackIndex
   };
 }

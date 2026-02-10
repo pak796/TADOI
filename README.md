@@ -4,6 +4,8 @@ Terminal Accessible Digital Organization Interface
 
 Keyboard-first TUI todo list with due dates, completion, and tag autocomplete (OpenTUI + React on Bun).
 
+Current release baseline: `v0.2.8` (`package.json` `0.2.8`).
+
 ## Setup
 
 ```bash
@@ -47,6 +49,8 @@ Tasks persist to `tadoi_data.json` using the following resolution order:
 
 The resolved path is shown in startup logs and in the in-app Help panel.
 
+Current persisted schema version: `4` (includes recurrence fields).
+
 If a save fails (permissions/disk/IO), TADOI keeps running and shows a persistent banner with the error and resolved data path. Saves retry on the next domain mutation (not on UI-only ticks).
 
 ### Data Backup and Corrupt Recovery
@@ -86,9 +90,12 @@ Corrupt backups created by recovery look like:
 - LIST mode task actions:
   - `b` / `B`: toggle Dashboard mode (ignored in SEARCH/ADD/EDIT and save-view name prompt)
   - `a`: add task
-  - `e`: edit selected task
+  - `e`: edit selected task (on recurring occurrence rows, edits that single occurrence)
+  - `E`: edit recurring series definition
   - `c`: duplicate selected task
-  - `space`: toggle selected task done/open
+  - `space`: toggle selected task done/open (on recurring occurrences, completes/reopens that occurrence)
+  - `x`: skip selected recurring occurrence
+  - `z`: snooze selected recurring occurrence by `+1 day`
   - `d`: delete selected task (confirm modal `y` / `n` / `Esc`)
   - `/`: open search
   - `f`: cycle status filter
@@ -123,7 +130,15 @@ Corrupt backups created by recovery look like:
   - `Tab` / `Shift+Tab`: move between fields
   - `ctrl+s`: save
   - `Esc`: cancel and return to list
+  - `ctrl+u` / `PageUp`: scroll editor form up when content overflows
+  - `ctrl+d` / `PageDown`: scroll editor form down when content overflows
   - `right arrow`: accept date/tag/time inline suggestions when present
+  - Add/Edit pane is split into a scrollable content region and fixed footer (Save/Cancel + hints stay visible).
+  - Recurrence controls:
+    - Repeat mode: `off|daily|weekly|monthly|custom`
+    - Weekly days (`BYDAY`), monthly day (`BYMONTHDAY`)
+    - End mode: `never|until|count`
+    - Custom `RRULE` text and next-3-occurrence preview
 - Search mode:
   - Type to filter task titles/tags
   - `Enter` or `Esc`: return to list
@@ -147,6 +162,24 @@ Corrupt backups created by recovery look like:
 ## Tag Autocomplete
 
 Type `#` in the Tags field to get suggestions ranked by usage. Selecting a suggestion fills the current tag token.
+
+## Recurring Tasks
+
+- Recurrence is stored with RFC5545-style fields on tasks:
+  - `recurrence.dtstart` (local floating ISO timestamp)
+  - `recurrence.rrule` (RRULE fragment)
+  - `recurrence.exdates[]` (excluded occurrences)
+  - `recurrence.series_id`
+- Recurrence instances are materialized sparsely:
+  - Virtual occurrences are rendered from the series for list/dashboard filtering.
+  - A real instance row is materialized only when an occurrence is completed, snoozed, skipped, or edited.
+- Occurrence semantics:
+  - Complete occurrence: adds EXDATE + creates/updates done instance history row.
+  - Skip occurrence: adds EXDATE and removes matching materialized instance if present.
+  - Snooze occurrence: adds EXDATE and creates/updates an open materialized instance due `+1 day` (local wall-clock preserved when explicit time exists).
+  - Edit occurrence: edits/creates one materialized override instance.
+  - Edit series (`E`): updates the parent recurring task and RRULE without deleting existing materialized instances.
+- Date windows (`Today`, `Next7`, `Overdue`) and dashboard counts include recurrence occurrences through the same visible-row selector used by Task List.
 
 ## Settings File
 
@@ -214,7 +247,7 @@ bun run pack:smoke
 Install from generated tarball (example):
 
 ```bash
-bun add -g ./dist/tarball/tadoi-0.2.7.tgz
+bun add -g ./dist/tarball/tadoi-0.2.8.tgz
 tadoi --help
 ```
 
@@ -226,13 +259,13 @@ Build machine (create artifact):
 bun run pack:dry
 ```
 
-Copy `dist/tarball/tadoi-0.2.7.tgz` to the target test machine, then install:
+Copy `dist/tarball/tadoi-0.2.8.tgz` to the target test machine, then install:
 
 macOS/Linux:
 
 ```bash
 bun --version
-bun add -g ./tadoi-0.2.7.tgz
+bun add -g ./tadoi-0.2.8.tgz
 tadoi --help
 tadoi
 ```
@@ -241,7 +274,7 @@ Windows (PowerShell):
 
 ```powershell
 bun --version
-bun add -g .\tadoi-0.2.7.tgz
+bun add -g .\tadoi-0.2.8.tgz
 tadoi --help
 tadoi
 ```

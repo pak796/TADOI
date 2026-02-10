@@ -15,6 +15,15 @@ import { DashboardPane } from "../components/DashboardPane";
 import { diffLocalDays, startOfLocalDayMs } from "../domain/dates";
 import { computeTopTagsOpen } from "../domain/dashboard";
 import {
+  buildRecurrenceFromDraft,
+  buildRecurrencePreviewFromDraft
+} from "../domain/recurrence/draft";
+import { getEditorViewportHeights } from "../domain/editorPaneLayout";
+import {
+  formatDateToLocalIso,
+  parseLocalIsoToDate
+} from "../domain/recurrence/rruleAdapter";
+import {
   findNextMatchingIndex,
   isTaskDueToday,
   isTaskOverdue
@@ -34,7 +43,6 @@ import {
   createEmptyDraft,
   formatDate,
   getDueInLabel,
-  getVisibleTasks,
   initialState,
   parseDueTime,
   reducer
@@ -59,6 +67,7 @@ import {
   SORT_MODE_ORDER
 } from "../domain/query";
 import { reconcileSelectionById } from "../domain/selection";
+import { buildVisibleTaskRows, type VisibleTaskRow } from "../domain/taskRows";
 import { AppState, FocusTarget, Mode, SavedView, Task } from "../domain/models";
 import { ROTATING_THEME_ORDER, THEMES, ThemeId } from "../theme/themes";
 import {
@@ -285,9 +294,45 @@ export function App({
 
   const now = Date.now();
   const dayKey = startOfLocalDayMs(now);
-  const visibleTasks = getVisibleTasks(state, now);
-  const selectedTask = visibleTasks.find((task) => task.id === state.selectedId) ?? visibleTasks[0];
+  const visibleTaskRows = buildVisibleTaskRows(
+    state.tasks,
+    state.filters,
+    state.sortMode,
+    now
+  );
+  const selectedTask =
+    visibleTaskRows.find((task) => task.id === state.selectedId) ?? visibleTaskRows[0];
   const sortModeLabel = getSortModeLabel(state.sortMode);
+
+  function findTaskById(taskId: string | undefined): Task | undefined {
+    if (!taskId) return undefined;
+    return state.tasks.find((task) => task.id === taskId);
+  }
+
+  function findSeriesTaskBySeriesId(seriesId: string | undefined): Task | undefined {
+    if (!seriesId) return undefined;
+    return state.tasks.find((task) => task.recurrence?.series_id === seriesId);
+  }
+
+  function findMaterializedInstance(
+    seriesId: string | undefined,
+    occurrenceIso: string | undefined
+  ): Task | undefined {
+    if (!seriesId || !occurrenceIso) return undefined;
+    return state.tasks.find(
+      (task) =>
+        task.instance_of?.series_id === seriesId &&
+        task.instance_of?.occurrence === occurrenceIso
+    );
+  }
+
+  function resolvePersistedTaskForRow(row: VisibleTaskRow | undefined): Task | undefined {
+    if (!row) return undefined;
+    if (row.rowKind === "series_occurrence_virtual") {
+      return findTaskById(row.sourceTaskId);
+    }
+    return findTaskById(row.id);
+  }
 
   const listHeaderHeight = 2;
   const topBarHeight = 4;
@@ -311,6 +356,19 @@ export function App({
     searchHeight;
   const visibleLines = Math.max(1, listContentHeight);
   const visibleRows = Math.max(1, Math.floor(visibleLines / taskRowHeight));
+  const editorPaneHeightLines = Math.max(
+    1,
+    terminalHeight -
+      topBarHeight -
+      bottomBarHeight -
+      bannerHeight -
+      listHeaderHeight -
+      listPanelBorder -
+      listPanelPadding
+  );
+  const { contentHeight: editorContentVisibleLines } =
+    getEditorViewportHeights(editorPaneHeightLines);
+  const editorPageStep = Math.max(1, editorContentVisibleLines - 1);
   const dashboardPaneWidth = Math.max(20, terminalWidth - layout.railWidth - 4);
   const dashboardPaneHeight = Math.max(
     8,
@@ -353,36 +411,47 @@ export function App({
             ? theme.ok
             : theme.accentOrange;
 
-  const summary = state.tasks.reduce(
+  const summaryOverdueRows = React.useMemo(
+    () => buildVisibleTaskRows(state.tasks, { status: "open", due: "overdue" }, state.sortMode, now),
+    [state.tasks, state.sortMode, now]
+  );
+  const summaryTodayRows = React.useMemo(
+    () => buildVisibleTaskRows(state.tasks, { status: "open", due: "today" }, state.sortMode, now),
+    [state.tasks, state.sortMode, now]
+  );
+  const summaryNext7Rows = React.useMemo(
+    () => buildVisibleTaskRows(state.tasks, { status: "open", due: "next7" }, state.sortMode, now),
+    [state.tasks, state.sortMode, now]
+  );
+  const summaryDoneRows = React.useMemo(
+    () => buildVisibleTaskRows(state.tasks, { status: "done", due: "any" }, state.sortMode, now),
+    [state.tasks, state.sortMode, now]
+  );
+  const summary = summaryDoneRows.reduce(
     (acc, task) => {
-      if (task.status === "open" && task.dueAt !== undefined) {
-        const dayDiff = diffLocalDays(task.dueAt, startOfToday);
-        const timeOverdue =
-          task.hasExplicitTime === true && dayDiff === 0 && now > task.dueAt;
-        if (dayDiff < 0 || timeOverdue) {
-          acc.overdue += 1;
-        } else if (dayDiff === 0) {
-          acc.today += 1;
-        } else if (dayDiff >= 1 && dayDiff <= 7) {
-          acc.next7 += 1;
-        }
-      }
-
-      if (task.status === "done") {
-        const closedAt = task.closedAt ?? task.updatedAt;
-        const closedDiff = diffLocalDays(closedAt, startOfToday);
-        if (closedDiff <= 0 && closedDiff >= -6) {
-          acc.completed7 += 1;
-        }
+      const closedAt = task.closedAt ?? task.updatedAt;
+      const closedDiff = diffLocalDays(closedAt, startOfToday);
+      if (closedDiff <= 0 && closedDiff >= -6) {
+        acc.completed7 += 1;
       }
       return acc;
     },
-    { overdue: 0, today: 0, next7: 0, completed7: 0 }
+    {
+      overdue: summaryOverdueRows.length,
+      today: summaryTodayRows.length,
+      next7: summaryNext7Rows.length,
+      completed7: 0
+    }
+  );
+
+  const summaryTagRows = React.useMemo(
+    () => buildVisibleTaskRows(state.tasks, { status: "all", due: "any" }, state.sortMode, now),
+    [state.tasks, state.sortMode, now]
   );
 
   const tagStats = React.useMemo(
-    () => computeTopTagStats(state.tasks, dayKey, 5),
-    [state.tasks, dayKey]
+    () => computeTopTagStats(summaryTagRows, dayKey, 5),
+    [summaryTagRows, dayKey]
   );
 
   const bottomBarWidth = Math.max(0, terminalWidth - layout.railWidth);
@@ -396,8 +465,8 @@ export function App({
     [dashboardPaneHeight]
   );
   const dashboardTopTags = React.useMemo(
-    () => computeTopTagsOpen(visibleTasks, dashboardTopTagLimit),
-    [visibleTasks, dashboardTopTagLimit]
+    () => computeTopTagsOpen(visibleTaskRows, dashboardTopTagLimit),
+    [visibleTaskRows, dashboardTopTagLimit]
   );
   const clampedDashboardTagSelection =
     dashboardTopTags.length === 0
@@ -441,6 +510,18 @@ export function App({
       : timeAutocompleteStep === "minute" && timeSuggestion
         ? `→ ${timeSuggestion.hh}:${timeSuggestion.mm}`
         : null;
+  const editorDueTime = state.editor
+    ? combineDueDateTime(state.editor.dueText, state.editor.timeText)
+    : { dueAt: undefined, hasExplicitTime: false };
+  const recurrencePreview = state.editor
+    ? buildRecurrencePreviewFromDraft(
+        state.editor,
+        editorDueTime.dueAt,
+        editorDueTime.hasExplicitTime,
+        now,
+        3
+      )
+    : [];
   const renderStartMs = Date.now();
 
   function formatSaveTimestamp(epochMs: number): string {
@@ -605,13 +686,13 @@ export function App({
     if (!PERF_DEBUG_ENABLED) return;
     const durationMs = Date.now() - renderStartMs;
     console.log(
-      `[${APP_NAME}][perf] render=${durationMs}ms terminal=${terminalWidth}x${terminalHeight} visibleRows=${visibleRows} visibleTasks=${visibleTasks.length}`
+      `[${APP_NAME}][perf] render=${durationMs}ms terminal=${terminalWidth}x${terminalHeight} visibleRows=${visibleRows} visibleTaskRows=${visibleTaskRows.length}`
     );
   });
 
   useEffect(() => {
     const reconciled = reconcileSelectionById(
-      visibleTasks,
+      visibleTaskRows,
       state.selectedId,
       uiState.selectedIndex
     );
@@ -622,27 +703,27 @@ export function App({
     if (reconciled.selectedIndex !== uiState.selectedIndex) {
       uiDispatch({ type: "setSelectedIndex", selectedIndex: reconciled.selectedIndex });
     }
-    if (visibleTasks.length === 0 && uiState.scrollOffset !== 0) {
+    if (visibleTaskRows.length === 0 && uiState.scrollOffset !== 0) {
       uiDispatch({ type: "setScrollOffset", scrollOffset: 0 });
     }
-  }, [visibleTasks, state.selectedId, uiState.selectedIndex, uiState.scrollOffset]);
+  }, [visibleTaskRows, state.selectedId, uiState.selectedIndex, uiState.scrollOffset]);
 
   useEffect(() => {
     const clamped = clampScrollOffset(
       uiState.scrollOffset,
       visibleRows,
-      visibleTasks.length
+      visibleTaskRows.length
     );
     const nextOffset = ensureSelectedVisible({
       selectedIndex: uiState.selectedIndex,
       scrollOffset: clamped,
       visibleRows,
-      itemCount: visibleTasks.length
+      itemCount: visibleTaskRows.length
     });
     if (nextOffset !== uiState.scrollOffset) {
       uiDispatch({ type: "setScrollOffset", scrollOffset: nextOffset });
     }
-  }, [uiState.scrollOffset, uiState.selectedIndex, visibleRows, visibleTasks.length]);
+  }, [uiState.scrollOffset, uiState.selectedIndex, visibleRows, visibleTaskRows.length]);
 
   useEffect(() => {
     if (dashboardTopTags.length === 0) {
@@ -663,7 +744,12 @@ export function App({
       setTimeSuggestion(null);
       dispatch({ type: "setEditor", editor: null });
     }
-    uiDispatch({ type: "replace", state: next.state });
+    uiDispatch({
+      type: "replace",
+      state: next.clearEditorDraft
+        ? { ...next.state, editorScrollOffset: 0 }
+        : next.state
+    });
     return true;
   }
 
@@ -713,6 +799,14 @@ export function App({
       case "MOVE_DASHBOARD_TAG_SELECTION":
         moveDashboardTagSelection(action.delta);
         return;
+      case "SCROLL_EDITOR_PAGE": {
+        const nextOffset = Math.max(
+          0,
+          uiState.editorScrollOffset + action.direction * editorPageStep
+        );
+        uiDispatch({ type: "setEditorScrollOffset", scrollOffset: nextOffset });
+        return;
+      }
       case "OPEN_SAVE_VIEW_PROMPT":
         openSaveViewPrompt();
         return;
@@ -769,8 +863,17 @@ export function App({
       case "OPEN_EDIT":
         openEdit();
         return;
+      case "OPEN_EDIT_SERIES":
+        openEditSeries();
+        return;
       case "OPEN_DUPLICATE":
         openDuplicate();
+        return;
+      case "SKIP_SELECTED_OCCURRENCE":
+        skipSelectedOccurrence();
+        return;
+      case "SNOOZE_SELECTED_OCCURRENCE":
+        snoozeSelectedOccurrence();
         return;
       case "OPEN_DELETE_CONFIRM":
         openDeleteConfirm();
@@ -883,6 +986,7 @@ export function App({
     if (isEditorMode(uiState.mode)) {
       setTimeSuggestion(null);
       dispatch({ type: "setEditor", editor: null });
+      uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
     }
 
     setDashboardTagSelection(0);
@@ -904,6 +1008,7 @@ export function App({
     if (isEditorMode(uiState.mode)) {
       setTimeSuggestion(null);
       dispatch({ type: "setEditor", editor: null });
+      uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
     }
     uiDispatch({ type: "setMode", mode: Mode.LIST });
     uiDispatch({ type: "setFocus", focus: FocusTarget.TASK_LIST });
@@ -919,6 +1024,7 @@ export function App({
     if (isEditorMode(uiState.mode)) {
       setTimeSuggestion(null);
       dispatch({ type: "setEditor", editor: null });
+      uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
     }
     setDashboardTagSelection(0);
     uiDispatch({ type: "setMode", mode: Mode.DASHBOARD });
@@ -934,6 +1040,7 @@ export function App({
     if (isEditorMode(uiState.mode)) {
       setTimeSuggestion(null);
       dispatch({ type: "setEditor", editor: null });
+      uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
     }
     uiDispatch({ type: "setMode", mode: Mode.SEARCH });
     uiDispatch({ type: "setFocus", focus: FocusTarget.SEARCH_INPUT });
@@ -976,13 +1083,19 @@ export function App({
 
   function openDeleteConfirm() {
     if (!selectedTask) return;
+    if (selectedTask.rowKind === "series_occurrence_virtual") {
+      showShortNavigationBanner("Use x to skip a recurring occurrence");
+      return;
+    }
+    const persistedTask = resolvePersistedTaskForRow(selectedTask);
+    if (!persistedTask) return;
     closeViewsOverlay();
     uiDispatch({
       type: "setModal",
       modal: {
         type: "delete",
-        taskId: selectedTask.id,
-        taskTitle: selectedTask.title,
+        taskId: persistedTask.id,
+        taskTitle: persistedTask.title,
         previousMode: Mode.LIST,
         previousFocus: uiState.focus
       }
@@ -992,21 +1105,21 @@ export function App({
   }
 
   function moveSelection(delta: number) {
-    if (visibleTasks.length === 0) return;
-    const currentIndex = visibleTasks.findIndex((task) => task.id === state.selectedId);
+    if (visibleTaskRows.length === 0) return;
+    const currentIndex = visibleTaskRows.findIndex((task) => task.id === state.selectedId);
     const safeIndex = currentIndex === -1 ? 0 : currentIndex;
-    const nextIndex = (safeIndex + delta + visibleTasks.length) % visibleTasks.length;
-    dispatch({ type: "setSelected", id: visibleTasks[nextIndex].id });
+    const nextIndex = (safeIndex + delta + visibleTaskRows.length) % visibleTaskRows.length;
+    dispatch({ type: "setSelected", id: visibleTaskRows[nextIndex].id });
   }
 
   function setSelectedByIndex(index: number) {
-    if (visibleTasks.length === 0) return;
-    const nextIndex = Math.max(0, Math.min(index, visibleTasks.length - 1));
-    dispatch({ type: "setSelected", id: visibleTasks[nextIndex].id });
+    if (visibleTaskRows.length === 0) return;
+    const nextIndex = Math.max(0, Math.min(index, visibleTaskRows.length - 1));
+    dispatch({ type: "setSelected", id: visibleTaskRows[nextIndex].id });
   }
 
   function selectTaskById(taskId: string) {
-    const targetExists = visibleTasks.some((task) => task.id === taskId);
+    const targetExists = visibleTaskRows.some((task) => task.id === taskId);
     if (!targetExists) return;
     clearPendingGPrefix();
     dispatch({ type: "setSelected", id: taskId });
@@ -1017,13 +1130,13 @@ export function App({
   }
 
   function jumpToBottom() {
-    setSelectedByIndex(visibleTasks.length - 1);
+    setSelectedByIndex(visibleTaskRows.length - 1);
   }
 
   function moveSelectionPage(direction: 1 | -1) {
-    if (visibleTasks.length === 0) return;
+    if (visibleTaskRows.length === 0) return;
     const pageStep = Math.max(1, visibleRows - 1);
-    const currentIndex = visibleTasks.findIndex((task) => task.id === state.selectedId);
+    const currentIndex = visibleTaskRows.findIndex((task) => task.id === state.selectedId);
     const safeIndex = currentIndex === -1 ? 0 : currentIndex;
     setSelectedByIndex(safeIndex + direction * pageStep);
   }
@@ -1040,21 +1153,21 @@ export function App({
   }
 
   function jumpToAttention(kind: "overdue" | "today", direction: 1 | -1) {
-    if (visibleTasks.length === 0) {
+    if (visibleTaskRows.length === 0) {
       showShortNavigationBanner(
         kind === "overdue" ? "No overdue tasks" : "No due-today tasks"
       );
       return;
     }
 
-    const currentIndex = visibleTasks.findIndex((task) => task.id === state.selectedId);
+    const currentIndex = visibleTaskRows.findIndex((task) => task.id === state.selectedId);
     const safeIndex = currentIndex === -1 ? 0 : currentIndex;
     const matcher =
       kind === "overdue"
         ? (task: Task) => isTaskOverdue(task, now)
         : (task: Task) => isTaskDueToday(task, now);
     const nextIndex = findNextMatchingIndex(
-      visibleTasks,
+      visibleTaskRows,
       safeIndex,
       direction,
       matcher,
@@ -1206,15 +1319,256 @@ export function App({
     );
   }
 
+  function normalizeOccurrenceIso(value: string | undefined): string | undefined {
+    if (!value) return undefined;
+    const occurrenceDate = parseLocalIsoToDate(value);
+    if (!occurrenceDate) return undefined;
+    return formatDateToLocalIso(occurrenceDate);
+  }
+
+  function withSeriesOccurrenceExcluded(
+    tasks: Task[],
+    seriesTaskId: string,
+    occurrenceIso: string,
+    nowMs: number
+  ): Task[] {
+    return tasks.map((task) => {
+      if (task.id !== seriesTaskId || !task.recurrence) {
+        return task;
+      }
+      const nextExdates = Array.from(
+        new Set([...(task.recurrence.exdates ?? []), occurrenceIso])
+      ).sort((left, right) => left.localeCompare(right));
+      return {
+        ...task,
+        updatedAt: nowMs,
+        recurrence: {
+          ...task.recurrence,
+          exdates: nextExdates
+        }
+      };
+    });
+  }
+
+  function removeMaterializedOccurrenceInstance(
+    tasks: Task[],
+    seriesId: string,
+    occurrenceIso: string
+  ): Task[] {
+    return tasks.filter(
+      (task) =>
+        !(
+          task.instance_of?.series_id === seriesId &&
+          task.instance_of?.occurrence === occurrenceIso
+        )
+    );
+  }
+
+  function resolveSelectedOccurrenceContext(): {
+    row: VisibleTaskRow;
+    seriesTask: Task;
+    seriesId: string;
+    occurrenceIso: string;
+    instanceTask?: Task;
+  } | null {
+    if (!selectedTask) return null;
+    if (
+      selectedTask.rowKind !== "series_occurrence_virtual" &&
+      selectedTask.rowKind !== "series_occurrence_instance"
+    ) {
+      return null;
+    }
+
+    const normalizedIso = normalizeOccurrenceIso(selectedTask.occurrenceIso);
+    const seriesId = selectedTask.seriesId;
+    const seriesTask = findSeriesTaskBySeriesId(seriesId);
+
+    if (!normalizedIso || !seriesId || !seriesTask) {
+      return null;
+    }
+
+    const instanceTask =
+      selectedTask.rowKind === "series_occurrence_instance"
+        ? findTaskById(selectedTask.id)
+        : findMaterializedInstance(seriesId, normalizedIso);
+
+    return {
+      row: selectedTask,
+      seriesTask,
+      seriesId,
+      occurrenceIso: normalizedIso,
+      instanceTask
+    };
+  }
+
+  function completeRecurringOccurrence() {
+    const context = resolveSelectedOccurrenceContext();
+    if (!context) {
+      return;
+    }
+
+    const nowMs = Date.now();
+    const occurrenceDate = parseLocalIsoToDate(context.occurrenceIso);
+    if (!occurrenceDate) {
+      showShortNavigationBanner("Invalid occurrence timestamp");
+      return;
+    }
+
+    if (context.instanceTask) {
+      const nextStatus = context.instanceTask.status === "done" ? "open" : "done";
+      const updatedTasks = state.tasks.map((task) => {
+        if (task.id !== context.instanceTask?.id) return task;
+        return {
+          ...task,
+          status: nextStatus,
+          updatedAt: nowMs,
+          closedAt: nextStatus === "done" ? nowMs : undefined
+        };
+      });
+      dispatch({ type: "setTasks", tasks: updatedTasks });
+      dispatch({ type: "setSelected", id: context.instanceTask.id });
+      return;
+    }
+
+    const dueAt = occurrenceDate.getTime();
+    const instanceId = crypto.randomUUID();
+    const doneInstance: Task = {
+      id: instanceId,
+      title: context.seriesTask.title,
+      status: "done",
+      createdAt: nowMs,
+      updatedAt: nowMs,
+      closedAt: nowMs,
+      dueAt,
+      hasExplicitTime: context.seriesTask.hasExplicitTime,
+      notes: context.seriesTask.notes,
+      tags: context.seriesTask.tags,
+      instance_of: {
+        series_id: context.seriesId,
+        occurrence: context.occurrenceIso
+      }
+    };
+
+    const withExdate = withSeriesOccurrenceExcluded(
+      state.tasks,
+      context.seriesTask.id,
+      context.occurrenceIso,
+      nowMs
+    );
+    const updatedTasks = [...withExdate, doneInstance];
+    dispatch({ type: "setTasks", tasks: updatedTasks });
+    dispatch({
+      type: "setTagIndex",
+      tagIndex: updateTagIndex(state.tagIndex, doneInstance.tags, nowMs)
+    });
+    dispatch({ type: "setSelected", id: instanceId });
+  }
+
+  function skipSelectedOccurrence() {
+    const context = resolveSelectedOccurrenceContext();
+    if (!context) {
+      showShortNavigationBanner("Skip applies to recurring occurrences");
+      return;
+    }
+
+    const nowMs = Date.now();
+    const withExdate = withSeriesOccurrenceExcluded(
+      state.tasks,
+      context.seriesTask.id,
+      context.occurrenceIso,
+      nowMs
+    );
+    const updatedTasks = removeMaterializedOccurrenceInstance(
+      withExdate,
+      context.seriesId,
+      context.occurrenceIso
+    );
+    dispatch({ type: "setTasks", tasks: updatedTasks });
+    showShortNavigationBanner("Skipped selected occurrence");
+  }
+
+  function snoozeSelectedOccurrence() {
+    const context = resolveSelectedOccurrenceContext();
+    if (!context) {
+      showShortNavigationBanner("Snooze applies to recurring occurrences");
+      return;
+    }
+
+    const nowMs = Date.now();
+    const occurrenceDate = parseLocalIsoToDate(context.occurrenceIso);
+    if (!occurrenceDate) {
+      showShortNavigationBanner("Invalid occurrence timestamp");
+      return;
+    }
+
+    const snoozedDate = new Date(
+      occurrenceDate.getFullYear(),
+      occurrenceDate.getMonth(),
+      occurrenceDate.getDate() + 1,
+      occurrenceDate.getHours(),
+      occurrenceDate.getMinutes(),
+      occurrenceDate.getSeconds()
+    );
+
+    const source = context.instanceTask ?? context.seriesTask;
+    const instanceId = context.instanceTask?.id ?? crypto.randomUUID();
+    const snoozedInstance: Task = {
+      id: instanceId,
+      title: source.title,
+      status: "open",
+      createdAt: context.instanceTask?.createdAt ?? nowMs,
+      updatedAt: nowMs,
+      dueAt: snoozedDate.getTime(),
+      hasExplicitTime: source.hasExplicitTime,
+      notes: source.notes,
+      tags: source.tags,
+      instance_of: {
+        series_id: context.seriesId,
+        occurrence: context.occurrenceIso
+      }
+    };
+
+    const withExdate = withSeriesOccurrenceExcluded(
+      state.tasks,
+      context.seriesTask.id,
+      context.occurrenceIso,
+      nowMs
+    );
+    const withoutPreviousInstance = removeMaterializedOccurrenceInstance(
+      withExdate,
+      context.seriesId,
+      context.occurrenceIso
+    );
+    const updatedTasks = [...withoutPreviousInstance, snoozedInstance];
+    dispatch({ type: "setTasks", tasks: updatedTasks });
+    dispatch({
+      type: "setTagIndex",
+      tagIndex: updateTagIndex(state.tagIndex, snoozedInstance.tags, nowMs)
+    });
+    dispatch({ type: "setSelected", id: instanceId });
+    showShortNavigationBanner("Snoozed occurrence by +1 day");
+  }
+
   function toggleSelected() {
     if (!selectedTask) return;
-    const now = Date.now();
-    const nextStatus = selectedTask.status === "done" ? "open" : "done";
+
+    if (
+      selectedTask.rowKind === "series_occurrence_virtual" ||
+      selectedTask.rowKind === "series_occurrence_instance"
+    ) {
+      completeRecurringOccurrence();
+      return;
+    }
+
+    const persisted = resolvePersistedTaskForRow(selectedTask);
+    if (!persisted) return;
+    const nowMs = Date.now();
+    const nextStatus = persisted.status === "done" ? "open" : "done";
     const updated: Task = {
-      ...selectedTask,
+      ...persisted,
       status: nextStatus,
-      updatedAt: now,
-      closedAt: nextStatus === "done" ? now : undefined
+      updatedAt: nowMs,
+      closedAt: nextStatus === "done" ? nowMs : undefined
     };
     dispatch({
       type: "setTasks",
@@ -1227,39 +1581,144 @@ export function App({
     setTimeSuggestion(getSuggestedTime(new Date()));
     uiDispatch({ type: "setMode", mode: Mode.ADD });
     uiDispatch({ type: "setFocus", focus: FocusTarget.EDITOR_TITLE });
+    uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
     dispatch({
       type: "setEditor",
       editor: createEmptyDraft()
     });
   }
 
-  function openEdit() {
-    if (!selectedTask) return;
+  function openEditOccurrence() {
+    const context = resolveSelectedOccurrenceContext();
+    if (!context) {
+      showShortNavigationBanner("No recurring occurrence selected");
+      return;
+    }
+
+    const occurrenceDate = parseLocalIsoToDate(context.occurrenceIso);
+    if (!occurrenceDate) {
+      showShortNavigationBanner("Invalid occurrence timestamp");
+      return;
+    }
+
+    const editSource: Task = context.instanceTask
+      ? context.instanceTask
+      : {
+          ...context.seriesTask,
+          id: `occurrence:${context.seriesId}:${context.occurrenceIso}`,
+          dueAt: occurrenceDate.getTime(),
+          recurrence: undefined
+        };
+    const baseDraft = createDraftFromTask(editSource);
+
     closeViewsOverlay();
     setTimeSuggestion(null);
     uiDispatch({ type: "setMode", mode: Mode.EDIT });
     uiDispatch({ type: "setFocus", focus: FocusTarget.EDITOR_TITLE });
+    uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
     dispatch({
       type: "setEditor",
-      editor: createDraftFromTask(selectedTask)
+      editor: {
+        ...baseDraft,
+        id: context.instanceTask?.id,
+        repeatMode: "off",
+        repeatIntervalText: "1",
+        repeatWeekdays: [],
+        repeatMonthdayText: "",
+        repeatEndMode: "never",
+        repeatUntilText: "",
+        repeatCountText: "",
+        repeatCustomRRuleText: "",
+        editKind: "occurrence",
+        sourceTaskId: context.seriesTask.id,
+        sourceSeriesId: context.seriesId,
+        occurrenceIso: context.occurrenceIso
+      }
+    });
+  }
+
+  function openEditSeries() {
+    if (!selectedTask) return;
+
+    const seriesTask =
+      selectedTask.rowKind === "series_occurrence_virtual" ||
+      selectedTask.rowKind === "series_occurrence_instance"
+        ? findSeriesTaskBySeriesId(selectedTask.seriesId)
+        : selectedTask.recurrence
+          ? resolvePersistedTaskForRow(selectedTask)
+          : undefined;
+
+    if (!seriesTask) {
+      showShortNavigationBanner("No recurring series selected");
+      return;
+    }
+
+    closeViewsOverlay();
+    setTimeSuggestion(null);
+    uiDispatch({ type: "setMode", mode: Mode.EDIT });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.EDITOR_TITLE });
+    uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
+    dispatch({
+      type: "setEditor",
+      editor: {
+        ...createDraftFromTask(seriesTask),
+        editKind: "series",
+        sourceTaskId: seriesTask.id,
+        sourceSeriesId: seriesTask.recurrence?.series_id
+      }
+    });
+  }
+
+  function openEdit() {
+    if (!selectedTask) return;
+    if (
+      selectedTask.rowKind === "series_occurrence_virtual" ||
+      selectedTask.rowKind === "series_occurrence_instance"
+    ) {
+      openEditOccurrence();
+      return;
+    }
+
+    const persisted = resolvePersistedTaskForRow(selectedTask);
+    if (!persisted) return;
+    closeViewsOverlay();
+    setTimeSuggestion(null);
+    uiDispatch({ type: "setMode", mode: Mode.EDIT });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.EDITOR_TITLE });
+    uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
+    dispatch({
+      type: "setEditor",
+      editor: {
+        ...createDraftFromTask(persisted),
+        editKind: "regular"
+      }
     });
   }
 
   function openDuplicate() {
     if (!selectedTask) return;
+    const persisted = resolvePersistedTaskForRow(selectedTask);
+    if (!persisted) return;
     closeViewsOverlay();
-    const baseDraft = createDraftFromTask(selectedTask);
-    const dueText =
-      selectedTask.status === "done"
-        ? formatDate(now)
-        : baseDraft.dueText;
-    const timeText = selectedTask.status === "done" ? "" : baseDraft.timeText;
+    const baseDraft = createDraftFromTask(persisted);
+    const dueText = persisted.status === "done" ? formatDate(now) : baseDraft.dueText;
+    const timeText = persisted.status === "done" ? "" : baseDraft.timeText;
     setTimeSuggestion(getSuggestedTime(new Date()));
     uiDispatch({ type: "setMode", mode: Mode.ADD });
     uiDispatch({ type: "setFocus", focus: FocusTarget.EDITOR_TITLE });
+    uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
     dispatch({
       type: "setEditor",
-      editor: { ...baseDraft, id: undefined, dueText, timeText }
+      editor: {
+        ...baseDraft,
+        id: undefined,
+        dueText,
+        timeText,
+        editKind: "regular",
+        sourceTaskId: undefined,
+        sourceSeriesId: undefined,
+        occurrenceIso: undefined
+      }
     });
   }
 
@@ -1268,76 +1727,199 @@ export function App({
     setTimeSuggestion(null);
     uiDispatch({ type: "setMode", mode: Mode.LIST });
     uiDispatch({ type: "setFocus", focus: FocusTarget.TASK_LIST });
+    uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
     dispatch({ type: "setEditor", editor: null });
   }
 
   function saveEditor() {
     if (!state.editor) return;
-    const title = state.editor.title.trim();
+    const draft = state.editor;
+    const title = draft.title.trim();
     if (!title) return;
 
-    const now = Date.now();
-    const timeText = state.editor.timeText.trim();
+    const nowMs = Date.now();
+    const timeText = draft.timeText.trim();
     const timeMinutes = timeText ? parseDueTime(timeText) : undefined;
     if (timeText && timeMinutes === undefined) {
+      showShortNavigationBanner("Invalid time format (HH:mm)");
       return;
     }
-    const { dueAt, hasExplicitTime } = combineDueDateTime(
-      state.editor.dueText,
-      timeText
-    );
-    const tags = normalizeTagsFromInput(state.editor.tagsText);
-    const notes = state.editor.notes.trim() || undefined;
+
+    const { dueAt, hasExplicitTime } = combineDueDateTime(draft.dueText, timeText);
+    const tags = normalizeTagsFromInput(draft.tagsText);
+    const notes = draft.notes.trim() || undefined;
 
     if (uiState.mode === Mode.ADD) {
+      const taskId = crypto.randomUUID();
+      const recurrenceBuild = buildRecurrenceFromDraft(
+        draft,
+        dueAt,
+        `series:${taskId}`
+      );
+      if (recurrenceBuild.error) {
+        showShortNavigationBanner(recurrenceBuild.error);
+        return;
+      }
+
       const newTask: Task = {
-        id: crypto.randomUUID(),
+        id: taskId,
         title,
         status: "open",
-        createdAt: now,
-        updatedAt: now,
+        createdAt: nowMs,
+        updatedAt: nowMs,
         dueAt,
         hasExplicitTime,
         notes,
-        tags
+        tags,
+        ...(recurrenceBuild.recurrence ? { recurrence: recurrenceBuild.recurrence } : {})
       };
+
       dispatch({ type: "setTasks", tasks: [...state.tasks, newTask] });
       dispatch({
         type: "setTagIndex",
-        tagIndex: updateTagIndex(state.tagIndex, tags, now)
+        tagIndex: updateTagIndex(state.tagIndex, tags, nowMs)
       });
       dispatch({ type: "setSelected", id: newTask.id });
+      uiDispatch({ type: "setMode", mode: Mode.LIST });
+      uiDispatch({ type: "setFocus", focus: FocusTarget.TASK_LIST });
+      uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
+      dispatch({ type: "setEditor", editor: null });
+      return;
     }
 
-    if (uiState.mode === Mode.EDIT && state.editor.id) {
-      const updatedTasks = state.tasks.map((task) => {
-        if (task.id !== state.editor?.id) return task;
-        return {
-          ...task,
+    if (uiState.mode === Mode.EDIT) {
+      if (draft.editKind === "occurrence") {
+        const seriesId = draft.sourceSeriesId;
+        const occurrenceIso = normalizeOccurrenceIso(draft.occurrenceIso);
+        const seriesTask =
+          findTaskById(draft.sourceTaskId) ?? findSeriesTaskBySeriesId(seriesId);
+
+        if (!seriesId || !occurrenceIso || !seriesTask?.recurrence) {
+          showShortNavigationBanner("Unable to edit occurrence");
+          return;
+        }
+
+        let tasksWithSeriesExdate = withSeriesOccurrenceExcluded(
+          state.tasks,
+          seriesTask.id,
+          occurrenceIso,
+          nowMs
+        );
+        const withoutPreviousInstance = removeMaterializedOccurrenceInstance(
+          tasksWithSeriesExdate,
+          seriesId,
+          occurrenceIso
+        );
+
+        const instanceId = draft.id ?? crypto.randomUUID();
+        const existingInstance = draft.id ? findTaskById(draft.id) : undefined;
+        const instance: Task = {
+          id: instanceId,
           title,
+          status: existingInstance?.status ?? "open",
+          createdAt: existingInstance?.createdAt ?? nowMs,
+          updatedAt: nowMs,
           dueAt,
           hasExplicitTime,
+          closedAt: existingInstance?.status === "done" ? existingInstance.closedAt : undefined,
           notes,
           tags,
-          updatedAt: now
+          instance_of: {
+            series_id: seriesId,
+            occurrence: occurrenceIso
+          }
         };
-      });
-      dispatch({ type: "setTasks", tasks: updatedTasks });
-      dispatch({
-        type: "setTagIndex",
-        tagIndex: updateTagIndex(state.tagIndex, tags, now)
-      });
+
+        tasksWithSeriesExdate = [...withoutPreviousInstance, instance];
+        dispatch({ type: "setTasks", tasks: tasksWithSeriesExdate });
+        dispatch({
+          type: "setTagIndex",
+          tagIndex: updateTagIndex(state.tagIndex, tags, nowMs)
+        });
+        dispatch({ type: "setSelected", id: instanceId });
+      } else if (draft.editKind === "series") {
+        const seriesTask =
+          findTaskById(draft.sourceTaskId ?? draft.id) ??
+          findSeriesTaskBySeriesId(draft.sourceSeriesId);
+        if (!seriesTask) {
+          showShortNavigationBanner("Unable to edit recurring series");
+          return;
+        }
+
+        const recurrenceBuild = buildRecurrenceFromDraft(
+          draft,
+          dueAt,
+          seriesTask.recurrence?.series_id ?? draft.sourceSeriesId ?? `series:${seriesTask.id}`
+        );
+        if (recurrenceBuild.error) {
+          showShortNavigationBanner(recurrenceBuild.error);
+          return;
+        }
+
+        const updatedTasks = state.tasks.map((task) => {
+          if (task.id !== seriesTask.id) return task;
+          return {
+            ...task,
+            title,
+            dueAt,
+            hasExplicitTime,
+            notes,
+            tags,
+            updatedAt: nowMs,
+            recurrence: recurrenceBuild.recurrence
+          };
+        });
+        dispatch({ type: "setTasks", tasks: updatedTasks });
+        dispatch({
+          type: "setTagIndex",
+          tagIndex: updateTagIndex(state.tagIndex, tags, nowMs)
+        });
+        dispatch({ type: "setSelected", id: seriesTask.id });
+      } else {
+        const targetTask = draft.id ? findTaskById(draft.id) : undefined;
+        if (!targetTask) return;
+
+        const recurrenceBuild = buildRecurrenceFromDraft(
+          draft,
+          dueAt,
+          targetTask.recurrence?.series_id ?? `series:${targetTask.id}`
+        );
+        if (recurrenceBuild.error) {
+          showShortNavigationBanner(recurrenceBuild.error);
+          return;
+        }
+
+        const updatedTasks = state.tasks.map((task) => {
+          if (task.id !== targetTask.id) return task;
+          return {
+            ...task,
+            title,
+            dueAt,
+            hasExplicitTime,
+            notes,
+            tags,
+            updatedAt: nowMs,
+            recurrence: recurrenceBuild.recurrence
+          };
+        });
+        dispatch({ type: "setTasks", tasks: updatedTasks });
+        dispatch({
+          type: "setTagIndex",
+          tagIndex: updateTagIndex(state.tagIndex, tags, nowMs)
+        });
+      }
     }
 
     uiDispatch({ type: "setMode", mode: Mode.LIST });
     uiDispatch({ type: "setFocus", focus: FocusTarget.TASK_LIST });
+    uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
     dispatch({ type: "setEditor", editor: null });
   }
 
   function handleDeleteSelected() {
     const modal = uiState.modal;
     if (!modal || modal.type !== "delete") return;
-    const visibleIds = visibleTasks.map((task) => task.id);
+    const visibleIds = visibleTaskRows.map((task) => task.id);
     const nextSelectedId = getNextSelectedIdAfterDelete(visibleIds, modal.taskId);
     dispatch({
       type: "setTasks",
@@ -1599,7 +2181,7 @@ export function App({
               }}
             >
               {isDashboardMode
-                ? `FILTERED TASKS: ${visibleTasks.length}`
+                ? `FILTERED TASKS: ${visibleTaskRows.length}`
                 : selectedTask
                   ? getDueInLabel(selectedTask, now)
                   : ""}
@@ -1632,7 +2214,7 @@ export function App({
               }}
             >
               <DashboardPane
-                tasks={visibleTasks}
+                tasks={visibleTaskRows}
                 filters={state.filters}
                 topTags={dashboardTopTags}
                 selectedTopTagIndex={clampedDashboardTagSelection}
@@ -1681,7 +2263,7 @@ export function App({
                     </box>
                   ) : null}
                   <TaskList
-                    tasks={visibleTasks}
+                    tasks={visibleTaskRows}
                     selectedId={state.selectedId}
                     now={now}
                     pulseOn={pulseOn}
@@ -1697,6 +2279,19 @@ export function App({
             </box>
 
             <box style={{ flexDirection: "column", width: layout.rightWidth }}>
+              {isEditorMode(uiState.mode) ? (
+                <box
+                  style={{
+                    backgroundColor: theme.panel,
+                    paddingLeft: 3,
+                    paddingTop: 1
+                  }}
+                >
+                  <text style={{ color: theme.muted }}>
+                    {uiState.mode === Mode.ADD ? "ADD TASK" : "EDIT TASK"}
+                  </text>
+                </box>
+              ) : (
               <box
                 style={{
                   backgroundColor: theme.panel,
@@ -1706,6 +2301,7 @@ export function App({
               >
                 <text style={{ color: theme.muted }}>DETAILS</text>
               </box>
+              )}
               <box
                 style={{
                   flexGrow: 1,
@@ -1721,12 +2317,18 @@ export function App({
                     mode={uiState.mode}
                     draft={state.editor}
                     focus={toEditorFocus(uiState.focus)}
+                    availableHeightLines={editorPaneHeightLines}
+                    scrollOffset={uiState.editorScrollOffset}
                     tagInlineSuggestion={
                       uiState.focus === FocusTarget.EDITOR_TAGS ? tagInlineSuggestion : null
                     }
                     dueSuggestionHint={dueSuggestionHint}
                     timeSuggestionHint={timeSuggestionHint}
+                    recurrencePreview={recurrencePreview}
                     onUpdate={(patch) => dispatch({ type: "updateEditor", patch })}
+                    onScrollOffsetChange={(scrollOffset) =>
+                      uiDispatch({ type: "setEditorScrollOffset", scrollOffset })
+                    }
                     onSave={saveEditor}
                     onCancel={cancelEditor}
                   />
@@ -2005,9 +2607,12 @@ export function App({
             <text>[ ]: prev/next overdue</text>
             <text>{'{'} {'}'}: prev/next due today</text>
             <text>a: add</text>
-            <text>e: edit</text>
+            <text>e: edit (recurring occurrence => edit occurrence)</text>
+            <text>E: edit recurring series</text>
             <text>c: copy</text>
             <text>space: toggle done</text>
+            <text>x: skip selected recurring occurrence</text>
+            <text>z: snooze selected recurring occurrence (+1 day)</text>
             <text>d: delete</text>
             <text>/: search</text>
             <text>b: toggle dashboard</text>
@@ -2054,6 +2659,8 @@ export function App({
             ) : (
               <text>Slow: due-today and overdue indicators pulse.</text>
             )}
+            <text>Recurring tasks: RRULE-based series with sparse occurrence materialization.</text>
+            <text>Occurrence completion creates done history rows without closing the series.</text>
             <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
               <box
                 style={{

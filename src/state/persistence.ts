@@ -119,7 +119,7 @@ export function resolveDataPath(options: ResolveDataPathOptions = {}): string {
 
 const DATA_FILE = resolveDataPath();
 const DEFAULT_FS_OPS: PersistenceFsOps = fs;
-export const CURRENT_SCHEMA_VERSION = 3;
+export const CURRENT_SCHEMA_VERSION = 4;
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 let lastSuccessfulSaveAt: number | undefined;
 const corruptionRecoveryByPath = new Map<string, string | undefined>();

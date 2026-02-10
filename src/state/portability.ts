@@ -82,6 +82,15 @@ function areStringArraysEqual(left: string[], right: string[]): boolean {
 }
 
 function areTasksEquivalent(left: Task, right: Task): boolean {
+  const recurrenceEqual =
+    left.recurrence?.dtstart === right.recurrence?.dtstart &&
+    left.recurrence?.rrule === right.recurrence?.rrule &&
+    left.recurrence?.series_id === right.recurrence?.series_id &&
+    areStringArraysEqual(left.recurrence?.exdates ?? [], right.recurrence?.exdates ?? []);
+  const instanceEqual =
+    left.instance_of?.series_id === right.instance_of?.series_id &&
+    left.instance_of?.occurrence === right.instance_of?.occurrence;
+
   return (
     left.id === right.id &&
     left.title === right.title &&
@@ -92,7 +101,9 @@ function areTasksEquivalent(left: Task, right: Task): boolean {
     left.hasExplicitTime === right.hasExplicitTime &&
     left.closedAt === right.closedAt &&
     left.notes === right.notes &&
-    areStringArraysEqual(left.tags, right.tags)
+    areStringArraysEqual(left.tags, right.tags) &&
+    recurrenceEqual &&
+    instanceEqual
   );
 }
 

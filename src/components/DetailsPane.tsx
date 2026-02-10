@@ -1,12 +1,13 @@
 import { diffLocalDays, formatLocalTimeHHmm, startOfLocalDayMs } from "../domain/dates";
+import { getRecurrenceSummary } from "../domain/recurrence/draft";
 import { formatTagForDisplay } from "../domain/tagIndex";
-import { Task } from "../domain/models";
+import { VisibleTaskRow } from "../domain/taskRows";
 import { formatDate, getDueLabel } from "../state/store";
 import { colorForTag, theme } from "../app/theme";
 import type { FlashMode } from "../settings/settings";
 
 type DetailsPaneProps = {
-  task?: Task;
+  task?: VisibleTaskRow;
   now: number;
   pulseOn: boolean;
   fastPulseOn: boolean;
@@ -67,6 +68,10 @@ export function DetailsPane({
     : isDueToday && dueTodayPulseOn
       ? theme.bg
       : attentionColor;
+  const recurrenceSummary = getRecurrenceSummary(task.recurrence);
+  const isOccurrenceRow =
+    task.rowKind === "series_occurrence_virtual" ||
+    task.rowKind === "series_occurrence_instance";
 
   return (
     <box style={{ flexDirection: "column" }}>
@@ -123,6 +128,15 @@ export function DetailsPane({
           CLOSED: {formatDate(task.closedAt ?? task.updatedAt)}
         </text>
       ) : null}
+      {recurrenceSummary ? (
+        <text style={{ color: theme.muted }}>REPEATS: {recurrenceSummary}</text>
+      ) : null}
+      {isOccurrenceRow && task.occurrenceIso ? (
+        <text style={{ color: theme.muted }}>OCCURRENCE: {task.occurrenceIso}</text>
+      ) : null}
+      {isOccurrenceRow && task.seriesId ? (
+        <text style={{ color: theme.muted }}>SERIES: {task.seriesId}</text>
+      ) : null}
       <box style={{ flexDirection: "column", marginTop: 1 }}>
         <text style={{ color: theme.muted }}>TAGS</text>
         {task.tags.length ? (
@@ -149,6 +163,11 @@ export function DetailsPane({
         <text style={{ color: theme.muted }}>NOTES</text>
       </box>
       <text style={{ color: theme.text }}>{task.notes || "(no notes)"}</text>
+      {isOccurrenceRow ? (
+        <box style={{ marginTop: 1 }}>
+          <text style={{ color: theme.muted }}>space: complete/reopen · x: skip · z: snooze · e: edit occurrence · E: edit series</text>
+        </box>
+      ) : null}
     </box>
   );
 }

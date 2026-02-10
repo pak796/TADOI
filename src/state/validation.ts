@@ -1,4 +1,8 @@
 import { normalizeTags } from "../domain/tagIndex";
+import {
+  formatDateToLocalIso,
+  parseLocalIsoToDate
+} from "../domain/recurrence/rruleAdapter";
 import type { TaskStatus } from "../domain/models";
 import type { LoadedData } from "./persistence";
 
@@ -16,6 +20,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+function normalizeLocalIso(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const parsed = parseLocalIsoToDate(value);
+  if (!parsed) return undefined;
+  return formatDateToLocalIso(parsed);
 }
 
 export function validatePersistedState(
@@ -96,6 +107,68 @@ export function validatePersistedState(
 
     if (task.closedAt !== undefined && !isFiniteNumber(task.closedAt)) {
       errors.push(`task.closedAt must be a number when present (${String(task.id)})`);
+    }
+
+    if (task.recurrence !== undefined) {
+      if (!isRecord(task.recurrence)) {
+        errors.push(`task.recurrence must be an object when present (${String(task.id)})`);
+      } else {
+        if (typeof task.recurrence.series_id !== "string" || task.recurrence.series_id.trim().length === 0) {
+          errors.push(`task.recurrence.series_id must be a non-empty string (${String(task.id)})`);
+        }
+        if (typeof task.recurrence.rrule !== "string" || task.recurrence.rrule.trim().length === 0) {
+          errors.push(`task.recurrence.rrule must be a non-empty string (${String(task.id)})`);
+        }
+        const normalizedDtstart = normalizeLocalIso(task.recurrence.dtstart);
+        if (!normalizedDtstart) {
+          errors.push(`task.recurrence.dtstart must be a valid local ISO timestamp (${String(task.id)})`);
+        } else if (task.recurrence.dtstart !== normalizedDtstart) {
+          errors.push(`task.recurrence.dtstart must be normalized local ISO (${String(task.id)})`);
+        }
+        if (task.recurrence.exdates !== undefined) {
+          if (!Array.isArray(task.recurrence.exdates)) {
+            errors.push(`task.recurrence.exdates must be a string array (${String(task.id)})`);
+          } else {
+            const normalizedExdates = Array.from(
+              new Set(
+                task.recurrence.exdates
+                  .map((exdate: unknown) => normalizeLocalIso(exdate))
+                  .filter(Boolean) as string[]
+              )
+            ).sort((left, right) => left.localeCompare(right));
+            const rawExdates = task.recurrence.exdates as unknown[];
+            if (
+              normalizedExdates.length !== rawExdates.length ||
+              normalizedExdates.some((value, index) => value !== rawExdates[index])
+            ) {
+              errors.push(`task.recurrence.exdates must be normalized/deduped/sorted (${String(task.id)})`);
+            }
+          }
+        }
+      }
+    }
+
+    if (task.instance_of !== undefined) {
+      if (!isRecord(task.instance_of)) {
+        errors.push(`task.instance_of must be an object when present (${String(task.id)})`);
+      } else {
+        if (
+          typeof task.instance_of.series_id !== "string" ||
+          task.instance_of.series_id.trim().length === 0
+        ) {
+          errors.push(`task.instance_of.series_id must be a non-empty string (${String(task.id)})`);
+        }
+        const normalizedOccurrence = normalizeLocalIso(task.instance_of.occurrence);
+        if (!normalizedOccurrence) {
+          errors.push(`task.instance_of.occurrence must be a valid local ISO timestamp (${String(task.id)})`);
+        } else if (task.instance_of.occurrence !== normalizedOccurrence) {
+          errors.push(`task.instance_of.occurrence must be normalized local ISO (${String(task.id)})`);
+        }
+      }
+    }
+
+    if (task.recurrence !== undefined && task.instance_of !== undefined) {
+      errors.push(`task cannot include both recurrence and instance_of (${String(task.id)})`);
     }
 
     if (

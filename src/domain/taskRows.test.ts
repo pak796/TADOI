@@ -1,0 +1,155 @@
+import { describe, expect, it } from "bun:test";
+import { Filters, SortMode, Task } from "./models";
+import {
+  buildSeriesOccurrenceRowId,
+  buildVisibleTaskRows,
+  parseSeriesOccurrenceRowId
+} from "./taskRows";
+
+function makeTask(partial: Partial<Task> & Pick<Task, "id" | "title">): Task {
+  return {
+    id: partial.id,
+    title: partial.title,
+    status: partial.status ?? "open",
+    createdAt: partial.createdAt ?? 1,
+    updatedAt: partial.updatedAt ?? 1,
+    dueAt: partial.dueAt,
+    hasExplicitTime: partial.hasExplicitTime,
+    closedAt: partial.closedAt,
+    notes: partial.notes,
+    tags: partial.tags ?? [],
+    recurrence: partial.recurrence,
+    instance_of: partial.instance_of
+  };
+}
+
+function buildRows(
+  tasks: Task[],
+  filters: Filters,
+  now: number,
+  sortMode: SortMode = "due"
+) {
+  return buildVisibleTaskRows(tasks, filters, sortMode, now);
+}
+
+describe("taskRows row-id helpers", () => {
+  it("builds and parses virtual row ids", () => {
+    const rowId = buildSeriesOccurrenceRowId("series:alpha", "2026-02-10T09:00:00");
+    expect(parseSeriesOccurrenceRowId(rowId)).toEqual({
+      seriesId: "series:alpha",
+      occurrenceIso: "2026-02-10T09:00:00"
+    });
+  });
+});
+
+describe("buildVisibleTaskRows recurring expansion", () => {
+  const now = new Date(2026, 1, 10, 12, 0, 0, 0).getTime();
+
+  it("due=any shows one actionable virtual occurrence (latest overdue first)", () => {
+    const tasks: Task[] = [
+      makeTask({
+        id: "series-task",
+        title: "standup",
+        status: "open",
+        hasExplicitTime: true,
+        tags: ["work"],
+        recurrence: {
+          dtstart: "2026-02-08T09:00:00",
+          rrule: "FREQ=DAILY;INTERVAL=1",
+          series_id: "series:standup"
+        }
+      })
+    ];
+
+    const rows = buildRows(tasks, { status: "all", due: "any" }, now);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.rowKind).toBe("series_occurrence_virtual");
+    expect(rows[0]?.seriesId).toBe("series:standup");
+    expect(rows[0]?.occurrenceIso).toBe("2026-02-10T09:00:00");
+  });
+
+  it("due=overdue shows one overdue virtual occurrence per series", () => {
+    const tasks: Task[] = [
+      makeTask({
+        id: "series-task",
+        title: "standup",
+        status: "open",
+        hasExplicitTime: true,
+        tags: ["work"],
+        recurrence: {
+          dtstart: "2026-02-08T09:00:00",
+          rrule: "FREQ=DAILY;INTERVAL=1",
+          series_id: "series:standup"
+        }
+      })
+    ];
+
+    const rows = buildRows(tasks, { status: "all", due: "overdue" }, now);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.rowKind).toBe("series_occurrence_virtual");
+    expect(rows[0]?.occurrenceIso).toBe("2026-02-10T09:00:00");
+  });
+
+  it("due=today and due=next7 expand occurrences by local-day window", () => {
+    const tasks: Task[] = [
+      makeTask({
+        id: "series-task",
+        title: "daily",
+        status: "open",
+        hasExplicitTime: true,
+        tags: ["work"],
+        recurrence: {
+          dtstart: "2026-02-10T09:00:00",
+          rrule: "FREQ=DAILY;INTERVAL=1;COUNT=10",
+          series_id: "series:daily"
+        }
+      })
+    ];
+
+    const todayRows = buildRows(tasks, { status: "all", due: "today" }, now);
+    expect(todayRows).toHaveLength(1);
+    expect(todayRows[0]?.occurrenceIso).toBe("2026-02-10T09:00:00");
+
+    const next7Rows = buildRows(tasks, { status: "all", due: "next7" }, now);
+    expect(next7Rows).toHaveLength(8);
+    expect(next7Rows[0]?.occurrenceIso).toBe("2026-02-10T09:00:00");
+    expect(next7Rows[7]?.occurrenceIso).toBe("2026-02-17T09:00:00");
+  });
+
+  it("suppresses virtual row when a matching materialized instance exists", () => {
+    const tasks: Task[] = [
+      makeTask({
+        id: "series-task",
+        title: "standup",
+        status: "open",
+        hasExplicitTime: true,
+        tags: ["work"],
+        recurrence: {
+          dtstart: "2026-02-10T09:00:00",
+          rrule: "FREQ=DAILY;INTERVAL=1;COUNT=3",
+          series_id: "series:standup"
+        }
+      }),
+      makeTask({
+        id: "instance-task",
+        title: "standup (snoozed)",
+        status: "open",
+        dueAt: new Date(2026, 1, 10, 15, 0, 0, 0).getTime(),
+        hasExplicitTime: true,
+        tags: ["work"],
+        instance_of: {
+          series_id: "series:standup",
+          occurrence: "2026-02-10T09:00:00"
+        }
+      })
+    ];
+
+    const rows = buildRows(tasks, { status: "all", due: "today" }, now);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.id).toBe("instance-task");
+    expect(rows[0]?.rowKind).toBe("series_occurrence_instance");
+  });
+});

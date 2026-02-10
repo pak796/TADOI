@@ -5,11 +5,11 @@
 Build a keyboard-first terminal TUI todo app with a **retro Star Trek-inspired layout**, using **OpenTUI** + **@opentui/react** on **Bun**.
 Naming: use **TADOI** consistently in the app UI and filenames.
 
-v0.2.7 scope note:
+v0.2.8 scope note:
 - This version carries forward foundation polish, packaging readiness, data portability, and dashboard contracts from prior increments.
 - It keeps persistence and routing discipline strict while aligning runtime/documentation behavior to current release expectations.
 - It codifies graceful interactive exit teardown (`renderer.destroy()` in app handlers) and renderer-managed `Ctrl+C` behavior.
-- Current app version surfaces are aligned to `v0.2.7` / `0.2.7`.
+- Current app version surfaces are aligned to `v0.2.8` / `0.2.8`.
 
 recurrence extension note:
 - Recurring tasks are now implemented with RRULE-style metadata (`dtstart`, `rrule`, `exdates`, `series_id`) and sparse materialization (`instance_of` rows for per-occurrence overrides/history).
@@ -86,7 +86,7 @@ Deliverables:
 55. **Left rail logo separator**: render a horizontal ASCII separator under TADOI logo before version/menu metadata.
 56. **Help pane app version**: show the current app version in the Help overlay.
 57. **Rotating theme mode**: support a `rotating` theme option that auto-cycles concrete palettes every 15 seconds.
-58. **v0.2.7 version surfaces**: app version indicators and package metadata are aligned to `v0.2.7` / `0.2.7`.
+58. **v0.2.8 version surfaces**: app version indicators and package metadata are aligned to `v0.2.8` / `0.2.8`.
 59. **Daily-driver list navigation primitives**: add `gg` (top), `G` (bottom), page navigation (`ctrl+u` / `ctrl+d`, plus PageUp/PageDown), and attention jumps (`[`/`]` for overdue, `{`/`}` for due-today).
 60. **Saved Views (filter presets)**: users can save/apply/delete up to 9 filter presets (`v`, `ctrl+s`, `1..9`) with persistence and schema migration support.
 61. **Global active-tag cycle filter**: `t` cycles through tags from all active (open) tasks, not only the selected task.
@@ -112,6 +112,9 @@ Deliverables:
 81. **Occurrence-vs-series editing**: `e` edits selected occurrence, `E` edits whole series rule/metadata.
 82. **Timezone/DST stability**: recurrence expansion preserves local wall-clock behavior across DST boundaries.
 83. **Persistence schema v4**: recurrence and instance metadata are validated, migrated, and portable through import/export.
+84. **Editor pane scroll containment**: Add/Edit pane uses two explicit regions: scrollable form content and fixed footer for actions/hints.
+85. **Editor overflow controls**: Add/Edit form supports page scrolling (`ctrl+u`/`ctrl+d`, `PageUp`/`PageDown`) without affecting task-list scroll state.
+86. **Repeat chip row fit**: repeat mode chips (`OFF`, `DLY`, `WLY`, `MLY`, `CUS`) stay on one line within the editor pane width.
 
 ### Non-Goals (MVP)
 - Sync, accounts, multi-device
@@ -711,7 +714,7 @@ Version contract:
 - App version is centralized in `src/app/version.ts` as `APP_VERSION`.
 - Left rail displays `APP_VERSION`.
 - Help pane displays `App Version: <APP_VERSION>`.
-- Package metadata in `package.json` matches the same release (`0.2.7`).
+- Package metadata in `package.json` matches the same release (`0.2.8`).
 
 ---
 
@@ -1080,7 +1083,7 @@ Tests:
 
 ---
 
-# Appendix J — v0.2.7 Interaction Polish (Mouse + Flash + Input Guard)
+# Appendix J — v0.2.8 Interaction Polish (Mouse + Flash + Input Guard)
 
 This appendix defines interaction-polish contracts added after dashboard MVP scope.
 
@@ -1141,3 +1144,16 @@ This appendix defines interaction-polish contracts added after dashboard MVP sco
   - explicit-time tasks sort before date-only tasks
   - explicit-time tasks sort by ascending time
   - final fallback uses stable deterministic tie-breaks
+
+## J8) Add/Edit Pane Scroll-Containment Contract
+
+- Add/Edit pane rendering is split into:
+  - scrollable content region (form fields)
+  - fixed footer region (SAVE/CANCEL + hints)
+- Form content must never draw into the footer region.
+- At constrained heights, form content scrolls while footer remains visible.
+- Editor field focus changes auto-scroll to keep the focused field in view.
+- Editor scrolling keys:
+  - `ctrl+u` / `PageUp` scroll up one editor page
+  - `ctrl+d` / `PageDown` scroll down one editor page
+- Repeat mode chips (`OFF`, `DLY`, `WLY`, `MLY`, `CUS`) remain on one line.

@@ -27,7 +27,7 @@ export function TagInput({
         onChange={onChange}
         focused={focused}
         placeholder="#work #home"
-        style={{ backgroundColor: theme.bg, color: theme.text }}
+        style={{ backgroundColor: theme.bg, color: theme.text, width: "100%" }}
       />
       {hasSuggestion ? (
         <box style={{ flexDirection: "row", gap: 0, marginTop: 1 }}>

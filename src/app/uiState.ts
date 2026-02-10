@@ -9,6 +9,14 @@ const editorFocusOrder: FocusTarget[] = [
   FocusTarget.EDITOR_TITLE,
   FocusTarget.EDITOR_DUE_DATE,
   FocusTarget.EDITOR_DUE_TIME,
+  FocusTarget.EDITOR_REPEAT_MODE,
+  FocusTarget.EDITOR_REPEAT_INTERVAL,
+  FocusTarget.EDITOR_REPEAT_WEEKDAYS,
+  FocusTarget.EDITOR_REPEAT_MONTHDAY,
+  FocusTarget.EDITOR_REPEAT_END_MODE,
+  FocusTarget.EDITOR_REPEAT_UNTIL,
+  FocusTarget.EDITOR_REPEAT_COUNT,
+  FocusTarget.EDITOR_REPEAT_CUSTOM,
   FocusTarget.EDITOR_TAGS,
   FocusTarget.EDITOR_NOTES,
   FocusTarget.EDITOR_SAVE,
@@ -29,6 +37,22 @@ export function toFocusTarget(editorFocus: EditorFocus): FocusTarget {
       return FocusTarget.EDITOR_DUE_DATE;
     case "time":
       return FocusTarget.EDITOR_DUE_TIME;
+    case "repeat_mode":
+      return FocusTarget.EDITOR_REPEAT_MODE;
+    case "repeat_interval":
+      return FocusTarget.EDITOR_REPEAT_INTERVAL;
+    case "repeat_weekdays":
+      return FocusTarget.EDITOR_REPEAT_WEEKDAYS;
+    case "repeat_monthday":
+      return FocusTarget.EDITOR_REPEAT_MONTHDAY;
+    case "repeat_end_mode":
+      return FocusTarget.EDITOR_REPEAT_END_MODE;
+    case "repeat_until":
+      return FocusTarget.EDITOR_REPEAT_UNTIL;
+    case "repeat_count":
+      return FocusTarget.EDITOR_REPEAT_COUNT;
+    case "repeat_custom":
+      return FocusTarget.EDITOR_REPEAT_CUSTOM;
     case "tags":
       return FocusTarget.EDITOR_TAGS;
     case "notes":
@@ -50,6 +74,22 @@ export function toEditorFocus(focus: FocusTarget): EditorFocus {
       return "due";
     case FocusTarget.EDITOR_DUE_TIME:
       return "time";
+    case FocusTarget.EDITOR_REPEAT_MODE:
+      return "repeat_mode";
+    case FocusTarget.EDITOR_REPEAT_INTERVAL:
+      return "repeat_interval";
+    case FocusTarget.EDITOR_REPEAT_WEEKDAYS:
+      return "repeat_weekdays";
+    case FocusTarget.EDITOR_REPEAT_MONTHDAY:
+      return "repeat_monthday";
+    case FocusTarget.EDITOR_REPEAT_END_MODE:
+      return "repeat_end_mode";
+    case FocusTarget.EDITOR_REPEAT_UNTIL:
+      return "repeat_until";
+    case FocusTarget.EDITOR_REPEAT_COUNT:
+      return "repeat_count";
+    case FocusTarget.EDITOR_REPEAT_CUSTOM:
+      return "repeat_custom";
     case FocusTarget.EDITOR_TAGS:
       return "tags";
     case FocusTarget.EDITOR_NOTES:

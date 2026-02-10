@@ -113,7 +113,7 @@ describe("recomputeTagIndex", () => {
 
 describe("importState", () => {
   const baseState = (tasks: Task[]): LoadedData => ({
-    schemaVersion: 3,
+    schemaVersion: 4,
     tasks,
     tagIndex: {},
     savedViews: []
@@ -164,7 +164,7 @@ describe("importState", () => {
 describe("redactStateForExport", () => {
   it("blanks title and notes while preserving structure", () => {
     const payload: PortableExportPayload = {
-      schemaVersion: 3,
+      schemaVersion: 4,
       tasks: [
         {
           id: "a",
@@ -188,5 +188,32 @@ describe("redactStateForExport", () => {
     expect(redacted.tasks[0]?.id).toBe("a");
     expect(redacted.settings?.themeId).toBe("default");
     expect(redacted.settings?.flashMode).toBe("slow");
+  });
+
+  it("treats recurrence field changes as task updates", () => {
+    const local = [
+      {
+        ...BASE_LOCAL_TASK,
+        recurrence: {
+          dtstart: "2026-02-10T09:00:00",
+          rrule: "FREQ=DAILY;INTERVAL=1",
+          series_id: "series:task-1"
+        }
+      }
+    ];
+    const incoming = [
+      {
+        ...BASE_INCOMING_TASK,
+        recurrence: {
+          dtstart: "2026-02-10T09:00:00",
+          rrule: "FREQ=WEEKLY;INTERVAL=1;BYDAY=MO",
+          series_id: "series:task-1"
+        }
+      }
+    ];
+
+    const result = mergeTasksByIdNewestUpdatedAt(local, incoming);
+    expect(result.stats.updated).toBe(1);
+    expect(result.merged[0]?.recurrence?.rrule).toContain("FREQ=WEEKLY");
   });
 });
