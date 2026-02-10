@@ -5,6 +5,8 @@ All notable changes to TADOI are documented in this file.
 The format is based on Keep a Changelog.
 
 ## [Unreleased]
+### Fixed
+- Replaced direct `process.exit(...)` usage in interactive app exit paths with OpenTUI renderer teardown (`renderer.destroy()`), improving terminal state cleanup on quit.
 
 ## [0.2.7]
 ### Added

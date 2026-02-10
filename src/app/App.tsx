@@ -1,5 +1,5 @@
 import React, { useEffect, useReducer, useRef, useState } from "react";
-import { useKeyboard, useTerminalDimensions } from "@opentui/react";
+import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/react";
 import { applyTheme, colorForTag, theme, layout } from "./theme";
 import {
   getNextSelectedIdAfterDelete,
@@ -233,6 +233,7 @@ export function App({
   settingsPath,
   showLogo = true
 }: AppProps) {
+  const renderer = useRenderer();
   const [state, dispatch] = useReducer(reducer, initialData, initState);
   const [settingsState, settingsDispatch] = useReducer(settingsReducer, {
     themeId: initialThemeId
@@ -653,7 +654,7 @@ export function App({
         settingsDispatch({ type: "cycleTheme" });
         return;
       case "EXIT_APP":
-        process.exit(0);
+        void renderer.destroy();
         return;
       case "MOVE_SELECTION":
         moveSelection(action.delta);
@@ -748,7 +749,7 @@ export function App({
   useKeyboard((key) => {
     if (!terminalIsSupported) {
       if ((key.name ?? "") === "q") {
-        process.exit(0);
+        void renderer.destroy();
       }
       return;
     }

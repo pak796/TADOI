@@ -51,92 +51,99 @@ function printHelp(showLogo: boolean): void {
   console.log(`  ${ENV_VARS.PERF_DEBUG}=1        Enable perf debug logs`);
 }
 
-const argv = process.argv.slice(2);
-const command = argv[0];
-if (command === "export" || command === "import") {
-  const exitCode = await runPortabilityCommand(command, argv.slice(1));
-  process.exit(exitCode);
-}
+async function main(): Promise<number | undefined> {
+  const argv = process.argv.slice(2);
+  const command = argv[0];
+  if (command === "export" || command === "import") {
+    return runPortabilityCommand(command, argv.slice(1));
+  }
 
-const cliOptions = parseCliOptions(argv);
-if (cliOptions.showHelp) {
-  printHelp(cliOptions.showLogo);
-  process.exit(0);
-}
+  const cliOptions = parseCliOptions(argv);
+  if (cliOptions.showHelp) {
+    printHelp(cliOptions.showLogo);
+    return 0;
+  }
 
-const renderer = await createCliRenderer({ exitOnCtrlC: true });
-const settingsResult = await loadSettings();
-applyTheme(settingsResult.settings.themeId);
-const loadResult = await safeLoadState();
-const loaded = loadResult.data;
-console.log(`[${APP_NAME}] data path: ${loadResult.resolvedPath}`);
-console.log(`[${APP_NAME}] settings path: ${settingsResult.resolvedPath}`);
-if (loadResult.bannerMessage) {
-  console.warn(`[${APP_NAME}] ${loadResult.bannerMessage}`);
-}
-let tasksChanged = false;
-const normalizedTasks = loaded.tasks.map((task) => {
-  const nextTags = normalizeTags(task.tags ?? []);
-  const hasExplicitTime =
-    typeof task.hasExplicitTime === "boolean" ? task.hasExplicitTime : false;
-  const normalizedDueAt =
-    task.dueAt !== undefined && !hasExplicitTime
-      ? startOfLocalDayMs(task.dueAt)
-      : task.dueAt;
-  if (!tasksChanged) {
-    const currentTags = task.tags ?? [];
-    if (currentTags.length !== nextTags.length) {
-      tasksChanged = true;
-    } else {
-      for (let i = 0; i < currentTags.length; i += 1) {
-        if (currentTags[i] !== nextTags[i]) {
-          tasksChanged = true;
-          break;
+  const renderer = await createCliRenderer({ exitOnCtrlC: true });
+  const settingsResult = await loadSettings();
+  applyTheme(settingsResult.settings.themeId);
+  const loadResult = await safeLoadState();
+  const loaded = loadResult.data;
+  console.log(`[${APP_NAME}] data path: ${loadResult.resolvedPath}`);
+  console.log(`[${APP_NAME}] settings path: ${settingsResult.resolvedPath}`);
+  if (loadResult.bannerMessage) {
+    console.warn(`[${APP_NAME}] ${loadResult.bannerMessage}`);
+  }
+  let tasksChanged = false;
+  const normalizedTasks = loaded.tasks.map((task) => {
+    const nextTags = normalizeTags(task.tags ?? []);
+    const hasExplicitTime =
+      typeof task.hasExplicitTime === "boolean" ? task.hasExplicitTime : false;
+    const normalizedDueAt =
+      task.dueAt !== undefined && !hasExplicitTime
+        ? startOfLocalDayMs(task.dueAt)
+        : task.dueAt;
+    if (!tasksChanged) {
+      const currentTags = task.tags ?? [];
+      if (currentTags.length !== nextTags.length) {
+        tasksChanged = true;
+      } else {
+        for (let i = 0; i < currentTags.length; i += 1) {
+          if (currentTags[i] !== nextTags[i]) {
+            tasksChanged = true;
+            break;
+          }
         }
       }
+      if (task.hasExplicitTime !== hasExplicitTime) {
+        tasksChanged = true;
+      }
+      if (task.dueAt !== normalizedDueAt) {
+        tasksChanged = true;
+      }
     }
-    if (task.hasExplicitTime !== hasExplicitTime) {
-      tasksChanged = true;
-    }
-    if (task.dueAt !== normalizedDueAt) {
-      tasksChanged = true;
-    }
-  }
-  return {
-    ...task,
-    tags: nextTags,
-    hasExplicitTime,
-    dueAt: normalizedDueAt
+    return {
+      ...task,
+      tags: nextTags,
+      hasExplicitTime,
+      dueAt: normalizedDueAt
+    };
+  });
+  const normalizedTagIndex = normalizeTagIndex(loaded.tagIndex ?? {});
+  const tagIndexChanged =
+    JSON.stringify(normalizedTagIndex) !== JSON.stringify(loaded.tagIndex ?? {});
+  const normalizedLoaded = {
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    tasks: normalizedTasks,
+    tagIndex: normalizedTagIndex,
+    savedViews: Array.isArray(loaded.savedViews) ? loaded.savedViews : []
   };
-});
-const normalizedTagIndex = normalizeTagIndex(loaded.tagIndex ?? {});
-const tagIndexChanged =
-  JSON.stringify(normalizedTagIndex) !== JSON.stringify(loaded.tagIndex ?? {});
-const normalizedLoaded = {
-  schemaVersion: CURRENT_SCHEMA_VERSION,
-  tasks: normalizedTasks,
-  tagIndex: normalizedTagIndex,
-  savedViews: Array.isArray(loaded.savedViews) ? loaded.savedViews : []
-};
-const now = Date.now();
-// Apply archive aging before first render (rolling 7+ days since closed).
-const { data: agedData, changed: archiveChanged } = applyArchiveAging(
-  normalizedLoaded,
-  now
-);
-const shouldSaveInitial =
-  tasksChanged ||
-  tagIndexChanged ||
-  archiveChanged ||
-  loadResult.didMigrate ||
-  loadResult.shouldPersistRecoveredState;
-createRoot(renderer).render(
-  <App
-    initialData={agedData}
-    skipInitialSave={!shouldSaveInitial}
-    startupBanner={loadResult.bannerMessage}
-    initialThemeId={settingsResult.settings.themeId}
-    settingsPath={settingsResult.resolvedPath}
-    showLogo={cliOptions.showLogo}
-  />
-);
+  const now = Date.now();
+  // Apply archive aging before first render (rolling 7+ days since closed).
+  const { data: agedData, changed: archiveChanged } = applyArchiveAging(
+    normalizedLoaded,
+    now
+  );
+  const shouldSaveInitial =
+    tasksChanged ||
+    tagIndexChanged ||
+    archiveChanged ||
+    loadResult.didMigrate ||
+    loadResult.shouldPersistRecoveredState;
+  createRoot(renderer).render(
+    <App
+      initialData={agedData}
+      skipInitialSave={!shouldSaveInitial}
+      startupBanner={loadResult.bannerMessage}
+      initialThemeId={settingsResult.settings.themeId}
+      settingsPath={settingsResult.resolvedPath}
+      showLogo={cliOptions.showLogo}
+    />
+  );
+  return undefined;
+}
+
+const exitCode = await main();
+if (typeof exitCode === "number" && exitCode !== 0) {
+  process.exitCode = exitCode;
+}

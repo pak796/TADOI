@@ -101,7 +101,7 @@ Corrupt backups created by recovery look like:
   - `g`: cycle due filter (shared with list)
   - `t`: cycle tag filter (shared with list)
   - `?`: open help
-  - `q`: quit
+  - `q`: quit (graceful terminal teardown)
   - Dashboard widgets always use the exact same filtered task set as the task list (including `searchText`).
 - Saved views:
   - `v`: toggle saved-views overlay
@@ -120,7 +120,8 @@ Corrupt backups created by recovery look like:
   - `H`: cycle theme
   - `Esc` or `?`: close help
 - Quit:
-  - `q` in LIST mode
+  - `q` in LIST mode (graceful terminal teardown)
+  - `Ctrl+C` (handled by OpenTUI renderer)
 
 ## Tag Autocomplete
 

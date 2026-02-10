@@ -154,10 +154,11 @@ Refs: OpenTUI quick start (`bun create tui`).  [oai_citation:8‡GitHub](https:/
   - c: copy/duplicate
   - d: delete confirm
   - /: search mode
-  - q: quit
+  - q: quit (graceful renderer teardown)
 
 **DoD**
 - All bindings function; no crashes.
+- Interactive quit path avoids direct `process.exit(...)` in app runtime handlers.
 Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remorses/ghostty-opentui?utm_source=chatgpt.com)
 
 ### T3.11 Wrap-around navigation
@@ -1488,7 +1489,7 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 **DoD**
 - `b` / `B` enters and exits dashboard mode reliably.
 - In dashboard mode, list navigation keys (`j/k`, arrows, paging/jump keys) do not move list selection.
-- `f`, `g`, `t`, `?`, and `q` continue to work in dashboard mode.
+- `f`, `g`, `t`, `?`, and `q` continue to work in dashboard mode, with `q` using renderer teardown.
 
 ## T16.2 Dashboard analytics widgets and pure domain aggregations
 **Status**: Complete

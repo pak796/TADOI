@@ -946,6 +946,8 @@ Dashboard key contract:
 - Allowed: `b`/`B`, `f`, `g`, `t`, `?`, `q`
 - Blocked: list navigation/action keys (for example `j/k`, arrows, paging, jump keys)
 - Routing remains centralized in `src/app/keyRouter.ts`.
+- Exit teardown must be graceful: `q` routes to renderer teardown (`renderer.destroy()`), not direct `process.exit(...)` from interactive app handlers.
+- `Ctrl+C` behavior remains renderer-managed via `createCliRenderer({ exitOnCtrlC: true })`.
 
 ## I2) Filter Parity Contract
 
