@@ -767,3 +767,71 @@ Execution snapshot (2026-02-09 CST):
   - README keybindings now reflect current router behavior, including:
     - `gg` / `G`, paging (`ctrl+u` / `ctrl+d`), attention jumps (`[]`, `{}`),
       sort cycling (`s`), saved views (`v`, `ctrl+s`, `1..9`), and global active-tag cycling (`t`).
+
+---
+
+# Appendix G — v0.2.5 Packaging Readiness (Non-Live + Installer Scaffolding)
+
+This appendix defines the packaging contract for pre-release distribution.
+Scope is packaging infrastructure only. No public release or feature changes are included.
+
+## G1) Non-Live Distribution Policy
+
+- `package.json` remains `"private": true`.
+- No `npm publish` / `bun publish` in this phase.
+- Primary distribution artifact is a local/private npm tarball.
+- CLI command remains `tadoi`.
+- Runtime expectation remains Bun-based for CLI execution (`#!/usr/bin/env bun`).
+
+## G2) Artifact Layout Contract
+
+Standardized output paths:
+- Tarball artifacts: `dist/tarball/*.tgz`
+- Binary scaffolds (future): `dist/bin/macos/*`, `dist/bin/windows/*`
+- Installer scaffolds (future): `dist/installers/*`
+
+Release target matrix:
+- `packaging/release-targets.json` tracks target ids and statuses:
+  - `tarball` = active
+  - `binary-macos` = planned
+  - `binary-windows` = planned
+
+## G3) Packaging Script Contract
+
+Required scripts:
+- `bun run pack:dry`
+  - Builds tarball into `dist/tarball/`.
+- `bun run pack:inspect`
+  - Validates package file set using `bun pm pack --dry-run`.
+  - Confirms required runtime files and rejects forbidden local/data/doc artifacts.
+- `bun run pack:smoke`
+  - Extracts the generated tarball into a temporary directory and runs `tadoi --help` via the packaged CLI entry.
+  - Fails if CLI help output contract is broken.
+- `bun run release:rc:check`
+  - Runs pre-release gate sequence: test, typecheck, branding guard, tarball build, inspect, smoke.
+
+## G4) CI Packaging Gate
+
+CI workflow (`.github/workflows/ci.yml`) includes a `package` job that runs:
+- `bun run pack:dry`
+- `bun run pack:inspect`
+- `bun run pack:smoke`
+
+Policy:
+- Packaging job runs on `pull_request` and `push` to `main`.
+- Merge must remain blocked on package gate failures.
+
+## G5) Future DMG/EXE Track (Scaffold Only)
+
+Scaffold scripts:
+- `bun run build:bin:mac`
+- `bun run build:bin:win`
+
+Current behavior:
+- Scripts create planning artifacts only.
+- No real binary, DMG, EXE, or MSI is produced yet.
+
+Future requirements (outside this phase):
+- macOS signing + notarization pipeline.
+- Windows code signing + installer toolchain selection.
+- CI secrets and release hardening for installer generation.

@@ -100,6 +100,7 @@ TADOI uses GitHub Actions merge gates on pull requests and pushes to `main`.
 Required checks:
 - `test`: `bun run test` and `bun run test:coverage`
 - `typecheck`: `bun run typecheck`
+- `package`: `bun run pack:dry`, `bun run pack:inspect`, and `bun run pack:smoke`
 
 Local equivalents:
 
@@ -107,7 +108,55 @@ Local equivalents:
 bun run test
 bun run test:coverage
 bun run typecheck
+bun run pack:dry
+bun run pack:inspect
+bun run pack:smoke
 ```
+
+## Pre-release Packaging (Non-Live)
+
+TADOI currently uses a non-live packaging workflow:
+- Public publish is intentionally disabled (`"private": true` in `package.json`).
+- Distribution for testers is done via local/private tarball install.
+
+Build and validate packaging artifacts:
+
+```bash
+bun run pack:dry
+bun run pack:inspect
+bun run pack:smoke
+```
+
+Install from generated tarball (example):
+
+```bash
+bun add -g ./dist/tarball/tadoi-0.2.5.tgz
+tadoi --help
+```
+
+Release-candidate gate (local):
+
+```bash
+bun run release:rc:check
+```
+
+## Future Installers (Planned)
+
+Installer outputs are scaffolded for future phases:
+- macOS binary/DMG track: `packaging/macos/README.md`
+- Windows binary/EXE/MSI track: `packaging/windows/README.md`
+
+Scaffold commands (no real installers generated yet):
+
+```bash
+bun run build:bin:mac
+bun run build:bin:win
+```
+
+Current scaffold outputs:
+- `dist/bin/macos/`
+- `dist/bin/windows/`
+- `dist/installers/` (reserved for future DMG/EXE artifacts)
 
 ## Optional Perf Debug
 

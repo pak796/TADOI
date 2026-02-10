@@ -45,4 +45,9 @@ describe("theme registry", () => {
       selectionText: "#0b0f14"
     });
   });
+
+  it("avoids pure white text tokens in high contrast theme", () => {
+    expect(THEMES.highContrast.text).not.toBe("#ffffff");
+    expect(THEMES.highContrast.mutedText).not.toBe("#ffffff");
+  });
 });

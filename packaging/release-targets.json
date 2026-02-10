@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "targets": [
+    {
+      "id": "tarball",
+      "status": "active",
+      "outputDir": "dist/tarball",
+      "description": "Non-live distributable npm tarball for local/private installs"
+    },
+    {
+      "id": "binary-macos",
+      "status": "planned",
+      "outputDir": "dist/bin/macos",
+      "installerOutputDir": "dist/installers",
+      "description": "Future macOS binary and DMG installer pipeline"
+    },
+    {
+      "id": "binary-windows",
+      "status": "planned",
+      "outputDir": "dist/bin/windows",
+      "installerOutputDir": "dist/installers",
+      "description": "Future Windows binary and EXE/MSI installer pipeline"
+    }
+  ]
+}

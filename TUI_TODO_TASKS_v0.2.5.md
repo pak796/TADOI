@@ -1302,3 +1302,103 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 **Implementation notes**
 - Added `TADOI_PERF_DEBUG=1` hook in `App` that logs render duration + terminal/window counts.
 - No behavior change when flag is disabled.
+
+---
+
+# Phase 14 — v0.2.5 Packaging Readiness (Non-Live + Future Installer Scaffolding)
+
+> Scope note: this phase adds packaging infrastructure only. No public publish and no end-user feature changes.
+
+## T14.1 Non-live tarball packaging workflow
+**Status**: Complete
+**Implement**
+- Keep `package.json` as `"private": true` (no live publish).
+- Add deterministic packaging scripts:
+  - `pack:dry`
+  - `pack:inspect`
+  - `pack:smoke`
+  - `release:rc:check`
+- Add package `files` allowlist and Bun engine contract.
+
+**DoD**
+- Tarball can be generated locally in `dist/tarball/`.
+- Tarball workflow is usable without publishing to a registry.
+- Public publish remains disabled.
+
+**Implementation notes**
+- Added scripts in `package.json` and runtime file allowlist.
+- Added Bun engine requirement and retained private package policy.
+
+## T14.2 Package content validation guard
+**Status**: Complete
+**Implement**
+- Add `scripts/inspect-package.ts` to validate dry-run package contents.
+- Assert required runtime files exist and forbidden local/doc/data files are excluded.
+
+**DoD**
+- `bun run pack:inspect` fails when required files are missing.
+- `bun run pack:inspect` fails when forbidden files are included.
+
+**Implementation notes**
+- Inspection now parses `bun pm pack --dry-run` output and enforces file-set guardrails.
+
+## T14.3 Tarball install smoke test
+**Status**: Complete
+**Implement**
+- Add `scripts/package-smoke-test.ts`:
+  - extract generated tarball in a temporary workspace
+  - run packaged CLI entry with `--help`
+  - assert expected help output contract
+
+**DoD**
+- `bun run pack:smoke` validates packaged CLI payload and basic CLI execution.
+- Failure output is explicit and blocks release-check flow.
+
+**Implementation notes**
+- Smoke test now checks app name/tagline/usage text from extracted tarball CLI payload.
+
+## T14.4 CI packaging gate
+**Status**: Complete
+**Implement**
+- Extend `.github/workflows/ci.yml` with `package` job running:
+  - `bun run pack:dry`
+  - `bun run pack:inspect`
+  - `bun run pack:smoke`
+- Keep existing `test` and `typecheck` jobs unchanged.
+
+**DoD**
+- PR and `main` push runs now include packaging verification.
+- Packaging failures block CI.
+
+**Implementation notes**
+- Added dedicated package job with `needs: [test, typecheck]`.
+
+## T14.5 Future installer scaffolding (DMG/EXE preparation)
+**Status**: Complete
+**Implement**
+- Add scaffold script `scripts/build-binary.ts` with stable interface:
+  - `--target macos|windows`
+  - `--format raw|installer`
+- Add planning docs:
+  - `packaging/macos/README.md`
+  - `packaging/windows/README.md`
+- Add release target matrix:
+  - `packaging/release-targets.json`
+
+**DoD**
+- Scaffold commands exist and produce planning artifacts only.
+- No real DMG/EXE/MSI generation in this phase.
+
+**Implementation notes**
+- Added `build:bin:mac` / `build:bin:win` scripts that generate scaffold outputs under `dist/`.
+
+## T14.6 Actual installer generation (future phase)
+**Status**: Pending
+**Implement**
+- Implement real binary build pipeline.
+- Implement macOS DMG packaging with signing/notarization.
+- Implement Windows EXE/MSI packaging with signing.
+
+**DoD**
+- Signed installer artifacts are produced in CI for macOS/Windows targets.
+- Installer QA matrix and rollback strategy are documented.

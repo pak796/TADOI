@@ -15,6 +15,10 @@ type TaskListProps = {
   visibleLines: number;
 };
 
+export function shouldShowScrollbar(taskCount: number, visibleRows: number): boolean {
+  return taskCount > visibleRows;
+}
+
 export function TaskList({
   tasks,
   selectedId,
@@ -30,7 +34,7 @@ export function TaskList({
     0,
     Math.min(scrollOffset, Math.max(0, tasks.length - visibleRows))
   );
-  const hasScroll = tasks.length > visibleRows;
+  const hasScroll = shouldShowScrollbar(tasks.length, visibleRows);
   const thumbSize = hasScroll
     ? Math.max(1, Math.round((visibleRows / tasks.length) * visibleLines))
     : visibleLines;
@@ -56,24 +60,26 @@ export function TaskList({
           ))
         )}
       </box>
-      <box style={{ width: 2, alignItems: "center" }}>
-        {Array.from({ length: visibleLines }).map((_, index) => {
-          const active = index >= thumbTop && index < thumbTop + thumbSize;
-          return (
-            <box
-              key={index}
-              style={{
-                justifyContent: "center",
-                alignItems: "center"
-              }}
-            >
-              <text style={{ color: active ? theme.text : theme.outline }}>
-                {active ? "█" : "│"}
-              </text>
-            </box>
-          );
-        })}
-      </box>
+      {hasScroll ? (
+        <box style={{ width: 2, alignItems: "center" }}>
+          {Array.from({ length: visibleLines }).map((_, index) => {
+            const active = index >= thumbTop && index < thumbTop + thumbSize;
+            return (
+              <box
+                key={index}
+                style={{
+                  justifyContent: "center",
+                  alignItems: "center"
+                }}
+              >
+                <text style={{ color: active ? theme.text : theme.outline }}>
+                  {active ? "█" : "│"}
+                </text>
+              </box>
+            );
+          })}
+        </box>
+      ) : null}
     </box>
   );
 }

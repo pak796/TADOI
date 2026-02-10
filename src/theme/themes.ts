@@ -54,15 +54,15 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
   highContrast: {
     bg: "#000000",
     panel: "#111111",
-    text: "#ffffff",
-    mutedText: "#d9d9d9",
+    text: "#f2f2f2",
+    mutedText: "#cccccc",
     border: "#ffffff",
     accent: "#00aaff",
     accent2: "#ff00c8",
     ok: "#00ff66",
     warn: "#ffff00",
     danger: "#ff0033",
-    selectionBg: "#00ffff",
+    selectionBg: "#00aacc",
     selectionText: "#000000"
   },
   neonHacker: {

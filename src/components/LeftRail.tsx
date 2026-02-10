@@ -16,6 +16,22 @@ type LeftRailProps = {
   showLogo?: boolean;
 };
 
+const HINT_LINE_WIDTH = 18;
+const HINT_LINES = [
+  "j/k: MOVE",
+  "a: ADD",
+  "e: EDIT",
+  "c: COPY",
+  "SPACE: TOGGLE",
+  "d: DELETE",
+  "/: SEARCH",
+  "f: STATUS",
+  "s: SORT",
+  "g: DUE",
+  "t: TAG FILTER",
+  "?: HELP"
+] as const;
+
 function getModeLabel(mode: Mode): string {
   switch (mode) {
     case Mode.ADD:
@@ -80,6 +96,12 @@ function wrapWords(text: string, maxWidth: number): string[] {
     lines.push(current);
   }
   return lines;
+}
+
+function formatHintLine(line: string): string {
+  return line.length > HINT_LINE_WIDTH
+    ? line.slice(0, HINT_LINE_WIDTH)
+    : line.padEnd(HINT_LINE_WIDTH, " ");
 }
 
 export function LeftRail({
@@ -236,18 +258,11 @@ export function LeftRail({
 
       <box style={{ marginTop: 1, flexDirection: "column", gap: 0 }}>
         <text style={styles.muted}>HINTS</text>
-        <text style={{ color: theme.text }}>j/k: MOVE</text>
-        <text style={{ color: theme.text }}>a: ADD</text>
-        <text style={{ color: theme.text }}>e: EDIT</text>
-        <text style={{ color: theme.text }}>c: COPY</text>
-        <text style={{ color: theme.text }}>SPACE: TOGGLE</text>
-        <text style={{ color: theme.text }}>d: DELETE</text>
-        <text style={{ color: theme.text }}>/: SEARCH</text>
-        <text style={{ color: theme.text }}>f: STATUS</text>
-        <text style={{ color: theme.text }}>s: SORT</text>
-        <text style={{ color: theme.text }}>g: DUE</text>
-        <text style={{ color: theme.text }}>t: TAG FILTER</text>
-        <text style={{ color: theme.text }}>?: HELP</text>
+        {HINT_LINES.map((line) => (
+          <box key={line} style={{ flexDirection: "row" }}>
+            <text style={{ color: theme.text }}>{formatHintLine(line)}</text>
+          </box>
+        ))}
       </box>
     </box>
   );
