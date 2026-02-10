@@ -13,6 +13,7 @@ import { EditorPane } from "../components/EditorPane";
 import { LeftRail, type LeftRailMenuItem } from "../components/LeftRail";
 import { DashboardPane } from "../components/DashboardPane";
 import { diffLocalDays, startOfLocalDayMs } from "../domain/dates";
+import { computeTopTagsOpen } from "../domain/dashboard";
 import {
   findNextMatchingIndex,
   isTaskDueToday,
@@ -81,7 +82,17 @@ const ROTATING_THEME_INTERVAL_MS = 15000;
 const G_PREFIX_TIMEOUT_MS = 280;
 const NAV_BANNER_TIMEOUT_MS = 1800;
 const VIEW_NAME_MAX_LENGTH = 40;
+const DASHBOARD_TOP_TAG_MIN = 5;
+const DASHBOARD_TOP_TAG_MAX = 8;
 const PERF_DEBUG_ENABLED = process.env[ENV_VARS.PERF_DEBUG] === "1";
+
+function resolveDashboardTopTagLimit(panelHeight: number): number {
+  const availableRows = Math.max(1, panelHeight - 8);
+  if (availableRows < DASHBOARD_TOP_TAG_MIN) {
+    return availableRows;
+  }
+  return Math.min(DASHBOARD_TOP_TAG_MAX, availableRows);
+}
 
 function getTagQuery(tagsText: string): string | null {
   if (/[\s,]$/.test(tagsText)) return null;
@@ -256,6 +267,7 @@ export function App({
   const [selectedViewIndex, setSelectedViewIndex] = useState(0);
   const [saveViewPromptOpen, setSaveViewPromptOpen] = useState(false);
   const [saveViewName, setSaveViewName] = useState("");
+  const [dashboardTagSelection, setDashboardTagSelection] = useState(0);
   const skipInitialSaveRef = useRef(skipInitialSave);
   const skipSettingsSaveRef = useRef(true);
   const lastSuccessfulSaveAtRef = useRef<number | undefined>(undefined);
@@ -379,6 +391,18 @@ export function App({
     () => buildTagTickerSegments(tagStats, bottomBarContentWidth),
     [tagStats, bottomBarContentWidth]
   );
+  const dashboardTopTagLimit = React.useMemo(
+    () => resolveDashboardTopTagLimit(dashboardPaneHeight),
+    [dashboardPaneHeight]
+  );
+  const dashboardTopTags = React.useMemo(
+    () => computeTopTagsOpen(visibleTasks, dashboardTopTagLimit),
+    [visibleTasks, dashboardTopTagLimit]
+  );
+  const clampedDashboardTagSelection =
+    dashboardTopTags.length === 0
+      ? 0
+      : Math.max(0, Math.min(dashboardTagSelection, dashboardTopTags.length - 1));
   const overdueQuickFilterActive =
     state.filters.status === "open" && state.filters.due === "overdue";
   const todayQuickFilterActive =
@@ -620,6 +644,18 @@ export function App({
     }
   }, [uiState.scrollOffset, uiState.selectedIndex, visibleRows, visibleTasks.length]);
 
+  useEffect(() => {
+    if (dashboardTopTags.length === 0) {
+      if (dashboardTagSelection !== 0) {
+        setDashboardTagSelection(0);
+      }
+      return;
+    }
+    if (dashboardTagSelection > dashboardTopTags.length - 1) {
+      setDashboardTagSelection(dashboardTopTags.length - 1);
+    }
+  }, [dashboardTagSelection, dashboardTopTags.length]);
+
   function applyEscUnwind(): boolean {
     const next = unwind(uiState);
     if (!next) return false;
@@ -673,6 +709,9 @@ export function App({
         return;
       case "MOVE_VIEW_SELECTION":
         moveViewSelection(action.delta);
+        return;
+      case "MOVE_DASHBOARD_TAG_SELECTION":
+        moveDashboardTagSelection(action.delta);
         return;
       case "OPEN_SAVE_VIEW_PROMPT":
         openSaveViewPrompt();
@@ -750,6 +789,9 @@ export function App({
         return;
       case "TOGGLE_TAG_FILTER":
         toggleTagFilter();
+        return;
+      case "APPLY_DASHBOARD_SELECTED_TAG":
+        applyDashboardSelectedTag();
         return;
       case "SAVE_EDITOR":
         saveEditor();
@@ -843,6 +885,7 @@ export function App({
       dispatch({ type: "setEditor", editor: null });
     }
 
+    setDashboardTagSelection(0);
     uiDispatch({ type: "setMode", mode: Mode.DASHBOARD });
     uiDispatch({ type: "setFocus", focus: FocusTarget.DASHBOARD });
   }
@@ -877,6 +920,7 @@ export function App({
       setTimeSuggestion(null);
       dispatch({ type: "setEditor", editor: null });
     }
+    setDashboardTagSelection(0);
     uiDispatch({ type: "setMode", mode: Mode.DASHBOARD });
     uiDispatch({ type: "setFocus", focus: FocusTarget.DASHBOARD });
   }
@@ -1337,6 +1381,30 @@ export function App({
     dispatch({ type: "setFilters", filters: { due: next } });
   }
 
+  function moveDashboardTagSelection(delta: 1 | -1) {
+    if (uiState.mode !== Mode.DASHBOARD || dashboardTopTags.length === 0) return;
+    setDashboardTagSelection((prev) => {
+      const next = (prev + delta + dashboardTopTags.length) % dashboardTopTags.length;
+      return next;
+    });
+  }
+
+  function applyDashboardSelectedTag() {
+    if (uiState.mode !== Mode.DASHBOARD) return;
+    if (state.filters.status === "done" || state.filters.status === "archived") {
+      showShortNavigationBanner("Top tags available for OPEN tasks only");
+      return;
+    }
+    if (dashboardTopTags.length === 0) {
+      showShortNavigationBanner("No tagged open tasks");
+      return;
+    }
+
+    const selected = dashboardTopTags[clampedDashboardTagSelection];
+    dispatch({ type: "setFilters", filters: { tag: selected.tag } });
+    showShortNavigationBanner(`Dashboard tag filter: ${formatTagForDisplay(selected.tag)}`);
+  }
+
   function toggleBottomDueQuickFilter(targetDue: "overdue" | "today" | "next7") {
     const alreadyActive =
       state.filters.status === "open" && state.filters.due === targetDue;
@@ -1566,6 +1634,8 @@ export function App({
               <DashboardPane
                 tasks={visibleTasks}
                 filters={state.filters}
+                topTags={dashboardTopTags}
+                selectedTopTagIndex={clampedDashboardTagSelection}
                 now={now}
                 width={dashboardPaneWidth}
                 height={dashboardPaneHeight}
@@ -1955,8 +2025,9 @@ export function App({
             <text>esc: close</text>
             <text>DASHBOARD</text>
             <text>Uses the same filtered dataset as TASK LIST.</text>
-            <text>Widgets: due buckets (OVD/TOD/+1..+6) and 7-day backlog trend.</text>
+            <text>Widgets: due buckets (OVD/TOD/+1..+6) and TOP TAGS (OPEN).</text>
             <text>In dashboard: b returns to list, f/g/t cycle shared filters.</text>
+            <text>Top tags: up/down select row, Enter applies tag filter.</text>
             <text>App Version: {APP_VERSION}</text>
             <text>{APP_NAME}</text>
             <text>{APP_TAGLINE}</text>

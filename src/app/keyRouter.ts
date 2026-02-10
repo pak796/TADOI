@@ -33,6 +33,7 @@ export type KeyRouterAction =
   | { scope: "ui"; type: "OPEN_SAVE_VIEW_PROMPT" }
   | { scope: "ui"; type: "CONFIRM_SAVE_VIEW_PROMPT" }
   | { scope: "ui"; type: "CANCEL_SAVE_VIEW_PROMPT" }
+  | { scope: "ui"; type: "MOVE_DASHBOARD_TAG_SELECTION"; delta: 1 | -1 }
   | { scope: "ui"; type: "CYCLE_THEME" }
   | { scope: "ui"; type: "TOGGLE_FLASH_MODE" }
   | { scope: "domain"; type: "EXIT_APP" }
@@ -59,6 +60,7 @@ export type KeyRouterAction =
   | { scope: "domain"; type: "CYCLE_SORT" }
   | { scope: "domain"; type: "CYCLE_DUE" }
   | { scope: "domain"; type: "TOGGLE_TAG_FILTER" }
+  | { scope: "domain"; type: "APPLY_DASHBOARD_SELECTED_TAG" }
   | { scope: "domain"; type: "SAVE_EDITOR" }
   | { scope: "domain"; type: "APPLY_TIME_AUTOCOMPLETE" }
   | { scope: "domain"; type: "ACCEPT_DUE_SUGGESTION" }
@@ -233,6 +235,15 @@ export function handleKey(
     if (name === "f") return [{ scope: "domain", type: "CYCLE_STATUS" }];
     if (!ctrl && name === "g") return [{ scope: "domain", type: "CYCLE_DUE" }];
     if (name === "t") return [{ scope: "domain", type: "TOGGLE_TAG_FILTER" }];
+    if (name === "down") {
+      return [{ scope: "ui", type: "MOVE_DASHBOARD_TAG_SELECTION", delta: 1 }];
+    }
+    if (name === "up") {
+      return [{ scope: "ui", type: "MOVE_DASHBOARD_TAG_SELECTION", delta: -1 }];
+    }
+    if (name === "return" || name === "enter") {
+      return [{ scope: "domain", type: "APPLY_DASHBOARD_SELECTED_TAG" }];
+    }
     return [];
   }
 

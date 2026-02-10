@@ -1,7 +1,11 @@
 import { describe, expect, it } from "bun:test";
 import { addLocalDaysMs, startOfLocalDayMs } from "./dates";
 import { Task } from "./models";
-import { computeBacklogTrend7, computeDueBuckets8 } from "./dashboard";
+import {
+  computeBacklogTrend7,
+  computeDueBuckets8,
+  computeTopTagsOpen
+} from "./dashboard";
 
 function baseTask(partial: Partial<Task>): Task {
   return {
@@ -90,5 +94,43 @@ describe("computeBacklogTrend7", () => {
   it("returns seven zeros for empty input", () => {
     const now = new Date(2026, 1, 10, 12, 0, 0).getTime();
     expect(computeBacklogTrend7([], now)).toEqual([0, 0, 0, 0, 0, 0, 0]);
+  });
+});
+
+describe("computeTopTagsOpen", () => {
+  it("counts tags from open tasks only and sorts by count desc then tag asc", () => {
+    const tasks: Task[] = [
+      baseTask({ id: "o1", status: "open", tags: ["work", "home"] }),
+      baseTask({ id: "o2", status: "open", tags: ["work", "tadoi"] }),
+      baseTask({ id: "o3", status: "open", tags: ["tadoi"] }),
+      baseTask({ id: "o4", status: "done", tags: ["work", "zzz"] }),
+      baseTask({ id: "o5", status: "archived", tags: ["home", "zzz"] })
+    ];
+
+    expect(computeTopTagsOpen(tasks, 10)).toEqual([
+      { tag: "tadoi", count: 2 },
+      { tag: "work", count: 2 },
+      { tag: "home", count: 1 }
+    ]);
+  });
+
+  it("applies limit and returns empty for non-positive limits", () => {
+    const tasks: Task[] = [
+      baseTask({ id: "a", status: "open", tags: ["alpha"] }),
+      baseTask({ id: "b", status: "open", tags: ["beta"] }),
+      baseTask({ id: "c", status: "open", tags: ["alpha"] })
+    ];
+
+    expect(computeTopTagsOpen(tasks, 1)).toEqual([{ tag: "alpha", count: 2 }]);
+    expect(computeTopTagsOpen(tasks, 0)).toEqual([]);
+    expect(computeTopTagsOpen(tasks, -3)).toEqual([]);
+  });
+
+  it("returns empty when there are no tagged open tasks", () => {
+    const tasks: Task[] = [
+      baseTask({ id: "x", status: "open", tags: [] }),
+      baseTask({ id: "y", status: "done", tags: ["work"] })
+    ];
+    expect(computeTopTagsOpen(tasks, 5)).toEqual([]);
   });
 });

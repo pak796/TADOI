@@ -1,24 +1,30 @@
 import React from "react";
-import { theme } from "../app/theme";
-import { computeBacklogTrend7, computeDueBuckets8 } from "../domain/dashboard";
+import { colorForTag, theme } from "../app/theme";
+import {
+  computeDueBuckets8,
+  type TopTagCount
+} from "../domain/dashboard";
 import { Filters, Task } from "../domain/models";
 import { formatTagForDisplay } from "../domain/tagIndex";
 
 const DUE_BUCKET_LABELS = ["OVD", "TOD", "+1", "+2", "+3", "+4", "+5", "+6"] as const;
-const SPARKLINE_LEVELS = ["_", ".", ":", "-", "=", "+", "*", "#"] as const;
 
 const DASHBOARD_GUTTER = 2;
 const DASHBOARD_LEFT_RATIO = 2;
 const DASHBOARD_RIGHT_RATIO = 1;
-// Width required for chart slots, labels, and counts to remain legible/aligned.
+const TAG_LABEL_COL_WIDTH = 12;
+const BAR_COL_WIDTH = 14;
+// Width required for top-tag rows to remain legible/aligned.
+const MIN_RIGHT_PANEL_WIDTH = 28;
 const MIN_DUE_BUCKET_CHART_WIDTH = 48;
-const MIN_TREND_PANEL_WIDTH = 24;
 const PANEL_HORIZONTAL_OVERHEAD = 4;
 const MIN_CHART_BAR_SLOTS = 8;
 
 type DashboardPaneProps = {
   tasks: Task[];
   filters: Filters;
+  topTags: TopTagCount[];
+  selectedTopTagIndex: number;
   now: number;
   width: number;
   height: number;
@@ -27,7 +33,15 @@ type DashboardPaneProps = {
 type DashboardLayout = {
   stacked: boolean;
   chartPanelWidth: number;
-  trendPanelWidth: number;
+  rightPanelWidth: number;
+};
+
+type TopTagRow = {
+  tag: string;
+  label: string;
+  labelPad: number;
+  bar: string;
+  countText: string;
 };
 
 function getFilterLine(filters: Filters): string {
@@ -47,67 +61,43 @@ function truncateLine(value: string, width: number): string {
 
 function resolveDashboardLayout(width: number): DashboardLayout {
   const usableWidth = Math.max(20, width - 6);
-  const minSplitWidth = MIN_DUE_BUCKET_CHART_WIDTH + MIN_TREND_PANEL_WIDTH + DASHBOARD_GUTTER;
+  const minSplitWidth = MIN_DUE_BUCKET_CHART_WIDTH + MIN_RIGHT_PANEL_WIDTH + DASHBOARD_GUTTER;
 
   if (usableWidth < minSplitWidth) {
     return {
       stacked: true,
       chartPanelWidth: usableWidth,
-      trendPanelWidth: usableWidth
+      rightPanelWidth: usableWidth
     };
   }
 
   const splitWidth = usableWidth - DASHBOARD_GUTTER;
   const ratioTotal = DASHBOARD_LEFT_RATIO + DASHBOARD_RIGHT_RATIO;
   let chartPanelWidth = Math.floor((splitWidth * DASHBOARD_LEFT_RATIO) / ratioTotal);
-  let trendPanelWidth = splitWidth - chartPanelWidth;
+  let rightPanelWidth = splitWidth - chartPanelWidth;
 
   if (chartPanelWidth < MIN_DUE_BUCKET_CHART_WIDTH) {
     chartPanelWidth = MIN_DUE_BUCKET_CHART_WIDTH;
-    trendPanelWidth = splitWidth - chartPanelWidth;
+    rightPanelWidth = splitWidth - chartPanelWidth;
   }
-  if (trendPanelWidth < MIN_TREND_PANEL_WIDTH) {
-    trendPanelWidth = MIN_TREND_PANEL_WIDTH;
-    chartPanelWidth = splitWidth - trendPanelWidth;
+  if (rightPanelWidth < MIN_RIGHT_PANEL_WIDTH) {
+    rightPanelWidth = MIN_RIGHT_PANEL_WIDTH;
+    chartPanelWidth = splitWidth - rightPanelWidth;
   }
 
-  if (chartPanelWidth < MIN_DUE_BUCKET_CHART_WIDTH || trendPanelWidth < MIN_TREND_PANEL_WIDTH) {
+  if (chartPanelWidth < MIN_DUE_BUCKET_CHART_WIDTH || rightPanelWidth < MIN_RIGHT_PANEL_WIDTH) {
     return {
       stacked: true,
       chartPanelWidth: usableWidth,
-      trendPanelWidth: usableWidth
+      rightPanelWidth: usableWidth
     };
   }
 
   return {
     stacked: false,
     chartPanelWidth,
-    trendPanelWidth
+    rightPanelWidth
   };
-}
-
-function buildSparkline(values: number[]): string {
-  if (values.length === 0) return "";
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  if (max === min) {
-    return SPARKLINE_LEVELS[0].repeat(values.length);
-  }
-
-  return values
-    .map((value) => {
-      const ratio = (value - min) / (max - min);
-      const index = Math.max(
-        0,
-        Math.min(SPARKLINE_LEVELS.length - 1, Math.round(ratio * (SPARKLINE_LEVELS.length - 1)))
-      );
-      return SPARKLINE_LEVELS[index];
-    })
-    .join("");
-}
-
-function formatTrendValues(values: number[]): string {
-  return values.map((value) => String(value).padStart(2, " ")).join(" ");
 }
 
 function buildDueBucketLines(
@@ -141,45 +131,72 @@ function buildDueBucketLines(
   });
 }
 
-function buildTrendLines(values: number[], panelWidth: number): string[] {
-  const innerWidth = Math.max(10, panelWidth - PANEL_HORIZONTAL_OVERHEAD);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const delta = values[values.length - 1] - values[0];
-  const sparkline = buildSparkline(values);
-
-  if (innerWidth < 20) {
-    return [
-      truncateLine(`PLOT ${sparkline}`, innerWidth),
-      truncateLine(`S:${values[0]} E:${values[values.length - 1]}`, innerWidth),
-      truncateLine(`MIN:${min} MAX:${max}`, innerWidth),
-      truncateLine(`DELTA ${delta >= 0 ? `+${delta}` : `${delta}`}`, innerWidth)
-    ];
+function formatTagLabel(tag: string, width: number): string {
+  const formatted = formatTagForDisplay(tag);
+  if (formatted.length <= width) return formatted;
+  if (width <= 3) {
+    return ".".repeat(width);
   }
-
-  return [
-    truncateLine("DAYS:  -6 -5 -4 -3 -2 -1  0", innerWidth),
-    truncateLine(`VALS: ${formatTrendValues(values)}`, innerWidth),
-    truncateLine(`PLOT: ${sparkline}`, innerWidth),
-    truncateLine(`MIN ${min}  MAX ${max}  DELTA ${delta >= 0 ? `+${delta}` : `${delta}`}`, innerWidth)
-  ];
+  return `${formatted.slice(0, width - 3)}...`;
 }
 
-export function DashboardPane({ tasks, filters, now, width, height }: DashboardPaneProps) {
+function buildTopTagRows(topTags: TopTagCount[], panelWidth: number): TopTagRow[] {
+  const innerWidth = Math.max(10, panelWidth - PANEL_HORIZONTAL_OVERHEAD);
+  const maxCount = Math.max(0, ...topTags.map((entry) => entry.count));
+  const countWidth = Math.max(2, String(maxCount).length);
+  const maxBarWidth = innerWidth - TAG_LABEL_COL_WIDTH - 1 - 1 - countWidth;
+
+  if (maxBarWidth < 1) {
+    return [];
+  }
+
+  const barWidth = Math.max(1, Math.min(BAR_COL_WIDTH, maxBarWidth));
+
+  return topTags.map(({ tag, count }) => {
+    const label = formatTagLabel(tag, TAG_LABEL_COL_WIDTH);
+    const labelPad = Math.max(0, TAG_LABEL_COL_WIDTH - label.length);
+    const rawLen = maxCount <= 0 ? 0 : Math.round((count / maxCount) * barWidth);
+    const barLen = count > 0 ? Math.max(1, rawLen) : 0;
+    const clampedBarLen = Math.max(0, Math.min(barWidth, barLen));
+    const bar = `${"#".repeat(clampedBarLen)}${" ".repeat(barWidth - clampedBarLen)}`;
+    return {
+      tag,
+      label,
+      labelPad,
+      bar,
+      countText: String(count).padStart(countWidth, " ")
+    };
+  });
+}
+
+export function DashboardPane({
+  tasks,
+  filters,
+  topTags,
+  selectedTopTagIndex,
+  now,
+  width,
+  height
+}: DashboardPaneProps) {
   const dueBuckets = React.useMemo(() => computeDueBuckets8(tasks, now), [tasks, now]);
-  const backlogTrend = React.useMemo(() => computeBacklogTrend7(tasks, now), [tasks, now]);
   const layout = React.useMemo(() => resolveDashboardLayout(width), [width]);
   const maxBucket = Math.max(0, ...dueBuckets);
   const headerWidth = Math.max(20, width - 2);
   const showFilterSummary = height >= 14;
+  const openOnlyUnavailable =
+    filters.status === "done" || filters.status === "archived";
+  const clampedTagIndex =
+    topTags.length === 0
+      ? 0
+      : Math.max(0, Math.min(selectedTopTagIndex, topTags.length - 1));
 
   const dueLines = React.useMemo(
     () => buildDueBucketLines(dueBuckets, maxBucket, layout.chartPanelWidth),
     [dueBuckets, maxBucket, layout.chartPanelWidth]
   );
-  const trendLines = React.useMemo(
-    () => buildTrendLines(backlogTrend, layout.trendPanelWidth),
-    [backlogTrend, layout.trendPanelWidth]
+  const topTagRows = React.useMemo(
+    () => buildTopTagRows(topTags, layout.rightPanelWidth),
+    [topTags, layout.rightPanelWidth]
   );
 
   const panelStyle = {
@@ -209,7 +226,9 @@ export function DashboardPane({ tasks, filters, now, width, height }: DashboardP
       {layout.stacked ? (
         <box style={{ flexDirection: "column", marginTop: showFilterSummary ? 1 : 0, gap: 1 }}>
           <box style={{ ...panelStyle, width: "100%" }}>
-            <text style={{ color: theme.text, fontWeight: "bold" }}>DUE BUCKETS (OVD, TODAY, +1..+6)</text>
+            <text style={{ color: theme.text, fontWeight: "bold" }}>
+              DUE BUCKETS (OVD, TODAY, +1..+6)
+            </text>
             {dueLines.map((line, index) => (
               <text key={`due-${index}`} style={{ color: theme.text }}>
                 {line}
@@ -218,18 +237,50 @@ export function DashboardPane({ tasks, filters, now, width, height }: DashboardP
           </box>
 
           <box style={{ ...panelStyle, width: "100%" }}>
-            <text style={{ color: theme.text, fontWeight: "bold" }}>BACKLOG TREND (LAST 7 DAYS)</text>
-            {trendLines.map((line, index) => (
-              <text key={`trend-${index}`} style={{ color: index === 2 ? theme.text : theme.muted }}>
-                {line}
-              </text>
-            ))}
+            <text style={{ color: theme.text, fontWeight: "bold" }}>TOP TAGS (OPEN)</text>
+            {openOnlyUnavailable ? (
+              <text style={{ color: theme.muted }}>(Top tags available for OPEN tasks only)</text>
+            ) : topTags.length === 0 ? (
+              <text style={{ color: theme.muted }}>(No tagged open tasks)</text>
+            ) : topTagRows.length === 0 ? (
+              <text style={{ color: theme.muted }}>(widen to view chart)</text>
+            ) : (
+              topTagRows.map((row, index) => {
+                const selected = index === clampedTagIndex;
+                return (
+                  <box key={`top-tag-${index}`} style={{ flexDirection: "row" }}>
+                    <text
+                      style={
+                        selected
+                          ? {
+                              backgroundColor: colorForTag(row.tag),
+                              color: theme.bg,
+                              fontWeight: "bold"
+                            }
+                          : { color: theme.text }
+                      }
+                    >
+                      {row.label}
+                    </text>
+                    {row.labelPad > 0 ? (
+                      <text style={{ color: theme.text }}>{" ".repeat(row.labelPad)}</text>
+                    ) : null}
+                    <text style={{ color: theme.text }}> </text>
+                    <text style={{ color: theme.text }}>{row.bar}</text>
+                    <text style={{ color: theme.text }}> </text>
+                    <text style={{ color: theme.muted }}>{row.countText}</text>
+                  </box>
+                );
+              })
+            )}
           </box>
         </box>
       ) : (
         <box style={{ flexDirection: "row", marginTop: showFilterSummary ? 1 : 0, width: "100%" }}>
           <box style={{ ...panelStyle, width: layout.chartPanelWidth }}>
-            <text style={{ color: theme.text, fontWeight: "bold" }}>DUE BUCKETS (OVD, TODAY, +1..+6)</text>
+            <text style={{ color: theme.text, fontWeight: "bold" }}>
+              DUE BUCKETS (OVD, TODAY, +1..+6)
+            </text>
             {dueLines.map((line, index) => (
               <text key={`due-${index}`} style={{ color: theme.text }}>
                 {line}
@@ -239,13 +290,43 @@ export function DashboardPane({ tasks, filters, now, width, height }: DashboardP
 
           <box style={{ width: DASHBOARD_GUTTER }} />
 
-          <box style={{ ...panelStyle, width: layout.trendPanelWidth }}>
-            <text style={{ color: theme.text, fontWeight: "bold" }}>BACKLOG TREND (LAST 7 DAYS)</text>
-            {trendLines.map((line, index) => (
-              <text key={`trend-${index}`} style={{ color: index === 2 ? theme.text : theme.muted }}>
-                {line}
-              </text>
-            ))}
+          <box style={{ ...panelStyle, width: layout.rightPanelWidth }}>
+            <text style={{ color: theme.text, fontWeight: "bold" }}>TOP TAGS (OPEN)</text>
+            {openOnlyUnavailable ? (
+              <text style={{ color: theme.muted }}>(Top tags available for OPEN tasks only)</text>
+            ) : topTags.length === 0 ? (
+              <text style={{ color: theme.muted }}>(No tagged open tasks)</text>
+            ) : topTagRows.length === 0 ? (
+              <text style={{ color: theme.muted }}>(widen to view chart)</text>
+            ) : (
+              topTagRows.map((row, index) => {
+                const selected = index === clampedTagIndex;
+                return (
+                  <box key={`top-tag-${index}`} style={{ flexDirection: "row" }}>
+                    <text
+                      style={
+                        selected
+                          ? {
+                              backgroundColor: colorForTag(row.tag),
+                              color: theme.bg,
+                              fontWeight: "bold"
+                            }
+                          : { color: theme.text }
+                      }
+                    >
+                      {row.label}
+                    </text>
+                    {row.labelPad > 0 ? (
+                      <text style={{ color: theme.text }}>{" ".repeat(row.labelPad)}</text>
+                    ) : null}
+                    <text style={{ color: theme.text }}> </text>
+                    <text style={{ color: theme.text }}>{row.bar}</text>
+                    <text style={{ color: theme.text }}> </text>
+                    <text style={{ color: theme.muted }}>{row.countText}</text>
+                  </box>
+                );
+              })
+            )}
           </box>
         </box>
       )}

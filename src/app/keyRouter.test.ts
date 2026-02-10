@@ -257,7 +257,15 @@ describe("handleKey", () => {
     };
 
     expect(run({ name: "j", sequence: "j" }, { uiState: dashboardState })).toEqual([]);
-    expect(run({ name: "down" }, { uiState: dashboardState })).toEqual([]);
+    expect(run({ name: "up" }, { uiState: dashboardState })).toEqual([
+      { scope: "ui", type: "MOVE_DASHBOARD_TAG_SELECTION", delta: -1 }
+    ]);
+    expect(run({ name: "down" }, { uiState: dashboardState })).toEqual([
+      { scope: "ui", type: "MOVE_DASHBOARD_TAG_SELECTION", delta: 1 }
+    ]);
+    expect(run({ name: "enter" }, { uiState: dashboardState })).toEqual([
+      { scope: "domain", type: "APPLY_DASHBOARD_SELECTED_TAG" }
+    ]);
     expect(run({ name: "f", sequence: "f" }, { uiState: dashboardState })).toEqual([
       { scope: "domain", type: "CYCLE_STATUS" }
     ]);

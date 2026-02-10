@@ -22,6 +22,11 @@ export type BacklogTrend7 = [
   number
 ];
 
+export type TopTagCount = {
+  tag: string;
+  count: number;
+};
+
 function emptyDueBuckets8(): DueBuckets8 {
   return [0, 0, 0, 0, 0, 0, 0, 0];
 }
@@ -81,4 +86,27 @@ export function computeBacklogTrend7(tasks: Task[], now: number): BacklogTrend7 
   }
 
   return trend;
+}
+
+export function computeTopTagsOpen(tasks: Task[], limit: number): TopTagCount[] {
+  if (limit <= 0) return [];
+
+  const counts = new Map<string, number>();
+
+  for (const task of tasks) {
+    if (task.status !== "open") continue;
+    for (const tag of task.tags) {
+      counts.set(tag, (counts.get(tag) ?? 0) + 1);
+    }
+  }
+
+  return Array.from(counts.entries())
+    .map(([tag, count]) => ({ tag, count }))
+    .sort((left, right) => {
+      if (left.count !== right.count) {
+        return right.count - left.count;
+      }
+      return left.tag.localeCompare(right.tag);
+    })
+    .slice(0, limit);
 }

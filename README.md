@@ -100,6 +100,8 @@ Corrupt backups created by recovery look like:
   - `f`: cycle status filter (shared with list)
   - `g`: cycle due filter (shared with list)
   - `t`: cycle tag filter (shared with list)
+  - `up` / `down`: select `TOP TAGS (OPEN)` rows
+  - `Enter`: apply selected dashboard tag to active `tag` filter
   - `?`: open help
   - `q`: quit (graceful terminal teardown)
   - Dashboard widgets always use the exact same filtered task set as the task list (including `searchText`).
