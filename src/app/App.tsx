@@ -10,7 +10,7 @@ import { handleKey, type KeyRouterAction } from "./keyRouter";
 import { TaskList } from "../components/TaskList";
 import { DetailsPane } from "../components/DetailsPane";
 import { EditorPane } from "../components/EditorPane";
-import { LeftRail } from "../components/LeftRail";
+import { LeftRail, type LeftRailMenuItem } from "../components/LeftRail";
 import { DashboardPane } from "../components/DashboardPane";
 import { diffLocalDays, startOfLocalDayMs } from "../domain/dates";
 import {
@@ -844,6 +844,78 @@ export function App({
     uiDispatch({ type: "setFocus", focus: uiState.previousFocus });
   }
 
+  function openListMode() {
+    clearPendingGPrefix();
+    closeViewsOverlay();
+    if (uiState.modal) {
+      uiDispatch({ type: "setModal", modal: null });
+    }
+    if (isEditorMode(uiState.mode)) {
+      setTimeSuggestion(null);
+      dispatch({ type: "setEditor", editor: null });
+    }
+    uiDispatch({ type: "setMode", mode: Mode.LIST });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.TASK_LIST });
+  }
+
+  function openDashboardMode() {
+    if (uiState.mode === Mode.DASHBOARD) return;
+    clearPendingGPrefix();
+    closeViewsOverlay();
+    if (uiState.modal) {
+      uiDispatch({ type: "setModal", modal: null });
+    }
+    if (isEditorMode(uiState.mode)) {
+      setTimeSuggestion(null);
+      dispatch({ type: "setEditor", editor: null });
+    }
+    uiDispatch({ type: "setMode", mode: Mode.DASHBOARD });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.DASHBOARD });
+  }
+
+  function openSearchMode() {
+    clearPendingGPrefix();
+    closeViewsOverlay();
+    if (uiState.modal) {
+      uiDispatch({ type: "setModal", modal: null });
+    }
+    if (isEditorMode(uiState.mode)) {
+      setTimeSuggestion(null);
+      dispatch({ type: "setEditor", editor: null });
+    }
+    uiDispatch({ type: "setMode", mode: Mode.SEARCH });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.SEARCH_INPUT });
+  }
+
+  function handleLeftRailMenuSelect(item: LeftRailMenuItem) {
+    switch (item) {
+      case "LIST":
+        openListMode();
+        return;
+      case "DASHBOARD":
+        openDashboardMode();
+        return;
+      case "ADD":
+        openAdd();
+        return;
+      case "EDIT":
+        openEdit();
+        return;
+      case "SEARCH":
+        openSearchMode();
+        return;
+      case "HELP":
+        if (uiState.mode === Mode.HELP) return;
+        openHelp();
+        return;
+      case "DELETE":
+        openDeleteConfirm();
+        return;
+      default:
+        return;
+    }
+  }
+
   function closeSearch() {
     clearPendingGPrefix();
     uiDispatch({ type: "setMode", mode: Mode.LIST });
@@ -1359,6 +1431,7 @@ export function App({
           sortMode={state.sortMode}
           fastPulseOn={fastPulseOn}
           flashMode={settingsState.flashMode}
+          onMenuSelect={handleLeftRailMenuSelect}
           terminalWidth={terminalWidth}
           showLogo={showLogo}
         />

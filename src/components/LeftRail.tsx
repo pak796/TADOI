@@ -7,6 +7,15 @@ import { getSortModeLabel } from "../domain/query";
 import { APP_TAGLINE, getAsciiLogoLines, getHeaderLogoVariant } from "../brand/brand";
 import type { FlashMode } from "../settings/settings";
 
+export type LeftRailMenuItem =
+  | "LIST"
+  | "DASHBOARD"
+  | "ADD"
+  | "EDIT"
+  | "SEARCH"
+  | "HELP"
+  | "DELETE";
+
 type LeftRailProps = {
   mode: Mode;
   focus: FocusTarget;
@@ -14,6 +23,7 @@ type LeftRailProps = {
   sortMode: SortMode;
   fastPulseOn: boolean;
   flashMode: FlashMode;
+  onMenuSelect?: (item: LeftRailMenuItem) => void;
   terminalWidth: number;
   showLogo?: boolean;
 };
@@ -118,6 +128,7 @@ export function LeftRail({
   sortMode,
   fastPulseOn,
   flashMode,
+  onMenuSelect,
   terminalWidth,
   showLogo = true
 }: LeftRailProps) {
@@ -132,7 +143,15 @@ export function LeftRail({
   const focusLabel = getFocusLabel(focus);
   const sortLabel = getSortModeLabel(sortMode);
 
-  const menuItems = ["LIST", "DASHBOARD", "ADD", "EDIT", "SEARCH", "HELP", "DELETE"];
+  const menuItems: LeftRailMenuItem[] = [
+    "LIST",
+    "DASHBOARD",
+    "ADD",
+    "EDIT",
+    "SEARCH",
+    "HELP",
+    "DELETE"
+  ];
   const statusLabel = filters.status === "all" ? "ACTIVE" : filters.status.toUpperCase();
   const statusBg =
     filters.status === "done"
@@ -210,6 +229,10 @@ export function LeftRail({
                 color: active ? theme.bg : theme.text,
                 paddingLeft: 1,
                 paddingRight: 1
+              }}
+              onMouseDown={(event) => {
+                if (event.button !== 0 || !onMenuSelect) return;
+                onMenuSelect(item);
               }}
             >
               <text>{item}</text>
