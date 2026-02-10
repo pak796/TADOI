@@ -9,6 +9,7 @@ v0.2.5 scope note:
 - This version focuses on foundation polish for real users: platform contract, reliability hardening, and performance envelope.
 - It adds daily-driver navigation and saved-view ergonomics while keeping persistence and routing discipline strict.
 - It carries forward all accepted v0.2.3 routing/version work and appends new v0.2.5 foundation requirements.
+- Current app version surfaces are now aligned to `v0.2.7` / `0.2.7`.
 
 - Runtime: Bun (OpenTUI quick start uses Bun; `bun create tui`)  [oai_citation:0‡GitHub](https://github.com/anomalyco/opentui?utm_source=chatgpt.com)
 - UI binding: @opentui/react provides React reconciler + patterns like `createRoot` and `useKeyboard`.  [oai_citation:1‡npm](https://www.npmjs.com/package/%40opentui/react?utm_source=chatgpt.com)
@@ -81,7 +82,7 @@ Deliverables:
 55. **Left rail logo separator**: render a horizontal ASCII separator under TADOI logo before version/menu metadata.
 56. **Help pane app version**: show the current app version in the Help overlay.
 57. **Rotating theme mode**: support a `rotating` theme option that auto-cycles concrete palettes every 15 seconds.
-58. **v0.2.5 version surfaces**: app version indicators and package metadata are aligned to `v0.2.5` / `0.2.5`.
+58. **v0.2.7 version surfaces**: app version indicators and package metadata are aligned to `v0.2.7` / `0.2.7`.
 59. **Daily-driver list navigation primitives**: add `gg` (top), `G` (bottom), page navigation (`ctrl+u` / `ctrl+d`, plus PageUp/PageDown), and attention jumps (`[`/`]` for overdue, `{`/`}` for due-today).
 60. **Saved Views (filter presets)**: users can save/apply/delete up to 9 filter presets (`v`, `ctrl+s`, `1..9`) with persistence and schema migration support.
 61. **Global active-tag cycle filter**: `t` cycles through tags from all active (open) tasks, not only the selected task.
@@ -684,7 +685,7 @@ Version contract:
 - App version is centralized in `src/app/version.ts` as `APP_VERSION`.
 - Left rail displays `APP_VERSION`.
 - Help pane displays `App Version: <APP_VERSION>`.
-- Package metadata in `package.json` matches the same release (`0.2.5`).
+- Package metadata in `package.json` matches the same release (`0.2.7`).
 
 ---
 
@@ -923,3 +924,94 @@ Help overlay must include a `DATA: IMPORT / EXPORT` section with:
 - merge conflict note (`updatedAt` winner policy)
 - replace overwrite warning + backup note
 - sharing caution with `--redact`
+
+---
+
+# Appendix I — v0.2.5 Dashboard MVP (Mode + Aggregations)
+
+This appendix defines the Dashboard MVP shipped in runtime UI.
+Scope is read-only dashboard analytics; there is no interactive import/export or drill-down workflow in dashboard mode.
+
+## I1) Mode + Key Routing Contract
+
+Mode/focus additions:
+- `Mode.DASHBOARD`
+- `FocusTarget.DASHBOARD`
+
+Toggle behavior:
+- `b` / `B` toggles `LIST <-> DASHBOARD` from non-modal flows.
+- Dashboard toggle is blocked while modal-confirm is active (modal precedence remains highest).
+
+Dashboard key contract:
+- Allowed: `b`/`B`, `f`, `g`, `t`, `?`, `q`
+- Blocked: list navigation/action keys (for example `j/k`, arrows, paging, jump keys)
+- Routing remains centralized in `src/app/keyRouter.ts`.
+
+## I2) Filter Parity Contract
+
+Dashboard widgets must use the exact same filtered dataset as task list rendering:
+- `visibleTasks = getVisibleTasks(state, now)`
+- shared semantics for:
+  - `status`
+  - `due`
+  - `tag`
+  - `searchText` (when present)
+
+Single source of truth:
+- No dashboard-specific filter model is introduced.
+
+## I3) Widget Aggregation Contracts
+
+Pure domain functions:
+- `computeDueBuckets8(tasks, now): [number, number, number, number, number, number, number, number]`
+- `computeBacklogTrend7(tasks, now): [number, number, number, number, number, number, number]`
+
+Due bucket contract (`computeDueBuckets8`):
+- Buckets map to:
+  1. overdue
+  2. today
+  3. +1 day
+  4. +2 days
+  5. +3 days
+  6. +4 days
+  7. +5 days
+  8. +6 days
+- Tasks with `dueAt` undefined are excluded.
+- Uses local-day boundaries consistent with existing date helpers.
+
+Backlog trend contract (`computeBacklogTrend7`):
+- Returns open backlog at end-of-day for the last 7 local days (oldest -> today).
+- Inclusion rule per day:
+  - `createdAt <= dayEnd`
+  - task is not closed on/before `dayEnd`
+- Effective close time:
+  - `closedAt` when present
+  - otherwise `updatedAt` for non-open tasks
+  - otherwise undefined
+
+## I4) Rendering + UX Contract
+
+Layout behavior:
+- In dashboard mode, the main content pane renders dashboard widgets instead of list/details split.
+- Left rail, top bar, and bottom bar remain active.
+- Top bar shows dashboard mode context and current filtered task count.
+
+Readability:
+- Must remain legible at minimum supported `80x24`.
+- Existing below-min-size guard behavior remains the governing fallback.
+
+## I5) Documentation + Tests Contract
+
+Docs:
+- README keybindings include dashboard toggle and dashboard-mode key behavior.
+- Help overlay includes a dashboard section describing:
+  - toggle behavior
+  - shared filter parity
+  - widget meaning
+
+Tests:
+- Domain unit tests cover both dashboard aggregation functions and edge cases.
+- Key-router tests verify:
+  - `b`/`B` toggle routing
+  - dashboard mode key allowlist
+  - list-key leakage prevention while dashboard is focused

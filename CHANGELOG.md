@@ -5,8 +5,26 @@ All notable changes to TADOI are documented in this file.
 The format is based on Keep a Changelog.
 
 ## [Unreleased]
+
+## [0.2.7]
 ### Added
+- Dashboard mode (`b` / `B`) with two analytics widgets:
+  - 8-bucket due chart (overdue, today, +1..+6 days)
+  - 7-day backlog trend reconstruction
+- Shared filter parity between list and dashboard using the same visible-task selector (`status`, `due`, `tag`, and `searchText` when present).
+- CLI full-state portability commands:
+  - `tadoi export --out ...`
+  - `tadoi import --in ...`
+  - merge/replace modes, dry-run support, and backup-before-overwrite safety.
 - Product-wrapper documentation for contribution policy, support intake, and release tracking.
+
+### Changed
+- In-app Help and README keybindings now document dashboard usage and data portability commands.
+- Left rail/menu mode and focus surfaces now include `DASHBOARD`.
+- Version surfaces now aligned to `0.2.7` / `v0.2.7`.
+
+### Fixed
+- Key-routing leakage prevention for dashboard mode so list navigation keys do not fire while dashboard is focused.
 
 ## [0.2.5]
 ### Added

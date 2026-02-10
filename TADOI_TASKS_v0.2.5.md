@@ -10,6 +10,7 @@ v0.2.5 scope note:
 - This version focuses on foundation polish for real users: platform contract, reliability hardening, and performance envelope.
 - It adds daily-driver navigation and saved-view ergonomics while keeping routing and persistence discipline strict.
 - It keeps all completed phases through v0.2.3 and tracks Phase 13 foundation work for v0.2.5.
+- Current app version surfaces are now aligned to `v0.2.7` / `0.2.7`.
 
 ---
 
@@ -1200,17 +1201,17 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 - Help pane displays `App Version: v0.2.3`.
 - `package.json` version is `0.2.3`.
 
-## T12.3 Version surfaces sync to v0.2.5
+## T12.3 Version surfaces sync to v0.2.7
 **Status**: Complete
 **Implement**
-- Update `APP_VERSION` to `v0.2.5`.
-- Update `package.json` version to `0.2.5`.
+- Update `APP_VERSION` to `v0.2.7`.
+- Update `package.json` version to `0.2.7`.
 - Keep left rail and help pane bound to centralized `APP_VERSION`.
 
 **DoD**
-- Left rail shows `v0.2.5`.
-- Help pane displays `App Version: v0.2.5`.
-- `package.json` version is `0.2.5`.
+- Left rail shows `v0.2.7`.
+- Help pane displays `App Version: v0.2.7`.
+- `package.json` version is `0.2.7`.
 
 ---
 
@@ -1469,3 +1470,72 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 **DoD**
 - Tests cover conflict/tie policy, guard rails, legacy migration, and backup behavior.
 - `bun run test`, `bun run test:coverage`, `bun run typecheck`, and `bun run brand:check` remain green.
+
+---
+
+# Phase 16 — v0.2.5 Dashboard MVP (Mode + Widgets + Docs)
+
+> Scope note: this phase adds a read-only Dashboard mode with shared-filter analytics views. No new persistence fields or interactive dashboard drill-down workflows are introduced.
+
+## T16.1 Dashboard mode and key-routing toggle
+**Status**: Complete
+**Implement**
+- Add `Mode.DASHBOARD` and `FocusTarget.DASHBOARD`.
+- Add `b` / `B` toggle behavior (`LIST <-> DASHBOARD`) through centralized key routing.
+- Ensure modal-confirm precedence still blocks non-modal keys.
+- Add dashboard routing branch that allows only dashboard-relevant keys and blocks list-key leakage.
+
+**DoD**
+- `b` / `B` enters and exits dashboard mode reliably.
+- In dashboard mode, list navigation keys (`j/k`, arrows, paging/jump keys) do not move list selection.
+- `f`, `g`, `t`, `?`, and `q` continue to work in dashboard mode.
+
+## T16.2 Dashboard analytics widgets and pure domain aggregations
+**Status**: Complete
+**Implement**
+- Add pure aggregation module `src/domain/dashboard.ts`:
+  - `computeDueBuckets8(tasks, now)`
+  - `computeBacklogTrend7(tasks, now)`
+- Add `src/components/DashboardPane.tsx` to render:
+  - 8-bucket due chart (OVD, TOD, +1..+6)
+  - 7-day backlog trend with compact sparkline text view
+
+**DoD**
+- Dashboard shows both widgets and updates as underlying task data changes.
+- Aggregations are deterministic and local-day aware.
+
+## T16.3 Shared filter parity with task list selector
+**Status**: Complete
+**Implement**
+- Reuse list selector output (`getVisibleTasks(state, now)`) as dashboard input.
+- Ensure dashboard respects existing `status`, `due`, `tag`, and `searchText` semantics.
+- Do not introduce dashboard-specific filter state.
+
+**DoD**
+- Changing filters/search in list mode immediately changes dashboard metrics.
+- Dashboard metrics always reflect the same filtered dataset as task list rendering.
+
+## T16.4 Dashboard docs (Help + README + left rail hints)
+**Status**: Complete
+**Implement**
+- Update Help overlay with dashboard key usage and widget explanation.
+- Update README keybindings with dashboard section and shared-filter parity note.
+- Add dashboard discoverability hints in left rail/menu labels.
+
+**DoD**
+- Users can discover dashboard controls from both in-app Help and README.
+- Left rail mode/focus/menu surfaces include `DASHBOARD`.
+
+## T16.5 Dashboard test coverage and QA checks
+**Status**: Complete
+**Implement**
+- Add unit tests for `computeDueBuckets8` and `computeBacklogTrend7` edge cases.
+- Extend key-router tests for:
+  - `b` / `B` toggle routing
+  - dashboard key allowlist
+  - list-key leakage prevention in dashboard mode
+- Verify core quality gates remain green.
+
+**DoD**
+- Dashboard tests pass in local and CI runs.
+- `bun run test`, `bun run test:coverage`, and `bun run typecheck` remain green after dashboard integration.

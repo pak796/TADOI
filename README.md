@@ -173,7 +173,7 @@ bun run pack:smoke
 Install from generated tarball (example):
 
 ```bash
-bun add -g ./dist/tarball/tadoi-0.2.5.tgz
+bun add -g ./dist/tarball/tadoi-0.2.7.tgz
 tadoi --help
 ```
 
@@ -185,13 +185,13 @@ Build machine (create artifact):
 bun run pack:dry
 ```
 
-Copy `dist/tarball/tadoi-0.2.5.tgz` to the target test machine, then install:
+Copy `dist/tarball/tadoi-0.2.7.tgz` to the target test machine, then install:
 
 macOS/Linux:
 
 ```bash
 bun --version
-bun add -g ./tadoi-0.2.5.tgz
+bun add -g ./tadoi-0.2.7.tgz
 tadoi --help
 tadoi
 ```
@@ -200,7 +200,7 @@ Windows (PowerShell):
 
 ```powershell
 bun --version
-bun add -g .\tadoi-0.2.5.tgz
+bun add -g .\tadoi-0.2.7.tgz
 tadoi --help
 tadoi
 ```
