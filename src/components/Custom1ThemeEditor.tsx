@@ -1,10 +1,11 @@
-import React, { useEffect, useImperativeHandle, useMemo, useState } from "react";
-import type { KeyEvent } from "@opentui/core";
+import React, { useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import type { InputRenderable, KeyEvent } from "@opentui/core";
 import { themeForObject } from "../app/theme";
 import { THEME_OBJECT_IDS, type ThemeObjectId } from "../settings/settings";
 import type { ThemeTokens } from "../theme/themes";
 import {
   THEME_TOKEN_KEYS,
+  formatRgbRow,
   hexToRgb,
   normalizeHexColor,
   rgbToHex,
@@ -15,7 +16,7 @@ type ScopeState =
   | { kind: "global" }
   | { kind: "object"; objectId: ThemeObjectId };
 
-type FocusTarget =
+export type FocusTarget =
   | "scope"
   | "tokenList"
   | "tokenJump"
@@ -66,6 +67,45 @@ function nextFocus(current: FocusTarget, direction: 1 | -1): FocusTarget {
   return FOCUS_ORDER[(safeIndex + direction + FOCUS_ORDER.length) % FOCUS_ORDER.length];
 }
 
+export function tokenListEditorEntryFocusTarget(): FocusTarget {
+  return "hex";
+}
+
+export function resolveCustom1EditorTabFocus(
+  current: FocusTarget,
+  shiftPressed: boolean
+): FocusTarget {
+  if (!shiftPressed && current === "tokenList") {
+    return tokenListEditorEntryFocusTarget();
+  }
+  return nextFocus(current, shiftPressed ? -1 : 1);
+}
+
+export function resolveCustom1EditorRightFocus(current: FocusTarget): FocusTarget | null {
+  if (current !== "tokenList") return null;
+  return tokenListEditorEntryFocusTarget();
+}
+
+export function resolveCustom1EditorLeftFocus(current: FocusTarget): FocusTarget | null {
+  if (current !== "hex") return null;
+  return "tokenList";
+}
+
+export function resolveCustom1EditorHexCommitFocus(
+  commitSucceeded: boolean
+): FocusTarget | null {
+  return commitSucceeded ? "tokenList" : null;
+}
+
+export function shouldExitHexToTokenListOnLeft(params: {
+  cursorOffset: number;
+  hasSelection: boolean;
+  leftBoundary: number;
+}): boolean {
+  if (params.hasSelection) return false;
+  return params.cursorOffset <= params.leftBoundary;
+}
+
 function resolveTokenJumpTarget(query: string): keyof ThemeTokens | null {
   const normalized = normalizeTokenJumpValue(query);
   if (!normalized) return null;
@@ -97,6 +137,7 @@ export const Custom1ThemeEditor = React.forwardRef<
   const [tokenJumpInput, setTokenJumpInput] = useState("");
   const [hexInput, setHexInput] = useState(draftGlobal.bg);
   const [hexError, setHexError] = useState<string | null>(null);
+  const hexInputRef = useRef<InputRenderable | null>(null);
 
   const selectedToken = THEME_TOKEN_KEYS[selectedTokenIndex] ?? THEME_TOKEN_KEYS[0];
   const currentColor = useMemo(() => {
@@ -171,15 +212,16 @@ export const Custom1ThemeEditor = React.forwardRef<
     }
   }
 
-  function commitHexInput(): void {
+  function commitHexInput(): boolean {
     const normalized = normalizeHexColor(hexInput);
     if (!normalized) {
       setHexError("Hex must be #RRGGBB");
-      return;
+      return false;
     }
     setHexError(null);
     setHexInput(normalized);
     applyScopeColor(normalized);
+    return true;
   }
 
   function moveScopeObject(delta: 1 | -1): void {
@@ -188,6 +230,14 @@ export const Custom1ThemeEditor = React.forwardRef<
     const safe = current === -1 ? 0 : current;
     const next = THEME_OBJECT_IDS[(safe + delta + THEME_OBJECT_IDS.length) % THEME_OBJECT_IDS.length];
     setScope({ kind: "object", objectId: next });
+  }
+
+  function focusTokenEditorForSelectedToken(): void {
+    setFocusTarget(tokenListEditorEntryFocusTarget());
+  }
+
+  function exitTokenEditorToList(): void {
+    setFocusTarget("tokenList");
   }
 
   useImperativeHandle(ref, () => ({
@@ -210,7 +260,11 @@ export const Custom1ThemeEditor = React.forwardRef<
       }
 
       if (key.name === "tab") {
-        setFocusTarget((current) => nextFocus(current, key.shift ? -1 : 1));
+        if (!key.shift && focusTarget === "tokenList") {
+          focusTokenEditorForSelectedToken();
+          return true;
+        }
+        setFocusTarget((current) => resolveCustom1EditorTabFocus(current, key.shift === true));
         return true;
       }
 
@@ -250,6 +304,13 @@ export const Custom1ThemeEditor = React.forwardRef<
           setSelectedTokenIndex((current) => (current + 1) % THEME_TOKEN_KEYS.length);
           return true;
         }
+        if (key.name === "right") {
+          const next = resolveCustom1EditorRightFocus(focusTarget);
+          if (next) {
+            focusTokenEditorForSelectedToken();
+            return true;
+          }
+        }
       }
 
       if (focusTarget === "tokenJump" && (key.name === "return" || key.name === "enter")) {
@@ -258,12 +319,39 @@ export const Custom1ThemeEditor = React.forwardRef<
       }
 
       if (focusTarget === "hex" && (key.name === "return" || key.name === "enter")) {
-        commitHexInput();
+        const commitSucceeded = commitHexInput();
+        const next = resolveCustom1EditorHexCommitFocus(commitSucceeded);
+        if (next) {
+          exitTokenEditorToList();
+        }
         return true;
+      }
+
+      if (focusTarget === "hex" && key.name === "left") {
+        const inputRef = hexInputRef.current;
+        if (!inputRef) return false;
+        // Hex input keeps a leading "#" that remains editable, so left-boundary
+        // exit uses cursor position 0 (before "#"), not 1.
+        const shouldExit = shouldExitHexToTokenListOnLeft({
+          cursorOffset: inputRef.cursorOffset,
+          hasSelection: inputRef.hasSelection(),
+          leftBoundary: 0
+        });
+        if (!shouldExit) return false;
+        const next = resolveCustom1EditorLeftFocus(focusTarget);
+        if (next) {
+          setFocusTarget(next);
+          return true;
+        }
+        return false;
       }
 
       if (focusTarget === "rgbR" || focusTarget === "rgbG" || focusTarget === "rgbB") {
         const channel = focusTarget === "rgbR" ? "r" : focusTarget === "rgbG" ? "g" : "b";
+        if (key.name === "return" || key.name === "enter") {
+          exitTokenEditorToList();
+          return true;
+        }
         if (key.name === "left") {
           adjustRgbChannel(channel, -step);
           return true;
@@ -373,6 +461,7 @@ export const Custom1ThemeEditor = React.forwardRef<
           />
           <text style={{ color: helpTheme.muted }}>Hex</text>
           <input
+            ref={hexInputRef}
             value={hexInput}
             onChange={setHexInput}
             focused={focusTarget === "hex"}
@@ -380,7 +469,10 @@ export const Custom1ThemeEditor = React.forwardRef<
               if (event.name === "return" || event.name === "enter") {
                 event.preventDefault();
                 event.stopPropagation();
-                commitHexInput();
+                const commitSucceeded = commitHexInput();
+                if (commitSucceeded) {
+                  exitTokenEditorToList();
+                }
               }
             }}
             style={{ backgroundColor: inputsTheme.bg, color: inputsTheme.text }}
@@ -397,7 +489,6 @@ export const Custom1ThemeEditor = React.forwardRef<
                 key={channel}
                 style={{
                   flexDirection: "row",
-                  justifyContent: "space-between",
                   backgroundColor: focused ? helpTheme.accentBlue : "transparent",
                   paddingLeft: 1,
                   paddingRight: 1
@@ -416,10 +507,7 @@ export const Custom1ThemeEditor = React.forwardRef<
                 }}
               >
                 <text style={{ color: focused ? helpTheme.bg : helpTheme.text }}>
-                  {channel.toUpperCase()}
-                </text>
-                <text style={{ color: focused ? helpTheme.bg : helpTheme.text }}>
-                  {String(value).padStart(3, " ")}
+                  {formatRgbRow(channel.toUpperCase() as "R" | "G" | "B", value)}
                 </text>
               </box>
             );

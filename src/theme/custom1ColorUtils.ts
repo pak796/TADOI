@@ -21,6 +21,8 @@ export type RgbColor = {
   b: number;
 };
 
+export type RgbChannelLabel = "R" | "G" | "B";
+
 const HEX_COLOR = /^#[0-9A-F]{6}$/;
 
 export function clampRgbChannel(value: number): number {
@@ -59,4 +61,12 @@ export function hexToRgb(value: string): RgbColor | null {
 
 export function stepRgbChannel(current: number, step: number): number {
   return clampRgbChannel(current + step);
+}
+
+export function formatRgbRow(label: RgbChannelLabel, value: number): string {
+  const clamped = clampRgbChannel(value);
+  const leftIndicator = clamped === 0 ? " " : "<";
+  const rightIndicator = clamped === 255 ? " " : ">";
+  const padded = String(clamped).padStart(3, "0");
+  return `${label}: ${leftIndicator} ${padded} ${rightIndicator}`;
 }
