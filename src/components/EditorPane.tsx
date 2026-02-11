@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import type { ScrollBoxRenderable } from "@opentui/core";
+import type { InputRenderable, KeyEvent, ScrollBoxRenderable } from "@opentui/core";
 import { EditorDraft, EditorFocus, Mode } from "../domain/models";
 import { WEEKDAY_ORDER } from "../domain/recurrence/draft";
 import { theme } from "../app/theme";
@@ -14,6 +14,11 @@ import {
   hasEditorOverflow
 } from "../domain/editorPaneLayout";
 import { clampScrollOffset, ensureSelectedVisible } from "../domain/scroll";
+import {
+  cycleRepeatEndModeClamp,
+  cycleRepeatModeClamp,
+  shouldInterceptRepeatArrowAtEdge
+} from "./editorRepeatKeyboard";
 
 type EditorPaneProps = {
   mode: Mode;
@@ -122,6 +127,9 @@ export function EditorPane({
     estimatedContentLines
   );
   const scrollboxRef = useRef<ScrollBoxRenderable | null>(null);
+  const timeInputRef = useRef<InputRenderable | null>(null);
+  const repeatModeInputRef = useRef<InputRenderable | null>(null);
+  const repeatIntervalInputRef = useRef<InputRenderable | null>(null);
   const clampedOffsetRef = useRef(clampedOffset);
   const focusInFooter = focus === "save" || focus === "cancel";
   const footerTopPadding = Math.max(
@@ -174,6 +182,57 @@ export function EditorPane({
 
   function fieldInputColor(active: boolean): string {
     return active ? theme.text : theme.muted;
+  }
+
+  // Clamp behavior: repeat mode stops at OFF/CUS instead of wrapping.
+  function handleRepeatCycleFromInputKey(
+    key: KeyEvent,
+    source: "time" | "repeat_mode" | "repeat_interval" | "repeat_end_mode"
+  ): void {
+    if (key.name !== "left" && key.name !== "right") return;
+
+    if (source === "repeat_mode") {
+      key.preventDefault();
+      key.stopPropagation();
+      const direction: 1 | -1 = key.name === "right" ? 1 : -1;
+      const nextRepeatMode = cycleRepeatModeClamp(draft.repeatMode, direction);
+      if (nextRepeatMode !== draft.repeatMode) {
+        onUpdate({ repeatMode: nextRepeatMode });
+      }
+      return;
+    }
+    if (source === "repeat_end_mode") {
+      key.preventDefault();
+      key.stopPropagation();
+      const direction: 1 | -1 = key.name === "right" ? 1 : -1;
+      const nextRepeatEndMode = cycleRepeatEndModeClamp(draft.repeatEndMode, direction);
+      if (nextRepeatEndMode !== draft.repeatEndMode) {
+        onUpdate({ repeatEndMode: nextRepeatEndMode });
+      }
+      return;
+    }
+
+    const inputRef = source === "time" ? timeInputRef.current : repeatIntervalInputRef.current;
+    if (!inputRef) return;
+
+    // Simple rule: only treat Left/Right as repeat navigation when the caret is at the
+    // corresponding edge and there is no active selection. Otherwise keep normal cursor movement.
+    const shouldIntercept = shouldInterceptRepeatArrowAtEdge({
+      keyName: key.name,
+      cursorOffset: inputRef.cursorOffset,
+      valueLength: inputRef.value.length,
+      hasSelection: inputRef.hasSelection()
+    });
+    if (!shouldIntercept) return;
+
+    key.preventDefault();
+    key.stopPropagation();
+
+    const direction: 1 | -1 = key.name === "right" ? 1 : -1;
+    const nextRepeatMode = cycleRepeatModeClamp(draft.repeatMode, direction);
+    if (nextRepeatMode !== draft.repeatMode) {
+      onUpdate({ repeatMode: nextRepeatMode });
+    }
   }
 
   return (
@@ -233,8 +292,10 @@ export function EditorPane({
       <box style={{ flexDirection: "column", marginTop: 1 }}>
         <text style={{ color: theme.muted }}>TIME (HH:mm optional)</text>
         <input
+          ref={timeInputRef}
           value={draft.timeText}
           onChange={(value) => onUpdate({ timeText: normalizeTimeTextInput(value) })}
+          onKeyDown={(key) => handleRepeatCycleFromInputKey(key, "time")}
           focused={focus === "time"}
           placeholder="14:30"
           style={{ backgroundColor: theme.bg, color: theme.text, width: "100%" }}
@@ -247,8 +308,10 @@ export function EditorPane({
       <box style={{ flexDirection: "column", marginTop: 1 }}>
         <text style={{ color: theme.muted }}>REPEAT</text>
         <input
+          ref={repeatModeInputRef}
           value={draft.repeatMode}
           onChange={(value) => onUpdate({ repeatMode: normalizeRepeatMode(value) })}
+          onKeyDown={(key) => handleRepeatCycleFromInputKey(key, "repeat_mode")}
           focused={focus === "repeat_mode"}
           placeholder="off"
           style={{
@@ -265,6 +328,10 @@ export function EditorPane({
                 key={repeatMode.value}
                 style={{
                   flexGrow: 1,
+                  flexBasis: 0,
+                  height: 3,
+                  minHeight: 3,
+                  maxHeight: 3,
                   justifyContent: "center",
                   alignItems: "center",
                   backgroundColor: selected ? theme.accentBlue : theme.panel,
@@ -286,8 +353,10 @@ export function EditorPane({
       <box style={{ flexDirection: "column", marginTop: 1 }}>
         <text style={{ color: fieldLabelColor(repeatEnabled) }}>INTERVAL (N)</text>
         <input
+          ref={repeatIntervalInputRef}
           value={draft.repeatIntervalText}
           onChange={(value) => onUpdate({ repeatIntervalText: value })}
+          onKeyDown={(key) => handleRepeatCycleFromInputKey(key, "repeat_interval")}
           focused={focus === "repeat_interval"}
           placeholder="1"
           style={{
@@ -350,6 +419,7 @@ export function EditorPane({
         <input
           value={draft.repeatEndMode}
           onChange={(value) => onUpdate({ repeatEndMode: normalizeEndMode(value) })}
+          onKeyDown={(key) => handleRepeatCycleFromInputKey(key, "repeat_end_mode")}
           focused={focus === "repeat_end_mode"}
           placeholder="never"
           style={{
