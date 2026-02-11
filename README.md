@@ -166,7 +166,7 @@ Reference:
   - `h` / `H`: cycle theme
   - `m` / `M`: toggle flash mode (`slow` / `static`)
   - `n` / `N`: toggle notifications master switch
-  - `o` / `O`: toggle in-app overdue banner
+  - `o` / `O`: toggle in-app overdue popup modal
   - `l` / `L`: toggle terminal bell on overdue
   - `up` / `down`: move selected Help section
   - `left` / `right`: collapse/expand selected section
@@ -179,6 +179,11 @@ Reference:
   - `j` / `k`: move menu selection
   - `Enter`: confirm current step
   - `Esc`: back (or close Backup Center from menu)
+- Overdue notification modal (when shown):
+  - `s` / `S`: snooze task by 10 minutes
+  - `d` / `D`: mark task done
+  - `g` / `G`: jump to the task in list mode
+  - `Esc`: dismiss current modal
 - Quit:
   - `q` in LIST mode (graceful terminal teardown)
   - `Ctrl+C` (handled by OpenTUI renderer)
@@ -224,11 +229,18 @@ Flash mode values:
 - `slow`: due-today and overdue indicators pulse (default)
 - `static`: flashing is disabled and overdue indicators stay solid red
 
+Theme IDs:
+- `default`, `retro`, `highContrast`, `neonHacker`, `lightSlate`, `paperWhite`, `midnightBlack`
+- `jester`, `sonora`, `tigers`, `tech`
+- `deuteranopia`, `protanopia`, `tritanopia`
+- `blueAngels`, `southwest`, `rams`
+- `rotating` (auto-cycles concrete themes)
+
 Notification defaults:
 - `notifications.enabled`: `true`
-- `notifications.inAppOverdueBanner`: `true`
+- `notifications.inAppOverdueBanner`: `true` (controls in-app overdue popup modal behavior)
 - `notifications.terminalBellOnOverdue`: `false`
-- `notifications.bannerDurationMs`: `5000`
+- `notifications.bannerDurationMs`: `5000` (retained compatibility field; currently not used by modal UX)
 - `notifications.bellCooldownMs`: `2000`
 
 Example:

@@ -10,6 +10,7 @@ v0.2.8 scope note:
 - It keeps persistence and routing discipline strict while aligning runtime/documentation behavior to current release expectations.
 - It codifies graceful interactive exit teardown (`renderer.destroy()` in app handlers) and renderer-managed `Ctrl+C` behavior.
 - Current app version surfaces are aligned to `v0.2.8` / `0.2.8`.
+- Runtime addendum (post-v0.2.8 docs sync): notifications now surface as actionable overdue popups (modal queue) and theme registry includes expanded accessibility/brand palettes.
 
 recurrence extension note:
 - Recurring tasks are now implemented with RRULE-style metadata (`dtstart`, `rrule`, `exdates`, `series_id`) and sparse materialization (`instance_of` rows for per-occurrence overrides/history).
@@ -79,7 +80,7 @@ Deliverables:
 48. **Selection-following scroll**: task list auto-scrolls so the selected row stays visible.
 49. **Details due time**: when a task has an explicit time, show `DUE TIME: HH:mm` in the details pane.
 50. **Add-time autocomplete**: in Add mode, show a right-arrow hint to complete a suggested time (1 hour ahead, preserves minutes); Right Arrow completes hour first, then minutes.
-51. **Theme switcher (MVP)**: support `default`, `retro`, `highContrast`, `neonHacker`, `lightSlate`, `paperWhite`, and `midnightBlack` palettes with no visual change to `default`.
+51. **Theme switcher (MVP)**: support `default`, `retro`, `highContrast`, `neonHacker`, `lightSlate`, `paperWhite`, `midnightBlack`, `jester`, `sonora`, `tigers`, `tech`, `deuteranopia`, `protanopia`, `tritanopia`, `blueAngels`, `southwest`, and `rams` palettes with no visual change to `default`.
 52. **Theme keybind in Help**: while Help is open, pressing `h` or `H` cycles to the next palette.
 53. **Theme persistence**: persist selected theme in `settings.json` with startup load and debounced saves.
 54. **Help theme status readout**: Help pane shows current theme mode (`rotating` includes active concrete theme).
@@ -115,6 +116,10 @@ Deliverables:
 84. **Editor pane scroll containment**: Add/Edit pane uses two explicit regions: scrollable form content and fixed footer for actions/hints.
 85. **Editor overflow controls**: Add/Edit form supports page scrolling (`ctrl+u`/`ctrl+d`, `PageUp`/`PageDown`) without affecting task-list scroll state.
 86. **Repeat chip row fit**: repeat mode chips (`OFF`, `DLY`, `WLY`, `MLY`, `CUS`) stay on one line within the editor pane width.
+87. **Overdue notification popup queue**: Tier-1 notifications appear as actionable modal popups (queued FIFO) instead of passive in-band banners.
+88. **Overdue modal action keys**: overdue popup supports `S` snooze (+10m), `D` mark done, `G` go to task, and `Esc` dismiss, with equivalent mouse actions.
+89. **Recurring-aware overdue modal actions**: overdue snooze/done/go-to flows preserve recurring-series semantics and use occurrence-aware target resolution.
+90. **Theme registry expansion**: include accessibility-oriented palettes (`deuteranopia`/`protanopia`/`tritanopia`) and additional brand palettes (`blueAngels`/`southwest`/`rams`) in manual/rotating cycles.
 
 ### Non-Goals (MVP)
 - Sync, accounts, multi-device
@@ -171,7 +176,7 @@ Required token shape:
 - `selectionBg`, `selectionText`
 
 Theme ids:
-- `default`, `retro`, `highContrast`, `neonHacker`, `lightSlate`, `paperWhite`, `midnightBlack`, `rotating`
+- `default`, `retro`, `highContrast`, `neonHacker`, `lightSlate`, `paperWhite`, `midnightBlack`, `jester`, `sonora`, `tigers`, `tech`, `deuteranopia`, `protanopia`, `tritanopia`, `blueAngels`, `southwest`, `rams`, `rotating`
 
 Runtime compatibility:
 - Existing component color usage may continue using runtime aliases (`accentOrange`, `accentBlue`, `accentPurple`, `dueSoon`, `dueLater`, `muted`, `outline`) as long as they resolve from active semantic tokens.
@@ -317,7 +322,9 @@ Implementation status:
 - `EDITOR_SAVE`, `EDITOR_CANCEL`
 
 ### Key routing rules
-1. If `mode === MODAL_CONFIRM`: **only** modal keys are handled; all other inputs are ignored.
+1. If `mode === MODAL_CONFIRM`: **only** keys for the active modal type are handled; all other inputs are ignored.
+   - Delete modal: `y`, `n`, `Esc`.
+   - Overdue modal: `s`, `d`, `g`, `Esc`.
 2. If an input field is focused (ADD/EDIT/SEARCH): printable characters go to that input only.
 3. List navigation keys (`j/k`, arrows) must NOT move selection when focus is in a text input.
 4. `Esc` always backs out one layer:
@@ -348,6 +355,16 @@ Implementation status:
 - Resolution:
   - `y`: delete task, close modal, return to LIST.
   - `n` or `Esc`: close modal, return to LIST, no changes.
+
+### Overdue notification modal
+- Trigger: notification event on overdue transition while app is open.
+- UI: centered “Task Overdue” popup with due details, overdue duration, and tags (when available).
+- Input capture: popup modal blocks background keybinds until resolved.
+- Resolution:
+  - `s` (or click action): snooze task by +10 minutes.
+  - `d` (or click action): mark task done.
+  - `g` (or click action): jump/reveal task in list mode (including recurring fallback targets).
+  - `Esc`: dismiss popup and continue to next queued overdue event.
 
 ### Post-delete selection rule
 - If list becomes empty: selection is `0` / none.
@@ -681,6 +698,9 @@ Behavior:
 Help interactions:
 - `h` or `H` while Help is open cycles theme.
 - `m` or `M` while Help is open toggles flash mode (`slow` / `static`).
+- `n` or `N` while Help is open toggles notifications master switch.
+- `o` or `O` while Help is open toggles overdue popup notifications.
+- `l` or `L` while Help is open toggles terminal bell notifications.
 - `up` / `down` moves selected Help section.
 - `left` / `right` collapses/expands selected Help section.
 - `enter` / `space` toggles selected Help section.
@@ -706,7 +726,7 @@ Routing contract:
 - dispatches returned UI/domain actions
 
 Rules enforced:
-- `MODAL_CONFIRM` blocks background keys and only resolves modal keys (`y`, `n`, `Esc`).
+- `MODAL_CONFIRM` blocks background keys and resolves only active-modal keys (`y`/`n`/`Esc` for delete, `s`/`d`/`g`/`Esc` for overdue popup).
 - `SEARCH` and editor input modes do not leak list navigation keys.
 - `Esc` always routes to unwind behavior and exits one layer.
 

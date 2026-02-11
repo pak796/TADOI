@@ -54,9 +54,19 @@ Check these basics:
 1. Press `a` to open add mode.
 2. Type a task title and press `Ctrl+S` to save.
 3. Press `?` to open Help.
-4. Press `q` to quit.
+4. While Help is open, test quick toggles:
+   - `h`/`H` theme cycle
+   - `m`/`M` flash mode
+   - `n`/`N` notifications master
+   - `o`/`O` overdue popup
+   - `l`/`L` terminal bell
+5. Press `q` to quit.
 
 If those work, install/run is healthy.
+
+Optional notification check:
+- Create a timed task due within 1 minute and keep the app open.
+- Confirm overdue popup modal appears and responds to `S`/`D`/`G`/`Esc`.
 
 ## 7) Data File Locations by Platform
 

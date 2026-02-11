@@ -13,16 +13,23 @@ The format is based on Keep a Changelog.
   - replace confirmation gate and dry-run-before-commit enforcement
 - Shared portability service (`src/state/backupService.ts`) used by both CLI and TUI, preserving existing import/export semantics.
 - Tier 1/2 notifications while app is open:
-  - in-app overdue banner queue (`Task overdue: <title>`)
-  - optional terminal bell (`\x07`) with cooldown control
+  - in-app overdue popup modal queue (actionable controls: snooze, mark done, go to task, dismiss)
+  - optional terminal bell (`\x07`) with cooldown control when overdue modal events are surfaced
   - Help-mode notification toggles (`n`/`o`/`l`)
 - Tier 3 notification scaffold:
   - no-op OS notifier adapter boundary for future platform integrations
+- Overdue action helpers for notification modal flows:
+  - `snooze` applies +10 minute overdue defer semantics
+  - `mark done` applies occurrence-aware completion semantics
+  - `go to task` resolves recurring-row fallbacks for reliable reveal behavior
 
 ### Changed
 - Backup Center copy/layout polish for clearer step labels, safety messaging, and action hints.
 - Documentation refreshed for Backup Center usage and keybindings (`README.md`, in-app Help text).
 - Theme system now includes additional concrete palettes (`lightSlate`, `paperWhite`, `midnightBlack`) in both manual cycling and rotating mode.
+- Theme registry expanded with additional accessibility and brand palettes:
+  - `deuteranopia`, `protanopia`, `tritanopia`
+  - `blueAngels`, `southwest`, `rams`
 - Editor recurrence controls support keyboard left/right cycling for repeat mode and repeat-end mode, with clamp behavior at range bounds.
 - Settings schema now includes `notifications.*` preferences with backward-compatible defaults and portability/import-export support.
 

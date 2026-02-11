@@ -899,11 +899,14 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 **Status**: Complete
 **Implement**
 - When modal is open, all non-modal key handlers must be disabled/ignored
-- Only accept modal keys: `y`, `n`, `Esc` (and optionally Enter mapped to `y`)
+- Resolve keys by modal type:
+  - delete modal: `y`, `n`, `Esc` (optionally Enter mapped to `y`)
+  - overdue popup modal: `s`, `d`, `g`, `Esc`
 
 **DoD**
 - With modal open, selection cannot change and inputs cannot be edited.
-- `y` deletes, `n`/`Esc` cancels, and app returns to LIST.
+- Delete modal: `y` deletes, `n`/`Esc` cancels, and app returns to LIST.
+- Overdue modal: `s` snoozes +10m, `d` marks done, `g` reveals task, `Esc` dismisses current popup.
 
 ## T8.4 Post-delete selection clamping + visibility
 **Status**: Complete
@@ -1258,7 +1261,7 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 - `src/app/App.tsx` uses one `useKeyboard` entrypoint that executes routed actions.
 
 **DoD**
-- Modal mode blocks all background keys except modal keys (`y`, `n`, `Esc`).
+- Modal mode blocks all background keys except active-modal keys (`y`/`n`/`Esc` for delete; `s`/`d`/`g`/`Esc` for overdue popup).
 - Typing in SEARCH/ADD/EDIT does not move list selection.
 - LIST mode keybinds continue to work.
 - `Esc` consistently unwinds one layer.
@@ -1766,3 +1769,61 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 - Footer remains visible while editor content scrolls.
 - Repeat selector chips render on one line without pushing surrounding fields out of alignment.
 - Repeat and repeat-end values update immediately from keyboard left/right interactions in supported fields.
+
+---
+
+# Phase 19 — Notifications Modal Actions + Theme Expansion
+
+> Scope note: this phase captures post-v0.2.8 runtime updates for overdue notification UX and expanded theme catalog coverage.
+
+## T19.1 Replace in-app overdue banner with actionable popup modal queue
+**Status**: Complete
+**Implement**
+- Replace passive overdue banner queue with overdue notification modal queue.
+- Render queued overdue notifications as a centered modal surface.
+- Keep notification master toggle behavior and queue gating logic.
+
+**DoD**
+- Overdue events enqueue and surface one-at-a-time FIFO.
+- Modal blocks background input while active.
+- Disabling notification popups clears queue and unwinds active overdue modal safely.
+
+## T19.2 Overdue modal actions (snooze/done/go-to/dismiss)
+**Status**: Complete
+**Implement**
+- Add overdue modal key routes:
+  - `s`/`S` -> snooze by 10 minutes
+  - `d`/`D` -> mark done
+  - `g`/`G` -> go to task
+  - `Esc` -> dismiss
+- Add equivalent mouse actions in modal UI.
+- Wire recurring-aware action helpers for snooze/done/go-to.
+
+**DoD**
+- Regular and recurring overdue tasks resolve correctly for each action.
+- Go-to action reveals a stable task target, including recurring fallbacks.
+- Dismissing current overdue modal advances to next queued event if present.
+
+## T19.3 Notification docs/spec sync
+**Status**: Complete
+**Implement**
+- Update README and changelog wording from overdue banner to overdue popup modal.
+- Update notification spec sheet with modal contract and action semantics.
+- Update QA/test guidance to include overdue modal action coverage.
+
+**DoD**
+- Public docs and spec sheets reflect current runtime behavior for notifications.
+- Help key descriptions match current app text (`overdue popup` wording).
+
+## T19.4 Theme registry expansion and coverage
+**Status**: Complete
+**Implement**
+- Extend theme registry with:
+  - accessibility palettes: `deuteranopia`, `protanopia`, `tritanopia`
+  - additional palettes: `blueAngels`, `southwest`, `rams`
+- Include themes in `THEME_ORDER` and `ROTATING_THEME_ORDER`.
+- Extend theme tests for ordering and token presence.
+
+**DoD**
+- Theme cycling includes new palettes in manual and rotating modes.
+- Theme tests validate registry order and palette token integrity.

@@ -31,8 +31,8 @@ It is based on:
 
 ### Current quality signal
 
-- Automated tests: 211 passing tests (local run via `bun run test`)
-- Test files: 33 (`src/**/*.test.ts`)
+- Automated tests: validate current pass status with local `bun run test`
+- Test files: `src/**/*.test.ts` (includes recurrence, dashboard, backup, and notifications modal coverage)
 - CI runs on all 3 OS targets (Ubuntu, macOS, Windows) with required checks:
   - tests
   - coverage
@@ -46,6 +46,7 @@ It is based on:
 - Backup/import safety flow (replace confirmation, dry-run gating, pre-import backup)
 - Data corruption recovery and path resolution by platform
 - Key routing boundaries (no leakage between LIST/EDIT/SEARCH/HELP/DASHBOARD/BACKUP modes)
+- Notification modal behavior (queue ordering, modal key routing, action semantics, bell cooldown)
 - Layout resilience at minimum terminal size (`80x24`)
 
 ## 3) Platform Matrix
@@ -156,22 +157,40 @@ Expected: timestamped file created, collision suffix handling (`.1`, `.2`).
 5. Show data path option.
 Expected: displays current resolved runtime path.
 
-### H. Theme and Flash Settings
+### H. Theme, Flash, and Notification Settings
 
 1. Open help (`?`), cycle theme (`h/H`).
 2. Toggle flash mode (`m/M`).
-3. Restart app.
+3. Toggle notification settings in Help:
+   - master (`n/N`)
+   - overdue popup (`o/O`)
+   - terminal bell (`l/L`)
+4. Restart app.
 Expected: settings persist and load.
 
-### I. Mouse Interactions
+### I. Overdue Notification Modal Actions
+
+1. Enable notifications and overdue popup in Help.
+2. Create a timed task due within 1 minute.
+3. Wait for overdue transition while app remains open.
+4. Validate modal actions:
+   - `S`: snooze by +10 minutes
+   - `D`: mark done
+   - `G`: go to task
+   - `Esc`: dismiss current modal
+5. If terminal bell is enabled, verify bell respects cooldown.
+Expected: modal actions are deterministic and recurring rows resolve correctly.
+
+### J. Mouse Interactions
 
 1. Click task row to select.
 2. Click left-rail menu row to trigger action.
 3. Click editor `SAVE`/`CANCEL`.
 4. Click bottom info bar quick-filter buckets/tags.
+5. Trigger overdue popup and click action buttons.
 Expected: mouse actions map to documented commands and preserve mode safety.
 
-### J. Data Safety and Recovery
+### K. Data Safety and Recovery
 
 1. Validate save error banner by forcing unwritable data path.
 2. Create malformed JSON in data file and relaunch.
@@ -205,7 +224,7 @@ Expected: app recovers to empty state, creates `.corrupt.<timestamp>` backup, sh
 
 1. Quick smoke (all three OS): Launch, add/edit/toggle/delete, quit.
 2. Core regression: suites A-D + H.
-3. Deep regression: suites E-G + J.
+3. Deep regression: suites E-G + I + K.
 4. Final packaging/CI parity:
    - `bun run test`
    - `bun run test:coverage`
@@ -221,7 +240,7 @@ Use this structure in test reports:
 
 - Platform + terminal + version
 - Build/source revision
-- Test suites executed (A-J)
+- Test suites executed (A-K)
 - Pass/fail count
 - Defects:
   - id

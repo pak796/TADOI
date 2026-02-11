@@ -1,11 +1,11 @@
-# TADOI Notifications Spec Sheet (Tier 1–2) + Tier 3 Scaffold
-**Version:** 0.2  
-**Date:** February 10, 2026
+# TADOI Notifications Spec Sheet (Tier 1–2) + Tier 3 Scaffold (Modal UX)
+**Version:** 0.3  
+**Date:** February 11, 2026
 
 ---
 
 ## 1. Overview
-This spec defines minimal, opt-in “Due Now” notifications for TADOI now that tasks support explicit due times and recurrence. Implementation focuses on in-app behavior while the application is open (Tier 1), with an optional terminal bell (Tier 2). A clean adapter boundary is included to support best-effort OS notifications later (Tier 3).
+This spec defines opt-in “Due Now” notifications for TADOI while the app is open. Current implementation uses an actionable in-app overdue modal queue (Tier 1), with optional terminal bell notifications (Tier 2). A no-op OS adapter boundary remains in place for future platform notifications (Tier 3).
 
 ---
 
@@ -13,34 +13,38 @@ This spec defines minimal, opt-in “Due Now” notifications for TADOI now that
 
 ### 2.1 Goals
 - Notify only when it matters: a task transitions from not overdue to overdue while the app is open.
-- Keep behavior deterministic, low-noise, and easy to extend.
-- Handle recurrence correctly (each `dueAt` occurrence is eligible once).
-- Avoid UI disruption: notifications must not steal focus or block input.
+- Keep behavior deterministic, low-noise, and recurrence-aware.
+- Provide immediate triage actions from the notification surface (snooze/done/go-to).
+- Keep notification delivery extensible through notifier adapters.
 
 ### 2.2 Non-goals (Tier 1–2)
 - No “due soon” reminders.
 - No background daemon/service or notifications while the app is closed.
-- No notification history screen.
-- No guarantee of delivery; behavior is best-effort while the app is running.
+- No notification history center.
+- No guaranteed delivery outside active runtime.
 
 ---
 
 ## 3. Tier Definitions
 
-### 3.1 Tier 1: In-app banner (default)
-- When a task becomes overdue while the app is open, show an in-app banner:  
-  `Task overdue: <title>`
-- Banner auto-dismisses after a configurable duration (default **5000 ms**).
-- If multiple tasks become overdue together, banners queue FIFO.
+### 3.1 Tier 1: In-app overdue modal queue (default)
+- When a task becomes overdue while the app is open, enqueue an overdue modal event.
+- Modal content includes title, due date/time, overdue duration, and task tags when available.
+- Modal is actionable:
+  - `S` snooze by 10 minutes
+  - `D` mark done
+  - `G` go to task
+  - `Esc` dismiss
+- Mouse click actions are equivalent to keyboard actions.
+- If multiple overdue transitions occur together, events are queued FIFO and shown one at a time.
 
 ### 3.2 Tier 2: Optional terminal bell (opt-in)
-- If enabled, ring the terminal bell (`\x07`) on the same overdue transition event.
-- Bell is rate-limited with a configurable cooldown (default **2000 ms**).
-- Banner behavior remains unchanged (bell is additive).
+- If enabled, ring terminal bell (`\x07`) when overdue modal events are surfaced.
+- Bell is rate-limited with cooldown (default **2000 ms**).
 
-### 3.3 Tier 3: OS notifications (later, scaffold only)
-- Provide a notifier adapter stub for macOS/Windows/Linux notifications.
-- For now it performs no external integration and does not emit OS notifications.
+### 3.3 Tier 3: OS notifications (scaffold only)
+- Keep notifier adapter boundary for macOS/Windows/Linux notifications.
+- Current adapter remains a no-op.
 
 ---
 
@@ -49,47 +53,58 @@ This spec defines minimal, opt-in “Due Now” notifications for TADOI now that
 ### 4.1 Overdue definition
 A task is overdue when:
 - `dueAt` is set **AND**
-- task is not completed **AND**
+- task status is open **AND**
 - current time (`now`) is greater than `dueAt`
 
 ### 4.2 Notification trigger
-- Trigger only on transition: `wasOverdue = false` **AND** `isOverdue = true`
+- Trigger only on transition: `wasOverdue = false` **AND** `isOverdue = true`.
 - Do not notify on app launch for tasks already overdue (no startup spam).
-- For recurring tasks, eligibility is tied to `dueAt`; a new `dueAt` occurrence may notify again.
+- For recurring tasks, each overdue occurrence (`dueAt`) is eligible once.
 
 ---
 
 ## 5. Notification Event Model
-All notifiers consume a single event shape. Additional event types can be added later without changing detection logic.
+All notifiers consume the same event shape.
 
 - **Event type:** `TASK_OVERDUE`
-- **Payload fields:** `taskId`, `title`, `dueAt` (ISO), `firedAt` (ISO)
+- **Payload:** `taskId`, `title`, `dueAt` (ISO), `firedAt` (ISO)
 
 ---
 
 ## 6. UX Requirements
 
-### 6.1 Banner
-- Text: `Task overdue: <title>` (optionally include formatted due time if already available in the app).
-- Placement: a dedicated banner row that does not disturb input focus.
-- Duration: auto-dismiss after 4–6 seconds (default **5000 ms**).
-- Queueing: FIFO; show one banner at a time.
+### 6.1 Overdue modal content and actions
+- Title: `Task Overdue`
+- Fields:
+  - task title
+  - due date/time
+  - `Overdue by <duration>`
+  - tags (when present)
+- Actions:
+  - `S` / click: snooze +10 minutes
+  - `D` / click: mark done
+  - `G` / click: jump to task
+  - `Esc` / click: dismiss
 
-### 6.2 Bell
-- Only when `notifications.terminalBellOnOverdue` is `true`.
-- Rate-limit: at most one bell per `bellCooldownMs` (default **2000 ms**).
+### 6.2 Queue behavior
+- FIFO queue for overdue events.
+- Show one modal at a time.
+- Dismissing/resolving current modal advances to next queued event.
+
+### 6.3 Bell behavior
+- Bell only rings when `notifications.terminalBellOnOverdue` is `true`.
+- Bell respects `notifications.bellCooldownMs`.
 
 ---
 
 ## 7. Settings and Defaults
-Add settings under a `notifications` namespace. Names may be adapted to match existing config conventions.
 
 | Setting | Type / Default | Notes |
 |---|---|---|
 | `notifications.enabled` | boolean / `true` | Master switch for notification system. |
-| `notifications.inAppOverdueBanner` | boolean / `true` | Tier 1 banner on overdue transition. |
-| `notifications.terminalBellOnOverdue` | boolean / `false` | Tier 2 audible bell (opt-in). |
-| `notifications.bannerDurationMs` | number / `5000` | Banner display duration. |
+| `notifications.inAppOverdueBanner` | boolean / `true` | Legacy field name retained; currently controls overdue popup modal behavior. |
+| `notifications.terminalBellOnOverdue` | boolean / `false` | Tier 2 bell (opt-in). |
+| `notifications.bannerDurationMs` | number / `5000` | Compatibility field retained in schema; currently unused by modal UX. |
 | `notifications.bellCooldownMs` | number / `2000` | Minimum time between bell rings. |
 
 ---
@@ -98,56 +113,62 @@ Add settings under a `notifications` namespace. Names may be adapted to match ex
 
 ### 8.1 Components
 - **NotificationManager:** evaluates tasks, detects overdue transitions, emits notification events.
-- **Notifier interface:** common contract for delivering events (banner, bell, later OS).
-- **InAppBannerNotifier:** enqueues banner messages into UI state.
+- **InAppModalNotifier:** enqueues overdue events into UI notification-modal queue.
 - **TerminalBellNotifier:** rings bell with cooldown when enabled.
-- **OSNotifier:** stub adapter (no-op) reserved for Tier 3.
+- **OSNotifier:** no-op adapter for future OS notification integration.
+- **Overdue task action helpers:** shared action logic for snooze/done/go-to operations.
 
 ### 8.2 Runtime state (in-memory)
-- `overdueByTaskId: Map(taskId -> { isOverdue, lastNotifiedDueAt })`
-- `bannerQueue` + `activeBanner` state in UI layer
-- `lastBellAt` timestamp for cooldown enforcement
+- `overdueByTaskId: Map<taskId, { isOverdue, lastNotifiedDueAt }>`
+- `notificationModalQueue` and active modal state in UI reducer
+- `lastBellAt` timestamp for bell cooldown
 
-**Note:** State persistence is intentionally omitted for Tier 1–2. On restart, no notifications fire for already overdue tasks.
+**Note:** Notification state is intentionally not persisted. Startup initializes overdue state without firing events.
 
 ---
 
 ## 9. Scheduling and Evaluation
-- Evaluate overdue transitions on a fixed tick while the app is open (recommended: every **10 seconds**).
-- Also evaluate immediately on task mutations that affect due state (create/update/complete/recurrence roll).
-- On the first evaluation after startup, initialize overdue state without firing events.
+- Evaluate overdue transitions on periodic tick while app is open (target: every **10 seconds**).
+- Also evaluate immediately on due-affecting task mutations.
+- First evaluation after startup initializes state only (no event emission).
 
 ---
 
 ## 10. Edge Cases
 - Task already overdue at startup: initialize state, no notification.
-- `dueAt` removed: clear overdue state for that task.
-- `dueAt` edited from future → past: will notify at next evaluation tick (acceptable).
-- `dueAt` edited from past → future: clear overdue state and suppress notification.
-- Burst overdue events: banners queue FIFO; bell respects cooldown.
+- `dueAt` removed: clear overdue state for task.
+- `dueAt` edited past/future: eligibility resets based on new `dueAt`.
+- Burst overdue transitions: modal queue is FIFO; bell still respects cooldown.
+- Recurring overdue transitions resolve to occurrence-specific actions and go-to fallbacks.
 
 ---
 
 ## 11. Acceptance Criteria
-- With the app open, when `now` passes a task `dueAt`, a banner appears within one evaluation interval.
-- No banner or bell is emitted on startup for tasks already overdue.
-- Each `dueAt` occurrence notifies at most once; a new `dueAt` occurrence may notify again.
-- Bell only rings when enabled and is rate-limited by `bellCooldownMs`.
-- Banner does not steal focus or interrupt text input.
+- With app open, crossing `dueAt` emits overdue event within one evaluation interval.
+- Existing-overdue tasks at startup do not notify.
+- Each `dueAt` occurrence notifies at most once.
+- Overdue modal supports `S`, `D`, `G`, and `Esc` paths.
+- Bell only rings when enabled and outside cooldown.
 
 ---
 
 ## 12. Testing Plan
 
-### 12.1 Unit tests (preferred)
-- Overdue transition fires once for a task occurrence.
+### 12.1 Unit tests
+- Overdue transition fires exactly once per eligible occurrence.
 - No startup spam behavior.
-- `dueAt` change resets eligibility correctly.
-- Bell cooldown prevents rapid repeated bells.
+- Bell cooldown enforcement.
+- In-app modal notifier enqueue/suppression behavior.
+- Overdue action helpers for regular and recurring tasks:
+  - snooze
+  - mark done
+  - go-to target resolution
 
 ### 12.2 Manual test script
-- Create 2–3 tasks due within 1 minute; confirm banner timing and FIFO queueing.
-- Enable bell setting; confirm bell rings once per event and obeys cooldown.
+- Create 2–3 tasks due within 1 minute.
+- Confirm modal appears with expected fields and actions.
+- Validate `S`, `D`, `G`, and `Esc` flows.
+- Enable bell setting and confirm cooldown behavior.
 
 ---
 
@@ -155,6 +176,8 @@ Add settings under a `notifications` namespace. Names may be adapted to match ex
 - `src/notifications/types.ts`
 - `src/notifications/notifier.ts`
 - `src/notifications/notificationManager.ts`
-- `src/notifications/notifiers/inAppBannerNotifier.ts`
+- `src/notifications/notifiers/inAppModalNotifier.ts`
 - `src/notifications/notifiers/terminalBellNotifier.ts`
-- `src/notifications/notifiers/osNotifier.ts` (no-op stub)
+- `src/notifications/notifiers/osNotifier.ts`
+- `src/notifications/overdueTaskActions.ts`
+- `src/components/OverdueNotificationModal.tsx`
