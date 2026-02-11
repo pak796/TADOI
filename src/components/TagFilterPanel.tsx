@@ -13,6 +13,7 @@ type TagFilterPanelProps = {
   suggestions: string[];
   onInputChange: (value: string) => void;
   onInputKeyDown: (key: KeyEvent) => void;
+  onInputSubmit: (value: string) => void;
   onSetBucket: (bucket: TagFilterBucket) => void;
   onRemoveTag: (bucket: TagFilterBucket, tag: string) => void;
   onApply: () => void;
@@ -42,6 +43,7 @@ export function TagFilterPanel({
   suggestions,
   onInputChange,
   onInputKeyDown,
+  onInputSubmit,
   onSetBucket,
   onRemoveTag,
   onApply,
@@ -139,6 +141,7 @@ export function TagFilterPanel({
           value={inputValue}
           onChange={onInputChange}
           onKeyDown={onInputKeyDown}
+          onSubmit={onInputSubmit}
           focused
           placeholder="#work"
           style={{ backgroundColor: theme.bg, color: theme.text }}

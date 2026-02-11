@@ -19,7 +19,10 @@ describe("theme registry", () => {
     expect(cycleTheme("tritanopia")).toBe("blueAngels");
     expect(cycleTheme("blueAngels")).toBe("southwest");
     expect(cycleTheme("southwest")).toBe("rams");
-    expect(cycleTheme("rams")).toBe("custom1");
+    expect(cycleTheme("rams")).toBe("trooper");
+    expect(cycleTheme("trooper")).toBe("twilight");
+    expect(cycleTheme("twilight")).toBe("msdos");
+    expect(cycleTheme("msdos")).toBe("custom1");
     expect(cycleTheme("custom1")).toBe("rotating");
     expect(cycleTheme("rotating")).toBe("default");
   });
@@ -43,6 +46,9 @@ describe("theme registry", () => {
       "blueAngels",
       "southwest",
       "rams",
+      "trooper",
+      "twilight",
+      "msdos",
       "custom1",
       "rotating"
     ]);
@@ -66,7 +72,10 @@ describe("theme registry", () => {
       "tritanopia",
       "blueAngels",
       "southwest",
-      "rams"
+      "rams",
+      "trooper",
+      "twilight",
+      "msdos"
     ]);
   });
 
@@ -319,6 +328,57 @@ describe("theme registry", () => {
       danger: "#1f4fa3",
       selectionBg: "#ffd100",
       selectionText: "#003594"
+    });
+  });
+
+  it("defines trooper palette tokens", () => {
+    expect(THEMES.trooper).toMatchObject({
+      bg: "#ffffff",
+      panel: "#f3f3f3",
+      text: "#000000",
+      mutedText: "#4a4a4a",
+      border: "#000000",
+      accent: "#000000",
+      accent2: "#2b2b2b",
+      ok: "#1f1f1f",
+      warn: "#5c5c5c",
+      danger: "#8c8c8c",
+      selectionBg: "#000000",
+      selectionText: "#ffffff"
+    });
+  });
+
+  it("defines twilight palette tokens", () => {
+    expect(THEMES.twilight).toMatchObject({
+      bg: "#000000",
+      panel: "#121212",
+      text: "#ffffff",
+      mutedText: "#bfbfbf",
+      border: "#ffffff",
+      accent: "#ffffff",
+      accent2: "#d9d9d9",
+      ok: "#e6e6e6",
+      warn: "#a6a6a6",
+      danger: "#737373",
+      selectionBg: "#ffffff",
+      selectionText: "#000000"
+    });
+  });
+
+  it("defines msdos palette tokens", () => {
+    expect(THEMES.msdos).toMatchObject({
+      bg: "#0000aa",
+      panel: "#000088",
+      text: "#aaaaaa",
+      mutedText: "#808080",
+      border: "#55ffff",
+      accent: "#55ffff",
+      accent2: "#ffff55",
+      ok: "#55ff55",
+      warn: "#ffff55",
+      danger: "#ff5555",
+      selectionBg: "#aaaaaa",
+      selectionText: "#0000aa"
     });
   });
 });

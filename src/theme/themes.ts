@@ -18,6 +18,9 @@ export type ThemeId =
   | "blueAngels"
   | "southwest"
   | "rams"
+  | "trooper"
+  | "twilight"
+  | "msdos"
   | "custom1"
   | "rotating";
 
@@ -278,6 +281,48 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     selectionBg: "#ffd100",
     selectionText: "#003594"
   },
+  trooper: {
+    bg: "#ffffff",
+    panel: "#f3f3f3",
+    text: "#000000",
+    mutedText: "#4a4a4a",
+    border: "#000000",
+    accent: "#000000",
+    accent2: "#2b2b2b",
+    ok: "#1f1f1f",
+    warn: "#5c5c5c",
+    danger: "#8c8c8c",
+    selectionBg: "#000000",
+    selectionText: "#ffffff"
+  },
+  twilight: {
+    bg: "#000000",
+    panel: "#121212",
+    text: "#ffffff",
+    mutedText: "#bfbfbf",
+    border: "#ffffff",
+    accent: "#ffffff",
+    accent2: "#d9d9d9",
+    ok: "#e6e6e6",
+    warn: "#a6a6a6",
+    danger: "#737373",
+    selectionBg: "#ffffff",
+    selectionText: "#000000"
+  },
+  msdos: {
+    bg: "#0000aa",
+    panel: "#000088",
+    text: "#aaaaaa",
+    mutedText: "#808080",
+    border: "#55ffff",
+    accent: "#55ffff",
+    accent2: "#ffff55",
+    ok: "#55ff55",
+    warn: "#ffff55",
+    danger: "#ff5555",
+    selectionBg: "#aaaaaa",
+    selectionText: "#0000aa"
+  },
   custom1: {
     bg: "#0b0f14",
     panel: "#1a202c",
@@ -328,6 +373,9 @@ export const THEME_ORDER: ThemeId[] = [
   "blueAngels",
   "southwest",
   "rams",
+  "trooper",
+  "twilight",
+  "msdos",
   "custom1",
   "rotating"
 ];
@@ -349,7 +397,10 @@ export const ROTATING_THEME_ORDER: RotatingThemeId[] = [
   "tritanopia",
   "blueAngels",
   "southwest",
-  "rams"
+  "rams",
+  "trooper",
+  "twilight",
+  "msdos"
 ];
 
 export function cycleTheme(current: ThemeId): ThemeId {
@@ -406,6 +457,9 @@ export function isThemeId(value: unknown): value is ThemeId {
       value === "blueAngels" ||
       value === "southwest" ||
       value === "rams" ||
+      value === "trooper" ||
+      value === "twilight" ||
+      value === "msdos" ||
       value === "custom1" ||
       value === "rotating")
   );

@@ -118,6 +118,17 @@ describe("loadSettings", () => {
     expect(result.resolvedPath).toBe(fallback);
   });
 
+  it("accepts trooper as a valid theme id and seeds custom1 from trooper", async () => {
+    const homeDir = await makeTempDir();
+    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    await fs.mkdir(path.dirname(primary), { recursive: true });
+    await fs.writeFile(primary, JSON.stringify({ themeId: "trooper" }), "utf8");
+
+    const result = await loadSettings({ homeDir, platform: "linux" });
+    expect(result.settings.themeId).toBe("trooper");
+    expect(result.settings.customThemes).toEqual(expectedCustomThemesFor("trooper"));
+  });
+
   it("normalizes invalid theme ids to default", async () => {
     const homeDir = await makeTempDir();
     const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
