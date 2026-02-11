@@ -1,7 +1,11 @@
 import React from "react";
 import { colorForTag, themeForObject } from "../app/theme";
 import {
+  computeCreatedCompleted7d,
   computeDueBuckets8,
+  computeOverdueAgingBuckets,
+  type CreatedCompleted7d,
+  type OverdueAgingBucket,
   type TopTagCount
 } from "../domain/dashboard";
 import { computeDashboardKpis } from "../domain/dashboardKpis";
@@ -12,14 +16,13 @@ import { formatTagForDisplay } from "../domain/tagIndex";
 const DUE_BUCKET_LABELS = ["OVD", "TOD", "+1", "+2", "+3", "+4", "+5", "+6"] as const;
 const KPI_ORDER = ["OVERDUE", "TODAY", "NEXT7", "OPEN", "DONE7D"] as const;
 const KPI_SHORT_LABELS = ["OVD", "TOD", "N7", "OPN", "D7"] as const;
-const KPI_BLOCKS = ["", "▏", "▎", "▍", "▌", "▋", "▊", "▉"] as const;
+const BLOCK_FRACTIONS = ["", "▏", "▎", "▍", "▌", "▋", "▊", "▉"] as const;
 
 const DASHBOARD_GUTTER = 2;
 const DASHBOARD_LEFT_RATIO = 2;
 const DASHBOARD_RIGHT_RATIO = 1;
 const TAG_LABEL_COL_WIDTH = 12;
 const BAR_COL_WIDTH = 14;
-// Width required for top-tag rows to remain legible/aligned.
 const MIN_RIGHT_PANEL_WIDTH = 28;
 const MIN_DUE_BUCKET_CHART_WIDTH = 48;
 const PANEL_HORIZONTAL_OVERHEAD = 4;
@@ -27,6 +30,16 @@ const MIN_CHART_BAR_SLOTS = 8;
 const KPI_GAP = 2;
 const KPI_MIN_CELL_WIDTH = 14;
 const KPI_MIN_METER_WIDTH = 4;
+const MIN_DASHBOARD_TWO_COL_W = 58;
+const MIN_PANEL_W = 28;
+const LABEL_W = 6;
+const BAR_W = 16;
+const THROUGHPUT_CELL_W = 3;
+const THROUGHPUT_MARKER_OFFSET = 1;
+const THROUGHPUT_FILLER = "_";
+const THROUGHPUT_MARKER = "▊";
+
+const OVERDUE_AGING_HINT = "(Switch STATUS to ALL/OPEN to view overdue aging)";
 
 type DashboardPaneProps = {
   tasks: Task[];
@@ -41,6 +54,12 @@ type DashboardPaneProps = {
 type DashboardLayout = {
   stacked: boolean;
   chartPanelWidth: number;
+  rightPanelWidth: number;
+};
+
+type PanelRowLayout = {
+  stacked: boolean;
+  leftPanelWidth: number;
   rightPanelWidth: number;
 };
 
@@ -76,6 +95,32 @@ function truncateLine(value: string, width: number): string {
   if (value.length <= safeWidth) return value;
   if (safeWidth <= 3) return ".".repeat(safeWidth);
   return `${value.slice(0, safeWidth - 3)}...`;
+}
+
+function formatSigned(value: number): string {
+  if (value > 0) return `+${value}`;
+  return String(value);
+}
+
+function renderBlockBar(value: number, max: number, width: number): string {
+  if (width <= 0) return "";
+  if (max <= 0 || value <= 0) return " ".repeat(width);
+
+  const clampedValue = Math.max(0, value);
+  const maxEighths = width * 8;
+  let totalEighths = Math.round((clampedValue / max) * maxEighths);
+  if (clampedValue > 0 && totalEighths <= 0) {
+    totalEighths = 1;
+  }
+  totalEighths = Math.max(0, Math.min(maxEighths, totalEighths));
+
+  const fullBlocks = Math.floor(totalEighths / 8);
+  const partial = totalEighths % 8;
+  const partialChar = partial === 0 ? "" : BLOCK_FRACTIONS[partial];
+  const consumed = fullBlocks + (partialChar ? 1 : 0);
+  const spaces = Math.max(0, width - consumed);
+
+  return `${"█".repeat(fullBlocks)}${partialChar}${" ".repeat(spaces)}`;
 }
 
 function resolveDashboardLayout(width: number): DashboardLayout {
@@ -119,6 +164,36 @@ function resolveDashboardLayout(width: number): DashboardLayout {
   };
 }
 
+function resolveBottomRowLayout(width: number): PanelRowLayout {
+  const usableWidth = Math.max(20, width);
+  const splitWidth = usableWidth - DASHBOARD_GUTTER;
+
+  if (usableWidth < MIN_DASHBOARD_TWO_COL_W || splitWidth <= 0) {
+    return {
+      stacked: true,
+      leftPanelWidth: usableWidth,
+      rightPanelWidth: usableWidth
+    };
+  }
+
+  const leftPanelWidth = Math.floor(splitWidth / 2);
+  const rightPanelWidth = splitWidth - leftPanelWidth;
+
+  if (leftPanelWidth < MIN_PANEL_W || rightPanelWidth < MIN_PANEL_W) {
+    return {
+      stacked: true,
+      leftPanelWidth: usableWidth,
+      rightPanelWidth: usableWidth
+    };
+  }
+
+  return {
+    stacked: false,
+    leftPanelWidth,
+    rightPanelWidth
+  };
+}
+
 function buildDueBucketLines(
   dueBuckets: number[],
   maxBucket: number,
@@ -140,11 +215,7 @@ function buildDueBucketLines(
 
   return DUE_BUCKET_LABELS.map((label, index) => {
     const value = dueBuckets[index];
-    const filled =
-      maxBucket <= 0
-        ? 0
-        : Math.max(0, Math.min(barWidth, Math.round((value / maxBucket) * barWidth)));
-    const bar = `${"#".repeat(filled)}${" ".repeat(barWidth - filled)}`;
+    const bar = renderBlockBar(value, maxBucket, barWidth);
     const line = `${label.padEnd(labelWidth, " ")} ${bar} ${String(value).padStart(countWidth, " ")}`;
     return truncateLine(line, chartInnerWidth);
   });
@@ -174,10 +245,7 @@ function buildTopTagRows(topTags: TopTagCount[], panelWidth: number): TopTagRow[
   return topTags.map(({ tag, count }) => {
     const label = formatTagLabel(tag, TAG_LABEL_COL_WIDTH);
     const labelPad = Math.max(0, TAG_LABEL_COL_WIDTH - label.length);
-    const rawLen = maxCount <= 0 ? 0 : Math.round((count / maxCount) * barWidth);
-    const barLen = count > 0 ? Math.max(1, rawLen) : 0;
-    const clampedBarLen = Math.max(0, Math.min(barWidth, barLen));
-    const bar = `${"#".repeat(clampedBarLen)}${" ".repeat(barWidth - clampedBarLen)}`;
+    const bar = renderBlockBar(count, maxCount, barWidth);
     return {
       tag,
       label,
@@ -188,22 +256,128 @@ function buildTopTagRows(topTags: TopTagCount[], panelWidth: number): TopTagRow[
   });
 }
 
-function renderMeter(value: number, max: number, width: number): string {
-  if (width <= 0) return "";
-  if (max <= 0 || value <= 0) return " ".repeat(width);
+function buildOverdueAgingLines(buckets: OverdueAgingBucket[], panelWidth: number): string[] {
+  const innerWidth = Math.max(10, panelWidth - PANEL_HORIZONTAL_OVERHEAD);
+  const maxCount = Math.max(0, ...buckets.map((bucket) => bucket.count));
+  const countWidth = Math.max(1, String(maxCount).length);
 
-  const clampedValue = Math.max(0, value);
-  const totalEighths = Math.max(
-    1,
-    Math.min(width * 8, Math.round((clampedValue / max) * width * 8))
+  const availableBarWidth = innerWidth - LABEL_W - 1 - 1 - countWidth;
+  if (availableBarWidth < 1) {
+    return ["(widen to view chart)"];
+  }
+
+  const barWidth = Math.max(1, Math.min(BAR_W, availableBarWidth));
+  const barRightSlack = Math.max(0, availableBarWidth - barWidth);
+
+  return buckets.map(({ label, count }) => {
+    const bar = renderBlockBar(count, maxCount, barWidth);
+    const line =
+      `${label.padEnd(LABEL_W, " ")} ${bar}` +
+      `${" ".repeat(barRightSlack)} ${String(count).padStart(countWidth, " ")}`;
+    return truncateLine(line, innerWidth);
+  });
+}
+
+function renderDayGrid(labels: string[], cellWidth: number): string {
+  const safeCellWidth = Math.max(2, cellWidth);
+  return labels.map((label) => label.padStart(safeCellWidth, " ")).join("");
+}
+
+function renderMarkerRow(
+  markers: boolean[],
+  cellWidth: number,
+  fillerChar: string,
+  markerChar: string,
+  markerOffset: number
+): string {
+  const safeCellWidth = Math.max(2, cellWidth);
+  const safeOffset = Math.max(0, Math.min(safeCellWidth - 1, markerOffset));
+  return markers
+    .map((active) => {
+      const cell = new Array<string>(safeCellWidth).fill(fillerChar);
+      if (active) {
+        cell[safeOffset] = markerChar;
+      }
+      return cell.join("");
+    })
+    .join("");
+}
+
+function buildThroughputLines(data: CreatedCompleted7d, panelWidth: number): string[] {
+  const innerWidth = Math.max(10, panelWidth - PANEL_HORIZONTAL_OVERHEAD);
+  const createdMarkers = data.created.map((value) => value > 0);
+  const completedMarkers = data.completed.map((value) => value > 0);
+  const dayGrid = renderDayGrid(data.labels, THROUGHPUT_CELL_W);
+  const createdGrid = renderMarkerRow(
+    createdMarkers,
+    THROUGHPUT_CELL_W,
+    THROUGHPUT_FILLER,
+    THROUGHPUT_MARKER,
+    THROUGHPUT_MARKER_OFFSET
   );
-  const fullBlocks = Math.floor(totalEighths / 8);
-  const partial = totalEighths % 8;
-  const partialChar = partial === 0 ? "" : KPI_BLOCKS[partial];
-  const consumed = fullBlocks + (partialChar ? 1 : 0);
-  const spaces = Math.max(0, width - consumed);
+  const completedGrid = renderMarkerRow(
+    completedMarkers,
+    THROUGHPUT_CELL_W,
+    THROUGHPUT_FILLER,
+    THROUGHPUT_MARKER,
+    THROUGHPUT_MARKER_OFFSET
+  );
 
-  return `${"█".repeat(fullBlocks)}${partialChar}${" ".repeat(spaces)}`;
+  return [
+    truncateLine(`DAYS: ${dayGrid}`, innerWidth),
+    truncateLine(`CRE: ${createdGrid}`, innerWidth),
+    truncateLine(`DON: ${completedGrid}`, innerWidth),
+    truncateLine(
+      `CRE 7D: ${data.totals.created}   DON 7D: ${data.totals.completed}   NET: ${formatSigned(data.totals.net)}`,
+      innerWidth
+    )
+  ];
+}
+
+function gateThroughputByStatus(
+  throughput: CreatedCompleted7d,
+  status: Filters["status"]
+): CreatedCompleted7d {
+  if (status === "all") {
+    return throughput;
+  }
+
+  const labels = [...throughput.labels];
+
+  if (status === "open") {
+    const created = [...throughput.created];
+    const completed = new Array<number>(throughput.completed.length).fill(0);
+    const createdTotal = created.reduce((sum, value) => sum + value, 0);
+    return {
+      labels,
+      created,
+      completed,
+      totals: {
+        created: createdTotal,
+        completed: 0,
+        net: createdTotal
+      }
+    };
+  }
+
+  const created = new Array<number>(throughput.created.length).fill(0);
+  const completed = [...throughput.completed];
+  const completedTotal = completed.reduce((sum, value) => sum + value, 0);
+
+  return {
+    labels,
+    created,
+    completed,
+    totals: {
+      created: 0,
+      completed: completedTotal,
+      net: -completedTotal
+    }
+  };
+}
+
+function renderMeter(value: number, max: number, width: number): string {
+  return renderBlockBar(value, max, width);
 }
 
 function buildKpiItems(
@@ -265,6 +439,40 @@ export function DashboardPane({
   const dashboardContentWidth = layout.stacked
     ? layout.chartPanelWidth
     : layout.chartPanelWidth + DASHBOARD_GUTTER + layout.rightPanelWidth;
+  const bottomRowLayout = React.useMemo(
+    () => resolveBottomRowLayout(dashboardContentWidth),
+    [dashboardContentWidth]
+  );
+
+  const overdueAgingBuckets = React.useMemo(
+    () => computeOverdueAgingBuckets(tasks, new Date(now)),
+    [tasks, now]
+  );
+  const overdueAgingDisplayBuckets = React.useMemo(
+    () =>
+      openOnlyUnavailable
+        ? overdueAgingBuckets.map((bucket) => ({ ...bucket, count: 0 }))
+        : overdueAgingBuckets,
+    [openOnlyUnavailable, overdueAgingBuckets]
+  );
+  const overdueAgingLines = React.useMemo(
+    () => buildOverdueAgingLines(overdueAgingDisplayBuckets, bottomRowLayout.leftPanelWidth),
+    [overdueAgingDisplayBuckets, bottomRowLayout.leftPanelWidth]
+  );
+
+  const throughputBase = React.useMemo(
+    () => computeCreatedCompleted7d(tasks, new Date(now)),
+    [tasks, now]
+  );
+  const throughputDisplay = React.useMemo(
+    () => gateThroughputByStatus(throughputBase, filters.status),
+    [throughputBase, filters.status]
+  );
+  const throughputLines = React.useMemo(
+    () => buildThroughputLines(throughputDisplay, bottomRowLayout.rightPanelWidth),
+    [throughputDisplay, bottomRowLayout.rightPanelWidth]
+  );
+
   const kpiMax = Math.max(0, ...kpiItems.map((item) => item.value));
   const kpiStripInnerWidth = Math.max(10, dashboardContentWidth - PANEL_HORIZONTAL_OVERHEAD);
   const kpiFullMode =
@@ -469,6 +677,84 @@ export function DashboardPane({
                 );
               })
             )}
+          </box>
+        </box>
+      )}
+
+      {bottomRowLayout.stacked ? (
+        <box style={{ flexDirection: "column", width: dashboardContentWidth, marginTop: 1, gap: 1 }}>
+          <box style={{ ...panelStyle, width: "100%" }}>
+            <text style={{ color: theme.text, fontWeight: "bold" }}>OVERDUE AGING</text>
+            {openOnlyUnavailable ? (
+              <text style={{ color: theme.muted }}>
+                {truncateLine(OVERDUE_AGING_HINT, Math.max(10, bottomRowLayout.leftPanelWidth - PANEL_HORIZONTAL_OVERHEAD))}
+              </text>
+            ) : null}
+            {overdueAgingLines.map((line, index) => (
+              <text key={`aging-${index}`} style={{ color: theme.text }}>
+                {line}
+              </text>
+            ))}
+          </box>
+
+          <box style={{ ...panelStyle, width: "100%" }}>
+            <text style={{ color: theme.text, fontWeight: "bold" }}>THROUGHPUT (7D)</text>
+            {throughputLines.map((line, index) => (
+              <text
+                key={`throughput-${index}`}
+                style={{
+                  color:
+                    index === 1
+                      ? theme.accentBlue
+                      : index === 2
+                        ? theme.ok
+                        : index === 3
+                          ? theme.muted
+                          : theme.text
+                }}
+              >
+                {line}
+              </text>
+            ))}
+          </box>
+        </box>
+      ) : (
+        <box style={{ flexDirection: "row", marginTop: 1, width: dashboardContentWidth }}>
+          <box style={{ ...panelStyle, width: bottomRowLayout.leftPanelWidth }}>
+            <text style={{ color: theme.text, fontWeight: "bold" }}>OVERDUE AGING</text>
+            {openOnlyUnavailable ? (
+              <text style={{ color: theme.muted }}>
+                {truncateLine(OVERDUE_AGING_HINT, Math.max(10, bottomRowLayout.leftPanelWidth - PANEL_HORIZONTAL_OVERHEAD))}
+              </text>
+            ) : null}
+            {overdueAgingLines.map((line, index) => (
+              <text key={`aging-${index}`} style={{ color: theme.text }}>
+                {line}
+              </text>
+            ))}
+          </box>
+
+          <box style={{ width: DASHBOARD_GUTTER }} />
+
+          <box style={{ ...panelStyle, width: bottomRowLayout.rightPanelWidth }}>
+            <text style={{ color: theme.text, fontWeight: "bold" }}>THROUGHPUT (7D)</text>
+            {throughputLines.map((line, index) => (
+              <text
+                key={`throughput-${index}`}
+                style={{
+                  color:
+                    index === 1
+                      ? theme.accentBlue
+                      : index === 2
+                        ? theme.ok
+                        : index === 3
+                          ? theme.muted
+                          : theme.text
+                }}
+              >
+                {line}
+              </text>
+            ))}
           </box>
         </box>
       )}

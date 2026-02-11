@@ -2,8 +2,10 @@ import { describe, expect, it } from "bun:test";
 import { addLocalDaysMs, startOfLocalDayMs } from "./dates";
 import { Task } from "./models";
 import {
+  computeCreatedCompleted7d,
   computeBacklogTrend7,
   computeDueBuckets8,
+  computeOverdueAgingBuckets,
   computeTopTagsOpen
 } from "./dashboard";
 
@@ -132,5 +134,144 @@ describe("computeTopTagsOpen", () => {
       baseTask({ id: "y", status: "done", tags: ["work"] })
     ];
     expect(computeTopTagsOpen(tasks, 5)).toEqual([]);
+  });
+});
+
+describe("computeOverdueAgingBuckets", () => {
+  it("groups overdue open tasks into fixed aging buckets", () => {
+    const now = new Date(2026, 1, 10, 12, 0, 0);
+    const today = startOfLocalDayMs(now.getTime());
+    const tasks: Task[] = [
+      baseTask({ id: "d1", status: "open", dueAt: addLocalDaysMs(today, -1) }),
+      baseTask({ id: "d2", status: "open", dueAt: addLocalDaysMs(today, -2) }),
+      baseTask({ id: "d5", status: "open", dueAt: addLocalDaysMs(today, -5) }),
+      baseTask({ id: "d10", status: "open", dueAt: addLocalDaysMs(today, -10) }),
+      baseTask({ id: "d20", status: "open", dueAt: addLocalDaysMs(today, -20) }),
+      baseTask({ id: "d31", status: "open", dueAt: addLocalDaysMs(today, -31) }),
+      baseTask({ id: "done", status: "done", dueAt: addLocalDaysMs(today, -3) }),
+      baseTask({ id: "nodue", status: "open" })
+    ];
+
+    expect(computeOverdueAgingBuckets(tasks, now)).toEqual([
+      { label: "1d", count: 1 },
+      { label: "2–3d", count: 1 },
+      { label: "4–7d", count: 1 },
+      { label: "8–14d", count: 1 },
+      { label: "15–30d", count: 1 },
+      { label: "30d+", count: 1 }
+    ]);
+  });
+
+  it("uses local day boundaries around midnight", () => {
+    const now = new Date(2026, 1, 10, 0, 5, 0, 0);
+    const today = startOfLocalDayMs(now.getTime());
+    const tasks: Task[] = [
+      baseTask({ id: "yesterday-late", status: "open", dueAt: today - 1 }),
+      baseTask({
+        id: "today-early-time",
+        status: "open",
+        dueAt: today + 60 * 1000,
+        hasExplicitTime: true
+      })
+    ];
+
+    expect(computeOverdueAgingBuckets(tasks, now)).toEqual([
+      { label: "1d", count: 1 },
+      { label: "2–3d", count: 0 },
+      { label: "4–7d", count: 0 },
+      { label: "8–14d", count: 0 },
+      { label: "15–30d", count: 0 },
+      { label: "30d+", count: 0 }
+    ]);
+  });
+});
+
+describe("computeCreatedCompleted7d", () => {
+  it("buckets createdAt and closedAt on local days and tracks totals", () => {
+    const now = new Date(2026, 1, 10, 12, 0, 0);
+    const today = startOfLocalDayMs(now.getTime());
+    const tasks: Task[] = [
+      baseTask({ id: "a", createdAt: addLocalDaysMs(today, -6) }),
+      baseTask({
+        id: "b",
+        createdAt: addLocalDaysMs(today, -3),
+        status: "done",
+        closedAt: addLocalDaysMs(today, -2),
+        updatedAt: addLocalDaysMs(today, -2)
+      }),
+      baseTask({
+        id: "c",
+        createdAt: addLocalDaysMs(today, 0),
+        status: "done",
+        closedAt: addLocalDaysMs(today, 0),
+        updatedAt: addLocalDaysMs(today, 0)
+      }),
+      baseTask({ id: "d", createdAt: addLocalDaysMs(today, -7) }),
+      baseTask({
+        id: "e",
+        createdAt: addLocalDaysMs(today, -1),
+        status: "done",
+        closedAt: addLocalDaysMs(today, -8),
+        updatedAt: addLocalDaysMs(today, -8)
+      }),
+      baseTask({
+        id: "f",
+        createdAt: addLocalDaysMs(today, -10),
+        status: "done",
+        closedAt: addLocalDaysMs(today, -4),
+        updatedAt: addLocalDaysMs(today, -4)
+      })
+    ];
+
+    expect(computeCreatedCompleted7d(tasks, now)).toEqual({
+      labels: ["-6", "-5", "-4", "-3", "-2", "-1", "0"],
+      created: [1, 0, 0, 1, 0, 1, 1],
+      completed: [0, 0, 1, 0, 1, 0, 1],
+      totals: {
+        created: 4,
+        completed: 3,
+        net: 1
+      }
+    });
+  });
+
+  it("applies inclusive today/-6 and excludes outside 7-day window", () => {
+    const now = new Date(2026, 1, 10, 0, 5, 0, 0);
+    const today = startOfLocalDayMs(now.getTime());
+    const tasks: Task[] = [
+      baseTask({
+        id: "created-in-oldest",
+        createdAt: addLocalDaysMs(today, -6) + (23 * 60 * 60 + 59 * 60) * 1000
+      }),
+      baseTask({
+        id: "created-out",
+        createdAt: addLocalDaysMs(today, -7) + (23 * 60 * 60 + 59 * 60) * 1000
+      }),
+      baseTask({
+        id: "closed-in-today",
+        status: "done",
+        createdAt: addLocalDaysMs(today, -9),
+        closedAt: today,
+        updatedAt: today
+      }),
+      baseTask({
+        id: "closed-out-tomorrow",
+        status: "done",
+        createdAt: addLocalDaysMs(today, -9),
+        closedAt: addLocalDaysMs(today, 1),
+        updatedAt: addLocalDaysMs(today, 1)
+      })
+    ];
+
+    expect(computeCreatedCompleted7d(tasks, now)).toEqual({
+      labels: ["-6", "-5", "-4", "-3", "-2", "-1", "0"],
+      created: [1, 0, 0, 0, 0, 0, 0],
+      completed: [0, 0, 0, 0, 0, 0, 1],
+      totals: {
+        created: 1,
+        completed: 1,
+        net: 0
+      }
+    });
   });
 });
