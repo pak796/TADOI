@@ -163,8 +163,13 @@ Reference:
   - `Enter` or `Esc`: return to list
 - Help mode:
   - `1`: open Backup Center (`DATA: Backup / Export / Import`)
-  - `H`: cycle theme
-  - `M`: toggle flash mode (`slow` / `static`)
+  - `h` / `H`: cycle theme
+  - `m` / `M`: toggle flash mode (`slow` / `static`)
+  - `up` / `down`: move selected Help section
+  - `left` / `right`: collapse/expand selected section
+  - `Enter` / `Space`: toggle selected section
+  - `ctrl+u` / `PageUp`: page Help content up
+  - `ctrl+d` / `PageDown`: page Help content down
   - `Esc` or `?`: close help
 - Backup Center mode:
   - `1` / `2` / `3`: choose menu option

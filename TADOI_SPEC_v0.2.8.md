@@ -79,10 +79,10 @@ Deliverables:
 48. **Selection-following scroll**: task list auto-scrolls so the selected row stays visible.
 49. **Details due time**: when a task has an explicit time, show `DUE TIME: HH:mm` in the details pane.
 50. **Add-time autocomplete**: in Add mode, show a right-arrow hint to complete a suggested time (1 hour ahead, preserves minutes); Right Arrow completes hour first, then minutes.
-51. **Theme switcher (MVP)**: support `default`, `retro`, `highContrast`, and `neonHacker` palettes with no visual change to `default`.
+51. **Theme switcher (MVP)**: support `default`, `retro`, `highContrast`, `neonHacker`, `lightSlate`, `paperWhite`, and `midnightBlack` palettes with no visual change to `default`.
 52. **Theme keybind in Help**: while Help is open, pressing `h` or `H` cycles to the next palette.
 53. **Theme persistence**: persist selected theme in `settings.json` with startup load and debounced saves.
-54. **Help palette preview**: Help pane shows current theme and a mini preview row for `accent`, `warn`, and `ok`.
+54. **Help theme status readout**: Help pane shows current theme mode (`rotating` includes active concrete theme).
 55. **Left rail logo separator**: render a horizontal ASCII separator under TADOI logo before version/menu metadata.
 56. **Help pane app version**: show the current app version in the Help overlay.
 57. **Rotating theme mode**: support a `rotating` theme option that auto-cycles concrete palettes every 15 seconds.
@@ -171,7 +171,7 @@ Required token shape:
 - `selectionBg`, `selectionText`
 
 Theme ids:
-- `default`, `retro`, `highContrast`, `neonHacker`, `rotating`
+- `default`, `retro`, `highContrast`, `neonHacker`, `lightSlate`, `paperWhite`, `midnightBlack`, `rotating`
 
 Runtime compatibility:
 - Existing component color usage may continue using runtime aliases (`accentOrange`, `accentBlue`, `accentPurple`, `dueSoon`, `dueLater`, `muted`, `outline`) as long as they resolve from active semantic tokens.
@@ -635,7 +635,7 @@ Single source of truth:
 - `src/theme/themes.ts`
 
 Contracts:
-- `ThemeId = "default" | "retro" | "highContrast" | "neonHacker" | "rotating"`
+- `ThemeId = "default" | "retro" | "highContrast" | "neonHacker" | "lightSlate" | "paperWhite" | "midnightBlack" | "rotating"`
 - `ThemeTokens` semantic keys:
 - `bg`, `panel`, `text`, `mutedText`, `border`
 - `accent`, `accent2`
@@ -643,9 +643,9 @@ Contracts:
 - `selectionBg`, `selectionText`
 - `THEMES: Record<ThemeId, ThemeTokens>`
 - `THEME_ORDER` fixed order:
-- `["default", "retro", "highContrast", "neonHacker", "rotating"]`
+- `["default", "retro", "highContrast", "neonHacker", "lightSlate", "paperWhite", "midnightBlack", "rotating"]`
 - `ROTATING_THEME_ORDER` concrete cycle order:
-- `["default", "retro", "highContrast", "neonHacker"]`
+- `["default", "retro", "highContrast", "neonHacker", "lightSlate", "paperWhite", "midnightBlack"]`
 - `cycleTheme(current)` returns the next theme in order and wraps.
 
 Palette notes:
@@ -681,10 +681,12 @@ Behavior:
 Help interactions:
 - `h` or `H` while Help is open cycles theme.
 - `m` or `M` while Help is open toggles flash mode (`slow` / `static`).
+- `up` / `down` moves selected Help section.
+- `left` / `right` collapses/expands selected Help section.
+- `enter` / `space` toggles selected Help section.
+- `ctrl+u` / `PageUp` and `ctrl+d` / `PageDown` page Help content.
 - Help displays current theme id.
-- For rotating mode, Help shows `rotating (<activeTheme>)` and a `15s` auto-rotate hint.
-- Help displays current flash mode and static-mode overdue-red behavior.
-- Help displays a palette preview row using `accent`, `warn`, and `ok` swatches.
+- For rotating mode, Help shows `Theme mode: rotating (active: <activeTheme>)`.
 
 ## D5) Left Rail Visual Separator
 

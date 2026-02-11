@@ -16,6 +16,8 @@ The format is based on Keep a Changelog.
 ### Changed
 - Backup Center copy/layout polish for clearer step labels, safety messaging, and action hints.
 - Documentation refreshed for Backup Center usage and keybindings (`README.md`, in-app Help text).
+- Theme system now includes additional concrete palettes (`lightSlate`, `paperWhite`, `midnightBlack`) in both manual cycling and rotating mode.
+- Editor recurrence controls support keyboard left/right cycling for repeat mode and repeat-end mode, with clamp behavior at range bounds.
 
 ### Fixed
 - Help pane section navigation now keeps the selected section visible while moving with arrow keys, with page-based navigation support (`Ctrl+U`/`Ctrl+D`) in Help mode.

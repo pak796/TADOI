@@ -1155,7 +1155,7 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 **Status**: Complete
 **Implement**
 - Add `src/theme/themes.ts` with:
-- `ThemeId = "default" | "retro" | "highContrast" | "neonHacker"`
+- `ThemeId = "default" | "retro" | "highContrast" | "neonHacker" | "lightSlate" | "paperWhite" | "midnightBlack" | "rotating"`
 - `ThemeTokens`
 - `THEMES`
 - `THEME_ORDER`
@@ -1200,14 +1200,14 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 **Implement**
 - In Help mode, bind `h` and `H` to theme cycling.
 - In Help mode, bind `m` and `M` to flash-mode toggle (`slow` / `static`).
-- Show current theme in Help.
-- Show current flash mode in Help with static-mode overdue-red note.
-- Add preview swatches for `accent`, `warn`, and `ok`.
+- In Help mode, bind `up/down`, `left/right`, and `enter/space` for section navigation/toggle.
+- In Help mode, bind `ctrl+u` / `PageUp` and `ctrl+d` / `PageDown` for page scrolling.
+- Show current theme mode in Help (`rotating` includes active concrete palette).
 
 **DoD**
-- Pressing `h` in Help cycles through all 4 palettes.
+- Pressing `h` in Help cycles through all concrete palettes plus `rotating`.
 - Pressing `m` in Help toggles flash mode and persists the setting.
-- Help reflects the active theme, flash mode, and preview colors.
+- Help reflects active section focus controls and current theme mode text.
 
 ## T11.5 Palette tuning pass
 **Status**: Complete
@@ -1232,10 +1232,10 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 **Implement**
 - Extend theme ids to include `rotating`.
 - Include `rotating` in `THEME_ORDER` while keeping concrete palette order as:
-- `default`, `retro`, `highContrast`, `neonHacker`
+- `default`, `retro`, `highContrast`, `neonHacker`, `lightSlate`, `paperWhite`, `midnightBlack`
 - When `rotating` is selected, auto-cycle concrete themes every 15 seconds.
 - Keep settings persistence on `themeId` and allow `rotating` as a saved value.
-- Update Help pane theme line to show `rotating (<activeTheme>)` and auto-rotate hint.
+- Update Help pane theme line to show `Theme mode: rotating (active: <activeTheme>)`.
 
 **DoD**
 - Theme cycling from Help includes `rotating`.
@@ -1758,8 +1758,11 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 - Prevent form rendering from drawing into footer region at constrained heights.
 - Add editor overflow controls (`ctrl+u`/`ctrl+d`, `PageUp`/`PageDown`) and focus-aware reveal behavior.
 - Keep repeat selector chips (`OFF`, `DLY`, `WLY`, `MLY`, `CUS`) on one line in supported widths.
+- Support keyboard left/right repeat cycling from repeat controls and from time/interval edge-navigation contexts.
+- Support keyboard left/right repeat-end cycling (`never -> until -> count`, clamp behavior).
 
 **DoD**
 - Add/Edit form fields never overlap footer hints/actions.
 - Footer remains visible while editor content scrolls.
 - Repeat selector chips render on one line without pushing surrounding fields out of alignment.
+- Repeat and repeat-end values update immediately from keyboard left/right interactions in supported fields.
