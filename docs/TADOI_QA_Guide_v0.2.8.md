@@ -10,7 +10,7 @@ This guide defines how to validate TADOI across the three supported platforms:
 
 It is based on:
 
-- Product/runtime specs: `TADOI_SPEC_v0.2.8.md`, `DASHBOARD_SPEC_MVP.md`, `TADOI_BackupCenter_InApp_Spec.md`
+- Product/runtime specs: `TADOI_SPEC_v0.2.9.md`, `DASHBOARD_SPEC_MVP.md`, `TADOI_BackupCenter_InApp_Spec.md`
 - Implementation: `src/app`, `src/components`, `src/domain`, `src/state`, `src/settings`
 - CI contract: `.github/workflows/ci.yml`
 
