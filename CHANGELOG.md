@@ -5,6 +5,18 @@ All notable changes to TADOI are documented in this file.
 The format is based on Keep a Changelog.
 
 ## [Unreleased]
+### Added
+- Task Links / Attachments in task details:
+  - per-task `links[]` with URL/path targets, optional labels, and optional kind hints
+  - details-pane section `Links / Attachments (N)` with empty state and row rendering
+  - keyboard actions for links focus: open, copy, add (`l`), edit, delete
+  - add/edit/delete and unknown-scheme confirmation modals via existing modal framework
+  - cross-platform safe open/copy wrappers using argument-based process spawning
+  - Add-mode editor shortcut `Ctrl+L` to attach links before saving a new task
+
+### Changed
+- List-mode focus routing now supports toggling between task list and details links with `Tab` / `Shift+Tab`.
+- URL scheme gating now requires explicit confirmation for non-allowlisted schemes before opening external handlers.
 
 ## [0.3.0] - 2026-02-11
 ### Added

@@ -20,6 +20,7 @@ function makeDraft(patch: Partial<EditorDraft> = {}): EditorDraft {
     timeText: "",
     tagsText: "",
     notes: "",
+    links: [],
     repeatMode: "off",
     repeatIntervalText: "1",
     repeatWeekdays: [],

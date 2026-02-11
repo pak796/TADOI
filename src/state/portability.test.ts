@@ -299,4 +299,23 @@ describe("redactStateForExport", () => {
     expect(result.stats.updated).toBe(1);
     expect(result.merged[0]?.recurrence?.rrule).toContain("FREQ=WEEKLY");
   });
+
+  it("treats link field changes as task updates", () => {
+    const local = [
+      {
+        ...BASE_LOCAL_TASK,
+        links: [{ id: "link-1", target: "https://example.com" }]
+      }
+    ];
+    const incoming = [
+      {
+        ...BASE_INCOMING_TASK,
+        links: [{ id: "link-1", target: "https://example.com/new" }]
+      }
+    ];
+
+    const result = mergeTasksByIdNewestUpdatedAt(local, incoming);
+    expect(result.stats.updated).toBe(1);
+    expect(result.merged[0]?.links?.[0]?.target).toBe("https://example.com/new");
+  });
 });

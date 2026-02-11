@@ -51,6 +51,13 @@ import {
 import { clampScrollOffset, ensureSelectedVisible } from "../domain/scroll";
 import { computeTopTagStats } from "../domain/tagStats";
 import {
+  addTaskLink,
+  deleteTaskLink,
+  extractUrlScheme,
+  requiresExternalSchemeConfirm,
+  updateTaskLink
+} from "../domain/taskLinks";
+import {
   applyAutocomplete,
   getAutocompleteStep,
   getSuggestedTime,
@@ -104,7 +111,8 @@ import {
   Mode,
   SavedView,
   TagFilter,
-  Task
+  Task,
+  TaskLink
 } from "../domain/models";
 import { ROTATING_THEME_ORDER, ThemeId } from "../theme/themes";
 import {
@@ -127,7 +135,15 @@ import {
 } from "../settings/settings";
 import { settingsReducer } from "../state/settingsStore";
 import { isEditorMode } from "../ui/modeFocus";
-import { initialUIState, uiReducer, unwind, type UIDeleteModal } from "../ui/state";
+import {
+  initialUIState,
+  uiReducer,
+  unwind,
+  type UIDeleteModal,
+  type UITaskLinkFormField,
+  type UITaskLinkFormModal,
+  type UITaskLinkModalKind
+} from "../ui/state";
 import {
   backupCenterReducer,
   hasMatchingDryRun,
@@ -160,6 +176,8 @@ import {
 } from "./layoutGuard";
 import { APP_NAME, APP_TAGLINE, ENV_VARS } from "../brand/brand";
 import type { ThemeTokens } from "../theme/themes";
+import { copyToClipboard } from "./copyToClipboard";
+import { openTarget } from "./openTarget";
 
 const TICKER_INTERVAL_MS = 6000;
 const SLOW_PULSE_INTERVAL_MS = 2000;
@@ -188,6 +206,14 @@ const HELP_SECTION_SCROLL_PADDING = 1;
 const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings =
   getDefaultSettings().notifications;
 const DEFAULT_CUSTOM_THEMES: CustomThemes | undefined = getDefaultSettings().customThemes;
+const TASK_LINK_FORM_FIELD_ORDER: UITaskLinkFormField[] = [
+  "label",
+  "target",
+  "type",
+  "save",
+  "cancel"
+];
+const TASK_LINK_FORM_KIND_ORDER: UITaskLinkModalKind[] = ["auto", "url", "path"];
 
 type HelpMenuItem = {
   title: string;
@@ -324,8 +350,9 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
   {
     title: "Tasks (create/edit/complete)",
     items: [
-      { title: "a add, e edit, E edit series, c copy" },
+      { title: "a add, l add link, e edit, E edit series, c copy" },
       { title: "Space toggle done/open, d delete" },
+      { title: "Tab links focus: Enter/o open, c copy, l/e/d manage links" },
       {
         title: "Recurring controls: x skip, z snooze",
         description: "Skip or push the selected recurring occurrence by one day."
@@ -752,6 +779,36 @@ function summarizeViewFilters(filters: SavedView["filters"]): string {
   return `status=${filters.status} due=${filters.due}${tagLabel}${searchLabel}`;
 }
 
+function cycleTaskLinkFormField(
+  current: UITaskLinkFormField,
+  direction: 1 | -1
+): UITaskLinkFormField {
+  const index = TASK_LINK_FORM_FIELD_ORDER.indexOf(current);
+  const safeIndex = index === -1 ? 0 : index;
+  const nextIndex =
+    (safeIndex + direction + TASK_LINK_FORM_FIELD_ORDER.length) %
+    TASK_LINK_FORM_FIELD_ORDER.length;
+  return TASK_LINK_FORM_FIELD_ORDER[nextIndex];
+}
+
+function cycleTaskLinkFormKind(
+  current: UITaskLinkModalKind,
+  direction: 1 | -1
+): UITaskLinkModalKind {
+  const index = TASK_LINK_FORM_KIND_ORDER.indexOf(current);
+  const safeIndex = index === -1 ? 0 : index;
+  const nextIndex =
+    (safeIndex + direction + TASK_LINK_FORM_KIND_ORDER.length) %
+    TASK_LINK_FORM_KIND_ORDER.length;
+  return TASK_LINK_FORM_KIND_ORDER[nextIndex];
+}
+
+function formatLinkSnippet(label: string | undefined, target: string): string {
+  const value = label?.trim().length ? label.trim() : target;
+  if (value.length <= 48) return value;
+  return `${value.slice(0, 47)}…`;
+}
+
 type AppProps = {
   initialData?: LoadedData;
   skipInitialSave?: boolean;
@@ -810,6 +867,7 @@ export function App({
   const [saveViewPromptOpen, setSaveViewPromptOpen] = useState(false);
   const [saveViewName, setSaveViewName] = useState("");
   const [dashboardTagSelection, setDashboardTagSelection] = useState(0);
+  const [selectedLinkId, setSelectedLinkId] = useState<string | undefined>(undefined);
   const [tagFilterDraft, setTagFilterDraft] = useState<TagFilter | undefined>(undefined);
   const [tagFilterInput, setTagFilterInput] = useState("");
   const [activeTagFilterBucket, setActiveTagFilterBucket] =
@@ -1066,6 +1124,11 @@ export function App({
     }
     return findTaskById(row.id);
   }
+
+  const selectedPersistedTask = resolvePersistedTaskForRow(selectedTask);
+  const selectedTaskLinks = selectedPersistedTask?.links ?? [];
+  const selectedTaskLinkIdsKey = selectedTaskLinks.map((link) => link.id).join("|");
+  const selectedTaskLink = selectedTaskLinks.find((link) => link.id === selectedLinkId);
 
   const listHeaderHeight = 2;
   const topBarHeight = 4;
@@ -1619,6 +1682,21 @@ export function App({
   }, [uiState.scrollOffset, uiState.selectedIndex, visibleRows, visibleTaskRows.length]);
 
   useEffect(() => {
+    if (selectedTaskLinks.length === 0) {
+      if (selectedLinkId !== undefined) {
+        setSelectedLinkId(undefined);
+      }
+      return;
+    }
+
+    if (selectedLinkId && selectedTaskLinks.some((link) => link.id === selectedLinkId)) {
+      return;
+    }
+
+    setSelectedLinkId(selectedTaskLinks[0]?.id);
+  }, [selectedLinkId, selectedTaskLinkIdsKey, selectedPersistedTask?.id]);
+
+  useEffect(() => {
     if (dashboardTopTags.length === 0) {
       if (dashboardTagSelection !== 0) {
         setDashboardTagSelection(0);
@@ -1982,6 +2060,10 @@ export function App({
           focus: nextEditorFocusTarget(uiState.focus, action.direction, state.editor)
         });
         return;
+      case "SET_LIST_FOCUS":
+        clearPendingGPrefix();
+        uiDispatch({ type: "setFocus", focus: action.focus });
+        return;
       case "SET_G_PREFIX":
         if (action.active) {
           armPendingGPrefix();
@@ -2081,6 +2163,24 @@ export function App({
       case "SNOOZE_SELECTED_OCCURRENCE":
         snoozeSelectedOccurrence();
         return;
+      case "MOVE_LINK_SELECTION":
+        moveLinkSelection(action.delta);
+        return;
+      case "OPEN_SELECTED_LINK":
+        openSelectedTaskLink();
+        return;
+      case "COPY_SELECTED_LINK":
+        copySelectedTaskLink();
+        return;
+      case "OPEN_ADD_TASK_LINK_MODAL":
+        openAddTaskLinkModal();
+        return;
+      case "OPEN_EDIT_TASK_LINK_MODAL":
+        openEditTaskLinkModal();
+        return;
+      case "OPEN_DELETE_TASK_LINK_MODAL":
+        openDeleteTaskLinkModal();
+        return;
       case "OPEN_DELETE_CONFIRM":
         openDeleteConfirm();
         return;
@@ -2089,6 +2189,21 @@ export function App({
         return;
       case "MODAL_CONFIRM_DELETE_FUTURE":
         handleDeleteSelectedAndFuture();
+        return;
+      case "MODAL_CONFIRM_TASK_LINK_DELETE":
+        handleDeleteTaskLinkFromModal();
+        return;
+      case "MODAL_CONFIRM_TASK_LINK_OPEN_EXTERNAL":
+        handleOpenExternalTaskLinkFromModal();
+        return;
+      case "MODAL_SUBMIT_TASK_LINK_FORM":
+        submitTaskLinkFormModal();
+        return;
+      case "MODAL_MOVE_TASK_LINK_FORM_FOCUS":
+        moveTaskLinkFormFocus(action.direction);
+        return;
+      case "MODAL_CYCLE_TASK_LINK_FORM_TYPE":
+        cycleTaskLinkFormType(action.direction);
         return;
       case "MODAL_OVERDUE_SNOOZE":
         handleOverdueModalSnooze();
@@ -2827,6 +2942,291 @@ export function App({
     uiDispatch({ type: "setFocus", focus: FocusTarget.MODAL });
   }
 
+  function openModalWithContext(modal: NonNullable<typeof uiState.modal>) {
+    closeViewsOverlay();
+    uiDispatch({ type: "setModal", modal });
+    uiDispatch({ type: "setMode", mode: Mode.MODAL_CONFIRM });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.MODAL });
+  }
+
+  function closeModalWithPreviousContext(modal: {
+    previousMode: Mode;
+    previousFocus: FocusTarget;
+  }) {
+    uiDispatch({ type: "setModal", modal: null });
+    uiDispatch({ type: "setMode", mode: modal.previousMode });
+    uiDispatch({ type: "setFocus", focus: modal.previousFocus });
+  }
+
+  function applyTaskLinkMutation(
+    taskId: string,
+    mutate: (task: Task) => Task
+  ): Task | undefined {
+    const nowMs = Date.now();
+    let updatedTask: Task | undefined;
+    const nextTasks = state.tasks.map((task) => {
+      if (task.id !== taskId) return task;
+      updatedTask = {
+        ...mutate(task),
+        updatedAt: nowMs
+      };
+      return updatedTask;
+    });
+    if (!updatedTask) return undefined;
+    dispatch({ type: "setTasks", tasks: nextTasks });
+    return updatedTask;
+  }
+
+  function moveLinkSelection(delta: 1 | -1) {
+    if (selectedTaskLinks.length === 0) return;
+    const currentIndex = selectedTaskLinks.findIndex((link) => link.id === selectedLinkId);
+    const safeIndex = currentIndex === -1 ? 0 : currentIndex;
+    const nextIndex = (safeIndex + delta + selectedTaskLinks.length) % selectedTaskLinks.length;
+    setSelectedLinkId(selectedTaskLinks[nextIndex]?.id);
+  }
+
+  function openAddTaskLinkModal() {
+    if (uiState.mode === Mode.ADD) {
+      if (!state.editor) {
+        showShortNavigationBanner("No task draft open");
+        return;
+      }
+      openModalWithContext({
+        type: "task_link_form",
+        mode: "add",
+        source: {
+          scope: "editor_draft"
+        },
+        labelValue: "",
+        targetValue: "",
+        kindValue: "auto",
+        activeField: "target",
+        previousMode: uiState.mode,
+        previousFocus: uiState.focus
+      });
+      return;
+    }
+
+    if (!selectedPersistedTask) {
+      showShortNavigationBanner("No task selected");
+      return;
+    }
+    openModalWithContext({
+      type: "task_link_form",
+      mode: "add",
+      source: {
+        scope: "task",
+        taskId: selectedPersistedTask.id
+      },
+      labelValue: "",
+      targetValue: "",
+      kindValue: "auto",
+      activeField: "target",
+      previousMode: Mode.LIST,
+      previousFocus: uiState.focus
+    });
+  }
+
+  function openEditTaskLinkModal() {
+    if (!selectedPersistedTask || !selectedTaskLink) {
+      showShortNavigationBanner("No link selected");
+      return;
+    }
+    openModalWithContext({
+      type: "task_link_form",
+      mode: "edit",
+      source: {
+        scope: "task",
+        taskId: selectedPersistedTask.id
+      },
+      linkId: selectedTaskLink.id,
+      labelValue: selectedTaskLink.label ?? "",
+      targetValue: selectedTaskLink.target,
+      kindValue: selectedTaskLink.kind ?? "auto",
+      activeField: "target",
+      previousMode: Mode.LIST,
+      previousFocus: uiState.focus
+    });
+  }
+
+  function openDeleteTaskLinkModal() {
+    if (!selectedPersistedTask || !selectedTaskLink) {
+      showShortNavigationBanner("No link selected");
+      return;
+    }
+    openModalWithContext({
+      type: "task_link_delete",
+      taskId: selectedPersistedTask.id,
+      linkId: selectedTaskLink.id,
+      label: selectedTaskLink.label,
+      target: selectedTaskLink.target,
+      previousMode: Mode.LIST,
+      previousFocus: uiState.focus
+    });
+  }
+
+  async function openTaskLinkTarget(target: string): Promise<void> {
+    try {
+      await openTarget(target);
+    } catch {
+      showShortNavigationBanner("Could not open link.");
+    }
+  }
+
+  function openSelectedTaskLink() {
+    if (!selectedTaskLink || !selectedPersistedTask) {
+      showShortNavigationBanner("No link selected");
+      return;
+    }
+    if (requiresExternalSchemeConfirm(selectedTaskLink)) {
+      const scheme = extractUrlScheme(selectedTaskLink.target) ?? "unknown";
+      openModalWithContext({
+        type: "task_link_open_external",
+        taskId: selectedPersistedTask.id,
+        linkId: selectedTaskLink.id,
+        target: selectedTaskLink.target,
+        scheme,
+        previousMode: Mode.LIST,
+        previousFocus: uiState.focus
+      });
+      return;
+    }
+    void openTaskLinkTarget(selectedTaskLink.target);
+  }
+
+  function copySelectedTaskLink() {
+    if (!selectedTaskLink) {
+      showShortNavigationBanner("No link selected");
+      return;
+    }
+    void copyToClipboard(selectedTaskLink.target).catch(() => {
+      showShortNavigationBanner("Copy failed.");
+    });
+  }
+
+  function getTaskLinkFormModal(): UITaskLinkFormModal | null {
+    return uiState.modal?.type === "task_link_form" ? uiState.modal : null;
+  }
+
+  function patchTaskLinkFormModal(patch: Partial<UITaskLinkFormModal>) {
+    const modal = getTaskLinkFormModal();
+    if (!modal) return;
+    uiDispatch({
+      type: "setModal",
+      modal: {
+        ...modal,
+        ...patch
+      }
+    });
+  }
+
+  function moveTaskLinkFormFocus(direction: 1 | -1) {
+    const modal = getTaskLinkFormModal();
+    if (!modal) return;
+    patchTaskLinkFormModal({
+      activeField: cycleTaskLinkFormField(modal.activeField, direction)
+    });
+  }
+
+  function cycleTaskLinkFormType(direction: 1 | -1) {
+    const modal = getTaskLinkFormModal();
+    if (!modal) return;
+    patchTaskLinkFormModal({
+      kindValue: cycleTaskLinkFormKind(modal.kindValue, direction)
+    });
+  }
+
+  function submitTaskLinkFormModal() {
+    const modal = getTaskLinkFormModal();
+    if (!modal) return;
+
+    const target = modal.targetValue.trim();
+    const label = modal.labelValue.trim();
+    if (!target) {
+      patchTaskLinkFormModal({ error: "Target is required." });
+      return;
+    }
+
+    if (modal.kindValue === "url" && !extractUrlScheme(target)) {
+      patchTaskLinkFormModal({ error: "URL type requires a scheme (e.g. https://)." });
+      return;
+    }
+
+    const kind = modal.kindValue === "auto" ? undefined : modal.kindValue;
+
+    if (modal.source.scope === "editor_draft") {
+      if (!state.editor) return;
+      if (modal.mode !== "add") return;
+      const link: TaskLink = {
+        id: crypto.randomUUID(),
+        target,
+        ...(label ? { label } : {}),
+        ...(kind ? { kind } : {})
+      };
+      dispatch({
+        type: "updateEditor",
+        patch: {
+          links: [...state.editor.links, link]
+        }
+      });
+      showShortNavigationBanner(`Added link (${state.editor.links.length + 1})`);
+      closeModalWithPreviousContext(modal);
+      return;
+    }
+
+    if (modal.mode === "add") {
+      const link: TaskLink = {
+        id: crypto.randomUUID(),
+        target,
+        ...(label ? { label } : {}),
+        ...(kind ? { kind } : {})
+      };
+      const updatedTask = applyTaskLinkMutation(modal.source.taskId, (task) =>
+        addTaskLink(task, link)
+      );
+      if (!updatedTask) return;
+      setSelectedLinkId(link.id);
+      closeModalWithPreviousContext(modal);
+      return;
+    }
+
+    if (!modal.linkId) return;
+    const updatedTask = applyTaskLinkMutation(modal.source.taskId, (task) =>
+      updateTaskLink(task, modal.linkId, {
+        target,
+        label: label || undefined,
+        kind
+      })
+    );
+    if (!updatedTask) return;
+    setSelectedLinkId(modal.linkId);
+    closeModalWithPreviousContext(modal);
+  }
+
+  function handleDeleteTaskLinkFromModal() {
+    const modal = uiState.modal;
+    if (!modal || modal.type !== "task_link_delete") return;
+    const updatedTask = applyTaskLinkMutation(modal.taskId, (task) =>
+      deleteTaskLink(task, modal.linkId)
+    );
+    if (!updatedTask) return;
+    const nextLinks = updatedTask.links ?? [];
+    setSelectedLinkId((current) => {
+      if (current && nextLinks.some((link) => link.id === current)) {
+        return current;
+      }
+      return nextLinks[0]?.id;
+    });
+    closeModalWithPreviousContext(modal);
+  }
+
+  function handleOpenExternalTaskLinkFromModal() {
+    const modal = uiState.modal;
+    if (!modal || modal.type !== "task_link_open_external") return;
+    closeModalWithPreviousContext(modal);
+    void openTaskLinkTarget(modal.target);
+  }
+
   function moveSelection(delta: number) {
     if (visibleTaskRows.length === 0) return;
     const currentIndex = visibleTaskRows.findIndex((task) => task.id === state.selectedId);
@@ -3506,6 +3906,7 @@ export function App({
     const { dueAt, hasExplicitTime } = combineDueDateTime(draft.dueText, timeText);
     const tags = normalizeTagsFromInput(draft.tagsText);
     const notes = draft.notes.trim() || undefined;
+    const links = draft.links.map((link) => ({ ...link }));
 
     if (uiState.mode === Mode.ADD) {
       const taskId = crypto.randomUUID();
@@ -3529,6 +3930,7 @@ export function App({
         hasExplicitTime,
         notes,
         tags,
+        ...(links.length > 0 ? { links } : {}),
         ...(recurrenceBuild.recurrence ? { recurrence: recurrenceBuild.recurrence } : {})
       };
 
@@ -4356,6 +4758,8 @@ export function App({
                     pulseOn={pulseOn}
                     fastPulseOn={fastPulseOn}
                     flashMode={settingsState.flashMode}
+                    selectedLinkId={selectedLinkId}
+                    linksFocused={uiState.focus === FocusTarget.DETAILS_LINKS}
                   />
                 )}
               </box>
@@ -4622,6 +5026,211 @@ export function App({
                 </box>
               </box>
             )
+          ) : uiState.modal.type === "task_link_form" ? (
+            <box
+              style={{
+                padding: 2,
+                backgroundColor: theme.panel,
+                border: true,
+                borderStyle: "single",
+                borderColor: theme.outline,
+                width: 64,
+                flexDirection: "column",
+                gap: 1
+              }}
+            >
+              <text style={{ color: theme.text, fontWeight: "bold" }}>
+                {uiState.modal.mode === "add"
+                  ? "ADD LINK / ATTACHMENT"
+                  : "EDIT LINK / ATTACHMENT"}
+              </text>
+              <text style={{ color: theme.muted }}>
+                Tab: next · Enter on Save: submit · Esc: cancel
+              </text>
+              <box
+                style={{ flexDirection: "column" }}
+                onMouseDown={(event) => {
+                  if (event.button !== 0) return;
+                  patchTaskLinkFormModal({ activeField: "label" });
+                }}
+              >
+                <text style={{ color: theme.muted }}>LABEL (OPTIONAL)</text>
+                <input
+                  value={uiState.modal.labelValue}
+                  onChange={(value) =>
+                    patchTaskLinkFormModal({
+                      labelValue: value,
+                      error: undefined
+                    })
+                  }
+                  focused={uiState.modal.activeField === "label"}
+                  placeholder="e.g. Design doc"
+                  style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
+                />
+              </box>
+              <box
+                style={{ flexDirection: "column" }}
+                onMouseDown={(event) => {
+                  if (event.button !== 0) return;
+                  patchTaskLinkFormModal({ activeField: "target" });
+                }}
+              >
+                <text style={{ color: theme.muted }}>TARGET *</text>
+                <input
+                  value={uiState.modal.targetValue}
+                  onChange={(value) =>
+                    patchTaskLinkFormModal({
+                      targetValue: value,
+                      error: undefined
+                    })
+                  }
+                  focused={uiState.modal.activeField === "target"}
+                  placeholder="https://... or /path/to/file"
+                  style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
+                />
+              </box>
+              <box style={{ flexDirection: "column" }}>
+                <text style={{ color: theme.muted }}>
+                  TYPE ({uiState.modal.activeField === "type" ? "ACTIVE" : "AUTO/URL/PATH"})
+                </text>
+                <box style={{ flexDirection: "row", gap: 1 }}>
+                  {TASK_LINK_FORM_KIND_ORDER.map((kind) => {
+                    const selected = uiState.modal.kindValue === kind;
+                    return (
+                      <box
+                        key={kind}
+                        style={{
+                          paddingLeft: 2,
+                          paddingRight: 2,
+                          backgroundColor: selected ? theme.accentBlue : theme.panel,
+                          border: true,
+                          borderStyle: "single",
+                          borderColor:
+                            uiState.modal.activeField === "type"
+                              ? theme.accentBlue
+                              : theme.outline
+                        }}
+                        onMouseDown={(event) => {
+                          if (event.button !== 0) return;
+                          patchTaskLinkFormModal({
+                            kindValue: kind,
+                            activeField: "type",
+                            error: undefined
+                          });
+                        }}
+                      >
+                        <text style={{ color: selected ? theme.bg : theme.text }}>
+                          {kind.toUpperCase()}
+                        </text>
+                      </box>
+                    );
+                  })}
+                </box>
+              </box>
+              {uiState.modal.error ? (
+                <text style={{ color: theme.warn }}>{uiState.modal.error}</text>
+              ) : null}
+              <box style={{ flexDirection: "row", gap: 1 }}>
+                <box
+                  style={{
+                    backgroundColor:
+                      uiState.modal.activeField === "save" ? theme.accentBlue : theme.panel,
+                    border: true,
+                    borderStyle: "single",
+                    borderColor: theme.outline,
+                    paddingLeft: 2,
+                    paddingRight: 2
+                  }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    submitTaskLinkFormModal();
+                  }}
+                >
+                  <text
+                    style={{
+                      color: uiState.modal.activeField === "save" ? theme.bg : theme.text,
+                      fontWeight: "bold"
+                    }}
+                  >
+                    SAVE
+                  </text>
+                </box>
+                <box
+                  style={{
+                    backgroundColor:
+                      uiState.modal.activeField === "cancel" ? theme.accentBlue : theme.panel,
+                    border: true,
+                    borderStyle: "single",
+                    borderColor: theme.outline,
+                    paddingLeft: 2,
+                    paddingRight: 2
+                  }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    applyEscUnwind();
+                  }}
+                >
+                  <text
+                    style={{
+                      color: uiState.modal.activeField === "cancel" ? theme.bg : theme.text,
+                      fontWeight: "bold"
+                    }}
+                  >
+                    CANCEL
+                  </text>
+                </box>
+              </box>
+            </box>
+          ) : uiState.modal.type === "task_link_delete" ? (
+            <box style={{ padding: 2, backgroundColor: modalTheme.warn, color: modalTheme.bg }}>
+              <text>REMOVE LINK? (y/n)</text>
+              <text>{formatLinkSnippet(uiState.modal.label, uiState.modal.target)}</text>
+              <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
+                <box
+                  style={{ backgroundColor: modalTheme.bg, paddingLeft: 2, paddingRight: 2 }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    handleDeleteTaskLinkFromModal();
+                  }}
+                >
+                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>YES [y]</text>
+                </box>
+                <box
+                  style={{ backgroundColor: modalTheme.bg, paddingLeft: 2, paddingRight: 2 }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    applyEscUnwind();
+                  }}
+                >
+                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>NO [n]</text>
+                </box>
+              </box>
+            </box>
+          ) : uiState.modal.type === "task_link_open_external" ? (
+            <box style={{ padding: 2, backgroundColor: modalTheme.warn, color: modalTheme.bg }}>
+              <text>{`Open external scheme \"${uiState.modal.scheme}\"?`}</text>
+              <text>{formatLinkSnippet(undefined, uiState.modal.target)}</text>
+              <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
+                <box
+                  style={{ backgroundColor: modalTheme.bg, paddingLeft: 2, paddingRight: 2 }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    handleOpenExternalTaskLinkFromModal();
+                  }}
+                >
+                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>YES [y]</text>
+                </box>
+                <box
+                  style={{ backgroundColor: modalTheme.bg, paddingLeft: 2, paddingRight: 2 }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    applyEscUnwind();
+                  }}
+                >
+                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>NO [n]</text>
+                </box>
+              </box>
+            </box>
           ) : uiState.modal.type === "emptyNux" ? (
             <EmptyNuxModal
               onClose={dismissEmptyNuxModal}

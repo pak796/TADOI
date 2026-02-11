@@ -79,6 +79,7 @@ function formatPreviewValue(iso: string): string {
 }
 
 export function EditorPane({
+  mode,
   draft,
   focus,
   availableHeightLines,
@@ -144,9 +145,11 @@ export function EditorPane({
     0,
     footerHeight - EDITOR_ACTION_ROW - EDITOR_FOOTER_HINT_ROW
   );
+  const linksHint =
+    mode === Mode.ADD ? ` · CTRL+L: ADD LINK/ATTACHMENT (${draft.links.length})` : "";
   const footerHintText = showOverflowIndicator
-    ? "TAB: NEXT FIELD · CTRL+S: SAVE · ESC: CANCEL · PgUp/PgDn: Scroll"
-    : "TAB: NEXT FIELD · CTRL+S: SAVE · ESC: CANCEL";
+    ? `TAB: NEXT FIELD · CTRL+S: SAVE · ESC: CANCEL · PgUp/PgDn: Scroll${linksHint}`
+    : `TAB: NEXT FIELD · CTRL+S: SAVE · ESC: CANCEL${linksHint}`;
 
   useEffect(() => {
     if (clampedOffset !== scrollOffset) {

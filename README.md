@@ -115,8 +115,10 @@ Reference:
   - `[` / `]`: previous/next overdue task
   - `{` / `}`: previous/next due-today task
 - LIST mode task actions:
+  - `Tab` / `Shift+Tab`: toggle focus between task list and details links section
   - `b` / `B`: toggle Dashboard mode (ignored in SEARCH/ADD/EDIT and save-view name prompt)
   - `a`: add task
+  - `l`: add link/attachment to selected task
   - `e`: edit selected task (on recurring occurrence rows, edits that single occurrence)
   - `E`: edit recurring series definition
   - `c`: duplicate selected task
@@ -130,6 +132,12 @@ Reference:
   - `g`: cycle due filter
   - `t`: cycle tag filter across tags on all active (open) tasks
   - `Shift+T`: open boolean tag filter panel (`ALL` / `ANY` / `NONE`)
+  - Details links focus (`Tab` from task list):
+    - `up`/`down` or `j`/`k`: select previous/next link
+    - `Enter` / `o`: open selected link/path
+    - `c`: copy selected link target
+    - `l`: add link, `e`: edit link, `d`/`Backspace`: remove link
+    - `Esc`: return focus to task list
 - Dashboard mode:
   - `b` / `B`: return to list mode
   - `f`: cycle status filter (shared with list)
@@ -158,6 +166,7 @@ Reference:
 - Editor mode:
   - `Tab` / `Shift+Tab`: move between fields
   - `ctrl+s`: save
+  - `ctrl+l` (Add mode): add link/attachment to the new task draft
   - `Esc`: cancel and return to list
   - `ctrl+u` / `PageUp`: scroll editor form up when content overflows
   - `ctrl+d` / `PageDown`: scroll editor form down when content overflows

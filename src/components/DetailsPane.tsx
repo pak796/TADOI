@@ -1,10 +1,43 @@
 import { diffLocalDays, formatLocalTimeHHmm, startOfLocalDayMs } from "../domain/dates";
 import { getRecurrenceSummary } from "../domain/recurrence/draft";
 import { formatTagForDisplay } from "../domain/tagIndex";
+import { resolveTaskLinkKind } from "../domain/taskLinks";
 import { VisibleTaskRow } from "../domain/taskRows";
 import { formatDate, getDueLabel } from "../state/store";
 import { colorForTag, theme } from "../app/theme";
 import type { FlashMode } from "../settings/settings";
+
+const LINK_PRIMARY_MAX = 38;
+const LINK_SECONDARY_MAX = 40;
+
+function truncateWithEllipsis(value: string, maxLength: number): string {
+  if (value.length <= maxLength) return value;
+  if (maxLength <= 1) return value.slice(0, maxLength);
+  return `${value.slice(0, maxLength - 1)}…`;
+}
+
+function summarizeUrlTarget(target: string): string {
+  try {
+    const parsed = new URL(target);
+    if (parsed.host && parsed.pathname) {
+      return `${parsed.host}${parsed.pathname}`;
+    }
+    if (parsed.host) {
+      return parsed.host;
+    }
+    if (parsed.pathname) {
+      return parsed.pathname;
+    }
+  } catch {
+    // Fall through to target fallback.
+  }
+  return target;
+}
+
+function summarizePathTarget(target: string): string {
+  const segments = target.split(/[\\/]+/).filter(Boolean);
+  return segments.length > 0 ? segments[segments.length - 1] : target;
+}
 
 type DetailsPaneProps = {
   task?: VisibleTaskRow;
@@ -12,6 +45,8 @@ type DetailsPaneProps = {
   pulseOn: boolean;
   fastPulseOn: boolean;
   flashMode: FlashMode;
+  selectedLinkId?: string;
+  linksFocused: boolean;
 };
 
 export function DetailsPane({
@@ -19,7 +54,9 @@ export function DetailsPane({
   now,
   pulseOn,
   fastPulseOn,
-  flashMode
+  flashMode,
+  selectedLinkId,
+  linksFocused
 }: DetailsPaneProps) {
   if (!task) {
     return <text style={{ color: theme.muted }}>Select a task to view details.</text>;
@@ -72,6 +109,7 @@ export function DetailsPane({
   const isOccurrenceRow =
     task.rowKind === "series_occurrence_virtual" ||
     task.rowKind === "series_occurrence_instance";
+  const links = task.links ?? [];
 
   return (
     <box style={{ flexDirection: "column" }}>
@@ -163,6 +201,52 @@ export function DetailsPane({
         <text style={{ color: theme.muted }}>NOTES</text>
       </box>
       <text style={{ color: theme.text }}>{task.notes || "(no notes)"}</text>
+      <box style={{ flexDirection: "column", marginTop: 1 }}>
+        <text style={{ color: theme.muted }}>
+          Links / Attachments ({links.length})
+        </text>
+        {links.length === 0 ? (
+          <text style={{ color: theme.muted }}>No links yet — press L to add</text>
+        ) : (
+          <box style={{ flexDirection: "column", marginTop: 1 }}>
+            {links.map((link) => {
+              const selected = selectedLinkId === link.id;
+              const rowBackground = selected
+                ? linksFocused
+                  ? theme.accentBlue
+                  : theme.outline
+                : "transparent";
+              const rowTextColor = selected && linksFocused ? theme.bg : theme.text;
+              const secondaryColor = selected && linksFocused ? theme.bg : theme.muted;
+              const primary = link.label?.trim().length
+                ? link.label.trim()
+                : link.target;
+              const secondary = resolveTaskLinkKind(link) === "url"
+                ? summarizeUrlTarget(link.target)
+                : summarizePathTarget(link.target);
+
+              return (
+                <box
+                  key={link.id}
+                  style={{
+                    flexDirection: "column",
+                    paddingLeft: 1,
+                    paddingRight: 1,
+                    backgroundColor: rowBackground
+                  }}
+                >
+                  <text style={{ color: rowTextColor }}>
+                    {truncateWithEllipsis(primary, LINK_PRIMARY_MAX)}
+                  </text>
+                  <text style={{ color: secondaryColor }}>
+                    {truncateWithEllipsis(secondary, LINK_SECONDARY_MAX)}
+                  </text>
+                </box>
+              );
+            })}
+          </box>
+        )}
+      </box>
       {isOccurrenceRow ? (
         <box style={{ marginTop: 1 }}>
           <text style={{ color: theme.muted }}>space: complete/reopen · x: skip · z: snooze · e: edit occurrence · E: edit series</text>

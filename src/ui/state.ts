@@ -1,12 +1,15 @@
 import { FocusTarget, Mode, isEditorMode, isModalMode, type Mode as ModeType } from "./modeFocus";
 import type { TaskOverdueEvent } from "../notifications/types";
 
-type UIDeleteModalBase = {
-  type: "delete";
-  taskTitle: string;
+type UIModalReturnContext = {
   previousMode: Exclude<ModeType, typeof Mode.MODAL_CONFIRM>;
   previousFocus: FocusTarget;
 };
+
+type UIDeleteModalBase = {
+  type: "delete";
+  taskTitle: string;
+} & UIModalReturnContext;
 
 export type UIRegularTaskDeleteModal = UIDeleteModalBase & {
   target: "regular_task";
@@ -26,15 +29,59 @@ export type UIDeleteModal = UIRegularTaskDeleteModal | UIRecurringOccurrenceDele
 export type UIOverdueModal = {
   type: "overdue";
   event: TaskOverdueEvent;
-  previousMode: Exclude<ModeType, typeof Mode.MODAL_CONFIRM>;
-  previousFocus: FocusTarget;
+} & UIModalReturnContext;
+
+export type UITaskLinkModalKind = "auto" | "url" | "path";
+export type UITaskLinkFormField = "label" | "target" | "type" | "save" | "cancel";
+
+type UITaskLinkFormTaskScope = {
+  scope: "task";
+  taskId: string;
 };
+
+type UITaskLinkFormEditorDraftScope = {
+  scope: "editor_draft";
+};
+
+export type UITaskLinkFormModal = {
+  type: "task_link_form";
+  mode: "add" | "edit";
+  source: UITaskLinkFormTaskScope | UITaskLinkFormEditorDraftScope;
+  linkId?: string;
+  labelValue: string;
+  targetValue: string;
+  kindValue: UITaskLinkModalKind;
+  activeField: UITaskLinkFormField;
+  error?: string;
+} & UIModalReturnContext;
+
+export type UITaskLinkDeleteModal = {
+  type: "task_link_delete";
+  taskId: string;
+  linkId: string;
+  label?: string;
+  target: string;
+} & UIModalReturnContext;
+
+export type UITaskLinkExternalOpenConfirmModal = {
+  type: "task_link_open_external";
+  taskId: string;
+  linkId: string;
+  target: string;
+  scheme: string;
+} & UIModalReturnContext;
 
 export type UIEmptyNuxModal = {
   type: "emptyNux";
 };
 
-export type UIConfirmModal = UIDeleteModal | UIOverdueModal | UIEmptyNuxModal;
+export type UIConfirmModal =
+  | UIDeleteModal
+  | UIOverdueModal
+  | UIEmptyNuxModal
+  | UITaskLinkFormModal
+  | UITaskLinkDeleteModal
+  | UITaskLinkExternalOpenConfirmModal;
 
 export type UIState = {
   mode: ModeType;

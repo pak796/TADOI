@@ -4,7 +4,7 @@ import {
   formatDateToLocalIso,
   parseLocalIsoToDate
 } from "../domain/recurrence/rruleAdapter";
-import type { TaskStatus } from "../domain/models";
+import type { TaskLinkKind, TaskStatus } from "../domain/models";
 import type { LoadedData } from "./persistence";
 
 export type ValidationMode = "minimal" | "strict";
@@ -14,6 +14,7 @@ export type ValidationResult =
   | { ok: false; errors: string[] };
 
 const VALID_STATUS = new Set<TaskStatus>(["open", "done", "archived"]);
+const VALID_TASK_LINK_KINDS = new Set<TaskLinkKind>(["url", "path"]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -21,6 +22,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
 }
 
 function areStringArraysEqual(left: string[], right: string[]): boolean {
@@ -185,6 +190,34 @@ export function validatePersistedState(
       typeof task.hasExplicitTime !== "boolean"
     ) {
       errors.push(`task.hasExplicitTime must be boolean when present (${String(task.id)})`);
+    }
+
+    if (task.links !== undefined) {
+      if (!Array.isArray(task.links)) {
+        errors.push(`task.links must be an array when present (${String(task.id)})`);
+      } else {
+        for (const link of task.links) {
+          if (!isRecord(link)) {
+            errors.push(`task.links entry must be an object (${String(task.id)})`);
+            continue;
+          }
+          if (!isNonEmptyString(link.id)) {
+            errors.push(`task.links[].id must be a non-empty string (${String(task.id)})`);
+          }
+          if (!isNonEmptyString(link.target)) {
+            errors.push(`task.links[].target must be a non-empty string (${String(task.id)})`);
+          }
+          if (link.label !== undefined && typeof link.label !== "string") {
+            errors.push(`task.links[].label must be a string when present (${String(task.id)})`);
+          }
+          if (
+            link.kind !== undefined &&
+            !VALID_TASK_LINK_KINDS.has(link.kind as TaskLinkKind)
+          ) {
+            errors.push(`task.links[].kind must be url|path when present (${String(task.id)})`);
+          }
+        }
+      }
     }
 
     if (!Array.isArray(task.tags) || !task.tags.every((tag) => typeof tag === "string")) {

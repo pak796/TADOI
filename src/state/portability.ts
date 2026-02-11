@@ -82,6 +82,25 @@ function areStringArraysEqual(left: string[], right: string[]): boolean {
   return true;
 }
 
+function areTaskLinksEquivalent(left: Task["links"], right: Task["links"]): boolean {
+  const leftLinks = left ?? [];
+  const rightLinks = right ?? [];
+  if (leftLinks.length !== rightLinks.length) return false;
+  for (let i = 0; i < leftLinks.length; i += 1) {
+    const leftLink = leftLinks[i];
+    const rightLink = rightLinks[i];
+    if (
+      leftLink.id !== rightLink.id ||
+      leftLink.target !== rightLink.target ||
+      leftLink.label !== rightLink.label ||
+      leftLink.kind !== rightLink.kind
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function areTasksEquivalent(left: Task, right: Task): boolean {
   const recurrenceEqual =
     left.recurrence?.dtstart === right.recurrence?.dtstart &&
@@ -103,6 +122,7 @@ function areTasksEquivalent(left: Task, right: Task): boolean {
     left.closedAt === right.closedAt &&
     left.notes === right.notes &&
     areStringArraysEqual(left.tags, right.tags) &&
+    areTaskLinksEquivalent(left.links, right.links) &&
     recurrenceEqual &&
     instanceEqual
   );

@@ -3,6 +3,15 @@ export { FocusTarget, Mode } from "../ui/modeFocus";
 
 export type TaskStatus = "open" | "done" | "archived";
 
+export type TaskLinkKind = "url" | "path";
+
+export type TaskLink = {
+  id: string;
+  target: string;
+  label?: string;
+  kind?: TaskLinkKind;
+};
+
 export type RecurrenceFrequency = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
 
 export type TaskRecurrence = {
@@ -28,6 +37,7 @@ export type Task = {
   closedAt?: number;
   notes?: string;
   tags: string[];
+  links?: TaskLink[];
   recurrence?: TaskRecurrence;
   instance_of?: TaskInstanceOf;
 };
@@ -69,6 +79,7 @@ export type EditorDraft = {
   timeText: string;
   tagsText: string;
   notes: string;
+  links: TaskLink[];
   repeatMode: "off" | "daily" | "weekly" | "monthly" | "custom";
   repeatIntervalText: string;
   repeatWeekdays: string[]; // MO,TU,WE,TH,FR,SA,SU

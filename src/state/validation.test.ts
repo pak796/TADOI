@@ -77,6 +77,65 @@ describe("validatePersistedState", () => {
     expect(result.ok).toBe(false);
   });
 
+  it("accepts optional task links when shape is valid", () => {
+    const result = validatePersistedState(
+      {
+        ...BASE_STATE,
+        tasks: [
+          {
+            ...BASE_STATE.tasks[0],
+            links: [
+              {
+                id: "link-1",
+                target: "https://example.com",
+                label: "Spec",
+                kind: "url"
+              }
+            ]
+          }
+        ]
+      },
+      "strict"
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it("rejects malformed task links", () => {
+    const invalidKind = validatePersistedState(
+      {
+        ...BASE_STATE,
+        tasks: [
+          {
+            ...BASE_STATE.tasks[0],
+            links: [
+              {
+                id: "link-1",
+                target: "https://example.com",
+                kind: "ftp"
+              }
+            ]
+          }
+        ]
+      },
+      "strict"
+    );
+    expect(invalidKind.ok).toBe(false);
+
+    const missingTarget = validatePersistedState(
+      {
+        ...BASE_STATE,
+        tasks: [
+          {
+            ...BASE_STATE.tasks[0],
+            links: [{ id: "link-2", target: "" }]
+          }
+        ]
+      },
+      "strict"
+    );
+    expect(missingTarget.ok).toBe(false);
+  });
+
   it("tolerates unknown extra fields", () => {
     const result = validatePersistedState(
       {

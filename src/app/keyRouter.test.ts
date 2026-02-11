@@ -82,6 +82,20 @@ describe("handleKey", () => {
         {
           uiState: {
             ...initialUIState,
+            mode: Mode.LIST,
+            focus: FocusTarget.DETAILS_LINKS
+          }
+        }
+      )
+    ).toEqual([
+      { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.TASK_LIST }
+    ]);
+    expect(
+      run(
+        { name: "escape" },
+        {
+          uiState: {
+            ...initialUIState,
             mode: Mode.BACKUP_CENTER,
             focus: FocusTarget.BACKUP_CENTER
           },
@@ -179,6 +193,74 @@ describe("handleKey", () => {
     ]);
   });
 
+  it("routes task-link modal confirm keys", () => {
+    const deleteModalState = {
+      ...initialUIState,
+      mode: Mode.MODAL_CONFIRM,
+      focus: FocusTarget.MODAL,
+      modal: {
+        type: "task_link_delete" as const,
+        taskId: "task-1",
+        linkId: "link-1",
+        target: "https://example.com",
+        previousMode: Mode.LIST,
+        previousFocus: FocusTarget.DETAILS_LINKS
+      }
+    };
+    expect(run({ name: "y", sequence: "y" }, { uiState: deleteModalState })).toEqual([
+      { scope: "domain", type: "MODAL_CONFIRM_TASK_LINK_DELETE" }
+    ]);
+    expect(run({ name: "n", sequence: "n" }, { uiState: deleteModalState })).toEqual([
+      { scope: "ui", type: "UNWIND" }
+    ]);
+
+    const externalModalState = {
+      ...initialUIState,
+      mode: Mode.MODAL_CONFIRM,
+      focus: FocusTarget.MODAL,
+      modal: {
+        type: "task_link_open_external" as const,
+        taskId: "task-1",
+        linkId: "link-1",
+        target: "vscode://repo/file",
+        scheme: "vscode",
+        previousMode: Mode.LIST,
+        previousFocus: FocusTarget.DETAILS_LINKS
+      }
+    };
+    expect(run({ name: "y", sequence: "y" }, { uiState: externalModalState })).toEqual([
+      { scope: "domain", type: "MODAL_CONFIRM_TASK_LINK_OPEN_EXTERNAL" }
+    ]);
+  });
+
+  it("routes task-link form modal focus/type actions", () => {
+    const formModalState = {
+      ...initialUIState,
+      mode: Mode.MODAL_CONFIRM,
+      focus: FocusTarget.MODAL,
+      modal: {
+        type: "task_link_form" as const,
+        mode: "add" as const,
+        source: { scope: "task" as const, taskId: "task-1" },
+        labelValue: "",
+        targetValue: "",
+        kindValue: "auto" as const,
+        activeField: "type" as const,
+        previousMode: Mode.LIST,
+        previousFocus: FocusTarget.DETAILS_LINKS
+      }
+    };
+    expect(run({ name: "tab" }, { uiState: formModalState })).toEqual([
+      { scope: "ui", type: "MODAL_MOVE_TASK_LINK_FORM_FOCUS", direction: 1 }
+    ]);
+    expect(run({ name: "left" }, { uiState: formModalState })).toEqual([
+      { scope: "ui", type: "MODAL_CYCLE_TASK_LINK_FORM_TYPE", direction: -1 }
+    ]);
+    expect(run({ name: "right" }, { uiState: formModalState })).toEqual([
+      { scope: "ui", type: "MODAL_CYCLE_TASK_LINK_FORM_TYPE", direction: 1 }
+    ]);
+  });
+
   it("routes empty NUX modal keys", () => {
     const modalState = {
       ...initialUIState,
@@ -221,6 +303,54 @@ describe("handleKey", () => {
     ).toEqual([]);
   });
 
+  it("toggles list/details focus with tab", () => {
+    expect(run({ name: "tab" })).toEqual([
+      { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.DETAILS_LINKS }
+    ]);
+    expect(
+      run(
+        { name: "tab" },
+        {
+          uiState: {
+            ...initialUIState,
+            mode: Mode.LIST,
+            focus: FocusTarget.DETAILS_LINKS
+          }
+        }
+      )
+    ).toEqual([{ scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.TASK_LIST }]);
+  });
+
+  it("routes details-links actions when details focus is active", () => {
+    const detailsState = {
+      ...initialUIState,
+      mode: Mode.LIST,
+      focus: FocusTarget.DETAILS_LINKS
+    };
+
+    expect(run({ name: "down" }, { uiState: detailsState })).toEqual([
+      { scope: "domain", type: "MOVE_LINK_SELECTION", delta: 1 }
+    ]);
+    expect(run({ name: "up" }, { uiState: detailsState })).toEqual([
+      { scope: "domain", type: "MOVE_LINK_SELECTION", delta: -1 }
+    ]);
+    expect(run({ name: "enter" }, { uiState: detailsState })).toEqual([
+      { scope: "domain", type: "OPEN_SELECTED_LINK" }
+    ]);
+    expect(run({ name: "c", sequence: "c" }, { uiState: detailsState })).toEqual([
+      { scope: "domain", type: "COPY_SELECTED_LINK" }
+    ]);
+    expect(run({ name: "l", sequence: "l" }, { uiState: detailsState })).toEqual([
+      { scope: "domain", type: "OPEN_ADD_TASK_LINK_MODAL" }
+    ]);
+    expect(run({ name: "e", sequence: "e" }, { uiState: detailsState })).toEqual([
+      { scope: "domain", type: "OPEN_EDIT_TASK_LINK_MODAL" }
+    ]);
+    expect(run({ name: "d", sequence: "d" }, { uiState: detailsState })).toEqual([
+      { scope: "domain", type: "OPEN_DELETE_TASK_LINK_MODAL" }
+    ]);
+  });
+
   it("routes jump and paging keys in list mode", () => {
     expect(run({ name: "g", sequence: "g" })).toEqual([
       { scope: "ui", type: "SET_G_PREFIX", active: true }
@@ -254,6 +384,9 @@ describe("handleKey", () => {
     ]);
     expect(run({ name: "t", sequence: "t" })).toEqual([
       { scope: "domain", type: "TOGGLE_TAG_FILTER" }
+    ]);
+    expect(run({ name: "l", sequence: "l" })).toEqual([
+      { scope: "domain", type: "OPEN_ADD_TASK_LINK_MODAL" }
     ]);
     expect(run({ name: "T", sequence: "T", shift: true })).toEqual([
       { scope: "ui", type: "OPEN_TAG_FILTER_PANEL" }
@@ -606,6 +739,9 @@ describe("handleKey", () => {
     ).toEqual([]);
     expect(run({ ctrl: true, name: "s" }, { uiState: addState })).toEqual([
       { scope: "domain", type: "SAVE_EDITOR" }
+    ]);
+    expect(run({ ctrl: true, name: "l" }, { uiState: addState })).toEqual([
+      { scope: "domain", type: "OPEN_ADD_TASK_LINK_MODAL" }
     ]);
     expect(run({ name: "pageup" }, { uiState: addState })).toEqual([
       { scope: "ui", type: "SCROLL_EDITOR_PAGE", direction: -1 }

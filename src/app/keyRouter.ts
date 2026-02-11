@@ -38,6 +38,11 @@ export type KeyRouterAction =
   | { scope: "ui"; type: "BACKUP_SELECT_MENU_OPTION"; index: 0 | 1 | 2 }
   | { scope: "ui"; type: "BACKUP_SET_IMPORT_MODE"; mode: ImportMode }
   | { scope: "ui"; type: "MOVE_EDITOR_FOCUS"; direction: 1 | -1 }
+  | {
+      scope: "ui";
+      type: "SET_LIST_FOCUS";
+      focus: typeof FocusTarget.TASK_LIST | typeof FocusTarget.DETAILS_LINKS;
+    }
   | { scope: "ui"; type: "SET_G_PREFIX"; active: boolean }
   | { scope: "ui"; type: "TOGGLE_VIEWS_OVERLAY" }
   | { scope: "ui"; type: "CLOSE_VIEWS_OVERLAY" }
@@ -83,9 +88,20 @@ export type KeyRouterAction =
   | { scope: "domain"; type: "OPEN_DUPLICATE" }
   | { scope: "domain"; type: "SKIP_SELECTED_OCCURRENCE" }
   | { scope: "domain"; type: "SNOOZE_SELECTED_OCCURRENCE" }
+  | { scope: "domain"; type: "MOVE_LINK_SELECTION"; delta: 1 | -1 }
+  | { scope: "domain"; type: "OPEN_SELECTED_LINK" }
+  | { scope: "domain"; type: "COPY_SELECTED_LINK" }
+  | { scope: "domain"; type: "OPEN_ADD_TASK_LINK_MODAL" }
+  | { scope: "domain"; type: "OPEN_EDIT_TASK_LINK_MODAL" }
+  | { scope: "domain"; type: "OPEN_DELETE_TASK_LINK_MODAL" }
   | { scope: "domain"; type: "OPEN_DELETE_CONFIRM" }
   | { scope: "domain"; type: "MODAL_CONFIRM_DELETE" }
   | { scope: "domain"; type: "MODAL_CONFIRM_DELETE_FUTURE" }
+  | { scope: "domain"; type: "MODAL_CONFIRM_TASK_LINK_DELETE" }
+  | { scope: "domain"; type: "MODAL_CONFIRM_TASK_LINK_OPEN_EXTERNAL" }
+  | { scope: "domain"; type: "MODAL_SUBMIT_TASK_LINK_FORM" }
+  | { scope: "ui"; type: "MODAL_MOVE_TASK_LINK_FORM_FOCUS"; direction: 1 | -1 }
+  | { scope: "ui"; type: "MODAL_CYCLE_TASK_LINK_FORM_TYPE"; direction: 1 | -1 }
   | { scope: "domain"; type: "MODAL_OVERDUE_SNOOZE" }
   | { scope: "domain"; type: "MODAL_OVERDUE_DONE" }
   | { scope: "domain"; type: "MODAL_OVERDUE_GO_TO_TASK" }
@@ -173,6 +189,9 @@ function listModeActions(key: KeyInput): KeyRouterAction[] {
     return [{ scope: "domain", type: "APPLY_VIEW_SLOT", slot: Number(sequence) - 1 }];
   }
   if (name === "a") return [{ scope: "domain", type: "OPEN_ADD" }];
+  if (name === "l" || name === "L" || sequence === "l" || sequence === "L") {
+    return [{ scope: "domain", type: "OPEN_ADD_TASK_LINK_MODAL" }];
+  }
   if (name === "e") return [{ scope: "domain", type: "OPEN_EDIT" }];
   if (name === "E" || sequence === "E") {
     return [{ scope: "domain", type: "OPEN_EDIT_SERIES" }];
@@ -237,6 +256,9 @@ export function handleKey(
     if (mode === Mode.LIST && viewsOverlayOpen) {
       return [{ scope: "ui", type: "CLOSE_VIEWS_OVERLAY" }];
     }
+    if (mode === Mode.LIST && focus === FocusTarget.DETAILS_LINKS) {
+      return [{ scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.TASK_LIST }];
+    }
     return [{ scope: "ui", type: "UNWIND" }];
   }
 
@@ -282,6 +304,66 @@ export function handleKey(
       }
       if (lowerName === "g" || sequence === "g" || sequence === "G") {
         return [{ scope: "domain", type: "MODAL_OVERDUE_GO_TO_TASK" }];
+      }
+      return [];
+    }
+    if (uiState.modal?.type === "task_link_delete") {
+      const lowerName = name.toLowerCase();
+      const lowerSequence = sequence.toLowerCase();
+      if (lowerName === "y" || lowerSequence === "y") {
+        return [{ scope: "domain", type: "MODAL_CONFIRM_TASK_LINK_DELETE" }];
+      }
+      if (lowerName === "n" || lowerSequence === "n") {
+        return [{ scope: "ui", type: "UNWIND" }];
+      }
+      return [];
+    }
+    if (uiState.modal?.type === "task_link_open_external") {
+      const lowerName = name.toLowerCase();
+      const lowerSequence = sequence.toLowerCase();
+      if (lowerName === "y" || lowerSequence === "y") {
+        return [{ scope: "domain", type: "MODAL_CONFIRM_TASK_LINK_OPEN_EXTERNAL" }];
+      }
+      if (lowerName === "n" || lowerSequence === "n") {
+        return [{ scope: "ui", type: "UNWIND" }];
+      }
+      return [];
+    }
+    if (uiState.modal?.type === "task_link_form") {
+      if (ctrl && name === "s") {
+        return [{ scope: "domain", type: "MODAL_SUBMIT_TASK_LINK_FORM" }];
+      }
+      if (name === "tab") {
+        return [
+          {
+            scope: "ui",
+            type: "MODAL_MOVE_TASK_LINK_FORM_FOCUS",
+            direction: shift ? -1 : 1
+          }
+        ];
+      }
+      if (name === "left" && uiState.modal.activeField === "type") {
+        return [{ scope: "ui", type: "MODAL_CYCLE_TASK_LINK_FORM_TYPE", direction: -1 }];
+      }
+      if (name === "right" && uiState.modal.activeField === "type") {
+        return [{ scope: "ui", type: "MODAL_CYCLE_TASK_LINK_FORM_TYPE", direction: 1 }];
+      }
+      if (name === "up") {
+        return [{ scope: "ui", type: "MODAL_MOVE_TASK_LINK_FORM_FOCUS", direction: -1 }];
+      }
+      if (name === "down") {
+        return [{ scope: "ui", type: "MODAL_MOVE_TASK_LINK_FORM_FOCUS", direction: 1 }];
+      }
+      if (name === "return" || name === "enter") {
+        if (uiState.modal.activeField === "cancel") {
+          return [{ scope: "ui", type: "UNWIND" }];
+        }
+        if (uiState.modal.activeField === "type") {
+          return [{ scope: "ui", type: "MODAL_CYCLE_TASK_LINK_FORM_TYPE", direction: 1 }];
+        }
+        if (uiState.modal.activeField === "save") {
+          return [{ scope: "domain", type: "MODAL_SUBMIT_TASK_LINK_FORM" }];
+        }
       }
       return [];
     }
@@ -434,6 +516,9 @@ export function handleKey(
     if (ctrl && name === "s") {
       return [{ scope: "domain", type: "SAVE_EDITOR" }];
     }
+    if (mode === Mode.ADD && ctrl && name === "l") {
+      return [{ scope: "domain", type: "OPEN_ADD_TASK_LINK_MODAL" }];
+    }
 
     if (isPageUpKey(name, ctrl)) {
       return [{ scope: "ui", type: "SCROLL_EDITOR_PAGE", direction: -1 }];
@@ -499,7 +584,7 @@ export function handleKey(
     return [];
   }
 
-  if (mode !== Mode.LIST || focus !== FocusTarget.TASK_LIST) {
+  if (mode !== Mode.LIST) {
     return [];
   }
 
@@ -527,6 +612,61 @@ export function handleKey(
       return [{ scope: "domain", type: "APPLY_VIEW_SLOT", slot: Number(sequence) - 1 }];
     }
     if (ctrl && name === "s") return [{ scope: "ui", type: "OPEN_SAVE_VIEW_PROMPT" }];
+    return [];
+  }
+
+  if (name === "tab") {
+    return [
+      {
+        scope: "ui",
+        type: "SET_LIST_FOCUS",
+        focus:
+          focus === FocusTarget.TASK_LIST
+            ? FocusTarget.DETAILS_LINKS
+            : FocusTarget.TASK_LIST
+      }
+    ];
+  }
+
+  if (focus === FocusTarget.DETAILS_LINKS) {
+    if (name === "j" || name === "down") {
+      return [{ scope: "domain", type: "MOVE_LINK_SELECTION", delta: 1 }];
+    }
+    if (name === "k" || name === "up") {
+      return [{ scope: "domain", type: "MOVE_LINK_SELECTION", delta: -1 }];
+    }
+    if (
+      name === "return" ||
+      name === "enter" ||
+      name === "o" ||
+      name === "O" ||
+      sequence === "o" ||
+      sequence === "O"
+    ) {
+      return [{ scope: "domain", type: "OPEN_SELECTED_LINK" }];
+    }
+    if (name === "c" || name === "C" || sequence === "c" || sequence === "C") {
+      return [{ scope: "domain", type: "COPY_SELECTED_LINK" }];
+    }
+    if (name === "l" || name === "L" || sequence === "l" || sequence === "L") {
+      return [{ scope: "domain", type: "OPEN_ADD_TASK_LINK_MODAL" }];
+    }
+    if (name === "e" || name === "E" || sequence === "e" || sequence === "E") {
+      return [{ scope: "domain", type: "OPEN_EDIT_TASK_LINK_MODAL" }];
+    }
+    if (
+      name === "d" ||
+      name === "D" ||
+      sequence === "d" ||
+      sequence === "D" ||
+      name === "backspace"
+    ) {
+      return [{ scope: "domain", type: "OPEN_DELETE_TASK_LINK_MODAL" }];
+    }
+    return [];
+  }
+
+  if (focus !== FocusTarget.TASK_LIST) {
     return [];
   }
 
