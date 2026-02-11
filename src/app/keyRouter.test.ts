@@ -46,6 +46,21 @@ describe("handleKey", () => {
     expect(
       run(
         { name: "escape" },
+        {
+          uiState: {
+            ...initialUIState,
+            mode: Mode.MODAL_CONFIRM,
+            focus: FocusTarget.MODAL,
+            modal: {
+              type: "emptyNux" as const
+            }
+          }
+        }
+      )
+    ).toEqual([{ scope: "ui", type: "DISMISS_EMPTY_NUX" }]);
+    expect(
+      run(
+        { name: "escape" },
         { hasPendingGPrefix: true }
       )
     ).toEqual([{ scope: "ui", type: "SET_G_PREFIX", active: false }]);
@@ -126,6 +141,27 @@ describe("handleKey", () => {
     expect(run({ name: "g", sequence: "g" }, { uiState: modalState })).toEqual([
       { scope: "domain", type: "MODAL_OVERDUE_GO_TO_TASK" }
     ]);
+  });
+
+  it("routes empty NUX modal keys", () => {
+    const modalState = {
+      ...initialUIState,
+      mode: Mode.MODAL_CONFIRM,
+      focus: FocusTarget.MODAL,
+      modal: {
+        type: "emptyNux" as const
+      }
+    };
+
+    expect(run({ name: "a", sequence: "a" }, { uiState: modalState })).toEqual([
+      { scope: "ui", type: "DISMISS_EMPTY_NUX" },
+      { scope: "domain", type: "OPEN_ADD" }
+    ]);
+    expect(run({ name: "A", sequence: "A" }, { uiState: modalState })).toEqual([
+      { scope: "ui", type: "DISMISS_EMPTY_NUX" },
+      { scope: "domain", type: "OPEN_ADD" }
+    ]);
+    expect(run({ name: "j", sequence: "j" }, { uiState: modalState })).toEqual([]);
   });
 
   it("keeps list navigation active only in list/task_list focus", () => {

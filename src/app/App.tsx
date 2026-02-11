@@ -14,6 +14,7 @@ import { EditorPane } from "../components/EditorPane";
 import { LeftRail, type LeftRailMenuItem } from "../components/LeftRail";
 import { DashboardPane } from "../components/DashboardPane";
 import { BackupCenterScreen } from "../components/BackupCenterScreen";
+import { EmptyNuxModal } from "../components/EmptyNuxModal";
 import { OverdueNotificationModal } from "../components/OverdueNotificationModal";
 import { diffLocalDays, startOfLocalDayMs } from "../domain/dates";
 import { computeTopTagsOpen } from "../domain/dashboard";
@@ -658,6 +659,7 @@ export function App({
   const lastSuccessfulSaveAtRef = useRef<number | undefined>(undefined);
   const gPrefixTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navBannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const emptyNuxEligibilityCheckedRef = useRef(false);
   const helpScrollRef = useRef<ScrollBoxRenderable | null>(null);
   const helpReturnContextRef = useRef({
     mode: Mode.LIST,
@@ -1113,6 +1115,32 @@ export function App({
   useEffect(() => {
     evaluateNotificationsRef.current(Date.now());
   }, [state.tasks]);
+
+  useEffect(() => {
+    if (emptyNuxEligibilityCheckedRef.current) return;
+    if (uiState.modal) return;
+    if (uiState.notificationModalQueue.length > 0) return;
+
+    if (state.tasks.length > 0) {
+      emptyNuxEligibilityCheckedRef.current = true;
+      return;
+    }
+
+    if (uiState.emptyNuxDismissed) {
+      emptyNuxEligibilityCheckedRef.current = true;
+      return;
+    }
+
+    uiDispatch({ type: "OPEN_EMPTY_NUX" });
+    uiDispatch({ type: "setMode", mode: Mode.MODAL_CONFIRM });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.MODAL });
+    emptyNuxEligibilityCheckedRef.current = true;
+  }, [
+    state.tasks.length,
+    uiState.modal,
+    uiState.notificationModalQueue.length,
+    uiState.emptyNuxDismissed
+  ]);
 
   useEffect(() => {
     if (
@@ -1578,6 +1606,9 @@ export function App({
     switch (action.type) {
       case "UNWIND":
         applyEscUnwind();
+        return;
+      case "DISMISS_EMPTY_NUX":
+        uiDispatch({ type: "DISMISS_EMPTY_NUX" });
         return;
       case "TOGGLE_DASHBOARD":
         toggleDashboard();
@@ -2926,6 +2957,15 @@ export function App({
     applyEscUnwind();
   }
 
+  function dismissEmptyNuxModal() {
+    uiDispatch({ type: "DISMISS_EMPTY_NUX" });
+  }
+
+  function createTaskFromEmptyNuxModal() {
+    uiDispatch({ type: "DISMISS_EMPTY_NUX" });
+    openAdd();
+  }
+
   function getActiveOverdueModalEvent(): TaskOverdueEvent | null {
     if (uiState.mode !== Mode.MODAL_CONFIRM) return null;
     if (!uiState.modal || uiState.modal.type !== "overdue") return null;
@@ -3609,6 +3649,11 @@ export function App({
                 </box>
               </box>
             </box>
+          ) : uiState.modal.type === "emptyNux" ? (
+            <EmptyNuxModal
+              onClose={dismissEmptyNuxModal}
+              onCreateTask={createTaskFromEmptyNuxModal}
+            />
           ) : activeOverdueModal ? (
             <OverdueNotificationModal
               event={activeOverdueModal.event}

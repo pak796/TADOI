@@ -85,6 +85,23 @@ describe("uiState esc unwind target", () => {
     });
   });
 
+  it("unwinds empty NUX modal to list/task-list", () => {
+    const target = resolveEscUnwindTarget({
+      mode: Mode.MODAL_CONFIRM,
+      modal: {
+        type: "emptyNux"
+      },
+      helpReturnMode: Mode.SEARCH,
+      helpReturnFocus: FocusTarget.SEARCH_INPUT
+    });
+    expect(target).toEqual({
+      mode: Mode.LIST,
+      focus: FocusTarget.TASK_LIST,
+      clearEditor: false,
+      clearModal: true
+    });
+  });
+
   it("unwinds help/search/editor one layer", () => {
     expect(
       resolveEscUnwindTarget({

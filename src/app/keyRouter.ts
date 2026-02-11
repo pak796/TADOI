@@ -23,6 +23,7 @@ export type KeyRouterContext = {
 
 export type KeyRouterAction =
   | { scope: "ui"; type: "UNWIND" }
+  | { scope: "ui"; type: "DISMISS_EMPTY_NUX" }
   | { scope: "ui"; type: "TOGGLE_DASHBOARD" }
   | { scope: "ui"; type: "OPEN_HELP" }
   | { scope: "ui"; type: "OPEN_BACKUP_CENTER" }
@@ -232,6 +233,9 @@ export function handleKey(
     if (hasPendingGPrefix) {
       return [{ scope: "ui", type: "SET_G_PREFIX", active: false }];
     }
+    if (mode === Mode.MODAL_CONFIRM && uiState.modal?.type === "emptyNux") {
+      return [{ scope: "ui", type: "DISMISS_EMPTY_NUX" }];
+    }
     if (mode === Mode.BACKUP_CENTER) {
       return [{ scope: "ui", type: "BACKUP_BACK" }];
     }
@@ -245,6 +249,20 @@ export function handleKey(
   }
 
   if (mode === Mode.MODAL_CONFIRM) {
+    if (uiState.modal?.type === "emptyNux") {
+      if (
+        name === "a" ||
+        name === "A" ||
+        sequence === "a" ||
+        sequence === "A"
+      ) {
+        return [
+          { scope: "ui", type: "DISMISS_EMPTY_NUX" },
+          { scope: "domain", type: "OPEN_ADD" }
+        ];
+      }
+      return [];
+    }
     if (uiState.modal?.type === "delete") {
       if (name === "y" || sequence === "y") {
         return [{ scope: "domain", type: "MODAL_CONFIRM_DELETE" }];

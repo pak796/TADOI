@@ -16,7 +16,11 @@ export type UIOverdueModal = {
   previousFocus: FocusTarget;
 };
 
-export type UIConfirmModal = UIDeleteModal | UIOverdueModal;
+export type UIEmptyNuxModal = {
+  type: "emptyNux";
+};
+
+export type UIConfirmModal = UIDeleteModal | UIOverdueModal | UIEmptyNuxModal;
 
 export type UIState = {
   mode: ModeType;
@@ -26,6 +30,7 @@ export type UIState = {
   editorScrollOffset: number;
   modal: UIConfirmModal | null;
   notificationModalQueue: TaskOverdueEvent[];
+  emptyNuxDismissed: boolean;
   previousMode: ModeType;
   previousFocus: FocusTarget;
 };
@@ -34,6 +39,8 @@ export type UIAction =
   | { type: "setMode"; mode: ModeType }
   | { type: "setFocus"; focus: FocusTarget }
   | { type: "setModal"; modal: UIConfirmModal | null }
+  | { type: "OPEN_EMPTY_NUX" }
+  | { type: "DISMISS_EMPTY_NUX" }
   | { type: "enqueueNotificationModal"; event: TaskOverdueEvent }
   | { type: "dequeueNotificationModal" }
   | { type: "clearNotificationModalQueue" }
@@ -56,6 +63,7 @@ export const initialUIState: UIState = {
   editorScrollOffset: 0,
   modal: null,
   notificationModalQueue: [],
+  emptyNuxDismissed: false,
   previousMode: Mode.LIST,
   previousFocus: FocusTarget.TASK_LIST
 };
@@ -68,6 +76,27 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
       return { ...state, focus: action.focus };
     case "setModal":
       return { ...state, modal: action.modal };
+    case "OPEN_EMPTY_NUX":
+      if (state.modal || state.emptyNuxDismissed) {
+        return state;
+      }
+      return {
+        ...state,
+        modal: {
+          type: "emptyNux"
+        }
+      };
+    case "DISMISS_EMPTY_NUX":
+      if (state.modal?.type !== "emptyNux") {
+        return state;
+      }
+      return {
+        ...state,
+        mode: Mode.LIST,
+        focus: FocusTarget.TASK_LIST,
+        modal: null,
+        emptyNuxDismissed: true
+      };
     case "enqueueNotificationModal":
       return {
         ...state,
@@ -107,6 +136,18 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
 
 export function unwind(state: UIState): UnwindResult | null {
   if (isModalMode(state.mode)) {
+    if (state.modal?.type === "emptyNux") {
+      return {
+        state: {
+          ...state,
+          mode: Mode.LIST,
+          focus: FocusTarget.TASK_LIST,
+          modal: null,
+          emptyNuxDismissed: true
+        },
+        clearEditorDraft: false
+      };
+    }
     if (state.modal) {
       return {
         state: {

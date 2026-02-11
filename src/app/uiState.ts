@@ -146,6 +146,14 @@ export function resolveEscUnwindTarget(params: {
   const { mode, modal, helpReturnMode, helpReturnFocus } = params;
 
   if (mode === Mode.MODAL_CONFIRM) {
+    if (modal?.type === "emptyNux") {
+      return {
+        mode: Mode.LIST,
+        focus: FocusTarget.TASK_LIST,
+        clearEditor: false,
+        clearModal: true
+      };
+    }
     if (modal) {
       return {
         mode: modal.previousMode,

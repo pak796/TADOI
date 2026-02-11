@@ -14,6 +14,7 @@ describe("ui state", () => {
   it("initializes to list mode and task list focus", () => {
     expect(initialUIState.mode).toBe(Mode.LIST);
     expect(initialUIState.focus).toBe(FocusTarget.TASK_LIST);
+    expect(initialUIState.emptyNuxDismissed).toBe(false);
   });
 
   it("enqueues and dequeues notification modal events", () => {
@@ -34,6 +35,49 @@ describe("ui state", () => {
     });
     const cleared = uiReducer(queued, { type: "clearNotificationModalQueue" });
     expect(cleared.notificationModalQueue).toEqual([]);
+  });
+
+  it("opens empty NUX only when eligible", () => {
+    const opened = uiReducer(initialUIState, { type: "OPEN_EMPTY_NUX" });
+    expect(opened.modal).toEqual({ type: "emptyNux" });
+
+    const blockedByModal = uiReducer(
+      {
+        ...initialUIState,
+        modal: {
+          type: "delete",
+          taskId: "task-1",
+          taskTitle: "Task",
+          previousMode: Mode.LIST,
+          previousFocus: FocusTarget.TASK_LIST
+        }
+      },
+      { type: "OPEN_EMPTY_NUX" }
+    );
+    expect(blockedByModal.modal?.type).toBe("delete");
+
+    const blockedByDismissed = uiReducer(
+      { ...initialUIState, emptyNuxDismissed: true },
+      { type: "OPEN_EMPTY_NUX" }
+    );
+    expect(blockedByDismissed.modal).toBeNull();
+  });
+
+  it("dismisses empty NUX and marks session dismissed", () => {
+    const dismissed = uiReducer(
+      {
+        ...initialUIState,
+        mode: Mode.MODAL_CONFIRM,
+        focus: FocusTarget.MODAL,
+        modal: { type: "emptyNux" }
+      },
+      { type: "DISMISS_EMPTY_NUX" }
+    );
+
+    expect(dismissed.mode).toBe(Mode.LIST);
+    expect(dismissed.focus).toBe(FocusTarget.TASK_LIST);
+    expect(dismissed.modal).toBeNull();
+    expect(dismissed.emptyNuxDismissed).toBe(true);
   });
 });
 
@@ -82,6 +126,28 @@ describe("unwind", () => {
         mode: Mode.DASHBOARD,
         focus: FocusTarget.DASHBOARD,
         modal: null
+      },
+      clearEditorDraft: false
+    });
+  });
+
+  it("dismisses empty NUX to list/task-list and records dismissal", () => {
+    const result = unwind({
+      ...initialUIState,
+      mode: Mode.MODAL_CONFIRM,
+      focus: FocusTarget.MODAL,
+      modal: {
+        type: "emptyNux"
+      }
+    });
+
+    expect(result).toEqual({
+      state: {
+        ...initialUIState,
+        mode: Mode.LIST,
+        focus: FocusTarget.TASK_LIST,
+        modal: null,
+        emptyNuxDismissed: true
       },
       clearEditorDraft: false
     });
