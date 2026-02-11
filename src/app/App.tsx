@@ -116,12 +116,17 @@ const VIEW_NAME_MAX_LENGTH = 40;
 const DASHBOARD_TOP_TAG_MIN = 5;
 const DASHBOARD_TOP_TAG_MAX = 8;
 const PERF_DEBUG_ENABLED = process.env[ENV_VARS.PERF_DEBUG] === "1";
-const HELP_PANEL_MIN_WIDTH = 56;
-const HELP_PANEL_MAX_WIDTH = 96;
-const HELP_PANEL_MIN_HEIGHT = 12;
+const HELP_PANEL_MIN_WIDTH = 96;
+const HELP_PANEL_MAX_WIDTH = 124;
+const HELP_PANEL_MIN_HEIGHT = 14;
 const HELP_PANEL_HORIZONTAL_MARGIN = 4;
 const HELP_PANEL_VERTICAL_MARGIN = 2;
-const HELP_PANEL_CHROME_ROWS = 6;
+const HELP_PANEL_BORDER_ROWS = 2;
+const HELP_PANEL_BORDER_COLS = 2;
+const HELP_HEADER_ROWS = 2;
+const HELP_DIVIDER_ROWS = 1;
+const HELP_FOOTER_ROWS = 2;
+const HELP_PANEL_CHROME_ROWS = HELP_HEADER_ROWS + HELP_DIVIDER_ROWS + HELP_FOOTER_ROWS;
 
 type HelpMenuItem = {
   title: string;
@@ -262,6 +267,19 @@ function createDefaultHelpExpandedState(): boolean[] {
 function clampToBounds(value: number, min: number, max: number): number {
   if (max <= min) return max;
   return Math.max(min, Math.min(value, max));
+}
+
+function truncateToWidth(value: string, maxWidth: number): string {
+  if (maxWidth <= 0) return "";
+  if (value.length <= maxWidth) return value;
+  if (maxWidth <= 3) return value.slice(0, maxWidth);
+  return `${value.slice(0, maxWidth - 3)}...`;
+}
+
+function fitLineToWidth(value: string, width: number): string {
+  const truncated = truncateToWidth(value, width);
+  if (truncated.length >= width) return truncated;
+  return truncated.padEnd(width, " ");
 }
 
 function buildHelpRows(expandedBySection: boolean[]): {
@@ -510,7 +528,6 @@ export function App({
   );
   const selectedTask =
     visibleTaskRows.find((task) => task.id === state.selectedId) ?? visibleTaskRows[0];
-  const sortModeLabel = getSortModeLabel(state.sortMode);
   const clampedHelpFocusedSectionIndex = Math.max(
     0,
     Math.min(helpFocusedSectionIndex, HELP_MENU_SECTIONS.length - 1)
@@ -521,20 +538,36 @@ export function App({
   );
   const focusedHelpHeaderRow = helpHeaderRowIndexes[clampedHelpFocusedSectionIndex] ?? 0;
   const helpPanelMaxWidth = Math.max(20, terminalWidth - HELP_PANEL_HORIZONTAL_MARGIN * 2);
+  const helpPanelWidthMin = Math.min(HELP_PANEL_MIN_WIDTH, helpPanelMaxWidth);
+  const helpPanelWidthMax = Math.min(HELP_PANEL_MAX_WIDTH, helpPanelMaxWidth);
   const helpPanelWidth = clampToBounds(
-    HELP_PANEL_MAX_WIDTH,
-    Math.min(HELP_PANEL_MIN_WIDTH, helpPanelMaxWidth),
-    helpPanelMaxWidth
+    Math.floor(terminalWidth * 0.9),
+    helpPanelWidthMin,
+    helpPanelWidthMax
   );
   const helpPanelMaxHeight = Math.max(8, terminalHeight - HELP_PANEL_VERTICAL_MARGIN * 2);
-  const helpPanelDesiredHeight = helpRows.length + HELP_PANEL_CHROME_ROWS;
+  const helpPanelDesiredHeight =
+    helpRows.length + HELP_PANEL_CHROME_ROWS + HELP_PANEL_BORDER_ROWS;
   const helpPanelHeight = clampToBounds(
     helpPanelDesiredHeight,
     Math.min(HELP_PANEL_MIN_HEIGHT, helpPanelMaxHeight),
     helpPanelMaxHeight
   );
-  const helpContentVisibleRows = Math.max(1, helpPanelHeight - HELP_PANEL_CHROME_ROWS);
+  const helpPanelInnerWidth = Math.max(1, helpPanelWidth - HELP_PANEL_BORDER_COLS);
+  const helpPanelInnerHeight = Math.max(1, helpPanelHeight - HELP_PANEL_BORDER_ROWS);
+  const helpContentVisibleRows = Math.max(1, helpPanelInnerHeight - HELP_PANEL_CHROME_ROWS);
   const helpHasOverflow = helpRows.length > helpContentVisibleRows;
+  const helpFooterWidth = Math.max(1, helpPanelInnerWidth - 2);
+  const helpFooterHintsLine = fitLineToWidth(
+    helpHasOverflow
+      ? "1 Backup Center | h theme | m flash | Up/Down focus | Enter/Space toggle | Left/Right collapse/expand | Esc close | Scroll"
+      : "1 Backup Center | h theme | m flash | Up/Down focus | Enter/Space toggle | Left/Right collapse/expand | Esc close",
+    helpFooterWidth
+  );
+  const helpFooterDataPathLine = fitLineToWidth(
+    `Data path: ${getDataFilePath()}`,
+    helpFooterWidth
+  );
 
   function findTaskById(taskId: string | undefined): Task | undefined {
     if (!taskId) return undefined;
@@ -1011,6 +1044,23 @@ export function App({
     if (uiState.mode !== Mode.HELP) return;
     helpScrollRef.current?.scrollTo({ x: 0, y: helpScrollOffset });
   }, [helpScrollOffset, uiState.mode]);
+
+  useEffect(() => {
+    if (uiState.mode !== Mode.HELP) return;
+    renderer.requestRender();
+  }, [
+    renderer,
+    uiState.mode,
+    helpPanelWidth,
+    helpPanelHeight,
+    helpPanelInnerWidth,
+    helpPanelInnerHeight,
+    helpRows.length,
+    helpExpandedBySection,
+    helpScrollOffset,
+    helpFooterHintsLine,
+    helpFooterDataPathLine
+  ]);
 
   function applyEscUnwind(): boolean {
     const next = unwind(uiState);
@@ -3224,33 +3274,63 @@ export function App({
               maxWidth: "100%",
               flexDirection: "column",
               backgroundColor: theme.panel,
+              overflow: "hidden",
               border: true,
               borderStyle: "single",
               borderColor: theme.outline
             }}
           >
-            <box style={{ flexDirection: "column", paddingLeft: 1, paddingRight: 1 }}>
+            <box
+              style={{
+                flexDirection: "column",
+                height: HELP_HEADER_ROWS,
+                minHeight: HELP_HEADER_ROWS,
+                maxHeight: HELP_HEADER_ROWS,
+                paddingLeft: 1,
+                paddingRight: 1,
+                backgroundColor: theme.panel
+              }}
+            >
               <text style={{ color: theme.text, fontWeight: "bold" }}>Help</text>
               <text style={{ color: theme.muted }}>
                 {APP_NAME} {APP_VERSION} · {APP_TAGLINE}
               </text>
             </box>
-            <box style={{ paddingLeft: 1, paddingRight: 1 }}>
+            <box
+              style={{
+                height: HELP_DIVIDER_ROWS,
+                minHeight: HELP_DIVIDER_ROWS,
+                maxHeight: HELP_DIVIDER_ROWS,
+                paddingLeft: 1,
+                paddingRight: 1,
+                backgroundColor: theme.panel
+              }}
+            >
               <text style={{ color: theme.outline }}>
-                {"─".repeat(Math.max(1, helpPanelWidth - 4))}
+                {"─".repeat(helpFooterWidth)}
               </text>
             </box>
-            <box style={{ flexGrow: 1, minHeight: 0, paddingLeft: 1, paddingRight: 1 }}>
+            <box
+              style={{
+                height: helpContentVisibleRows,
+                minHeight: helpContentVisibleRows,
+                maxHeight: helpContentVisibleRows,
+                paddingLeft: 1,
+                paddingRight: 1,
+                backgroundColor: theme.panel,
+                overflow: "hidden"
+              }}
+            >
               <scrollbox
                 ref={helpScrollRef}
                 scrollY
                 style={{
                   height: "100%",
                   minHeight: 0,
-                  rootOptions: { backgroundColor: "transparent" },
-                  wrapperOptions: { backgroundColor: "transparent" },
-                  viewportOptions: { backgroundColor: "transparent" },
-                  contentOptions: { backgroundColor: "transparent" }
+                  rootOptions: { backgroundColor: theme.panel },
+                  wrapperOptions: { backgroundColor: theme.panel },
+                  viewportOptions: { backgroundColor: theme.panel },
+                  contentOptions: { backgroundColor: theme.panel }
                 }}
               >
                 <box style={{ flexDirection: "column" }}>
@@ -3302,16 +3382,47 @@ export function App({
                 </box>
               </scrollbox>
             </box>
-            <box style={{ paddingLeft: 1, paddingRight: 1, paddingBottom: 1 }}>
-              <text style={{ color: theme.muted }}>
-                {helpHasOverflow
-                  ? "↑/↓ focus · Enter/Space toggle · ←/→ collapse/expand · Esc close · scroll inside"
-                  : "↑/↓ focus · Enter/Space toggle · ←/→ collapse/expand · Esc close"}
-              </text>
-              <text style={{ color: theme.muted }}>
-                1: Backup Center · h/H: theme · m/M: flash · current sort: {sortModeLabel}
-              </text>
-              <text style={{ color: theme.muted }}>Data path: {getDataFilePath()}</text>
+            {/*
+             * Keep footer fixed to exactly 2 rows with full-width background fill.
+             * Border-aware sizing + clipping keeps footer rows inside the panel interior and
+             * avoids stale glyph overprint/spillage from content redraws.
+             */}
+            <box
+              style={{
+                flexDirection: "column",
+                height: HELP_FOOTER_ROWS,
+                minHeight: HELP_FOOTER_ROWS,
+                maxHeight: HELP_FOOTER_ROWS,
+                backgroundColor: theme.panel,
+                overflow: "hidden"
+              }}
+            >
+              <box
+                style={{
+                  height: 1,
+                  minHeight: 1,
+                  maxHeight: 1,
+                  width: "100%",
+                  paddingLeft: 1,
+                  paddingRight: 1,
+                  backgroundColor: theme.panel
+                }}
+              >
+                <text style={{ color: theme.muted }}>{helpFooterHintsLine}</text>
+              </box>
+              <box
+                style={{
+                  height: 1,
+                  minHeight: 1,
+                  maxHeight: 1,
+                  width: "100%",
+                  paddingLeft: 1,
+                  paddingRight: 1,
+                  backgroundColor: theme.panel
+                }}
+              >
+                <text style={{ color: theme.muted }}>{helpFooterDataPathLine}</text>
+              </box>
             </box>
           </box>
         </box>
