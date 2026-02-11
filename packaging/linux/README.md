@@ -1,4 +1,4 @@
-# Linux Packaging
+# TADOI™ Linux Packaging
 
 Scripts in this directory build Linux installer artifacts for the TADOI CLI.
 

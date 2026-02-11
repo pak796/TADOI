@@ -1,4 +1,4 @@
-# Contributing to TADOI
+# Contributing to TADOI™
 
 ## Contributions Status
 PRs are welcome.

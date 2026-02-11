@@ -20,6 +20,7 @@ import {
   cycleRepeatModeClamp,
   shouldInterceptRepeatArrowAtEdge
 } from "./editorRepeatKeyboard";
+import { APP_NAME } from "../brand/brand";
 
 type EditorPaneProps = {
   mode: Mode;
@@ -281,7 +282,7 @@ export function EditorPane({
           value={draft.title}
           onChange={(value) => onUpdate({ title: value })}
           focused={focus === "title"}
-          placeholder="Ship TADOI update"
+          placeholder={`Ship ${APP_NAME} app update`}
           style={{ backgroundColor: theme.bg, color: theme.text, width: "100%" }}
         />
       </box>

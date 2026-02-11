@@ -1,4 +1,4 @@
-# DASHBOARD_SPEC_MVP — TADOI Dashboard Runtime Contract
+# DASHBOARD_SPEC_MVP — TADOI™ Dashboard Runtime Contract
 
 > Scope: dashboard mode renders a three-part analytics surface using the same filtered dataset as Task List (including recurrence-expanded occurrence rows):
 > 1) KPI strip (top)

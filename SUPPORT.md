@@ -1,4 +1,4 @@
-# Support
+# TADOI™ Support
 
 ## Where to Report Issues
 Report bugs and support requests via GitHub Issues in this repository.

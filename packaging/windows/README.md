@@ -1,4 +1,4 @@
-# Windows Packaging
+# TADOI™ Windows Packaging
 
 Scripts in this directory build installable Windows artifacts for the TADOI CLI.
 

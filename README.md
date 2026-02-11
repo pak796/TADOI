@@ -1,4 +1,4 @@
-# TADOI
+# TADOI™
 
 Terminal Accessible Digital Organization Interface
 
@@ -416,3 +416,6 @@ Enable lightweight render metrics logging:
 ```bash
 TADOI_PERF_DEBUG=1 bun run dev
 ```
+
+## Trademark Notice
+TADOI™ is a trademark of <OWNER>. Other names may be trademarks of their respective owners.

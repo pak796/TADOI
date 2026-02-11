@@ -258,6 +258,7 @@ describe("redactStateForExport", () => {
       savedViews: [],
       settings: {
         themeId: "default",
+        logoMode: "default",
         flashMode: "slow",
         notifications: DEFAULT_NOTIFICATIONS
       }

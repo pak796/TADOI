@@ -124,12 +124,14 @@ import {
   deleteViewAtIndex
 } from "../domain/savedViews";
 import {
+  cycleLogoMode,
   getDefaultSettings,
   loadSettings,
   saveSettingsDebounced,
   type CustomThemeConfig,
   type CustomThemes,
   type FlashMode,
+  type LogoMode,
   type NotificationSettings,
   type ThemeObjectId
 } from "../settings/settings";
@@ -174,7 +176,13 @@ import {
   MIN_TERMINAL_HEIGHT,
   MIN_TERMINAL_WIDTH
 } from "./layoutGuard";
-import { APP_NAME, APP_TAGLINE, ENV_VARS } from "../brand/brand";
+import {
+  APP_NAME,
+  APP_TAGLINE,
+  ENV_VARS,
+  PRODUCT_NAME_TM,
+  TRADEMARK_NOTICE_LINES
+} from "../brand/brand";
 import type { ThemeTokens } from "../theme/themes";
 import { copyToClipboard } from "./copyToClipboard";
 import { openTarget } from "./openTarget";
@@ -205,6 +213,7 @@ const HELP_PANEL_CHROME_ROWS = HELP_HEADER_ROWS + HELP_DIVIDER_ROWS + HELP_FOOTE
 const HELP_SECTION_SCROLL_PADDING = 1;
 const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings =
   getDefaultSettings().notifications;
+const DEFAULT_LOGO_MODE: LogoMode = getDefaultSettings().logoMode;
 const DEFAULT_CUSTOM_THEMES: CustomThemes | undefined = getDefaultSettings().customThemes;
 const TASK_LINK_FORM_FIELD_ORDER: UITaskLinkFormField[] = [
   "label",
@@ -266,6 +275,10 @@ const HELP_SETTINGS_NAV_ITEMS: HelpNavItem[] = [
   {
     title: "Theme",
     description: "Theme mode and custom palette settings."
+  },
+  {
+    title: "Logo",
+    description: "Left/Right previews mode. Enter commits. Esc backs out."
   },
   {
     title: "Flash Mode",
@@ -417,6 +430,10 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
         description: "Useful when reporting issues or validating environment."
       },
       {
+        title: "Legal / Trademarks",
+        description: [...TRADEMARK_NOTICE_LINES]
+      },
+      {
         title: "License & usage",
         description: "See LICENSE for PolyForm Noncommercial terms."
       }
@@ -425,6 +442,9 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
 ];
 const HELP_SETTINGS_NAV_SECTION_INDEX = HELP_MENU_SECTIONS.findIndex(
   (section) => section.title === "Settings & Themes"
+);
+const HELP_SETTINGS_LOGO_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
+  (item) => item.title === "Logo"
 );
 
 function createDefaultHelpExpandedState(): boolean[] {
@@ -809,11 +829,18 @@ function formatLinkSnippet(label: string | undefined, target: string): string {
   return `${value.slice(0, 47)}…`;
 }
 
+function formatLogoModeLabel(mode: LogoMode): "Default" | "Alternate" | "Rotate" {
+  if (mode === "default") return "Default";
+  if (mode === "alternate32") return "Alternate";
+  return "Rotate";
+}
+
 type AppProps = {
   initialData?: LoadedData;
   skipInitialSave?: boolean;
   startupBanner?: string;
   initialThemeId?: ThemeId;
+  initialLogoMode?: LogoMode;
   initialFlashMode?: FlashMode;
   initialNotificationSettings?: NotificationSettings;
   initialCustomThemes?: CustomThemes;
@@ -835,6 +862,7 @@ export function App({
   skipInitialSave = false,
   startupBanner,
   initialThemeId = "default",
+  initialLogoMode = DEFAULT_LOGO_MODE,
   initialFlashMode = "slow",
   initialNotificationSettings = DEFAULT_NOTIFICATION_SETTINGS,
   initialCustomThemes = DEFAULT_CUSTOM_THEMES,
@@ -845,6 +873,7 @@ export function App({
   const [state, dispatch] = useReducer(reducer, initialData, initState);
   const [settingsState, settingsDispatch] = useReducer(settingsReducer, {
     themeId: initialThemeId,
+    logoMode: initialLogoMode,
     flashMode: initialFlashMode,
     notifications: initialNotificationSettings,
     customThemes: initialCustomThemes
@@ -884,6 +913,7 @@ export function App({
     custom1: 0
   });
   const [helpPreviewThemeMode, setHelpPreviewThemeMode] = useState<ThemeId | null>(null);
+  const [helpDraftLogoMode, setHelpDraftLogoMode] = useState<LogoMode | null>(null);
   const [custom1DraftGlobal, setCustom1DraftGlobal] = useState<ThemeTokens>(() =>
     resolveCustom1Config(initialCustomThemes).global
   );
@@ -1065,6 +1095,9 @@ export function App({
         : "1 Backup Center | Enter/Right on Settings opens Settings pages | Up/Down focus | Enter/Space expand | Left collapse | Esc close"
       : activeHelpPage === "custom1Edit"
         ? "S save | C/Esc cancel | R reset token | Tab next focus | Arrows adjust/jump | Enter commit"
+        : activeHelpPage === "settings" &&
+            clampedHelpNavSelectionIndex === HELP_SETTINGS_LOGO_NAV_INDEX
+          ? "Left/Right preview logo | Enter commit | Esc/Backspace back"
         : "Up/Down move | Enter/Right select | Left/Backspace/Esc back";
   const helpFooterHintsLine = fitLineToWidth(
     helpFooterHintsRaw,
@@ -1306,8 +1339,17 @@ export function App({
     : settingsState.themeId === "rotating"
       ? `Theme mode: rotating (active: ${activeThemeId})`
       : `Theme mode: ${settingsState.themeId}`;
+  const effectiveLogoModeForHelp = helpDraftLogoMode ?? settingsState.logoMode;
+  const helpLogoStatusLineRaw =
+    helpDraftLogoMode && helpDraftLogoMode !== settingsState.logoMode
+      ? `Logo: ${formatLogoModeLabel(settingsState.logoMode)} (preview: ${formatLogoModeLabel(helpDraftLogoMode)})`
+      : `Logo: ${formatLogoModeLabel(settingsState.logoMode)}`;
   const helpThemeStatusLine = fitLineToWidth(
     `    ${helpThemeStatusLineRaw}`,
+    helpContentLineWidth
+  );
+  const helpLogoStatusLine = fitLineToWidth(
+    `    ${helpLogoStatusLineRaw}`,
     helpContentLineWidth
   );
   const helpFlashStatusLine = fitLineToWidth(
@@ -1588,6 +1630,15 @@ export function App({
   }, [settingsState.themeId]);
 
   useEffect(() => {
+    if (
+      activeHelpPage !== "settings" ||
+      clampedHelpNavSelectionIndex !== HELP_SETTINGS_LOGO_NAV_INDEX
+    ) {
+      setHelpDraftLogoMode(null);
+    }
+  }, [activeHelpPage, clampedHelpNavSelectionIndex]);
+
+  useEffect(() => {
     applyThemeWithSettings(activeThemeId, settingsState, {
       draft:
         uiState.mode === Mode.HELP && activeHelpPage === "custom1Edit"
@@ -1604,6 +1655,7 @@ export function App({
     saveSettingsDebounced(
       {
         themeId: settingsState.themeId,
+        logoMode: settingsState.logoMode,
         flashMode: settingsState.flashMode,
         notifications: settingsState.notifications,
         customThemes: settingsState.customThemes
@@ -1615,6 +1667,7 @@ export function App({
     settingsPath,
     settingsState.customThemes,
     settingsState.flashMode,
+    settingsState.logoMode,
     settingsState.notifications,
     settingsState.themeId
   ]);
@@ -1821,6 +1874,10 @@ export function App({
     dispatch({ type: "load", data: stateResult.data });
     const settingsResult = await loadSettings();
     settingsDispatch({ type: "setTheme", themeId: settingsResult.settings.themeId });
+    settingsDispatch({
+      type: "setLogoMode",
+      logoMode: settingsResult.settings.logoMode
+    });
     settingsDispatch({
       type: "setFlashMode",
       flashMode: settingsResult.settings.flashMode
@@ -2280,9 +2337,34 @@ export function App({
       }
     }
 
+    const keyName = key.name ?? "";
+    if (
+      uiState.mode === Mode.HELP &&
+      activeHelpPage === "settings" &&
+      clampedHelpNavSelectionIndex === HELP_SETTINGS_LOGO_NAV_INDEX
+    ) {
+      if (keyName === "left") {
+        cycleLogoModeSetting(-1, false);
+        return;
+      }
+      if (keyName === "right") {
+        cycleLogoModeSetting(1, false);
+        return;
+      }
+      if (keyName === "return" || keyName === "enter") {
+        commitLogoModeSetting();
+        return;
+      }
+      if (keyName === "escape" || keyName === "backspace") {
+        cancelLogoModeSetting();
+        handleHelpNavBack();
+        return;
+      }
+    }
+
     const actions = handleKey(
       {
-        name: key.name ?? "",
+        name: keyName,
         sequence: key.sequence ?? "",
         ctrl: key.ctrl === true,
         shift: key.shift === true
@@ -2321,6 +2403,7 @@ export function App({
     setHelpNavStack(["help"]);
     setHelpNavSelection({ settings: 0, theme: 0, custom1: 0 });
     setHelpPreviewThemeMode(null);
+    setHelpDraftLogoMode(null);
     helpPreviewRestoreThemeRef.current = null;
     helpReturnContextRef.current = {
       mode: uiState.mode,
@@ -2407,6 +2490,35 @@ export function App({
     showShortNavigationBanner("Custom1 theme saved");
   }
 
+  function cycleLogoModeSetting(direction: 1 | -1, commit: boolean) {
+    const baseMode = helpDraftLogoMode ?? settingsState.logoMode;
+    const nextMode = cycleLogoMode(baseMode, direction);
+    if (!commit) {
+      setHelpDraftLogoMode(nextMode);
+      return;
+    }
+    setHelpDraftLogoMode(null);
+    if (nextMode === settingsState.logoMode) {
+      return;
+    }
+    settingsDispatch({ type: "setLogoMode", logoMode: nextMode });
+    showShortNavigationBanner(`Logo: ${formatLogoModeLabel(nextMode)}`);
+  }
+
+  function commitLogoModeSetting() {
+    const nextMode = helpDraftLogoMode ?? settingsState.logoMode;
+    setHelpDraftLogoMode(null);
+    if (nextMode === settingsState.logoMode) {
+      return;
+    }
+    settingsDispatch({ type: "setLogoMode", logoMode: nextMode });
+    showShortNavigationBanner(`Logo: ${formatLogoModeLabel(nextMode)}`);
+  }
+
+  function cancelLogoModeSetting() {
+    setHelpDraftLogoMode(null);
+  }
+
   function cycleThemeModeSetting() {
     settingsDispatch({ type: "cycleTheme" });
   }
@@ -2483,6 +2595,7 @@ export function App({
     if (helpNavStack[helpNavStack.length - 1] === "custom1Edit") {
       closeCustom1EditorCancel();
     }
+    cancelLogoModeSetting();
     const { mode: returnMode, focus: returnFocus } = normalizeHelpReturnContext(
       helpReturnContextRef.current.mode,
       helpReturnContextRef.current.focus
@@ -2618,22 +2731,28 @@ export function App({
     }
   }
 
-  function handleHelpNavForward() {
+  function handleHelpNavForward(targetIndex = clampedHelpNavSelectionIndex) {
     if (activeHelpPage === "settings") {
-      if (clampedHelpNavSelectionIndex === 0) pushHelpPage("theme");
-      if (clampedHelpNavSelectionIndex === 1) switchFlashModeSetting();
-      if (clampedHelpNavSelectionIndex === 2) switchNotificationsEnabledSetting();
-      if (clampedHelpNavSelectionIndex === 3) switchInAppOverduePopupSetting();
-      if (clampedHelpNavSelectionIndex === 4) switchTerminalBellSetting();
+      if (targetIndex === 0) {
+        cancelLogoModeSetting();
+        pushHelpPage("theme");
+      }
+      if (targetIndex === HELP_SETTINGS_LOGO_NAV_INDEX) {
+        cycleLogoModeSetting(1, true);
+      }
+      if (targetIndex === 2) switchFlashModeSetting();
+      if (targetIndex === 3) switchNotificationsEnabledSetting();
+      if (targetIndex === 4) switchInAppOverduePopupSetting();
+      if (targetIndex === 5) switchTerminalBellSetting();
       return;
     }
     if (activeHelpPage === "theme") {
-      if (clampedHelpNavSelectionIndex === 0) cycleThemeModeSetting();
-      if (clampedHelpNavSelectionIndex === 1) pushHelpPage("custom1");
+      if (targetIndex === 0) cycleThemeModeSetting();
+      if (targetIndex === 1) pushHelpPage("custom1");
       return;
     }
     if (activeHelpPage === "custom1") {
-      if (clampedHelpNavSelectionIndex === 0) {
+      if (targetIndex === 0) {
         openCustom1Editor();
       }
     }
@@ -2643,6 +2762,9 @@ export function App({
     if (activeHelpPage === "custom1Edit") {
       closeCustom1EditorCancel();
       return;
+    }
+    if (activeHelpPage === "settings") {
+      cancelLogoModeSetting();
     }
     popHelpPage();
   }
@@ -4554,6 +4676,7 @@ export function App({
           sortMode={state.sortMode}
           fastPulseOn={fastPulseOn}
           flashMode={settingsState.flashMode}
+          logoMode={settingsState.logoMode}
           onMenuSelect={handleLeftRailMenuSelect}
           terminalWidth={terminalWidth}
           showLogo={showLogo}
@@ -5420,7 +5543,7 @@ export function App({
             >
               <text style={{ color: helpTheme.text, fontWeight: "bold" }}>{helpHeaderTitle}</text>
               <text style={{ color: helpTheme.muted }}>
-                {APP_NAME} {APP_VERSION} · {APP_TAGLINE}
+                {PRODUCT_NAME_TM} {APP_VERSION} · {APP_TAGLINE}
               </text>
             </box>
             <box
@@ -5606,6 +5729,7 @@ export function App({
                     {activeHelpPage === "settings" ? (
                       <>
                         <text style={{ color: helpTheme.muted }}>{helpThemeStatusLine.trim()}</text>
+                        <text style={{ color: helpTheme.muted }}>{helpLogoStatusLine.trim()}</text>
                         <text style={{ color: helpTheme.muted }}>{helpFlashStatusLine.trim()}</text>
                         <text style={{ color: helpTheme.muted }}>
                           {helpNotificationsEnabledStatusLine.trim()}
@@ -5623,6 +5747,9 @@ export function App({
                       const itemTitle =
                         activeHelpPage === "theme" && index === 0
                           ? helpThemeStatusLineRaw
+                          : activeHelpPage === "settings" &&
+                              index === HELP_SETTINGS_LOGO_NAV_INDEX
+                            ? `Logo: ${formatLogoModeLabel(effectiveLogoModeForHelp)}`
                           : item.title;
                       return (
                         <box key={`${activeHelpPage}-${item.title}`}>
@@ -5636,7 +5763,7 @@ export function App({
                             onMouseDown={(event) => {
                               if (event.button !== 0) return;
                               setHelpNavSelectionForActivePage(index);
-                              handleHelpNavForward();
+                              handleHelpNavForward(index);
                             }}
                           >
                             <text

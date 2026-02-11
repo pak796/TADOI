@@ -1,4 +1,4 @@
-# macOS Packaging
+# TADOI™ macOS Packaging
 
 Scripts in this directory build installable macOS artifacts for the TADOI CLI.
 

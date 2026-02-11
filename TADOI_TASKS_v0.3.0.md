@@ -1,4 +1,4 @@
-# TASKS.md — TADOI (Codex Task List)
+# TASKS.md — TADOI™ (Codex Task List)
 
 ## Conventions
 - Each task includes **Definition of Done (DoD)**.

@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from "react";
 import { Filters, FocusTarget, Mode, SortMode } from "../domain/models";
 import { formatDate } from "../state/store";
 import { colorForTag, theme, styles } from "../app/theme";
@@ -5,8 +6,14 @@ import { formatTagFilterBooleanSummary } from "../domain/tagFilter";
 import { formatTagForDisplay } from "../domain/tagIndex";
 import { APP_VERSION } from "../app/version";
 import { getSortModeLabel } from "../domain/query";
-import { APP_TAGLINE, getAsciiLogoLines, getHeaderLogoVariant } from "../brand/brand";
-import type { FlashMode } from "../settings/settings";
+import {
+  APP_TAGLINE,
+  LOGO_MAX_WIDTH,
+  LOGO_VARIANTS,
+  PRODUCT_NAME_TM,
+  ROTATING_LOGO_ORDER
+} from "../brand/brand";
+import type { FlashMode, LogoMode } from "../settings/settings";
 import type { ThemeId } from "../theme/themes";
 
 export type LeftRailMenuItem =
@@ -26,6 +33,7 @@ type LeftRailProps = {
   sortMode: SortMode;
   fastPulseOn: boolean;
   flashMode: FlashMode;
+  logoMode: LogoMode;
   onMenuSelect?: (item: LeftRailMenuItem) => void;
   terminalWidth: number;
   showLogo?: boolean;
@@ -33,21 +41,11 @@ type LeftRailProps = {
 };
 
 const HINT_LINE_WIDTH = 18;
+const LOGO_ROTATE_INTERVAL_MS = 30_000;
 const HINT_LINES = [
   "j/k: MOVE",
-  "b: DASHBOARD",
-  "a: ADD",
-  "e: EDIT",
   "c: COPY",
-  "SPACE: TOGGLE",
-  "d: DELETE",
-  "/: SEARCH",
-  "f: STATUS",
-  "s: SORT",
-  "g: DUE",
-  "t: TAG CYCLE",
-  "T: TAG PANEL",
-  "?: HELP"
+  "SPACE: TOGGLE"
 ] as const;
 
 function getModeLabel(mode: Mode): string {
@@ -154,6 +152,24 @@ function formatThemeName(themeId: ThemeId): string {
   return themeId.replace(/([a-z])([A-Z])/g, "$1 $2").toUpperCase();
 }
 
+function formatMenuItemLabel(item: LeftRailMenuItem): string {
+  if (item === "DASHBOARD") return "DASHBOARD (B)";
+  if (item === "ADD") return "ADD (A)";
+  if (item === "EDIT") return "EDIT (E)";
+  if (item === "SEARCH") return "SEARCH (/)";
+  if (item === "HELP") return "HELP (?)";
+  if (item === "DELETE") return "DELETE (D)";
+  return item;
+}
+
+function trimTrailingBlankLogoLines(lines: string[]): string[] {
+  let end = lines.length;
+  while (end > 0 && lines[end - 1].trim().length === 0) {
+    end -= 1;
+  }
+  return end === lines.length ? lines : lines.slice(0, end);
+}
+
 export function LeftRail({
   mode,
   focus,
@@ -161,11 +177,34 @@ export function LeftRail({
   sortMode,
   fastPulseOn,
   flashMode,
+  logoMode,
   onMenuSelect,
   terminalWidth,
   showLogo = true,
   activeThemeId
 }: LeftRailProps) {
+  const [rotatingLogoIndex, setRotatingLogoIndex] = useState(0);
+
+  useEffect(() => {
+    if (logoMode !== "rotate") {
+      setRotatingLogoIndex(0);
+      return;
+    }
+    // Rotate mode always starts from the default logo when enabled.
+    setRotatingLogoIndex(0);
+    const intervalId = setInterval(() => {
+      setRotatingLogoIndex((prev) => (prev + 1) % ROTATING_LOGO_ORDER.length);
+    }, LOGO_ROTATE_INTERVAL_MS);
+    return () => clearInterval(intervalId);
+  }, [logoMode]);
+
+  const effectiveLogoId = useMemo(
+    () =>
+      logoMode === "rotate"
+        ? ROTATING_LOGO_ORDER[rotatingLogoIndex % ROTATING_LOGO_ORDER.length]
+        : logoMode,
+    [logoMode, rotatingLogoIndex]
+  );
   const version = APP_VERSION;
   const logoDivider = "--------------------------------";
   const now = new Date();
@@ -214,32 +253,44 @@ export function LeftRail({
   const dueText = dueBg === "transparent" ? theme.text : theme.bg;
   const booleanTagSummary = formatTagFilterBooleanSummary(filters.tagFilter);
 
-  const logoVariant = getHeaderLogoVariant(terminalWidth);
-  const logoLines = showLogo ? getAsciiLogoLines(logoVariant) : [];
-  const taglineLines = showLogo ? wrapWords(APP_TAGLINE, 32) : [];
+  const logoLines = showLogo ? trimTrailingBlankLogoLines(LOGO_VARIANTS[effectiveLogoId]) : [];
+  const taglineLines = showLogo ? wrapWords(APP_TAGLINE, LOGO_MAX_WIDTH) : [];
   const activeThemeLabel = activeThemeId ? formatThemeName(activeThemeId) : null;
 
   return (
     <box style={{ flexDirection: "column", gap: 0, height: "100%" }}>
       <box style={{ flexDirection: "column", flexGrow: 1 }}>
-        {logoLines.length > 0
-          ? logoLines.map((line) => (
-              <text key={line} style={{ color: theme.text }}>
-                {line}
-              </text>
-            ))
-          : null}
-        {taglineLines.length > 0 ? (
+        {showLogo ? (
           <box style={{ flexDirection: "column", width: "100%", alignItems: "center" }}>
-            {taglineLines.map((line) => (
-              <text key={`tagline-${line}`} style={{ color: theme.muted }}>
-                {line}
-              </text>
-            ))}
+            <box style={{ flexDirection: "column", width: LOGO_MAX_WIDTH }}>
+              {logoLines.map((line, index) => (
+                <text key={`logo-${effectiveLogoId}-${index}`} style={{ color: theme.text }}>
+                  {line}
+                </text>
+              ))}
+              {logoLines.length > 0 ? (
+                <box style={{ flexDirection: "row", justifyContent: "center", width: "100%" }}>
+                  <text style={{ color: theme.text, fontWeight: "bold" }}>{PRODUCT_NAME_TM}</text>
+                </box>
+              ) : null}
+              {taglineLines.length > 0 ? (
+                <box style={{ flexDirection: "column", width: "100%", alignItems: "center" }}>
+                  {taglineLines.map((line, index) => (
+                    <text key={`tagline-${index}`} style={{ color: theme.muted }}>
+                      {line}
+                    </text>
+                  ))}
+                </box>
+              ) : null}
+            </box>
           </box>
         ) : null}
-        {logoLines.length > 0 ? (
-          <text style={{ color: theme.outline }}>{logoDivider}</text>
+        {showLogo && logoLines.length > 0 ? (
+          <box style={{ flexDirection: "column", width: "100%", alignItems: "center" }}>
+            <box style={{ flexDirection: "column", width: LOGO_MAX_WIDTH }}>
+              <text style={{ color: theme.outline }}>{logoDivider}</text>
+            </box>
+          </box>
         ) : null}
         <text style={{ color: theme.muted }}>{version}</text>
         <text style={{ color: theme.muted, marginTop: 1 }}>DATE: {todayLabel}</text>
@@ -273,7 +324,7 @@ export function LeftRail({
                 onMenuSelect(item);
               }}
             >
-              <text>{item}</text>
+              <text>{formatMenuItemLabel(item)}</text>
             </box>
           );
         })}
@@ -282,7 +333,7 @@ export function LeftRail({
       <box style={{ marginTop: 1, flexDirection: "column", gap: 0 }}>
         <text style={styles.muted}>FILTERS</text>
         <box style={{ flexDirection: "row", alignItems: "center", gap: 1 }}>
-          <text style={{ color: theme.text }}>STATUS:</text>
+          <text style={{ color: theme.text }}>STATUS (F):</text>
           <box
             style={{
               backgroundColor: statusBg,
@@ -294,7 +345,7 @@ export function LeftRail({
           </box>
         </box>
         <box style={{ flexDirection: "row", alignItems: "center", gap: 1 }}>
-          <text style={{ color: theme.text }}>DUE:</text>
+          <text style={{ color: theme.text }}>DUE (G):</text>
           <box
             style={{
               backgroundColor: dueBg,
@@ -306,10 +357,10 @@ export function LeftRail({
           </box>
         </box>
         {booleanTagSummary ? (
-          <text style={{ color: theme.text }}>TAGS: {booleanTagSummary}</text>
+          <text style={{ color: theme.text }}>TAGS (T): {booleanTagSummary}</text>
         ) : filters.tag ? (
           <box style={{ flexDirection: "row", alignItems: "center", gap: 1 }}>
-            <text style={{ color: theme.text }}>TAG:</text>
+            <text style={{ color: theme.text }}>TAG (T):</text>
             <box
               style={{
                 backgroundColor: colorForTag(filters.tag),
@@ -321,12 +372,12 @@ export function LeftRail({
             </box>
           </box>
         ) : (
-          <text style={{ color: theme.text }}>TAG: (none)</text>
+          <text style={{ color: theme.text }}>TAG (T): (none)</text>
         )}
         <text style={{ color: theme.text }}>
-          SEARCH: {filters.searchText?.trim() ? filters.searchText : "(none)"}
+          SEARCH (/): {filters.searchText?.trim() ? filters.searchText : "(none)"}
         </text>
-        <text style={{ color: theme.text }}>SORT: {sortLabel}</text>
+        <text style={{ color: theme.text }}>SORT (S): {sortLabel}</text>
       </box>
 
       <box style={{ marginTop: 1, flexDirection: "column", gap: 0 }}>

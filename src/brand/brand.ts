@@ -1,4 +1,15 @@
-export const APP_NAME = "TADOI";
+export const PRODUCT_NAME = "TADOI";
+export const PRODUCT_NAME_TM = "TADOI™";
+export const TRADEMARK_OWNER = "<OWNER>";
+export const TRADEMARK_NOTICE =
+  `${PRODUCT_NAME_TM} is a trademark of ${TRADEMARK_OWNER}. ` +
+  "Other names may be trademarks of their respective owners.";
+export const TRADEMARK_NOTICE_LINES = [
+  `${PRODUCT_NAME_TM} is a trademark of ${TRADEMARK_OWNER}.`,
+  "Other names may be trademarks of their respective owners."
+] as const;
+
+export const APP_NAME = PRODUCT_NAME;
 export const APP_TAGLINE = "Terminal Accessible Digital Organization Interface";
 export const CLI_NAME = "tadoi";
 export const BRAND_SLUG = "tadoi";
@@ -12,6 +23,7 @@ export const DATA_FILE_NAME = `${BRAND_SLUG}_data.json`;
 export const SETTINGS_FILE_NAME = "settings.json";
 export const SETTINGS_DIR_NAME = BRAND_SLUG;
 export const SETTINGS_FALLBACK_DIR_NAME = `.${BRAND_SLUG}`;
+export const LOGO_MAX_WIDTH = 32;
 
 export const ASCII_LOGO = {
   FULL: ` _____   _    ____   ___ ___
@@ -25,6 +37,22 @@ export const ASCII_LOGO = {
 } as const;
 
 export type AsciiLogoVariant = keyof typeof ASCII_LOGO;
+export type LogoVariantId = "default" | "alternate32";
+
+const ALTERNATE_LOGO_32 = ` _____ ___ ______ _____ _____ 
+|_   _/ _ \\|  _  \\  _  |_   _|
+  | |/ /_\\ \\ | | | | | | | |  
+  | ||  _  | | | | | | | | |  
+  | || | | | |/ /\\ \\_/ /_| |_ 
+  \\_/\\_| |_/___/  \\___/ \\___/ 
+                               `;
+
+export const LOGO_VARIANTS: Record<LogoVariantId, string[]> = {
+  default: ASCII_LOGO.FULL.split("\n"),
+  alternate32: ALTERNATE_LOGO_32.split("\n")
+};
+
+export const ROTATING_LOGO_ORDER: LogoVariantId[] = ["default", "alternate32"];
 
 export function getAsciiLogoLines(variant: AsciiLogoVariant): string[] {
   return ASCII_LOGO[variant].split("\n");

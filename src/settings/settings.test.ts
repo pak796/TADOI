@@ -20,6 +20,7 @@ const DEFAULT_NOTIFICATIONS = {
   bannerDurationMs: 5000,
   bellCooldownMs: 2000
 };
+const DEFAULT_LOGO_MODE = getDefaultSettings().logoMode;
 const DEFAULT_CUSTOM_THEMES = getDefaultSettings().customThemes;
 
 function normalizeTokens(tokens: ThemeTokens): ThemeTokens {
@@ -69,6 +70,7 @@ describe("loadSettings", () => {
     const homeDir = await makeTempDir();
     const result = await loadSettings({ homeDir, platform: "linux" });
     expect(result.settings.themeId).toBe("default");
+    expect(result.settings.logoMode).toBe(DEFAULT_LOGO_MODE);
     expect(result.settings.notifications).toEqual(DEFAULT_NOTIFICATIONS);
     expect(result.settings.customThemes).toEqual(expectedCustomThemesFor("default"));
     expect(result.resolvedPath).toBe(
@@ -94,6 +96,7 @@ describe("loadSettings", () => {
 
     const result = await loadSettings({ homeDir, platform: "linux" });
     expect(result.settings.themeId).toBe("retro");
+    expect(result.settings.logoMode).toBe(DEFAULT_LOGO_MODE);
     expect(result.settings.flashMode).toBe("static");
     expect(result.settings.notifications).toEqual(DEFAULT_NOTIFICATIONS);
     expect(result.settings.customThemes).toEqual(expectedCustomThemesFor("retro"));
@@ -112,6 +115,7 @@ describe("loadSettings", () => {
 
     const result = await loadSettings({ homeDir, platform: "linux" });
     expect(result.settings.themeId).toBe("highContrast");
+    expect(result.settings.logoMode).toBe(DEFAULT_LOGO_MODE);
     expect(result.settings.flashMode).toBe("static");
     expect(result.settings.notifications).toEqual(DEFAULT_NOTIFICATIONS);
     expect(result.settings.customThemes).toEqual(expectedCustomThemesFor("highContrast"));
@@ -137,6 +141,7 @@ describe("loadSettings", () => {
 
     const result = await loadSettings({ homeDir, platform: "linux" });
     expect(result.settings.themeId).toBe("default");
+    expect(result.settings.logoMode).toBe(DEFAULT_LOGO_MODE);
     expect(result.settings.flashMode).toBe("slow");
     expect(result.settings.notifications).toEqual(DEFAULT_NOTIFICATIONS);
     expect(result.settings.customThemes).toEqual(expectedCustomThemesFor("default"));
@@ -150,6 +155,7 @@ describe("loadSettings", () => {
     const missing = await loadSettings({ homeDir, platform: "linux" });
     expect(missing.settings).toEqual({
       themeId: "retro",
+      logoMode: DEFAULT_LOGO_MODE,
       flashMode: "slow",
       notifications: DEFAULT_NOTIFICATIONS,
       customThemes: expectedCustomThemesFor("retro")
@@ -163,10 +169,33 @@ describe("loadSettings", () => {
     const invalid = await loadSettings({ homeDir, platform: "linux" });
     expect(invalid.settings).toEqual({
       themeId: "retro",
+      logoMode: DEFAULT_LOGO_MODE,
       flashMode: "slow",
       notifications: DEFAULT_NOTIFICATIONS,
       customThemes: expectedCustomThemesFor("retro")
     });
+  });
+
+  it("defaults logo mode when missing or invalid", async () => {
+    const homeDir = await makeTempDir();
+    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    await fs.mkdir(path.dirname(primary), { recursive: true });
+
+    await fs.writeFile(
+      primary,
+      JSON.stringify({ themeId: "retro", flashMode: "slow" }),
+      "utf8"
+    );
+    const missing = await loadSettings({ homeDir, platform: "linux" });
+    expect(missing.settings.logoMode).toBe(DEFAULT_LOGO_MODE);
+
+    await fs.writeFile(
+      primary,
+      JSON.stringify({ themeId: "retro", logoMode: "invalid-mode", flashMode: "slow" }),
+      "utf8"
+    );
+    const invalid = await loadSettings({ homeDir, platform: "linux" });
+    expect(invalid.settings.logoMode).toBe(DEFAULT_LOGO_MODE);
   });
 
   it("normalizes invalid notification settings to defaults", async () => {
@@ -192,6 +221,7 @@ describe("loadSettings", () => {
     const result = await loadSettings({ homeDir, platform: "linux" });
     expect(result.settings).toEqual({
       themeId: "retro",
+      logoMode: DEFAULT_LOGO_MODE,
       flashMode: "static",
       notifications: DEFAULT_NOTIFICATIONS,
       customThemes: expectedCustomThemesFor("retro")
@@ -228,6 +258,7 @@ describe("saveSettingsDebounced", () => {
     saveSettingsDebounced(
       {
         themeId: "highContrast",
+        logoMode: "default",
         flashMode: "static",
         notifications: DEFAULT_NOTIFICATIONS
       },
@@ -239,6 +270,7 @@ describe("saveSettingsDebounced", () => {
     const raw = await fs.readFile(primary, "utf8");
     expect(JSON.parse(raw)).toEqual({
       themeId: "highContrast",
+      logoMode: "default",
       flashMode: "static",
       notifications: DEFAULT_NOTIFICATIONS,
       customThemes: expectedCustomThemesFor("highContrast")
@@ -249,13 +281,19 @@ describe("saveSettingsDebounced", () => {
     const homeDir = await makeTempDir();
     const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
     saveSettingsDebounced(
-      { themeId: "retro", flashMode: "slow", notifications: DEFAULT_NOTIFICATIONS },
+      {
+        themeId: "retro",
+        logoMode: "default",
+        flashMode: "slow",
+        notifications: DEFAULT_NOTIFICATIONS
+      },
       20,
       { filePath: primary, homeDir, platform: "linux" }
     );
     saveSettingsDebounced(
       {
         themeId: "neonHacker",
+        logoMode: "default",
         flashMode: "static",
         notifications: DEFAULT_NOTIFICATIONS
       },
@@ -267,6 +305,7 @@ describe("saveSettingsDebounced", () => {
     const raw = await fs.readFile(primary, "utf8");
     expect(JSON.parse(raw)).toEqual({
       themeId: "neonHacker",
+      logoMode: "default",
       flashMode: "static",
       notifications: DEFAULT_NOTIFICATIONS,
       customThemes: expectedCustomThemesFor("neonHacker")
@@ -292,7 +331,12 @@ describe("saveSettingsDebounced", () => {
     };
 
     saveSettingsDebounced(
-      { themeId: "retro", flashMode: "static", notifications: DEFAULT_NOTIFICATIONS },
+      {
+        themeId: "retro",
+        logoMode: "default",
+        flashMode: "static",
+        notifications: DEFAULT_NOTIFICATIONS
+      },
       20,
       { homeDir, platform: "linux", fsOps }
     );
@@ -306,6 +350,7 @@ describe("saveSettingsDebounced", () => {
     const fallbackRaw = await fs.readFile(fallback, "utf8");
     expect(JSON.parse(fallbackRaw)).toEqual({
       themeId: "retro",
+      logoMode: "default",
       flashMode: "static",
       notifications: DEFAULT_NOTIFICATIONS,
       customThemes: expectedCustomThemesFor("retro")
@@ -319,7 +364,12 @@ describe("saveSettingsStrict", () => {
     const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
 
     const result = await saveSettingsStrict(
-      { themeId: "retro", flashMode: "slow", notifications: DEFAULT_NOTIFICATIONS },
+      {
+        themeId: "retro",
+        logoMode: "default",
+        flashMode: "slow",
+        notifications: DEFAULT_NOTIFICATIONS
+      },
       { filePath: primary, homeDir, platform: "linux" }
     );
 
@@ -328,6 +378,7 @@ describe("saveSettingsStrict", () => {
     const raw = await fs.readFile(primary, "utf8");
     expect(JSON.parse(raw)).toEqual({
       themeId: "retro",
+      logoMode: "default",
       flashMode: "slow",
       notifications: DEFAULT_NOTIFICATIONS,
       customThemes: expectedCustomThemesFor("retro")
@@ -355,6 +406,7 @@ describe("saveSettingsStrict", () => {
     const result = await saveSettingsStrict(
       {
         themeId: "highContrast",
+        logoMode: "default",
         flashMode: "static",
         notifications: DEFAULT_NOTIFICATIONS
       },
@@ -366,6 +418,7 @@ describe("saveSettingsStrict", () => {
     const raw = await fs.readFile(fallback, "utf8");
     expect(JSON.parse(raw)).toEqual({
       themeId: "highContrast",
+      logoMode: "default",
       flashMode: "static",
       notifications: DEFAULT_NOTIFICATIONS,
       customThemes: expectedCustomThemesFor("highContrast")

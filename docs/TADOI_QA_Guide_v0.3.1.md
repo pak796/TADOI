@@ -1,4 +1,4 @@
-# TADOI QA Guide (v0.3.1)
+# TADOI™ QA Guide (v0.3.1)
 
 Validation date: **2026-02-11**
 Runtime baseline: **v0.3.1**

@@ -1,13 +1,16 @@
 import { ThemeId, cycleTheme } from "../theme/themes";
 import {
+  cycleLogoMode,
   CustomThemes,
   FlashMode,
+  LogoMode,
   NotificationSettings,
   getDefaultSettings
 } from "../settings/settings";
 
 export type SettingsState = {
   themeId: ThemeId;
+  logoMode: LogoMode;
   flashMode: FlashMode;
   notifications: NotificationSettings;
   customThemes?: CustomThemes;
@@ -16,6 +19,8 @@ export type SettingsState = {
 export type SettingsAction =
   | { type: "setTheme"; themeId: ThemeId }
   | { type: "cycleTheme" }
+  | { type: "setLogoMode"; logoMode: LogoMode }
+  | { type: "cycleLogoMode"; direction?: 1 | -1 }
   | { type: "setFlashMode"; flashMode: FlashMode }
   | { type: "toggleFlashMode" }
   | { type: "setNotifications"; notifications: NotificationSettings }
@@ -26,6 +31,7 @@ export type SettingsAction =
 
 export const initialSettingsState: SettingsState = {
   themeId: "default",
+  logoMode: getDefaultSettings().logoMode,
   flashMode: "slow",
   notifications: {
     enabled: true,
@@ -46,6 +52,10 @@ export function settingsReducer(
       return { ...state, themeId: action.themeId };
     case "cycleTheme":
       return { ...state, themeId: cycleTheme(state.themeId) };
+    case "setLogoMode":
+      return { ...state, logoMode: action.logoMode };
+    case "cycleLogoMode":
+      return { ...state, logoMode: cycleLogoMode(state.logoMode, action.direction ?? 1) };
     case "setFlashMode":
       return { ...state, flashMode: action.flashMode };
     case "toggleFlashMode":

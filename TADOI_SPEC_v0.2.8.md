@@ -1,4 +1,4 @@
-# SPEC.md — TADOI (TypeScript + OpenTUI)
+# SPEC.md — TADOI™ (TypeScript + OpenTUI)
 
 ## 0) Summary
 

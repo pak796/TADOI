@@ -1,4 +1,4 @@
-# TADOI Notifications Spec Sheet (Tier 1–2) + Tier 3 Scaffold (Modal UX)
+# TADOI™ Notifications Spec Sheet (Tier 1–2) + Tier 3 Scaffold (Modal UX)
 **Version:** 0.3  
 **Date:** February 11, 2026
 **Runtime baseline:** v0.3.0

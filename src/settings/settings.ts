@@ -41,12 +41,16 @@ export type CustomThemes = {
 
 export type TadoiSettings = {
   themeId: ThemeId;
+  logoMode: LogoMode;
   flashMode: FlashMode;
   notifications: NotificationSettings;
   customThemes?: CustomThemes;
 };
 
 export type FlashMode = "slow" | "static";
+export type LogoMode = "default" | "alternate32" | "rotate";
+
+export const LOGO_MODE_ORDER: LogoMode[] = ["default", "alternate32", "rotate"];
 
 export type NotificationSettings = {
   enabled: boolean;
@@ -93,6 +97,7 @@ const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
 
 const DEFAULT_SETTINGS: TadoiSettings = {
   themeId: "default",
+  logoMode: "default",
   flashMode: "slow",
   notifications: DEFAULT_NOTIFICATION_SETTINGS,
   customThemes: {
@@ -128,6 +133,18 @@ export function resolveSettingsPaths(
 
 export function isFlashMode(value: unknown): value is FlashMode {
   return value === "slow" || value === "static";
+}
+
+export function isLogoMode(value: unknown): value is LogoMode {
+  return value === "default" || value === "alternate32" || value === "rotate";
+}
+
+export function cycleLogoMode(current: LogoMode, direction: 1 | -1 = 1): LogoMode {
+  const index = LOGO_MODE_ORDER.indexOf(current);
+  const safeIndex = index >= 0 ? index : 0;
+  const nextIndex =
+    (safeIndex + direction + LOGO_MODE_ORDER.length) % LOGO_MODE_ORDER.length;
+  return LOGO_MODE_ORDER[nextIndex];
 }
 
 function normalizePositiveMs(value: unknown, fallback: number): number {
@@ -251,11 +268,13 @@ function normalizeSettings(input: unknown): TadoiSettings {
     return getDefaultSettings();
   }
   const maybeThemeId = input.themeId;
+  const maybeLogoMode = input.logoMode;
   const maybeFlashMode = input.flashMode;
   const maybeNotifications = input.notifications;
   const themeId = isThemeId(maybeThemeId) ? maybeThemeId : DEFAULT_SETTINGS.themeId;
   return {
     themeId,
+    logoMode: isLogoMode(maybeLogoMode) ? maybeLogoMode : DEFAULT_SETTINGS.logoMode,
     flashMode: isFlashMode(maybeFlashMode) ? maybeFlashMode : DEFAULT_SETTINGS.flashMode,
     notifications: normalizeNotifications(maybeNotifications),
     customThemes: normalizeCustomThemes(input.customThemes, themeId)

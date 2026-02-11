@@ -19,6 +19,7 @@ import {
 import {
   getDefaultSettings,
   isFlashMode,
+  isLogoMode,
   loadSettings,
   saveSettingsStrict,
   type TadoiSettings
@@ -171,12 +172,17 @@ function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | un
   if (flashModeRaw !== undefined && !isFlashMode(flashModeRaw)) {
     return { ok: false, error: "settings.flashMode is invalid" };
   }
+  const logoModeRaw = settings.logoMode;
+  if (logoModeRaw !== undefined && !isLogoMode(logoModeRaw)) {
+    return { ok: false, error: "settings.logoMode is invalid" };
+  }
   const customThemesRaw = settings.customThemes;
   if (customThemesRaw !== undefined && !isRecord(customThemesRaw)) {
     return { ok: false, error: "settings.customThemes must be an object when present" };
   }
 
-  const defaultNotifications = getDefaultSettings().notifications;
+  const defaultSettings = getDefaultSettings();
+  const defaultNotifications = defaultSettings.notifications;
   const notificationsRaw = settings.notifications;
   if (notificationsRaw !== undefined && !isRecord(notificationsRaw)) {
     return { ok: false, error: "settings.notifications must be an object when present" };
@@ -221,6 +227,7 @@ function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | un
     ok: true,
     value: {
       themeId,
+      logoMode: isLogoMode(logoModeRaw) ? logoModeRaw : defaultSettings.logoMode,
       flashMode: isFlashMode(flashModeRaw) ? flashModeRaw : "slow",
       notifications: {
         enabled:

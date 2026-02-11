@@ -20,6 +20,7 @@ const CUSTOM_GLOBAL: ThemeTokens = {
 function makeSettings(): TadoiSettings {
   return {
     themeId: "custom1",
+    logoMode: "default",
     flashMode: "slow",
     notifications: {
       enabled: true,

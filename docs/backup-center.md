@@ -1,4 +1,4 @@
-# Backup Center (In-App)
+# TADOI™ Backup Center (In-App)
 
 This document describes the in-app data portability flow available in TADOI.
 Runtime baseline: **v0.3.0**.

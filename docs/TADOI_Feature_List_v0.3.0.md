@@ -1,4 +1,4 @@
-# TADOI Feature List (v0.3.0)
+# TADOI™ Feature List (v0.3.0)
 
 This list reflects current runtime behavior as of **2026-02-11**.
 

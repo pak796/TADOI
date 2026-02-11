@@ -1,4 +1,4 @@
-# TADOI — Task Links / Attachments Spec (MVP+)
+# TADOI™ — Task Links / Attachments Spec (MVP+)
 Version: v0.2  
 Date: February 11, 2026  
 Status: Draft / Ready for implementation  

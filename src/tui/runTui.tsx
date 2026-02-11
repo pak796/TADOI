@@ -7,7 +7,7 @@ import { normalizeTagIndex, normalizeTags } from "../domain/tagIndex";
 import { loadSettings } from "../settings/settings";
 import { CURRENT_SCHEMA_VERSION, safeLoadState } from "../state/persistence";
 import { applyArchiveAging } from "../state/store";
-import { APP_NAME } from "../brand/brand";
+import { APP_NAME, PRODUCT_NAME_TM } from "../brand/brand";
 
 export type RunTuiOptions = {
   showLogo: boolean;
@@ -90,6 +90,7 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
       skipInitialSave={!shouldSaveInitial}
       startupBanner={loadResult.bannerMessage}
       initialThemeId={settingsResult.settings.themeId}
+      initialLogoMode={settingsResult.settings.logoMode}
       initialFlashMode={settingsResult.settings.flashMode}
       initialNotificationSettings={settingsResult.settings.notifications}
       initialCustomThemes={settingsResult.settings.customThemes}
@@ -109,7 +110,7 @@ export async function runTuiSmoke(): Promise<number> {
   try {
     createRoot(renderer).render(
       <box>
-        <text>TADOI smoke</text>
+        <text>{`${PRODUCT_NAME_TM} smoke`}</text>
       </box>
     );
     renderer.requestRender();

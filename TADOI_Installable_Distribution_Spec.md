@@ -1,4 +1,4 @@
-# TADOI Installable Distribution Spec (Bun + OpenTUI Terminal TUI)
+# TADOI™ Installable Distribution Spec (Bun + OpenTUI Terminal TUI)
 
 **Scope:** Produce end-user **installable/distributable** builds for a Bun-based terminal TUI app (OpenTUI + React), including **Windows EXE installer**, **macOS DMG (preferred)**, and **Linux AppImage + DEB**.  
 **Non-goal:** A native desktop GUI app bundle. This is a **terminal-first** product.

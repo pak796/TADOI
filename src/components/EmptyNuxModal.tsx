@@ -1,4 +1,5 @@
 import { themeForObject } from "../app/theme";
+import { PRODUCT_NAME_TM } from "../brand/brand";
 
 type EmptyNuxModalProps = {
   onClose: () => void;
@@ -21,7 +22,7 @@ export function EmptyNuxModal({ onClose, onCreateTask }: EmptyNuxModalProps) {
       }}
     >
       <box style={{ flexDirection: "row", justifyContent: "space-between" }}>
-        <text style={{ fontWeight: "bold" }}>Welcome to TADOI</text>
+        <text style={{ fontWeight: "bold" }}>{`Welcome to ${PRODUCT_NAME_TM}`}</text>
         <box
           style={{ backgroundColor: theme.bg, paddingLeft: 1, paddingRight: 1 }}
           onMouseDown={(mouseEvent) => {

@@ -1,4 +1,4 @@
-# Changelog
+# TADOI™ Changelog
 
 All notable changes to TADOI are documented in this file.
 

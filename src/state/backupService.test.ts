@@ -306,6 +306,7 @@ describe("backupService import/export", () => {
       const rawSettings = await fs.readFile(resolvedSettingsPath, "utf8");
       expect(JSON.parse(rawSettings)).toEqual({
         themeId: "retro",
+        logoMode: "default",
         flashMode: "static",
         notifications: {
           enabled: true,
@@ -408,8 +409,10 @@ describe("backupService import/export", () => {
       const parsed = JSON.parse(rawSettings) as {
         customThemes?: { custom1?: { objects?: { taskList?: { panel?: string } } } };
         themeId?: string;
+        logoMode?: string;
       };
       expect(parsed.themeId).toBe("custom1");
+      expect(parsed.logoMode).toBe("default");
       expect(parsed.customThemes?.custom1?.objects?.taskList?.panel).toBe("#123456");
     } finally {
       if (originalDataPath === undefined) {

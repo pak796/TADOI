@@ -1,4 +1,4 @@
-# Recurring Tasks Implementation Plan (Implemented)
+# TADOI™ Recurring Tasks Implementation Plan (Implemented)
 
 ## Summary
 Recurring tasks are implemented with RRULE-style series metadata and sparse materialization.
