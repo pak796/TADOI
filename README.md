@@ -39,8 +39,8 @@ Verified baseline terminals:
 - GNOME Terminal (Linux baseline)
 
 Minimum supported terminal size:
-- `80x24`
-- Below this size, TADOI shows a centered `Terminal too small (min 80x24)` screen and pauses normal interactions until resized.
+- `104x24`
+- Below this size, TADOI shows a centered `Terminal too small (min 104x24)` screen and pauses normal interactions until resized.
 
 ## Data File
 

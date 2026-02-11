@@ -15,7 +15,7 @@ describe("layoutGuard", () => {
 
   it("builds warning text with minimum and current dimensions", () => {
     const warning = getTerminalSizeWarning(79, 22);
-    expect(warning).toContain("80x24");
+    expect(warning).toContain("104x24");
     expect(warning).toContain("79x22");
   });
 });

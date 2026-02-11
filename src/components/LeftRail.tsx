@@ -87,6 +87,22 @@ function getFocusLabel(focus: FocusTarget): string {
       return "DUE DATE";
     case FocusTarget.EDITOR_DUE_TIME:
       return "DUE TIME";
+    case FocusTarget.EDITOR_REPEAT_MODE:
+      return "REPEAT MODE";
+    case FocusTarget.EDITOR_REPEAT_INTERVAL:
+      return "REPEAT EVERY";
+    case FocusTarget.EDITOR_REPEAT_WEEKDAYS:
+      return "REPEAT DAYS";
+    case FocusTarget.EDITOR_REPEAT_MONTHDAY:
+      return "REPEAT DAY#";
+    case FocusTarget.EDITOR_REPEAT_END_MODE:
+      return "REPEAT END";
+    case FocusTarget.EDITOR_REPEAT_UNTIL:
+      return "END DATE";
+    case FocusTarget.EDITOR_REPEAT_COUNT:
+      return "END COUNT";
+    case FocusTarget.EDITOR_REPEAT_CUSTOM:
+      return "CUSTOM RRULE";
     case FocusTarget.EDITOR_TAGS:
       return "TAGS";
     case FocusTarget.EDITOR_NOTES:

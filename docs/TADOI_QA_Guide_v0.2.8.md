@@ -47,7 +47,7 @@ It is based on:
 - Data corruption recovery and path resolution by platform
 - Key routing boundaries (no leakage between LIST/EDIT/SEARCH/HELP/DASHBOARD/BACKUP modes)
 - Notification modal behavior (queue ordering, modal key routing, action semantics, bell cooldown)
-- Layout resilience at minimum terminal size (`80x24`)
+- Layout resilience at minimum terminal size (`104x24`)
 
 ## 3) Platform Matrix
 
@@ -85,10 +85,10 @@ Use these suites on all three platforms.
 
 ### A. Launch, Layout, and Resize
 
-1. Launch app in terminal at or above `80x24`.
+1. Launch app in terminal at or above `104x24`.
 Expected: three-pane shell renders, no crash.
-2. Resize below `80x24`.
-Expected: blocking warning screen: `Terminal too small (min 80x24)`.
+2. Resize below `104x24`.
+Expected: blocking warning screen: `Terminal too small (min 104x24)`.
 3. Resize back above minimum.
 Expected: normal interaction restored without restart.
 

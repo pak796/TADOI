@@ -116,7 +116,12 @@ import {
 } from "../notifications/overdueTaskActions";
 import type { TaskOverdueEvent } from "../notifications/types";
 import { APP_VERSION } from "./version";
-import { getTerminalSizeWarning, isTerminalSizeSupported } from "./layoutGuard";
+import {
+  getTerminalSizeWarning,
+  isTerminalSizeSupported,
+  MIN_TERMINAL_HEIGHT,
+  MIN_TERMINAL_WIDTH
+} from "./layoutGuard";
 import { APP_NAME, APP_TAGLINE, ENV_VARS } from "../brand/brand";
 
 const TICKER_INTERVAL_MS = 6000;
@@ -206,6 +211,10 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
       {
         title: "Attention jumps: [ ] and { }",
         description: "Cycle overdue and due-today tasks."
+      },
+      {
+        title: "Search: / open, Enter/Esc close",
+        description: "Type to filter by task title and tags while Search is open."
       }
     ]
   },
@@ -284,7 +293,7 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
     items: [
       {
         title: "Resize terminal if layout feels cramped",
-        description: "Minimum supported terminal is 80x24."
+        description: `Minimum supported terminal is ${MIN_TERMINAL_WIDTH}x${MIN_TERMINAL_HEIGHT}.`
       },
       {
         title: "Check app version and data path",
@@ -3302,7 +3311,7 @@ export function App({
                         value={state.filters.searchText ?? ""}
                         onChange={updateSearch}
                         focused={uiState.focus === FocusTarget.SEARCH_INPUT}
-                        placeholder="Search for tasks and tags then press enter"
+                        placeholder="Type to filter tasks and tags; Enter/Esc closes"
                         style={{ backgroundColor: theme.bg, color: theme.text }}
                       />
                     </box>

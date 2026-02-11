@@ -166,7 +166,7 @@ Optional signing env vars:
 
 ### App starts but layout is blocked
 
-- TADOI requires minimum terminal size `80x24`.
+- TADOI requires minimum terminal size `104x24`.
 - Resize the terminal window larger.
 
 ### Data save errors

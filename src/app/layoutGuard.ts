@@ -1,4 +1,4 @@
-export const MIN_TERMINAL_WIDTH = 80;
+export const MIN_TERMINAL_WIDTH = 104;
 export const MIN_TERMINAL_HEIGHT = 24;
 
 export function isTerminalSizeSupported(width: number, height: number): boolean {
