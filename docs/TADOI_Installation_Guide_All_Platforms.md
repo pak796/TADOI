@@ -1,6 +1,6 @@
 # TADOI Installation Guide (macOS, Windows, Linux)
 
-This guide covers installing and running TADOI from source on all supported platforms in one place.
+This guide covers both installable binary distributions and source installs on all supported platforms.
 
 ## 1) What You Need
 
@@ -26,18 +26,40 @@ Verify:
 
 - `bun --version`
 
-## 3) Get the TADOI Source
+## 3) Installable Binaries (Preferred for End Users)
+
+Expected release artifacts:
+- macOS: `TADOI-macOS-<version>.dmg` (contains `TADOI-<version>.pkg`)
+- Windows: `TADOI-Setup-x64-<version>.exe`
+- Linux: `tadoi_<version>_amd64.deb` and/or `tadoi-<version>-x86_64.AppImage`
+
+Install from artifacts:
+- macOS:
+  1. Open DMG.
+  2. Run the included PKG installer.
+  3. Verify in terminal: `tadoi --version`
+- Windows:
+  1. Run setup EXE.
+  2. Open a new terminal session.
+  3. Verify: `tadoi --version`
+- Linux:
+  - DEB: `sudo dpkg -i tadoi_<version>_amd64.deb`
+  - AppImage: `chmod +x tadoi-<version>-x86_64.AppImage && ./tadoi-<version>-x86_64.AppImage --version`
+
+## 4) Source Install (Developer Workflow)
+
+### 4.1 Get the source
 
 1. Clone your repository:
    - `git clone <YOUR_REPO_URL>`
 2. Enter the project directory:
    - `cd TUI_TODO`
 
-## 4) Install Dependencies
+### 4.2 Install dependencies
 
 - `bun install`
 
-## 5) Run TADOI
+### 4.3 Run TADOI
 
 - `bun run dev`
 
@@ -45,7 +67,7 @@ You can also run:
 
 - `bun run start`
 
-## 6) Verify It Started Correctly
+### 4.4 Verify it started correctly
 
 You should see the TADOI interface in your terminal.
 
@@ -68,7 +90,7 @@ Optional notification check:
 - Create a timed task due within 1 minute and keep the app open.
 - Confirm overdue popup modal appears and responds to `S`/`D`/`G`/`Esc`.
 
-## 7) Data File Locations by Platform
+## 5) Data File Locations by Platform
 
 Default data path resolution:
 
@@ -90,7 +112,7 @@ Examples:
 - Windows PowerShell:
   - `$env:TADOI_DATA_PATH="$env:TEMP\\tadoi_data.json"; bun run dev`
 
-## 8) Recommended First-Time Checks
+## 6) Recommended First-Time Checks
 
 Run these once after installation:
 
@@ -105,7 +127,30 @@ Optional full validation:
 4. `bun run pack:inspect`
 5. `bun run pack:smoke`
 
-## 9) Troubleshooting
+## 7) Build and Packaging Commands
+
+Planner-only mode (default):
+- `bun scripts/build-binary.ts --target macos --format raw`
+- `bun scripts/build-binary.ts --target windows --format installer`
+
+Real build mode:
+- `bun scripts/build-binary.ts --target macos --format raw --mode build`
+- `bun scripts/build-binary.ts --target macos --format installer --mode build`
+- `bun scripts/build-binary.ts --target windows --format raw --mode build`
+- `bun scripts/build-binary.ts --target windows --format installer --mode build`
+- `bun scripts/build-binary.ts --target linux --format raw --mode build`
+- `bun scripts/build-binary.ts --target linux --format installer --mode build`
+
+Tool prerequisites:
+- macOS: `pkgbuild`, `productbuild`, `hdiutil` (Xcode command line tools)
+- Windows: Inno Setup compiler (`iscc`)
+- Linux: `dpkg-deb` for DEB, `appimagetool` for AppImage
+
+Optional signing env vars:
+- macOS: `TADOI_MAC_SIGN_IDENTITY_INSTALLER`, `TADOI_MAC_NOTARY_PROFILE`
+- Windows: `TADOI_WIN_SIGN_CERT_PATH`, `TADOI_WIN_SIGN_CERT_PASSWORD`
+
+## 8) Troubleshooting
 
 ### `bun: command not found`
 
@@ -130,7 +175,7 @@ Optional full validation:
 - Ensure the target directory is writable.
 - Temporarily set `TADOI_DATA_PATH` to a writable directory and retry.
 
-## 10) Upgrade Workflow
+## 9) Upgrade Workflow
 
 From the project root:
 
@@ -139,7 +184,7 @@ From the project root:
 3. `bun run test`
 4. `bun run dev`
 
-## 11) Uninstall (Source Install)
+## 10) Uninstall
 
 1. Delete the project folder.
 2. Optionally remove app data files:

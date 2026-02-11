@@ -6,6 +6,7 @@ import { APP_VERSION } from "../app/version";
 import { getSortModeLabel } from "../domain/query";
 import { APP_TAGLINE, getAsciiLogoLines, getHeaderLogoVariant } from "../brand/brand";
 import type { FlashMode } from "../settings/settings";
+import type { ThemeId } from "../theme/themes";
 
 export type LeftRailMenuItem =
   | "LIST"
@@ -27,6 +28,7 @@ type LeftRailProps = {
   onMenuSelect?: (item: LeftRailMenuItem) => void;
   terminalWidth: number;
   showLogo?: boolean;
+  activeThemeId?: ThemeId;
 };
 
 const HINT_LINE_WIDTH = 18;
@@ -126,6 +128,10 @@ function formatHintLine(line: string): string {
     : line.padEnd(HINT_LINE_WIDTH, " ");
 }
 
+function formatThemeName(themeId: ThemeId): string {
+  return themeId.replace(/([a-z])([A-Z])/g, "$1 $2").toUpperCase();
+}
+
 export function LeftRail({
   mode,
   focus,
@@ -135,7 +141,8 @@ export function LeftRail({
   flashMode,
   onMenuSelect,
   terminalWidth,
-  showLogo = true
+  showLogo = true,
+  activeThemeId
 }: LeftRailProps) {
   const version = APP_VERSION;
   const logoDivider = "--------------------------------";
@@ -187,10 +194,11 @@ export function LeftRail({
   const logoVariant = getHeaderLogoVariant(terminalWidth);
   const logoLines = showLogo ? getAsciiLogoLines(logoVariant) : [];
   const taglineLines = showLogo ? wrapWords(APP_TAGLINE, 32) : [];
+  const activeThemeLabel = activeThemeId ? formatThemeName(activeThemeId) : null;
 
   return (
-    <box style={{ flexDirection: "column", gap: 0 }}>
-      <box style={{ flexDirection: "column" }}>
+    <box style={{ flexDirection: "column", gap: 0, height: "100%" }}>
+      <box style={{ flexDirection: "column", flexGrow: 1 }}>
         {logoLines.length > 0
           ? logoLines.map((line) => (
               <text key={line} style={{ color: theme.text }}>
@@ -213,15 +221,16 @@ export function LeftRail({
         <text style={{ color: theme.muted }}>{version}</text>
         <text style={{ color: theme.muted, marginTop: 1 }}>DATE: {todayLabel}</text>
         <text style={{ color: theme.muted }}>TIME: {timeLabel}</text>
-      </box>
 
-      <box style={{ marginTop: 1, flexDirection: "row", alignItems: "center", gap: 1 }}>
-        <text style={styles.muted}>MODE:</text>
-        <box style={{ backgroundColor: theme.accentPurple, paddingLeft: 1, paddingRight: 1 }}>
-          <text style={{ color: theme.bg }}>{modeLabel}</text>
+      <box style={{ marginTop: 1, flexDirection: "column", gap: 0 }}>
+        <box style={{ flexDirection: "row", alignItems: "center", gap: 1 }}>
+          <text style={styles.muted}>MODE:</text>
+          <box style={{ backgroundColor: theme.accentPurple, paddingLeft: 1, paddingRight: 1 }}>
+            <text style={{ color: theme.bg }}>{modeLabel}</text>
+          </box>
         </box>
+        <text style={styles.muted}>FOCUS: {focusLabel}</text>
       </box>
-      <text style={{ ...styles.muted, marginTop: 1 }}>FOCUS: {focusLabel}</text>
 
       <box style={{ marginTop: 1, flexDirection: "column", gap: 0 }}>
         <text style={styles.muted}>MENU</text>
@@ -303,6 +312,11 @@ export function LeftRail({
           </box>
         ))}
       </box>
+      </box>
+
+      {activeThemeLabel ? (
+        <text style={{ color: theme.muted }}>THEME: {activeThemeLabel}</text>
+      ) : null}
     </box>
   );
 }

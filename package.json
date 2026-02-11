@@ -28,6 +28,7 @@
     "release:rc:check": "bun run test && bun run typecheck && bun run brand:check && bun run pack:dry && bun run pack:inspect && bun run pack:smoke",
     "build:bin:mac": "bun scripts/build-binary.ts --target macos --format raw",
     "build:bin:win": "bun scripts/build-binary.ts --target windows --format raw",
+    "build:bin:linux": "bun scripts/build-binary.ts --target linux --format raw",
     "dev": "bun src/index.tsx",
     "start": "bun src/index.tsx"
   },

@@ -1,11 +1,6 @@
-import { CLI_NAME } from "../brand/brand";
-import {
-  BackupImportPartialError,
-  exportBackup,
-  importBackup,
-  type BackupImportSummary
-} from "../state/backupService";
 import type { ImportMode } from "../state/portability";
+import { printExportHelp, runExportCommand } from "../commands/export";
+import { printImportHelp, runImportCommand } from "../commands/import";
 
 type ParseResult<T> =
   | { ok: true; value: T }
@@ -46,10 +41,6 @@ function parseBooleanLike(value: string): ParseResult<boolean> {
     return { ok: true, value: false };
   }
   return { ok: false, error: `Invalid boolean value: ${value}` };
-}
-
-function toErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 export function parseExportArgs(args: string[]): ParseResult<ExportCommandOptions> {
@@ -242,111 +233,6 @@ export function parseImportArgs(args: string[]): ParseResult<ImportCommandOption
   };
 }
 
-function printExportHelp(): void {
-  console.log(`Usage: ${CLI_NAME} export --out <path> [options]`);
-  console.log("");
-  console.log("Options:");
-  console.log("  --out <path>        Output file path (required)");
-  console.log("  --format json       Export format (json only)");
-  console.log("  --pretty            Pretty-print output JSON");
-  console.log("  --redact            Blank task title/notes in export");
-  console.log("  -h, --help          Show export help");
-}
-
-function printImportHelp(): void {
-  console.log(`Usage: ${CLI_NAME} import --in <path> [options]`);
-  console.log("");
-  console.log("Options:");
-  console.log("  --in <path>              Input file path (required)");
-  console.log("  --mode <merge|replace>   Import mode (default: merge)");
-  console.log("  --backup                 Enable backup before write (default: true)");
-  console.log("  --backup=false           Disable backup");
-  console.log("  --no-backup              Disable backup");
-  console.log("  --dry-run                Validate and merge without writing");
-  console.log("  --yes                    Required with --mode replace");
-  console.log("  --pretty                 Pretty-print import summary as JSON");
-  console.log("  -h, --help               Show import help");
-}
-
-function printImportSummary(summary: BackupImportSummary, pretty: boolean): void {
-  if (pretty) {
-    console.log(JSON.stringify(summary, null, 2));
-    return;
-  }
-
-  console.log(`[import] mode: ${summary.mode}${summary.dryRun ? " (dry-run)" : ""}`);
-  console.log(`[import] schemaVersion: ${summary.schemaVersion}`);
-  console.log(`[import] data path: ${summary.resolvedDataPath}`);
-  if (summary.backupPath) {
-    console.log(`[import] backup: ${summary.backupPath}`);
-  }
-  console.log(
-    `[import] tasks added=${summary.tasks.added} updated=${summary.tasks.updated} unchanged=${summary.tasks.unchanged} removed=${summary.tasks.removed}`
-  );
-  console.log(
-    `[import] conflicts resolved by updatedAt: ${summary.conflictsResolvedByUpdatedAt}`
-  );
-  console.log(
-    `[import] saved views added=${summary.savedViews.added} updated=${summary.savedViews.updated} unchanged=${summary.savedViews.unchanged}`
-  );
-}
-
-async function runExport(parsed: ExportCommandOptions): Promise<number> {
-  if (parsed.help) {
-    printExportHelp();
-    return 0;
-  }
-
-  try {
-    const result = await exportBackup({
-      outputPath: parsed.outPath,
-      pretty: parsed.pretty,
-      redact: parsed.redact
-    });
-
-    console.log(`[export] wrote: ${result.outputPath}`);
-    console.log(`[export] tasks: ${result.taskCount}`);
-    console.log(`[export] schemaVersion: ${result.schemaVersion}`);
-    return 0;
-  } catch (error: unknown) {
-    console.error(`[export] failed: ${toErrorMessage(error)}`);
-    return 1;
-  }
-}
-
-async function runImport(parsed: ImportCommandOptions): Promise<number> {
-  if (parsed.help) {
-    printImportHelp();
-    return 0;
-  }
-
-  if (parsed.mode === "replace" && !parsed.yes) {
-    console.error("[import] replace mode requires --yes");
-    return 1;
-  }
-
-  try {
-    const summary = await importBackup({
-      inputPath: parsed.inPath,
-      mode: parsed.mode,
-      dryRun: parsed.dryRun,
-      backup: parsed.backup
-    });
-
-    printImportSummary(summary, parsed.pretty);
-    return 0;
-  } catch (error: unknown) {
-    if (error instanceof BackupImportPartialError) {
-      printImportSummary(error.summary, parsed.pretty);
-      console.error(`[import] ${error.message}`);
-      return 1;
-    }
-
-    console.error(`[import] failed: ${toErrorMessage(error)}`);
-    return 1;
-  }
-}
-
 export async function runPortabilityCommand(
   command: "export" | "import",
   args: string[]
@@ -358,7 +244,7 @@ export async function runPortabilityCommand(
       printExportHelp();
       return 1;
     }
-    return runExport(parsed.value);
+    return runExportCommand(parsed.value);
   }
 
   const parsed = parseImportArgs(args);
@@ -367,5 +253,5 @@ export async function runPortabilityCommand(
     printImportHelp();
     return 1;
   }
-  return runImport(parsed.value);
+  return runImportCommand(parsed.value);
 }

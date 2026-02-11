@@ -1,19 +1,15 @@
-# Windows Packaging (Planned)
+# Windows Packaging
 
-This folder documents the future Windows installer track for TADOI.
+Scripts in this directory build installable Windows artifacts for the TADOI CLI.
 
-## Scope in current phase
-- Scaffold only.
-- No `.exe` or `.msi` artifact is produced yet.
+## Files
+- `TADOI.iss`: Inno Setup definition (`Program Files\\TADOI`, adds user PATH)
+- `build-installer.ps1`: compiles setup EXE with `iscc`
+- `sign.ps1`: optional Authenticode signing (skips when env vars are absent)
 
-## Planned outputs
-- Raw binary under `dist/bin/windows/`
-- Signed installer under `dist/installers/`
+## Required tools
+- Inno Setup compiler (`iscc`)
 
-## Future prerequisites
-- Code-signing certificate for Windows executables.
-- Installer toolchain decision (`.exe` or `.msi`).
-- CI secret management for signing credentials.
-
-## Notes
-Use `bun run build:bin:win` during scaffold phase to generate planning artifacts only.
+## Optional signing env vars
+- `TADOI_WIN_SIGN_CERT_PATH`
+- `TADOI_WIN_SIGN_CERT_PASSWORD`

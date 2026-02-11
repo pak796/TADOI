@@ -54,7 +54,17 @@ export function OverdueNotificationModal({
   const tags = task?.tags ?? [];
 
   return (
-    <box style={{ padding: 2, backgroundColor: theme.warn, color: theme.bg, minWidth: 56 }}>
+    <box
+      style={{
+        padding: 2,
+        backgroundColor: theme.warn,
+        color: theme.bg,
+        minWidth: 56,
+        border: true,
+        borderStyle: "single",
+        borderColor: theme.outline
+      }}
+    >
       <text style={{ fontWeight: "bold" }}>Task Overdue</text>
       <text>Task: {event.title}</text>
       <text>Due: {dueLabel}</text>

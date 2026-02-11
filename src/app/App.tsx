@@ -3119,6 +3119,7 @@ export function App({
           onMenuSelect={handleLeftRailMenuSelect}
           terminalWidth={terminalWidth}
           showLogo={showLogo}
+          activeThemeId={settingsState.themeId === "rotating" ? activeThemeId : undefined}
         />
       </box>
 

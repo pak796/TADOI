@@ -6,6 +6,13 @@ The format is based on Keep a Changelog.
 
 ## [Unreleased]
 ### Added
+- Installable distribution pipeline scaffolding-to-execution upgrade:
+  - new CLI router split (`src/cli.ts`) and TUI runner module (`src/tui/runTui.tsx`)
+  - headless-safe `--version` and `--smoke-tui` command paths
+  - real binary build mode in `scripts/build-binary.ts` via Bun compile
+  - packaging scripts for macOS (`pkg` + DMG), Windows (Inno Setup), and Linux (`.deb` + AppImage scaffold)
+  - new release workflow (`.github/workflows/release.yml`) for cross-platform build/upload/release
+- Linux release target metadata entry in `packaging/release-targets.json`.
 - In-app `Backup Center` flow (Help -> `1` -> `DATA: Backup / Export / Import`) with:
   - timestamped backup export
   - guided import flow (path -> mode -> optional `REPLACE` confirmation -> dry-run -> commit)

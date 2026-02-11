@@ -1,19 +1,17 @@
-# macOS Packaging (Planned)
+# macOS Packaging
 
-This folder documents the future macOS installer track for TADOI.
+Scripts in this directory build installable macOS artifacts for the TADOI CLI.
 
-## Scope in current phase
-- Scaffold only.
-- No `.dmg` artifact is produced yet.
+## Scripts
+- `build-pkg.sh`: creates `TADOI-<version>.pkg` that installs `/usr/local/bin/tadoi`
+- `sign-notarize.sh`: optional signing/notarization (skips when env vars are absent)
+- `build-dmg.sh`: creates `TADOI-macOS-<version>.dmg` containing the PKG + README
 
-## Planned outputs
-- Raw binary under `dist/bin/macos/`
-- Signed and notarized DMG under `dist/installers/`
+## Required tools
+- `pkgbuild`
+- `productbuild`
+- `hdiutil`
 
-## Future prerequisites
-- Apple Developer certificate for signing.
-- Notarization credentials and CI secret management.
-- A deterministic build script that emits universal or per-arch binaries.
-
-## Notes
-Use `bun run build:bin:mac` during scaffold phase to generate planning artifacts only.
+## Optional signing env vars
+- `TADOI_MAC_SIGN_IDENTITY_INSTALLER`
+- `TADOI_MAC_NOTARY_PROFILE`

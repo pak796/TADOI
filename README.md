@@ -24,6 +24,12 @@ CLI help:
 bun run start -- --help
 ```
 
+Version check:
+
+```bash
+bun run start -- --version
+```
+
 ## Supported Environments
 
 Verified baseline terminals:
@@ -288,14 +294,68 @@ bun run pack:inspect
 bun run pack:smoke
 ```
 
-## Pre-release Packaging (Non-Live)
+## Build & Package
 
-TADOI currently uses a non-live packaging workflow:
-- Public publish is intentionally disabled (`"private": true` in `package.json`).
-- Distribution for testers is done via local/private tarball install.
-- This project is source-available under PolyForm Noncommercial 1.0.0 (noncommercial use only).
+### Plan mode vs build mode
 
-Build and validate packaging artifacts:
+`scripts/build-binary.ts` now supports:
+- `--mode plan` (default): write plan artifacts only.
+- `--mode build`: create real binaries/installers.
+
+Required flags remain strict:
+- `--target macos|windows|linux`
+- `--format raw|installer`
+
+Examples:
+
+```bash
+# Plan artifacts (default mode)
+bun scripts/build-binary.ts --target macos --format raw
+bun scripts/build-binary.ts --target windows --format installer
+
+# Real build outputs
+bun scripts/build-binary.ts --target macos --format raw --mode build
+bun scripts/build-binary.ts --target macos --format installer --mode build
+```
+
+### Output locations
+
+- Raw binaries:
+  - `dist/bin/macos/tadoi`
+  - `dist/bin/windows/tadoi.exe`
+  - `dist/bin/linux/tadoi`
+- Installer outputs:
+  - `dist/installers/TADOI-macOS-<version>.dmg`
+  - `dist/installers/TADOI-Setup-x64-<version>.exe`
+  - `dist/installers/tadoi_<version>_amd64.deb` (when `dpkg-deb` exists)
+  - `dist/installers/tadoi-<version>-x86_64.AppImage` (when `appimagetool` exists)
+
+### Platform tool prerequisites
+
+- macOS:
+  - Xcode command line tools (`pkgbuild`, `productbuild`, `hdiutil`)
+- Windows:
+  - Inno Setup compiler (`iscc`)
+- Linux:
+  - `dpkg-deb` for `.deb`
+  - `appimagetool` for AppImage (optional)
+
+### Signing and notarization (optional)
+
+macOS optional environment variables:
+- `TADOI_MAC_SIGN_IDENTITY_INSTALLER`
+- `TADOI_MAC_NOTARY_PROFILE`
+
+Windows optional environment variables:
+- `TADOI_WIN_SIGN_CERT_PATH`
+- `TADOI_WIN_SIGN_CERT_PASSWORD`
+
+If signing env vars are not present, packaging scripts log a skip message and continue local builds.
+
+## Tarball Channel (Non-Live)
+
+Public publish is still intentionally disabled (`"private": true` in `package.json`).
+Tarball packaging remains available for internal/private distribution.
 
 ```bash
 bun run pack:dry
@@ -310,72 +370,11 @@ bun add -g ./dist/tarball/tadoi-0.2.9.tgz
 tadoi --help
 ```
 
-### Cross-platform test install (macOS / Windows / Linux)
-
-Build machine (create artifact):
-
-```bash
-bun run pack:dry
-```
-
-Copy `dist/tarball/tadoi-0.2.9.tgz` to the target test machine, then install:
-
-macOS/Linux:
-
-```bash
-bun --version
-bun add -g ./tadoi-0.2.9.tgz
-tadoi --help
-tadoi
-```
-
-Windows (PowerShell):
-
-```powershell
-bun --version
-bun add -g .\tadoi-0.2.9.tgz
-tadoi --help
-tadoi
-```
-
-If `tadoi` is not found, ensure Bun's global bin is on `PATH`:
-- macOS/Linux: `export PATH="$HOME/.bun/bin:$PATH"`
-- Windows PowerShell: `$env:Path += ";$env:USERPROFILE\.bun\bin"`
-
-### Uninstall (Global Install)
-
-```bash
-bun remove -g tadoi
-```
-
-Windows PowerShell:
-```powershell
-bun remove -g tadoi
-```
-
 Release-candidate gate (local):
 
 ```bash
 bun run release:rc:check
 ```
-
-## Future Installers (Planned)
-
-Installer outputs are scaffolded for future phases:
-- macOS binary/DMG track: `packaging/macos/README.md`
-- Windows binary/EXE/MSI track: `packaging/windows/README.md`
-
-Scaffold commands (no real installers generated yet):
-
-```bash
-bun run build:bin:mac
-bun run build:bin:win
-```
-
-Current scaffold outputs:
-- `dist/bin/macos/`
-- `dist/bin/windows/`
-- `dist/installers/` (reserved for future DMG/EXE artifacts)
 
 ## License (Summary)
 Licensed under PolyForm Noncommercial 1.0.0.
