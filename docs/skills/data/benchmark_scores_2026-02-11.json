@@ -1,0 +1,1476 @@
+{
+  "date": "2026-02-11",
+  "paths": {
+    "repo": "/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TUI_TODO",
+    "global_skills_root": "/Users/patrickkazar/.codex/skills",
+    "agents_skills_root": "/Users/patrickkazar/.agents/skills"
+  },
+  "weights": {
+    "trigger_precision": 20,
+    "workflow_completeness": 20,
+    "determinism_automation": 20,
+    "safety_guardrails": 20,
+    "reusability_maintainability": 20
+  },
+  "population": {
+    "total_skills_scored": 25,
+    "baseline_count": 19,
+    "new_skill_count": 6,
+    "relevant_slice_count": 7
+  },
+  "scores": {
+    "all": [
+      {
+        "skill": "atomic-change-planner",
+        "path": "/Users/patrickkazar/.codex/skills/atomic-change-planner",
+        "line_count": 51,
+        "description_length": 192,
+        "has_scripts": true,
+        "has_references": true,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Atomic Change Planner",
+          "short_description": "Split broad requests into atomic patch plans",
+          "default_prompt": "Use $atomic-change-planner to convert a broad request into ordered, testable atomic patches with rollback notes."
+        },
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 16,
+          "determinism_automation": 20,
+          "safety_guardrails": 14,
+          "reusability_maintainability": 20,
+          "total": 90
+        }
+      },
+      {
+        "skill": "brainstorming",
+        "path": "/Users/patrickkazar/.codex/skills/brainstorming",
+        "line_count": 55,
+        "description_length": 198,
+        "has_scripts": false,
+        "has_references": false,
+        "has_openai": false,
+        "openai": {},
+        "scores": {
+          "trigger_precision": 12,
+          "workflow_completeness": 0,
+          "determinism_automation": 0,
+          "safety_guardrails": 12,
+          "reusability_maintainability": 6,
+          "total": 30
+        }
+      },
+      {
+        "skill": "composition-patterns",
+        "path": "/Users/patrickkazar/.codex/skills/composition-patterns",
+        "line_count": 90,
+        "description_length": 75,
+        "has_scripts": false,
+        "has_references": false,
+        "has_openai": false,
+        "openai": {},
+        "scores": {
+          "trigger_precision": 14,
+          "workflow_completeness": 4,
+          "determinism_automation": 0,
+          "safety_guardrails": 6,
+          "reusability_maintainability": 6,
+          "total": 30
+        }
+      },
+      {
+        "skill": "doc",
+        "path": "/Users/patrickkazar/.codex/skills/doc",
+        "line_count": 81,
+        "description_length": 212,
+        "has_scripts": true,
+        "has_references": false,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Word Docs",
+          "short_description": "Edit and review docx files",
+          "default_prompt": "Edit or review this .docx file and return the updated file plus a concise change summary."
+        },
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 20,
+          "determinism_automation": 20,
+          "safety_guardrails": 14,
+          "reusability_maintainability": 6,
+          "total": 80
+        }
+      },
+      {
+        "skill": "figma",
+        "path": "/Users/patrickkazar/.codex/skills/figma",
+        "line_count": 43,
+        "description_length": 269,
+        "has_scripts": false,
+        "has_references": true,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Figma",
+          "short_description": "Use Figma MCP for design-to-code work",
+          "default_prompt": "Use Figma MCP to inspect the target design and translate it into implementable UI decisions."
+        },
+        "scores": {
+          "trigger_precision": 12,
+          "workflow_completeness": 8,
+          "determinism_automation": 5,
+          "safety_guardrails": 6,
+          "reusability_maintainability": 20,
+          "total": 51
+        }
+      },
+      {
+        "skill": "find-skills",
+        "path": "/Users/patrickkazar/.codex/skills/find-skills",
+        "line_count": 134,
+        "description_length": 303,
+        "has_scripts": false,
+        "has_references": false,
+        "has_openai": false,
+        "openai": {},
+        "scores": {
+          "trigger_precision": 12,
+          "workflow_completeness": 8,
+          "determinism_automation": 0,
+          "safety_guardrails": 0,
+          "reusability_maintainability": 6,
+          "total": 26
+        }
+      },
+      {
+        "skill": "keybind-source-of-truth",
+        "path": "/Users/patrickkazar/.codex/skills/keybind-source-of-truth",
+        "line_count": 62,
+        "description_length": 222,
+        "has_scripts": true,
+        "has_references": true,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Keybind Source of Truth",
+          "short_description": "Reconcile keybindings across code and docs",
+          "default_prompt": "Use $keybind-source-of-truth to extract canonical keybindings from code/tests and flag doc mismatches."
+        },
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 20,
+          "determinism_automation": 20,
+          "safety_guardrails": 20,
+          "reusability_maintainability": 20,
+          "total": 100
+        }
+      },
+      {
+        "skill": "notion-knowledge-capture",
+        "path": "/Users/patrickkazar/.codex/skills/notion-knowledge-capture",
+        "line_count": 57,
+        "description_length": 162,
+        "has_scripts": false,
+        "has_references": false,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Notion Knowledge Capture",
+          "short_description": "Capture conversations into structured Notion pages",
+          "default_prompt": "Capture this conversation into structured Notion pages with decisions, action items, and owners when known."
+        },
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 12,
+          "determinism_automation": 0,
+          "safety_guardrails": 0,
+          "reusability_maintainability": 12,
+          "total": 44
+        }
+      },
+      {
+        "skill": "notion-research-documentation",
+        "path": "/Users/patrickkazar/.codex/skills/notion-research-documentation",
+        "line_count": 60,
+        "description_length": 180,
+        "has_scripts": false,
+        "has_references": false,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Notion Research & Documentation",
+          "short_description": "Research Notion content and produce briefs/reports",
+          "default_prompt": "Research this topic in Notion and produce a sourced brief with clear recommendations."
+        },
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 16,
+          "determinism_automation": 5,
+          "safety_guardrails": 6,
+          "reusability_maintainability": 12,
+          "total": 59
+        }
+      },
+      {
+        "skill": "opentui-skill",
+        "path": "/Users/patrickkazar/.codex/skills/opentui-skill",
+        "line_count": 196,
+        "description_length": 245,
+        "has_scripts": false,
+        "has_references": true,
+        "has_openai": false,
+        "openai": {},
+        "scores": {
+          "trigger_precision": 12,
+          "workflow_completeness": 12,
+          "determinism_automation": 0,
+          "safety_guardrails": 12,
+          "reusability_maintainability": 14,
+          "total": 50
+        }
+      },
+      {
+        "skill": "pdf",
+        "path": "/Users/patrickkazar/.codex/skills/pdf",
+        "line_count": 68,
+        "description_length": 248,
+        "has_scripts": false,
+        "has_references": false,
+        "has_openai": true,
+        "openai": {
+          "display_name": "PDF Skill",
+          "short_description": "Create, edit, and review PDFs",
+          "default_prompt": "Create, edit, or review this PDF and summarize the key output or changes."
+        },
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 20,
+          "determinism_automation": 5,
+          "safety_guardrails": 6,
+          "reusability_maintainability": 6,
+          "total": 57
+        }
+      },
+      {
+        "skill": "playwright",
+        "path": "/Users/patrickkazar/.codex/skills/playwright",
+        "line_count": 148,
+        "description_length": 209,
+        "has_scripts": true,
+        "has_references": true,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Playwright CLI Skill",
+          "short_description": "Automate real browsers from the terminal",
+          "default_prompt": "Automate this browser workflow with Playwright and produce a reliable script with run steps."
+        },
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 12,
+          "determinism_automation": 15,
+          "safety_guardrails": 14,
+          "reusability_maintainability": 20,
+          "total": 81
+        }
+      },
+      {
+        "skill": "react-best-practices",
+        "path": "/Users/patrickkazar/.codex/skills/react-best-practices",
+        "line_count": 137,
+        "description_length": 329,
+        "has_scripts": false,
+        "has_references": false,
+        "has_openai": false,
+        "openai": {},
+        "scores": {
+          "trigger_precision": 12,
+          "workflow_completeness": 8,
+          "determinism_automation": 0,
+          "safety_guardrails": 12,
+          "reusability_maintainability": 6,
+          "total": 38
+        }
+      },
+      {
+        "skill": "release-readiness-gate",
+        "path": "/Users/patrickkazar/.codex/skills/release-readiness-gate",
+        "line_count": 61,
+        "description_length": 242,
+        "has_scripts": true,
+        "has_references": true,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Release Readiness Gate",
+          "short_description": "Run deterministic pre-release readiness gates",
+          "default_prompt": "Use $release-readiness-gate to run preflight or RC release checks and report blockers with evidence."
+        },
+        "scores": {
+          "trigger_precision": 12,
+          "workflow_completeness": 20,
+          "determinism_automation": 20,
+          "safety_guardrails": 20,
+          "reusability_maintainability": 20,
+          "total": 92
+        }
+      },
+      {
+        "skill": "safe-scope-enforcer",
+        "path": "/Users/patrickkazar/.codex/skills/safe-scope-enforcer",
+        "line_count": 63,
+        "description_length": 193,
+        "has_scripts": true,
+        "has_references": true,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Safe Scope Enforcer",
+          "short_description": "Enforce allowed file-edit scope boundaries",
+          "default_prompt": "Use $safe-scope-enforcer to verify planned or staged changes stay within approved file scope."
+        },
+        "scores": {
+          "trigger_precision": 12,
+          "workflow_completeness": 20,
+          "determinism_automation": 20,
+          "safety_guardrails": 20,
+          "reusability_maintainability": 20,
+          "total": 92
+        }
+      },
+      {
+        "skill": "screenshot",
+        "path": "/Users/patrickkazar/.codex/skills/screenshot",
+        "line_count": 268,
+        "description_length": 220,
+        "has_scripts": true,
+        "has_references": false,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Screenshot Capture",
+          "short_description": "Capture screenshots",
+          "default_prompt": "Capture the right screenshot for this task (target, area, and output path)."
+        },
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 8,
+          "determinism_automation": 20,
+          "safety_guardrails": 20,
+          "reusability_maintainability": 6,
+          "total": 74
+        }
+      },
+      {
+        "skill": "security-best-practices",
+        "path": "/Users/patrickkazar/.codex/skills/security-best-practices",
+        "line_count": 87,
+        "description_length": 385,
+        "has_scripts": false,
+        "has_references": true,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Security Best Practices",
+          "short_description": "Security reviews and secure-by-default guidance",
+          "default_prompt": "Review this codebase for security best practices and suggest secure-by-default improvements."
+        },
+        "scores": {
+          "trigger_precision": 12,
+          "workflow_completeness": 12,
+          "determinism_automation": 0,
+          "safety_guardrails": 6,
+          "reusability_maintainability": 14,
+          "total": 44
+        }
+      },
+      {
+        "skill": "sentry",
+        "path": "/Users/patrickkazar/.codex/skills/sentry",
+        "line_count": 124,
+        "description_length": 230,
+        "has_scripts": true,
+        "has_references": false,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Sentry (Read-only Observability)",
+          "short_description": "Read-only Sentry observability",
+          "default_prompt": "Investigate this issue in read-only Sentry data and report likely root cause, impact, and next steps."
+        },
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 12,
+          "determinism_automation": 20,
+          "safety_guardrails": 12,
+          "reusability_maintainability": 6,
+          "total": 70
+        }
+      },
+      {
+        "skill": "session-handoff-capture",
+        "path": "/Users/patrickkazar/.codex/skills/session-handoff-capture",
+        "line_count": 47,
+        "description_length": 213,
+        "has_scripts": true,
+        "has_references": true,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Session Handoff Capture",
+          "short_description": "Create decision-complete session handoff notes",
+          "default_prompt": "Use $session-handoff-capture to generate a structured handoff with decisions, risks, and next commands."
+        },
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 20,
+          "determinism_automation": 20,
+          "safety_guardrails": 14,
+          "reusability_maintainability": 20,
+          "total": 94
+        }
+      },
+      {
+        "skill": "spec-task-drift-guard",
+        "path": "/Users/patrickkazar/.codex/skills/spec-task-drift-guard",
+        "line_count": 74,
+        "description_length": 230,
+        "has_scripts": true,
+        "has_references": true,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Spec/Task Drift Guard",
+          "short_description": "Detect docs-to-code drift in specs/tasks",
+          "default_prompt": "Use $spec-task-drift-guard to scan this repo for spec/task drift against code and produce actionable findings."
+        },
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 20,
+          "determinism_automation": 20,
+          "safety_guardrails": 20,
+          "reusability_maintainability": 20,
+          "total": 100
+        }
+      },
+      {
+        "skill": "speech",
+        "path": "/Users/patrickkazar/.codex/skills/speech",
+        "line_count": 145,
+        "description_length": 309,
+        "has_scripts": true,
+        "has_references": true,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Speech Generation Skill",
+          "short_description": "Generate narrated audio from text",
+          "default_prompt": "Generate spoken audio for this text with the right voice style, pacing, and output format."
+        },
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 20,
+          "determinism_automation": 20,
+          "safety_guardrails": 12,
+          "reusability_maintainability": 14,
+          "total": 86
+        }
+      },
+      {
+        "skill": "spreadsheet",
+        "path": "/Users/patrickkazar/.codex/skills/spreadsheet",
+        "line_count": 123,
+        "description_length": 230,
+        "has_scripts": false,
+        "has_references": true,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Spreadsheet Skill (Create, Edit, Analyze, Visualize)",
+          "short_description": "Create, edit, and analyze spreadsheets",
+          "default_prompt": "Create or update a spreadsheet for this task with the right formulas, structure, and formatting."
+        },
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 20,
+          "determinism_automation": 5,
+          "safety_guardrails": 6,
+          "reusability_maintainability": 14,
+          "total": 65
+        }
+      },
+      {
+        "skill": "writing-clearly-and-concisely",
+        "path": "/Users/patrickkazar/.codex/skills/writing-clearly-and-concisely",
+        "line_count": 94,
+        "description_length": 204,
+        "has_scripts": false,
+        "has_references": false,
+        "has_openai": false,
+        "openai": {},
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 4,
+          "determinism_automation": 0,
+          "safety_guardrails": 12,
+          "reusability_maintainability": 6,
+          "total": 42
+        }
+      },
+      {
+        "skill": "yeet",
+        "path": "/Users/patrickkazar/.codex/skills/yeet",
+        "line_count": 29,
+        "description_length": 134,
+        "has_scripts": false,
+        "has_references": false,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Yeet",
+          "short_description": "Stage, commit, and open PR",
+          "default_prompt": "Prepare this branch for review: stage intended changes, write a focused commit, and open a PR."
+        },
+        "scores": {
+          "trigger_precision": 12,
+          "workflow_completeness": 8,
+          "determinism_automation": 0,
+          "safety_guardrails": 6,
+          "reusability_maintainability": 6,
+          "total": 32
+        }
+      },
+      {
+        "skill": "ui-ux-pro-max",
+        "path": "/Users/patrickkazar/.agents/skills/ui-ux-pro-max",
+        "line_count": 387,
+        "description_length": 806,
+        "has_scripts": true,
+        "has_references": false,
+        "has_openai": false,
+        "openai": {},
+        "scores": {
+          "trigger_precision": 0,
+          "workflow_completeness": 12,
+          "determinism_automation": 20,
+          "safety_guardrails": 12,
+          "reusability_maintainability": 6,
+          "total": 50
+        }
+      }
+    ],
+    "baseline": [
+      {
+        "skill": "brainstorming",
+        "path": "/Users/patrickkazar/.codex/skills/brainstorming",
+        "line_count": 55,
+        "description_length": 198,
+        "has_scripts": false,
+        "has_references": false,
+        "has_openai": false,
+        "openai": {},
+        "scores": {
+          "trigger_precision": 12,
+          "workflow_completeness": 0,
+          "determinism_automation": 0,
+          "safety_guardrails": 12,
+          "reusability_maintainability": 6,
+          "total": 30
+        }
+      },
+      {
+        "skill": "composition-patterns",
+        "path": "/Users/patrickkazar/.codex/skills/composition-patterns",
+        "line_count": 90,
+        "description_length": 75,
+        "has_scripts": false,
+        "has_references": false,
+        "has_openai": false,
+        "openai": {},
+        "scores": {
+          "trigger_precision": 14,
+          "workflow_completeness": 4,
+          "determinism_automation": 0,
+          "safety_guardrails": 6,
+          "reusability_maintainability": 6,
+          "total": 30
+        }
+      },
+      {
+        "skill": "doc",
+        "path": "/Users/patrickkazar/.codex/skills/doc",
+        "line_count": 81,
+        "description_length": 212,
+        "has_scripts": true,
+        "has_references": false,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Word Docs",
+          "short_description": "Edit and review docx files",
+          "default_prompt": "Edit or review this .docx file and return the updated file plus a concise change summary."
+        },
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 20,
+          "determinism_automation": 20,
+          "safety_guardrails": 14,
+          "reusability_maintainability": 6,
+          "total": 80
+        }
+      },
+      {
+        "skill": "figma",
+        "path": "/Users/patrickkazar/.codex/skills/figma",
+        "line_count": 43,
+        "description_length": 269,
+        "has_scripts": false,
+        "has_references": true,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Figma",
+          "short_description": "Use Figma MCP for design-to-code work",
+          "default_prompt": "Use Figma MCP to inspect the target design and translate it into implementable UI decisions."
+        },
+        "scores": {
+          "trigger_precision": 12,
+          "workflow_completeness": 8,
+          "determinism_automation": 5,
+          "safety_guardrails": 6,
+          "reusability_maintainability": 20,
+          "total": 51
+        }
+      },
+      {
+        "skill": "find-skills",
+        "path": "/Users/patrickkazar/.codex/skills/find-skills",
+        "line_count": 134,
+        "description_length": 303,
+        "has_scripts": false,
+        "has_references": false,
+        "has_openai": false,
+        "openai": {},
+        "scores": {
+          "trigger_precision": 12,
+          "workflow_completeness": 8,
+          "determinism_automation": 0,
+          "safety_guardrails": 0,
+          "reusability_maintainability": 6,
+          "total": 26
+        }
+      },
+      {
+        "skill": "notion-knowledge-capture",
+        "path": "/Users/patrickkazar/.codex/skills/notion-knowledge-capture",
+        "line_count": 57,
+        "description_length": 162,
+        "has_scripts": false,
+        "has_references": false,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Notion Knowledge Capture",
+          "short_description": "Capture conversations into structured Notion pages",
+          "default_prompt": "Capture this conversation into structured Notion pages with decisions, action items, and owners when known."
+        },
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 12,
+          "determinism_automation": 0,
+          "safety_guardrails": 0,
+          "reusability_maintainability": 12,
+          "total": 44
+        }
+      },
+      {
+        "skill": "notion-research-documentation",
+        "path": "/Users/patrickkazar/.codex/skills/notion-research-documentation",
+        "line_count": 60,
+        "description_length": 180,
+        "has_scripts": false,
+        "has_references": false,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Notion Research & Documentation",
+          "short_description": "Research Notion content and produce briefs/reports",
+          "default_prompt": "Research this topic in Notion and produce a sourced brief with clear recommendations."
+        },
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 16,
+          "determinism_automation": 5,
+          "safety_guardrails": 6,
+          "reusability_maintainability": 12,
+          "total": 59
+        }
+      },
+      {
+        "skill": "opentui-skill",
+        "path": "/Users/patrickkazar/.codex/skills/opentui-skill",
+        "line_count": 196,
+        "description_length": 245,
+        "has_scripts": false,
+        "has_references": true,
+        "has_openai": false,
+        "openai": {},
+        "scores": {
+          "trigger_precision": 12,
+          "workflow_completeness": 12,
+          "determinism_automation": 0,
+          "safety_guardrails": 12,
+          "reusability_maintainability": 14,
+          "total": 50
+        }
+      },
+      {
+        "skill": "pdf",
+        "path": "/Users/patrickkazar/.codex/skills/pdf",
+        "line_count": 68,
+        "description_length": 248,
+        "has_scripts": false,
+        "has_references": false,
+        "has_openai": true,
+        "openai": {
+          "display_name": "PDF Skill",
+          "short_description": "Create, edit, and review PDFs",
+          "default_prompt": "Create, edit, or review this PDF and summarize the key output or changes."
+        },
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 20,
+          "determinism_automation": 5,
+          "safety_guardrails": 6,
+          "reusability_maintainability": 6,
+          "total": 57
+        }
+      },
+      {
+        "skill": "playwright",
+        "path": "/Users/patrickkazar/.codex/skills/playwright",
+        "line_count": 148,
+        "description_length": 209,
+        "has_scripts": true,
+        "has_references": true,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Playwright CLI Skill",
+          "short_description": "Automate real browsers from the terminal",
+          "default_prompt": "Automate this browser workflow with Playwright and produce a reliable script with run steps."
+        },
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 12,
+          "determinism_automation": 15,
+          "safety_guardrails": 14,
+          "reusability_maintainability": 20,
+          "total": 81
+        }
+      },
+      {
+        "skill": "react-best-practices",
+        "path": "/Users/patrickkazar/.codex/skills/react-best-practices",
+        "line_count": 137,
+        "description_length": 329,
+        "has_scripts": false,
+        "has_references": false,
+        "has_openai": false,
+        "openai": {},
+        "scores": {
+          "trigger_precision": 12,
+          "workflow_completeness": 8,
+          "determinism_automation": 0,
+          "safety_guardrails": 12,
+          "reusability_maintainability": 6,
+          "total": 38
+        }
+      },
+      {
+        "skill": "screenshot",
+        "path": "/Users/patrickkazar/.codex/skills/screenshot",
+        "line_count": 268,
+        "description_length": 220,
+        "has_scripts": true,
+        "has_references": false,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Screenshot Capture",
+          "short_description": "Capture screenshots",
+          "default_prompt": "Capture the right screenshot for this task (target, area, and output path)."
+        },
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 8,
+          "determinism_automation": 20,
+          "safety_guardrails": 20,
+          "reusability_maintainability": 6,
+          "total": 74
+        }
+      },
+      {
+        "skill": "security-best-practices",
+        "path": "/Users/patrickkazar/.codex/skills/security-best-practices",
+        "line_count": 87,
+        "description_length": 385,
+        "has_scripts": false,
+        "has_references": true,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Security Best Practices",
+          "short_description": "Security reviews and secure-by-default guidance",
+          "default_prompt": "Review this codebase for security best practices and suggest secure-by-default improvements."
+        },
+        "scores": {
+          "trigger_precision": 12,
+          "workflow_completeness": 12,
+          "determinism_automation": 0,
+          "safety_guardrails": 6,
+          "reusability_maintainability": 14,
+          "total": 44
+        }
+      },
+      {
+        "skill": "sentry",
+        "path": "/Users/patrickkazar/.codex/skills/sentry",
+        "line_count": 124,
+        "description_length": 230,
+        "has_scripts": true,
+        "has_references": false,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Sentry (Read-only Observability)",
+          "short_description": "Read-only Sentry observability",
+          "default_prompt": "Investigate this issue in read-only Sentry data and report likely root cause, impact, and next steps."
+        },
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 12,
+          "determinism_automation": 20,
+          "safety_guardrails": 12,
+          "reusability_maintainability": 6,
+          "total": 70
+        }
+      },
+      {
+        "skill": "speech",
+        "path": "/Users/patrickkazar/.codex/skills/speech",
+        "line_count": 145,
+        "description_length": 309,
+        "has_scripts": true,
+        "has_references": true,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Speech Generation Skill",
+          "short_description": "Generate narrated audio from text",
+          "default_prompt": "Generate spoken audio for this text with the right voice style, pacing, and output format."
+        },
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 20,
+          "determinism_automation": 20,
+          "safety_guardrails": 12,
+          "reusability_maintainability": 14,
+          "total": 86
+        }
+      },
+      {
+        "skill": "spreadsheet",
+        "path": "/Users/patrickkazar/.codex/skills/spreadsheet",
+        "line_count": 123,
+        "description_length": 230,
+        "has_scripts": false,
+        "has_references": true,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Spreadsheet Skill (Create, Edit, Analyze, Visualize)",
+          "short_description": "Create, edit, and analyze spreadsheets",
+          "default_prompt": "Create or update a spreadsheet for this task with the right formulas, structure, and formatting."
+        },
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 20,
+          "determinism_automation": 5,
+          "safety_guardrails": 6,
+          "reusability_maintainability": 14,
+          "total": 65
+        }
+      },
+      {
+        "skill": "writing-clearly-and-concisely",
+        "path": "/Users/patrickkazar/.codex/skills/writing-clearly-and-concisely",
+        "line_count": 94,
+        "description_length": 204,
+        "has_scripts": false,
+        "has_references": false,
+        "has_openai": false,
+        "openai": {},
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 4,
+          "determinism_automation": 0,
+          "safety_guardrails": 12,
+          "reusability_maintainability": 6,
+          "total": 42
+        }
+      },
+      {
+        "skill": "yeet",
+        "path": "/Users/patrickkazar/.codex/skills/yeet",
+        "line_count": 29,
+        "description_length": 134,
+        "has_scripts": false,
+        "has_references": false,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Yeet",
+          "short_description": "Stage, commit, and open PR",
+          "default_prompt": "Prepare this branch for review: stage intended changes, write a focused commit, and open a PR."
+        },
+        "scores": {
+          "trigger_precision": 12,
+          "workflow_completeness": 8,
+          "determinism_automation": 0,
+          "safety_guardrails": 6,
+          "reusability_maintainability": 6,
+          "total": 32
+        }
+      },
+      {
+        "skill": "ui-ux-pro-max",
+        "path": "/Users/patrickkazar/.agents/skills/ui-ux-pro-max",
+        "line_count": 387,
+        "description_length": 806,
+        "has_scripts": true,
+        "has_references": false,
+        "has_openai": false,
+        "openai": {},
+        "scores": {
+          "trigger_precision": 0,
+          "workflow_completeness": 12,
+          "determinism_automation": 20,
+          "safety_guardrails": 12,
+          "reusability_maintainability": 6,
+          "total": 50
+        }
+      }
+    ],
+    "new": [
+      {
+        "skill": "spec-task-drift-guard",
+        "path": "/Users/patrickkazar/.codex/skills/spec-task-drift-guard",
+        "line_count": 74,
+        "description_length": 230,
+        "has_scripts": true,
+        "has_references": true,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Spec/Task Drift Guard",
+          "short_description": "Detect docs-to-code drift in specs/tasks",
+          "default_prompt": "Use $spec-task-drift-guard to scan this repo for spec/task drift against code and produce actionable findings."
+        },
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 20,
+          "determinism_automation": 20,
+          "safety_guardrails": 20,
+          "reusability_maintainability": 20,
+          "total": 100
+        }
+      },
+      {
+        "skill": "release-readiness-gate",
+        "path": "/Users/patrickkazar/.codex/skills/release-readiness-gate",
+        "line_count": 61,
+        "description_length": 242,
+        "has_scripts": true,
+        "has_references": true,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Release Readiness Gate",
+          "short_description": "Run deterministic pre-release readiness gates",
+          "default_prompt": "Use $release-readiness-gate to run preflight or RC release checks and report blockers with evidence."
+        },
+        "scores": {
+          "trigger_precision": 12,
+          "workflow_completeness": 20,
+          "determinism_automation": 20,
+          "safety_guardrails": 20,
+          "reusability_maintainability": 20,
+          "total": 92
+        }
+      },
+      {
+        "skill": "keybind-source-of-truth",
+        "path": "/Users/patrickkazar/.codex/skills/keybind-source-of-truth",
+        "line_count": 62,
+        "description_length": 222,
+        "has_scripts": true,
+        "has_references": true,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Keybind Source of Truth",
+          "short_description": "Reconcile keybindings across code and docs",
+          "default_prompt": "Use $keybind-source-of-truth to extract canonical keybindings from code/tests and flag doc mismatches."
+        },
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 20,
+          "determinism_automation": 20,
+          "safety_guardrails": 20,
+          "reusability_maintainability": 20,
+          "total": 100
+        }
+      },
+      {
+        "skill": "safe-scope-enforcer",
+        "path": "/Users/patrickkazar/.codex/skills/safe-scope-enforcer",
+        "line_count": 63,
+        "description_length": 193,
+        "has_scripts": true,
+        "has_references": true,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Safe Scope Enforcer",
+          "short_description": "Enforce allowed file-edit scope boundaries",
+          "default_prompt": "Use $safe-scope-enforcer to verify planned or staged changes stay within approved file scope."
+        },
+        "scores": {
+          "trigger_precision": 12,
+          "workflow_completeness": 20,
+          "determinism_automation": 20,
+          "safety_guardrails": 20,
+          "reusability_maintainability": 20,
+          "total": 92
+        }
+      },
+      {
+        "skill": "session-handoff-capture",
+        "path": "/Users/patrickkazar/.codex/skills/session-handoff-capture",
+        "line_count": 47,
+        "description_length": 213,
+        "has_scripts": true,
+        "has_references": true,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Session Handoff Capture",
+          "short_description": "Create decision-complete session handoff notes",
+          "default_prompt": "Use $session-handoff-capture to generate a structured handoff with decisions, risks, and next commands."
+        },
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 20,
+          "determinism_automation": 20,
+          "safety_guardrails": 14,
+          "reusability_maintainability": 20,
+          "total": 94
+        }
+      },
+      {
+        "skill": "atomic-change-planner",
+        "path": "/Users/patrickkazar/.codex/skills/atomic-change-planner",
+        "line_count": 51,
+        "description_length": 192,
+        "has_scripts": true,
+        "has_references": true,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Atomic Change Planner",
+          "short_description": "Split broad requests into atomic patch plans",
+          "default_prompt": "Use $atomic-change-planner to convert a broad request into ordered, testable atomic patches with rollback notes."
+        },
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 16,
+          "determinism_automation": 20,
+          "safety_guardrails": 14,
+          "reusability_maintainability": 20,
+          "total": 90
+        }
+      }
+    ],
+    "relevant_slice": [
+      {
+        "skill": "brainstorming",
+        "path": "/Users/patrickkazar/.codex/skills/brainstorming",
+        "line_count": 55,
+        "description_length": 198,
+        "has_scripts": false,
+        "has_references": false,
+        "has_openai": false,
+        "openai": {},
+        "scores": {
+          "trigger_precision": 12,
+          "workflow_completeness": 0,
+          "determinism_automation": 0,
+          "safety_guardrails": 12,
+          "reusability_maintainability": 6,
+          "total": 30
+        }
+      },
+      {
+        "skill": "writing-clearly-and-concisely",
+        "path": "/Users/patrickkazar/.codex/skills/writing-clearly-and-concisely",
+        "line_count": 94,
+        "description_length": 204,
+        "has_scripts": false,
+        "has_references": false,
+        "has_openai": false,
+        "openai": {},
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 4,
+          "determinism_automation": 0,
+          "safety_guardrails": 12,
+          "reusability_maintainability": 6,
+          "total": 42
+        }
+      },
+      {
+        "skill": "find-skills",
+        "path": "/Users/patrickkazar/.codex/skills/find-skills",
+        "line_count": 134,
+        "description_length": 303,
+        "has_scripts": false,
+        "has_references": false,
+        "has_openai": false,
+        "openai": {},
+        "scores": {
+          "trigger_precision": 12,
+          "workflow_completeness": 8,
+          "determinism_automation": 0,
+          "safety_guardrails": 0,
+          "reusability_maintainability": 6,
+          "total": 26
+        }
+      },
+      {
+        "skill": "playwright",
+        "path": "/Users/patrickkazar/.codex/skills/playwright",
+        "line_count": 148,
+        "description_length": 209,
+        "has_scripts": true,
+        "has_references": true,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Playwright CLI Skill",
+          "short_description": "Automate real browsers from the terminal",
+          "default_prompt": "Automate this browser workflow with Playwright and produce a reliable script with run steps."
+        },
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 12,
+          "determinism_automation": 15,
+          "safety_guardrails": 14,
+          "reusability_maintainability": 20,
+          "total": 81
+        }
+      },
+      {
+        "skill": "sentry",
+        "path": "/Users/patrickkazar/.codex/skills/sentry",
+        "line_count": 124,
+        "description_length": 230,
+        "has_scripts": true,
+        "has_references": false,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Sentry (Read-only Observability)",
+          "short_description": "Read-only Sentry observability",
+          "default_prompt": "Investigate this issue in read-only Sentry data and report likely root cause, impact, and next steps."
+        },
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 12,
+          "determinism_automation": 20,
+          "safety_guardrails": 12,
+          "reusability_maintainability": 6,
+          "total": 70
+        }
+      },
+      {
+        "skill": "speech",
+        "path": "/Users/patrickkazar/.codex/skills/speech",
+        "line_count": 145,
+        "description_length": 309,
+        "has_scripts": true,
+        "has_references": true,
+        "has_openai": true,
+        "openai": {
+          "display_name": "Speech Generation Skill",
+          "short_description": "Generate narrated audio from text",
+          "default_prompt": "Generate spoken audio for this text with the right voice style, pacing, and output format."
+        },
+        "scores": {
+          "trigger_precision": 20,
+          "workflow_completeness": 20,
+          "determinism_automation": 20,
+          "safety_guardrails": 12,
+          "reusability_maintainability": 14,
+          "total": 86
+        }
+      },
+      {
+        "skill": "ui-ux-pro-max",
+        "path": "/Users/patrickkazar/.agents/skills/ui-ux-pro-max",
+        "line_count": 387,
+        "description_length": 806,
+        "has_scripts": true,
+        "has_references": false,
+        "has_openai": false,
+        "openai": {},
+        "scores": {
+          "trigger_precision": 0,
+          "workflow_completeness": 12,
+          "determinism_automation": 20,
+          "safety_guardrails": 12,
+          "reusability_maintainability": 6,
+          "total": 50
+        }
+      }
+    ]
+  },
+  "aggregates": {
+    "baseline_avg": 53.10526315789474,
+    "new_avg": 94.66666666666667,
+    "relevant_p75": 75.5
+  },
+  "simulations": {
+    "results": [
+      {
+        "skill": "spec-task-drift-guard",
+        "scenario_id": "S1",
+        "prompt": "Scan real repo docs vs code and produce drift findings.",
+        "kind": "scenario",
+        "passed": true,
+        "details": "Wrote 152 findings to /var/folders/mq/sh4dvnjd5g5fqs2bs4s53vwc0000gn/T/skill-sim-a7g_gut3/spec_real.json and /var/folders/mq/sh4dvnjd5g5fqs2bs4s53vwc0000gn/T/skill-sim-a7g_gut3/spec_real.md"
+      },
+      {
+        "skill": "spec-task-drift-guard",
+        "scenario_id": "S2",
+        "prompt": "Detect verified claim when docs and code agree on a CLI flag.",
+        "kind": "scenario",
+        "passed": true,
+        "details": "findings=1"
+      },
+      {
+        "skill": "spec-task-drift-guard",
+        "scenario_id": "S3",
+        "prompt": "Flag missing evidence when docs claim unsupported flag.",
+        "kind": "scenario",
+        "passed": true,
+        "details": "findings=1"
+      },
+      {
+        "skill": "spec-task-drift-guard",
+        "scenario_id": "F1",
+        "prompt": "Failure mode: no documentation files match input globs.",
+        "kind": "failure",
+        "passed": true,
+        "details": "No documentation files matched --doc-glob patterns."
+      },
+      {
+        "skill": "release-readiness-gate",
+        "scenario_id": "S1",
+        "prompt": "Run preflight gate on real repo and emit complete check set.",
+        "kind": "scenario",
+        "passed": true,
+        "details": "overall=fail"
+      },
+      {
+        "skill": "release-readiness-gate",
+        "scenario_id": "S2",
+        "prompt": "Pass preflight on complete release fixture.",
+        "kind": "scenario",
+        "passed": true,
+        "details": "overall=pass"
+      },
+      {
+        "skill": "release-readiness-gate",
+        "scenario_id": "S3",
+        "prompt": "Pass strict RC mode when all required artifacts exist.",
+        "kind": "scenario",
+        "passed": true,
+        "details": "overall=pass"
+      },
+      {
+        "skill": "release-readiness-gate",
+        "scenario_id": "F1",
+        "prompt": "Failure mode: malformed release fixture with missing required files/version.",
+        "kind": "failure",
+        "passed": true,
+        "details": "Overall: fail; blocking_failures=7"
+      },
+      {
+        "skill": "keybind-source-of-truth",
+        "scenario_id": "S1",
+        "prompt": "Extract canonical keybindings from real router/docs.",
+        "kind": "scenario",
+        "passed": true,
+        "details": "canonical=61"
+      },
+      {
+        "skill": "keybind-source-of-truth",
+        "scenario_id": "S2",
+        "prompt": "Detect both missing_in_docs and missing_in_code on mismatched fixture.",
+        "kind": "scenario",
+        "passed": true,
+        "details": "missing_docs=2, missing_code=2"
+      },
+      {
+        "skill": "keybind-source-of-truth",
+        "scenario_id": "S3",
+        "prompt": "Produce zero drift on aligned keybind fixture.",
+        "kind": "scenario",
+        "passed": true,
+        "details": "aligned fixture"
+      },
+      {
+        "skill": "keybind-source-of-truth",
+        "scenario_id": "F1",
+        "prompt": "Failure mode: missing router path should fail fast.",
+        "kind": "failure",
+        "passed": true,
+        "details": "Router path not found: /private/var/folders/mq/sh4dvnjd5g5fqs2bs4s53vwc0000gn/T/skill-sim-a7g_gut3/key_fixture_aligned/src/app/NOPE.ts"
+      },
+      {
+        "skill": "safe-scope-enforcer",
+        "scenario_id": "S1",
+        "prompt": "Pass docs-only when only docs files are changed.",
+        "kind": "scenario",
+        "passed": true,
+        "details": "Scope check passed for 1 changed file(s)."
+      },
+      {
+        "skill": "safe-scope-enforcer",
+        "scenario_id": "S2",
+        "prompt": "Return exit code 2 when src file violates docs-only policy.",
+        "kind": "scenario",
+        "passed": true,
+        "details": "Scope check failed with 1 violation(s):\n- src/a.ts: Matched deny pattern (deny)"
+      },
+      {
+        "skill": "safe-scope-enforcer",
+        "scenario_id": "S3",
+        "prompt": "Pass custom profile when changed files match explicit allow globs.",
+        "kind": "scenario",
+        "passed": true,
+        "details": "Scope check passed for 2 changed file(s)."
+      },
+      {
+        "skill": "safe-scope-enforcer",
+        "scenario_id": "F1",
+        "prompt": "Failure mode: custom profile without allow globs should fail.",
+        "kind": "failure",
+        "passed": true,
+        "details": "custom profile requires at least one --allow-glob"
+      },
+      {
+        "skill": "session-handoff-capture",
+        "scenario_id": "S1",
+        "prompt": "Generate handoff with git status and commit sections in real repo.",
+        "kind": "scenario",
+        "passed": true,
+        "details": "len=2179"
+      },
+      {
+        "skill": "session-handoff-capture",
+        "scenario_id": "S2",
+        "prompt": "Handle non-git repository with explicit fallback warning.",
+        "kind": "scenario",
+        "passed": true,
+        "details": "warning present"
+      },
+      {
+        "skill": "session-handoff-capture",
+        "scenario_id": "S3",
+        "prompt": "Respect include-git-log parameter in output.",
+        "kind": "scenario",
+        "passed": true,
+        "details": "short log heading present"
+      },
+      {
+        "skill": "session-handoff-capture",
+        "scenario_id": "F1",
+        "prompt": "Failure mode: invalid output path should return non-zero safely.",
+        "kind": "failure",
+        "passed": true,
+        "details": "Traceback (most recent call last):\n  File \"/Users/patrickkazar/.codex/skills/session-handoff-capture/scripts/handoff_capture.py\", line 127, in <module>\n    raise SystemExit(main())\n  File \"/Users/patrickkazar/.codex/skills/session-handoff-capture/scripts/handoff_capture.py\", line 119, in main\n    out_md.parent.mkdir(parents=True, exist_ok=True)\n  File \"/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py\", line 1313, in mkdir\n    self._accessor.mkdir(self, mode)\nFileExistsError: [Errno 17] File exists: '/dev/null'"
+      },
+      {
+        "skill": "atomic-change-planner",
+        "scenario_id": "S1",
+        "prompt": "Create one patch per numbered objective.",
+        "kind": "scenario",
+        "passed": true,
+        "details": "patches=3"
+      },
+      {
+        "skill": "atomic-change-planner",
+        "scenario_id": "S2",
+        "prompt": "Fallback to paragraph splitting for unstructured requests.",
+        "kind": "scenario",
+        "passed": true,
+        "details": "patches=1"
+      },
+      {
+        "skill": "atomic-change-planner",
+        "scenario_id": "S3",
+        "prompt": "Enforce max-patches cap on large objective lists.",
+        "kind": "scenario",
+        "passed": true,
+        "details": "patches=3"
+      },
+      {
+        "skill": "atomic-change-planner",
+        "scenario_id": "F1",
+        "prompt": "Failure mode: empty request file should fail with clear message.",
+        "kind": "failure",
+        "passed": true,
+        "details": "Request file is empty."
+      }
+    ],
+    "summary_by_skill": {
+      "spec-task-drift-guard": {
+        "scenario_count": 3,
+        "scenario_pass": 3,
+        "failure_count": 1,
+        "failure_pass": 1,
+        "scenario_pass_rate": 100.0,
+        "failure_pass_rate": 100.0,
+        "overall_pass_rate": 100.0
+      },
+      "release-readiness-gate": {
+        "scenario_count": 3,
+        "scenario_pass": 3,
+        "failure_count": 1,
+        "failure_pass": 1,
+        "scenario_pass_rate": 100.0,
+        "failure_pass_rate": 100.0,
+        "overall_pass_rate": 100.0
+      },
+      "keybind-source-of-truth": {
+        "scenario_count": 3,
+        "scenario_pass": 3,
+        "failure_count": 1,
+        "failure_pass": 1,
+        "scenario_pass_rate": 100.0,
+        "failure_pass_rate": 100.0,
+        "overall_pass_rate": 100.0
+      },
+      "safe-scope-enforcer": {
+        "scenario_count": 3,
+        "scenario_pass": 3,
+        "failure_count": 1,
+        "failure_pass": 1,
+        "scenario_pass_rate": 100.0,
+        "failure_pass_rate": 100.0,
+        "overall_pass_rate": 100.0
+      },
+      "session-handoff-capture": {
+        "scenario_count": 3,
+        "scenario_pass": 3,
+        "failure_count": 1,
+        "failure_pass": 1,
+        "scenario_pass_rate": 100.0,
+        "failure_pass_rate": 100.0,
+        "overall_pass_rate": 100.0
+      },
+      "atomic-change-planner": {
+        "scenario_count": 3,
+        "scenario_pass": 3,
+        "failure_count": 1,
+        "failure_pass": 1,
+        "scenario_pass_rate": 100.0,
+        "failure_pass_rate": 100.0,
+        "overall_pass_rate": 100.0
+      }
+    },
+    "global_scenario_pass_rate": 100.0
+  },
+  "thresholds": {
+    "each_new_skill_at_least_80": true,
+    "new_avg_at_least_relevant_p75": true,
+    "scenario_pass_rate_at_least_90": true
+  }
+}

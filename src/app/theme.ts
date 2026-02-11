@@ -1,6 +1,7 @@
-import { THEMES, ThemeId, ThemeTokens } from "../theme/themes";
+import { THEMES, ThemeId, ThemeTokens, resolveThemeTokens } from "../theme/themes";
+import { CustomThemeConfig, THEME_OBJECT_IDS, ThemeObjectId, TadoiSettings } from "../settings/settings";
 
-type RuntimeTheme = {
+export type RuntimeTheme = {
   bg: string;
   panel: string;
   accentOrange: string;
@@ -46,7 +47,24 @@ function runtimeThemeFromTokens(tokens: ThemeTokens): RuntimeTheme {
   };
 }
 
-export const theme: RuntimeTheme = runtimeThemeFromTokens(THEMES.default);
+function createRuntimeThemeByObject(): Record<ThemeObjectId, RuntimeTheme> {
+  const initial = runtimeThemeFromTokens(THEMES.default);
+  return THEME_OBJECT_IDS.reduce(
+    (acc, objectId) => {
+      acc[objectId] = { ...initial };
+      return acc;
+    },
+    {} as Record<ThemeObjectId, RuntimeTheme>
+  );
+}
+
+const runtimeThemeByObject = createRuntimeThemeByObject();
+
+export function themeForObject(objectId: ThemeObjectId): RuntimeTheme {
+  return runtimeThemeByObject[objectId];
+}
+
+export const theme: RuntimeTheme = themeForObject("appChrome");
 
 export const layout = {
   railWidth: 36,
@@ -93,7 +111,27 @@ function syncStyles(): void {
 }
 
 export function applyTheme(themeId: ThemeId): void {
-  Object.assign(theme, runtimeThemeFromTokens(THEMES[themeId]));
+  for (const objectId of THEME_OBJECT_IDS) {
+    const tokens = resolveThemeTokens(themeId, undefined, { objectId });
+    Object.assign(runtimeThemeByObject[objectId], runtimeThemeFromTokens(tokens));
+  }
+  syncStyles();
+}
+
+export function applyThemeWithSettings(
+  themeId: ThemeId,
+  settings: Pick<TadoiSettings, "customThemes">,
+  options: {
+    draft?: CustomThemeConfig;
+  } = {}
+): void {
+  for (const objectId of THEME_OBJECT_IDS) {
+    const tokens = resolveThemeTokens(themeId, settings, {
+      objectId,
+      draft: options.draft
+    });
+    Object.assign(runtimeThemeByObject[objectId], runtimeThemeFromTokens(tokens));
+  }
   syncStyles();
 }
 

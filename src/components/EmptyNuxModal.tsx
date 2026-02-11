@@ -1,4 +1,4 @@
-import { theme } from "../app/theme";
+import { themeForObject } from "../app/theme";
 
 type EmptyNuxModalProps = {
   onClose: () => void;
@@ -6,6 +6,7 @@ type EmptyNuxModalProps = {
 };
 
 export function EmptyNuxModal({ onClose, onCreateTask }: EmptyNuxModalProps) {
+  const theme = themeForObject("modal");
   return (
     <box
       style={{

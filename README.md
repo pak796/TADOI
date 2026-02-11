@@ -4,8 +4,9 @@ Terminal Accessible Digital Organization Interface
 
 Keyboard-first TUI todo list with due dates, completion, and tag autocomplete (OpenTUI + React on Bun).
 
-Current version: `v0.3.0` (`package.json`: `0.3.0`).
+Current version: `v0.3.1` (`package.json`: `0.3.1`).
 Feature list: [`docs/TADOI_Feature_List_v0.3.0.md`](./docs/TADOI_Feature_List_v0.3.0.md)
+QA guide: [`docs/TADOI_QA_Guide_v0.3.1.md`](./docs/TADOI_QA_Guide_v0.3.1.md)
 
 ## Setup
 
@@ -122,7 +123,7 @@ Reference:
   - `space`: toggle selected task done/open (on recurring occurrences, completes/reopens that occurrence)
   - `x`: skip selected recurring occurrence
   - `z`: snooze selected recurring occurrence by `+1 day`
-  - `d`: delete selected task (confirm modal `y` / `n` / `Esc`)
+  - `d`: delete selected task (regular modal: `y` / `n` / `Esc`; recurring occurrence modal: `y` this event, `f` this + future, `n` / `Esc` cancel)
   - `/`: open search
   - `f`: cycle status filter
   - `s`: cycle sort mode (`DUE` default keeps open tasks with due dates at the top)
@@ -230,6 +231,10 @@ Type `#` in the Tags field to get suggestions ranked by usage. Selecting a sugge
   - Complete occurrence: adds EXDATE + creates/updates done instance history row.
   - Skip occurrence: adds EXDATE and removes matching materialized instance if present.
   - Snooze occurrence: adds EXDATE and creates/updates an open materialized instance due `+1 day` (local wall-clock preserved when explicit time exists).
+  - Delete occurrence modal (`d` on an occurrence row):
+    - `y`: delete this event only (adds EXDATE, removes matching instance override).
+    - `f`: delete this event and all future events in the series.
+    - `n` / `Esc`: cancel.
   - Edit occurrence: edits/creates one materialized override instance.
   - Edit series (`E`): updates the parent recurring task and RRULE without deleting existing materialized instances.
 - Date windows (`Today`, `Next7`, `Overdue`) and dashboard counts include recurrence occurrences through the same visible-row selector used by Task List.

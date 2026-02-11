@@ -98,6 +98,7 @@ describe("handleKey", () => {
       focus: FocusTarget.MODAL,
       modal: {
         type: "delete" as const,
+        target: "regular_task" as const,
         taskId: "task-1",
         taskTitle: "Task",
         previousMode: Mode.LIST,
@@ -114,6 +115,35 @@ describe("handleKey", () => {
     ).toEqual([]);
     expect(run({ name: "y", sequence: "y" }, { uiState: modalState })).toEqual([
       { scope: "domain", type: "MODAL_CONFIRM_DELETE" }
+    ]);
+    expect(run({ name: "f", sequence: "f" }, { uiState: modalState })).toEqual([]);
+    expect(run({ name: "n", sequence: "n" }, { uiState: modalState })).toEqual([
+      { scope: "ui", type: "UNWIND" }
+    ]);
+  });
+
+  it("routes recurring delete modal keys", () => {
+    const modalState = {
+      ...initialUIState,
+      mode: Mode.MODAL_CONFIRM,
+      focus: FocusTarget.MODAL,
+      modal: {
+        type: "delete" as const,
+        target: "recurring_occurrence" as const,
+        seriesTaskId: "series-task-1",
+        seriesId: "series:task-1",
+        occurrenceIso: "2026-02-10T09:00:00",
+        selectedRowId: "series_occurrence:series%3Atask-1:2026-02-10T09%3A00%3A00",
+        taskTitle: "Task",
+        previousMode: Mode.LIST,
+        previousFocus: FocusTarget.TASK_LIST
+      }
+    };
+    expect(run({ name: "y", sequence: "y" }, { uiState: modalState })).toEqual([
+      { scope: "domain", type: "MODAL_CONFIRM_DELETE" }
+    ]);
+    expect(run({ name: "f", sequence: "f" }, { uiState: modalState })).toEqual([
+      { scope: "domain", type: "MODAL_CONFIRM_DELETE_FUTURE" }
     ]);
     expect(run({ name: "n", sequence: "n" }, { uiState: modalState })).toEqual([
       { scope: "ui", type: "UNWIND" }
@@ -454,6 +484,56 @@ describe("handleKey", () => {
     expect(run({ name: "escape" }, { uiState: helpState })).toEqual([
       { scope: "ui", type: "UNWIND" }
     ]);
+  });
+
+  it("routes help subpage forward/back navigation actions", () => {
+    const helpState = {
+      ...initialUIState,
+      mode: Mode.HELP,
+      focus: FocusTarget.TASK_LIST
+    };
+
+    expect(
+      run({ name: "enter" }, { uiState: helpState, helpPage: "settings" })
+    ).toEqual([{ scope: "ui", type: "HELP_NAV_FORWARD" }]);
+    expect(
+      run({ name: "right" }, { uiState: helpState, helpPage: "theme" })
+    ).toEqual([{ scope: "ui", type: "HELP_NAV_FORWARD" }]);
+    expect(
+      run({ name: "backspace" }, { uiState: helpState, helpPage: "theme" })
+    ).toEqual([{ scope: "ui", type: "HELP_NAV_BACK" }]);
+    expect(
+      run({ name: "left" }, { uiState: helpState, helpPage: "custom1" })
+    ).toEqual([{ scope: "ui", type: "HELP_NAV_BACK" }]);
+    expect(
+      run({ name: "escape" }, { uiState: helpState, helpPage: "custom1" })
+    ).toEqual([{ scope: "ui", type: "HELP_NAV_BACK" }]);
+  });
+
+  it("does not consume editor navigation keys on custom1 edit page", () => {
+    const helpState = {
+      ...initialUIState,
+      mode: Mode.HELP,
+      focus: FocusTarget.TASK_LIST
+    };
+    expect(
+      run({ name: "up" }, { uiState: helpState, helpPage: "custom1Edit" })
+    ).toEqual([]);
+    expect(
+      run({ name: "down" }, { uiState: helpState, helpPage: "custom1Edit" })
+    ).toEqual([]);
+    expect(
+      run({ name: "left" }, { uiState: helpState, helpPage: "custom1Edit" })
+    ).toEqual([]);
+    expect(
+      run({ name: "right" }, { uiState: helpState, helpPage: "custom1Edit" })
+    ).toEqual([]);
+    expect(
+      run({ name: "enter" }, { uiState: helpState, helpPage: "custom1Edit" })
+    ).toEqual([]);
+    expect(
+      run({ name: "backspace" }, { uiState: helpState, helpPage: "custom1Edit" })
+    ).toEqual([]);
   });
 
   it("blocks list/dashboard routing while tag filter panel mode is active", () => {

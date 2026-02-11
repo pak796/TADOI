@@ -1,7 +1,8 @@
 # TADOI Installation Guide (macOS, Windows, Linux)
 
 This guide covers binary and source installs on macOS, Windows, and Linux.
-Runtime baseline: **v0.3.0**.
+Runtime baseline: **v0.3.1**.
+Manual QA reference: `docs/TADOI_QA_Guide_v0.3.1.md`.
 
 ## 1) What You Need
 

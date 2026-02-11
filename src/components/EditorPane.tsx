@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import type { InputRenderable, KeyEvent, ScrollBoxRenderable } from "@opentui/core";
 import { EditorDraft, EditorFocus, Mode } from "../domain/models";
 import { WEEKDAY_ORDER } from "../domain/recurrence/draft";
-import { theme } from "../app/theme";
+import { themeForObject } from "../app/theme";
 import { TagInput } from "./TagInput";
 import { normalizeTimeTextInput } from "../domain/dates";
 import {
@@ -10,6 +10,7 @@ import {
   EDITOR_FOOTER_HINT_ROW,
   estimateEditorContentLines,
   getEditorFocusAnchorLine,
+  getEditorRecurrenceVisibility,
   getEditorViewportHeights,
   hasEditorOverflow
 } from "../domain/editorPaneLayout";
@@ -91,15 +92,13 @@ export function EditorPane({
   onSave,
   onCancel
 }: EditorPaneProps) {
+  const theme = themeForObject("inputs");
   const repeatWeekdaysText = draft.repeatWeekdays.join(",");
-  const repeatEnabled = draft.repeatMode !== "off";
-  const weeklyFieldsActive =
-    draft.repeatMode === "weekly" || draft.repeatMode === "custom";
-  const monthlyFieldActive =
-    draft.repeatMode === "monthly" || draft.repeatMode === "custom";
-  const customFieldActive = draft.repeatMode === "custom";
-  const untilFieldActive = repeatEnabled && draft.repeatEndMode === "until";
-  const countFieldActive = repeatEnabled && draft.repeatEndMode === "count";
+  const recurrenceVisibility = useMemo(
+    () => getEditorRecurrenceVisibility(draft.repeatMode, draft.repeatEndMode),
+    [draft.repeatEndMode, draft.repeatMode]
+  );
+  const repeatEnabled = recurrenceVisibility.repeatEnabled;
   const previewRows = [
     recurrencePreview?.[0] ?? "",
     recurrencePreview?.[1] ?? "",
@@ -111,9 +110,18 @@ export function EditorPane({
       hasDueSuggestion: Boolean(dueSuggestionHint),
       hasTimeSuggestion: Boolean(timeSuggestionHint),
       hasTagSuggestion: Boolean(tagInlineSuggestion?.remainder),
+      repeatMode: draft.repeatMode,
+      repeatEndMode: draft.repeatEndMode,
       previewRows: previewLineCount
     }),
-    [dueSuggestionHint, timeSuggestionHint, tagInlineSuggestion?.remainder, previewLineCount]
+    [
+      draft.repeatEndMode,
+      draft.repeatMode,
+      dueSuggestionHint,
+      timeSuggestionHint,
+      tagInlineSuggestion?.remainder,
+      previewLineCount
+    ]
   );
   const estimatedContentLines = estimateEditorContentLines(estimateOptions);
   const { contentHeight, footerHeight } = getEditorViewportHeights(availableHeightLines);
@@ -350,154 +358,168 @@ export function EditorPane({
         </box>
       </box>
 
-      <box style={{ flexDirection: "column", marginTop: 1 }}>
-        <text style={{ color: fieldLabelColor(repeatEnabled) }}>INTERVAL (N)</text>
-        <input
-          ref={repeatIntervalInputRef}
-          value={draft.repeatIntervalText}
-          onChange={(value) => onUpdate({ repeatIntervalText: value })}
-          onKeyDown={(key) => handleRepeatCycleFromInputKey(key, "repeat_interval")}
-          focused={focus === "repeat_interval"}
-          placeholder="1"
-          style={{
-            backgroundColor: theme.bg,
-            color: fieldInputColor(repeatEnabled),
-            width: "100%"
-          }}
-        />
-      </box>
-
-      <box style={{ flexDirection: "column", marginTop: 1 }}>
-        <text style={{ color: fieldLabelColor(weeklyFieldsActive) }}>
-          WEEKDAYS (WLY/CUS)
-        </text>
-        <input
-          value={repeatWeekdaysText}
-          onChange={(value) => onUpdate({ repeatWeekdays: parseWeekdaysInput(value) })}
-          focused={focus === "repeat_weekdays"}
-          placeholder="MO,WE"
-          style={{
-            backgroundColor: theme.bg,
-            color: fieldInputColor(weeklyFieldsActive),
-            width: "100%"
-          }}
-        />
-      </box>
-
-      <box style={{ flexDirection: "column", marginTop: 1 }}>
-        <text style={{ color: fieldLabelColor(monthlyFieldActive) }}>MONTH DAY (MLY/CUS)</text>
-        <input
-          value={draft.repeatMonthdayText}
-          onChange={(value) => onUpdate({ repeatMonthdayText: value })}
-          focused={focus === "repeat_monthday"}
-          placeholder="same day as due date"
-          style={{
-            backgroundColor: theme.bg,
-            color: fieldInputColor(monthlyFieldActive),
-            width: "100%"
-          }}
-        />
-      </box>
-
-      <box style={{ flexDirection: "column", marginTop: 1 }}>
-        <text style={{ color: fieldLabelColor(customFieldActive) }}>CUSTOM RRULE (CUS)</text>
-        <input
-          value={draft.repeatCustomRRuleText}
-          onChange={(value) => onUpdate({ repeatCustomRRuleText: value })}
-          focused={focus === "repeat_custom"}
-          placeholder="FREQ=WEEKLY;INTERVAL=1;BYDAY=MO,WE"
-          style={{
-            backgroundColor: theme.bg,
-            color: fieldInputColor(customFieldActive),
-            width: "100%"
-          }}
-        />
-      </box>
-
-      <box style={{ flexDirection: "column", marginTop: 1 }}>
-        <text style={{ color: fieldLabelColor(repeatEnabled) }}>REPEAT END (NEVER/UNTIL/COUNT)</text>
-        <input
-          value={draft.repeatEndMode}
-          onChange={(value) => onUpdate({ repeatEndMode: normalizeEndMode(value) })}
-          onKeyDown={(key) => handleRepeatCycleFromInputKey(key, "repeat_end_mode")}
-          focused={focus === "repeat_end_mode"}
-          placeholder="never"
-          style={{
-            backgroundColor: theme.bg,
-            color: fieldInputColor(repeatEnabled),
-            width: "100%"
-          }}
-        />
-        <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
-          {END_MODES.map((repeatEndMode) => {
-            const selected = draft.repeatEndMode === repeatEndMode;
-            return (
-              <box
-                key={repeatEndMode}
-                style={{
-                  width: 7,
-                  justifyContent: "center",
-                  alignItems: "center",
-                  backgroundColor: selected ? theme.accentBlue : theme.panel,
-                  border: true,
-                  borderStyle: "single",
-                  borderColor: selected ? theme.accentBlue : theme.outline
-                }}
-                onMouseDown={() => onUpdate({ repeatEndMode })}
-              >
-                <text style={{ color: selected ? theme.bg : theme.text }}>
-                  {repeatEndMode.toUpperCase()}
-                </text>
-              </box>
-            );
-          })}
+      {recurrenceVisibility.showInterval ? (
+        <box style={{ flexDirection: "column", marginTop: 1 }}>
+          <text style={{ color: fieldLabelColor(true) }}>INTERVAL (N)</text>
+          <input
+            ref={repeatIntervalInputRef}
+            value={draft.repeatIntervalText}
+            onChange={(value) => onUpdate({ repeatIntervalText: value })}
+            onKeyDown={(key) => handleRepeatCycleFromInputKey(key, "repeat_interval")}
+            focused={focus === "repeat_interval"}
+            placeholder="1"
+            style={{
+              backgroundColor: theme.bg,
+              color: fieldInputColor(true),
+              width: "100%"
+            }}
+          />
         </box>
-      </box>
+      ) : null}
 
-      <box style={{ flexDirection: "column", marginTop: 1 }}>
-        <text style={{ color: fieldLabelColor(untilFieldActive) }}>UNTIL DATE (END=UNTIL)</text>
-        <input
-          value={draft.repeatUntilText}
-          onChange={(value) => onUpdate({ repeatUntilText: value })}
-          focused={focus === "repeat_until"}
-          placeholder="2026-12-31"
-          style={{
-            backgroundColor: theme.bg,
-            color: fieldInputColor(untilFieldActive),
-            width: "100%"
-          }}
-        />
-      </box>
+      {recurrenceVisibility.showWeekdays ? (
+        <box style={{ flexDirection: "column", marginTop: 1 }}>
+          <text style={{ color: fieldLabelColor(true) }}>WEEKDAYS (WLY)</text>
+          <input
+            value={repeatWeekdaysText}
+            onChange={(value) => onUpdate({ repeatWeekdays: parseWeekdaysInput(value) })}
+            focused={focus === "repeat_weekdays"}
+            placeholder="MO,WE"
+            style={{
+              backgroundColor: theme.bg,
+              color: fieldInputColor(true),
+              width: "100%"
+            }}
+          />
+        </box>
+      ) : null}
 
-      <box style={{ flexDirection: "column", marginTop: 1 }}>
-        <text style={{ color: fieldLabelColor(countFieldActive) }}>OCCURRENCE COUNT (END=COUNT)</text>
-        <input
-          value={draft.repeatCountText}
-          onChange={(value) => onUpdate({ repeatCountText: value })}
-          focused={focus === "repeat_count"}
-          placeholder="10"
-          style={{
-            backgroundColor: theme.bg,
-            color: fieldInputColor(countFieldActive),
-            width: "100%"
-          }}
-        />
-      </box>
+      {recurrenceVisibility.showMonthday ? (
+        <box style={{ flexDirection: "column", marginTop: 1 }}>
+          <text style={{ color: fieldLabelColor(true) }}>MONTH DAY (MLY)</text>
+          <input
+            value={draft.repeatMonthdayText}
+            onChange={(value) => onUpdate({ repeatMonthdayText: value })}
+            focused={focus === "repeat_monthday"}
+            placeholder="same day as due date"
+            style={{
+              backgroundColor: theme.bg,
+              color: fieldInputColor(true),
+              width: "100%"
+            }}
+          />
+        </box>
+      ) : null}
 
-      <box style={{ flexDirection: "column", marginTop: 1 }}>
-        <text style={{ color: fieldLabelColor(repeatEnabled) }}>NEXT 3 OCCURRENCES</text>
-        {previewRows.map((occurrence, index) =>
-          occurrence ? (
-            <text key={`preview:${index}:${occurrence}`} style={{ color: theme.text }}>
-              {formatPreviewValue(occurrence)}
-            </text>
-          ) : (
-            <text key={`preview:${index}`} style={{ color: theme.muted }}>
-              {repeatEnabled && index === 0 ? "(invalid recurrence input)" : " "}
-            </text>
-          )
-        )}
-      </box>
+      {recurrenceVisibility.showCustomRule ? (
+        <box style={{ flexDirection: "column", marginTop: 1 }}>
+          <text style={{ color: fieldLabelColor(true) }}>CUSTOM RRULE (CUS)</text>
+          <input
+            value={draft.repeatCustomRRuleText}
+            onChange={(value) => onUpdate({ repeatCustomRRuleText: value })}
+            focused={focus === "repeat_custom"}
+            placeholder="FREQ=WEEKLY;INTERVAL=1;BYDAY=MO,WE"
+            style={{
+              backgroundColor: theme.bg,
+              color: fieldInputColor(true),
+              width: "100%"
+            }}
+          />
+        </box>
+      ) : null}
+
+      {recurrenceVisibility.showRepeatEnd ? (
+        <box style={{ flexDirection: "column", marginTop: 1 }}>
+          <text style={{ color: fieldLabelColor(true) }}>REPEAT END (NEVER/UNTIL/COUNT)</text>
+          <input
+            value={draft.repeatEndMode}
+            onChange={(value) => onUpdate({ repeatEndMode: normalizeEndMode(value) })}
+            onKeyDown={(key) => handleRepeatCycleFromInputKey(key, "repeat_end_mode")}
+            focused={focus === "repeat_end_mode"}
+            placeholder="never"
+            style={{
+              backgroundColor: theme.bg,
+              color: fieldInputColor(true),
+              width: "100%"
+            }}
+          />
+          <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
+            {END_MODES.map((repeatEndMode) => {
+              const selected = draft.repeatEndMode === repeatEndMode;
+              return (
+                <box
+                  key={repeatEndMode}
+                  style={{
+                    width: 7,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    backgroundColor: selected ? theme.accentBlue : theme.panel,
+                    border: true,
+                    borderStyle: "single",
+                    borderColor: selected ? theme.accentBlue : theme.outline
+                  }}
+                  onMouseDown={() => onUpdate({ repeatEndMode })}
+                >
+                  <text style={{ color: selected ? theme.bg : theme.text }}>
+                    {repeatEndMode.toUpperCase()}
+                  </text>
+                </box>
+              );
+            })}
+          </box>
+        </box>
+      ) : null}
+
+      {recurrenceVisibility.showUntil ? (
+        <box style={{ flexDirection: "column", marginTop: 1 }}>
+          <text style={{ color: fieldLabelColor(true) }}>UNTIL DATE (END=UNTIL)</text>
+          <input
+            value={draft.repeatUntilText}
+            onChange={(value) => onUpdate({ repeatUntilText: value })}
+            focused={focus === "repeat_until"}
+            placeholder="2026-12-31"
+            style={{
+              backgroundColor: theme.bg,
+              color: fieldInputColor(true),
+              width: "100%"
+            }}
+          />
+        </box>
+      ) : null}
+
+      {recurrenceVisibility.showCount ? (
+        <box style={{ flexDirection: "column", marginTop: 1 }}>
+          <text style={{ color: fieldLabelColor(true) }}>OCCURRENCE COUNT (END=COUNT)</text>
+          <input
+            value={draft.repeatCountText}
+            onChange={(value) => onUpdate({ repeatCountText: value })}
+            focused={focus === "repeat_count"}
+            placeholder="10"
+            style={{
+              backgroundColor: theme.bg,
+              color: fieldInputColor(true),
+              width: "100%"
+            }}
+          />
+        </box>
+      ) : null}
+
+      {recurrenceVisibility.showPreview ? (
+        <box style={{ flexDirection: "column", marginTop: 1 }}>
+          <text style={{ color: fieldLabelColor(true) }}>NEXT 3 OCCURRENCES</text>
+          {previewRows.map((occurrence, index) =>
+            occurrence ? (
+              <text key={`preview:${index}:${occurrence}`} style={{ color: theme.text }}>
+                {formatPreviewValue(occurrence)}
+              </text>
+            ) : (
+              <text key={`preview:${index}`} style={{ color: theme.muted }}>
+                {repeatEnabled && index === 0 ? "(invalid recurrence input)" : " "}
+              </text>
+            )
+          )}
+        </box>
+      ) : null}
 
       <box style={{ flexDirection: "column", marginTop: 1 }}>
         <text style={{ color: theme.muted }}>TAGS (#TAG)</text>

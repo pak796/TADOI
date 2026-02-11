@@ -19,6 +19,7 @@ export type KeyRouterContext = {
   viewsOverlayOpen: boolean;
   saveViewPromptOpen: boolean;
   backupScreen: BackupCenterScreen | null;
+  helpPage?: "help" | "settings" | "theme" | "custom1" | "custom1Edit";
 };
 
 export type KeyRouterAction =
@@ -48,6 +49,8 @@ export type KeyRouterAction =
   | { scope: "ui"; type: "SCROLL_EDITOR_PAGE"; direction: 1 | -1 }
   | { scope: "ui"; type: "HELP_MOVE_SECTION_FOCUS"; delta: 1 | -1 }
   | { scope: "ui"; type: "HELP_TOGGLE_FOCUSED_SECTION" }
+  | { scope: "ui"; type: "HELP_NAV_FORWARD" }
+  | { scope: "ui"; type: "HELP_NAV_BACK" }
   | {
       scope: "ui";
       type: "HELP_SET_FOCUSED_SECTION_EXPANDED";
@@ -82,6 +85,7 @@ export type KeyRouterAction =
   | { scope: "domain"; type: "SNOOZE_SELECTED_OCCURRENCE" }
   | { scope: "domain"; type: "OPEN_DELETE_CONFIRM" }
   | { scope: "domain"; type: "MODAL_CONFIRM_DELETE" }
+  | { scope: "domain"; type: "MODAL_CONFIRM_DELETE_FUTURE" }
   | { scope: "domain"; type: "MODAL_OVERDUE_SNOOZE" }
   | { scope: "domain"; type: "MODAL_OVERDUE_DONE" }
   | { scope: "domain"; type: "MODAL_OVERDUE_GO_TO_TASK" }
@@ -229,11 +233,15 @@ export function handleKey(
     hasPendingGPrefix,
     viewsOverlayOpen,
     saveViewPromptOpen,
-    backupScreen
+    backupScreen,
+    helpPage
   } = context;
   const { mode, focus } = uiState;
 
   if (name === "escape") {
+    if (mode === Mode.HELP && (helpPage ?? "help") !== "help") {
+      return [{ scope: "ui", type: "HELP_NAV_BACK" }];
+    }
     if (hasPendingGPrefix) {
       return [{ scope: "ui", type: "SET_G_PREFIX", active: false }];
     }
@@ -268,10 +276,18 @@ export function handleKey(
       return [];
     }
     if (uiState.modal?.type === "delete") {
-      if (name === "y" || sequence === "y") {
+      const lowerName = name.toLowerCase();
+      const lowerSequence = sequence.toLowerCase();
+      if (lowerName === "y" || lowerSequence === "y") {
         return [{ scope: "domain", type: "MODAL_CONFIRM_DELETE" }];
       }
-      if (name === "n" || sequence === "n") {
+      if (
+        uiState.modal.target === "recurring_occurrence" &&
+        (lowerName === "f" || lowerSequence === "f")
+      ) {
+        return [{ scope: "domain", type: "MODAL_CONFIRM_DELETE_FUTURE" }];
+      }
+      if (lowerName === "n" || lowerSequence === "n") {
         return [{ scope: "ui", type: "UNWIND" }];
       }
       return [];
@@ -305,6 +321,48 @@ export function handleKey(
   }
 
   if (mode === Mode.HELP) {
+    const activeHelpPage = helpPage ?? "help";
+    if (activeHelpPage === "custom1Edit") {
+      if (isHelpCloseKey(name, sequence)) {
+        return [{ scope: "ui", type: "CLOSE_HELP" }];
+      }
+      return [];
+    }
+
+    if (activeHelpPage !== "help") {
+      if (name === "up") {
+        return [{ scope: "ui", type: "HELP_MOVE_SECTION_FOCUS", delta: -1 }];
+      }
+      if (name === "down") {
+        return [{ scope: "ui", type: "HELP_MOVE_SECTION_FOCUS", delta: 1 }];
+      }
+      if (name === "left" || name === "backspace") {
+        return [{ scope: "ui", type: "HELP_NAV_BACK" }];
+      }
+      if (name === "right" || name === "return" || name === "enter") {
+        return [{ scope: "ui", type: "HELP_NAV_FORWARD" }];
+      }
+      if (isThemeCycleKey(name, sequence)) {
+        return [{ scope: "ui", type: "CYCLE_THEME" }];
+      }
+      if (isFlashModeToggleKey(name, sequence)) {
+        return [{ scope: "ui", type: "TOGGLE_FLASH_MODE" }];
+      }
+      if (isNotificationMasterToggleKey(name, sequence)) {
+        return [{ scope: "ui", type: "TOGGLE_NOTIFICATIONS_ENABLED" }];
+      }
+      if (isInAppOverdueBannerToggleKey(name, sequence)) {
+        return [{ scope: "ui", type: "TOGGLE_INAPP_OVERDUE_BANNER" }];
+      }
+      if (isTerminalBellToggleKey(name, sequence)) {
+        return [{ scope: "ui", type: "TOGGLE_TERMINAL_BELL_ON_OVERDUE" }];
+      }
+      if (isHelpCloseKey(name, sequence)) {
+        return [{ scope: "ui", type: "CLOSE_HELP" }];
+      }
+      return [];
+    }
+
     if (name === "up") {
       return [{ scope: "ui", type: "HELP_MOVE_SECTION_FOCUS", delta: -1 }];
     }

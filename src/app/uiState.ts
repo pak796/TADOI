@@ -1,27 +1,85 @@
 import {
   ConfirmModal,
+  EditorDraft,
   EditorFocus,
   FocusTarget,
   Mode
 } from "../domain/models";
+import { getEditorRecurrenceVisibility } from "../domain/editorPaneLayout";
 
-const editorFocusOrder: FocusTarget[] = [
+const EDITOR_BASE_FOCUS_ORDER: FocusTarget[] = [
   FocusTarget.EDITOR_TITLE,
   FocusTarget.EDITOR_DUE_DATE,
   FocusTarget.EDITOR_DUE_TIME,
   FocusTarget.EDITOR_REPEAT_MODE,
-  FocusTarget.EDITOR_REPEAT_INTERVAL,
-  FocusTarget.EDITOR_REPEAT_WEEKDAYS,
-  FocusTarget.EDITOR_REPEAT_MONTHDAY,
-  FocusTarget.EDITOR_REPEAT_END_MODE,
-  FocusTarget.EDITOR_REPEAT_UNTIL,
-  FocusTarget.EDITOR_REPEAT_COUNT,
-  FocusTarget.EDITOR_REPEAT_CUSTOM,
   FocusTarget.EDITOR_TAGS,
   FocusTarget.EDITOR_NOTES,
   FocusTarget.EDITOR_SAVE,
   FocusTarget.EDITOR_CANCEL
 ];
+
+const RECURRENCE_DETAIL_FOCUS_ORDER: FocusTarget[] = [
+  FocusTarget.EDITOR_REPEAT_INTERVAL,
+  FocusTarget.EDITOR_REPEAT_WEEKDAYS,
+  FocusTarget.EDITOR_REPEAT_MONTHDAY,
+  FocusTarget.EDITOR_REPEAT_CUSTOM,
+  FocusTarget.EDITOR_REPEAT_END_MODE,
+  FocusTarget.EDITOR_REPEAT_UNTIL,
+  FocusTarget.EDITOR_REPEAT_COUNT
+];
+
+function getFirstVisibleRecurrenceFocusTarget(
+  order: FocusTarget[]
+): FocusTarget | undefined {
+  return order.find((target) => RECURRENCE_DETAIL_FOCUS_ORDER.includes(target));
+}
+
+export function getVisibleEditorFocusOrder(
+  editorDraft: EditorDraft | null | undefined
+): FocusTarget[] {
+  const recurrenceVisibility = getEditorRecurrenceVisibility(
+    editorDraft?.repeatMode,
+    editorDraft?.repeatEndMode
+  );
+
+  const order: FocusTarget[] = [
+    FocusTarget.EDITOR_TITLE,
+    FocusTarget.EDITOR_DUE_DATE,
+    FocusTarget.EDITOR_DUE_TIME,
+    FocusTarget.EDITOR_REPEAT_MODE
+  ];
+
+  if (recurrenceVisibility.showInterval) {
+    order.push(FocusTarget.EDITOR_REPEAT_INTERVAL);
+  }
+  if (recurrenceVisibility.showWeekdays) {
+    order.push(FocusTarget.EDITOR_REPEAT_WEEKDAYS);
+  }
+  if (recurrenceVisibility.showMonthday) {
+    order.push(FocusTarget.EDITOR_REPEAT_MONTHDAY);
+  }
+  if (recurrenceVisibility.showCustomRule) {
+    order.push(FocusTarget.EDITOR_REPEAT_CUSTOM);
+  }
+  if (recurrenceVisibility.showRepeatEnd) {
+    order.push(FocusTarget.EDITOR_REPEAT_END_MODE);
+  }
+  if (recurrenceVisibility.showUntil) {
+    order.push(FocusTarget.EDITOR_REPEAT_UNTIL);
+  }
+  if (recurrenceVisibility.showCount) {
+    order.push(FocusTarget.EDITOR_REPEAT_COUNT);
+  }
+
+  order.push(
+    FocusTarget.EDITOR_TAGS,
+    FocusTarget.EDITOR_NOTES,
+    FocusTarget.EDITOR_SAVE,
+    FocusTarget.EDITOR_CANCEL
+  );
+
+  return order;
+}
 
 export function isEditorMode(
   mode: Mode
@@ -105,12 +163,51 @@ export function toEditorFocus(focus: FocusTarget): EditorFocus {
 
 export function nextEditorFocusTarget(
   current: FocusTarget,
-  direction: 1 | -1
+  direction: 1 | -1,
+  editorDraft: EditorDraft | null | undefined
 ): FocusTarget {
+  const editorFocusOrder = getVisibleEditorFocusOrder(editorDraft);
   const index = editorFocusOrder.indexOf(current);
   const safeIndex = index === -1 ? 0 : index;
   const nextIndex = (safeIndex + direction + editorFocusOrder.length) % editorFocusOrder.length;
   return editorFocusOrder[nextIndex];
+}
+
+export function resolveEditorFocusAfterDraftChange(
+  current: FocusTarget,
+  previousDraft: EditorDraft | null | undefined,
+  nextDraft: EditorDraft | null | undefined
+): FocusTarget {
+  if (!EDITOR_BASE_FOCUS_ORDER.includes(current) && !RECURRENCE_DETAIL_FOCUS_ORDER.includes(current)) {
+    return current;
+  }
+
+  const nextOrder = getVisibleEditorFocusOrder(nextDraft);
+  if (nextOrder.includes(current)) {
+    return current;
+  }
+
+  if (RECURRENCE_DETAIL_FOCUS_ORDER.includes(current)) {
+    const nextRecurrenceVisibility = getEditorRecurrenceVisibility(
+      nextDraft?.repeatMode,
+      nextDraft?.repeatEndMode
+    );
+    if (!nextRecurrenceVisibility.repeatEnabled) {
+      return FocusTarget.EDITOR_REPEAT_MODE;
+    }
+    return (
+      getFirstVisibleRecurrenceFocusTarget(nextOrder) ?? FocusTarget.EDITOR_REPEAT_MODE
+    );
+  }
+
+  const previousOrder = getVisibleEditorFocusOrder(previousDraft);
+  const previousIndex = previousOrder.indexOf(current);
+  if (previousIndex === -1) {
+    return nextOrder[0] ?? FocusTarget.EDITOR_TITLE;
+  }
+
+  const clampedIndex = Math.max(0, Math.min(previousIndex, nextOrder.length - 1));
+  return nextOrder[clampedIndex] ?? FocusTarget.EDITOR_TITLE;
 }
 
 export function resolveModalAction(

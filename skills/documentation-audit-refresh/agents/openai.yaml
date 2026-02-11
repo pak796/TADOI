@@ -1,0 +1,4 @@
+interface:
+  display_name: "Documentation Audit & Refresh"
+  short_description: "Audit and refresh repo docs against code"
+  default_prompt: "Use $documentation-audit-refresh to audit this repository documentation against current behavior and deliver docs-only updates with an audit report."

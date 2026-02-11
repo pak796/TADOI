@@ -1,10 +1,17 @@
-import React, { useEffect, useReducer, useRef, useState } from "react";
-import type { KeyEvent, ScrollBoxRenderable } from "@opentui/core";
+import React, { useEffect, useLayoutEffect, useReducer, useRef, useState } from "react";
+import type { KeyEvent } from "@opentui/core";
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/react";
-import { applyTheme, colorForTag, theme, layout } from "./theme";
+import {
+  applyThemeWithSettings,
+  colorForTag,
+  theme,
+  themeForObject,
+  layout
+} from "./theme";
 import {
   getNextSelectedIdAfterDelete,
   nextEditorFocusTarget,
+  resolveEditorFocusAfterDraftChange,
   toEditorFocus
 } from "./uiState";
 import { handleKey, type KeyRouterAction } from "./keyRouter";
@@ -16,6 +23,10 @@ import { DashboardPane } from "../components/DashboardPane";
 import { TagFilterPanel } from "../components/TagFilterPanel";
 import { BackupCenterScreen } from "../components/BackupCenterScreen";
 import { EmptyNuxModal } from "../components/EmptyNuxModal";
+import {
+  Custom1ThemeEditor,
+  type Custom1ThemeEditorHandle
+} from "../components/Custom1ThemeEditor";
 import { OverdueNotificationModal } from "../components/OverdueNotificationModal";
 import { diffLocalDays, startOfLocalDayMs } from "../domain/dates";
 import { computeTopTagsOpen } from "../domain/dashboard";
@@ -28,6 +39,10 @@ import {
   formatDateToLocalIso,
   parseLocalIsoToDate
 } from "../domain/recurrence/rruleAdapter";
+import {
+  deleteRecurringOccurrence,
+  deleteRecurringOccurrenceAndFuture
+} from "../domain/recurrence/delete";
 import {
   findNextMatchingIndex,
   isTaskDueToday,
@@ -82,7 +97,15 @@ import {
 } from "../domain/query";
 import { reconcileSelectionById } from "../domain/selection";
 import { buildVisibleTaskRows, type VisibleTaskRow } from "../domain/taskRows";
-import { AppState, FocusTarget, Mode, SavedView, TagFilter, Task } from "../domain/models";
+import {
+  AppState,
+  EditorDraft,
+  FocusTarget,
+  Mode,
+  SavedView,
+  TagFilter,
+  Task
+} from "../domain/models";
 import { ROTATING_THEME_ORDER, ThemeId } from "../theme/themes";
 import {
   applySavedView,
@@ -96,12 +119,15 @@ import {
   getDefaultSettings,
   loadSettings,
   saveSettingsDebounced,
+  type CustomThemeConfig,
+  type CustomThemes,
   type FlashMode,
-  type NotificationSettings
+  type NotificationSettings,
+  type ThemeObjectId
 } from "../settings/settings";
 import { settingsReducer } from "../state/settingsStore";
 import { isEditorMode } from "../ui/modeFocus";
-import { initialUIState, uiReducer, unwind } from "../ui/state";
+import { initialUIState, uiReducer, unwind, type UIDeleteModal } from "../ui/state";
 import {
   backupCenterReducer,
   hasMatchingDryRun,
@@ -133,6 +159,7 @@ import {
   MIN_TERMINAL_WIDTH
 } from "./layoutGuard";
 import { APP_NAME, APP_TAGLINE, ENV_VARS } from "../brand/brand";
+import type { ThemeTokens } from "../theme/themes";
 
 const TICKER_INTERVAL_MS = 6000;
 const SLOW_PULSE_INTERVAL_MS = 2000;
@@ -160,6 +187,7 @@ const HELP_PANEL_CHROME_ROWS = HELP_HEADER_ROWS + HELP_DIVIDER_ROWS + HELP_FOOTE
 const HELP_SECTION_SCROLL_PADDING = 1;
 const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings =
   getDefaultSettings().notifications;
+const DEFAULT_CUSTOM_THEMES: CustomThemes | undefined = getDefaultSettings().customThemes;
 
 type HelpMenuItem = {
   title: string;
@@ -185,12 +213,60 @@ type HelpSectionLayout = {
   endRow: number;
 };
 
+type HelpScrollbarThumb = {
+  startRow: number;
+  endRow: number;
+};
+
+type HelpPage = "help" | "settings" | "theme" | "custom1" | "custom1Edit";
+
+type HelpNavSelectionByPage = {
+  settings: number;
+  theme: number;
+  custom1: number;
+};
+
+type HelpNavItem = {
+  title: string;
+  description: string;
+};
+
+const HELP_SETTINGS_NAV_ITEMS: HelpNavItem[] = [
+  {
+    title: "Theme",
+    description: "Configure theme mode and custom palettes."
+  }
+];
+
+const HELP_THEME_NAV_ITEMS: HelpNavItem[] = [
+  {
+    title: "Custom1",
+    description: "Global palette plus per-object overrides."
+  }
+];
+
+const HELP_CUSTOM1_NAV_ITEMS: HelpNavItem[] = [
+  {
+    title: "Edit Colors",
+    description: "Open editor (live preview, save/cancel/reset)."
+  }
+];
+
 /*
  * Help menu structure:
  * - Edit HELP_MENU_SECTIONS to add/remove categories and items.
  * - Help keyboard routing is in src/app/keyRouter.ts (Mode.HELP branch).
  */
 const HELP_MENU_SECTIONS: HelpMenuSection[] = [
+  {
+    title: "Settings",
+    items: [
+      {
+        title: "Open Settings submenu",
+        description: "Press Enter/Right to open settings pages."
+      }
+    ]
+  },
   {
     title: "Getting Started",
     items: [
@@ -319,6 +395,9 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
 ];
 const HELP_SETTINGS_SECTION_INDEX = HELP_MENU_SECTIONS.findIndex(
   (section) => section.title === "Settings & Themes"
+);
+const HELP_SETTINGS_NAV_SECTION_INDEX = HELP_MENU_SECTIONS.findIndex(
+  (section) => section.title === "Settings"
 );
 
 function createDefaultHelpExpandedState(): boolean[] {
@@ -463,6 +542,56 @@ function ensureHelpSectionVisible(params: {
   }
 
   return clampScrollOffset(nextOffset, safeVisibleRows, itemCount);
+}
+
+function computeHelpScrollbarThumb(params: {
+  scrollOffset: number;
+  visibleRows: number;
+  itemCount: number;
+}): HelpScrollbarThumb | null {
+  const { scrollOffset, visibleRows, itemCount } = params;
+  if (itemCount <= visibleRows) return null;
+  const safeVisibleRows = Math.max(1, visibleRows);
+  const maxOffset = Math.max(1, itemCount - safeVisibleRows);
+  const thumbSize = Math.max(
+    1,
+    Math.min(safeVisibleRows, Math.round((safeVisibleRows / itemCount) * safeVisibleRows))
+  );
+  const maxThumbTop = Math.max(0, safeVisibleRows - thumbSize);
+  const thumbTop = Math.round((clampScrollOffset(scrollOffset, safeVisibleRows, itemCount) / maxOffset) * maxThumbTop);
+  return {
+    startRow: thumbTop,
+    endRow: thumbTop + thumbSize - 1
+  };
+}
+
+function cloneThemeTokens(tokens: ThemeTokens): ThemeTokens {
+  return { ...tokens };
+}
+
+function cloneThemeObjectOverrides(
+  objects: Partial<Record<ThemeObjectId, Partial<ThemeTokens>>> | undefined
+): Partial<Record<ThemeObjectId, Partial<ThemeTokens>>> {
+  if (!objects) return {};
+  const next: Partial<Record<ThemeObjectId, Partial<ThemeTokens>>> = {};
+  for (const [objectId, overrides] of Object.entries(objects) as Array<
+    [ThemeObjectId, Partial<ThemeTokens>]
+  >) {
+    next[objectId] = { ...overrides };
+  }
+  return next;
+}
+
+function resolveCustom1Config(customThemes: CustomThemes | undefined): CustomThemeConfig {
+  const fallback = getDefaultSettings().customThemes?.custom1?.global;
+  if (!fallback) {
+    throw new Error("Default custom1 theme is unavailable.");
+  }
+  const global = customThemes?.custom1?.global ?? fallback;
+  return {
+    global: cloneThemeTokens(global),
+    objects: cloneThemeObjectOverrides(customThemes?.custom1?.objects)
+  };
 }
 
 function resolveDashboardTopTagLimit(panelHeight: number): number {
@@ -616,6 +745,7 @@ type AppProps = {
   initialThemeId?: ThemeId;
   initialFlashMode?: FlashMode;
   initialNotificationSettings?: NotificationSettings;
+  initialCustomThemes?: CustomThemes;
   settingsPath?: string;
   showLogo?: boolean;
 };
@@ -636,6 +766,7 @@ export function App({
   initialThemeId = "default",
   initialFlashMode = "slow",
   initialNotificationSettings = DEFAULT_NOTIFICATION_SETTINGS,
+  initialCustomThemes = DEFAULT_CUSTOM_THEMES,
   settingsPath,
   showLogo = true
 }: AppProps) {
@@ -644,7 +775,8 @@ export function App({
   const [settingsState, settingsDispatch] = useReducer(settingsReducer, {
     themeId: initialThemeId,
     flashMode: initialFlashMode,
-    notifications: initialNotificationSettings
+    notifications: initialNotificationSettings,
+    customThemes: initialCustomThemes
   });
   const [uiState, uiDispatch] = useReducer(uiReducer, initialUIState);
   const [backupState, backupDispatch] = useReducer(
@@ -673,17 +805,33 @@ export function App({
   );
   const [helpFocusedSectionIndex, setHelpFocusedSectionIndex] = useState(0);
   const [helpScrollOffset, setHelpScrollOffset] = useState(0);
+  const [helpNavStack, setHelpNavStack] = useState<HelpPage[]>(["help"]);
+  const [helpNavSelection, setHelpNavSelection] = useState<HelpNavSelectionByPage>({
+    settings: 0,
+    theme: 0,
+    custom1: 0
+  });
+  const [helpPreviewThemeMode, setHelpPreviewThemeMode] = useState<ThemeId | null>(null);
+  const [custom1DraftGlobal, setCustom1DraftGlobal] = useState<ThemeTokens>(() =>
+    resolveCustom1Config(initialCustomThemes).global
+  );
+  const [custom1DraftObjects, setCustom1DraftObjects] = useState<
+    Partial<Record<ThemeObjectId, Partial<ThemeTokens>>>
+  >(() => resolveCustom1Config(initialCustomThemes).objects ?? {});
   const skipInitialSaveRef = useRef(skipInitialSave);
   const skipSettingsSaveRef = useRef(true);
   const lastSuccessfulSaveAtRef = useRef<number | undefined>(undefined);
   const gPrefixTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navBannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const emptyNuxEligibilityCheckedRef = useRef(false);
-  const helpScrollRef = useRef<ScrollBoxRenderable | null>(null);
+  const helpScrollTopRef = useRef(0);
+  const helpFocusedSectionRef = useRef(0);
   const helpReturnContextRef = useRef({
     mode: Mode.LIST,
     focus: FocusTarget.TASK_LIST
   });
+  const helpPreviewRestoreThemeRef = useRef<ThemeId | null>(null);
+  const custom1EditorRef = useRef<Custom1ThemeEditorHandle | null>(null);
   const { height: terminalHeight, width: terminalWidth } = useTerminalDimensions();
   const terminalIsSupported = isTerminalSizeSupported(terminalWidth, terminalHeight);
   const terminalSizeWarning = getTerminalSizeWarning(terminalWidth, terminalHeight);
@@ -695,6 +843,7 @@ export function App({
 
   settingsRef.current = settingsState;
   tasksRef.current = state.tasks;
+  helpFocusedSectionRef.current = helpFocusedSectionIndex;
 
   if (!notificationManagerRef.current) {
     const inAppModalNotifier = new InAppModalNotifier({
@@ -740,6 +889,18 @@ export function App({
   );
   const selectedTask =
     visibleTaskRows.find((task) => task.id === state.selectedId) ?? visibleTaskRows[0];
+  const activeHelpPage = helpNavStack[helpNavStack.length - 1] ?? "help";
+  const persistedCustom1 = React.useMemo(
+    () => resolveCustom1Config(settingsState.customThemes),
+    [settingsState.customThemes]
+  );
+  const custom1Draft: CustomThemeConfig = React.useMemo(
+    () => ({
+      global: custom1DraftGlobal,
+      objects: Object.keys(custom1DraftObjects).length > 0 ? custom1DraftObjects : undefined
+    }),
+    [custom1DraftGlobal, custom1DraftObjects]
+  );
   const clampedHelpFocusedSectionIndex = Math.max(
     0,
     Math.min(helpFocusedSectionIndex, HELP_MENU_SECTIONS.length - 1)
@@ -748,8 +909,32 @@ export function App({
     () => buildHelpRows(helpExpandedBySection),
     [helpExpandedBySection]
   );
-  const focusedHelpSection =
-    helpSections[clampedHelpFocusedSectionIndex] ?? helpSections[0];
+  const helpNavItems =
+    activeHelpPage === "settings"
+      ? HELP_SETTINGS_NAV_ITEMS
+      : activeHelpPage === "theme"
+        ? HELP_THEME_NAV_ITEMS
+        : activeHelpPage === "custom1"
+          ? HELP_CUSTOM1_NAV_ITEMS
+          : [];
+  const helpNavSelectionIndex =
+    activeHelpPage === "settings"
+      ? helpNavSelection.settings
+      : activeHelpPage === "theme"
+        ? helpNavSelection.theme
+        : activeHelpPage === "custom1"
+          ? helpNavSelection.custom1
+          : 0;
+  const clampedHelpNavSelectionIndex =
+    helpNavItems.length === 0
+      ? 0
+      : Math.max(0, Math.min(helpNavSelectionIndex, helpNavItems.length - 1));
+  const helpBodyLineCount =
+    activeHelpPage === "help"
+      ? helpRows.length
+      : activeHelpPage === "custom1Edit"
+        ? 22
+        : Math.max(4, helpNavItems.length * 2 + 2);
   const helpPanelMaxWidth = Math.max(20, terminalWidth - HELP_PANEL_HORIZONTAL_MARGIN * 2);
   const helpPanelWidthMin = Math.min(HELP_PANEL_MIN_WIDTH, helpPanelMaxWidth);
   const helpPanelWidthMax = Math.min(HELP_PANEL_MAX_WIDTH, helpPanelMaxWidth);
@@ -760,7 +945,7 @@ export function App({
   );
   const helpPanelMaxHeight = Math.max(8, terminalHeight - HELP_PANEL_VERTICAL_MARGIN * 2);
   const helpPanelDesiredHeight =
-    helpRows.length + HELP_PANEL_CHROME_ROWS + HELP_PANEL_BORDER_ROWS;
+    helpBodyLineCount + HELP_PANEL_CHROME_ROWS + HELP_PANEL_BORDER_ROWS;
   const helpPanelHeight = clampToBounds(
     helpPanelDesiredHeight,
     Math.min(HELP_PANEL_MIN_HEIGHT, helpPanelMaxHeight),
@@ -769,7 +954,7 @@ export function App({
   const helpPanelInnerWidth = Math.max(1, helpPanelWidth - HELP_PANEL_BORDER_COLS);
   const helpPanelInnerHeight = Math.max(1, helpPanelHeight - HELP_PANEL_BORDER_ROWS);
   const helpContentVisibleRows = Math.max(1, helpPanelInnerHeight - HELP_PANEL_CHROME_ROWS);
-  const helpHasOverflow = helpRows.length > helpContentVisibleRows;
+  const helpHasOverflow = helpBodyLineCount > helpContentVisibleRows;
   const helpFooterWidth = Math.max(1, helpPanelInnerWidth - 2);
   const helpCloseButtonLabel = pickHelpCloseButtonLabel(Math.max(0, helpFooterWidth - 1));
   const helpCloseButtonWidth = helpCloseButtonLabel ? helpCloseButtonLabel.length + 2 : 0;
@@ -777,20 +962,62 @@ export function App({
     1,
     helpFooterWidth - helpCloseButtonWidth - (helpCloseButtonWidth > 0 ? 1 : 0)
   );
-  // Reserve one column when the Help scrollbox shows a vertical scrollbar so
-  // wrapped lines do not add phantom rows and desync focus scroll math.
+  // Reserve one column when Help content overflows so wrapped lines do not add
+  // phantom rows and desync focus scroll math.
   const helpContentLineWidth = Math.max(1, helpFooterWidth - (helpHasOverflow ? 1 : 0));
   const helpPageStep = Math.max(1, helpContentVisibleRows - 1);
+  const clampedHelpScrollOffset = clampScrollOffset(
+    helpScrollOffset,
+    helpContentVisibleRows,
+    helpRows.length
+  );
+  const helpVisibleRows =
+    activeHelpPage === "help"
+      ? helpRows.slice(
+          clampedHelpScrollOffset,
+          clampedHelpScrollOffset + helpContentVisibleRows
+        )
+      : helpRows;
+  const helpScrollbarThumb =
+    activeHelpPage === "help"
+      ? computeHelpScrollbarThumb({
+          scrollOffset: clampedHelpScrollOffset,
+          visibleRows: helpContentVisibleRows,
+          itemCount: helpRows.length
+        })
+      : null;
+  const helpFooterHintsRaw =
+    activeHelpPage === "help"
+      ? helpHasOverflow
+        ? "1 Backup Center | Enter on Settings | h theme | m flash | n notifications | o overdue popup | l bell | Up/Down focus | Enter/Space toggle | Left/Right collapse/expand | Esc close | Scroll"
+        : "1 Backup Center | Enter on Settings | h theme | m flash | n notifications | o overdue popup | l bell | Up/Down focus | Enter/Space toggle | Left/Right collapse/expand | Esc close"
+      : activeHelpPage === "custom1Edit"
+        ? "S save | C/Esc cancel | R reset token | Tab next focus | Arrows adjust/jump | Enter commit"
+        : "Up/Down move | Enter/Right open | Left/Backspace/Esc back | h/m/n/o/l quick toggles";
   const helpFooterHintsLine = fitLineToWidth(
-    helpHasOverflow
-      ? "1 Backup Center | h theme | m flash | n notifications | o overdue popup | l bell | Up/Down focus | Enter/Space toggle | Left/Right collapse/expand | Esc close | Scroll"
-      : "1 Backup Center | h theme | m flash | n notifications | o overdue popup | l bell | Up/Down focus | Enter/Space toggle | Left/Right collapse/expand | Esc close",
+    helpFooterHintsRaw,
     helpFooterHintLineWidth
   );
   const helpFooterDataPathLine = fitLineToWidth(
     `Data path: ${getDataFilePath()}`,
     helpFooterWidth
   );
+  const helpHeaderTitle =
+    activeHelpPage === "help"
+      ? "Help"
+      : activeHelpPage === "settings"
+        ? "Help / Settings"
+        : activeHelpPage === "theme"
+          ? "Help / Settings / Theme"
+          : activeHelpPage === "custom1"
+            ? "Help / Settings / Theme / Custom1"
+            : "Help / Settings / Theme / Custom1 / Edit Colors";
+  const helpTheme = themeForObject("help");
+  const modalTheme = themeForObject("modal");
+  const inputTheme = themeForObject("inputs");
+  const notificationsTheme = themeForObject("notifications");
+  const taskListTheme = themeForObject("taskList");
+  const dashboardTheme = themeForObject("dashboard");
 
   function findTaskById(taskId: string | undefined): Task | undefined {
     if (!taskId) return undefined;
@@ -992,12 +1219,14 @@ export function App({
   const tagFilterInlineSuggestion = tagFilterQuery
     ? getTagCompletion(tagFilterQuery, tagFilterSuggestions)
     : null;
+  const selectedThemeMode = helpPreviewThemeMode ?? settingsState.themeId;
   const activeThemeId =
-    settingsState.themeId === "rotating"
+    selectedThemeMode === "rotating"
       ? ROTATING_THEME_ORDER[rotatingThemeIndex % ROTATING_THEME_ORDER.length]
-      : settingsState.themeId;
-  const helpThemeStatusLineRaw =
-    settingsState.themeId === "rotating"
+      : selectedThemeMode;
+  const helpThemeStatusLineRaw = helpPreviewThemeMode
+    ? `Theme mode: ${settingsState.themeId} (preview: ${helpPreviewThemeMode})`
+    : settingsState.themeId === "rotating"
       ? `Theme mode: rotating (active: ${activeThemeId})`
       : `Theme mode: ${settingsState.themeId}`;
   const helpThemeStatusLine = fitLineToWidth(
@@ -1282,8 +1511,13 @@ export function App({
   }, [settingsState.themeId]);
 
   useEffect(() => {
-    applyTheme(activeThemeId);
-  }, [activeThemeId]);
+    applyThemeWithSettings(activeThemeId, settingsState, {
+      draft:
+        uiState.mode === Mode.HELP && activeHelpPage === "custom1Edit"
+          ? custom1Draft
+          : undefined
+    });
+  }, [activeHelpPage, activeThemeId, custom1Draft, settingsState, uiState.mode]);
 
   useEffect(() => {
     if (skipSettingsSaveRef.current) {
@@ -1294,12 +1528,19 @@ export function App({
       {
         themeId: settingsState.themeId,
         flashMode: settingsState.flashMode,
-        notifications: settingsState.notifications
+        notifications: settingsState.notifications,
+        customThemes: settingsState.customThemes
       },
       150,
       settingsPath ? { filePath: settingsPath } : {}
     );
-  }, [settingsPath, settingsState.themeId, settingsState.flashMode, settingsState.notifications]);
+  }, [
+    settingsPath,
+    settingsState.customThemes,
+    settingsState.flashMode,
+    settingsState.notifications,
+    settingsState.themeId
+  ]);
 
   useEffect(() => {
     if (skipInitialSaveRef.current) {
@@ -1375,50 +1616,60 @@ export function App({
     }
   }, [dashboardTagSelection, dashboardTopTags.length]);
 
-  useEffect(() => {
-    if (clampedHelpFocusedSectionIndex !== helpFocusedSectionIndex) {
-      setHelpFocusedSectionIndex(clampedHelpFocusedSectionIndex);
-    }
-  }, [clampedHelpFocusedSectionIndex, helpFocusedSectionIndex]);
+  function getCurrentHelpScrollTop(): number {
+    const current = Number.isFinite(helpScrollTopRef.current)
+      ? helpScrollTopRef.current
+      : helpScrollOffset;
+    return clampScrollOffset(current, helpContentVisibleRows, helpRows.length);
+  }
 
-  useEffect(() => {
-    const clamped = clampScrollOffset(
-      helpScrollOffset,
-      helpContentVisibleRows,
-      helpRows.length
+  function scrollHelpTo(offset: number): number {
+    const clamped = clampScrollOffset(offset, helpContentVisibleRows, helpRows.length);
+    helpScrollTopRef.current = clamped;
+    setHelpScrollOffset((prev) => (prev === clamped ? prev : clamped));
+    return clamped;
+  }
+
+  function ensureHelpSectionVisibleNow(sectionIndex: number): number {
+    const clampedSectionIndex = Math.max(
+      0,
+      Math.min(sectionIndex, HELP_MENU_SECTIONS.length - 1)
     );
-    if (clamped !== helpScrollOffset) {
-      setHelpScrollOffset(clamped);
+    const section = helpSections[clampedSectionIndex] ?? helpSections[0];
+    const nextOffset = ensureHelpSectionVisible({
+      section,
+      scrollOffset: getCurrentHelpScrollTop(),
+      visibleRows: helpContentVisibleRows,
+      itemCount: helpRows.length,
+      paddingRows: HELP_SECTION_SCROLL_PADDING
+    });
+    return scrollHelpTo(nextOffset);
+  }
+
+  useLayoutEffect(() => {
+    if (uiState.mode !== Mode.HELP || activeHelpPage !== "help") return;
+    const clampedIndex = Math.max(
+      0,
+      Math.min(helpFocusedSectionIndex, HELP_MENU_SECTIONS.length - 1)
+    );
+    if (clampedIndex !== helpFocusedSectionIndex) {
+      helpFocusedSectionRef.current = clampedIndex;
+      setHelpFocusedSectionIndex(clampedIndex);
     }
-  }, [helpContentVisibleRows, helpRows.length, helpScrollOffset]);
-
-  useEffect(() => {
-    if (uiState.mode !== Mode.HELP) return;
-    const timer = setTimeout(() => {
-      setHelpScrollOffset((prevOffset) =>
-        ensureHelpSectionVisible({
-          section: focusedHelpSection,
-          scrollOffset: prevOffset,
-          visibleRows: helpContentVisibleRows,
-          itemCount: helpRows.length,
-          paddingRows: HELP_SECTION_SCROLL_PADDING
-        })
-      );
-    }, 0);
-    return () => clearTimeout(timer);
+    ensureHelpSectionVisibleNow(clampedIndex);
   }, [
-    focusedHelpSection,
-    helpContentVisibleRows,
+    uiState.mode,
+    activeHelpPage,
+    helpFocusedSectionIndex,
     helpRows.length,
-    uiState.mode
+    helpSections,
+    helpContentVisibleRows,
+    helpExpandedBySection,
+    helpPanelWidth,
+    helpPanelHeight,
+    helpPanelInnerWidth,
+    helpPanelInnerHeight
   ]);
-
-  useEffect(() => {
-    if (uiState.mode !== Mode.HELP) return;
-    // Mouse wheel/trackpad scrolling stays independent of section selection.
-    // Arrow/Page navigation owns selected-section changes to avoid scroll/selection jitter.
-    helpScrollRef.current?.scrollTo({ x: 0, y: helpScrollOffset });
-  }, [helpScrollOffset, uiState.mode]);
 
   useEffect(() => {
     if (uiState.mode !== Mode.HELP) return;
@@ -1426,15 +1677,19 @@ export function App({
   }, [
     renderer,
     uiState.mode,
+    activeHelpPage,
     helpPanelWidth,
     helpPanelHeight,
     helpPanelInnerWidth,
     helpPanelInnerHeight,
+    helpBodyLineCount,
     helpRows.length,
     helpExpandedBySection,
+    helpNavSelection,
     helpScrollOffset,
     helpFooterHintsLine,
-    helpFooterDataPathLine
+    helpFooterDataPathLine,
+    custom1Draft
   ]);
 
   function applyEscUnwind(): boolean {
@@ -1481,6 +1736,10 @@ export function App({
     settingsDispatch({
       type: "setNotifications",
       notifications: settingsResult.settings.notifications
+    });
+    settingsDispatch({
+      type: "setCustomThemes",
+      customThemes: settingsResult.settings.customThemes
     });
   }
 
@@ -1668,6 +1927,12 @@ export function App({
       case "HELP_TOGGLE_FOCUSED_SECTION":
         toggleFocusedHelpSection();
         return;
+      case "HELP_NAV_FORWARD":
+        handleHelpNavForward();
+        return;
+      case "HELP_NAV_BACK":
+        handleHelpNavBack();
+        return;
       case "HELP_SET_FOCUSED_SECTION_EXPANDED":
         setFocusedHelpSectionExpanded(action.expanded);
         return;
@@ -1700,7 +1965,7 @@ export function App({
       case "MOVE_EDITOR_FOCUS":
         uiDispatch({
           type: "setFocus",
-          focus: nextEditorFocusTarget(uiState.focus, action.direction)
+          focus: nextEditorFocusTarget(uiState.focus, action.direction, state.editor)
         });
         return;
       case "SET_G_PREFIX":
@@ -1828,6 +2093,9 @@ export function App({
       case "MODAL_CONFIRM_DELETE":
         handleDeleteSelected();
         return;
+      case "MODAL_CONFIRM_DELETE_FUTURE":
+        handleDeleteSelectedAndFuture();
+        return;
       case "MODAL_OVERDUE_SNOOZE":
         handleOverdueModalSnooze();
         return;
@@ -1896,6 +2164,13 @@ export function App({
       return;
     }
 
+    if (uiState.mode === Mode.HELP && activeHelpPage === "custom1Edit") {
+      const handled = custom1EditorRef.current?.handleKey(key) ?? false;
+      if (handled) {
+        return;
+      }
+    }
+
     const actions = handleKey(
       {
         name: key.name ?? "",
@@ -1911,20 +2186,33 @@ export function App({
         hasPendingGPrefix: pendingGPrefix,
         viewsOverlayOpen,
         saveViewPromptOpen,
-        backupScreen: uiState.mode === Mode.BACKUP_CENTER ? backupState.screen : null
+        backupScreen: uiState.mode === Mode.BACKUP_CENTER ? backupState.screen : null,
+        helpPage: activeHelpPage
       }
     );
 
     for (const action of actions) {
-      runRoutedAction(action);
+      try {
+        runRoutedAction(action);
+      } catch (error) {
+        const detail = normalizeErrorDetail(error);
+        showShortNavigationBanner(`Action failed: ${detail}`);
+        console.error("[TADOI] routed action failed", action, error);
+      }
     }
   });
 
   function openHelp() {
     clearPendingGPrefix();
     setHelpExpandedBySection(createDefaultHelpExpandedState());
+    helpFocusedSectionRef.current = 0;
     setHelpFocusedSectionIndex(0);
+    helpScrollTopRef.current = 0;
     setHelpScrollOffset(0);
+    setHelpNavStack(["help"]);
+    setHelpNavSelection({ settings: 0, theme: 0, custom1: 0 });
+    setHelpPreviewThemeMode(null);
+    helpPreviewRestoreThemeRef.current = null;
     helpReturnContextRef.current = {
       mode: uiState.mode,
       focus: uiState.focus
@@ -1935,6 +2223,79 @@ export function App({
       focus: uiState.focus
     });
     uiDispatch({ type: "setMode", mode: Mode.HELP });
+  }
+
+  function pushHelpPage(page: HelpPage) {
+    setHelpNavStack((prev) => {
+      if (prev[prev.length - 1] === page) return prev;
+      return [...prev, page];
+    });
+    helpScrollTopRef.current = 0;
+    setHelpScrollOffset(0);
+  }
+
+  function popHelpPage() {
+    setHelpNavStack((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
+    helpScrollTopRef.current = 0;
+    setHelpScrollOffset(0);
+  }
+
+  function sanitizeDraftObjects(
+    objects: Partial<Record<ThemeObjectId, Partial<ThemeTokens>>>
+  ): Partial<Record<ThemeObjectId, Partial<ThemeTokens>>> | undefined {
+    const next: Partial<Record<ThemeObjectId, Partial<ThemeTokens>>> = {};
+    for (const [objectId, tokens] of Object.entries(objects) as Array<
+      [ThemeObjectId, Partial<ThemeTokens>]
+    >) {
+      if (Object.keys(tokens).length > 0) {
+        next[objectId] = { ...tokens };
+      }
+    }
+    return Object.keys(next).length > 0 ? next : undefined;
+  }
+
+  function openCustom1Editor() {
+    const persisted = resolveCustom1Config(settingsState.customThemes);
+    setCustom1DraftGlobal(cloneThemeTokens(persisted.global));
+    setCustom1DraftObjects(cloneThemeObjectOverrides(persisted.objects));
+    helpPreviewRestoreThemeRef.current = settingsState.themeId;
+    setHelpPreviewThemeMode("custom1");
+    pushHelpPage("custom1Edit");
+  }
+
+  function closeCustom1EditorCancel() {
+    const persisted = resolveCustom1Config(settingsState.customThemes);
+    const restoreTheme = helpPreviewRestoreThemeRef.current;
+    setCustom1DraftGlobal(cloneThemeTokens(persisted.global));
+    setCustom1DraftObjects(cloneThemeObjectOverrides(persisted.objects));
+    setHelpPreviewThemeMode(null);
+    if (restoreTheme && settingsState.themeId !== restoreTheme) {
+      settingsDispatch({ type: "setTheme", themeId: restoreTheme });
+    }
+    helpPreviewRestoreThemeRef.current = null;
+    setHelpNavStack((prev) =>
+      prev[prev.length - 1] === "custom1Edit" ? prev.slice(0, -1) : prev
+    );
+  }
+
+  function saveCustom1Editor() {
+    const objects = sanitizeDraftObjects(custom1DraftObjects);
+    settingsDispatch({
+      type: "setCustomThemes",
+      customThemes: {
+        ...(settingsState.customThemes ?? {}),
+        custom1: objects
+          ? { global: cloneThemeTokens(custom1DraftGlobal), objects }
+          : { global: cloneThemeTokens(custom1DraftGlobal) }
+      }
+    });
+    settingsDispatch({ type: "setTheme", themeId: "custom1" });
+    setHelpPreviewThemeMode(null);
+    helpPreviewRestoreThemeRef.current = null;
+    setHelpNavStack((prev) =>
+      prev[prev.length - 1] === "custom1Edit" ? prev.slice(0, -1) : prev
+    );
+    showShortNavigationBanner("Custom1 theme saved");
   }
 
   function openBackupCenter() {
@@ -1980,6 +2341,9 @@ export function App({
   }
 
   function closeHelp() {
+    if (helpNavStack[helpNavStack.length - 1] === "custom1Edit") {
+      closeCustom1EditorCancel();
+    }
     const { mode: returnMode, focus: returnFocus } = normalizeHelpReturnContext(
       helpReturnContextRef.current.mode,
       helpReturnContextRef.current.focus
@@ -1989,22 +2353,59 @@ export function App({
   }
 
   function moveHelpSectionFocus(delta: 1 | -1) {
-    setHelpFocusedSectionIndex((prev) =>
-      Math.max(0, Math.min(prev + delta, HELP_MENU_SECTIONS.length - 1))
+    if (activeHelpPage !== "help") {
+      if (activeHelpPage === "settings") {
+        setHelpNavSelection((prev) => ({
+          ...prev,
+          settings: Math.max(
+            0,
+            Math.min(prev.settings + delta, HELP_SETTINGS_NAV_ITEMS.length - 1)
+          )
+        }));
+      } else if (activeHelpPage === "theme") {
+        setHelpNavSelection((prev) => ({
+          ...prev,
+          theme: Math.max(
+            0,
+            Math.min(prev.theme + delta, HELP_THEME_NAV_ITEMS.length - 1)
+          )
+        }));
+      } else if (activeHelpPage === "custom1") {
+        setHelpNavSelection((prev) => ({
+          ...prev,
+          custom1: Math.max(
+            0,
+            Math.min(prev.custom1 + delta, HELP_CUSTOM1_NAV_ITEMS.length - 1)
+          )
+        }));
+      }
+      return;
+    }
+    const nextIndex = Math.max(
+      0,
+      Math.min(helpFocusedSectionRef.current + delta, HELP_MENU_SECTIONS.length - 1)
     );
+    helpFocusedSectionRef.current = nextIndex;
+    setHelpFocusedSectionIndex(nextIndex);
+    ensureHelpSectionVisibleNow(nextIndex);
   }
 
   function scrollHelpByPage(direction: 1 | -1) {
+    if (activeHelpPage !== "help") return;
+    const currentOffset = getCurrentHelpScrollTop();
     const nextOffset = clampScrollOffset(
-      helpScrollOffset + direction * helpPageStep,
+      currentOffset + direction * helpPageStep,
       helpContentVisibleRows,
       helpRows.length
     );
-    setHelpScrollOffset(nextOffset);
+    const appliedOffset = scrollHelpTo(nextOffset);
     // Page-scrolling in Help moves focus to the section nearest the top of the viewport.
-    setHelpFocusedSectionIndex(
-      findHelpSectionIndexForViewportTop(helpSections, nextOffset)
+    const nextFocusedSectionIndex = findHelpSectionIndexForViewportTop(
+      helpSections,
+      appliedOffset
     );
+    helpFocusedSectionRef.current = nextFocusedSectionIndex;
+    setHelpFocusedSectionIndex(nextFocusedSectionIndex);
   }
 
   function setHelpSectionExpanded(sectionIndex: number, expanded: boolean) {
@@ -2027,17 +2428,83 @@ export function App({
   }
 
   function toggleFocusedHelpSection() {
+    if (
+      activeHelpPage === "help" &&
+      HELP_SETTINGS_NAV_SECTION_INDEX >= 0 &&
+      clampedHelpFocusedSectionIndex === HELP_SETTINGS_NAV_SECTION_INDEX
+    ) {
+      pushHelpPage("settings");
+      return;
+    }
     toggleHelpSection(clampedHelpFocusedSectionIndex);
   }
 
   function setFocusedHelpSectionExpanded(expanded: boolean) {
+    if (
+      activeHelpPage === "help" &&
+      expanded &&
+      HELP_SETTINGS_NAV_SECTION_INDEX >= 0 &&
+      clampedHelpFocusedSectionIndex === HELP_SETTINGS_NAV_SECTION_INDEX
+    ) {
+      pushHelpPage("settings");
+      return;
+    }
     setHelpSectionExpanded(clampedHelpFocusedSectionIndex, expanded);
   }
 
   function handleHelpSectionHeaderClick(sectionIndex: number) {
+    if (activeHelpPage !== "help") return;
     const nextIndex = Math.max(0, Math.min(sectionIndex, HELP_MENU_SECTIONS.length - 1));
+    helpFocusedSectionRef.current = nextIndex;
     setHelpFocusedSectionIndex(nextIndex);
+    ensureHelpSectionVisibleNow(nextIndex);
+    if (HELP_SETTINGS_NAV_SECTION_INDEX >= 0 && sectionIndex === HELP_SETTINGS_NAV_SECTION_INDEX) {
+      pushHelpPage("settings");
+      return;
+    }
     toggleHelpSection(sectionIndex);
+  }
+
+  function setHelpNavSelectionForActivePage(index: number) {
+    if (activeHelpPage === "settings") {
+      setHelpNavSelection((prev) => ({ ...prev, settings: index }));
+      return;
+    }
+    if (activeHelpPage === "theme") {
+      setHelpNavSelection((prev) => ({ ...prev, theme: index }));
+      return;
+    }
+    if (activeHelpPage === "custom1") {
+      setHelpNavSelection((prev) => ({ ...prev, custom1: index }));
+    }
+  }
+
+  function handleHelpNavForward() {
+    if (activeHelpPage === "settings") {
+      if (clampedHelpNavSelectionIndex === 0) {
+        pushHelpPage("theme");
+      }
+      return;
+    }
+    if (activeHelpPage === "theme") {
+      if (clampedHelpNavSelectionIndex === 0) {
+        pushHelpPage("custom1");
+      }
+      return;
+    }
+    if (activeHelpPage === "custom1") {
+      if (clampedHelpNavSelectionIndex === 0) {
+        openCustom1Editor();
+      }
+    }
+  }
+
+  function handleHelpNavBack() {
+    if (activeHelpPage === "custom1Edit") {
+      closeCustom1EditorCancel();
+      return;
+    }
+    popHelpPage();
   }
 
   function openListMode() {
@@ -2263,22 +2730,41 @@ export function App({
 
   function openDeleteConfirm() {
     if (!selectedTask) return;
-    if (selectedTask.rowKind === "series_occurrence_virtual") {
-      showShortNavigationBanner("Use x to skip a recurring occurrence");
-      return;
-    }
-    const persistedTask = resolvePersistedTaskForRow(selectedTask);
-    if (!persistedTask) return;
-    closeViewsOverlay();
-    uiDispatch({
-      type: "setModal",
-      modal: {
+    let modal: UIDeleteModal | null = null;
+    if (
+      selectedTask.rowKind === "series_occurrence_virtual" ||
+      selectedTask.rowKind === "series_occurrence_instance"
+    ) {
+      const occurrenceContext = resolveSelectedOccurrenceContext();
+      if (!occurrenceContext) return;
+      modal = {
         type: "delete",
+        target: "recurring_occurrence",
+        seriesTaskId: occurrenceContext.seriesTask.id,
+        seriesId: occurrenceContext.seriesId,
+        occurrenceIso: occurrenceContext.occurrenceIso,
+        selectedRowId: occurrenceContext.row.id,
+        taskTitle: occurrenceContext.seriesTask.title,
+        previousMode: Mode.LIST,
+        previousFocus: uiState.focus
+      };
+    } else {
+      const persistedTask = resolvePersistedTaskForRow(selectedTask);
+      if (!persistedTask) return;
+      modal = {
+        type: "delete",
+        target: "regular_task",
         taskId: persistedTask.id,
         taskTitle: persistedTask.title,
         previousMode: Mode.LIST,
         previousFocus: uiState.focus
-      }
+      };
+    }
+
+    closeViewsOverlay();
+    uiDispatch({
+      type: "setModal",
+      modal
     });
     uiDispatch({ type: "setMode", mode: Mode.MODAL_CONFIRM });
     uiDispatch({ type: "setFocus", focus: FocusTarget.MODAL });
@@ -2927,9 +3413,28 @@ export function App({
     dispatch({ type: "setEditor", editor: null });
   }
 
+  function updateEditorDraft(patch: Partial<EditorDraft>) {
+    if (!state.editor) return;
+    const previousDraft = state.editor;
+    const nextDraft: EditorDraft = {
+      ...previousDraft,
+      ...patch
+    };
+    const reconciledFocus = resolveEditorFocusAfterDraftChange(
+      uiState.focus,
+      previousDraft,
+      nextDraft
+    );
+    if (reconciledFocus !== uiState.focus) {
+      uiDispatch({ type: "setFocus", focus: reconciledFocus });
+    }
+    dispatch({ type: "updateEditor", patch });
+  }
+
   function saveEditor() {
     if (!state.editor) return;
     const draft = state.editor;
+    // Keep recurrence draft values in-memory; persistence is gated by repeatMode in buildRecurrenceFromDraft.
     const title = draft.title.trim();
     if (!title) return;
 
@@ -3112,23 +3617,61 @@ export function App({
     dispatch({ type: "setEditor", editor: null });
   }
 
-  function handleDeleteSelected() {
-    const modal = uiState.modal;
-    if (!modal || modal.type !== "delete") return;
+  function finishDeleteModalAction(
+    modal: UIDeleteModal,
+    deletedRowId: string,
+    nextTasks: Task[]
+  ) {
     const visibleIds = visibleTaskRows.map((task) => task.id);
-    const nextSelectedId = getNextSelectedIdAfterDelete(visibleIds, modal.taskId);
-    dispatch({
-      type: "setTasks",
-      tasks: state.tasks.filter((task) => task.id !== modal.taskId)
-    });
+    const nextSelectedId = getNextSelectedIdAfterDelete(visibleIds, deletedRowId);
+    dispatch({ type: "setTasks", tasks: nextTasks });
     dispatch({ type: "setSelected", id: nextSelectedId });
     uiDispatch({ type: "setModal", modal: null });
     uiDispatch({ type: "setMode", mode: modal.previousMode });
     uiDispatch({ type: "setFocus", focus: modal.previousFocus });
   }
 
+  function handleDeleteSelected() {
+    const modal = uiState.modal;
+    if (!modal || modal.type !== "delete") return;
+    if (modal.target === "regular_task") {
+      finishDeleteModalAction(
+        modal,
+        modal.taskId,
+        state.tasks.filter((task) => task.id !== modal.taskId)
+      );
+      return;
+    }
+
+    const nowMs = Date.now();
+    const nextTasks = deleteRecurringOccurrence(state.tasks, {
+      seriesTaskId: modal.seriesTaskId,
+      seriesId: modal.seriesId,
+      occurrenceIso: modal.occurrenceIso,
+      nowMs
+    });
+    finishDeleteModalAction(modal, modal.selectedRowId, nextTasks);
+  }
+
+  function handleDeleteSelectedAndFuture() {
+    const modal = uiState.modal;
+    if (!modal || modal.type !== "delete" || modal.target !== "recurring_occurrence") return;
+    const nowMs = Date.now();
+    const nextTasks = deleteRecurringOccurrenceAndFuture(state.tasks, {
+      seriesTaskId: modal.seriesTaskId,
+      seriesId: modal.seriesId,
+      occurrenceIso: modal.occurrenceIso,
+      nowMs
+    });
+    finishDeleteModalAction(modal, modal.selectedRowId, nextTasks);
+  }
+
   function confirmDeleteSelectedFromModal() {
     handleDeleteSelected();
+  }
+
+  function confirmDeleteSelectedAndFutureFromModal() {
+    handleDeleteSelectedAndFuture();
   }
 
   function cancelDeleteSelectedFromModal() {
@@ -3613,21 +4156,21 @@ export function App({
           >
             <box
               style={{
-                backgroundColor: theme.panel,
+                backgroundColor: dashboardTheme.panel,
                 paddingLeft: 3,
                 paddingTop: 1
               }}
             >
-              <text style={{ color: theme.muted }}>DASHBOARD</text>
+              <text style={{ color: dashboardTheme.muted }}>DASHBOARD</text>
             </box>
             <box
               style={{
                 flexGrow: 1,
                 padding: 1,
-                backgroundColor: theme.panel,
+                backgroundColor: dashboardTheme.panel,
                 border: true,
                 borderStyle: "single",
-                borderColor: theme.outline
+                borderColor: dashboardTheme.outline
               }}
             >
               <DashboardPane
@@ -3649,33 +4192,33 @@ export function App({
             <box style={{ flexDirection: "column", flexGrow: 1 }}>
               <box
                 style={{
-                  backgroundColor: theme.panel,
+                  backgroundColor: taskListTheme.panel,
                   paddingLeft: 3,
                   paddingTop: 1
                 }}
               >
-                <text style={{ color: theme.muted }}>TASK LIST</text>
+                <text style={{ color: taskListTheme.muted }}>TASK LIST</text>
               </box>
               <box
                 style={{
                   flexGrow: 1,
                   padding: 1,
-                  backgroundColor: theme.panel,
+                  backgroundColor: taskListTheme.panel,
                   border: true,
                   borderStyle: "single",
-                  borderColor: theme.outline
+                  borderColor: taskListTheme.outline
                 }}
               >
                 <box style={{ flexDirection: "column", flexGrow: 1 }}>
                   {uiState.mode === Mode.SEARCH ? (
                     <box style={{ flexDirection: "column", marginBottom: 1 }}>
-                      <text style={{ color: theme.muted }}>SEARCH</text>
+                      <text style={{ color: taskListTheme.muted }}>SEARCH</text>
                       <input
                         value={state.filters.searchText ?? ""}
                         onChange={updateSearch}
                         focused={uiState.focus === FocusTarget.SEARCH_INPUT}
                         placeholder="Type to filter tasks and tags; Enter/Esc closes"
-                        style={{ backgroundColor: theme.bg, color: theme.text }}
+                        style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
                       />
                     </box>
                   ) : null}
@@ -3742,7 +4285,7 @@ export function App({
                     dueSuggestionHint={dueSuggestionHint}
                     timeSuggestionHint={timeSuggestionHint}
                     recurrencePreview={recurrencePreview}
-                    onUpdate={(patch) => dispatch({ type: "updateEditor", patch })}
+                    onUpdate={updateEditorDraft}
                     onScrollOffsetChange={(scrollOffset) =>
                       uiDispatch({ type: "setEditorScrollOffset", scrollOffset })
                     }
@@ -3772,15 +4315,15 @@ export function App({
               style={{
                 height: 1,
                 backgroundColor: isSaveFailure
-                  ? theme.danger
+                  ? notificationsTheme.danger
                   : isNavigationNotice
-                    ? theme.accentBlue
-                    : theme.warn,
+                    ? notificationsTheme.accentBlue
+                    : notificationsTheme.warn,
                 paddingLeft: 1,
                 paddingRight: 1
               }}
             >
-              <text style={{ color: theme.bg }}>{message}</text>
+              <text style={{ color: notificationsTheme.bg }}>{message}</text>
             </box>
           );
         })}
@@ -3934,39 +4477,94 @@ export function App({
           }}
         >
           {uiState.modal.type === "delete" ? (
-            <box style={{ padding: 2, backgroundColor: theme.warn, color: theme.bg }}>
-              <text>DELETE SELECTED TASK? (y/n)</text>
-              <text>{uiState.modal.taskTitle}</text>
-              <text>ID: {uiState.modal.taskId.slice(0, 8)}</text>
-              <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
-                <box
-                  style={{
-                    backgroundColor: theme.bg,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    confirmDeleteSelectedFromModal();
-                  }}
-                >
-                  <text style={{ color: theme.warn, fontWeight: "bold" }}>YES</text>
-                </box>
-                <box
-                  style={{
-                    backgroundColor: theme.bg,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    cancelDeleteSelectedFromModal();
-                  }}
-                >
-                  <text style={{ color: theme.warn, fontWeight: "bold" }}>NO</text>
+            uiState.modal.target === "regular_task" ? (
+              <box style={{ padding: 2, backgroundColor: modalTheme.warn, color: modalTheme.bg }}>
+                <text>DELETE SELECTED TASK? (y/n)</text>
+                <text>{uiState.modal.taskTitle}</text>
+                <text>ID: {uiState.modal.taskId.slice(0, 8)}</text>
+                <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
+                  <box
+                    style={{
+                      backgroundColor: modalTheme.bg,
+                      paddingLeft: 2,
+                      paddingRight: 2
+                    }}
+                    onMouseDown={(event) => {
+                      if (event.button !== 0) return;
+                      confirmDeleteSelectedFromModal();
+                    }}
+                  >
+                    <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>YES</text>
+                  </box>
+                  <box
+                    style={{
+                      backgroundColor: modalTheme.bg,
+                      paddingLeft: 2,
+                      paddingRight: 2
+                    }}
+                    onMouseDown={(event) => {
+                      if (event.button !== 0) return;
+                      cancelDeleteSelectedFromModal();
+                    }}
+                  >
+                    <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>NO</text>
+                  </box>
                 </box>
               </box>
-            </box>
+            ) : (
+              <box style={{ padding: 2, backgroundColor: modalTheme.warn, color: modalTheme.bg }}>
+                <text>DELETE RECURRING OCCURRENCE?</text>
+                <text>{uiState.modal.taskTitle}</text>
+                <text>OCCURRENCE: {uiState.modal.occurrenceIso.slice(0, 16)}</text>
+                <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
+                  <box
+                    style={{
+                      backgroundColor: modalTheme.bg,
+                      paddingLeft: 2,
+                      paddingRight: 2
+                    }}
+                    onMouseDown={(event) => {
+                      if (event.button !== 0) return;
+                      confirmDeleteSelectedFromModal();
+                    }}
+                  >
+                    <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>
+                      THIS EVENT [y]
+                    </text>
+                  </box>
+                  <box
+                    style={{
+                      backgroundColor: modalTheme.bg,
+                      paddingLeft: 2,
+                      paddingRight: 2
+                    }}
+                    onMouseDown={(event) => {
+                      if (event.button !== 0) return;
+                      confirmDeleteSelectedAndFutureFromModal();
+                    }}
+                  >
+                    <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>
+                      THIS + FUTURE [f]
+                    </text>
+                  </box>
+                  <box
+                    style={{
+                      backgroundColor: modalTheme.bg,
+                      paddingLeft: 2,
+                      paddingRight: 2
+                    }}
+                    onMouseDown={(event) => {
+                      if (event.button !== 0) return;
+                      cancelDeleteSelectedFromModal();
+                    }}
+                  >
+                    <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>
+                      CANCEL [n]
+                    </text>
+                  </box>
+                </box>
+              </box>
+            )
           ) : uiState.modal.type === "emptyNux" ? (
             <EmptyNuxModal
               onClose={dismissEmptyNuxModal}
@@ -4042,7 +4640,7 @@ export function App({
                   onChange={updateSaveViewName}
                   focused
                   placeholder="e.g. TODAY FOCUS"
-                  style={{ backgroundColor: theme.bg, color: theme.text }}
+                  style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
                 />
                 <text style={{ color: theme.muted }}>
                   Enter: save, Esc: cancel ({saveViewName.length}/{VIEW_NAME_MAX_LENGTH})
@@ -4135,11 +4733,11 @@ export function App({
               height: helpPanelHeight,
               maxWidth: "100%",
               flexDirection: "column",
-              backgroundColor: theme.panel,
+              backgroundColor: helpTheme.panel,
               overflow: "hidden",
               border: true,
               borderStyle: "single",
-              borderColor: theme.outline
+              borderColor: helpTheme.outline
             }}
           >
             <box
@@ -4150,11 +4748,11 @@ export function App({
                 maxHeight: HELP_HEADER_ROWS,
                 paddingLeft: 1,
                 paddingRight: 1,
-                backgroundColor: theme.panel
+                backgroundColor: helpTheme.panel
               }}
             >
-              <text style={{ color: theme.text, fontWeight: "bold" }}>Help</text>
-              <text style={{ color: theme.muted }}>
+              <text style={{ color: helpTheme.text, fontWeight: "bold" }}>{helpHeaderTitle}</text>
+              <text style={{ color: helpTheme.muted }}>
                 {APP_NAME} {APP_VERSION} · {APP_TAGLINE}
               </text>
             </box>
@@ -4165,10 +4763,10 @@ export function App({
                 maxHeight: HELP_DIVIDER_ROWS,
                 paddingLeft: 1,
                 paddingRight: 1,
-                backgroundColor: theme.panel
+                backgroundColor: helpTheme.panel
               }}
             >
-              <text style={{ color: theme.outline }}>
+              <text style={{ color: helpTheme.outline }}>
                 {"─".repeat(helpFooterWidth)}
               </text>
             </box>
@@ -4179,94 +4777,222 @@ export function App({
                 maxHeight: helpContentVisibleRows,
                 paddingLeft: 1,
                 paddingRight: 1,
-                backgroundColor: theme.panel,
+                backgroundColor: helpTheme.panel,
                 overflow: "hidden"
               }}
             >
-              <scrollbox
-                ref={helpScrollRef}
-                scrollY
-                style={{
-                  height: "100%",
-                  minHeight: 0,
-                  rootOptions: { backgroundColor: theme.panel },
-                  wrapperOptions: { backgroundColor: theme.panel },
-                  viewportOptions: { backgroundColor: theme.panel },
-                  contentOptions: { backgroundColor: theme.panel }
-                }}
-              >
+              {activeHelpPage === "custom1Edit" ? (
+                <Custom1ThemeEditor
+                  ref={custom1EditorRef}
+                  draftGlobal={custom1DraftGlobal}
+                  draftObjects={custom1DraftObjects}
+                  persistedGlobal={persistedCustom1.global}
+                  onChangeGlobal={setCustom1DraftGlobal}
+                  onChangeObjects={setCustom1DraftObjects}
+                  onSave={saveCustom1Editor}
+                  onCancel={closeCustom1EditorCancel}
+                />
+              ) : activeHelpPage === "help" ? (
                 <box
                   style={{
+                    height: "100%",
+                    minHeight: 0,
+                    maxHeight: "100%",
                     flexDirection: "column",
-                    paddingRight: helpHasOverflow ? 1 : 0
+                    overflow: "hidden"
+                  }}
+                  onMouseScroll={(event) => {
+                    const direction = event.scroll?.direction;
+                    if (direction === "up") {
+                      scrollHelpTo(clampedHelpScrollOffset - 1);
+                    } else if (direction === "down") {
+                      scrollHelpTo(clampedHelpScrollOffset + 1);
+                    }
                   }}
                 >
-                  {helpRows.map((row, rowIndex) => {
-                    if (row.kind === "section_header") {
-                      const section = HELP_MENU_SECTIONS[row.sectionIndex];
-                      const expanded = helpExpandedBySection[row.sectionIndex] === true;
-                      const focused = row.sectionIndex === clampedHelpFocusedSectionIndex;
-                      const sectionLine = fitLineToWidth(
-                        `${expanded ? "▾" : "▸"} ${section.title}`,
-                        helpContentLineWidth
-                      );
-                      return (
-                        <box
-                          key={`help-header-${row.sectionIndex}`}
-                          style={{
-                            flexDirection: "row",
-                            backgroundColor: focused ? theme.accentBlue : "transparent",
-                            width: "100%"
-                          }}
-                          onMouseDown={(event) => {
-                            if (event.button !== 0) return;
-                            handleHelpSectionHeaderClick(row.sectionIndex);
-                          }}
-                        >
-                          <text
+                  <box
+                    style={{
+                      flexDirection: "column"
+                    }}
+                  >
+                    {helpVisibleRows.map((row, visibleRowIndex) => {
+                      const rowIndex = clampedHelpScrollOffset + visibleRowIndex;
+                      const scrollbarIsThumb =
+                        helpScrollbarThumb !== null &&
+                        visibleRowIndex >= helpScrollbarThumb.startRow &&
+                        visibleRowIndex <= helpScrollbarThumb.endRow;
+                      const scrollbarGlyph =
+                        helpHasOverflow && scrollbarIsThumb ? "█" : helpHasOverflow ? "│" : "";
+                      if (row.kind === "section_header") {
+                        const section = HELP_MENU_SECTIONS[row.sectionIndex];
+                        const expanded = helpExpandedBySection[row.sectionIndex] === true;
+                        const focused = row.sectionIndex === clampedHelpFocusedSectionIndex;
+                        const sectionLine = fitLineToWidth(
+                          `${expanded ? "▾" : "▸"} ${section.title}`,
+                          helpContentLineWidth
+                        );
+                        return (
+                          <box
+                            key={`help-row-${rowIndex}`}
                             style={{
-                              color: focused ? theme.bg : theme.text,
-                              fontWeight: focused ? "bold" : "normal"
+                              flexDirection: "row",
+                              backgroundColor: focused ? helpTheme.accentBlue : "transparent",
+                              width: "100%"
+                            }}
+                            onMouseDown={(event) => {
+                              if (event.button !== 0) return;
+                              handleHelpSectionHeaderClick(row.sectionIndex);
                             }}
                           >
-                            {sectionLine}
+                            <text
+                              style={{
+                                color: focused ? helpTheme.bg : helpTheme.text,
+                                fontWeight: focused ? "bold" : "normal"
+                              }}
+                            >
+                              {sectionLine}
+                            </text>
+                            {helpHasOverflow ? (
+                              <text
+                                style={{
+                                  color: scrollbarIsThumb
+                                    ? focused
+                                      ? helpTheme.bg
+                                      : helpTheme.accentBlue
+                                    : focused
+                                      ? helpTheme.bg
+                                      : helpTheme.outline
+                                }}
+                              >
+                                {scrollbarGlyph}
+                              </text>
+                            ) : null}
+                          </box>
+                        );
+                      }
+
+                      const section = HELP_MENU_SECTIONS[row.sectionIndex];
+                      const item = section.items[row.itemIndex];
+                      if (row.kind === "item_title") {
+                        return (
+                          <box
+                            key={`help-row-${rowIndex}`}
+                            style={{ flexDirection: "row", width: "100%" }}
+                          >
+                            <text style={{ color: helpTheme.text }}>
+                              {fitLineToWidth(`  • ${item.title}`, helpContentLineWidth)}
+                            </text>
+                            {helpHasOverflow ? (
+                              <text
+                                style={{
+                                  color: scrollbarIsThumb
+                                    ? helpTheme.accentBlue
+                                    : helpTheme.outline
+                                }}
+                              >
+                                {scrollbarGlyph}
+                              </text>
+                            ) : null}
+                          </box>
+                        );
+                      }
+                      const isSettingsRow =
+                        HELP_SETTINGS_SECTION_INDEX >= 0 &&
+                        row.sectionIndex === HELP_SETTINGS_SECTION_INDEX;
+                      const settingsStatusByItemIndex: Record<number, string> = {
+                        0: helpThemeStatusLine,
+                        1: helpFlashStatusLine,
+                        2: helpNotificationsEnabledStatusLine,
+                        3: helpInAppBannerStatusLine,
+                        4: helpTerminalBellStatusLine
+                      };
+                      const settingsStatusLine = settingsStatusByItemIndex[row.itemIndex];
+                      const descriptionLine =
+                        isSettingsRow && settingsStatusLine
+                          ? settingsStatusLine
+                          : fitLineToWidth(`    ${item.description ?? ""}`, helpContentLineWidth);
+                      return (
+                        <box
+                          key={`help-row-${rowIndex}`}
+                          style={{ flexDirection: "row", width: "100%" }}
+                        >
+                          <text style={{ color: helpTheme.muted }}>{descriptionLine}</text>
+                          {helpHasOverflow ? (
+                            <text
+                              style={{
+                                color: scrollbarIsThumb
+                                  ? helpTheme.accentBlue
+                                  : helpTheme.outline
+                              }}
+                            >
+                              {scrollbarGlyph}
+                            </text>
+                          ) : null}
+                        </box>
+                      );
+                    })}
+                  </box>
+                </box>
+              ) : (
+                <scrollbox
+                  scrollY
+                  style={{
+                    height: "100%",
+                    minHeight: 0,
+                    rootOptions: { backgroundColor: helpTheme.panel },
+                    wrapperOptions: { backgroundColor: helpTheme.panel },
+                    viewportOptions: { backgroundColor: helpTheme.panel },
+                    contentOptions: { backgroundColor: helpTheme.panel }
+                  }}
+                >
+                  <box style={{ flexDirection: "column", paddingRight: helpHasOverflow ? 1 : 0 }}>
+                    {activeHelpPage === "settings" ? (
+                      <>
+                        <text style={{ color: helpTheme.muted }}>{helpThemeStatusLine.trim()}</text>
+                        <text style={{ color: helpTheme.muted }}>{helpFlashStatusLine.trim()}</text>
+                        <text style={{ color: helpTheme.muted }}>
+                          {helpNotificationsEnabledStatusLine.trim()}
+                        </text>
+                      </>
+                    ) : null}
+                    {helpNavItems.map((item, index) => {
+                      const focused = index === clampedHelpNavSelectionIndex;
+                      return (
+                        <box key={`${activeHelpPage}-${item.title}`}>
+                          <box
+                            style={{
+                              flexDirection: "row",
+                              backgroundColor: focused ? helpTheme.accentBlue : "transparent",
+                              paddingLeft: 1,
+                              paddingRight: 1
+                            }}
+                            onMouseDown={(event) => {
+                              if (event.button !== 0) return;
+                              setHelpNavSelectionForActivePage(index);
+                              handleHelpNavForward();
+                            }}
+                          >
+                            <text
+                              style={{
+                                color: focused ? helpTheme.bg : helpTheme.text,
+                                fontWeight: focused ? "bold" : "normal"
+                              }}
+                            >
+                              {fitLineToWidth(
+                                `${focused ? "▶" : " "} ${item.title}`,
+                                helpContentLineWidth
+                              )}
+                            </text>
+                          </box>
+                          <text style={{ color: helpTheme.muted }}>
+                            {fitLineToWidth(`    ${item.description}`, helpContentLineWidth)}
                           </text>
                         </box>
                       );
-                    }
-
-                    const section = HELP_MENU_SECTIONS[row.sectionIndex];
-                    const item = section.items[row.itemIndex];
-                    if (row.kind === "item_title") {
-                      return (
-                        <text key={`help-row-${rowIndex}`} style={{ color: theme.text }}>
-                          {fitLineToWidth(`  • ${item.title}`, helpContentLineWidth)}
-                        </text>
-                      );
-                    }
-                    const isSettingsRow =
-                      HELP_SETTINGS_SECTION_INDEX >= 0 &&
-                      row.sectionIndex === HELP_SETTINGS_SECTION_INDEX;
-                    const settingsStatusByItemIndex: Record<number, string> = {
-                      0: helpThemeStatusLine,
-                      1: helpFlashStatusLine,
-                      2: helpNotificationsEnabledStatusLine,
-                      3: helpInAppBannerStatusLine,
-                      4: helpTerminalBellStatusLine
-                    };
-                    const settingsStatusLine = settingsStatusByItemIndex[row.itemIndex];
-                    const descriptionLine =
-                      isSettingsRow && settingsStatusLine
-                        ? settingsStatusLine
-                        : fitLineToWidth(`    ${item.description ?? ""}`, helpContentLineWidth);
-                    return (
-                      <text key={`help-row-${rowIndex}`} style={{ color: theme.muted }}>
-                        {descriptionLine}
-                      </text>
-                    );
-                  })}
-                </box>
-              </scrollbox>
+                    })}
+                  </box>
+                </scrollbox>
+              )}
             </box>
             {/*
              * Keep footer fixed to exactly 2 rows with full-width background fill.
@@ -4279,7 +5005,7 @@ export function App({
                 height: HELP_FOOTER_ROWS,
                 minHeight: HELP_FOOTER_ROWS,
                 maxHeight: HELP_FOOTER_ROWS,
-                backgroundColor: theme.panel,
+                backgroundColor: helpTheme.panel,
                 overflow: "hidden"
               }}
             >
@@ -4293,15 +5019,15 @@ export function App({
                   alignItems: "center",
                   paddingLeft: 1,
                   paddingRight: 1,
-                  backgroundColor: theme.panel
+                  backgroundColor: helpTheme.panel
                 }}
               >
-                <text style={{ color: theme.muted }}>{helpFooterHintsLine}</text>
+                <text style={{ color: helpTheme.muted }}>{helpFooterHintsLine}</text>
                 {helpCloseButtonLabel ? (
                   <box
                     style={{
                       marginLeft: 1,
-                      backgroundColor: theme.accentBlue,
+                      backgroundColor: helpTheme.accentBlue,
                       paddingLeft: 1,
                       paddingRight: 1
                     }}
@@ -4310,7 +5036,7 @@ export function App({
                       closeHelp();
                     }}
                   >
-                    <text style={{ color: theme.bg, fontWeight: "bold" }}>
+                    <text style={{ color: helpTheme.bg, fontWeight: "bold" }}>
                       {helpCloseButtonLabel}
                     </text>
                   </box>
@@ -4324,10 +5050,10 @@ export function App({
                   width: "100%",
                   paddingLeft: 1,
                   paddingRight: 1,
-                  backgroundColor: theme.panel
+                  backgroundColor: helpTheme.panel
                 }}
               >
-                <text style={{ color: theme.muted }}>{helpFooterDataPathLine}</text>
+                <text style={{ color: helpTheme.muted }}>{helpFooterDataPathLine}</text>
               </box>
             </box>
           </box>

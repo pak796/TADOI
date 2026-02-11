@@ -1,5 +1,5 @@
 import React from "react";
-import { colorForTag, theme } from "../app/theme";
+import { colorForTag, themeForObject } from "../app/theme";
 import {
   computeDueBuckets8,
   type TopTagCount
@@ -221,6 +221,7 @@ function buildKpiItems(
 }
 
 function getKpiColor(label: KpiItem["label"]): string {
+  const theme = themeForObject("dashboard");
   return label === "DONE7D" ? theme.ok : theme.accentBlue;
 }
 
@@ -239,6 +240,7 @@ export function DashboardPane({
   width,
   height
 }: DashboardPaneProps) {
+  const theme = themeForObject("dashboard");
   const dueBuckets = React.useMemo(() => computeDueBuckets8(tasks, now), [tasks, now]);
   const kpiItems = React.useMemo(() => buildKpiItems(tasks, now), [tasks, now]);
   const layout = React.useMemo(() => resolveDashboardLayout(width), [width]);

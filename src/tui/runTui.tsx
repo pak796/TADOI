@@ -1,7 +1,7 @@
 import { createCliRenderer } from "@opentui/core";
 import { createRoot } from "@opentui/react";
 import { App } from "../app/App";
-import { applyTheme } from "../app/theme";
+import { applyThemeWithSettings } from "../app/theme";
 import { startOfLocalDayMs } from "../domain/dates";
 import { normalizeTagIndex, normalizeTags } from "../domain/tagIndex";
 import { loadSettings } from "../settings/settings";
@@ -16,7 +16,7 @@ export type RunTuiOptions = {
 export async function runTui(options: RunTuiOptions): Promise<void> {
   const renderer = await createCliRenderer({ exitOnCtrlC: true });
   const settingsResult = await loadSettings();
-  applyTheme(settingsResult.settings.themeId);
+  applyThemeWithSettings(settingsResult.settings.themeId, settingsResult.settings);
   const loadResult = await safeLoadState();
   const loaded = loadResult.data;
 
@@ -92,6 +92,7 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
       initialThemeId={settingsResult.settings.themeId}
       initialFlashMode={settingsResult.settings.flashMode}
       initialNotificationSettings={settingsResult.settings.notifications}
+      initialCustomThemes={settingsResult.settings.customThemes}
       settingsPath={settingsResult.resolvedPath}
       showLogo={options.showLogo}
     />

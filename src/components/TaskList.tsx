@@ -2,7 +2,7 @@ import { diffLocalDays, startOfLocalDayMs } from "../domain/dates";
 import { formatTagForDisplay } from "../domain/tagIndex";
 import { VisibleTaskRow } from "../domain/taskRows";
 import { formatDate, getDueInLabel } from "../state/store";
-import { colorForTag, theme } from "../app/theme";
+import { colorForTag, themeForObject } from "../app/theme";
 import type { FlashMode } from "../settings/settings";
 
 type TaskListProps = {
@@ -34,6 +34,7 @@ export function TaskList({
   visibleRows,
   visibleLines
 }: TaskListProps) {
+  const theme = themeForObject("taskList");
   const windowed = tasks.slice(scrollOffset, scrollOffset + visibleRows);
   const clampedOffset = Math.max(
     0,
@@ -110,6 +111,7 @@ function TaskRow({
   flashMode,
   onSelect
 }: TaskRowProps) {
+  const theme = themeForObject("taskRow");
   const statusIcon = task.status === "done" ? "✓" : task.status === "archived" ? "✱" : "•";
   const recurringIndicator =
     task.rowKind !== "regular" || task.recurrence ? "↻" : "";
@@ -215,36 +217,42 @@ function TaskRow({
         <box style={{ flexDirection: "column", flexGrow: 1 }}>
           <box style={{ flexDirection: "row", gap: 1 }}>
             <text style={{ color: statusColor }}>{statusIcon}</text>
-            {recurringIndicator ? (
-              <text style={{ color: selected ? theme.bg : theme.muted }}>{recurringIndicator}</text>
-            ) : null}
             <text style={{ color: titleColor }}>{task.title}</text>
           </box>
           <box style={{ flexDirection: "row", justifyContent: "space-between" }}>
-            {isOverdue ? (
-              <box style={{ backgroundColor: dueHighlightBackground }}>
-                <text style={{ color: dueHighlightText }}>{dueLabel}</text>
-              </box>
-            ) : (
-              <text style={{ color: baseOpenColor }}>{dueLabel}</text>
-            )}
-          {closedText ? (
-            <text style={{ color: isDone ? theme.bg : selected ? theme.bg : theme.ok }}>
-              DONE {closedText}
-            </text>
-          ) : isOverdue && dueInLabel ? (
-            <box style={{ backgroundColor: dueHighlightBackground }}>
-              <text style={{ color: dueHighlightText }}>{dueInLabel}</text>
+            <box style={{ flexDirection: "row", gap: 1 }}>
+              {recurringIndicator ? (
+                <text style={{ color: selected ? theme.bg : theme.muted }}>
+                  {recurringIndicator}
+                </text>
+              ) : null}
+              {isOverdue ? (
+                <box style={{ backgroundColor: dueHighlightBackground }}>
+                  <text style={{ color: dueHighlightText }}>{dueLabel}</text>
+                </box>
+              ) : (
+                <text style={{ color: baseOpenColor }}>{dueLabel}</text>
+              )}
             </box>
-          ) : dueInDays !== null && dueInLabel ? (
-            isDueToday ? (
-              <box style={{ backgroundColor: theme.dueSoon }}>
-                <text style={{ color: dueTodayPulseOn ? theme.bg : theme.text }}>{dueInLabel}</text>
+            {closedText ? (
+              <text style={{ color: isDone ? theme.bg : selected ? theme.bg : theme.ok }}>
+                DONE {closedText}
+              </text>
+            ) : isOverdue && dueInLabel ? (
+              <box style={{ backgroundColor: dueHighlightBackground }}>
+                <text style={{ color: dueHighlightText }}>{dueInLabel}</text>
               </box>
-            ) : (
-              <text style={{ color: selected ? theme.bg : baseOpenColor }}>{dueInLabel}</text>
-            )
-          ) : null}
+            ) : dueInDays !== null && dueInLabel ? (
+              isDueToday ? (
+                <box style={{ backgroundColor: theme.dueSoon }}>
+                  <text style={{ color: dueTodayPulseOn ? theme.bg : theme.text }}>
+                    {dueInLabel}
+                  </text>
+                </box>
+              ) : (
+                <text style={{ color: selected ? theme.bg : baseOpenColor }}>{dueInLabel}</text>
+              )
+            ) : null}
           </box>
           <box style={{ flexDirection: "row", gap: 1 }}>
             {task.tags.length > 0 ? (

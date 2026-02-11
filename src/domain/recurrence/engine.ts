@@ -39,6 +39,15 @@ function hasRecurrence(task: Task): boolean {
   return Boolean(task.recurrence);
 }
 
+function safeBuildRule(seriesTask: Task): ReturnType<typeof buildRule> | null {
+  if (!hasRecurrence(seriesTask) || !seriesTask.recurrence) return null;
+  try {
+    return buildRule(seriesTask.recurrence);
+  } catch {
+    return null;
+  }
+}
+
 export function applyExdates(occurrenceIsos: string[], exdates: string[] | undefined): string[] {
   const excluded = exdateSet(exdates);
   return occurrenceIsos.filter((iso) => !excluded.has(iso));
@@ -47,7 +56,8 @@ export function applyExdates(occurrenceIsos: string[], exdates: string[] | undef
 export function getOccurrences(seriesTask: Task, rangeStartMs: number, rangeEndMs: number): string[] {
   if (!hasRecurrence(seriesTask) || !seriesTask.recurrence) return [];
   if (rangeEndMs < rangeStartMs) return [];
-  const rule = buildRule(seriesTask.recurrence);
+  const rule = safeBuildRule(seriesTask);
+  if (!rule) return [];
   const start = toFloatingUtcDate(new Date(rangeStartMs));
   const end = toFloatingUtcDate(new Date(rangeEndMs));
   const occurrences = rule.between(start, end, true).map(mapFloatingDateToLocalIso);
@@ -56,7 +66,8 @@ export function getOccurrences(seriesTask: Task, rangeStartMs: number, rangeEndM
 
 export function nextOccurrence(seriesTask: Task, afterMs: number): string | null {
   if (!hasRecurrence(seriesTask) || !seriesTask.recurrence) return null;
-  const rule = buildRule(seriesTask.recurrence);
+  const rule = safeBuildRule(seriesTask);
+  if (!rule) return null;
   const excluded = exdateSet(seriesTask.recurrence.exdates);
   let cursor = rule.after(toFloatingUtcDate(new Date(afterMs)), false);
   let safety = 0;
@@ -74,7 +85,8 @@ export function nextOccurrence(seriesTask: Task, afterMs: number): string | null
 
 export function latestOverdueOccurrence(seriesTask: Task, nowMs: number): string | null {
   if (!hasRecurrence(seriesTask) || !seriesTask.recurrence) return null;
-  const rule = buildRule(seriesTask.recurrence);
+  const rule = safeBuildRule(seriesTask);
+  if (!rule) return null;
   const excluded = exdateSet(seriesTask.recurrence.exdates);
   const hasExplicitTime = seriesTask.hasExplicitTime === true;
   let cursor = rule.before(toFloatingUtcDate(new Date(nowMs)), true);

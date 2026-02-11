@@ -1,10 +1,16 @@
 import { ThemeId, cycleTheme } from "../theme/themes";
-import { FlashMode, NotificationSettings } from "../settings/settings";
+import {
+  CustomThemes,
+  FlashMode,
+  NotificationSettings,
+  getDefaultSettings
+} from "../settings/settings";
 
 export type SettingsState = {
   themeId: ThemeId;
   flashMode: FlashMode;
   notifications: NotificationSettings;
+  customThemes?: CustomThemes;
 };
 
 export type SettingsAction =
@@ -13,6 +19,7 @@ export type SettingsAction =
   | { type: "setFlashMode"; flashMode: FlashMode }
   | { type: "toggleFlashMode" }
   | { type: "setNotifications"; notifications: NotificationSettings }
+  | { type: "setCustomThemes"; customThemes?: CustomThemes }
   | { type: "toggleNotificationsEnabled" }
   | { type: "toggleInAppOverdueBanner" }
   | { type: "toggleTerminalBellOnOverdue" };
@@ -26,7 +33,8 @@ export const initialSettingsState: SettingsState = {
     terminalBellOnOverdue: false,
     bannerDurationMs: 5000,
     bellCooldownMs: 2000
-  }
+  },
+  customThemes: getDefaultSettings().customThemes
 };
 
 export function settingsReducer(
@@ -44,6 +52,8 @@ export function settingsReducer(
       return { ...state, flashMode: state.flashMode === "slow" ? "static" : "slow" };
     case "setNotifications":
       return { ...state, notifications: action.notifications };
+    case "setCustomThemes":
+      return { ...state, customThemes: action.customThemes };
     case "toggleNotificationsEnabled":
       return {
         ...state,

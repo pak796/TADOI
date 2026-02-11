@@ -1,4 +1,4 @@
-import type { EditorFocus } from "./models";
+import type { EditorDraft, EditorFocus } from "./models";
 
 export const EDITOR_FOOTER_HEIGHT = 3;
 export const EDITOR_FOOTER_HINT_ROW = 1;
@@ -9,7 +9,21 @@ export type EditorContentEstimateOptions = {
   hasDueSuggestion?: boolean;
   hasTimeSuggestion?: boolean;
   hasTagSuggestion?: boolean;
+  repeatMode?: EditorDraft["repeatMode"];
+  repeatEndMode?: EditorDraft["repeatEndMode"];
   previewRows?: number;
+};
+
+export type EditorRecurrenceVisibility = {
+  repeatEnabled: boolean;
+  showInterval: boolean;
+  showWeekdays: boolean;
+  showMonthday: boolean;
+  showCustomRule: boolean;
+  showRepeatEnd: boolean;
+  showUntil: boolean;
+  showCount: boolean;
+  showPreview: boolean;
 };
 
 export type EditorViewportHeights = {
@@ -21,8 +35,63 @@ type NormalizedEstimateOptions = {
   hasDueSuggestion: boolean;
   hasTimeSuggestion: boolean;
   hasTagSuggestion: boolean;
+  repeatMode: EditorDraft["repeatMode"];
+  repeatEndMode: EditorDraft["repeatEndMode"];
   previewRows: number;
 };
+
+export function getEditorRecurrenceVisibility(
+  repeatMode: EditorDraft["repeatMode"] | undefined,
+  repeatEndMode: EditorDraft["repeatEndMode"] | undefined
+): EditorRecurrenceVisibility {
+  const mode = repeatMode ?? "off";
+  const endMode = repeatEndMode ?? "never";
+  const repeatEnabled = mode !== "off";
+
+  if (!repeatEnabled) {
+    return {
+      repeatEnabled: false,
+      showInterval: false,
+      showWeekdays: false,
+      showMonthday: false,
+      showCustomRule: false,
+      showRepeatEnd: false,
+      showUntil: false,
+      showCount: false,
+      showPreview: false
+    };
+  }
+
+  if (mode === "custom") {
+    return {
+      repeatEnabled: true,
+      showInterval: false,
+      showWeekdays: false,
+      showMonthday: false,
+      showCustomRule: true,
+      showRepeatEnd: false,
+      showUntil: false,
+      showCount: false,
+      showPreview: true
+    };
+  }
+
+  const showRepeatEnd = true;
+  const showUntil = endMode === "until";
+  const showCount = endMode === "count";
+
+  return {
+    repeatEnabled: true,
+    showInterval: true,
+    showWeekdays: mode === "weekly",
+    showMonthday: mode === "monthly",
+    showCustomRule: false,
+    showRepeatEnd,
+    showUntil,
+    showCount,
+    showPreview: true
+  };
+}
 
 function normalizeEstimateOptions(
   options: EditorContentEstimateOptions = {}
@@ -31,6 +100,8 @@ function normalizeEstimateOptions(
     hasDueSuggestion: options.hasDueSuggestion === true,
     hasTimeSuggestion: options.hasTimeSuggestion === true,
     hasTagSuggestion: options.hasTagSuggestion === true,
+    repeatMode: options.repeatMode ?? "off",
+    repeatEndMode: options.repeatEndMode ?? "never",
     previewRows: Math.max(1, options.previewRows ?? DEFAULT_PREVIEW_ROWS)
   };
 }
@@ -69,54 +140,92 @@ function buildEditorLineModel(options: NormalizedEstimateOptions): {
   line += 1; // chip row margin
   line += 3; // bordered chip row
 
-  // INTERVAL
-  line += 1; // section margin
-  line += 1; // label
-  anchors.repeat_interval = line; // input line
-  line += 1; // input
+  const recurrenceVisibility = getEditorRecurrenceVisibility(
+    options.repeatMode,
+    options.repeatEndMode
+  );
+  let firstVisibleRecurrenceAnchor: number | null = null;
 
-  // WEEKDAYS
-  line += 1; // section margin
-  line += 1; // label
-  anchors.repeat_weekdays = line; // input line
-  line += 1; // input
+  const markRecurrenceAnchor = (focus: EditorFocus) => {
+    if (firstVisibleRecurrenceAnchor === null) {
+      firstVisibleRecurrenceAnchor = anchors[focus];
+    }
+  };
 
-  // MONTH DAY
-  line += 1; // section margin
-  line += 1; // label
-  anchors.repeat_monthday = line; // input line
-  line += 1; // input
+  if (recurrenceVisibility.showInterval) {
+    line += 1; // section margin
+    line += 1; // label
+    anchors.repeat_interval = line; // input line
+    line += 1; // input
+    markRecurrenceAnchor("repeat_interval");
+  }
 
-  // CUSTOM RRULE
-  line += 1; // section margin
-  line += 1; // label
-  anchors.repeat_custom = line; // input line
-  line += 1; // input
+  if (recurrenceVisibility.showWeekdays) {
+    line += 1; // section margin
+    line += 1; // label
+    anchors.repeat_weekdays = line; // input line
+    line += 1; // input
+    markRecurrenceAnchor("repeat_weekdays");
+  }
 
-  // REPEAT END
-  line += 1; // section margin
-  line += 1; // label
-  anchors.repeat_end_mode = line; // input line
-  line += 1; // input
-  line += 1; // chip row margin
-  line += 3; // bordered chip row
+  if (recurrenceVisibility.showMonthday) {
+    line += 1; // section margin
+    line += 1; // label
+    anchors.repeat_monthday = line; // input line
+    line += 1; // input
+    markRecurrenceAnchor("repeat_monthday");
+  }
 
-  // UNTIL
-  line += 1; // section margin
-  line += 1; // label
-  anchors.repeat_until = line; // input line
-  line += 1; // input
+  if (recurrenceVisibility.showCustomRule) {
+    line += 1; // section margin
+    line += 1; // label
+    anchors.repeat_custom = line; // input line
+    line += 1; // input
+    markRecurrenceAnchor("repeat_custom");
+  }
 
-  // COUNT
-  line += 1; // section margin
-  line += 1; // label
-  anchors.repeat_count = line; // input line
-  line += 1; // input
+  if (recurrenceVisibility.showRepeatEnd) {
+    line += 1; // section margin
+    line += 1; // label
+    anchors.repeat_end_mode = line; // input line
+    line += 1; // input
+    line += 1; // chip row margin
+    line += 3; // bordered chip row
+    markRecurrenceAnchor("repeat_end_mode");
+  }
 
-  // PREVIEW
-  line += 1; // section margin
-  line += 1; // label
-  line += options.previewRows; // rows
+  if (recurrenceVisibility.showUntil) {
+    line += 1; // section margin
+    line += 1; // label
+    anchors.repeat_until = line; // input line
+    line += 1; // input
+    markRecurrenceAnchor("repeat_until");
+  }
+
+  if (recurrenceVisibility.showCount) {
+    line += 1; // section margin
+    line += 1; // label
+    anchors.repeat_count = line; // input line
+    line += 1; // input
+    markRecurrenceAnchor("repeat_count");
+  }
+
+  if (recurrenceVisibility.showPreview) {
+    line += 1; // section margin
+    line += 1; // label
+    line += options.previewRows; // rows
+  }
+
+  // Hidden recurrence targets anchor to the nearest visible recurrence row, or repeat mode.
+  const recurrenceFallbackAnchor = firstVisibleRecurrenceAnchor ?? anchors.repeat_mode;
+  anchors.repeat_interval ??= recurrenceFallbackAnchor;
+  anchors.repeat_weekdays ??= recurrenceFallbackAnchor;
+  anchors.repeat_monthday ??= recurrenceFallbackAnchor;
+  anchors.repeat_custom ??= recurrenceFallbackAnchor;
+  anchors.repeat_end_mode ??= recurrenceFallbackAnchor;
+  const repeatEndFallbackAnchor = anchors.repeat_end_mode ?? recurrenceFallbackAnchor;
+  anchors.repeat_until ??= repeatEndFallbackAnchor;
+  anchors.repeat_count ??= repeatEndFallbackAnchor;
 
   // TAGS
   line += 1; // section margin

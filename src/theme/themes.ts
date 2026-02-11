@@ -1,3 +1,5 @@
+import type { CustomThemeConfig, TadoiSettings, ThemeObjectId } from "../settings/settings";
+
 export type ThemeId =
   | "default"
   | "retro"
@@ -16,9 +18,11 @@ export type ThemeId =
   | "blueAngels"
   | "southwest"
   | "rams"
+  | "custom1"
   | "rotating";
 
 export type ConcreteThemeId = Exclude<ThemeId, "rotating">;
+export type RotatingThemeId = Exclude<ThemeId, "rotating" | "custom1">;
 
 export type ThemeTokens = {
   bg: string;
@@ -274,6 +278,20 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     selectionBg: "#ffd100",
     selectionText: "#003594"
   },
+  custom1: {
+    bg: "#0b0f14",
+    panel: "#1a202c",
+    text: "#f2f2f2",
+    mutedText: "#b0b6bf",
+    border: "#3b4049",
+    accent: "#f4a259",
+    accent2: "#5dade2",
+    ok: "#2ecc71",
+    warn: "#f1c40f",
+    danger: "#e74c3c",
+    selectionBg: "#9b59b6",
+    selectionText: "#0b0f14"
+  },
   // "rotating" is a virtual mode; this fallback prevents invalid lookups before
   // runtime rotation applies a concrete palette.
   rotating: {
@@ -310,10 +328,11 @@ export const THEME_ORDER: ThemeId[] = [
   "blueAngels",
   "southwest",
   "rams",
+  "custom1",
   "rotating"
 ];
 
-export const ROTATING_THEME_ORDER: ConcreteThemeId[] = [
+export const ROTATING_THEME_ORDER: RotatingThemeId[] = [
   "default",
   "retro",
   "highContrast",
@@ -339,6 +358,34 @@ export function cycleTheme(current: ThemeId): ThemeId {
   return THEME_ORDER[(safeIndex + 1) % THEME_ORDER.length];
 }
 
+export type ResolveThemeTokensOptions = {
+  objectId?: ThemeObjectId;
+  draft?: CustomThemeConfig;
+};
+
+export function resolveThemeTokens(
+  themeId: ThemeId,
+  settings: Pick<TadoiSettings, "customThemes"> | undefined,
+  options: ResolveThemeTokensOptions = {}
+): ThemeTokens {
+  if (themeId !== "custom1") {
+    return THEMES[themeId];
+  }
+
+  const base = options.draft?.global ?? settings?.customThemes?.custom1?.global ?? THEMES.default;
+  if (!options.objectId) {
+    return { ...base };
+  }
+
+  const override =
+    options.draft?.objects?.[options.objectId] ??
+    settings?.customThemes?.custom1?.objects?.[options.objectId];
+  return {
+    ...base,
+    ...override
+  };
+}
+
 export function isThemeId(value: unknown): value is ThemeId {
   return (
     typeof value === "string" &&
@@ -359,6 +406,7 @@ export function isThemeId(value: unknown): value is ThemeId {
       value === "blueAngels" ||
       value === "southwest" ||
       value === "rams" ||
+      value === "custom1" ||
       value === "rotating")
   );
 }

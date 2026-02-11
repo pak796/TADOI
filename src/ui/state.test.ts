@@ -46,6 +46,7 @@ describe("ui state", () => {
         ...initialUIState,
         modal: {
           type: "delete",
+          target: "regular_task",
           taskId: "task-1",
           taskTitle: "Task",
           previousMode: Mode.LIST,
@@ -89,6 +90,7 @@ describe("unwind", () => {
       focus: FocusTarget.MODAL,
       modal: {
         type: "delete",
+        target: "regular_task",
         taskId: "task-1",
         taskTitle: "Task",
         previousMode: Mode.SEARCH,

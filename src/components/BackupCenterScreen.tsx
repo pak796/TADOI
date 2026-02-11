@@ -1,5 +1,5 @@
 import React from "react";
-import { theme } from "../app/theme";
+import { themeForObject, type RuntimeTheme } from "../app/theme";
 import type { BackupCenterState } from "../state/backupCenterFlow";
 
 type BackupButtonTone = "primary" | "danger" | "neutral";
@@ -30,7 +30,11 @@ type BackupFooterAction = {
   active?: boolean;
 };
 
-function renderImportStats(label: string, value: number): React.ReactNode {
+function renderImportStats(
+  label: string,
+  value: number,
+  theme: RuntimeTheme
+): React.ReactNode {
   return (
     <box style={{ flexDirection: "row", gap: 1 }}>
       <text style={{ color: theme.muted }}>{label}:</text>
@@ -72,6 +76,7 @@ function BackupActionButton({
   tone = "primary",
   active = false
 }: BackupActionButtonProps) {
+  const theme = themeForObject("modal");
   const backgroundColor = active
     ? theme.accentBlue
     : tone === "danger"
@@ -110,6 +115,8 @@ export function BackupCenterScreen({
   onMenuSelect,
   onImportModeSelect
 }: BackupCenterScreenProps) {
+  const theme = themeForObject("modal");
+  const inputTheme = themeForObject("inputs");
   const modeLabel = state.importMode === "replace" ? "REPLACE" : "MERGE";
   const replaceArmed =
     state.importMode === "replace" && state.replaceConfirmed ? "YES" : "NO";
@@ -258,7 +265,7 @@ export function BackupCenterScreen({
             onChange={onImportPathChange}
             focused
             placeholder="/absolute/or/relative/path/to/export.json"
-            style={{ backgroundColor: theme.bg, color: theme.text }}
+            style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
           />
           <text style={{ color: theme.muted }}>
             Relative paths resolve from the current working directory.
@@ -298,7 +305,7 @@ export function BackupCenterScreen({
             onChange={onReplaceConfirmChange}
             focused
             placeholder="REPLACE"
-            style={{ backgroundColor: theme.bg, color: theme.text }}
+            style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
           />
           <text style={{ color: theme.muted }}>
             Enter: confirm   Any other value returns to mode select
@@ -317,10 +324,10 @@ export function BackupCenterScreen({
               <text style={{ color: theme.muted }}>
                 No data has been written yet.
               </text>
-              {renderImportStats("Added", dryRun.tasks.added)}
-              {renderImportStats("Updated", dryRun.tasks.updated)}
-              {renderImportStats("Overwritten (removed)", dryRun.tasks.removed)}
-              {renderImportStats("Unchanged", dryRun.tasks.unchanged)}
+              {renderImportStats("Added", dryRun.tasks.added, theme)}
+              {renderImportStats("Updated", dryRun.tasks.updated, theme)}
+              {renderImportStats("Overwritten (removed)", dryRun.tasks.removed, theme)}
+              {renderImportStats("Unchanged", dryRun.tasks.unchanged, theme)}
               <text style={{ color: theme.muted, marginTop: 1 }}>
                 Enter: commit import   Esc: cancel
               </text>
@@ -343,10 +350,10 @@ export function BackupCenterScreen({
           <text style={{ color: theme.ok, fontWeight: "bold" }}>Import complete</text>
           {committed ? (
             <>
-              {renderImportStats("Added", committed.tasks.added)}
-              {renderImportStats("Updated", committed.tasks.updated)}
-              {renderImportStats("Overwritten (removed)", committed.tasks.removed)}
-              {renderImportStats("Unchanged", committed.tasks.unchanged)}
+              {renderImportStats("Added", committed.tasks.added, theme)}
+              {renderImportStats("Updated", committed.tasks.updated, theme)}
+              {renderImportStats("Overwritten (removed)", committed.tasks.removed, theme)}
+              {renderImportStats("Unchanged", committed.tasks.unchanged, theme)}
               {committed.backupPath ? (
                 <>
                   <text style={{ color: theme.muted, marginTop: 1 }}>Backup:</text>

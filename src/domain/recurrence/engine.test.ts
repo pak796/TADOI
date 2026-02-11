@@ -148,4 +148,28 @@ describe("recurrence engine", () => {
       "2026-02-11T09:00:00"
     ]);
   });
+
+  it("returns empty/null when recurrence metadata is malformed", () => {
+    const start = new Date(2026, 1, 9, 9, 0, 0);
+    const task = makeSeriesTask({
+      id: "invalid-dtstart",
+      start,
+      rrule: "FREQ=DAILY;INTERVAL=1"
+    });
+    if (!task.recurrence) {
+      throw new Error("Expected recurrence for test setup");
+    }
+    task.recurrence.dtstart = "not-a-date";
+
+    const rangeStart = startOfLocalDayMs(start.getTime());
+    const rangeEnd = addLocalDaysMs(rangeStart, 2) - 1;
+
+    expect(() => getOccurrences(task, rangeStart, rangeEnd)).not.toThrow();
+    expect(() => nextOccurrence(task, rangeStart)).not.toThrow();
+    expect(() => latestOverdueOccurrence(task, rangeEnd)).not.toThrow();
+
+    expect(getOccurrences(task, rangeStart, rangeEnd)).toEqual([]);
+    expect(nextOccurrence(task, rangeStart)).toBeNull();
+    expect(latestOverdueOccurrence(task, rangeEnd)).toBeNull();
+  });
 });

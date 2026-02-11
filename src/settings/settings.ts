@@ -1,17 +1,49 @@
 import os from "os";
 import { promises as fs } from "fs";
 import path from "path";
-import { ThemeId, isThemeId } from "../theme/themes";
+import { ThemeId, ThemeTokens, THEMES, isThemeId } from "../theme/themes";
 import {
   SETTINGS_DIR_NAME,
   SETTINGS_FALLBACK_DIR_NAME,
   SETTINGS_FILE_NAME
 } from "../brand/brand";
+import { THEME_TOKEN_KEYS, normalizeHexColor } from "../theme/custom1ColorUtils";
+
+export type ThemeObjectId =
+  | "appChrome"
+  | "taskList"
+  | "taskRow"
+  | "modal"
+  | "help"
+  | "inputs"
+  | "dashboard"
+  | "notifications";
+
+export const THEME_OBJECT_IDS: ThemeObjectId[] = [
+  "appChrome",
+  "taskList",
+  "taskRow",
+  "modal",
+  "help",
+  "inputs",
+  "dashboard",
+  "notifications"
+];
+
+export type CustomThemeConfig = {
+  global: ThemeTokens;
+  objects?: Partial<Record<ThemeObjectId, Partial<ThemeTokens>>>;
+};
+
+export type CustomThemes = {
+  custom1?: CustomThemeConfig;
+};
 
 export type TadoiSettings = {
   themeId: ThemeId;
   flashMode: FlashMode;
   notifications: NotificationSettings;
+  customThemes?: CustomThemes;
 };
 
 export type FlashMode = "slow" | "static";
@@ -62,7 +94,12 @@ const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
 const DEFAULT_SETTINGS: TadoiSettings = {
   themeId: "default",
   flashMode: "slow",
-  notifications: DEFAULT_NOTIFICATION_SETTINGS
+  notifications: DEFAULT_NOTIFICATION_SETTINGS,
+  customThemes: {
+    custom1: {
+      global: { ...THEMES.default }
+    }
+  }
 };
 
 const DEFAULT_DEBOUNCE_MS = 150;
@@ -101,6 +138,74 @@ function normalizePositiveMs(value: unknown, fallback: number): number {
     return fallback;
   }
   return Math.floor(value);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function cloneThemeTokens(tokens: ThemeTokens): ThemeTokens {
+  return { ...tokens };
+}
+
+function normalizeThemeTokens(input: unknown, fallback: ThemeTokens): ThemeTokens {
+  const normalized = {} as ThemeTokens;
+  const inputRecord = isRecord(input) ? input : {};
+  for (const token of THEME_TOKEN_KEYS) {
+    const parsed = normalizeHexColor(inputRecord[token]);
+    const fallbackParsed = normalizeHexColor(fallback[token]);
+    normalized[token] =
+      parsed ??
+      fallbackParsed ??
+      String(fallback[token]).trim().toUpperCase();
+  }
+  return normalized;
+}
+
+function normalizeThemeTokenOverrides(input: unknown): Partial<ThemeTokens> | undefined {
+  if (!isRecord(input)) return undefined;
+  const normalized: Partial<ThemeTokens> = {};
+  for (const token of THEME_TOKEN_KEYS) {
+    const parsed = normalizeHexColor(input[token]);
+    if (parsed) {
+      normalized[token] = parsed;
+    }
+  }
+  return Object.keys(normalized).length > 0 ? normalized : undefined;
+}
+
+function normalizeThemeObjectOverrides(
+  input: unknown
+): Partial<Record<ThemeObjectId, Partial<ThemeTokens>>> | undefined {
+  if (!isRecord(input)) return undefined;
+  const normalized: Partial<Record<ThemeObjectId, Partial<ThemeTokens>>> = {};
+  for (const objectId of THEME_OBJECT_IDS) {
+    const objectOverride = normalizeThemeTokenOverrides(input[objectId]);
+    if (objectOverride) {
+      normalized[objectId] = objectOverride;
+    }
+  }
+  return Object.keys(normalized).length > 0 ? normalized : undefined;
+}
+
+function resolveCustom1SeedTheme(themeId: ThemeId): ThemeTokens {
+  if (themeId === "rotating") {
+    return cloneThemeTokens(THEMES.default);
+  }
+  return cloneThemeTokens(THEMES[themeId] ?? THEMES.default);
+}
+
+function normalizeCustomThemes(input: unknown, themeId: ThemeId): CustomThemes {
+  const customThemesInput = isRecord(input) ? input : {};
+  const custom1Input = isRecord(customThemesInput.custom1)
+    ? customThemesInput.custom1
+    : {};
+  const seedGlobal = resolveCustom1SeedTheme(themeId);
+  const global = normalizeThemeTokens(custom1Input.global, seedGlobal);
+  const objects = normalizeThemeObjectOverrides(custom1Input.objects);
+  return {
+    custom1: objects ? { global, objects } : { global }
+  };
 }
 
 function normalizeNotifications(input: unknown): NotificationSettings {
@@ -142,19 +247,18 @@ function normalizeNotifications(input: unknown): NotificationSettings {
 }
 
 function normalizeSettings(input: unknown): TadoiSettings {
-  if (typeof input !== "object" || input === null) {
-    return {
-      ...DEFAULT_SETTINGS,
-      notifications: { ...DEFAULT_NOTIFICATION_SETTINGS }
-    };
+  if (!isRecord(input)) {
+    return getDefaultSettings();
   }
-  const maybeThemeId = (input as { themeId?: unknown }).themeId;
-  const maybeFlashMode = (input as { flashMode?: unknown }).flashMode;
-  const maybeNotifications = (input as { notifications?: unknown }).notifications;
+  const maybeThemeId = input.themeId;
+  const maybeFlashMode = input.flashMode;
+  const maybeNotifications = input.notifications;
+  const themeId = isThemeId(maybeThemeId) ? maybeThemeId : DEFAULT_SETTINGS.themeId;
   return {
-    themeId: isThemeId(maybeThemeId) ? maybeThemeId : DEFAULT_SETTINGS.themeId,
+    themeId,
     flashMode: isFlashMode(maybeFlashMode) ? maybeFlashMode : DEFAULT_SETTINGS.flashMode,
-    notifications: normalizeNotifications(maybeNotifications)
+    notifications: normalizeNotifications(maybeNotifications),
+    customThemes: normalizeCustomThemes(input.customThemes, themeId)
   };
 }
 
@@ -199,7 +303,7 @@ export async function loadSettings(
   }
 
   lastResolvedPath = primary;
-  return { settings: DEFAULT_SETTINGS, resolvedPath: primary };
+  return { settings: getDefaultSettings(), resolvedPath: primary };
 }
 
 export function saveSettingsDebounced(
@@ -274,9 +378,11 @@ export async function saveSettingsStrict(
 }
 
 export function getDefaultSettings(): TadoiSettings {
+  const customThemes = normalizeCustomThemes(DEFAULT_SETTINGS.customThemes, "default");
   return {
     ...DEFAULT_SETTINGS,
-    notifications: { ...DEFAULT_NOTIFICATION_SETTINGS }
+    notifications: { ...DEFAULT_NOTIFICATION_SETTINGS },
+    customThemes
   };
 }
 

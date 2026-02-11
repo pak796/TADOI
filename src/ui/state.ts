@@ -1,13 +1,27 @@
 import { FocusTarget, Mode, isEditorMode, isModalMode, type Mode as ModeType } from "./modeFocus";
 import type { TaskOverdueEvent } from "../notifications/types";
 
-export type UIDeleteModal = {
+type UIDeleteModalBase = {
   type: "delete";
-  taskId: string;
   taskTitle: string;
   previousMode: Exclude<ModeType, typeof Mode.MODAL_CONFIRM>;
   previousFocus: FocusTarget;
 };
+
+export type UIRegularTaskDeleteModal = UIDeleteModalBase & {
+  target: "regular_task";
+  taskId: string;
+};
+
+export type UIRecurringOccurrenceDeleteModal = UIDeleteModalBase & {
+  target: "recurring_occurrence";
+  seriesTaskId: string;
+  seriesId: string;
+  occurrenceIso: string;
+  selectedRowId: string;
+};
+
+export type UIDeleteModal = UIRegularTaskDeleteModal | UIRecurringOccurrenceDeleteModal;
 
 export type UIOverdueModal = {
   type: "overdue";

@@ -1,7 +1,7 @@
 import { formatLocalTimeHHmm } from "../domain/dates";
 import type { Task } from "../domain/models";
 import { formatTagForDisplay } from "../domain/tagIndex";
-import { theme } from "../app/theme";
+import { themeForObject } from "../app/theme";
 import { formatDate } from "../state/store";
 import type { TaskOverdueEvent } from "../notifications/types";
 
@@ -49,6 +49,7 @@ export function OverdueNotificationModal({
   onGoToTask,
   onDismiss
 }: OverdueNotificationModalProps) {
+  const theme = themeForObject("notifications");
   const dueLabel = formatDueDateTimeLabel(event.dueAt);
   const overdueBy = formatOverdueBy(nowMs, event.dueAt);
   const tags = task?.tags ?? [];

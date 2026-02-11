@@ -19,7 +19,8 @@ describe("theme registry", () => {
     expect(cycleTheme("tritanopia")).toBe("blueAngels");
     expect(cycleTheme("blueAngels")).toBe("southwest");
     expect(cycleTheme("southwest")).toBe("rams");
-    expect(cycleTheme("rams")).toBe("rotating");
+    expect(cycleTheme("rams")).toBe("custom1");
+    expect(cycleTheme("custom1")).toBe("rotating");
     expect(cycleTheme("rotating")).toBe("default");
   });
 
@@ -42,6 +43,7 @@ describe("theme registry", () => {
       "blueAngels",
       "southwest",
       "rams",
+      "custom1",
       "rotating"
     ]);
   });

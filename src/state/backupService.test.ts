@@ -8,8 +8,35 @@ import {
   importBackup
 } from "./backupService";
 import { resolveSettingsPaths } from "../settings/settings";
+import { THEMES, type ThemeId, type ThemeTokens } from "../theme/themes";
 
 const FIXED_DATE = new Date(2026, 1, 10, 0, 0, 0);
+
+function normalizeTokens(tokens: ThemeTokens): ThemeTokens {
+  return {
+    bg: tokens.bg.toUpperCase(),
+    panel: tokens.panel.toUpperCase(),
+    text: tokens.text.toUpperCase(),
+    mutedText: tokens.mutedText.toUpperCase(),
+    border: tokens.border.toUpperCase(),
+    accent: tokens.accent.toUpperCase(),
+    accent2: tokens.accent2.toUpperCase(),
+    ok: tokens.ok.toUpperCase(),
+    warn: tokens.warn.toUpperCase(),
+    danger: tokens.danger.toUpperCase(),
+    selectionBg: tokens.selectionBg.toUpperCase(),
+    selectionText: tokens.selectionText.toUpperCase()
+  };
+}
+
+function expectedCustomThemesFor(themeId: ThemeId) {
+  const seed = themeId === "rotating" ? THEMES.default : THEMES[themeId];
+  return {
+    custom1: {
+      global: normalizeTokens(seed)
+    }
+  };
+}
 
 describe("buildTimestampedBackupPath", () => {
   it("uses default backups folder and increments suffix on collisions", async () => {
@@ -286,8 +313,104 @@ describe("backupService import/export", () => {
           terminalBellOnOverdue: true,
           bannerDurationMs: 6000,
           bellCooldownMs: 3000
-        }
+        },
+        customThemes: expectedCustomThemesFor("retro")
       });
+    } finally {
+      if (originalDataPath === undefined) {
+        delete process.env.TADOI_DATA_PATH;
+      } else {
+        process.env.TADOI_DATA_PATH = originalDataPath;
+      }
+      if (originalHome === undefined) {
+        delete process.env.HOME;
+      } else {
+        process.env.HOME = originalHome;
+      }
+    }
+  });
+
+  it("preserves imported custom1 theme payload", async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-import-custom-theme-"));
+    const dataPath = path.join(tempDir, "tadoi_data.json");
+    const importPath = path.join(tempDir, "incoming.json");
+    await fs.writeFile(
+      dataPath,
+      JSON.stringify({ schemaVersion: 4, tasks: [], tagIndex: {}, savedViews: [] }, null, 2),
+      "utf8"
+    );
+    await fs.writeFile(
+      importPath,
+      JSON.stringify(
+        {
+          schemaVersion: 4,
+          tasks: [],
+          tagIndex: {},
+          savedViews: [],
+          settings: {
+            themeId: "custom1",
+            flashMode: "slow",
+            notifications: {
+              enabled: true,
+              inAppOverdueBanner: true,
+              terminalBellOnOverdue: false,
+              bannerDurationMs: 5000,
+              bellCooldownMs: 2000
+            },
+            customThemes: {
+              custom1: {
+                global: {
+                  bg: "#111111",
+                  panel: "#222222",
+                  text: "#EEEEEE",
+                  mutedText: "#AAAAAA",
+                  border: "#333333",
+                  accent: "#FF7700",
+                  accent2: "#00AAFF",
+                  ok: "#22CC66",
+                  warn: "#DDAA00",
+                  danger: "#CC3355",
+                  selectionBg: "#8844CC",
+                  selectionText: "#111111"
+                },
+                objects: {
+                  taskList: {
+                    panel: "#123456"
+                  }
+                }
+              }
+            }
+          }
+        },
+        null,
+        2
+      ),
+      "utf8"
+    );
+
+    const originalDataPath = process.env.TADOI_DATA_PATH;
+    const originalHome = process.env.HOME;
+    process.env.TADOI_DATA_PATH = dataPath;
+    process.env.HOME = tempDir;
+    try {
+      await importBackup({
+        inputPath: importPath,
+        mode: "merge",
+        dryRun: false
+      });
+
+      const { primary, fallback } = resolveSettingsPaths({
+        homeDir: tempDir,
+        platform: process.platform
+      });
+      const resolvedSettingsPath = (await fs.stat(primary).then(() => primary).catch(() => fallback));
+      const rawSettings = await fs.readFile(resolvedSettingsPath, "utf8");
+      const parsed = JSON.parse(rawSettings) as {
+        customThemes?: { custom1?: { objects?: { taskList?: { panel?: string } } } };
+        themeId?: string;
+      };
+      expect(parsed.themeId).toBe("custom1");
+      expect(parsed.customThemes?.custom1?.objects?.taskList?.panel).toBe("#123456");
     } finally {
       if (originalDataPath === undefined) {
         delete process.env.TADOI_DATA_PATH;

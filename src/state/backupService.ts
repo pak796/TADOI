@@ -171,6 +171,10 @@ function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | un
   if (flashModeRaw !== undefined && !isFlashMode(flashModeRaw)) {
     return { ok: false, error: "settings.flashMode is invalid" };
   }
+  const customThemesRaw = settings.customThemes;
+  if (customThemesRaw !== undefined && !isRecord(customThemesRaw)) {
+    return { ok: false, error: "settings.customThemes must be an object when present" };
+  }
 
   const defaultNotifications = getDefaultSettings().notifications;
   const notificationsRaw = settings.notifications;
@@ -231,7 +235,11 @@ function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | un
             : defaultNotifications.terminalBellOnOverdue,
         bannerDurationMs: bannerDurationResult.value,
         bellCooldownMs: bellCooldownResult.value
-      }
+      },
+      customThemes:
+        customThemesRaw === undefined
+          ? undefined
+          : (customThemesRaw as TadoiSettings["customThemes"])
     }
   };
 }

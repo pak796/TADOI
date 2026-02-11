@@ -1,8 +1,10 @@
 import { describe, expect, it } from "bun:test";
-import { FocusTarget, Mode } from "../domain/models";
+import { EditorDraft, FocusTarget, Mode } from "../domain/models";
 import {
   getNextSelectedIdAfterDelete,
+  getVisibleEditorFocusOrder,
   nextEditorFocusTarget,
+  resolveEditorFocusAfterDraftChange,
   resolveEscUnwindTarget,
   resolveModalAction,
   shouldCloseHelp,
@@ -10,6 +12,25 @@ import {
   toEditorFocus,
   toFocusTarget
 } from "./uiState";
+
+function makeDraft(patch: Partial<EditorDraft> = {}): EditorDraft {
+  return {
+    title: "",
+    dueText: "",
+    timeText: "",
+    tagsText: "",
+    notes: "",
+    repeatMode: "off",
+    repeatIntervalText: "1",
+    repeatWeekdays: [],
+    repeatMonthdayText: "",
+    repeatEndMode: "never",
+    repeatUntilText: "",
+    repeatCountText: "",
+    repeatCustomRRuleText: "",
+    ...patch
+  };
+}
 
 describe("uiState routing helpers", () => {
   it("resolves modal actions and blocks unrelated keys", () => {
@@ -40,12 +61,114 @@ describe("uiState editor focus mapping", () => {
   });
 
   it("cycles editor focus with tab order", () => {
-    expect(nextEditorFocusTarget(FocusTarget.EDITOR_TITLE, 1)).toBe(
+    expect(nextEditorFocusTarget(FocusTarget.EDITOR_TITLE, 1, makeDraft())).toBe(
       FocusTarget.EDITOR_DUE_DATE
     );
-    expect(nextEditorFocusTarget(FocusTarget.EDITOR_TITLE, -1)).toBe(
+    expect(nextEditorFocusTarget(FocusTarget.EDITOR_TITLE, -1, makeDraft())).toBe(
       FocusTarget.EDITOR_CANCEL
     );
+  });
+
+  it("builds repeat-aware visible focus order", () => {
+    const offOrder = getVisibleEditorFocusOrder(makeDraft({ repeatMode: "off" }));
+    expect(offOrder).toEqual([
+      FocusTarget.EDITOR_TITLE,
+      FocusTarget.EDITOR_DUE_DATE,
+      FocusTarget.EDITOR_DUE_TIME,
+      FocusTarget.EDITOR_REPEAT_MODE,
+      FocusTarget.EDITOR_TAGS,
+      FocusTarget.EDITOR_NOTES,
+      FocusTarget.EDITOR_SAVE,
+      FocusTarget.EDITOR_CANCEL
+    ]);
+
+    const dailyOrder = getVisibleEditorFocusOrder(
+      makeDraft({ repeatMode: "daily", repeatEndMode: "never" })
+    );
+    expect(dailyOrder).toEqual([
+      FocusTarget.EDITOR_TITLE,
+      FocusTarget.EDITOR_DUE_DATE,
+      FocusTarget.EDITOR_DUE_TIME,
+      FocusTarget.EDITOR_REPEAT_MODE,
+      FocusTarget.EDITOR_REPEAT_INTERVAL,
+      FocusTarget.EDITOR_REPEAT_END_MODE,
+      FocusTarget.EDITOR_TAGS,
+      FocusTarget.EDITOR_NOTES,
+      FocusTarget.EDITOR_SAVE,
+      FocusTarget.EDITOR_CANCEL
+    ]);
+
+    const weeklyOrder = getVisibleEditorFocusOrder(
+      makeDraft({ repeatMode: "weekly", repeatEndMode: "until" })
+    );
+    expect(weeklyOrder).toEqual([
+      FocusTarget.EDITOR_TITLE,
+      FocusTarget.EDITOR_DUE_DATE,
+      FocusTarget.EDITOR_DUE_TIME,
+      FocusTarget.EDITOR_REPEAT_MODE,
+      FocusTarget.EDITOR_REPEAT_INTERVAL,
+      FocusTarget.EDITOR_REPEAT_WEEKDAYS,
+      FocusTarget.EDITOR_REPEAT_END_MODE,
+      FocusTarget.EDITOR_REPEAT_UNTIL,
+      FocusTarget.EDITOR_TAGS,
+      FocusTarget.EDITOR_NOTES,
+      FocusTarget.EDITOR_SAVE,
+      FocusTarget.EDITOR_CANCEL
+    ]);
+
+    const monthlyOrder = getVisibleEditorFocusOrder(
+      makeDraft({ repeatMode: "monthly", repeatEndMode: "count" })
+    );
+    expect(monthlyOrder).toEqual([
+      FocusTarget.EDITOR_TITLE,
+      FocusTarget.EDITOR_DUE_DATE,
+      FocusTarget.EDITOR_DUE_TIME,
+      FocusTarget.EDITOR_REPEAT_MODE,
+      FocusTarget.EDITOR_REPEAT_INTERVAL,
+      FocusTarget.EDITOR_REPEAT_MONTHDAY,
+      FocusTarget.EDITOR_REPEAT_END_MODE,
+      FocusTarget.EDITOR_REPEAT_COUNT,
+      FocusTarget.EDITOR_TAGS,
+      FocusTarget.EDITOR_NOTES,
+      FocusTarget.EDITOR_SAVE,
+      FocusTarget.EDITOR_CANCEL
+    ]);
+
+    const customOrder = getVisibleEditorFocusOrder(
+      makeDraft({ repeatMode: "custom", repeatEndMode: "count" })
+    );
+    expect(customOrder).toEqual([
+      FocusTarget.EDITOR_TITLE,
+      FocusTarget.EDITOR_DUE_DATE,
+      FocusTarget.EDITOR_DUE_TIME,
+      FocusTarget.EDITOR_REPEAT_MODE,
+      FocusTarget.EDITOR_REPEAT_CUSTOM,
+      FocusTarget.EDITOR_TAGS,
+      FocusTarget.EDITOR_NOTES,
+      FocusTarget.EDITOR_SAVE,
+      FocusTarget.EDITOR_CANCEL
+    ]);
+  });
+
+  it("reconciles focus when recurrence controls become hidden", () => {
+    const previousDraft = makeDraft({ repeatMode: "weekly", repeatEndMode: "until" });
+    const nextOff = makeDraft({ repeatMode: "off", repeatEndMode: "never" });
+    expect(
+      resolveEditorFocusAfterDraftChange(
+        FocusTarget.EDITOR_REPEAT_WEEKDAYS,
+        previousDraft,
+        nextOff
+      )
+    ).toBe(FocusTarget.EDITOR_REPEAT_MODE);
+
+    const nextDaily = makeDraft({ repeatMode: "daily", repeatEndMode: "never" });
+    expect(
+      resolveEditorFocusAfterDraftChange(
+        FocusTarget.EDITOR_REPEAT_WEEKDAYS,
+        previousDraft,
+        nextDaily
+      )
+    ).toBe(FocusTarget.EDITOR_REPEAT_INTERVAL);
   });
 });
 
@@ -69,6 +192,7 @@ describe("uiState esc unwind target", () => {
       mode: Mode.MODAL_CONFIRM,
       modal: {
         type: "delete",
+        target: "regular_task",
         taskId: "t1",
         taskTitle: "task",
         previousMode: Mode.SEARCH,

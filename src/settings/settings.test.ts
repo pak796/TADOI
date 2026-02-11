@@ -3,6 +3,7 @@ import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
 import {
+  getDefaultSettings,
   loadSettings,
   resetSettingsStateForTests,
   resolveSettingsPaths,
@@ -10,6 +11,7 @@ import {
   saveSettingsStrict,
   type SettingsFsOps
 } from "./settings";
+import { THEMES, type ThemeId, type ThemeTokens } from "../theme/themes";
 
 const DEFAULT_NOTIFICATIONS = {
   enabled: true,
@@ -18,6 +20,33 @@ const DEFAULT_NOTIFICATIONS = {
   bannerDurationMs: 5000,
   bellCooldownMs: 2000
 };
+const DEFAULT_CUSTOM_THEMES = getDefaultSettings().customThemes;
+
+function normalizeTokens(tokens: ThemeTokens): ThemeTokens {
+  return {
+    bg: tokens.bg.toUpperCase(),
+    panel: tokens.panel.toUpperCase(),
+    text: tokens.text.toUpperCase(),
+    mutedText: tokens.mutedText.toUpperCase(),
+    border: tokens.border.toUpperCase(),
+    accent: tokens.accent.toUpperCase(),
+    accent2: tokens.accent2.toUpperCase(),
+    ok: tokens.ok.toUpperCase(),
+    warn: tokens.warn.toUpperCase(),
+    danger: tokens.danger.toUpperCase(),
+    selectionBg: tokens.selectionBg.toUpperCase(),
+    selectionText: tokens.selectionText.toUpperCase()
+  };
+}
+
+function expectedCustomThemesFor(themeId: ThemeId): typeof DEFAULT_CUSTOM_THEMES {
+  const seed = themeId === "rotating" ? THEMES.default : THEMES[themeId];
+  return {
+    custom1: {
+      global: normalizeTokens(seed)
+    }
+  };
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -41,6 +70,7 @@ describe("loadSettings", () => {
     const result = await loadSettings({ homeDir, platform: "linux" });
     expect(result.settings.themeId).toBe("default");
     expect(result.settings.notifications).toEqual(DEFAULT_NOTIFICATIONS);
+    expect(result.settings.customThemes).toEqual(expectedCustomThemesFor("default"));
     expect(result.resolvedPath).toBe(
       path.posix.join(homeDir, ".config", "tadoi", "settings.json")
     );
@@ -66,6 +96,7 @@ describe("loadSettings", () => {
     expect(result.settings.themeId).toBe("retro");
     expect(result.settings.flashMode).toBe("static");
     expect(result.settings.notifications).toEqual(DEFAULT_NOTIFICATIONS);
+    expect(result.settings.customThemes).toEqual(expectedCustomThemesFor("retro"));
     expect(result.resolvedPath).toBe(primary);
   });
 
@@ -83,6 +114,7 @@ describe("loadSettings", () => {
     expect(result.settings.themeId).toBe("highContrast");
     expect(result.settings.flashMode).toBe("static");
     expect(result.settings.notifications).toEqual(DEFAULT_NOTIFICATIONS);
+    expect(result.settings.customThemes).toEqual(expectedCustomThemesFor("highContrast"));
     expect(result.resolvedPath).toBe(fallback);
   });
 
@@ -96,6 +128,7 @@ describe("loadSettings", () => {
     expect(result.settings.themeId).toBe("default");
     expect(result.settings.flashMode).toBe("slow");
     expect(result.settings.notifications).toEqual(DEFAULT_NOTIFICATIONS);
+    expect(result.settings.customThemes).toEqual(expectedCustomThemesFor("default"));
   });
 
   it("defaults flash mode when missing or invalid", async () => {
@@ -107,7 +140,8 @@ describe("loadSettings", () => {
     expect(missing.settings).toEqual({
       themeId: "retro",
       flashMode: "slow",
-      notifications: DEFAULT_NOTIFICATIONS
+      notifications: DEFAULT_NOTIFICATIONS,
+      customThemes: expectedCustomThemesFor("retro")
     });
 
     await fs.writeFile(
@@ -119,7 +153,8 @@ describe("loadSettings", () => {
     expect(invalid.settings).toEqual({
       themeId: "retro",
       flashMode: "slow",
-      notifications: DEFAULT_NOTIFICATIONS
+      notifications: DEFAULT_NOTIFICATIONS,
+      customThemes: expectedCustomThemesFor("retro")
     });
   });
 
@@ -147,8 +182,31 @@ describe("loadSettings", () => {
     expect(result.settings).toEqual({
       themeId: "retro",
       flashMode: "static",
-      notifications: DEFAULT_NOTIFICATIONS
+      notifications: DEFAULT_NOTIFICATIONS,
+      customThemes: expectedCustomThemesFor("retro")
     });
+  });
+
+  it("seeds custom1 global palette from active non-rotating theme when missing", async () => {
+    const homeDir = await makeTempDir();
+    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    await fs.mkdir(path.dirname(primary), { recursive: true });
+    await fs.writeFile(primary, JSON.stringify({ themeId: "retro", flashMode: "slow" }), "utf8");
+
+    const result = await loadSettings({ homeDir, platform: "linux" });
+    expect(result.settings.customThemes?.custom1?.global.bg).toBe("#121316");
+    expect(result.settings.customThemes?.custom1?.global.panel).toBe("#1F2126");
+  });
+
+  it("seeds custom1 global palette from default when rotating is active", async () => {
+    const homeDir = await makeTempDir();
+    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    await fs.mkdir(path.dirname(primary), { recursive: true });
+    await fs.writeFile(primary, JSON.stringify({ themeId: "rotating", flashMode: "slow" }), "utf8");
+
+    const result = await loadSettings({ homeDir, platform: "linux" });
+    expect(result.settings.customThemes?.custom1?.global.bg).toBe("#0B0F14");
+    expect(result.settings.customThemes?.custom1?.global.panel).toBe("#1A202C");
   });
 });
 
@@ -171,7 +229,8 @@ describe("saveSettingsDebounced", () => {
     expect(JSON.parse(raw)).toEqual({
       themeId: "highContrast",
       flashMode: "static",
-      notifications: DEFAULT_NOTIFICATIONS
+      notifications: DEFAULT_NOTIFICATIONS,
+      customThemes: expectedCustomThemesFor("highContrast")
     });
   });
 
@@ -198,7 +257,8 @@ describe("saveSettingsDebounced", () => {
     expect(JSON.parse(raw)).toEqual({
       themeId: "neonHacker",
       flashMode: "static",
-      notifications: DEFAULT_NOTIFICATIONS
+      notifications: DEFAULT_NOTIFICATIONS,
+      customThemes: expectedCustomThemesFor("neonHacker")
     });
   });
 
@@ -236,7 +296,8 @@ describe("saveSettingsDebounced", () => {
     expect(JSON.parse(fallbackRaw)).toEqual({
       themeId: "retro",
       flashMode: "static",
-      notifications: DEFAULT_NOTIFICATIONS
+      notifications: DEFAULT_NOTIFICATIONS,
+      customThemes: expectedCustomThemesFor("retro")
     });
   });
 });
@@ -257,7 +318,8 @@ describe("saveSettingsStrict", () => {
     expect(JSON.parse(raw)).toEqual({
       themeId: "retro",
       flashMode: "slow",
-      notifications: DEFAULT_NOTIFICATIONS
+      notifications: DEFAULT_NOTIFICATIONS,
+      customThemes: expectedCustomThemesFor("retro")
     });
   });
 
@@ -294,7 +356,8 @@ describe("saveSettingsStrict", () => {
     expect(JSON.parse(raw)).toEqual({
       themeId: "highContrast",
       flashMode: "static",
-      notifications: DEFAULT_NOTIFICATIONS
+      notifications: DEFAULT_NOTIFICATIONS,
+      customThemes: expectedCustomThemesFor("highContrast")
     });
   });
 });

@@ -1,5 +1,5 @@
 import type { KeyEvent } from "@opentui/core";
-import { colorForTag, theme } from "../app/theme";
+import { colorForTag, themeForObject } from "../app/theme";
 import type { TagFilter } from "../domain/models";
 import type { TagFilterBucket } from "../domain/tagFilter";
 import { formatTagFilterBooleanSummary } from "../domain/tagFilter";
@@ -48,6 +48,7 @@ export function TagFilterPanel({
   onClear,
   onCancel
 }: TagFilterPanelProps) {
+  const theme = themeForObject("inputs");
   const summary = formatTagFilterBooleanSummary(draft) ?? "(none)";
   const hasSuggestion = Boolean(inlineSuggestion?.remainder);
 
