@@ -9,8 +9,10 @@
 
 ### Runtime and entrypoints
 - **Runtime:** Bun (not pure Node CLI). `package.json` declares `engines.bun >= 1.3.9`.
-- **Entrypoint:** `index.tsx` initializes OpenTUI (`createCliRenderer`) and also hosts CLI subcommands (export/import) in the same entrypoint.
-- **Shim:** `tadoi.js` uses a **Bun shebang** and imports the TS entrypoint directly (developer run mode).
+- **CLI entrypoint:** `src/cli.ts` routes headless commands and version/smoke flags.
+- **TUI runner:** `src/tui/runTui.tsx` starts OpenTUI runtime for interactive mode.
+- **Bootstrap:** `src/index.tsx` delegates into CLI routing.
+- **Shim:** `bin/tadoi.js` launches the project runtime command path.
 
 ### Native/prebuilt components
 - No local `node-gyp` / `binding.gyp` build flow in this repo.
@@ -55,11 +57,7 @@ The compiled binary must behave as:
 - `tadoi --version` → prints version, **no TUI initialization**
 - `tadoi export --help` → works headless, **no TUI initialization**
 
-**Strong recommendation:** split entrypoints over time:
-- `src/cli.ts` (argument parsing / routing)
-- `src/tui/app.tsx` (TUI boot)
-- `src/commands/*` (export/import/etc.)
-This prevents accidental TUI init during installer build steps, CI smoke tests, or headless operations.
+Current layout already separates CLI routing from TUI startup, which prevents accidental TUI initialization in headless installer and CI paths.
 
 ---
 
@@ -269,4 +267,3 @@ Define stable paths now to avoid later migration pain.
 - Do you ship **Intel macOS** builds or Apple Silicon only?
 - Do you want “system install” (`/usr/local/bin`) only, or also “user install” (`~/.local/bin`)?
 - Do you want auto-update (`tadoi update`) or rely on package managers later (winget/homebrew/apt)?
-

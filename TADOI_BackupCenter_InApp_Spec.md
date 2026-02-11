@@ -1,6 +1,6 @@
 # TADOI — In‑App Import/Export + Backup Center (TUI) — Spec Sheet (Codex-ready)
 
-**Repo version context:** v0.2.x (tree provided)  
+**Repo version context:** v0.3.0 (current runtime baseline)  
 **Generated:** 2026-02-10 21:35:46
 
 ---

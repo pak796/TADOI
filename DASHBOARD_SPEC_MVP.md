@@ -5,7 +5,7 @@
 > 2) 8-bucket due chart (left panel)
 > 3) TOP TAGS (OPEN) Pareto chart (right panel)
 >
-> Release baseline: `v0.2.8`.
+> Release baseline: `v0.3.0`.
 
 ---
 
@@ -14,7 +14,7 @@
 ### Goals (current runtime)
 - Provide a dashboard screen with shared-filter analytics that updates from the exact same visible-task selector used by Task List.
 - Keep keyboard routing centralized with strict mode boundaries and no key leakage.
-- Keep rendering legible at 80x24 with robust fallback behavior when width is constrained.
+- Keep rendering legible at 104x24 with robust fallback behavior when width is constrained.
 
 ### Non-goals
 - No dashboard-specific persistence or filter model.
@@ -32,6 +32,7 @@ type Filters = {
   status: "all" | "open" | "done" | "archived";
   due: "any" | "overdue" | "today" | "next7";
   tag?: string;
+  tagFilter?: { all?: string[]; any?: string[]; none?: string[] };
   searchText?: string;
 };
 ```
@@ -50,13 +51,13 @@ Single source of truth:
 - Toggle is ignored in text-entry contexts (`SEARCH`, `ADD`, `EDIT`, save-view-name prompt).
 
 ### Dashboard key contract
-- Allowed: `b`/`B`, `f`, `g`, `t`, `up`, `down`, `enter`, `?`, `q`
+- Allowed: `b`/`B`, `f`, `g`, `t`, `Shift+T`, `up`, `down`, `enter`, `?`, `q`
 - Blocked: list movement/action keys (`j/k`, paging, jumps, etc.)
 - Routing remains centralized in `src/app/keyRouter.ts`.
 
 ### Top-tags drilldown
 - `up` / `down` selects a row in `TOP TAGS (OPEN)`.
-- `enter` applies selected tag as active filter (`filters.tag = selectedTag`).
+- `enter` applies selected tag as active legacy tag filter (`filters.tag = selectedTag`) and clears boolean `filters.tagFilter`.
 - If status filter is `done` or `archived`, enter shows an availability hint instead of applying a tag.
 
 ---

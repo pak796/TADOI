@@ -1,6 +1,7 @@
 # Backup Center (In-App)
 
 This document describes the in-app data portability flow available in TADOI.
+Runtime baseline: **v0.3.0**.
 
 ## Entry Point
 
@@ -46,4 +47,3 @@ This document describes the in-app data portability flow available in TADOI.
   - `src/state/portability.ts`
 - Data-path and backup primitives:
   - `src/state/persistence.ts`
-

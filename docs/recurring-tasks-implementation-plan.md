@@ -3,7 +3,7 @@
 ## Summary
 Recurring tasks are implemented with RRULE-style series metadata and sparse materialization.
 The app keeps one series task in storage, renders virtual occurrences for list/dashboard/query windows, and materializes occurrence rows only when an occurrence needs independent state.
-This implementation is part of the `v0.2.9` runtime baseline.
+This implementation is part of the `v0.3.0` runtime baseline.
 
 ## Locked Decisions
 - Internal recurrence format: `dtstart + rrule + exdates + series_id`.

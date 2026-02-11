@@ -6,6 +6,24 @@ The format is based on Keep a Changelog.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-02-11
+### Added
+- Versioned release documentation artifacts for `v0.3.0`:
+  - `TADOI_SPEC_v0.3.0.md`
+  - `TADOI_TASKS_v0.3.0.md`
+  - `docs/TADOI_QA_Guide_v0.3.0.md`
+  - `docs/TADOI_Feature_List_v0.3.0.md`
+
+### Changed
+- Version surfaces are aligned to `0.3.0` / `v0.3.0` in runtime and documentation.
+- Documentation contracts are synchronized to current behavior:
+  - tag filtering now documents legacy cycle (`t`) and boolean panel (`Shift+T`, `ALL/ANY/NONE`)
+  - search lifecycle copy aligns to `/` open and `Enter`/`Esc` close
+  - minimum terminal-size references are normalized to `104x24`
+- Dashboard runtime spec now includes boolean tag-filter shape in `Filters` and documents dashboard `Shift+T` support.
+- Installable distribution spec entrypoint notes now match current split CLI/TUI runtime structure.
+- Notion documents in `Patrick’s Projects > TADOI > Documents` were updated in place for the same `v0.3.0` accuracy sync.
+
 ## [0.2.9] - 2026-02-11
 ### Added
 - Installable distribution pipeline scaffolding-to-execution upgrade:
