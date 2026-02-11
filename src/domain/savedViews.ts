@@ -1,4 +1,5 @@
 import { Filters, SavedView } from "./models";
+import { normalizeTagFilter, normalizeTagToken } from "./tagFilter";
 
 export const MAX_SAVED_VIEWS = 9;
 export const DEFAULT_VIEW_FILTERS: Pick<Filters, "status" | "due"> = {
@@ -16,11 +17,43 @@ function normalizeSearchText(searchText: string | undefined): string | undefined
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+function areStringArraysEqual(left: string[] | undefined, right: string[] | undefined): boolean {
+  const leftSafe = left ?? [];
+  const rightSafe = right ?? [];
+  if (leftSafe.length !== rightSafe.length) return false;
+  for (let i = 0; i < leftSafe.length; i += 1) {
+    if (leftSafe[i] !== rightSafe[i]) return false;
+  }
+  return true;
+}
+
+function areTagFiltersEqual(left: Filters["tagFilter"], right: Filters["tagFilter"]): boolean {
+  const normalizedLeft = normalizeTagFilter(left);
+  const normalizedRight = normalizeTagFilter(right);
+  return (
+    areStringArraysEqual(normalizedLeft?.all, normalizedRight?.all) &&
+    areStringArraysEqual(normalizedLeft?.any, normalizedRight?.any) &&
+    areStringArraysEqual(normalizedLeft?.none, normalizedRight?.none)
+  );
+}
+
 export function snapshotFilters(filters: Filters): Filters {
+  const normalizedTagFilter = normalizeTagFilter(filters.tagFilter);
+  const normalizedTag = filters.tag ? normalizeTagToken(filters.tag) : undefined;
+
+  if (normalizedTagFilter) {
+    return {
+      status: filters.status,
+      due: filters.due,
+      tagFilter: normalizedTagFilter,
+      searchText: normalizeSearchText(filters.searchText)
+    };
+  }
+
   return {
     status: filters.status,
     due: filters.due,
-    tag: filters.tag,
+    tag: normalizedTag,
     searchText: normalizeSearchText(filters.searchText)
   };
 }
@@ -36,6 +69,7 @@ export function isSavedViewActive(currentFilters: Filters, view: SavedView): boo
     current.status === target.status &&
     current.due === target.due &&
     current.tag === target.tag &&
+    areTagFiltersEqual(current.tagFilter, target.tagFilter) &&
     current.searchText === target.searchText
   );
 }

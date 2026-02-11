@@ -1,5 +1,6 @@
 import { diffLocalDays, getLocalDayNumber, startOfLocalDayMs } from "./dates";
 import { Filters, SortMode, Task } from "./models";
+import { matchesTagFilter } from "./tagFilter";
 
 export const SORT_MODE_ORDER: SortMode[] = ["due", "updated", "created", "title"];
 
@@ -88,7 +89,7 @@ export function filterTasks(tasks: Task[], filters: Filters, now: number): Task[
       return false;
     }
 
-    if (filters.tag && !task.tags.includes(filters.tag)) {
+    if (!matchesTagFilter(task.tags, filters)) {
       return false;
     }
 

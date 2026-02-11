@@ -6,6 +6,7 @@ import {
 } from "../domain/dashboard";
 import { computeDashboardKpis } from "../domain/dashboardKpis";
 import { Filters, Task } from "../domain/models";
+import { formatTagFilterBooleanSummary } from "../domain/tagFilter";
 import { formatTagForDisplay } from "../domain/tagIndex";
 
 const DUE_BUCKET_LABELS = ["OVD", "TOD", "+1", "+2", "+3", "+4", "+5", "+6"] as const;
@@ -60,7 +61,12 @@ type KpiItem = {
 function getFilterLine(filters: Filters): string {
   const status = filters.status.toUpperCase();
   const due = filters.due === "next7" ? "NEXT7" : filters.due.toUpperCase();
-  const tag = filters.tag ? formatTagForDisplay(filters.tag) : "(none)";
+  const booleanTagSummary = formatTagFilterBooleanSummary(filters.tagFilter);
+  const tag = booleanTagSummary
+    ? booleanTagSummary
+    : filters.tag
+      ? formatTagForDisplay(filters.tag)
+      : "(none)";
   const search = filters.searchText?.trim() ? filters.searchText.trim() : "(none)";
   return `STATUS=${status} DUE=${due} TAG=${tag} SEARCH=${search}`;
 }

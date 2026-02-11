@@ -167,6 +167,76 @@ describe("importState", () => {
     expect(result.stats.tasks.removed).toBe(1);
     expect(result.nextState.tasks).toHaveLength(1);
   });
+
+  it("treats saved-view tagFilter differences as updates", () => {
+    const current = baseState([{ ...BASE_LOCAL_TASK }]);
+    current.savedViews = [
+      {
+        id: "view-1",
+        name: "Today",
+        createdAt: 1,
+        updatedAt: 10,
+        filters: {
+          status: "open",
+          due: "today",
+          tagFilter: { all: ["work"] }
+        }
+      }
+    ];
+    const incoming = baseState([{ ...BASE_LOCAL_TASK }]);
+    incoming.savedViews = [
+      {
+        id: "view-1",
+        name: "Today",
+        createdAt: 1,
+        updatedAt: 10,
+        filters: {
+          status: "open",
+          due: "today",
+          tagFilter: { all: ["home"] }
+        }
+      }
+    ];
+
+    const result = importState(current, incoming, { mode: "merge", now: 1 });
+    expect(result.stats.savedViews.updated).toBe(1);
+    expect(result.nextState.savedViews[0]?.filters.tagFilter?.all).toEqual(["home"]);
+  });
+
+  it("treats equivalent saved-view tagFilter values as unchanged", () => {
+    const current = baseState([{ ...BASE_LOCAL_TASK }]);
+    current.savedViews = [
+      {
+        id: "view-1",
+        name: "Today",
+        createdAt: 1,
+        updatedAt: 10,
+        filters: {
+          status: "open",
+          due: "today",
+          tagFilter: { all: ["work"] }
+        }
+      }
+    ];
+    const incoming = baseState([{ ...BASE_LOCAL_TASK }]);
+    incoming.savedViews = [
+      {
+        id: "view-1",
+        name: "Today",
+        createdAt: 1,
+        updatedAt: 10,
+        filters: {
+          status: "open",
+          due: "today",
+          tagFilter: { all: ["work"] }
+        }
+      }
+    ];
+
+    const result = importState(current, incoming, { mode: "merge", now: 1 });
+    expect(result.stats.savedViews.updated).toBe(0);
+    expect(result.stats.savedViews.unchanged).toBe(1);
+  });
 });
 
 describe("redactStateForExport", () => {

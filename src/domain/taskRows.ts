@@ -1,6 +1,7 @@
 import { addLocalDaysMs, diffLocalDays, startOfLocalDayMs } from "./dates";
 import { Filters, SortMode, Task, TaskStatus } from "./models";
 import { sortTasks } from "./query";
+import { matchesTagFilter } from "./tagFilter";
 import {
   getOccurrences,
   latestOverdueOccurrence,
@@ -72,11 +73,6 @@ function matchesStatusFilter(status: TaskStatus, filterStatus: Filters["status"]
   return status === filterStatus;
 }
 
-function matchesTagFilter(task: Pick<Task, "tags">, tag: string | undefined): boolean {
-  if (!tag) return true;
-  return task.tags.includes(tag);
-}
-
 function matchesSearchFilter(
   task: Pick<Task, "title" | "tags">,
   search: string
@@ -115,7 +111,7 @@ function matchesCommonFilters(
   if (!matchesStatusFilter(task.status, filters.status)) {
     return false;
   }
-  if (!matchesTagFilter(task, filters.tag)) {
+  if (!matchesTagFilter(task.tags, filters)) {
     return false;
   }
   if (!matchesSearchFilter(task, search)) {
@@ -245,7 +241,7 @@ export function buildVisibleTaskRows(
     }
 
     if (recurrence && task.status === "open") {
-      if (!matchesTagFilter(task, filters.tag) || !matchesSearchFilter(task, search)) {
+      if (!matchesTagFilter(task.tags, filters) || !matchesSearchFilter(task, search)) {
         continue;
       }
       rows.push(...buildSeriesVirtualRows(task, now, filters, materializedKeys));

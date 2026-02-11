@@ -38,10 +38,17 @@ export type TagIndexEntry = {
   lastUsedAt: number;
 };
 
+export type TagFilter = {
+  all?: string[];
+  any?: string[];
+  none?: string[];
+};
+
 export type Filters = {
   status: "all" | "open" | "done" | "archived";
   due: "any" | "overdue" | "today" | "next7";
   tag?: string;
+  tagFilter?: TagFilter;
   searchText?: string;
 };
 

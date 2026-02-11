@@ -118,6 +118,37 @@ describe("buildVisibleTaskRows recurring expansion", () => {
     expect(next7Rows[6]?.occurrenceIso).toBe("2026-02-16T09:00:00");
   });
 
+  it("applies tagFilter semantics to recurring virtual rows", () => {
+    const tasks: Task[] = [
+      makeTask({
+        id: "series-task",
+        title: "daily",
+        status: "open",
+        hasExplicitTime: true,
+        tags: ["work", "urgent"],
+        recurrence: {
+          dtstart: "2026-02-10T09:00:00",
+          rrule: "FREQ=DAILY;INTERVAL=1;COUNT=2",
+          series_id: "series:daily"
+        }
+      })
+    ];
+
+    const allRows = buildRows(
+      tasks,
+      { status: "all", due: "today", tagFilter: { all: ["work"], none: ["home"] } },
+      now
+    );
+    expect(allRows).toHaveLength(1);
+
+    const excludedRows = buildRows(
+      tasks,
+      { status: "all", due: "today", tagFilter: { none: ["work"] } },
+      now
+    );
+    expect(excludedRows).toHaveLength(0);
+  });
+
   it("suppresses virtual row when a matching materialized instance exists", () => {
     const tasks: Task[] = [
       makeTask({

@@ -193,6 +193,27 @@ describe("unwind", () => {
     });
   });
 
+  it("returns to previous captured context from tag filter panel", () => {
+    const result = unwind({
+      ...initialUIState,
+      mode: Mode.TAG_FILTER,
+      focus: FocusTarget.TAG_FILTER_INPUT,
+      previousMode: Mode.DASHBOARD,
+      previousFocus: FocusTarget.DASHBOARD
+    });
+
+    expect(result).toEqual({
+      state: {
+        ...initialUIState,
+        mode: Mode.DASHBOARD,
+        focus: FocusTarget.DASHBOARD,
+        previousMode: Mode.DASHBOARD,
+        previousFocus: FocusTarget.DASHBOARD
+      },
+      clearEditorDraft: false
+    });
+  });
+
   it("closes search back to list/task list", () => {
     const result = unwind({
       ...initialUIState,

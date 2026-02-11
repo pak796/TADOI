@@ -1,4 +1,5 @@
 import { normalizeTags } from "../domain/tagIndex";
+import { normalizeTagFilter } from "../domain/tagFilter";
 import type { SavedView, TagIndexEntry, Task } from "../domain/models";
 import type { TadoiSettings } from "../settings/settings";
 import type { LoadedData } from "./persistence";
@@ -107,6 +108,19 @@ function areTasksEquivalent(left: Task, right: Task): boolean {
   );
 }
 
+function areTagFiltersEquivalent(
+  left: SavedView["filters"]["tagFilter"],
+  right: SavedView["filters"]["tagFilter"]
+): boolean {
+  const normalizedLeft = normalizeTagFilter(left);
+  const normalizedRight = normalizeTagFilter(right);
+  return (
+    areStringArraysEqual(normalizedLeft?.all ?? [], normalizedRight?.all ?? []) &&
+    areStringArraysEqual(normalizedLeft?.any ?? [], normalizedRight?.any ?? []) &&
+    areStringArraysEqual(normalizedLeft?.none ?? [], normalizedRight?.none ?? [])
+  );
+}
+
 function areViewsEquivalent(left: SavedView, right: SavedView): boolean {
   return (
     left.id === right.id &&
@@ -116,6 +130,7 @@ function areViewsEquivalent(left: SavedView, right: SavedView): boolean {
     left.filters.status === right.filters.status &&
     left.filters.due === right.filters.due &&
     left.filters.tag === right.filters.tag &&
+    areTagFiltersEquivalent(left.filters.tagFilter, right.filters.tagFilter) &&
     left.filters.searchText === right.filters.searchText
   );
 }

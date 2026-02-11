@@ -170,7 +170,11 @@ export function unwind(state: UIState): UnwindResult | null {
     };
   }
 
-  if (state.mode === Mode.HELP || state.mode === Mode.BACKUP_CENTER) {
+  if (
+    state.mode === Mode.HELP ||
+    state.mode === Mode.BACKUP_CENTER ||
+    state.mode === Mode.TAG_FILTER
+  ) {
     return {
       state: {
         ...state,

@@ -133,6 +133,20 @@ describe("uiState esc unwind target", () => {
 
     expect(
       resolveEscUnwindTarget({
+        mode: Mode.TAG_FILTER,
+        modal: null,
+        helpReturnMode: Mode.DASHBOARD,
+        helpReturnFocus: FocusTarget.DASHBOARD
+      })
+    ).toEqual({
+      mode: Mode.DASHBOARD,
+      focus: FocusTarget.DASHBOARD,
+      clearEditor: false,
+      clearModal: false
+    });
+
+    expect(
+      resolveEscUnwindTarget({
         mode: Mode.SEARCH,
         modal: null,
         helpReturnMode: Mode.LIST,

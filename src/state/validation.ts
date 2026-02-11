@@ -1,4 +1,5 @@
 import { normalizeTags } from "../domain/tagIndex";
+import { normalizeTagFilter } from "../domain/tagFilter";
 import {
   formatDateToLocalIso,
   parseLocalIsoToDate
@@ -20,6 +21,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+function areStringArraysEqual(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) return false;
+  for (let i = 0; i < left.length; i += 1) {
+    if (left[i] !== right[i]) return false;
+  }
+  return true;
 }
 
 function normalizeLocalIso(value: unknown): string | undefined {
@@ -231,6 +240,64 @@ export function validatePersistedState(
       typeof view.filters.searchText !== "string"
     ) {
       errors.push(`savedView.filters.searchText must be string (${String(view.id)})`);
+    }
+    if (view.filters.tagFilter !== undefined) {
+      if (!isRecord(view.filters.tagFilter)) {
+        errors.push(`savedView.filters.tagFilter must be an object (${String(view.id)})`);
+      } else {
+        const rawAll = view.filters.tagFilter.all;
+        const rawAny = view.filters.tagFilter.any;
+        const rawNone = view.filters.tagFilter.none;
+
+        if (
+          rawAll !== undefined &&
+          (!Array.isArray(rawAll) || !rawAll.every((tag) => typeof tag === "string"))
+        ) {
+          errors.push(`savedView.filters.tagFilter.all must be a string array (${String(view.id)})`);
+        }
+        if (
+          rawAny !== undefined &&
+          (!Array.isArray(rawAny) || !rawAny.every((tag) => typeof tag === "string"))
+        ) {
+          errors.push(`savedView.filters.tagFilter.any must be a string array (${String(view.id)})`);
+        }
+        if (
+          rawNone !== undefined &&
+          (!Array.isArray(rawNone) || !rawNone.every((tag) => typeof tag === "string"))
+        ) {
+          errors.push(`savedView.filters.tagFilter.none must be a string array (${String(view.id)})`);
+        }
+
+        if (
+          (rawAll === undefined || Array.isArray(rawAll)) &&
+          (rawAny === undefined || Array.isArray(rawAny)) &&
+          (rawNone === undefined || Array.isArray(rawNone))
+        ) {
+          const normalizedTagFilter = normalizeTagFilter({
+            all: Array.isArray(rawAll) ? rawAll : undefined,
+            any: Array.isArray(rawAny) ? rawAny : undefined,
+            none: Array.isArray(rawNone) ? rawNone : undefined
+          });
+          const hadAnyBucket = rawAll !== undefined || rawAny !== undefined || rawNone !== undefined;
+
+          if (!normalizedTagFilter && hadAnyBucket) {
+            errors.push(`savedView.filters.tagFilter must contain valid tags (${String(view.id)})`);
+          } else if (normalizedTagFilter) {
+            const all = Array.isArray(rawAll) ? rawAll : [];
+            const any = Array.isArray(rawAny) ? rawAny : [];
+            const none = Array.isArray(rawNone) ? rawNone : [];
+            if (
+              !areStringArraysEqual(all, normalizedTagFilter.all ?? []) ||
+              !areStringArraysEqual(any, normalizedTagFilter.any ?? []) ||
+              !areStringArraysEqual(none, normalizedTagFilter.none ?? [])
+            ) {
+              errors.push(
+                `savedView.filters.tagFilter buckets must be normalized/deduped/sorted (${String(view.id)})`
+              );
+            }
+          }
+        }
+      }
     }
   }
 

@@ -106,6 +106,12 @@ describe("handleKey", () => {
     };
     expect(run({ name: "j", sequence: "j" }, { uiState: modalState })).toEqual([]);
     expect(run({ name: "space" }, { uiState: modalState })).toEqual([]);
+    expect(
+      run(
+        { name: "T", sequence: "T", shift: true },
+        { uiState: modalState }
+      )
+    ).toEqual([]);
     expect(run({ name: "y", sequence: "y" }, { uiState: modalState })).toEqual([
       { scope: "domain", type: "MODAL_CONFIRM_DELETE" }
     ]);
@@ -215,6 +221,12 @@ describe("handleKey", () => {
     ]);
     expect(run({ name: "s", sequence: "s" })).toEqual([
       { scope: "domain", type: "CYCLE_SORT" }
+    ]);
+    expect(run({ name: "t", sequence: "t" })).toEqual([
+      { scope: "domain", type: "TOGGLE_TAG_FILTER" }
+    ]);
+    expect(run({ name: "T", sequence: "T", shift: true })).toEqual([
+      { scope: "ui", type: "OPEN_TAG_FILTER_PANEL" }
     ]);
     expect(run({ name: "x", sequence: "x" })).toEqual([
       { scope: "domain", type: "SKIP_SELECTED_OCCURRENCE" }
@@ -339,6 +351,12 @@ describe("handleKey", () => {
       focus: FocusTarget.SEARCH_INPUT
     };
     expect(run({ name: "j", sequence: "j" }, { uiState: searchState })).toEqual([]);
+    expect(
+      run(
+        { name: "T", sequence: "T", shift: true },
+        { uiState: searchState }
+      )
+    ).toEqual([]);
     expect(run({ name: "enter" }, { uiState: searchState })).toEqual([
       { scope: "ui", type: "CLOSE_SEARCH" }
     ]);
@@ -370,6 +388,12 @@ describe("handleKey", () => {
     expect(run({ name: "t", sequence: "t" }, { uiState: dashboardState })).toEqual([
       { scope: "domain", type: "TOGGLE_TAG_FILTER" }
     ]);
+    expect(
+      run(
+        { name: "T", sequence: "T", shift: true },
+        { uiState: dashboardState }
+      )
+    ).toEqual([{ scope: "ui", type: "OPEN_TAG_FILTER_PANEL" }]);
     expect(run({ name: "q", sequence: "q" }, { uiState: dashboardState })).toEqual([
       { scope: "domain", type: "EXIT_APP" }
     ]);
@@ -432,6 +456,25 @@ describe("handleKey", () => {
     ]);
   });
 
+  it("blocks list/dashboard routing while tag filter panel mode is active", () => {
+    const panelState = {
+      ...initialUIState,
+      mode: Mode.TAG_FILTER,
+      focus: FocusTarget.TAG_FILTER_INPUT
+    };
+    expect(run({ name: "j", sequence: "j" }, { uiState: panelState })).toEqual([]);
+    expect(run({ name: "t", sequence: "t" }, { uiState: panelState })).toEqual([]);
+    expect(
+      run(
+        { name: "T", sequence: "T", shift: true },
+        { uiState: panelState }
+      )
+    ).toEqual([]);
+    expect(run({ name: "escape" }, { uiState: panelState })).toEqual([
+      { scope: "ui", type: "UNWIND" }
+    ]);
+  });
+
   it("routes backup center actions by screen", () => {
     const backupState = {
       ...initialUIState,
@@ -479,6 +522,12 @@ describe("handleKey", () => {
     };
     expect(run({ name: "j", sequence: "j" }, { uiState: addState })).toEqual([]);
     expect(run({ name: "down" }, { uiState: addState })).toEqual([]);
+    expect(
+      run(
+        { name: "T", sequence: "T", shift: true },
+        { uiState: addState }
+      )
+    ).toEqual([]);
     expect(run({ ctrl: true, name: "s" }, { uiState: addState })).toEqual([
       { scope: "domain", type: "SAVE_EDITOR" }
     ]);

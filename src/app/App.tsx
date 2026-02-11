@@ -1,5 +1,5 @@
 import React, { useEffect, useReducer, useRef, useState } from "react";
-import type { ScrollBoxRenderable } from "@opentui/core";
+import type { KeyEvent, ScrollBoxRenderable } from "@opentui/core";
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/react";
 import { applyTheme, colorForTag, theme, layout } from "./theme";
 import {
@@ -13,6 +13,7 @@ import { DetailsPane } from "../components/DetailsPane";
 import { EditorPane } from "../components/EditorPane";
 import { LeftRail, type LeftRailMenuItem } from "../components/LeftRail";
 import { DashboardPane } from "../components/DashboardPane";
+import { TagFilterPanel } from "../components/TagFilterPanel";
 import { BackupCenterScreen } from "../components/BackupCenterScreen";
 import { EmptyNuxModal } from "../components/EmptyNuxModal";
 import { OverdueNotificationModal } from "../components/OverdueNotificationModal";
@@ -60,6 +61,14 @@ import {
   type SaveStateResult
 } from "../state/persistence";
 import {
+  formatTagFilterBooleanSummary,
+  isEmptyTagFilter,
+  normalizeTagFilter,
+  normalizeTagToken,
+  resolveEffectiveTagFilter,
+  type TagFilterBucket
+} from "../domain/tagFilter";
+import {
   formatTagForDisplay,
   getTagCompletion,
   normalizeTagPrefix,
@@ -73,7 +82,7 @@ import {
 } from "../domain/query";
 import { reconcileSelectionById } from "../domain/selection";
 import { buildVisibleTaskRows, type VisibleTaskRow } from "../domain/taskRows";
-import { AppState, FocusTarget, Mode, SavedView, Task } from "../domain/models";
+import { AppState, FocusTarget, Mode, SavedView, TagFilter, Task } from "../domain/models";
 import { ROTATING_THEME_ORDER, ThemeId } from "../theme/themes";
 import {
   applySavedView,
@@ -135,6 +144,7 @@ const NAV_BANNER_TIMEOUT_MS = 1800;
 const VIEW_NAME_MAX_LENGTH = 40;
 const DASHBOARD_TOP_TAG_MIN = 5;
 const DASHBOARD_TOP_TAG_MAX = 8;
+const TAG_FILTER_BUCKET_ORDER: TagFilterBucket[] = ["all", "any", "none"];
 const PERF_DEBUG_ENABLED = process.env[ENV_VARS.PERF_DEBUG] === "1";
 const HELP_PANEL_MIN_WIDTH = 96;
 const HELP_PANEL_MAX_WIDTH = 124;
@@ -234,8 +244,8 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
     title: "Tags & Filters",
     items: [
       {
-        title: "f status, s sort, g due, t tag",
-        description: "Cycles primary filters without leaving list mode."
+        title: "f status, s sort, g due, t single tag, T boolean tags",
+        description: "Use t for quick single-tag cycle and T for boolean tag panel."
       },
       {
         title: "Bottom quick filters are clickable",
@@ -590,7 +600,12 @@ function buildTagTickerSegments(
 function summarizeViewFilters(filters: SavedView["filters"]): string {
   const search = filters.searchText?.trim();
   const searchLabel = search ? ` search=${search}` : "";
-  const tagLabel = filters.tag ? ` tag=#${filters.tag}` : "";
+  const booleanTagSummary = formatTagFilterBooleanSummary(filters.tagFilter);
+  const tagLabel = booleanTagSummary
+    ? ` tags=${booleanTagSummary}`
+    : filters.tag
+      ? ` tag=#${filters.tag}`
+      : "";
   return `status=${filters.status} due=${filters.due}${tagLabel}${searchLabel}`;
 }
 
@@ -649,6 +664,10 @@ export function App({
   const [saveViewPromptOpen, setSaveViewPromptOpen] = useState(false);
   const [saveViewName, setSaveViewName] = useState("");
   const [dashboardTagSelection, setDashboardTagSelection] = useState(0);
+  const [tagFilterDraft, setTagFilterDraft] = useState<TagFilter | undefined>(undefined);
+  const [tagFilterInput, setTagFilterInput] = useState("");
+  const [activeTagFilterBucket, setActiveTagFilterBucket] =
+    useState<TagFilterBucket>("all");
   const [helpExpandedBySection, setHelpExpandedBySection] = useState<boolean[]>(
     createDefaultHelpExpandedState
   );
@@ -867,8 +886,10 @@ export function App({
   const selectedOverdue =
     selectedDayDiff !== null && (selectedDayDiff < 0 || selectedTimeOverdue);
   const isStaticFlashMode = settingsState.flashMode === "static";
-  const isDashboardMode = uiState.mode === Mode.DASHBOARD;
-  const isBackupMode = uiState.mode === Mode.BACKUP_CENTER;
+  const visibleBaseMode =
+    uiState.mode === Mode.TAG_FILTER ? uiState.previousMode : uiState.mode;
+  const isDashboardMode = visibleBaseMode === Mode.DASHBOARD;
+  const isBackupMode = visibleBaseMode === Mode.BACKUP_CENTER;
   const selectedHeaderBackground = isBackupMode
     ? theme.accentBlue
     : selectedOverdue
@@ -961,6 +982,15 @@ export function App({
   const tagSuggestions = tagQuery ? rankTags(state.tagIndex, tagQuery) : [];
   const tagInlineSuggestion = tagQuery
     ? getTagCompletion(tagQuery, tagSuggestions)
+    : null;
+  const tagFilterQuery = uiState.mode === Mode.TAG_FILTER
+    ? normalizeTagPrefix(tagFilterInput)
+    : "";
+  const tagFilterSuggestions = tagFilterQuery
+    ? rankTags(state.tagIndex, tagFilterQuery)
+    : [];
+  const tagFilterInlineSuggestion = tagFilterQuery
+    ? getTagCompletion(tagFilterQuery, tagFilterSuggestions)
     : null;
   const activeThemeId =
     settingsState.themeId === "rotating"
@@ -1217,6 +1247,13 @@ export function App({
       setSaveViewPromptOpen(false);
     }
   }, [uiState.mode, uiState.focus]);
+
+  useEffect(() => {
+    if (uiState.mode === Mode.TAG_FILTER) return;
+    setTagFilterInput("");
+    setTagFilterDraft(undefined);
+    setActiveTagFilterBucket("all");
+  }, [uiState.mode]);
 
   useEffect(() => {
     if (state.savedViews.length === 0) {
@@ -1618,6 +1655,9 @@ export function App({
         return;
       case "OPEN_BACKUP_CENTER":
         openBackupCenter();
+        return;
+      case "OPEN_TAG_FILTER_PANEL":
+        openTagFilterPanel();
         return;
       case "CLOSE_HELP":
         closeHelp();
@@ -2047,6 +2087,142 @@ export function App({
     uiDispatch({ type: "setFocus", focus: FocusTarget.SEARCH_INPUT });
   }
 
+  function openTagFilterPanel() {
+    if (uiState.mode !== Mode.LIST && uiState.mode !== Mode.DASHBOARD) return;
+    clearPendingGPrefix();
+    closeViewsOverlay();
+    const seedFilter = resolveEffectiveTagFilter(state.filters);
+    setTagFilterDraft(normalizeTagFilter(seedFilter));
+    setTagFilterInput("");
+    setActiveTagFilterBucket("all");
+    uiDispatch({
+      type: "captureReturnContext",
+      mode: uiState.mode,
+      focus: uiState.focus
+    });
+    uiDispatch({ type: "setMode", mode: Mode.TAG_FILTER });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.TAG_FILTER_INPUT });
+  }
+
+  function closeTagFilterPanel() {
+    setTagFilterInput("");
+    setTagFilterDraft(undefined);
+    setActiveTagFilterBucket("all");
+    applyEscUnwind();
+  }
+
+  function clearTagFilterPanelDraft() {
+    setTagFilterInput("");
+    setTagFilterDraft(undefined);
+  }
+
+  function cycleTagFilterBucket(step: 1 | -1 = 1) {
+    setActiveTagFilterBucket((current) => {
+      const index = TAG_FILTER_BUCKET_ORDER.indexOf(current);
+      const safeIndex = index >= 0 ? index : 0;
+      return TAG_FILTER_BUCKET_ORDER[
+        (safeIndex + step + TAG_FILTER_BUCKET_ORDER.length) % TAG_FILTER_BUCKET_ORDER.length
+      ];
+    });
+  }
+
+  function applyTagFilterPanel() {
+    const nextTagFilter = normalizeTagFilter(tagFilterDraft);
+    if (nextTagFilter) {
+      setTagFilter(nextTagFilter);
+      showShortNavigationBanner(
+        `Boolean tags: ${formatTagFilterBooleanSummary(nextTagFilter)}`
+      );
+    } else {
+      clearTagFilters();
+      showShortNavigationBanner("Tag filter cleared");
+    }
+    setTagFilterInput("");
+    setTagFilterDraft(undefined);
+    setActiveTagFilterBucket("all");
+    applyEscUnwind();
+  }
+
+  function handleTagFilterPanelInputKeyDown(key: KeyEvent) {
+    if (key.name === "tab") {
+      key.preventDefault();
+      key.stopPropagation();
+      cycleTagFilterBucket(key.shift ? -1 : 1);
+      return;
+    }
+
+    if (key.name === "1" || key.sequence === "1") {
+      key.preventDefault();
+      key.stopPropagation();
+      setActiveTagFilterBucket("all");
+      return;
+    }
+    if (key.name === "2" || key.sequence === "2") {
+      key.preventDefault();
+      key.stopPropagation();
+      setActiveTagFilterBucket("any");
+      return;
+    }
+    if (key.name === "3" || key.sequence === "3") {
+      key.preventDefault();
+      key.stopPropagation();
+      setActiveTagFilterBucket("none");
+      return;
+    }
+
+    if (key.ctrl && key.name === "l") {
+      key.preventDefault();
+      key.stopPropagation();
+      clearTagFilterPanelDraft();
+      return;
+    }
+
+    if (key.name === "escape") {
+      key.preventDefault();
+      key.stopPropagation();
+      closeTagFilterPanel();
+      return;
+    }
+
+    if (
+      (key.name === "return" || key.name === "enter") &&
+      key.ctrl
+    ) {
+      key.preventDefault();
+      key.stopPropagation();
+      applyTagFilterPanel();
+      return;
+    }
+
+    if (key.name === "right" && tagFilterInlineSuggestion) {
+      key.preventDefault();
+      key.stopPropagation();
+      setTagFilterInput(formatTagForDisplay(tagFilterInlineSuggestion.full));
+      return;
+    }
+
+    if (key.name === "backspace" && tagFilterInput.trim().length === 0) {
+      key.preventDefault();
+      key.stopPropagation();
+      setTagFilterDraft((current) =>
+        removeLastTagFromTagFilter(current, activeTagFilterBucket)
+      );
+      return;
+    }
+
+    if (key.name === "return" || key.name === "enter") {
+      key.preventDefault();
+      key.stopPropagation();
+      const candidate = tagFilterInlineSuggestion?.full ?? tagFilterInput;
+      const normalizedCandidate = normalizeTagToken(candidate);
+      if (!normalizedCandidate) return;
+      setTagFilterDraft((current) =>
+        addTagToTagFilter(current, normalizedCandidate, activeTagFilterBucket)
+      );
+      setTagFilterInput("");
+    }
+  }
+
   function handleLeftRailMenuSelect(item: LeftRailMenuItem) {
     switch (item) {
       case "LIST":
@@ -2243,6 +2419,7 @@ export function App({
         status: nextFilters.status,
         due: nextFilters.due,
         tag: nextFilters.tag,
+        tagFilter: nextFilters.tagFilter,
         searchText: nextFilters.searchText
       }
     });
@@ -2262,6 +2439,7 @@ export function App({
         filters: {
           ...DEFAULT_VIEW_FILTERS,
           tag: undefined,
+          tagFilter: undefined,
           searchText: undefined
         }
       });
@@ -2999,6 +3177,7 @@ export function App({
         status: "all",
         due: "any",
         tag: undefined,
+        tagFilter: undefined,
         searchText: undefined
       }
     });
@@ -3010,6 +3189,7 @@ export function App({
         status: "all",
         due: "any",
         tag: undefined,
+        tagFilter: undefined,
         searchText: undefined
       },
       state.sortMode,
@@ -3025,6 +3205,107 @@ export function App({
       dispatch({ type: "setSelected", id: selectedRow.id });
     }
     showShortNavigationBanner(`Jumped to overdue task: ${event.title}`);
+  }
+
+  function setTagFilter(next?: TagFilter) {
+    dispatch({
+      type: "setFilters",
+      filters: {
+        tag: undefined,
+        tagFilter: normalizeTagFilter(next)
+      }
+    });
+  }
+
+  function clearTagFilters() {
+    dispatch({
+      type: "setFilters",
+      filters: {
+        tag: undefined,
+        tagFilter: undefined
+      }
+    });
+  }
+
+  function toggleTagInTagFilter(
+    current: TagFilter | undefined,
+    rawTag: string,
+    bucket: TagFilterBucket
+  ): TagFilter | undefined {
+    const normalizedTag = normalizeTagToken(rawTag);
+    if (!normalizedTag) return normalizeTagFilter(current);
+
+    const next: TagFilter = {
+      all: [...(current?.all ?? [])],
+      any: [...(current?.any ?? [])],
+      none: [...(current?.none ?? [])]
+    };
+    const bucketTags = next[bucket] ?? [];
+    const alreadyPresent = bucketTags.includes(normalizedTag);
+    const updatedBucketTags = alreadyPresent
+      ? bucketTags.filter((tag) => tag !== normalizedTag)
+      : [...bucketTags, normalizedTag];
+    next[bucket] = updatedBucketTags;
+    return normalizeTagFilter(next);
+  }
+
+  function addTagToTagFilter(
+    current: TagFilter | undefined,
+    rawTag: string,
+    bucket: TagFilterBucket
+  ): TagFilter | undefined {
+    const normalizedTag = normalizeTagToken(rawTag);
+    if (!normalizedTag) return normalizeTagFilter(current);
+
+    const next: TagFilter = {
+      all: [...(current?.all ?? [])],
+      any: [...(current?.any ?? [])],
+      none: [...(current?.none ?? [])]
+    };
+    const bucketTags = new Set(next[bucket] ?? []);
+    bucketTags.add(normalizedTag);
+    next[bucket] = Array.from(bucketTags);
+    return normalizeTagFilter(next);
+  }
+
+  function removeLastTagFromTagFilter(
+    current: TagFilter | undefined,
+    bucket: TagFilterBucket
+  ): TagFilter | undefined {
+    const tags = current?.[bucket] ?? [];
+    if (tags.length === 0) return normalizeTagFilter(current);
+    const next: TagFilter = {
+      all: [...(current?.all ?? [])],
+      any: [...(current?.any ?? [])],
+      none: [...(current?.none ?? [])]
+    };
+    next[bucket] = tags.slice(0, -1);
+    return normalizeTagFilter(next);
+  }
+
+  function removeTagFromTagFilter(
+    current: TagFilter | undefined,
+    bucket: TagFilterBucket,
+    rawTag: string
+  ): TagFilter | undefined {
+    const normalizedTag = normalizeTagToken(rawTag);
+    if (!normalizedTag) return normalizeTagFilter(current);
+    const next: TagFilter = {
+      all: [...(current?.all ?? [])],
+      any: [...(current?.any ?? [])],
+      none: [...(current?.none ?? [])]
+    };
+    next[bucket] = (next[bucket] ?? []).filter((tag) => tag !== normalizedTag);
+    return normalizeTagFilter(next);
+  }
+
+  function toggleTagInBucket(
+    rawTag: string,
+    bucket: TagFilterBucket
+  ): TagFilter | undefined {
+    const nextTagFilter = toggleTagInTagFilter(state.filters.tagFilter, rawTag, bucket);
+    setTagFilter(nextTagFilter);
+    return nextTagFilter;
   }
 
   function cycleStatus() {
@@ -3079,7 +3360,13 @@ export function App({
     }
 
     const selected = dashboardTopTags[clampedDashboardTagSelection];
-    dispatch({ type: "setFilters", filters: { tag: selected.tag } });
+    dispatch({
+      type: "setFilters",
+      filters: {
+        tag: selected.tag,
+        tagFilter: undefined
+      }
+    });
     showShortNavigationBanner(`Dashboard tag filter: ${formatTagForDisplay(selected.tag)}`);
   }
 
@@ -3121,11 +3408,31 @@ export function App({
     showShortNavigationBanner("Quick filter: DONE");
   }
 
+  function isBottomTagQuickFilterActive(tag: string): boolean {
+    if (!isEmptyTagFilter(state.filters.tagFilter)) {
+      return (state.filters.tagFilter?.all ?? []).includes(tag);
+    }
+    return state.filters.tag === tag;
+  }
+
   function toggleBottomTagQuickFilter(tag: string) {
+    if (!isEmptyTagFilter(state.filters.tagFilter)) {
+      const nextTagFilter = toggleTagInBucket(tag, "all");
+      showShortNavigationBanner(
+        nextTagFilter
+          ? `Tag filter (ALL): ${formatTagForDisplay(tag)}`
+          : "Boolean tag filter cleared"
+      );
+      return;
+    }
+
     const alreadyActive = state.filters.tag === tag;
     dispatch({
       type: "setFilters",
-      filters: { tag: alreadyActive ? undefined : tag }
+      filters: {
+        tag: alreadyActive ? undefined : tag,
+        tagFilter: undefined
+      }
     });
     showShortNavigationBanner(
       alreadyActive
@@ -3144,7 +3451,7 @@ export function App({
     ).sort((left, right) => left.localeCompare(right));
 
     if (activeTags.length === 0) {
-      dispatch({ type: "setFilters", filters: { tag: undefined } });
+      dispatch({ type: "setFilters", filters: { tag: undefined, tagFilter: undefined } });
       return;
     }
 
@@ -3155,12 +3462,21 @@ export function App({
     if (nextIndex >= activeTags.length || currentIndex === -1) {
       dispatch({
         type: "setFilters",
-        filters: { tag: currentIndex === -1 ? activeTags[0] : undefined }
+        filters: {
+          tag: currentIndex === -1 ? activeTags[0] : undefined,
+          tagFilter: undefined
+        }
       });
       return;
     }
 
-    dispatch({ type: "setFilters", filters: { tag: activeTags[nextIndex] } });
+    dispatch({
+      type: "setFilters",
+      filters: {
+        tag: activeTags[nextIndex],
+        tagFilter: undefined
+      }
+    });
   }
 
   function updateSearch(value: string) {
@@ -3503,10 +3819,12 @@ export function App({
                     >
                       <text
                         style={{
-                          color:
-                            state.filters.tag === segment.tag ? theme.text : theme.bg,
-                          fontWeight:
-                            state.filters.tag === segment.tag ? "bold" : "normal"
+                          color: isBottomTagQuickFilterActive(segment.tag)
+                            ? theme.text
+                            : theme.bg,
+                          fontWeight: isBottomTagQuickFilterActive(segment.tag)
+                            ? "bold"
+                            : "normal"
                         }}
                       >
                         {segment.total} {segment.displayTag}
@@ -3732,6 +4050,39 @@ export function App({
               </box>
             ) : null}
           </box>
+        </box>
+      ) : null}
+
+      {uiState.mode === Mode.TAG_FILTER ? (
+        <box
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            justifyContent: "center",
+            alignItems: "center"
+          }}
+        >
+          <TagFilterPanel
+            draft={tagFilterDraft}
+            inputValue={tagFilterInput}
+            activeBucket={activeTagFilterBucket}
+            inlineSuggestion={tagFilterInlineSuggestion}
+            suggestions={tagFilterSuggestions}
+            onInputChange={setTagFilterInput}
+            onInputKeyDown={handleTagFilterPanelInputKeyDown}
+            onSetBucket={setActiveTagFilterBucket}
+            onRemoveTag={(bucket, tag) =>
+              setTagFilterDraft((current) =>
+                removeTagFromTagFilter(current, bucket, tag)
+              )
+            }
+            onApply={applyTagFilterPanel}
+            onClear={clearTagFilterPanelDraft}
+            onCancel={closeTagFilterPanel}
+          />
         </box>
       ) : null}
 

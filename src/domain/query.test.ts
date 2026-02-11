@@ -79,6 +79,45 @@ describe("filterTasks due=overdue boundaries", () => {
   });
 });
 
+describe("filterTasks tagFilter boolean semantics", () => {
+  const now = new Date(2026, 1, 8, 12, 0, 0, 0).getTime();
+  const tasks: Task[] = [
+    makeTask({ id: "a", title: "a", tags: ["work", "urgent"] }),
+    makeTask({ id: "b", title: "b", tags: ["work"] }),
+    makeTask({ id: "c", title: "c", tags: ["home"] })
+  ];
+
+  it("supports ALL/ANY/NONE matching", () => {
+    expect(
+      filterTasks(tasks, { status: "all", due: "any", tagFilter: { all: ["work"] } }, now).map(
+        (task) => task.id
+      )
+    ).toEqual(["a", "b"]);
+
+    expect(
+      filterTasks(tasks, { status: "all", due: "any", tagFilter: { any: ["home", "urgent"] } }, now).map(
+        (task) => task.id
+      )
+    ).toEqual(["a", "c"]);
+
+    expect(
+      filterTasks(tasks, { status: "all", due: "any", tagFilter: { none: ["work"] } }, now).map(
+        (task) => task.id
+      )
+    ).toEqual(["c"]);
+  });
+
+  it("uses non-empty tagFilter precedence over legacy tag", () => {
+    const filters: Filters = {
+      status: "all",
+      due: "any",
+      tag: "work",
+      tagFilter: { any: ["home"] }
+    };
+    expect(filterTasks(tasks, filters, now).map((task) => task.id)).toEqual(["c"]);
+  });
+});
+
 describe("sortTasks with explicit time on same day", () => {
   it("orders explicit time tasks before date-only on the same day", () => {
     const now = new Date(2026, 1, 8, 12, 0, 0, 0).getTime();

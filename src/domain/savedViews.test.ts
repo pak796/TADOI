@@ -6,6 +6,7 @@ import {
   applySavedView,
   deleteViewAtIndex,
   isSavedViewActive,
+  snapshotFilters,
   saveViewByName
 } from "./savedViews";
 
@@ -35,6 +36,44 @@ describe("saved views", () => {
       due: "today",
       tag: "work",
       searchText: "important"
+    });
+  });
+
+  it("normalizes tagFilter snapshots and clears legacy tag when boolean mode is active", () => {
+    const snapped = snapshotFilters({
+      status: "open",
+      due: "today",
+      tag: "work",
+      tagFilter: {
+        all: ["#Work", "home"],
+        any: ["work", "work"]
+      },
+      searchText: "  focus  "
+    });
+
+    expect(snapped).toEqual({
+      status: "open",
+      due: "today",
+      tagFilter: {
+        all: ["home", "work"],
+        any: ["work"]
+      },
+      searchText: "focus"
+    });
+  });
+
+  it("restores boolean tagFilter precedence from saved views", () => {
+    const view = makeView("Boolean", {
+      status: "open",
+      due: "today",
+      tag: "work",
+      tagFilter: { any: ["home"] }
+    });
+
+    expect(applySavedView(view)).toEqual({
+      status: "open",
+      due: "today",
+      tagFilter: { any: ["home"] }
     });
   });
 

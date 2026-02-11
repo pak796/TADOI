@@ -27,6 +27,7 @@ export type KeyRouterAction =
   | { scope: "ui"; type: "TOGGLE_DASHBOARD" }
   | { scope: "ui"; type: "OPEN_HELP" }
   | { scope: "ui"; type: "OPEN_BACKUP_CENTER" }
+  | { scope: "ui"; type: "OPEN_TAG_FILTER_PANEL" }
   | { scope: "ui"; type: "CLOSE_HELP" }
   | { scope: "ui"; type: "OPEN_SEARCH" }
   | { scope: "ui"; type: "CLOSE_SEARCH" }
@@ -125,7 +126,7 @@ function isDashboardToggleKey(name: string, sequence: string, ctrl: boolean): bo
 }
 
 function listModeActions(key: KeyInput): KeyRouterAction[] {
-  const { name, sequence, ctrl } = key;
+  const { name, sequence, ctrl, shift } = key;
   if (sequence === "?") return [{ scope: "ui", type: "OPEN_HELP" }];
   if (name === "q") return [{ scope: "domain", type: "EXIT_APP" }];
   if (isUpperG(name, sequence, ctrl)) return [{ scope: "domain", type: "JUMP_BOTTOM" }];
@@ -180,6 +181,9 @@ function listModeActions(key: KeyInput): KeyRouterAction[] {
   if (name === "f") return [{ scope: "domain", type: "CYCLE_STATUS" }];
   if (!ctrl && name === "s") return [{ scope: "domain", type: "CYCLE_SORT" }];
   if (!ctrl && name === "g") return [{ scope: "domain", type: "CYCLE_DUE" }];
+  if (!ctrl && shift && (name === "T" || sequence === "T")) {
+    return [{ scope: "ui", type: "OPEN_TAG_FILTER_PANEL" }];
+  }
   if (name === "t") return [{ scope: "domain", type: "TOGGLE_TAG_FILTER" }];
   return [];
 }
@@ -390,6 +394,9 @@ export function handleKey(
     if (name === "q") return [{ scope: "domain", type: "EXIT_APP" }];
     if (name === "f") return [{ scope: "domain", type: "CYCLE_STATUS" }];
     if (!ctrl && name === "g") return [{ scope: "domain", type: "CYCLE_DUE" }];
+    if (!ctrl && shift && (name === "T" || sequence === "T")) {
+      return [{ scope: "ui", type: "OPEN_TAG_FILTER_PANEL" }];
+    }
     if (name === "t") return [{ scope: "domain", type: "TOGGLE_TAG_FILTER" }];
     if (name === "down") {
       return [{ scope: "ui", type: "MOVE_DASHBOARD_TAG_SELECTION", delta: 1 }];
@@ -400,6 +407,10 @@ export function handleKey(
     if (name === "return" || name === "enter") {
       return [{ scope: "domain", type: "APPLY_DASHBOARD_SELECTED_TAG" }];
     }
+    return [];
+  }
+
+  if (mode === Mode.TAG_FILTER) {
     return [];
   }
 

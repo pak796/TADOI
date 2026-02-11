@@ -170,7 +170,11 @@ export function resolveEscUnwindTarget(params: {
     };
   }
 
-  if (mode === Mode.HELP || mode === Mode.BACKUP_CENTER) {
+  if (
+    mode === Mode.HELP ||
+    mode === Mode.BACKUP_CENTER ||
+    mode === Mode.TAG_FILTER
+  ) {
     return {
       mode: helpReturnMode,
       focus: helpReturnFocus,

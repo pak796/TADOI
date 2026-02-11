@@ -1,6 +1,7 @@
 import { Filters, FocusTarget, Mode, SortMode } from "../domain/models";
 import { formatDate } from "../state/store";
 import { colorForTag, theme, styles } from "../app/theme";
+import { formatTagFilterBooleanSummary } from "../domain/tagFilter";
 import { formatTagForDisplay } from "../domain/tagIndex";
 import { APP_VERSION } from "../app/version";
 import { getSortModeLabel } from "../domain/query";
@@ -44,7 +45,8 @@ const HINT_LINES = [
   "f: STATUS",
   "s: SORT",
   "g: DUE",
-  "t: TAG FILTER",
+  "t: TAG CYCLE",
+  "T: TAG PANEL",
   "?: HELP"
 ] as const;
 
@@ -58,6 +60,8 @@ function getModeLabel(mode: Mode): string {
       return "EDIT";
     case Mode.SEARCH:
       return "SEARCH";
+    case Mode.TAG_FILTER:
+      return "TAG FILTER";
     case Mode.BACKUP_CENTER:
       return "BACKUP";
     case Mode.HELP:
@@ -79,6 +83,8 @@ function getFocusLabel(focus: FocusTarget): string {
       return "LIST";
     case FocusTarget.SEARCH_INPUT:
       return "SEARCH";
+    case FocusTarget.TAG_FILTER_INPUT:
+      return "TAG FILTER";
     case FocusTarget.MODAL:
       return "DELETE";
     case FocusTarget.EDITOR_TITLE:
@@ -206,6 +212,7 @@ export function LeftRail({
           ? theme.dueLater
           : "transparent";
   const dueText = dueBg === "transparent" ? theme.text : theme.bg;
+  const booleanTagSummary = formatTagFilterBooleanSummary(filters.tagFilter);
 
   const logoVariant = getHeaderLogoVariant(terminalWidth);
   const logoLines = showLogo ? getAsciiLogoLines(logoVariant) : [];
@@ -298,7 +305,9 @@ export function LeftRail({
             <text style={{ color: dueText }}>{dueLabel}</text>
           </box>
         </box>
-        {filters.tag ? (
+        {booleanTagSummary ? (
+          <text style={{ color: theme.text }}>TAGS: {booleanTagSummary}</text>
+        ) : filters.tag ? (
           <box style={{ flexDirection: "row", alignItems: "center", gap: 1 }}>
             <text style={{ color: theme.text }}>TAG:</text>
             <box

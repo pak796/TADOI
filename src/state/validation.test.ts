@@ -154,4 +154,79 @@ describe("validatePersistedState", () => {
     );
     expect(result.ok).toBe(false);
   });
+
+  it("accepts savedView.filters.tagFilter when normalized", () => {
+    const result = validatePersistedState(
+      {
+        ...BASE_STATE,
+        savedViews: [
+          {
+            id: "view-1",
+            name: "Boolean Tags",
+            createdAt: 1,
+            updatedAt: 2,
+            filters: {
+              status: "open",
+              due: "today",
+              tagFilter: {
+                all: ["home", "work"],
+                any: ["urgent"],
+                none: ["blocked"]
+              }
+            }
+          }
+        ]
+      },
+      "strict"
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it("rejects invalid or non-normalized savedView.filters.tagFilter", () => {
+    const invalidShape = validatePersistedState(
+      {
+        ...BASE_STATE,
+        savedViews: [
+          {
+            id: "view-1",
+            name: "Boolean Tags",
+            createdAt: 1,
+            updatedAt: 2,
+            filters: {
+              status: "open",
+              due: "today",
+              tagFilter: {
+                all: "work"
+              }
+            }
+          }
+        ]
+      },
+      "strict"
+    );
+    expect(invalidShape.ok).toBe(false);
+
+    const nonNormalized = validatePersistedState(
+      {
+        ...BASE_STATE,
+        savedViews: [
+          {
+            id: "view-2",
+            name: "Boolean Tags 2",
+            createdAt: 1,
+            updatedAt: 2,
+            filters: {
+              status: "open",
+              due: "today",
+              tagFilter: {
+                all: ["work", "work"]
+              }
+            }
+          }
+        ]
+      },
+      "strict"
+    );
+    expect(nonNormalized.ok).toBe(false);
+  });
 });

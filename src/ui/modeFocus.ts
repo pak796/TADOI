@@ -4,6 +4,7 @@ export const Mode = {
   ADD: "add",
   EDIT: "edit",
   SEARCH: "search",
+  TAG_FILTER: "tag_filter",
   HELP: "help",
   BACKUP_CENTER: "backup_center",
   MODAL_CONFIRM: "modal_confirm"
@@ -16,6 +17,7 @@ export const FocusTarget = {
   DASHBOARD: "dashboard",
   BACKUP_CENTER: "backup_center",
   SEARCH_INPUT: "search_input",
+  TAG_FILTER_INPUT: "tag_filter_input",
   MODAL: "modal",
   EDITOR_TITLE: "editor_title",
   EDITOR_DUE_DATE: "editor_due_date",
