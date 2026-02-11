@@ -3,6 +3,9 @@ export type ThemeId =
   | "retro"
   | "highContrast"
   | "neonHacker"
+  | "lightSlate"
+  | "paperWhite"
+  | "midnightBlack"
   | "rotating";
 
 export type ConcreteThemeId = Exclude<ThemeId, "rotating">;
@@ -79,6 +82,48 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     selectionBg: "#1a4a36",
     selectionText: "#05090b"
   },
+  lightSlate: {
+    bg: "#e7ecef",
+    panel: "#d8e0e4",
+    text: "#1f2933",
+    mutedText: "#52606d",
+    border: "#9aa5b1",
+    accent: "#5c6f7b",
+    accent2: "#3e5c76",
+    ok: "#4d8b72",
+    warn: "#b08968",
+    danger: "#a44a3f",
+    selectionBg: "#b8c7cf",
+    selectionText: "#1f2933"
+  },
+  paperWhite: {
+    bg: "#f8f7f3",
+    panel: "#efede7",
+    text: "#1d2430",
+    mutedText: "#5f6873",
+    border: "#c6c0b3",
+    accent: "#8a735b",
+    accent2: "#4f6d8a",
+    ok: "#4f7d63",
+    warn: "#b58b4c",
+    danger: "#9f4d42",
+    selectionBg: "#d9d4c8",
+    selectionText: "#1d2430"
+  },
+  midnightBlack: {
+    bg: "#040507",
+    panel: "#0c1118",
+    text: "#d7dde7",
+    mutedText: "#8a93a3",
+    border: "#273142",
+    accent: "#5d6b84",
+    accent2: "#4f7b99",
+    ok: "#3f7f68",
+    warn: "#a88245",
+    danger: "#8f3f45",
+    selectionBg: "#1a2431",
+    selectionText: "#d7dde7"
+  },
   // "rotating" is a virtual mode; this fallback prevents invalid lookups before
   // runtime rotation applies a concrete palette.
   rotating: {
@@ -102,6 +147,9 @@ export const THEME_ORDER: ThemeId[] = [
   "retro",
   "highContrast",
   "neonHacker",
+  "lightSlate",
+  "paperWhite",
+  "midnightBlack",
   "rotating"
 ];
 
@@ -109,7 +157,10 @@ export const ROTATING_THEME_ORDER: ConcreteThemeId[] = [
   "default",
   "retro",
   "highContrast",
-  "neonHacker"
+  "neonHacker",
+  "lightSlate",
+  "paperWhite",
+  "midnightBlack"
 ];
 
 export function cycleTheme(current: ThemeId): ThemeId {
@@ -125,6 +176,9 @@ export function isThemeId(value: unknown): value is ThemeId {
       value === "retro" ||
       value === "highContrast" ||
       value === "neonHacker" ||
+      value === "lightSlate" ||
+      value === "paperWhite" ||
+      value === "midnightBlack" ||
       value === "rotating")
   );
 }

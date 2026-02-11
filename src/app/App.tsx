@@ -127,6 +127,7 @@ const HELP_HEADER_ROWS = 2;
 const HELP_DIVIDER_ROWS = 1;
 const HELP_FOOTER_ROWS = 2;
 const HELP_PANEL_CHROME_ROWS = HELP_HEADER_ROWS + HELP_DIVIDER_ROWS + HELP_FOOTER_ROWS;
+const HELP_SECTION_SCROLL_PADDING = 1;
 
 type HelpMenuItem = {
   title: string;
@@ -142,6 +143,15 @@ type HelpRow =
   | { kind: "section_header"; sectionIndex: number }
   | { kind: "item_title"; sectionIndex: number; itemIndex: number }
   | { kind: "item_description"; sectionIndex: number; itemIndex: number };
+
+type HelpSectionLayout = {
+  id: string;
+  sectionIndex: number;
+  title: string;
+  startRow: number;
+  headerRow: number;
+  endRow: number;
+};
 
 /*
  * Help menu structure:
@@ -259,6 +269,9 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
     ]
   }
 ];
+const HELP_SETTINGS_SECTION_INDEX = HELP_MENU_SECTIONS.findIndex(
+  (section) => section.title === "Settings & Themes"
+);
 
 function createDefaultHelpExpandedState(): boolean[] {
   return HELP_MENU_SECTIONS.map((_, index) => index === 0);
@@ -284,26 +297,85 @@ function fitLineToWidth(value: string, width: number): string {
 
 function buildHelpRows(expandedBySection: boolean[]): {
   rows: HelpRow[];
-  headerRowIndexes: number[];
+  sections: HelpSectionLayout[];
 } {
   const rows: HelpRow[] = [];
-  const headerRowIndexes: number[] = [];
+  const sections: HelpSectionLayout[] = [];
 
   HELP_MENU_SECTIONS.forEach((section, sectionIndex) => {
-    headerRowIndexes[sectionIndex] = rows.length;
+    const startRow = rows.length;
+    const headerRow = rows.length;
+    const sectionId = `help-${sectionIndex}-${section.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "")}`;
     rows.push({ kind: "section_header", sectionIndex });
-    if (!expandedBySection[sectionIndex]) {
-      return;
+
+    if (expandedBySection[sectionIndex]) {
+      section.items.forEach((item, itemIndex) => {
+        rows.push({ kind: "item_title", sectionIndex, itemIndex });
+        if (item.description) {
+          rows.push({ kind: "item_description", sectionIndex, itemIndex });
+        }
+      });
     }
-    section.items.forEach((item, itemIndex) => {
-      rows.push({ kind: "item_title", sectionIndex, itemIndex });
-      if (item.description) {
-        rows.push({ kind: "item_description", sectionIndex, itemIndex });
-      }
+
+    sections.push({
+      id: sectionId,
+      sectionIndex,
+      title: section.title,
+      startRow,
+      headerRow,
+      endRow: Math.max(startRow, rows.length - 1)
     });
   });
 
-  return { rows, headerRowIndexes };
+  return { rows, sections };
+}
+
+function findHelpSectionIndexForViewportTop(
+  sections: HelpSectionLayout[],
+  viewportTopRow: number
+): number {
+  if (sections.length === 0) return 0;
+  for (const section of sections) {
+    if (section.headerRow >= viewportTopRow) {
+      return section.sectionIndex;
+    }
+  }
+  return sections[sections.length - 1]?.sectionIndex ?? 0;
+}
+
+function ensureHelpSectionVisible(params: {
+  section: HelpSectionLayout | undefined;
+  scrollOffset: number;
+  visibleRows: number;
+  itemCount: number;
+  paddingRows: number;
+}): number {
+  const { section, scrollOffset, visibleRows, itemCount, paddingRows } = params;
+  if (!section || itemCount <= 0) return 0;
+  const safeVisibleRows = Math.max(1, visibleRows);
+  const clampedOffset = clampScrollOffset(scrollOffset, safeVisibleRows, itemCount);
+  const maxVisibleRow = clampedOffset + safeVisibleRows - 1;
+  const safePadding = Math.max(
+    0,
+    Math.min(paddingRows, Math.floor((safeVisibleRows - 1) / 2))
+  );
+  const paddedTop = clampedOffset + safePadding;
+  const paddedBottom = maxVisibleRow - safePadding;
+  const selectedHeaderRow = section.headerRow;
+
+  let nextOffset = clampedOffset;
+  // Scroll-follow selection tracks the selected section header only.
+  // Expanding/collapsing content should not force viewport jumps by itself.
+  if (selectedHeaderRow < paddedTop) {
+    nextOffset = selectedHeaderRow - safePadding;
+  } else if (selectedHeaderRow > paddedBottom) {
+    nextOffset = selectedHeaderRow - (safeVisibleRows - safePadding - 1);
+  }
+
+  return clampScrollOffset(nextOffset, safeVisibleRows, itemCount);
 }
 
 function resolveDashboardTopTagLimit(panelHeight: number): number {
@@ -532,11 +604,12 @@ export function App({
     0,
     Math.min(helpFocusedSectionIndex, HELP_MENU_SECTIONS.length - 1)
   );
-  const { rows: helpRows, headerRowIndexes: helpHeaderRowIndexes } = React.useMemo(
+  const { rows: helpRows, sections: helpSections } = React.useMemo(
     () => buildHelpRows(helpExpandedBySection),
     [helpExpandedBySection]
   );
-  const focusedHelpHeaderRow = helpHeaderRowIndexes[clampedHelpFocusedSectionIndex] ?? 0;
+  const focusedHelpSection =
+    helpSections[clampedHelpFocusedSectionIndex] ?? helpSections[0];
   const helpPanelMaxWidth = Math.max(20, terminalWidth - HELP_PANEL_HORIZONTAL_MARGIN * 2);
   const helpPanelWidthMin = Math.min(HELP_PANEL_MIN_WIDTH, helpPanelMaxWidth);
   const helpPanelWidthMax = Math.min(HELP_PANEL_MAX_WIDTH, helpPanelMaxWidth);
@@ -558,6 +631,10 @@ export function App({
   const helpContentVisibleRows = Math.max(1, helpPanelInnerHeight - HELP_PANEL_CHROME_ROWS);
   const helpHasOverflow = helpRows.length > helpContentVisibleRows;
   const helpFooterWidth = Math.max(1, helpPanelInnerWidth - 2);
+  // Reserve one column when the Help scrollbox shows a vertical scrollbar so
+  // wrapped lines do not add phantom rows and desync focus scroll math.
+  const helpContentLineWidth = Math.max(1, helpFooterWidth - (helpHasOverflow ? 1 : 0));
+  const helpPageStep = Math.max(1, helpContentVisibleRows - 1);
   const helpFooterHintsLine = fitLineToWidth(
     helpHasOverflow
       ? "1 Backup Center | h theme | m flash | Up/Down focus | Enter/Space toggle | Left/Right collapse/expand | Esc close | Scroll"
@@ -758,6 +835,14 @@ export function App({
     settingsState.themeId === "rotating"
       ? ROTATING_THEME_ORDER[rotatingThemeIndex % ROTATING_THEME_ORDER.length]
       : settingsState.themeId;
+  const helpThemeStatusLineRaw =
+    settingsState.themeId === "rotating"
+      ? `Theme mode: rotating (active: ${activeThemeId})`
+      : `Theme mode: ${settingsState.themeId}`;
+  const helpThemeStatusLine = fitLineToWidth(
+    `    ${helpThemeStatusLineRaw}`,
+    helpContentLineWidth
+  );
   const dueSuggestion =
     uiState.focus === FocusTarget.EDITOR_DUE_DATE && state.editor
       ? getDueSuggestion(state.editor.dueText, now)
@@ -1023,25 +1108,29 @@ export function App({
 
   useEffect(() => {
     if (uiState.mode !== Mode.HELP) return;
-    const nextOffset = ensureSelectedVisible({
-      selectedIndex: focusedHelpHeaderRow,
-      scrollOffset: helpScrollOffset,
-      visibleRows: helpContentVisibleRows,
-      itemCount: helpRows.length
-    });
-    if (nextOffset !== helpScrollOffset) {
-      setHelpScrollOffset(nextOffset);
-    }
+    const timer = setTimeout(() => {
+      setHelpScrollOffset((prevOffset) =>
+        ensureHelpSectionVisible({
+          section: focusedHelpSection,
+          scrollOffset: prevOffset,
+          visibleRows: helpContentVisibleRows,
+          itemCount: helpRows.length,
+          paddingRows: HELP_SECTION_SCROLL_PADDING
+        })
+      );
+    }, 0);
+    return () => clearTimeout(timer);
   }, [
-    focusedHelpHeaderRow,
+    focusedHelpSection,
     helpContentVisibleRows,
     helpRows.length,
-    helpScrollOffset,
     uiState.mode
   ]);
 
   useEffect(() => {
     if (uiState.mode !== Mode.HELP) return;
+    // Mouse wheel/trackpad scrolling stays independent of section selection.
+    // Arrow/Page navigation owns selected-section changes to avoid scroll/selection jitter.
     helpScrollRef.current?.scrollTo({ x: 0, y: helpScrollOffset });
   }, [helpScrollOffset, uiState.mode]);
 
@@ -1267,6 +1356,9 @@ export function App({
         return;
       case "HELP_SET_FOCUSED_SECTION_EXPANDED":
         setFocusedHelpSectionExpanded(action.expanded);
+        return;
+      case "HELP_SCROLL_PAGE":
+        scrollHelpByPage(action.direction);
         return;
       case "BACKUP_PRIMARY":
         handleBackupPrimaryAction();
@@ -1551,6 +1643,19 @@ export function App({
     );
   }
 
+  function scrollHelpByPage(direction: 1 | -1) {
+    const nextOffset = clampScrollOffset(
+      helpScrollOffset + direction * helpPageStep,
+      helpContentVisibleRows,
+      helpRows.length
+    );
+    setHelpScrollOffset(nextOffset);
+    // Page-scrolling in Help moves focus to the section nearest the top of the viewport.
+    setHelpFocusedSectionIndex(
+      findHelpSectionIndexForViewportTop(helpSections, nextOffset)
+    );
+  }
+
   function setHelpSectionExpanded(sectionIndex: number, expanded: boolean) {
     setHelpExpandedBySection((prev) => {
       if (sectionIndex < 0 || sectionIndex >= prev.length) return prev;
@@ -1579,9 +1684,8 @@ export function App({
   }
 
   function handleHelpSectionHeaderClick(sectionIndex: number) {
-    setHelpFocusedSectionIndex(
-      Math.max(0, Math.min(sectionIndex, HELP_MENU_SECTIONS.length - 1))
-    );
+    const nextIndex = Math.max(0, Math.min(sectionIndex, HELP_MENU_SECTIONS.length - 1));
+    setHelpFocusedSectionIndex(nextIndex);
     toggleHelpSection(sectionIndex);
   }
 
@@ -3333,21 +3437,28 @@ export function App({
                   contentOptions: { backgroundColor: theme.panel }
                 }}
               >
-                <box style={{ flexDirection: "column" }}>
+                <box
+                  style={{
+                    flexDirection: "column",
+                    paddingRight: helpHasOverflow ? 1 : 0
+                  }}
+                >
                   {helpRows.map((row, rowIndex) => {
                     if (row.kind === "section_header") {
                       const section = HELP_MENU_SECTIONS[row.sectionIndex];
                       const expanded = helpExpandedBySection[row.sectionIndex] === true;
                       const focused = row.sectionIndex === clampedHelpFocusedSectionIndex;
+                      const sectionLine = fitLineToWidth(
+                        `${expanded ? "▾" : "▸"} ${section.title}`,
+                        helpContentLineWidth
+                      );
                       return (
                         <box
                           key={`help-header-${row.sectionIndex}`}
                           style={{
                             flexDirection: "row",
-                            marginTop: row.sectionIndex === 0 ? 0 : 1,
                             backgroundColor: focused ? theme.accentBlue : "transparent",
-                            paddingLeft: 1,
-                            paddingRight: 1
+                            width: "100%"
                           }}
                           onMouseDown={(event) => {
                             if (event.button !== 0) return;
@@ -3360,7 +3471,7 @@ export function App({
                               fontWeight: focused ? "bold" : "normal"
                             }}
                           >
-                            {expanded ? "▾" : "▸"} {section.title}
+                            {sectionLine}
                           </text>
                         </box>
                       );
@@ -3368,14 +3479,23 @@ export function App({
 
                     const section = HELP_MENU_SECTIONS[row.sectionIndex];
                     const item = section.items[row.itemIndex];
-                    return row.kind === "item_title" ? (
-                      <text key={`help-row-${rowIndex}`} style={{ color: theme.text }}>
-                        {"  • "} {item.title}
-                      </text>
-                    ) : (
+                    if (row.kind === "item_title") {
+                      return (
+                        <text key={`help-row-${rowIndex}`} style={{ color: theme.text }}>
+                          {fitLineToWidth(`  • ${item.title}`, helpContentLineWidth)}
+                        </text>
+                      );
+                    }
+                    const isThemeStatusRow =
+                      HELP_SETTINGS_SECTION_INDEX >= 0 &&
+                      row.sectionIndex === HELP_SETTINGS_SECTION_INDEX &&
+                      row.itemIndex === 0;
+                    const descriptionLine = isThemeStatusRow
+                      ? helpThemeStatusLine
+                      : fitLineToWidth(`    ${item.description ?? ""}`, helpContentLineWidth);
+                    return (
                       <text key={`help-row-${rowIndex}`} style={{ color: theme.muted }}>
-                        {"    "}
-                        {item.description}
+                        {descriptionLine}
                       </text>
                     );
                   })}

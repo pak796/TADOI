@@ -51,6 +51,7 @@ export type KeyRouterAction =
       type: "HELP_SET_FOCUSED_SECTION_EXPANDED";
       expanded: boolean;
     }
+  | { scope: "ui"; type: "HELP_SCROLL_PAGE"; direction: 1 | -1 }
   | { scope: "ui"; type: "CYCLE_THEME" }
   | { scope: "ui"; type: "TOGGLE_FLASH_MODE" }
   | { scope: "domain"; type: "EXIT_APP" }
@@ -253,6 +254,12 @@ export function handleKey(
     }
     if (name === "down") {
       return [{ scope: "ui", type: "HELP_MOVE_SECTION_FOCUS", delta: 1 }];
+    }
+    if (isPageUpKey(name, ctrl)) {
+      return [{ scope: "ui", type: "HELP_SCROLL_PAGE", direction: -1 }];
+    }
+    if (isPageDownKey(name, ctrl)) {
+      return [{ scope: "ui", type: "HELP_SCROLL_PAGE", direction: 1 }];
     }
     if (name === "left") {
       return [

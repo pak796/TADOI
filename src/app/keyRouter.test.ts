@@ -319,6 +319,12 @@ describe("handleKey", () => {
     expect(run({ name: "down" }, { uiState: helpState })).toEqual([
       { scope: "ui", type: "HELP_MOVE_SECTION_FOCUS", delta: 1 }
     ]);
+    expect(run({ ctrl: true, name: "u" }, { uiState: helpState })).toEqual([
+      { scope: "ui", type: "HELP_SCROLL_PAGE", direction: -1 }
+    ]);
+    expect(run({ ctrl: true, name: "d" }, { uiState: helpState })).toEqual([
+      { scope: "ui", type: "HELP_SCROLL_PAGE", direction: 1 }
+    ]);
     expect(run({ name: "left" }, { uiState: helpState })).toEqual([
       { scope: "ui", type: "HELP_SET_FOCUSED_SECTION_EXPANDED", expanded: false }
     ]);

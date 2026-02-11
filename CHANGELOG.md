@@ -18,7 +18,8 @@ The format is based on Keep a Changelog.
 - Documentation refreshed for Backup Center usage and keybindings (`README.md`, in-app Help text).
 
 ### Fixed
-- (none yet)
+- Help pane section navigation now keeps the selected section visible while moving with arrow keys, with page-based navigation support (`Ctrl+U`/`Ctrl+D`) in Help mode.
+- Help pane row spacing/layout no longer inserts extra blank spacer rows, improving visual consistency and scroll-follow behavior.
 
 ## [0.2.8]
 ### Added
