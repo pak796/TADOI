@@ -137,6 +137,7 @@ async function main(): Promise<number | undefined> {
       startupBanner={loadResult.bannerMessage}
       initialThemeId={settingsResult.settings.themeId}
       initialFlashMode={settingsResult.settings.flashMode}
+      initialNotificationSettings={settingsResult.settings.notifications}
       settingsPath={settingsResult.resolvedPath}
       showLogo={cliOptions.showLogo}
     />

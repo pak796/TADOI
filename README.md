@@ -165,6 +165,9 @@ Reference:
   - `1`: open Backup Center (`DATA: Backup / Export / Import`)
   - `h` / `H`: cycle theme
   - `m` / `M`: toggle flash mode (`slow` / `static`)
+  - `n` / `N`: toggle notifications master switch
+  - `o` / `O`: toggle in-app overdue banner
+  - `l` / `L`: toggle terminal bell on overdue
   - `up` / `down`: move selected Help section
   - `left` / `right`: collapse/expand selected section
   - `Enter` / `Space`: toggle selected section
@@ -213,7 +216,7 @@ Type `#` in the Tags field to get suggestions ranked by usage. Selecting a sugge
 
 ## Settings File
 
-Theme and flash preferences are persisted in `settings.json`:
+Theme, flash, and notification preferences are persisted in `settings.json`:
 - Primary: `~/.config/tadoi/settings.json`
 - Fallback: `~/.tadoi/settings.json`
 
@@ -221,12 +224,26 @@ Flash mode values:
 - `slow`: due-today and overdue indicators pulse (default)
 - `static`: flashing is disabled and overdue indicators stay solid red
 
+Notification defaults:
+- `notifications.enabled`: `true`
+- `notifications.inAppOverdueBanner`: `true`
+- `notifications.terminalBellOnOverdue`: `false`
+- `notifications.bannerDurationMs`: `5000`
+- `notifications.bellCooldownMs`: `2000`
+
 Example:
 
 ```json
 {
   "themeId": "default",
-  "flashMode": "slow"
+  "flashMode": "slow",
+  "notifications": {
+    "enabled": true,
+    "inAppOverdueBanner": true,
+    "terminalBellOnOverdue": false,
+    "bannerDurationMs": 5000,
+    "bellCooldownMs": 2000
+  }
 }
 ```
 

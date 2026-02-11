@@ -9,6 +9,14 @@ import {
 import type { PortableExportPayload } from "./portability";
 import type { Task } from "../domain/models";
 
+const DEFAULT_NOTIFICATIONS = {
+  enabled: true,
+  inAppOverdueBanner: true,
+  terminalBellOnOverdue: false,
+  bannerDurationMs: 5000,
+  bellCooldownMs: 2000
+};
+
 const BASE_LOCAL_TASK: Task = {
   id: "task-1",
   title: "Local",
@@ -178,7 +186,11 @@ describe("redactStateForExport", () => {
       ],
       tagIndex: {},
       savedViews: [],
-      settings: { themeId: "default", flashMode: "slow" }
+      settings: {
+        themeId: "default",
+        flashMode: "slow",
+        notifications: DEFAULT_NOTIFICATIONS
+      }
     };
 
     const redacted = redactStateForExport(payload);
@@ -188,6 +200,7 @@ describe("redactStateForExport", () => {
     expect(redacted.tasks[0]?.id).toBe("a");
     expect(redacted.settings?.themeId).toBe("default");
     expect(redacted.settings?.flashMode).toBe("slow");
+    expect(redacted.settings?.notifications).toEqual(DEFAULT_NOTIFICATIONS);
   });
 
   it("treats recurrence field changes as task updates", () => {

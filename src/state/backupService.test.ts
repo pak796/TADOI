@@ -7,6 +7,7 @@ import {
   exportBackup,
   importBackup
 } from "./backupService";
+import { resolveSettingsPaths } from "../settings/settings";
 
 const FIXED_DATE = new Date(2026, 1, 10, 0, 0, 0);
 
@@ -216,6 +217,87 @@ describe("backupService import/export", () => {
         delete process.env.TADOI_DATA_PATH;
       } else {
         process.env.TADOI_DATA_PATH = originalDataPath;
+      }
+    }
+  });
+
+  it("imports nested notification settings and writes them to settings.json", async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-import-settings-"));
+    const dataPath = path.join(tempDir, "tadoi_data.json");
+    const importPath = path.join(tempDir, "incoming.json");
+    await fs.writeFile(
+      dataPath,
+      JSON.stringify({ schemaVersion: 4, tasks: [], tagIndex: {}, savedViews: [] }, null, 2),
+      "utf8"
+    );
+    await fs.writeFile(
+      importPath,
+      JSON.stringify(
+        {
+          schemaVersion: 4,
+          tasks: [],
+          tagIndex: {},
+          savedViews: [],
+          settings: {
+            themeId: "retro",
+            flashMode: "static",
+            notifications: {
+              enabled: true,
+              inAppOverdueBanner: false,
+              terminalBellOnOverdue: true,
+              bannerDurationMs: 6000,
+              bellCooldownMs: 3000
+            }
+          }
+        },
+        null,
+        2
+      ),
+      "utf8"
+    );
+
+    const originalDataPath = process.env.TADOI_DATA_PATH;
+    const originalHome = process.env.HOME;
+    process.env.TADOI_DATA_PATH = dataPath;
+    process.env.HOME = tempDir;
+    try {
+      const summary = await importBackup({
+        inputPath: importPath,
+        mode: "merge",
+        dryRun: false
+      });
+
+      expect(summary.settings.includedInImport).toBe(true);
+      expect(summary.settings.applied).toBe(true);
+
+      const { primary, fallback } = resolveSettingsPaths({
+        homeDir: tempDir,
+        platform: process.platform
+      });
+      const resolvedSettingsPath =
+        summary.settings.path === fallback ? fallback : primary;
+      const rawSettings = await fs.readFile(resolvedSettingsPath, "utf8");
+      expect(JSON.parse(rawSettings)).toEqual({
+        themeId: "retro",
+        flashMode: "static",
+        notifications: {
+          enabled: true,
+          inAppOverdueBanner: false,
+          terminalBellOnOverdue: true,
+          bannerDurationMs: 6000,
+          bellCooldownMs: 3000
+        }
+      });
+    } finally {
+      if (originalDataPath === undefined) {
+        delete process.env.TADOI_DATA_PATH;
+      } else {
+        process.env.TADOI_DATA_PATH = originalDataPath;
+      }
+      if (originalHome === undefined) {
+        delete process.env.HOME;
+      } else {
+        process.env.HOME = originalHome;
       }
     }
   });

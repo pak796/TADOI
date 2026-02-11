@@ -17,6 +17,7 @@ import {
   type PortableExportPayload
 } from "./portability";
 import {
+  getDefaultSettings,
   isFlashMode,
   loadSettings,
   saveSettingsStrict,
@@ -137,6 +138,20 @@ function withSchemaVersionZeroIfMissing(input: unknown): unknown {
   };
 }
 
+function parsePositiveMsSetting(
+  value: unknown,
+  label: string,
+  fallback: number
+): ParseResult<number> {
+  if (value === undefined) {
+    return { ok: true, value: fallback };
+  }
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    return { ok: false, error: `${label} must be a positive number when present` };
+  }
+  return { ok: true, value: Math.floor(value) };
+}
+
 function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | undefined> {
   if (!isRecord(input) || input.settings === undefined) {
     return { ok: true, value: undefined };
@@ -157,11 +172,66 @@ function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | un
     return { ok: false, error: "settings.flashMode is invalid" };
   }
 
+  const defaultNotifications = getDefaultSettings().notifications;
+  const notificationsRaw = settings.notifications;
+  if (notificationsRaw !== undefined && !isRecord(notificationsRaw)) {
+    return { ok: false, error: "settings.notifications must be an object when present" };
+  }
+  const notificationsRecord = notificationsRaw as Record<string, unknown> | undefined;
+
+  const enabledRaw = notificationsRecord?.enabled;
+  if (enabledRaw !== undefined && typeof enabledRaw !== "boolean") {
+    return { ok: false, error: "settings.notifications.enabled is invalid" };
+  }
+  const inAppRaw = notificationsRecord?.inAppOverdueBanner;
+  if (inAppRaw !== undefined && typeof inAppRaw !== "boolean") {
+    return { ok: false, error: "settings.notifications.inAppOverdueBanner is invalid" };
+  }
+  const bellRaw = notificationsRecord?.terminalBellOnOverdue;
+  if (bellRaw !== undefined && typeof bellRaw !== "boolean") {
+    return {
+      ok: false,
+      error: "settings.notifications.terminalBellOnOverdue is invalid"
+    };
+  }
+
+  const bannerDurationResult = parsePositiveMsSetting(
+    notificationsRecord?.bannerDurationMs,
+    "settings.notifications.bannerDurationMs",
+    defaultNotifications.bannerDurationMs
+  );
+  if (!bannerDurationResult.ok) {
+    return bannerDurationResult;
+  }
+
+  const bellCooldownResult = parsePositiveMsSetting(
+    notificationsRecord?.bellCooldownMs,
+    "settings.notifications.bellCooldownMs",
+    defaultNotifications.bellCooldownMs
+  );
+  if (!bellCooldownResult.ok) {
+    return bellCooldownResult;
+  }
+
   return {
     ok: true,
     value: {
       themeId,
-      flashMode: isFlashMode(flashModeRaw) ? flashModeRaw : "slow"
+      flashMode: isFlashMode(flashModeRaw) ? flashModeRaw : "slow",
+      notifications: {
+        enabled:
+          typeof enabledRaw === "boolean" ? enabledRaw : defaultNotifications.enabled,
+        inAppOverdueBanner:
+          typeof inAppRaw === "boolean"
+            ? inAppRaw
+            : defaultNotifications.inAppOverdueBanner,
+        terminalBellOnOverdue:
+          typeof bellRaw === "boolean"
+            ? bellRaw
+            : defaultNotifications.terminalBellOnOverdue,
+        bannerDurationMs: bannerDurationResult.value,
+        bellCooldownMs: bellCooldownResult.value
+      }
     }
   };
 }

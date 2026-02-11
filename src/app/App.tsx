@@ -82,9 +82,11 @@ import {
   deleteViewAtIndex
 } from "../domain/savedViews";
 import {
+  getDefaultSettings,
   loadSettings,
   saveSettingsDebounced,
-  type FlashMode
+  type FlashMode,
+  type NotificationSettings
 } from "../settings/settings";
 import { settingsReducer } from "../state/settingsStore";
 import { isEditorMode } from "../ui/modeFocus";
@@ -102,6 +104,10 @@ import {
   getResolvedDataPath,
   importBackup
 } from "../state/backupService";
+import { NotificationManager } from "../notifications/notificationManager";
+import { InAppBannerNotifier } from "../notifications/notifiers/inAppBannerNotifier";
+import { OSNotifier } from "../notifications/notifiers/osNotifier";
+import { TerminalBellNotifier } from "../notifications/notifiers/terminalBellNotifier";
 import { APP_VERSION } from "./version";
 import { getTerminalSizeWarning, isTerminalSizeSupported } from "./layoutGuard";
 import { APP_NAME, APP_TAGLINE, ENV_VARS } from "../brand/brand";
@@ -109,6 +115,7 @@ import { APP_NAME, APP_TAGLINE, ENV_VARS } from "../brand/brand";
 const TICKER_INTERVAL_MS = 6000;
 const SLOW_PULSE_INTERVAL_MS = 2000;
 const FAST_PULSE_INTERVAL_MS = 700;
+const NOTIFICATION_EVALUATION_INTERVAL_MS = 10000;
 const ROTATING_THEME_INTERVAL_MS = 15000;
 const G_PREFIX_TIMEOUT_MS = 280;
 const NAV_BANNER_TIMEOUT_MS = 1800;
@@ -128,6 +135,8 @@ const HELP_DIVIDER_ROWS = 1;
 const HELP_FOOTER_ROWS = 2;
 const HELP_PANEL_CHROME_ROWS = HELP_HEADER_ROWS + HELP_DIVIDER_ROWS + HELP_FOOTER_ROWS;
 const HELP_SECTION_SCROLL_PADDING = 1;
+const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings =
+  getDefaultSettings().notifications;
 
 type HelpMenuItem = {
   title: string;
@@ -248,6 +257,18 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
       {
         title: "m/M toggle flash mode",
         description: "Switch between static and pulsing urgency cues."
+      },
+      {
+        title: "n/N toggle notifications",
+        description: "Master switch for overdue notifications."
+      },
+      {
+        title: "o/O toggle overdue banner",
+        description: "Enable or disable in-app overdue banners."
+      },
+      {
+        title: "l/L toggle terminal bell",
+        description: "Enable or disable terminal bell on overdue."
       }
     ]
   },
@@ -523,6 +544,7 @@ type AppProps = {
   startupBanner?: string;
   initialThemeId?: ThemeId;
   initialFlashMode?: FlashMode;
+  initialNotificationSettings?: NotificationSettings;
   settingsPath?: string;
   showLogo?: boolean;
 };
@@ -542,6 +564,7 @@ export function App({
   startupBanner,
   initialThemeId = "default",
   initialFlashMode = "slow",
+  initialNotificationSettings = DEFAULT_NOTIFICATION_SETTINGS,
   settingsPath,
   showLogo = true
 }: AppProps) {
@@ -549,7 +572,8 @@ export function App({
   const [state, dispatch] = useReducer(reducer, initialData, initState);
   const [settingsState, settingsDispatch] = useReducer(settingsReducer, {
     themeId: initialThemeId,
-    flashMode: initialFlashMode
+    flashMode: initialFlashMode,
+    notifications: initialNotificationSettings
   });
   const [uiState, uiDispatch] = useReducer(uiReducer, initialUIState);
   const [backupState, backupDispatch] = useReducer(
@@ -563,6 +587,8 @@ export function App({
   const [timeSuggestion, setTimeSuggestion] = useState<SuggestedTime | null>(null);
   const [saveFailureBanner, setSaveFailureBanner] = useState<string | null>(null);
   const [navigationBanner, setNavigationBanner] = useState<string | null>(null);
+  const [overdueBannerQueue, setOverdueBannerQueue] = useState<string[]>([]);
+  const [activeOverdueBanner, setActiveOverdueBanner] = useState<string | null>(null);
   const [pendingGPrefix, setPendingGPrefix] = useState(false);
   const [viewsOverlayOpen, setViewsOverlayOpen] = useState(false);
   const [selectedViewIndex, setSelectedViewIndex] = useState(0);
@@ -579,10 +605,47 @@ export function App({
   const lastSuccessfulSaveAtRef = useRef<number | undefined>(undefined);
   const gPrefixTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navBannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const overdueBannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const helpScrollRef = useRef<ScrollBoxRenderable | null>(null);
   const { height: terminalHeight, width: terminalWidth } = useTerminalDimensions();
   const terminalIsSupported = isTerminalSizeSupported(terminalWidth, terminalHeight);
   const terminalSizeWarning = getTerminalSizeWarning(terminalWidth, terminalHeight);
+  const settingsRef = useRef(settingsState);
+  const tasksRef = useRef(state.tasks);
+  const notificationManagerRef = useRef<NotificationManager | null>(null);
+  const evaluateNotificationsRef = useRef<(nowMs: number) => void>(() => {});
+
+  settingsRef.current = settingsState;
+  tasksRef.current = state.tasks;
+
+  if (!notificationManagerRef.current) {
+    const inAppBannerNotifier = new InAppBannerNotifier({
+      enqueueBanner: (message) => {
+        setOverdueBannerQueue((prev) => [...prev, message]);
+      },
+      isEnabled: () => {
+        const notifications = settingsRef.current.notifications;
+        return notifications.enabled && notifications.inAppOverdueBanner;
+      }
+    });
+    const terminalBellNotifier = new TerminalBellNotifier({
+      isEnabled: () => {
+        const notifications = settingsRef.current.notifications;
+        return notifications.enabled && notifications.terminalBellOnOverdue;
+      },
+      getCooldownMs: () => settingsRef.current.notifications.bellCooldownMs
+    });
+    const osNotifier = new OSNotifier();
+    notificationManagerRef.current = new NotificationManager([
+      inAppBannerNotifier,
+      terminalBellNotifier,
+      osNotifier
+    ]);
+  }
+
+  evaluateNotificationsRef.current = (nowMs: number) => {
+    notificationManagerRef.current?.evaluate(tasksRef.current, nowMs);
+  };
 
   // Force a frame request on mode/size transitions so borders are repainted
   // after layout shape changes (list/details <-> dashboard).
@@ -637,8 +700,8 @@ export function App({
   const helpPageStep = Math.max(1, helpContentVisibleRows - 1);
   const helpFooterHintsLine = fitLineToWidth(
     helpHasOverflow
-      ? "1 Backup Center | h theme | m flash | Up/Down focus | Enter/Space toggle | Left/Right collapse/expand | Esc close | Scroll"
-      : "1 Backup Center | h theme | m flash | Up/Down focus | Enter/Space toggle | Left/Right collapse/expand | Esc close",
+      ? "1 Backup Center | h theme | m flash | n notifications | o overdue banner | l bell | Up/Down focus | Enter/Space toggle | Left/Right collapse/expand | Esc close | Scroll"
+      : "1 Backup Center | h theme | m flash | n notifications | o overdue banner | l bell | Up/Down focus | Enter/Space toggle | Left/Right collapse/expand | Esc close",
     helpFooterWidth
   );
   const helpFooterDataPathLine = fitLineToWidth(
@@ -682,7 +745,7 @@ export function App({
   const activeBanners = [startupBanner, saveFailureBanner, navigationBanner].filter(
     (value): value is string => Boolean(value)
   );
-  const bannerHeight = activeBanners.length;
+  const bannerHeight = activeBanners.length + (activeOverdueBanner ? 1 : 0);
   const listPanelBorder = 2;
   const listPanelPadding = 2;
   const searchHeight = uiState.mode === Mode.SEARCH ? 3 : 0;
@@ -843,6 +906,22 @@ export function App({
     `    ${helpThemeStatusLineRaw}`,
     helpContentLineWidth
   );
+  const helpFlashStatusLine = fitLineToWidth(
+    `    Flash mode: ${settingsState.flashMode}`,
+    helpContentLineWidth
+  );
+  const helpNotificationsEnabledStatusLine = fitLineToWidth(
+    `    Notifications: ${settingsState.notifications.enabled ? "on" : "off"}`,
+    helpContentLineWidth
+  );
+  const helpInAppBannerStatusLine = fitLineToWidth(
+    `    Overdue banner: ${settingsState.notifications.inAppOverdueBanner ? "on" : "off"}`,
+    helpContentLineWidth
+  );
+  const helpTerminalBellStatusLine = fitLineToWidth(
+    `    Terminal bell: ${settingsState.notifications.terminalBellOnOverdue ? "on" : "off"}`,
+    helpContentLineWidth
+  );
   const dueSuggestion =
     uiState.focus === FocusTarget.EDITOR_DUE_DATE && state.editor
       ? getDueSuggestion(state.editor.dueText, now)
@@ -952,12 +1031,70 @@ export function App({
   }, []);
 
   useEffect(() => {
+    const id = setInterval(() => {
+      evaluateNotificationsRef.current(Date.now());
+    }, NOTIFICATION_EVALUATION_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    evaluateNotificationsRef.current(Date.now());
+  }, [state.tasks]);
+
+  useEffect(() => {
+    if (activeOverdueBanner !== null) return;
+    if (overdueBannerQueue.length === 0) return;
+    const nextBanner = overdueBannerQueue[0];
+    setActiveOverdueBanner(nextBanner);
+    setOverdueBannerQueue((prev) => prev.slice(1));
+  }, [activeOverdueBanner, overdueBannerQueue]);
+
+  useEffect(() => {
+    if (!activeOverdueBanner) return;
+    if (overdueBannerTimerRef.current) {
+      clearTimeout(overdueBannerTimerRef.current);
+    }
+    overdueBannerTimerRef.current = setTimeout(() => {
+      setActiveOverdueBanner(null);
+      overdueBannerTimerRef.current = null;
+    }, settingsState.notifications.bannerDurationMs);
+
+    return () => {
+      if (overdueBannerTimerRef.current) {
+        clearTimeout(overdueBannerTimerRef.current);
+      }
+      overdueBannerTimerRef.current = null;
+    };
+  }, [activeOverdueBanner, settingsState.notifications.bannerDurationMs]);
+
+  useEffect(() => {
+    if (
+      settingsState.notifications.enabled &&
+      settingsState.notifications.inAppOverdueBanner
+    ) {
+      return;
+    }
+    if (overdueBannerTimerRef.current) {
+      clearTimeout(overdueBannerTimerRef.current);
+      overdueBannerTimerRef.current = null;
+    }
+    setActiveOverdueBanner(null);
+    setOverdueBannerQueue([]);
+  }, [
+    settingsState.notifications.enabled,
+    settingsState.notifications.inAppOverdueBanner
+  ]);
+
+  useEffect(() => {
     return () => {
       if (gPrefixTimerRef.current) {
         clearTimeout(gPrefixTimerRef.current);
       }
       if (navBannerTimerRef.current) {
         clearTimeout(navBannerTimerRef.current);
+      }
+      if (overdueBannerTimerRef.current) {
+        clearTimeout(overdueBannerTimerRef.current);
       }
     };
   }, []);
@@ -1008,12 +1145,13 @@ export function App({
     saveSettingsDebounced(
       {
         themeId: settingsState.themeId,
-        flashMode: settingsState.flashMode
+        flashMode: settingsState.flashMode,
+        notifications: settingsState.notifications
       },
       150,
       settingsPath ? { filePath: settingsPath } : {}
     );
-  }, [settingsPath, settingsState.themeId, settingsState.flashMode]);
+  }, [settingsPath, settingsState.themeId, settingsState.flashMode, settingsState.notifications]);
 
   useEffect(() => {
     if (skipInitialSaveRef.current) {
@@ -1187,6 +1325,10 @@ export function App({
     settingsDispatch({
       type: "setFlashMode",
       flashMode: settingsResult.settings.flashMode
+    });
+    settingsDispatch({
+      type: "setNotifications",
+      notifications: settingsResult.settings.notifications
     });
   }
 
@@ -1437,6 +1579,30 @@ export function App({
         settingsDispatch({ type: "toggleFlashMode" });
         showShortNavigationBanner(
           nextMode === "static" ? "Flash mode: static (overdue = red)" : "Flash mode: slow"
+        );
+        return;
+      }
+      case "TOGGLE_NOTIFICATIONS_ENABLED": {
+        const nextEnabled = !settingsState.notifications.enabled;
+        settingsDispatch({ type: "toggleNotificationsEnabled" });
+        showShortNavigationBanner(
+          `Notifications: ${nextEnabled ? "on" : "off"}`
+        );
+        return;
+      }
+      case "TOGGLE_INAPP_OVERDUE_BANNER": {
+        const nextEnabled = !settingsState.notifications.inAppOverdueBanner;
+        settingsDispatch({ type: "toggleInAppOverdueBanner" });
+        showShortNavigationBanner(
+          `Overdue banner: ${nextEnabled ? "on" : "off"}`
+        );
+        return;
+      }
+      case "TOGGLE_TERMINAL_BELL_ON_OVERDUE": {
+        const nextEnabled = !settingsState.notifications.terminalBellOnOverdue;
+        settingsDispatch({ type: "toggleTerminalBellOnOverdue" });
+        showShortNavigationBanner(
+          `Terminal bell: ${nextEnabled ? "on" : "off"}`
         );
         return;
       }
@@ -3087,6 +3253,19 @@ export function App({
           );
         })}
 
+        {activeOverdueBanner ? (
+          <box
+            style={{
+              height: 1,
+              backgroundColor: theme.warn,
+              paddingLeft: 1,
+              paddingRight: 1
+            }}
+          >
+            <text style={{ color: theme.bg }}>{activeOverdueBanner}</text>
+          </box>
+        ) : null}
+
         <box
           style={{
             height: 3,
@@ -3486,13 +3665,21 @@ export function App({
                         </text>
                       );
                     }
-                    const isThemeStatusRow =
+                    const isSettingsRow =
                       HELP_SETTINGS_SECTION_INDEX >= 0 &&
-                      row.sectionIndex === HELP_SETTINGS_SECTION_INDEX &&
-                      row.itemIndex === 0;
-                    const descriptionLine = isThemeStatusRow
-                      ? helpThemeStatusLine
-                      : fitLineToWidth(`    ${item.description ?? ""}`, helpContentLineWidth);
+                      row.sectionIndex === HELP_SETTINGS_SECTION_INDEX;
+                    const settingsStatusByItemIndex: Record<number, string> = {
+                      0: helpThemeStatusLine,
+                      1: helpFlashStatusLine,
+                      2: helpNotificationsEnabledStatusLine,
+                      3: helpInAppBannerStatusLine,
+                      4: helpTerminalBellStatusLine
+                    };
+                    const settingsStatusLine = settingsStatusByItemIndex[row.itemIndex];
+                    const descriptionLine =
+                      isSettingsRow && settingsStatusLine
+                        ? settingsStatusLine
+                        : fitLineToWidth(`    ${item.description ?? ""}`, helpContentLineWidth);
                     return (
                       <text key={`help-row-${rowIndex}`} style={{ color: theme.muted }}>
                         {descriptionLine}

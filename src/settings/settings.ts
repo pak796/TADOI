@@ -11,9 +11,18 @@ import {
 export type TadoiSettings = {
   themeId: ThemeId;
   flashMode: FlashMode;
+  notifications: NotificationSettings;
 };
 
 export type FlashMode = "slow" | "static";
+
+export type NotificationSettings = {
+  enabled: boolean;
+  inAppOverdueBanner: boolean;
+  terminalBellOnOverdue: boolean;
+  bannerDurationMs: number;
+  bellCooldownMs: number;
+};
 
 export type SettingsFsOps = Pick<typeof fs, "mkdir" | "readFile" | "writeFile">;
 
@@ -42,9 +51,18 @@ export type SaveSettingsStrictResult = {
   usedFallback: boolean;
 };
 
+const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
+  enabled: true,
+  inAppOverdueBanner: true,
+  terminalBellOnOverdue: false,
+  bannerDurationMs: 5000,
+  bellCooldownMs: 2000
+};
+
 const DEFAULT_SETTINGS: TadoiSettings = {
   themeId: "default",
-  flashMode: "slow"
+  flashMode: "slow",
+  notifications: DEFAULT_NOTIFICATION_SETTINGS
 };
 
 const DEFAULT_DEBOUNCE_MS = 150;
@@ -75,15 +93,68 @@ export function isFlashMode(value: unknown): value is FlashMode {
   return value === "slow" || value === "static";
 }
 
+function normalizePositiveMs(value: unknown, fallback: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return fallback;
+  }
+  if (value <= 0) {
+    return fallback;
+  }
+  return Math.floor(value);
+}
+
+function normalizeNotifications(input: unknown): NotificationSettings {
+  if (typeof input !== "object" || input === null) {
+    return { ...DEFAULT_NOTIFICATION_SETTINGS };
+  }
+
+  const maybeEnabled = (input as { enabled?: unknown }).enabled;
+  const maybeInAppOverdueBanner = (input as { inAppOverdueBanner?: unknown }).inAppOverdueBanner;
+  const maybeTerminalBellOnOverdue =
+    (input as { terminalBellOnOverdue?: unknown }).terminalBellOnOverdue;
+  const maybeBannerDurationMs =
+    (input as { bannerDurationMs?: unknown }).bannerDurationMs;
+  const maybeBellCooldownMs =
+    (input as { bellCooldownMs?: unknown }).bellCooldownMs;
+
+  return {
+    enabled:
+      typeof maybeEnabled === "boolean"
+        ? maybeEnabled
+        : DEFAULT_NOTIFICATION_SETTINGS.enabled,
+    inAppOverdueBanner:
+      typeof maybeInAppOverdueBanner === "boolean"
+        ? maybeInAppOverdueBanner
+        : DEFAULT_NOTIFICATION_SETTINGS.inAppOverdueBanner,
+    terminalBellOnOverdue:
+      typeof maybeTerminalBellOnOverdue === "boolean"
+        ? maybeTerminalBellOnOverdue
+        : DEFAULT_NOTIFICATION_SETTINGS.terminalBellOnOverdue,
+    bannerDurationMs: normalizePositiveMs(
+      maybeBannerDurationMs,
+      DEFAULT_NOTIFICATION_SETTINGS.bannerDurationMs
+    ),
+    bellCooldownMs: normalizePositiveMs(
+      maybeBellCooldownMs,
+      DEFAULT_NOTIFICATION_SETTINGS.bellCooldownMs
+    )
+  };
+}
+
 function normalizeSettings(input: unknown): TadoiSettings {
   if (typeof input !== "object" || input === null) {
-    return DEFAULT_SETTINGS;
+    return {
+      ...DEFAULT_SETTINGS,
+      notifications: { ...DEFAULT_NOTIFICATION_SETTINGS }
+    };
   }
   const maybeThemeId = (input as { themeId?: unknown }).themeId;
   const maybeFlashMode = (input as { flashMode?: unknown }).flashMode;
+  const maybeNotifications = (input as { notifications?: unknown }).notifications;
   return {
     themeId: isThemeId(maybeThemeId) ? maybeThemeId : DEFAULT_SETTINGS.themeId,
-    flashMode: isFlashMode(maybeFlashMode) ? maybeFlashMode : DEFAULT_SETTINGS.flashMode
+    flashMode: isFlashMode(maybeFlashMode) ? maybeFlashMode : DEFAULT_SETTINGS.flashMode,
+    notifications: normalizeNotifications(maybeNotifications)
   };
 }
 
@@ -203,7 +274,10 @@ export async function saveSettingsStrict(
 }
 
 export function getDefaultSettings(): TadoiSettings {
-  return DEFAULT_SETTINGS;
+  return {
+    ...DEFAULT_SETTINGS,
+    notifications: { ...DEFAULT_NOTIFICATION_SETTINGS }
+  };
 }
 
 export function resetSettingsStateForTests(): void {

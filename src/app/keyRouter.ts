@@ -54,6 +54,9 @@ export type KeyRouterAction =
   | { scope: "ui"; type: "HELP_SCROLL_PAGE"; direction: 1 | -1 }
   | { scope: "ui"; type: "CYCLE_THEME" }
   | { scope: "ui"; type: "TOGGLE_FLASH_MODE" }
+  | { scope: "ui"; type: "TOGGLE_NOTIFICATIONS_ENABLED" }
+  | { scope: "ui"; type: "TOGGLE_INAPP_OVERDUE_BANNER" }
+  | { scope: "ui"; type: "TOGGLE_TERMINAL_BELL_ON_OVERDUE" }
   | { scope: "domain"; type: "EXIT_APP" }
   | { scope: "domain"; type: "MOVE_SELECTION"; delta: 1 | -1 }
   | { scope: "domain"; type: "MOVE_SELECTION_PAGE"; direction: 1 | -1 }
@@ -185,6 +188,18 @@ function isFlashModeToggleKey(name: string, sequence: string): boolean {
   return name.toLowerCase() === "m" || sequence === "m" || sequence === "M";
 }
 
+function isNotificationMasterToggleKey(name: string, sequence: string): boolean {
+  return name.toLowerCase() === "n" || sequence === "n" || sequence === "N";
+}
+
+function isInAppOverdueBannerToggleKey(name: string, sequence: string): boolean {
+  return name.toLowerCase() === "o" || sequence === "o" || sequence === "O";
+}
+
+function isTerminalBellToggleKey(name: string, sequence: string): boolean {
+  return name.toLowerCase() === "l" || sequence === "l" || sequence === "L";
+}
+
 function isSearchCloseKey(name: string): boolean {
   return name === "escape" || name === "return" || name === "enter";
 }
@@ -282,6 +297,15 @@ export function handleKey(
     }
     if (isFlashModeToggleKey(name, sequence)) {
       return [{ scope: "ui", type: "TOGGLE_FLASH_MODE" }];
+    }
+    if (isNotificationMasterToggleKey(name, sequence)) {
+      return [{ scope: "ui", type: "TOGGLE_NOTIFICATIONS_ENABLED" }];
+    }
+    if (isInAppOverdueBannerToggleKey(name, sequence)) {
+      return [{ scope: "ui", type: "TOGGLE_INAPP_OVERDUE_BANNER" }];
+    }
+    if (isTerminalBellToggleKey(name, sequence)) {
+      return [{ scope: "ui", type: "TOGGLE_TERMINAL_BELL_ON_OVERDUE" }];
     }
     if (isHelpCloseKey(name, sequence)) {
       return [{ scope: "ui", type: "CLOSE_HELP" }];

@@ -11,6 +11,14 @@ import {
   type SettingsFsOps
 } from "./settings";
 
+const DEFAULT_NOTIFICATIONS = {
+  enabled: true,
+  inAppOverdueBanner: true,
+  terminalBellOnOverdue: false,
+  bannerDurationMs: 5000,
+  bellCooldownMs: 2000
+};
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -32,6 +40,7 @@ describe("loadSettings", () => {
     const homeDir = await makeTempDir();
     const result = await loadSettings({ homeDir, platform: "linux" });
     expect(result.settings.themeId).toBe("default");
+    expect(result.settings.notifications).toEqual(DEFAULT_NOTIFICATIONS);
     expect(result.resolvedPath).toBe(
       path.posix.join(homeDir, ".config", "tadoi", "settings.json")
     );
@@ -56,6 +65,7 @@ describe("loadSettings", () => {
     const result = await loadSettings({ homeDir, platform: "linux" });
     expect(result.settings.themeId).toBe("retro");
     expect(result.settings.flashMode).toBe("static");
+    expect(result.settings.notifications).toEqual(DEFAULT_NOTIFICATIONS);
     expect(result.resolvedPath).toBe(primary);
   });
 
@@ -72,6 +82,7 @@ describe("loadSettings", () => {
     const result = await loadSettings({ homeDir, platform: "linux" });
     expect(result.settings.themeId).toBe("highContrast");
     expect(result.settings.flashMode).toBe("static");
+    expect(result.settings.notifications).toEqual(DEFAULT_NOTIFICATIONS);
     expect(result.resolvedPath).toBe(fallback);
   });
 
@@ -84,6 +95,7 @@ describe("loadSettings", () => {
     const result = await loadSettings({ homeDir, platform: "linux" });
     expect(result.settings.themeId).toBe("default");
     expect(result.settings.flashMode).toBe("slow");
+    expect(result.settings.notifications).toEqual(DEFAULT_NOTIFICATIONS);
   });
 
   it("defaults flash mode when missing or invalid", async () => {
@@ -92,7 +104,11 @@ describe("loadSettings", () => {
     await fs.mkdir(path.dirname(primary), { recursive: true });
     await fs.writeFile(primary, JSON.stringify({ themeId: "retro" }), "utf8");
     const missing = await loadSettings({ homeDir, platform: "linux" });
-    expect(missing.settings).toEqual({ themeId: "retro", flashMode: "slow" });
+    expect(missing.settings).toEqual({
+      themeId: "retro",
+      flashMode: "slow",
+      notifications: DEFAULT_NOTIFICATIONS
+    });
 
     await fs.writeFile(
       primary,
@@ -100,7 +116,39 @@ describe("loadSettings", () => {
       "utf8"
     );
     const invalid = await loadSettings({ homeDir, platform: "linux" });
-    expect(invalid.settings).toEqual({ themeId: "retro", flashMode: "slow" });
+    expect(invalid.settings).toEqual({
+      themeId: "retro",
+      flashMode: "slow",
+      notifications: DEFAULT_NOTIFICATIONS
+    });
+  });
+
+  it("normalizes invalid notification settings to defaults", async () => {
+    const homeDir = await makeTempDir();
+    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    await fs.mkdir(path.dirname(primary), { recursive: true });
+    await fs.writeFile(
+      primary,
+      JSON.stringify({
+        themeId: "retro",
+        flashMode: "static",
+        notifications: {
+          enabled: "yes",
+          inAppOverdueBanner: true,
+          terminalBellOnOverdue: false,
+          bannerDurationMs: 0,
+          bellCooldownMs: -5
+        }
+      }),
+      "utf8"
+    );
+
+    const result = await loadSettings({ homeDir, platform: "linux" });
+    expect(result.settings).toEqual({
+      themeId: "retro",
+      flashMode: "static",
+      notifications: DEFAULT_NOTIFICATIONS
+    });
   });
 });
 
@@ -109,33 +157,49 @@ describe("saveSettingsDebounced", () => {
     const homeDir = await makeTempDir();
     const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
     saveSettingsDebounced(
-      { themeId: "highContrast", flashMode: "static" },
+      {
+        themeId: "highContrast",
+        flashMode: "static",
+        notifications: DEFAULT_NOTIFICATIONS
+      },
       20,
       { filePath: primary, homeDir, platform: "linux" }
     );
 
     await sleep(100);
     const raw = await fs.readFile(primary, "utf8");
-    expect(JSON.parse(raw)).toEqual({ themeId: "highContrast", flashMode: "static" });
+    expect(JSON.parse(raw)).toEqual({
+      themeId: "highContrast",
+      flashMode: "static",
+      notifications: DEFAULT_NOTIFICATIONS
+    });
   });
 
   it("coalesces rapid updates and persists only the latest value", async () => {
     const homeDir = await makeTempDir();
     const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
     saveSettingsDebounced(
-      { themeId: "retro", flashMode: "slow" },
+      { themeId: "retro", flashMode: "slow", notifications: DEFAULT_NOTIFICATIONS },
       20,
       { filePath: primary, homeDir, platform: "linux" }
     );
     saveSettingsDebounced(
-      { themeId: "neonHacker", flashMode: "static" },
+      {
+        themeId: "neonHacker",
+        flashMode: "static",
+        notifications: DEFAULT_NOTIFICATIONS
+      },
       20,
       { filePath: primary, homeDir, platform: "linux" }
     );
 
     await sleep(100);
     const raw = await fs.readFile(primary, "utf8");
-    expect(JSON.parse(raw)).toEqual({ themeId: "neonHacker", flashMode: "static" });
+    expect(JSON.parse(raw)).toEqual({
+      themeId: "neonHacker",
+      flashMode: "static",
+      notifications: DEFAULT_NOTIFICATIONS
+    });
   });
 
   it("falls back to ~/.tadoi/settings.json when primary write fails", async () => {
@@ -157,7 +221,7 @@ describe("saveSettingsDebounced", () => {
     };
 
     saveSettingsDebounced(
-      { themeId: "retro", flashMode: "static" },
+      { themeId: "retro", flashMode: "static", notifications: DEFAULT_NOTIFICATIONS },
       20,
       { homeDir, platform: "linux", fsOps }
     );
@@ -169,7 +233,11 @@ describe("saveSettingsDebounced", () => {
       .catch(() => false);
     expect(fallbackExists).toBe(true);
     const fallbackRaw = await fs.readFile(fallback, "utf8");
-    expect(JSON.parse(fallbackRaw)).toEqual({ themeId: "retro", flashMode: "static" });
+    expect(JSON.parse(fallbackRaw)).toEqual({
+      themeId: "retro",
+      flashMode: "static",
+      notifications: DEFAULT_NOTIFICATIONS
+    });
   });
 });
 
@@ -179,14 +247,18 @@ describe("saveSettingsStrict", () => {
     const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
 
     const result = await saveSettingsStrict(
-      { themeId: "retro", flashMode: "slow" },
+      { themeId: "retro", flashMode: "slow", notifications: DEFAULT_NOTIFICATIONS },
       { filePath: primary, homeDir, platform: "linux" }
     );
 
     expect(result.resolvedPath).toBe(primary);
     expect(result.usedFallback).toBe(false);
     const raw = await fs.readFile(primary, "utf8");
-    expect(JSON.parse(raw)).toEqual({ themeId: "retro", flashMode: "slow" });
+    expect(JSON.parse(raw)).toEqual({
+      themeId: "retro",
+      flashMode: "slow",
+      notifications: DEFAULT_NOTIFICATIONS
+    });
   });
 
   it("falls back from primary to fallback path when primary write fails", async () => {
@@ -208,13 +280,21 @@ describe("saveSettingsStrict", () => {
     };
 
     const result = await saveSettingsStrict(
-      { themeId: "highContrast", flashMode: "static" },
+      {
+        themeId: "highContrast",
+        flashMode: "static",
+        notifications: DEFAULT_NOTIFICATIONS
+      },
       { homeDir, platform: "linux", fsOps }
     );
 
     expect(result.resolvedPath).toBe(fallback);
     expect(result.usedFallback).toBe(true);
     const raw = await fs.readFile(fallback, "utf8");
-    expect(JSON.parse(raw)).toEqual({ themeId: "highContrast", flashMode: "static" });
+    expect(JSON.parse(raw)).toEqual({
+      themeId: "highContrast",
+      flashMode: "static",
+      notifications: DEFAULT_NOTIFICATIONS
+    });
   });
 });

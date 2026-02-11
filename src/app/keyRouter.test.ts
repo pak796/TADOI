@@ -343,6 +343,15 @@ describe("handleKey", () => {
     expect(run({ name: "m", sequence: "m" }, { uiState: helpState })).toEqual([
       { scope: "ui", type: "TOGGLE_FLASH_MODE" }
     ]);
+    expect(run({ name: "n", sequence: "n" }, { uiState: helpState })).toEqual([
+      { scope: "ui", type: "TOGGLE_NOTIFICATIONS_ENABLED" }
+    ]);
+    expect(run({ name: "o", sequence: "o" }, { uiState: helpState })).toEqual([
+      { scope: "ui", type: "TOGGLE_INAPP_OVERDUE_BANNER" }
+    ]);
+    expect(run({ name: "l", sequence: "l" }, { uiState: helpState })).toEqual([
+      { scope: "ui", type: "TOGGLE_TERMINAL_BELL_ON_OVERDUE" }
+    ]);
     expect(run({ name: "1", sequence: "1" }, { uiState: helpState })).toEqual([
       { scope: "ui", type: "OPEN_BACKUP_CENTER" }
     ]);
