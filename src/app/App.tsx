@@ -343,7 +343,8 @@ function normalizeHelpReturnContext(
   mode: Mode,
   focus: FocusTarget
 ): { mode: Mode; focus: FocusTarget } {
-  const normalizedMode = mode === Mode.HELP ? Mode.LIST : mode;
+  const normalizedMode =
+    mode === Mode.HELP || mode === Mode.BACKUP_CENTER ? Mode.LIST : mode;
 
   if (normalizedMode === Mode.LIST) {
     return { mode: normalizedMode, focus: FocusTarget.TASK_LIST };
@@ -1520,7 +1521,13 @@ export function App({
 
   function handleBackupBackAction() {
     if (backupState.screen === "menu") {
-      applyEscUnwind();
+      const { mode: returnMode, focus: returnFocus } = normalizeHelpReturnContext(
+        uiState.previousMode,
+        uiState.previousFocus
+      );
+      backupDispatch({ type: "reset" });
+      uiDispatch({ type: "setMode", mode: returnMode });
+      uiDispatch({ type: "setFocus", focus: returnFocus });
       return;
     }
     backupDispatch({ type: "back" });

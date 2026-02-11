@@ -4,7 +4,7 @@ Terminal Accessible Digital Organization Interface
 
 Keyboard-first TUI todo list with due dates, completion, and tag autocomplete (OpenTUI + React on Bun).
 
-Current release baseline: `v0.2.9` (`package.json` `0.2.9`).
+Current version: `v0.2.9` (`package.json`: `0.2.9`).
 
 ## Setup
 
@@ -44,7 +44,7 @@ Minimum supported terminal size:
 
 ## Data File
 
-Tasks persist to `tadoi_data.json` using the following resolution order:
+TADOI saves tasks to `tadoi_data.json` using this path order:
 
 - `TADOI_DATA_PATH` override (absolute or relative path)
 - Linux: `$XDG_DATA_HOME/tadoi/tadoi_data.json`
@@ -53,11 +53,11 @@ Tasks persist to `tadoi_data.json` using the following resolution order:
 - Windows: `%APPDATA%\\tadoi\\tadoi_data.json`
 - Windows fallback: `$HOME\\AppData\\Roaming\\tadoi\\tadoi_data.json`
 
-The resolved path is shown in startup logs and in the in-app Help panel.
+The active path appears in startup logs and in the Help panel.
 
 Current persisted schema version: `4` (includes recurrence fields).
 
-If a save fails (permissions/disk/IO), TADOI keeps running and shows a persistent banner with the error and resolved data path. Saves retry on the next domain mutation (not on UI-only ticks).
+If a save fails (permissions/disk/IO), TADOI keeps running and shows a persistent banner with the error and data path. It retries on the next domain mutation (not on UI-only ticks).
 
 ### Data Backup and Corrupt Recovery
 
@@ -65,7 +65,7 @@ Where your data lives:
 - Use the resolved data path shown at startup or in the Help panel.
 - By default, it follows the OS-specific locations listed above.
 
-How to back it up:
+Manual backup examples:
 
 macOS/Linux (replace `<resolved-path>`):
 ```bash
@@ -92,7 +92,7 @@ Open the guided in-app flow from Help:
 Backup Center flow:
 - `Export backup`: creates a timestamped backup in the default backups folder.
 - `Import data...`: path input -> mode select (`merge` or `replace`) -> dry-run summary -> commit.
-- `Show data path`: displays the exact runtime data path.
+- `Show data path`: shows the exact runtime data path.
 
 Safety checks:
 - `replace` requires typed confirmation: `REPLACE`.

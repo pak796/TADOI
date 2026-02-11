@@ -1,6 +1,6 @@
 # TADOI Installation Guide (macOS, Windows, Linux)
 
-This guide covers both installable binary distributions and source installs on all supported platforms.
+This guide covers binary and source installs on macOS, Windows, and Linux.
 
 ## 1) What You Need
 
@@ -63,7 +63,7 @@ Install from artifacts:
 
 - `bun run dev`
 
-You can also run:
+Alternative start command:
 
 - `bun run start`
 
@@ -84,7 +84,7 @@ Check these basics:
    - `l`/`L` terminal bell
 5. Press `q` to quit.
 
-If those work, install/run is healthy.
+If these checks pass, your install is healthy.
 
 Optional notification check:
 - Create a timed task due within 1 minute and keep the app open.
@@ -160,7 +160,7 @@ Optional signing env vars:
 
 ### Install fails on `bun install`
 
-- Delete lockfile cache only if needed and retry:
+- Retry only if needed:
   - `bun install --force`
 - Confirm network/proxy access to package registries.
 

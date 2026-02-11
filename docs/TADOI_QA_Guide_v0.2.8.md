@@ -2,13 +2,13 @@
 
 ## 1) Purpose
 
-This guide defines how to validate TADOI across the three supported platforms:
+This guide defines how to validate TADOI across three supported platforms:
 
 - macOS
 - Windows
 - Linux
 
-It is based on:
+References:
 
 - Product/runtime specs: `TADOI_SPEC_v0.2.9.md`, `DASHBOARD_SPEC_MVP.md`, `TADOI_BackupCenter_InApp_Spec.md`
 - Implementation: `src/app`, `src/components`, `src/domain`, `src/state`, `src/settings`
@@ -31,7 +31,7 @@ It is based on:
 
 ### Current quality signal
 
-- Automated tests: validate current pass status with local `bun run test`
+- Automated tests: verify current pass status with local `bun run test`
 - Test files: `src/**/*.test.ts` (includes recurrence, dashboard, backup, and notifications modal coverage)
 - CI runs on all 3 OS targets (Ubuntu, macOS, Windows) with required checks:
   - tests
@@ -81,7 +81,7 @@ It is based on:
 
 ## 5) Functional QA Suites
 
-Use these suites on all three platforms.
+Run these suites on all three platforms.
 
 ### A. Launch, Layout, and Resize
 

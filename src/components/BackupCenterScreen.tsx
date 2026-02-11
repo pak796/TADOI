@@ -91,7 +91,7 @@ function BackupActionButton({
     <box
       style={{ backgroundColor, paddingLeft: 1, paddingRight: 1 }}
       onMouseDown={(event) => {
-        if (event.button !== 0) return;
+        if (typeof event.button === "number" && event.button !== 0) return;
         onPress();
       }}
     >
