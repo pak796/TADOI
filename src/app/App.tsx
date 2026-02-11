@@ -191,7 +191,7 @@ const DEFAULT_CUSTOM_THEMES: CustomThemes | undefined = getDefaultSettings().cus
 
 type HelpMenuItem = {
   title: string;
-  description?: string;
+  description?: string | string[];
 };
 
 type HelpMenuSection = {
@@ -202,7 +202,12 @@ type HelpMenuSection = {
 type HelpRow =
   | { kind: "section_header"; sectionIndex: number }
   | { kind: "item_title"; sectionIndex: number; itemIndex: number }
-  | { kind: "item_description"; sectionIndex: number; itemIndex: number };
+  | {
+      kind: "item_description";
+      sectionIndex: number;
+      itemIndex: number;
+      descriptionLineIndex: number;
+    };
 
 type HelpSectionLayout = {
   id: string;
@@ -234,11 +239,31 @@ type HelpNavItem = {
 const HELP_SETTINGS_NAV_ITEMS: HelpNavItem[] = [
   {
     title: "Theme",
-    description: "Configure theme mode and custom palettes."
+    description: "Theme mode and custom palette settings."
+  },
+  {
+    title: "Flash Mode",
+    description: "Switch between static and pulse urgency cues."
+  },
+  {
+    title: "Notifications",
+    description: "Enable or disable overdue notifications."
+  },
+  {
+    title: "Overdue Popup",
+    description: "Enable or disable in-app overdue popup."
+  },
+  {
+    title: "Terminal Bell",
+    description: "Enable or disable terminal bell on overdue."
   }
 ];
 
 const HELP_THEME_NAV_ITEMS: HelpNavItem[] = [
+  {
+    title: "Current Theme",
+    description: "Press Enter/Right to cycle theme mode."
+  },
   {
     title: "Custom1",
     description: "Global palette plus per-object overrides."
@@ -258,15 +283,6 @@ const HELP_CUSTOM1_NAV_ITEMS: HelpNavItem[] = [
  * - Help keyboard routing is in src/app/keyRouter.ts (Mode.HELP branch).
  */
 const HELP_MENU_SECTIONS: HelpMenuSection[] = [
-  {
-    title: "Settings",
-    items: [
-      {
-        title: "Open Settings submenu",
-        description: "Press Enter/Right to open settings pages."
-      }
-    ]
-  },
   {
     title: "Getting Started",
     items: [
@@ -354,24 +370,11 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
     title: "Settings & Themes",
     items: [
       {
-        title: "h/H cycle theme",
-        description: "Includes rotating mode support."
-      },
-      {
-        title: "m/M toggle flash mode",
-        description: "Switch between static and pulsing urgency cues."
-      },
-      {
-        title: "n/N toggle notifications",
-        description: "Master switch for overdue notifications."
-      },
-      {
-        title: "o/O toggle overdue popup",
-        description: "Enable or disable in-app overdue popups."
-      },
-      {
-        title: "l/L toggle terminal bell",
-        description: "Enable or disable terminal bell on overdue."
+        title: "Settings",
+        description: [
+          "Open Settings submenu",
+          "Press Enter/Right to change settings."
+        ]
       }
     ]
   },
@@ -393,11 +396,8 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
     ]
   }
 ];
-const HELP_SETTINGS_SECTION_INDEX = HELP_MENU_SECTIONS.findIndex(
-  (section) => section.title === "Settings & Themes"
-);
 const HELP_SETTINGS_NAV_SECTION_INDEX = HELP_MENU_SECTIONS.findIndex(
-  (section) => section.title === "Settings"
+  (section) => section.title === "Settings & Themes"
 );
 
 function createDefaultHelpExpandedState(): boolean[] {
@@ -461,6 +461,14 @@ function normalizeHelpReturnContext(
   return { mode: normalizedMode, focus };
 }
 
+function getHelpItemDescriptionLines(item: HelpMenuItem): string[] {
+  if (!item.description) return [];
+  if (Array.isArray(item.description)) {
+    return item.description.filter((line) => line.length > 0);
+  }
+  return item.description.length > 0 ? [item.description] : [];
+}
+
 function buildHelpRows(expandedBySection: boolean[]): {
   rows: HelpRow[];
   sections: HelpSectionLayout[];
@@ -480,9 +488,15 @@ function buildHelpRows(expandedBySection: boolean[]): {
     if (expandedBySection[sectionIndex]) {
       section.items.forEach((item, itemIndex) => {
         rows.push({ kind: "item_title", sectionIndex, itemIndex });
-        if (item.description) {
-          rows.push({ kind: "item_description", sectionIndex, itemIndex });
-        }
+        const descriptionLines = getHelpItemDescriptionLines(item);
+        descriptionLines.forEach((_, descriptionLineIndex) => {
+          rows.push({
+            kind: "item_description",
+            sectionIndex,
+            itemIndex,
+            descriptionLineIndex
+          });
+        });
       });
     }
 
@@ -989,11 +1003,11 @@ export function App({
   const helpFooterHintsRaw =
     activeHelpPage === "help"
       ? helpHasOverflow
-        ? "1 Backup Center | Enter on Settings | h theme | m flash | n notifications | o overdue popup | l bell | Up/Down focus | Enter/Space toggle | Left/Right collapse/expand | Esc close | Scroll"
-        : "1 Backup Center | Enter on Settings | h theme | m flash | n notifications | o overdue popup | l bell | Up/Down focus | Enter/Space toggle | Left/Right collapse/expand | Esc close"
+        ? "1 Backup Center | Enter/Right on Settings opens Settings pages | Up/Down focus | Enter/Space expand | Left collapse | Esc close | Scroll"
+        : "1 Backup Center | Enter/Right on Settings opens Settings pages | Up/Down focus | Enter/Space expand | Left collapse | Esc close"
       : activeHelpPage === "custom1Edit"
         ? "S save | C/Esc cancel | R reset token | Tab next focus | Arrows adjust/jump | Enter commit"
-        : "Up/Down move | Enter/Right open | Left/Backspace/Esc back | h/m/n/o/l quick toggles";
+        : "Up/Down move | Enter/Right select | Left/Backspace/Esc back";
   const helpFooterHintsLine = fitLineToWidth(
     helpFooterHintsRaw,
     helpFooterHintLineWidth
@@ -2005,40 +2019,20 @@ export function App({
         cancelSaveViewPrompt();
         return;
       case "CYCLE_THEME":
-        settingsDispatch({ type: "cycleTheme" });
+        cycleThemeModeSetting();
         return;
-      case "TOGGLE_FLASH_MODE": {
-        const nextMode: FlashMode = settingsState.flashMode === "slow" ? "static" : "slow";
-        settingsDispatch({ type: "toggleFlashMode" });
-        showShortNavigationBanner(
-          nextMode === "static" ? "Flash mode: static (overdue = red)" : "Flash mode: slow"
-        );
+      case "TOGGLE_FLASH_MODE":
+        switchFlashModeSetting();
         return;
-      }
-      case "TOGGLE_NOTIFICATIONS_ENABLED": {
-        const nextEnabled = !settingsState.notifications.enabled;
-        settingsDispatch({ type: "toggleNotificationsEnabled" });
-        showShortNavigationBanner(
-          `Notifications: ${nextEnabled ? "on" : "off"}`
-        );
+      case "TOGGLE_NOTIFICATIONS_ENABLED":
+        switchNotificationsEnabledSetting();
         return;
-      }
-      case "TOGGLE_INAPP_OVERDUE_BANNER": {
-        const nextEnabled = !settingsState.notifications.inAppOverdueBanner;
-        settingsDispatch({ type: "toggleInAppOverdueBanner" });
-        showShortNavigationBanner(
-          `Overdue popup: ${nextEnabled ? "on" : "off"}`
-        );
+      case "TOGGLE_INAPP_OVERDUE_BANNER":
+        switchInAppOverduePopupSetting();
         return;
-      }
-      case "TOGGLE_TERMINAL_BELL_ON_OVERDUE": {
-        const nextEnabled = !settingsState.notifications.terminalBellOnOverdue;
-        settingsDispatch({ type: "toggleTerminalBellOnOverdue" });
-        showShortNavigationBanner(
-          `Terminal bell: ${nextEnabled ? "on" : "off"}`
-        );
+      case "TOGGLE_TERMINAL_BELL_ON_OVERDUE":
+        switchTerminalBellSetting();
         return;
-      }
       case "EXIT_APP":
         void renderer.destroy();
         return;
@@ -2298,6 +2292,36 @@ export function App({
     showShortNavigationBanner("Custom1 theme saved");
   }
 
+  function cycleThemeModeSetting() {
+    settingsDispatch({ type: "cycleTheme" });
+  }
+
+  function switchFlashModeSetting() {
+    const nextMode: FlashMode = settingsState.flashMode === "slow" ? "static" : "slow";
+    settingsDispatch({ type: "toggleFlashMode" });
+    showShortNavigationBanner(
+      nextMode === "static" ? "Flash mode: static (overdue = red)" : "Flash mode: slow"
+    );
+  }
+
+  function switchNotificationsEnabledSetting() {
+    const nextEnabled = !settingsState.notifications.enabled;
+    settingsDispatch({ type: "toggleNotificationsEnabled" });
+    showShortNavigationBanner(`Notifications: ${nextEnabled ? "on" : "off"}`);
+  }
+
+  function switchInAppOverduePopupSetting() {
+    const nextEnabled = !settingsState.notifications.inAppOverdueBanner;
+    settingsDispatch({ type: "toggleInAppOverdueBanner" });
+    showShortNavigationBanner(`Overdue popup: ${nextEnabled ? "on" : "off"}`);
+  }
+
+  function switchTerminalBellSetting() {
+    const nextEnabled = !settingsState.notifications.terminalBellOnOverdue;
+    settingsDispatch({ type: "toggleTerminalBellOnOverdue" });
+    showShortNavigationBanner(`Terminal bell: ${nextEnabled ? "on" : "off"}`);
+  }
+
   function openBackupCenter() {
     clearPendingGPrefix();
     closeViewsOverlay();
@@ -2481,15 +2505,16 @@ export function App({
 
   function handleHelpNavForward() {
     if (activeHelpPage === "settings") {
-      if (clampedHelpNavSelectionIndex === 0) {
-        pushHelpPage("theme");
-      }
+      if (clampedHelpNavSelectionIndex === 0) pushHelpPage("theme");
+      if (clampedHelpNavSelectionIndex === 1) switchFlashModeSetting();
+      if (clampedHelpNavSelectionIndex === 2) switchNotificationsEnabledSetting();
+      if (clampedHelpNavSelectionIndex === 3) switchInAppOverduePopupSetting();
+      if (clampedHelpNavSelectionIndex === 4) switchTerminalBellSetting();
       return;
     }
     if (activeHelpPage === "theme") {
-      if (clampedHelpNavSelectionIndex === 0) {
-        pushHelpPage("custom1");
-      }
+      if (clampedHelpNavSelectionIndex === 0) cycleThemeModeSetting();
+      if (clampedHelpNavSelectionIndex === 1) pushHelpPage("custom1");
       return;
     }
     if (activeHelpPage === "custom1") {
@@ -4896,21 +4921,11 @@ export function App({
                           </box>
                         );
                       }
-                      const isSettingsRow =
-                        HELP_SETTINGS_SECTION_INDEX >= 0 &&
-                        row.sectionIndex === HELP_SETTINGS_SECTION_INDEX;
-                      const settingsStatusByItemIndex: Record<number, string> = {
-                        0: helpThemeStatusLine,
-                        1: helpFlashStatusLine,
-                        2: helpNotificationsEnabledStatusLine,
-                        3: helpInAppBannerStatusLine,
-                        4: helpTerminalBellStatusLine
-                      };
-                      const settingsStatusLine = settingsStatusByItemIndex[row.itemIndex];
-                      const descriptionLine =
-                        isSettingsRow && settingsStatusLine
-                          ? settingsStatusLine
-                          : fitLineToWidth(`    ${item.description ?? ""}`, helpContentLineWidth);
+                      const descriptionLines = getHelpItemDescriptionLines(item);
+                      const descriptionLine = fitLineToWidth(
+                        `    ${descriptionLines[row.descriptionLineIndex] ?? ""}`,
+                        helpContentLineWidth
+                      );
                       return (
                         <box
                           key={`help-row-${rowIndex}`}
@@ -4953,10 +4968,20 @@ export function App({
                         <text style={{ color: helpTheme.muted }}>
                           {helpNotificationsEnabledStatusLine.trim()}
                         </text>
+                        <text style={{ color: helpTheme.muted }}>
+                          {helpInAppBannerStatusLine.trim()}
+                        </text>
+                        <text style={{ color: helpTheme.muted }}>
+                          {helpTerminalBellStatusLine.trim()}
+                        </text>
                       </>
                     ) : null}
                     {helpNavItems.map((item, index) => {
                       const focused = index === clampedHelpNavSelectionIndex;
+                      const itemTitle =
+                        activeHelpPage === "theme" && index === 0
+                          ? helpThemeStatusLineRaw
+                          : item.title;
                       return (
                         <box key={`${activeHelpPage}-${item.title}`}>
                           <box
@@ -4979,7 +5004,7 @@ export function App({
                               }}
                             >
                               {fitLineToWidth(
-                                `${focused ? "▶" : " "} ${item.title}`,
+                                `${focused ? "▶" : " "} ${itemTitle}`,
                                 helpContentLineWidth
                               )}
                             </text>

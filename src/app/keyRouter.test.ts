@@ -432,7 +432,7 @@ describe("handleKey", () => {
     ]);
   });
 
-  it("routes help mode theme + flash toggles without leaking list navigation", () => {
+  it("keeps help mode read-only for settings hotkeys", () => {
     const helpState = {
       ...initialUIState,
       mode: Mode.HELP,
@@ -463,21 +463,17 @@ describe("handleKey", () => {
     expect(run({ name: "enter" }, { uiState: helpState })).toEqual([
       { scope: "ui", type: "HELP_TOGGLE_FOCUSED_SECTION" }
     ]);
-    expect(run({ name: "h", sequence: "h" }, { uiState: helpState })).toEqual([
-      { scope: "ui", type: "CYCLE_THEME" }
-    ]);
-    expect(run({ name: "m", sequence: "m" }, { uiState: helpState })).toEqual([
-      { scope: "ui", type: "TOGGLE_FLASH_MODE" }
-    ]);
-    expect(run({ name: "n", sequence: "n" }, { uiState: helpState })).toEqual([
-      { scope: "ui", type: "TOGGLE_NOTIFICATIONS_ENABLED" }
-    ]);
-    expect(run({ name: "o", sequence: "o" }, { uiState: helpState })).toEqual([
-      { scope: "ui", type: "TOGGLE_INAPP_OVERDUE_BANNER" }
-    ]);
-    expect(run({ name: "l", sequence: "l" }, { uiState: helpState })).toEqual([
-      { scope: "ui", type: "TOGGLE_TERMINAL_BELL_ON_OVERDUE" }
-    ]);
+    expect(run({ name: "h", sequence: "h" }, { uiState: helpState })).toEqual([]);
+    expect(run({ name: "m", sequence: "m" }, { uiState: helpState })).toEqual([]);
+    expect(run({ name: "n", sequence: "n" }, { uiState: helpState })).toEqual([]);
+    expect(run({ name: "o", sequence: "o" }, { uiState: helpState })).toEqual([]);
+    expect(run({ name: "l", sequence: "l" }, { uiState: helpState })).toEqual([]);
+    expect(
+      run({ name: "h", sequence: "h" }, { uiState: helpState, helpPage: "settings" })
+    ).toEqual([]);
+    expect(
+      run({ name: "m", sequence: "m" }, { uiState: helpState, helpPage: "theme" })
+    ).toEqual([]);
     expect(run({ name: "1", sequence: "1" }, { uiState: helpState })).toEqual([
       { scope: "ui", type: "OPEN_BACKUP_CENTER" }
     ]);

@@ -192,26 +192,6 @@ function listModeActions(key: KeyInput): KeyRouterAction[] {
   return [];
 }
 
-function isThemeCycleKey(name: string, sequence: string): boolean {
-  return name.toLowerCase() === "h" || sequence === "h" || sequence === "H";
-}
-
-function isFlashModeToggleKey(name: string, sequence: string): boolean {
-  return name.toLowerCase() === "m" || sequence === "m" || sequence === "M";
-}
-
-function isNotificationMasterToggleKey(name: string, sequence: string): boolean {
-  return name.toLowerCase() === "n" || sequence === "n" || sequence === "N";
-}
-
-function isInAppOverdueBannerToggleKey(name: string, sequence: string): boolean {
-  return name.toLowerCase() === "o" || sequence === "o" || sequence === "O";
-}
-
-function isTerminalBellToggleKey(name: string, sequence: string): boolean {
-  return name.toLowerCase() === "l" || sequence === "l" || sequence === "L";
-}
-
 function isSearchCloseKey(name: string): boolean {
   return name === "escape" || name === "return" || name === "enter";
 }
@@ -342,21 +322,6 @@ export function handleKey(
       if (name === "right" || name === "return" || name === "enter") {
         return [{ scope: "ui", type: "HELP_NAV_FORWARD" }];
       }
-      if (isThemeCycleKey(name, sequence)) {
-        return [{ scope: "ui", type: "CYCLE_THEME" }];
-      }
-      if (isFlashModeToggleKey(name, sequence)) {
-        return [{ scope: "ui", type: "TOGGLE_FLASH_MODE" }];
-      }
-      if (isNotificationMasterToggleKey(name, sequence)) {
-        return [{ scope: "ui", type: "TOGGLE_NOTIFICATIONS_ENABLED" }];
-      }
-      if (isInAppOverdueBannerToggleKey(name, sequence)) {
-        return [{ scope: "ui", type: "TOGGLE_INAPP_OVERDUE_BANNER" }];
-      }
-      if (isTerminalBellToggleKey(name, sequence)) {
-        return [{ scope: "ui", type: "TOGGLE_TERMINAL_BELL_ON_OVERDUE" }];
-      }
       if (isHelpCloseKey(name, sequence)) {
         return [{ scope: "ui", type: "CLOSE_HELP" }];
       }
@@ -390,21 +355,6 @@ export function handleKey(
     }
     if (sequence === "1" || name === "1") {
       return [{ scope: "ui", type: "OPEN_BACKUP_CENTER" }];
-    }
-    if (isThemeCycleKey(name, sequence)) {
-      return [{ scope: "ui", type: "CYCLE_THEME" }];
-    }
-    if (isFlashModeToggleKey(name, sequence)) {
-      return [{ scope: "ui", type: "TOGGLE_FLASH_MODE" }];
-    }
-    if (isNotificationMasterToggleKey(name, sequence)) {
-      return [{ scope: "ui", type: "TOGGLE_NOTIFICATIONS_ENABLED" }];
-    }
-    if (isInAppOverdueBannerToggleKey(name, sequence)) {
-      return [{ scope: "ui", type: "TOGGLE_INAPP_OVERDUE_BANNER" }];
-    }
-    if (isTerminalBellToggleKey(name, sequence)) {
-      return [{ scope: "ui", type: "TOGGLE_TERMINAL_BELL_ON_OVERDUE" }];
     }
     if (isHelpCloseKey(name, sequence)) {
       return [{ scope: "ui", type: "CLOSE_HELP" }];
