@@ -5,6 +5,8 @@ All notable changes to TADOI are documented in this file.
 The format is based on Keep a Changelog.
 
 ## [Unreleased]
+
+## [0.2.9] - 2026-02-11
 ### Added
 - Installable distribution pipeline scaffolding-to-execution upgrade:
   - new CLI router split (`src/cli.ts`) and TUI runner module (`src/tui/runTui.tsx`)
@@ -42,6 +44,7 @@ The format is based on Keep a Changelog.
 - Settings schema now includes `notifications.*` preferences with backward-compatible defaults and portability/import-export support.
 
 ### Fixed
+- Aligned `next7`/`DUE THIS WEEK` semantics across query, recurrence row expansion, and dashboard paths to a consistent rolling 7-day window (`today..+6`).
 - Help pane section navigation now keeps the selected section visible while moving with arrow keys, with page-based navigation support (`Ctrl+U`/`Ctrl+D`) in Help mode.
 - Help pane row spacing/layout no longer inserts extra blank spacer rows, improving visual consistency and scroll-follow behavior.
 

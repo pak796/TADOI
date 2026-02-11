@@ -111,8 +111,8 @@ export function filterTasks(tasks: Task[], filters: Filters, now: number): Task[
         return dayDiff === 0;
       }
       if (filters.due === "next7") {
-        // "THIS WEEK" = rolling next 7 days including today, based on local days.
-        return dayDiff >= 0 && dayDiff <= 7;
+        // "THIS WEEK" = rolling 7-day window (today..+6), based on local days.
+        return dayDiff >= 0 && dayDiff <= 6;
       }
     }
 

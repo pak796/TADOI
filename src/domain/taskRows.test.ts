@@ -113,9 +113,9 @@ describe("buildVisibleTaskRows recurring expansion", () => {
     expect(todayRows[0]?.occurrenceIso).toBe("2026-02-10T09:00:00");
 
     const next7Rows = buildRows(tasks, { status: "all", due: "next7" }, now);
-    expect(next7Rows).toHaveLength(8);
+    expect(next7Rows).toHaveLength(7);
     expect(next7Rows[0]?.occurrenceIso).toBe("2026-02-10T09:00:00");
-    expect(next7Rows[7]?.occurrenceIso).toBe("2026-02-17T09:00:00");
+    expect(next7Rows[6]?.occurrenceIso).toBe("2026-02-16T09:00:00");
   });
 
   it("suppresses virtual row when a matching materialized instance exists", () => {

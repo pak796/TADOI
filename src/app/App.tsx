@@ -323,6 +323,44 @@ function fitLineToWidth(value: string, width: number): string {
   return truncated.padEnd(width, " ");
 }
 
+function pickHelpCloseButtonLabel(maxWidth: number): string {
+  if (maxWidth >= "[Esc] Close".length + 2) return "[Esc] Close";
+  if (maxWidth >= "Close".length + 2) return "Close";
+  if (maxWidth >= "X".length + 2) return "X";
+  return "";
+}
+
+function normalizeHelpReturnContext(
+  mode: Mode,
+  focus: FocusTarget
+): { mode: Mode; focus: FocusTarget } {
+  const normalizedMode = mode === Mode.HELP ? Mode.LIST : mode;
+
+  if (normalizedMode === Mode.LIST) {
+    return { mode: normalizedMode, focus: FocusTarget.TASK_LIST };
+  }
+  if (normalizedMode === Mode.DASHBOARD) {
+    return { mode: normalizedMode, focus: FocusTarget.DASHBOARD };
+  }
+  if (normalizedMode === Mode.BACKUP_CENTER) {
+    return { mode: normalizedMode, focus: FocusTarget.BACKUP_CENTER };
+  }
+  if (normalizedMode === Mode.SEARCH) {
+    return { mode: normalizedMode, focus: FocusTarget.SEARCH_INPUT };
+  }
+  if (normalizedMode === Mode.MODAL_CONFIRM) {
+    return { mode: normalizedMode, focus: FocusTarget.MODAL };
+  }
+  if (
+    (normalizedMode === Mode.ADD || normalizedMode === Mode.EDIT) &&
+    toEditorFocus(focus) === null
+  ) {
+    return { mode: normalizedMode, focus: FocusTarget.EDITOR_TITLE };
+  }
+
+  return { mode: normalizedMode, focus };
+}
+
 function buildHelpRows(expandedBySection: boolean[]): {
   rows: HelpRow[];
   sections: HelpSectionLayout[];
@@ -611,6 +649,10 @@ export function App({
   const gPrefixTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navBannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const helpScrollRef = useRef<ScrollBoxRenderable | null>(null);
+  const helpReturnContextRef = useRef({
+    mode: Mode.LIST,
+    focus: FocusTarget.TASK_LIST
+  });
   const { height: terminalHeight, width: terminalWidth } = useTerminalDimensions();
   const terminalIsSupported = isTerminalSizeSupported(terminalWidth, terminalHeight);
   const terminalSizeWarning = getTerminalSizeWarning(terminalWidth, terminalHeight);
@@ -698,6 +740,12 @@ export function App({
   const helpContentVisibleRows = Math.max(1, helpPanelInnerHeight - HELP_PANEL_CHROME_ROWS);
   const helpHasOverflow = helpRows.length > helpContentVisibleRows;
   const helpFooterWidth = Math.max(1, helpPanelInnerWidth - 2);
+  const helpCloseButtonLabel = pickHelpCloseButtonLabel(Math.max(0, helpFooterWidth - 1));
+  const helpCloseButtonWidth = helpCloseButtonLabel ? helpCloseButtonLabel.length + 2 : 0;
+  const helpFooterHintLineWidth = Math.max(
+    1,
+    helpFooterWidth - helpCloseButtonWidth - (helpCloseButtonWidth > 0 ? 1 : 0)
+  );
   // Reserve one column when the Help scrollbox shows a vertical scrollbar so
   // wrapped lines do not add phantom rows and desync focus scroll math.
   const helpContentLineWidth = Math.max(1, helpFooterWidth - (helpHasOverflow ? 1 : 0));
@@ -706,7 +754,7 @@ export function App({
     helpHasOverflow
       ? "1 Backup Center | h theme | m flash | n notifications | o overdue popup | l bell | Up/Down focus | Enter/Space toggle | Left/Right collapse/expand | Esc close | Scroll"
       : "1 Backup Center | h theme | m flash | n notifications | o overdue popup | l bell | Up/Down focus | Enter/Space toggle | Left/Right collapse/expand | Esc close",
-    helpFooterWidth
+    helpFooterHintLineWidth
   );
   const helpFooterDataPathLine = fitLineToWidth(
     `Data path: ${getDataFilePath()}`,
@@ -1315,6 +1363,10 @@ export function App({
   ]);
 
   function applyEscUnwind(): boolean {
+    if (uiState.mode === Mode.HELP) {
+      closeHelp();
+      return true;
+    }
     const next = unwind(uiState);
     if (!next) return false;
     if (uiState.mode === Mode.BACKUP_CENTER) {
@@ -1457,6 +1509,14 @@ export function App({
     }
   }
 
+  function handleBackupBackAction() {
+    if (backupState.screen === "menu") {
+      applyEscUnwind();
+      return;
+    }
+    backupDispatch({ type: "back" });
+  }
+
   function handleBackupPrimaryAction() {
     switch (backupState.screen) {
       case "menu":
@@ -1531,11 +1591,7 @@ export function App({
         handleBackupPrimaryAction();
         return;
       case "BACKUP_BACK":
-        if (backupState.screen === "menu") {
-          applyEscUnwind();
-        } else {
-          backupDispatch({ type: "back" });
-        }
+        handleBackupBackAction();
         return;
       case "BACKUP_MOVE_MENU_SELECTION":
         backupDispatch({ type: "moveMenuIndex", delta: action.delta });
@@ -1782,6 +1838,10 @@ export function App({
     setHelpExpandedBySection(createDefaultHelpExpandedState());
     setHelpFocusedSectionIndex(0);
     setHelpScrollOffset(0);
+    helpReturnContextRef.current = {
+      mode: uiState.mode,
+      focus: uiState.focus
+    };
     uiDispatch({
       type: "captureReturnContext",
       mode: uiState.mode,
@@ -1833,8 +1893,12 @@ export function App({
   }
 
   function closeHelp() {
-    uiDispatch({ type: "setMode", mode: uiState.previousMode });
-    uiDispatch({ type: "setFocus", focus: uiState.previousFocus });
+    const { mode: returnMode, focus: returnFocus } = normalizeHelpReturnContext(
+      helpReturnContextRef.current.mode,
+      helpReturnContextRef.current.focus
+    );
+    uiDispatch({ type: "setMode", mode: returnMode });
+    uiDispatch({ type: "setFocus", focus: returnFocus });
   }
 
   function moveHelpSectionFocus(delta: 1 | -1) {
@@ -3631,6 +3695,12 @@ export function App({
             onReplaceConfirmChange={(value) =>
               backupDispatch({ type: "setReplaceConfirmInput", value })
             }
+            onPrimaryAction={handleBackupPrimaryAction}
+            onBackAction={handleBackupBackAction}
+            onMenuSelect={handleBackupMenuSelect}
+            onImportModeSelect={(mode) =>
+              backupDispatch({ type: "setImportMode", mode })
+            }
           />
         </box>
       ) : null}
@@ -3807,12 +3877,32 @@ export function App({
                   minHeight: 1,
                   maxHeight: 1,
                   width: "100%",
+                  flexDirection: "row",
+                  alignItems: "center",
                   paddingLeft: 1,
                   paddingRight: 1,
                   backgroundColor: theme.panel
                 }}
               >
                 <text style={{ color: theme.muted }}>{helpFooterHintsLine}</text>
+                {helpCloseButtonLabel ? (
+                  <box
+                    style={{
+                      marginLeft: 1,
+                      backgroundColor: theme.accentBlue,
+                      paddingLeft: 1,
+                      paddingRight: 1
+                    }}
+                    onMouseDown={(event) => {
+                      if (event.button !== 0) return;
+                      closeHelp();
+                    }}
+                  >
+                    <text style={{ color: theme.bg, fontWeight: "bold" }}>
+                      {helpCloseButtonLabel}
+                    </text>
+                  </box>
+                ) : null}
               </box>
               <box
                 style={{

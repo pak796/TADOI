@@ -19,19 +19,19 @@ function makeTask(partial: Partial<Task> & Pick<Task, "id" | "title">): Task {
 }
 
 describe("filterTasks next7/THIS WEEK boundaries", () => {
-  it("includes today and +7 days, excludes +8 days", () => {
+  it("includes today and +6 days, excludes +7 days", () => {
     const now = new Date(2026, 1, 8, 12, 0, 0, 0).getTime();
     const start = startOfLocalDayMs(now);
     const tasks: Task[] = [
       makeTask({ id: "t0", title: "today", dueAt: start }),
-      makeTask({ id: "t7", title: "plus7", dueAt: addLocalDaysMs(start, 7) }),
-      makeTask({ id: "t8", title: "plus8", dueAt: addLocalDaysMs(start, 8) })
+      makeTask({ id: "t6", title: "plus6", dueAt: addLocalDaysMs(start, 6) }),
+      makeTask({ id: "t7", title: "plus7", dueAt: addLocalDaysMs(start, 7) })
     ];
     const filters: Filters = { status: "all", due: "next7" };
     const result = filterTasks(tasks, filters, now).map((task) => task.id);
     expect(result).toContain("t0");
-    expect(result).toContain("t7");
-    expect(result).not.toContain("t8");
+    expect(result).toContain("t6");
+    expect(result).not.toContain("t7");
   });
 });
 

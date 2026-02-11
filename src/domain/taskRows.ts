@@ -103,7 +103,7 @@ function matchesDueFilter(task: Pick<Task, "status" | "dueAt" | "hasExplicitTime
   if (due === "today") {
     return dayDiff === 0;
   }
-  return dayDiff >= 0 && dayDiff <= 7;
+  return dayDiff >= 0 && dayDiff <= 6;
 }
 
 function matchesCommonFilters(
@@ -163,7 +163,7 @@ function buildSeriesVirtualRows(
 
   const startOfToday = startOfLocalDayMs(now);
   const endOfToday = addLocalDaysMs(startOfToday, 1) - 1;
-  const endOfNext7 = addLocalDaysMs(startOfToday, 8) - 1;
+  const endOfNext7 = addLocalDaysMs(startOfToday, 7) - 1;
 
   let occurrenceIsos: string[] = [];
 

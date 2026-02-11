@@ -2,11 +2,32 @@ import React from "react";
 import { theme } from "../app/theme";
 import type { BackupCenterState } from "../state/backupCenterFlow";
 
+type BackupButtonTone = "primary" | "danger" | "neutral";
+
 type BackupCenterScreenProps = {
   state: BackupCenterState;
   dataPath: string;
   onImportPathChange: (value: string) => void;
   onReplaceConfirmChange: (value: string) => void;
+  onPrimaryAction: () => void;
+  onBackAction: () => void;
+  onMenuSelect: (index: 0 | 1 | 2) => void;
+  onImportModeSelect: (mode: "merge" | "replace") => void;
+};
+
+type BackupActionButtonProps = {
+  label: string;
+  onPress: () => void;
+  tone?: BackupButtonTone;
+  active?: boolean;
+};
+
+type BackupFooterAction = {
+  key: string;
+  label: string;
+  onPress: () => void;
+  tone?: BackupButtonTone;
+  active?: boolean;
 };
 
 function renderImportStats(label: string, value: number): React.ReactNode {
@@ -45,11 +66,49 @@ function getStepLabel(screen: BackupCenterState["screen"]): string {
   }
 }
 
+function BackupActionButton({
+  label,
+  onPress,
+  tone = "primary",
+  active = false
+}: BackupActionButtonProps) {
+  const backgroundColor = active
+    ? theme.accentBlue
+    : tone === "danger"
+      ? theme.warn
+      : tone === "neutral"
+        ? theme.bg
+        : theme.accentBlue;
+  const textColor = active
+    ? theme.bg
+    : tone === "danger"
+      ? theme.bg
+      : tone === "neutral"
+        ? theme.text
+        : theme.bg;
+
+  return (
+    <box
+      style={{ backgroundColor, paddingLeft: 1, paddingRight: 1 }}
+      onMouseDown={(event) => {
+        if (event.button !== 0) return;
+        onPress();
+      }}
+    >
+      <text style={{ color: textColor, fontWeight: "bold" }}>{label}</text>
+    </box>
+  );
+}
+
 export function BackupCenterScreen({
   state,
   dataPath,
   onImportPathChange,
-  onReplaceConfirmChange
+  onReplaceConfirmChange,
+  onPrimaryAction,
+  onBackAction,
+  onMenuSelect,
+  onImportModeSelect
 }: BackupCenterScreenProps) {
   const modeLabel = state.importMode === "replace" ? "REPLACE" : "MERGE";
   const replaceArmed =
@@ -57,6 +116,76 @@ export function BackupCenterScreen({
   const dryRun = state.dryRun;
   const committed = state.committed;
   const stepLabel = getStepLabel(state.screen);
+  const menuOptions: Array<{ index: 0 | 1 | 2; label: string }> = [
+    { index: 0, label: "1) Export backup (recommended)" },
+    { index: 1, label: "2) Import data..." },
+    { index: 2, label: "3) Show data path" }
+  ];
+
+  let footerActions: BackupFooterAction[] = [];
+  switch (state.screen) {
+    case "menu":
+      footerActions = [
+        { key: "export", label: "Export", onPress: () => onMenuSelect(0) },
+        { key: "import", label: "Import", onPress: () => onMenuSelect(1) },
+        { key: "show-path", label: "Show Path", onPress: () => onMenuSelect(2) },
+        { key: "close", label: "Close", onPress: onBackAction, tone: "neutral" }
+      ];
+      break;
+    case "import_path":
+      footerActions = [
+        { key: "continue", label: "Continue", onPress: onPrimaryAction },
+        { key: "back", label: "Back", onPress: onBackAction, tone: "neutral" }
+      ];
+      break;
+    case "import_mode":
+      footerActions = [
+        {
+          key: "merge",
+          label: "Merge",
+          onPress: () => onImportModeSelect("merge"),
+          active: state.importMode === "merge"
+        },
+        {
+          key: "replace",
+          label: "Replace",
+          onPress: () => onImportModeSelect("replace"),
+          tone: "danger",
+          active: state.importMode === "replace"
+        },
+        { key: "dry-run", label: "Dry-run", onPress: onPrimaryAction },
+        { key: "back", label: "Back", onPress: onBackAction, tone: "neutral" }
+      ];
+      break;
+    case "import_confirm":
+      footerActions = [
+        {
+          key: "confirm-replace",
+          label: "Confirm Replace",
+          onPress: onPrimaryAction,
+          tone: "danger"
+        },
+        { key: "cancel", label: "Cancel", onPress: onBackAction, tone: "neutral" }
+      ];
+      break;
+    case "import_dryrun":
+      footerActions = [
+        { key: "commit", label: "Commit Import", onPress: onPrimaryAction },
+        { key: "back", label: "Back", onPress: onBackAction, tone: "neutral" }
+      ];
+      break;
+    case "export_done":
+    case "import_done":
+    case "show_path":
+    case "error":
+      footerActions = [{ key: "back-menu", label: "Back to Menu", onPress: onPrimaryAction }];
+      break;
+    case "exporting":
+    case "importing":
+    default:
+      footerActions = [];
+      break;
+  }
 
   return (
     <box
@@ -79,15 +208,11 @@ export function BackupCenterScreen({
       </box>
       {state.screen === "menu" ? (
         <box style={{ flexDirection: "column", marginTop: 1, gap: 0 }}>
-          {[
-            "1) Export backup (recommended)",
-            "2) Import data...",
-            "3) Show data path"
-          ].map((item, index) => {
-            const selected = state.menuIndex === index;
+          {menuOptions.map((option) => {
+            const selected = state.menuIndex === option.index;
             return (
               <box
-                key={item}
+                key={option.label}
                 style={{
                   backgroundColor: selected ? theme.accentBlue : "transparent",
                   paddingLeft: 1,
@@ -96,7 +221,7 @@ export function BackupCenterScreen({
               >
                 <text style={{ color: selected ? theme.bg : theme.text }}>
                   {selected ? "> " : "  "}
-                  {item}
+                  {option.label}
                 </text>
               </box>
             );
@@ -255,6 +380,20 @@ export function BackupCenterScreen({
             </>
           ) : null}
           <text style={{ color: theme.muted, marginTop: 1 }}>Enter or Esc: back</text>
+        </box>
+      ) : null}
+
+      {footerActions.length > 0 ? (
+        <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
+          {footerActions.map((action) => (
+            <BackupActionButton
+              key={action.key}
+              label={action.label}
+              onPress={action.onPress}
+              tone={action.tone}
+              active={action.active}
+            />
+          ))}
         </box>
       ) : null}
     </box>
