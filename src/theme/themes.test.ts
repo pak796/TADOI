@@ -9,7 +9,11 @@ describe("theme registry", () => {
     expect(cycleTheme("neonHacker")).toBe("lightSlate");
     expect(cycleTheme("lightSlate")).toBe("paperWhite");
     expect(cycleTheme("paperWhite")).toBe("midnightBlack");
-    expect(cycleTheme("midnightBlack")).toBe("rotating");
+    expect(cycleTheme("midnightBlack")).toBe("jester");
+    expect(cycleTheme("jester")).toBe("sonora");
+    expect(cycleTheme("sonora")).toBe("tigers");
+    expect(cycleTheme("tigers")).toBe("tech");
+    expect(cycleTheme("tech")).toBe("rotating");
     expect(cycleTheme("rotating")).toBe("default");
   });
 
@@ -22,6 +26,10 @@ describe("theme registry", () => {
       "lightSlate",
       "paperWhite",
       "midnightBlack",
+      "jester",
+      "sonora",
+      "tigers",
+      "tech",
       "rotating"
     ]);
   });
@@ -34,7 +42,11 @@ describe("theme registry", () => {
       "neonHacker",
       "lightSlate",
       "paperWhite",
-      "midnightBlack"
+      "midnightBlack",
+      "jester",
+      "sonora",
+      "tigers",
+      "tech"
     ]);
   });
 
@@ -108,6 +120,74 @@ describe("theme registry", () => {
       danger: "#8f3f45",
       selectionBg: "#1a2431",
       selectionText: "#d7dde7"
+    });
+  });
+
+  it("defines mardi gras jester palette tokens", () => {
+    expect(THEMES.jester).toMatchObject({
+      bg: "#12081e",
+      panel: "#241138",
+      text: "#f4f0ff",
+      mutedText: "#c7b8de",
+      border: "#5d3f8c",
+      accent: "#d8b24a",
+      accent2: "#2ea66a",
+      ok: "#42c978",
+      warn: "#f2c14e",
+      danger: "#c94c9b",
+      selectionBg: "#6a4bc2",
+      selectionText: "#12081e"
+    });
+  });
+
+  it("defines soft desert sonora palette tokens", () => {
+    expect(THEMES.sonora).toMatchObject({
+      bg: "#f3e8d7",
+      panel: "#eadcc8",
+      text: "#3c3228",
+      mutedText: "#7b6a58",
+      border: "#c7b39b",
+      accent: "#c97d5d",
+      accent2: "#8ca67b",
+      ok: "#6f9b74",
+      warn: "#d8a25a",
+      danger: "#b75b4f",
+      selectionBg: "#d6bfa5",
+      selectionText: "#3c3228"
+    });
+  });
+
+  it("defines lsu tigers purple/gold/white palette tokens", () => {
+    expect(THEMES.tigers).toMatchObject({
+      bg: "#2f0d57",
+      panel: "#4a1f78",
+      text: "#ffffff",
+      mutedText: "#e9defb",
+      border: "#fdd023",
+      accent: "#fdd023",
+      accent2: "#ffffff",
+      ok: "#f6cb3b",
+      warn: "#ffde59",
+      danger: "#6a32a8",
+      selectionBg: "#fdd023",
+      selectionText: "#2f0d57"
+    });
+  });
+
+  it("defines georgia tech inspired palette tokens", () => {
+    expect(THEMES.tech).toMatchObject({
+      bg: "#002c5f",
+      panel: "#003b7a",
+      text: "#f7f8fa",
+      mutedText: "#c9d3e2",
+      border: "#b3a369",
+      accent: "#b3a369",
+      accent2: "#eaaa00",
+      ok: "#c7b479",
+      warn: "#eaaa00",
+      danger: "#9d822f",
+      selectionBg: "#e0cf99",
+      selectionText: "#002c5f"
     });
   });
 });

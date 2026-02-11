@@ -6,6 +6,10 @@ export type ThemeId =
   | "lightSlate"
   | "paperWhite"
   | "midnightBlack"
+  | "jester"
+  | "sonora"
+  | "tigers"
+  | "tech"
   | "rotating";
 
 export type ConcreteThemeId = Exclude<ThemeId, "rotating">;
@@ -124,6 +128,62 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     selectionBg: "#1a2431",
     selectionText: "#d7dde7"
   },
+  jester: {
+    bg: "#12081e",
+    panel: "#241138",
+    text: "#f4f0ff",
+    mutedText: "#c7b8de",
+    border: "#5d3f8c",
+    accent: "#d8b24a",
+    accent2: "#2ea66a",
+    ok: "#42c978",
+    warn: "#f2c14e",
+    danger: "#c94c9b",
+    selectionBg: "#6a4bc2",
+    selectionText: "#12081e"
+  },
+  sonora: {
+    bg: "#f3e8d7",
+    panel: "#eadcc8",
+    text: "#3c3228",
+    mutedText: "#7b6a58",
+    border: "#c7b39b",
+    accent: "#c97d5d",
+    accent2: "#8ca67b",
+    ok: "#6f9b74",
+    warn: "#d8a25a",
+    danger: "#b75b4f",
+    selectionBg: "#d6bfa5",
+    selectionText: "#3c3228"
+  },
+  tigers: {
+    bg: "#2f0d57",
+    panel: "#4a1f78",
+    text: "#ffffff",
+    mutedText: "#e9defb",
+    border: "#fdd023",
+    accent: "#fdd023",
+    accent2: "#ffffff",
+    ok: "#f6cb3b",
+    warn: "#ffde59",
+    danger: "#6a32a8",
+    selectionBg: "#fdd023",
+    selectionText: "#2f0d57"
+  },
+  tech: {
+    bg: "#002c5f",
+    panel: "#003b7a",
+    text: "#f7f8fa",
+    mutedText: "#c9d3e2",
+    border: "#b3a369",
+    accent: "#b3a369",
+    accent2: "#eaaa00",
+    ok: "#c7b479",
+    warn: "#eaaa00",
+    danger: "#9d822f",
+    selectionBg: "#e0cf99",
+    selectionText: "#002c5f"
+  },
   // "rotating" is a virtual mode; this fallback prevents invalid lookups before
   // runtime rotation applies a concrete palette.
   rotating: {
@@ -150,6 +210,10 @@ export const THEME_ORDER: ThemeId[] = [
   "lightSlate",
   "paperWhite",
   "midnightBlack",
+  "jester",
+  "sonora",
+  "tigers",
+  "tech",
   "rotating"
 ];
 
@@ -160,7 +224,11 @@ export const ROTATING_THEME_ORDER: ConcreteThemeId[] = [
   "neonHacker",
   "lightSlate",
   "paperWhite",
-  "midnightBlack"
+  "midnightBlack",
+  "jester",
+  "sonora",
+  "tigers",
+  "tech"
 ];
 
 export function cycleTheme(current: ThemeId): ThemeId {
@@ -179,6 +247,10 @@ export function isThemeId(value: unknown): value is ThemeId {
       value === "lightSlate" ||
       value === "paperWhite" ||
       value === "midnightBlack" ||
+      value === "jester" ||
+      value === "sonora" ||
+      value === "tigers" ||
+      value === "tech" ||
       value === "rotating")
   );
 }
