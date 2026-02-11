@@ -6,11 +6,11 @@
 - Implement in small, reviewable commits.
 - Keep "domain" logic pure; write unit tests where appropriate.
 
-v0.2.8 scope note:
+v0.2.9 scope note:
 - This version carries forward foundation polish, packaging readiness, portability, and dashboard work from prior increments.
 - It keeps routing and persistence discipline strict while aligning runtime and documentation to current release behavior.
 - It codifies graceful interactive exit teardown and renderer-managed `Ctrl+C` handling in implementation expectations.
-- Current app version surfaces are aligned to `v0.2.8` / `0.2.8`.
+- Current app version surfaces are aligned to `v0.2.9` / `0.2.9`.
 
 recurrence extension note:
 - Recurring tasks are now in scope and implemented with schema v4, RRULE-based series metadata, sparse materialization, and recurrence-aware list/dashboard selectors.
@@ -1279,17 +1279,17 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 - Help pane displays `App Version: v0.2.3`.
 - `package.json` version is `0.2.3`.
 
-## T12.3 Version surfaces sync to v0.2.8
+## T12.3 Version surfaces sync to v0.2.9
 **Status**: Complete
 **Implement**
-- Update `APP_VERSION` to `v0.2.8`.
-- Update `package.json` version to `0.2.8`.
+- Update `APP_VERSION` to `v0.2.9`.
+- Update `package.json` version to `0.2.9`.
 - Keep left rail and help pane bound to centralized `APP_VERSION`.
 
 **DoD**
-- Left rail shows `v0.2.8`.
-- Help pane displays `App Version: v0.2.8`.
-- `package.json` version is `0.2.8`.
+- Left rail shows `v0.2.9`.
+- Help pane displays `App Version: v0.2.9`.
+- `package.json` version is `0.2.9`.
 
 ---
 
@@ -1635,7 +1635,7 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 
 ---
 
-# Phase 17 — v0.2.8 Interaction Polish (Mouse + Input Guard)
+# Phase 17 — v0.2.9 Interaction Polish (Mouse + Input Guard)
 
 > Scope note: this phase hardens mouse interaction parity and prevents keyboard mode-switch leakage while users are typing.
 
@@ -1675,7 +1675,7 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 
 ---
 
-# Phase 18 — Post-v0.2.8 Dashboard + UX Alignment
+# Phase 18 — Post-v0.2.9 Dashboard + UX Alignment
 
 > Scope note: this phase captures runtime enhancements shipped after the initial dashboard MVP and interaction polish pass.
 
@@ -1774,7 +1774,7 @@ Refs: `useKeyboard` patterns.  [oai_citation:9‡GitHub](https://github.com/remo
 
 # Phase 19 — Notifications Modal Actions + Theme Expansion
 
-> Scope note: this phase captures post-v0.2.8 runtime updates for overdue notification UX and expanded theme catalog coverage.
+> Scope note: this phase captures post-v0.2.9 runtime updates for overdue notification UX and expanded theme catalog coverage.
 
 ## T19.1 Replace in-app overdue banner with actionable popup modal queue
 **Status**: Complete

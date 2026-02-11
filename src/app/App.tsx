@@ -14,6 +14,7 @@ import { EditorPane } from "../components/EditorPane";
 import { LeftRail, type LeftRailMenuItem } from "../components/LeftRail";
 import { DashboardPane } from "../components/DashboardPane";
 import { BackupCenterScreen } from "../components/BackupCenterScreen";
+import { OverdueNotificationModal } from "../components/OverdueNotificationModal";
 import { diffLocalDays, startOfLocalDayMs } from "../domain/dates";
 import { computeTopTagsOpen } from "../domain/dashboard";
 import {
@@ -105,9 +106,15 @@ import {
   importBackup
 } from "../state/backupService";
 import { NotificationManager } from "../notifications/notificationManager";
-import { InAppBannerNotifier } from "../notifications/notifiers/inAppBannerNotifier";
+import { InAppModalNotifier } from "../notifications/notifiers/inAppModalNotifier";
 import { OSNotifier } from "../notifications/notifiers/osNotifier";
 import { TerminalBellNotifier } from "../notifications/notifiers/terminalBellNotifier";
+import {
+  applyOverdueMarkDone,
+  applyOverdueSnooze,
+  resolveGoToTaskTarget
+} from "../notifications/overdueTaskActions";
+import type { TaskOverdueEvent } from "../notifications/types";
 import { APP_VERSION } from "./version";
 import { getTerminalSizeWarning, isTerminalSizeSupported } from "./layoutGuard";
 import { APP_NAME, APP_TAGLINE, ENV_VARS } from "../brand/brand";
@@ -263,8 +270,8 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
         description: "Master switch for overdue notifications."
       },
       {
-        title: "o/O toggle overdue banner",
-        description: "Enable or disable in-app overdue banners."
+        title: "o/O toggle overdue popup",
+        description: "Enable or disable in-app overdue popups."
       },
       {
         title: "l/L toggle terminal bell",
@@ -587,8 +594,6 @@ export function App({
   const [timeSuggestion, setTimeSuggestion] = useState<SuggestedTime | null>(null);
   const [saveFailureBanner, setSaveFailureBanner] = useState<string | null>(null);
   const [navigationBanner, setNavigationBanner] = useState<string | null>(null);
-  const [overdueBannerQueue, setOverdueBannerQueue] = useState<string[]>([]);
-  const [activeOverdueBanner, setActiveOverdueBanner] = useState<string | null>(null);
   const [pendingGPrefix, setPendingGPrefix] = useState(false);
   const [viewsOverlayOpen, setViewsOverlayOpen] = useState(false);
   const [selectedViewIndex, setSelectedViewIndex] = useState(0);
@@ -605,7 +610,6 @@ export function App({
   const lastSuccessfulSaveAtRef = useRef<number | undefined>(undefined);
   const gPrefixTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navBannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const overdueBannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const helpScrollRef = useRef<ScrollBoxRenderable | null>(null);
   const { height: terminalHeight, width: terminalWidth } = useTerminalDimensions();
   const terminalIsSupported = isTerminalSizeSupported(terminalWidth, terminalHeight);
@@ -613,22 +617,23 @@ export function App({
   const settingsRef = useRef(settingsState);
   const tasksRef = useRef(state.tasks);
   const notificationManagerRef = useRef<NotificationManager | null>(null);
+  const modalBellNotifierRef = useRef<TerminalBellNotifier | null>(null);
   const evaluateNotificationsRef = useRef<(nowMs: number) => void>(() => {});
 
   settingsRef.current = settingsState;
   tasksRef.current = state.tasks;
 
   if (!notificationManagerRef.current) {
-    const inAppBannerNotifier = new InAppBannerNotifier({
-      enqueueBanner: (message) => {
-        setOverdueBannerQueue((prev) => [...prev, message]);
+    const inAppModalNotifier = new InAppModalNotifier({
+      enqueueEvent: (event: TaskOverdueEvent) => {
+        uiDispatch({ type: "enqueueNotificationModal", event });
       },
       isEnabled: () => {
         const notifications = settingsRef.current.notifications;
         return notifications.enabled && notifications.inAppOverdueBanner;
       }
     });
-    const terminalBellNotifier = new TerminalBellNotifier({
+    modalBellNotifierRef.current = new TerminalBellNotifier({
       isEnabled: () => {
         const notifications = settingsRef.current.notifications;
         return notifications.enabled && notifications.terminalBellOnOverdue;
@@ -637,8 +642,7 @@ export function App({
     });
     const osNotifier = new OSNotifier();
     notificationManagerRef.current = new NotificationManager([
-      inAppBannerNotifier,
-      terminalBellNotifier,
+      inAppModalNotifier,
       osNotifier
     ]);
   }
@@ -700,8 +704,8 @@ export function App({
   const helpPageStep = Math.max(1, helpContentVisibleRows - 1);
   const helpFooterHintsLine = fitLineToWidth(
     helpHasOverflow
-      ? "1 Backup Center | h theme | m flash | n notifications | o overdue banner | l bell | Up/Down focus | Enter/Space toggle | Left/Right collapse/expand | Esc close | Scroll"
-      : "1 Backup Center | h theme | m flash | n notifications | o overdue banner | l bell | Up/Down focus | Enter/Space toggle | Left/Right collapse/expand | Esc close",
+      ? "1 Backup Center | h theme | m flash | n notifications | o overdue popup | l bell | Up/Down focus | Enter/Space toggle | Left/Right collapse/expand | Esc close | Scroll"
+      : "1 Backup Center | h theme | m flash | n notifications | o overdue popup | l bell | Up/Down focus | Enter/Space toggle | Left/Right collapse/expand | Esc close",
     helpFooterWidth
   );
   const helpFooterDataPathLine = fitLineToWidth(
@@ -712,6 +716,10 @@ export function App({
   function findTaskById(taskId: string | undefined): Task | undefined {
     if (!taskId) return undefined;
     return state.tasks.find((task) => task.id === taskId);
+  }
+
+  function findTaskForOverdueEvent(event: TaskOverdueEvent): Task | undefined {
+    return findTaskById(event.taskId);
   }
 
   function findSeriesTaskBySeriesId(seriesId: string | undefined): Task | undefined {
@@ -745,7 +753,7 @@ export function App({
   const activeBanners = [startupBanner, saveFailureBanner, navigationBanner].filter(
     (value): value is string => Boolean(value)
   );
-  const bannerHeight = activeBanners.length + (activeOverdueBanner ? 1 : 0);
+  const bannerHeight = activeBanners.length;
   const listPanelBorder = 2;
   const listPanelPadding = 2;
   const searchHeight = uiState.mode === Mode.SEARCH ? 3 : 0;
@@ -915,7 +923,7 @@ export function App({
     helpContentLineWidth
   );
   const helpInAppBannerStatusLine = fitLineToWidth(
-    `    Overdue banner: ${settingsState.notifications.inAppOverdueBanner ? "on" : "off"}`,
+    `    Overdue popup: ${settingsState.notifications.inAppOverdueBanner ? "on" : "off"}`,
     helpContentLineWidth
   );
   const helpTerminalBellStatusLine = fitLineToWidth(
@@ -953,6 +961,13 @@ export function App({
         3
       )
     : [];
+  const activeOverdueModal =
+    uiState.mode === Mode.MODAL_CONFIRM && uiState.modal?.type === "overdue"
+      ? uiState.modal
+      : null;
+  const activeOverdueTask = activeOverdueModal
+    ? findTaskForOverdueEvent(activeOverdueModal.event)
+    : undefined;
   const renderStartMs = Date.now();
 
   function formatSaveTimestamp(epochMs: number): string {
@@ -1042,30 +1057,41 @@ export function App({
   }, [state.tasks]);
 
   useEffect(() => {
-    if (activeOverdueBanner !== null) return;
-    if (overdueBannerQueue.length === 0) return;
-    const nextBanner = overdueBannerQueue[0];
-    setActiveOverdueBanner(nextBanner);
-    setOverdueBannerQueue((prev) => prev.slice(1));
-  }, [activeOverdueBanner, overdueBannerQueue]);
-
-  useEffect(() => {
-    if (!activeOverdueBanner) return;
-    if (overdueBannerTimerRef.current) {
-      clearTimeout(overdueBannerTimerRef.current);
+    if (
+      !settingsState.notifications.enabled ||
+      !settingsState.notifications.inAppOverdueBanner
+    ) {
+      return;
     }
-    overdueBannerTimerRef.current = setTimeout(() => {
-      setActiveOverdueBanner(null);
-      overdueBannerTimerRef.current = null;
-    }, settingsState.notifications.bannerDurationMs);
+    if (uiState.modal) return;
+    if (uiState.notificationModalQueue.length === 0) return;
 
-    return () => {
-      if (overdueBannerTimerRef.current) {
-        clearTimeout(overdueBannerTimerRef.current);
+    const nextEvent = uiState.notificationModalQueue[0];
+    const previousMode = uiState.mode === Mode.MODAL_CONFIRM ? Mode.LIST : uiState.mode;
+    const previousFocus =
+      uiState.mode === Mode.MODAL_CONFIRM ? FocusTarget.TASK_LIST : uiState.focus;
+
+    uiDispatch({ type: "dequeueNotificationModal" });
+    uiDispatch({
+      type: "setModal",
+      modal: {
+        type: "overdue",
+        event: nextEvent,
+        previousMode,
+        previousFocus
       }
-      overdueBannerTimerRef.current = null;
-    };
-  }, [activeOverdueBanner, settingsState.notifications.bannerDurationMs]);
+    });
+    uiDispatch({ type: "setMode", mode: Mode.MODAL_CONFIRM });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.MODAL });
+    modalBellNotifierRef.current?.notify(nextEvent);
+  }, [
+    settingsState.notifications.enabled,
+    settingsState.notifications.inAppOverdueBanner,
+    uiState.modal,
+    uiState.mode,
+    uiState.focus,
+    uiState.notificationModalQueue
+  ]);
 
   useEffect(() => {
     if (
@@ -1074,15 +1100,17 @@ export function App({
     ) {
       return;
     }
-    if (overdueBannerTimerRef.current) {
-      clearTimeout(overdueBannerTimerRef.current);
-      overdueBannerTimerRef.current = null;
+    if (uiState.notificationModalQueue.length > 0) {
+      uiDispatch({ type: "clearNotificationModalQueue" });
     }
-    setActiveOverdueBanner(null);
-    setOverdueBannerQueue([]);
+    if (uiState.modal?.type === "overdue") {
+      applyEscUnwind();
+    }
   }, [
     settingsState.notifications.enabled,
-    settingsState.notifications.inAppOverdueBanner
+    settingsState.notifications.inAppOverdueBanner,
+    uiState.modal,
+    uiState.notificationModalQueue.length
   ]);
 
   useEffect(() => {
@@ -1092,9 +1120,6 @@ export function App({
       }
       if (navBannerTimerRef.current) {
         clearTimeout(navBannerTimerRef.current);
-      }
-      if (overdueBannerTimerRef.current) {
-        clearTimeout(overdueBannerTimerRef.current);
       }
     };
   }, []);
@@ -1594,7 +1619,7 @@ export function App({
         const nextEnabled = !settingsState.notifications.inAppOverdueBanner;
         settingsDispatch({ type: "toggleInAppOverdueBanner" });
         showShortNavigationBanner(
-          `Overdue banner: ${nextEnabled ? "on" : "off"}`
+          `Overdue popup: ${nextEnabled ? "on" : "off"}`
         );
         return;
       }
@@ -1659,6 +1684,15 @@ export function App({
         return;
       case "MODAL_CONFIRM_DELETE":
         handleDeleteSelected();
+        return;
+      case "MODAL_OVERDUE_SNOOZE":
+        handleOverdueModalSnooze();
+        return;
+      case "MODAL_OVERDUE_DONE":
+        handleOverdueModalDone();
+        return;
+      case "MODAL_OVERDUE_GO_TO_TASK":
+        handleOverdueModalGoToTask();
         return;
       case "CYCLE_STATUS":
         cycleStatus();
@@ -2812,6 +2846,67 @@ export function App({
     applyEscUnwind();
   }
 
+  function getActiveOverdueModalEvent(): TaskOverdueEvent | null {
+    if (uiState.mode !== Mode.MODAL_CONFIRM) return null;
+    if (!uiState.modal || uiState.modal.type !== "overdue") return null;
+    return uiState.modal.event;
+  }
+
+  function handleOverdueModalSnooze() {
+    const event = getActiveOverdueModalEvent();
+    if (!event) return;
+    const updatedTasks = applyOverdueSnooze(state.tasks, event, Date.now(), 10);
+    dispatch({ type: "setTasks", tasks: updatedTasks });
+    applyEscUnwind();
+  }
+
+  function handleOverdueModalDone() {
+    const event = getActiveOverdueModalEvent();
+    if (!event) return;
+    const updatedTasks = applyOverdueMarkDone(state.tasks, event, Date.now());
+    dispatch({ type: "setTasks", tasks: updatedTasks });
+    applyEscUnwind();
+  }
+
+  function handleOverdueModalGoToTask() {
+    const event = getActiveOverdueModalEvent();
+    if (!event) return;
+
+    openListMode();
+    dispatch({
+      type: "setFilters",
+      filters: {
+        status: "all",
+        due: "any",
+        tag: undefined,
+        searchText: undefined
+      }
+    });
+
+    const goToTarget = resolveGoToTaskTarget(state.tasks, event);
+    const revealRows = buildVisibleTaskRows(
+      state.tasks,
+      {
+        status: "all",
+        due: "any",
+        tag: undefined,
+        searchText: undefined
+      },
+      state.sortMode,
+      Date.now()
+    );
+    const selectedRow =
+      revealRows.find((row) => row.id === goToTarget.preferredTaskId) ??
+      (goToTarget.fallbackSourceTaskId
+        ? revealRows.find((row) => row.sourceTaskId === goToTarget.fallbackSourceTaskId)
+        : undefined) ??
+      revealRows[0];
+    if (selectedRow) {
+      dispatch({ type: "setSelected", id: selectedRow.id });
+    }
+    showShortNavigationBanner(`Jumped to overdue task: ${event.title}`);
+  }
+
   function cycleStatus() {
     const order: Array<"all" | "open" | "done" | "archived"> = [
       "all",
@@ -3253,19 +3348,6 @@ export function App({
           );
         })}
 
-        {activeOverdueBanner ? (
-          <box
-            style={{
-              height: 1,
-              backgroundColor: theme.warn,
-              paddingLeft: 1,
-              paddingRight: 1
-            }}
-          >
-            <text style={{ color: theme.bg }}>{activeOverdueBanner}</text>
-          </box>
-        ) : null}
-
         <box
           style={{
             height: 3,
@@ -3400,7 +3482,7 @@ export function App({
         </box>
       </box>
 
-      {uiState.mode === Mode.MODAL_CONFIRM && uiState.modal?.type === "delete" ? (
+      {uiState.mode === Mode.MODAL_CONFIRM && uiState.modal ? (
         <box
           style={{
             position: "absolute",
@@ -3412,39 +3494,53 @@ export function App({
             alignItems: "center"
           }}
         >
-          <box style={{ padding: 2, backgroundColor: theme.warn, color: theme.bg }}>
-            <text>DELETE SELECTED TASK? (y/n)</text>
-            <text>{uiState.modal.taskTitle}</text>
-            <text>ID: {uiState.modal.taskId.slice(0, 8)}</text>
-            <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
-              <box
-                style={{
-                  backgroundColor: theme.bg,
-                  paddingLeft: 2,
-                  paddingRight: 2
-                }}
-                onMouseDown={(event) => {
-                  if (event.button !== 0) return;
-                  confirmDeleteSelectedFromModal();
-                }}
-              >
-                <text style={{ color: theme.warn, fontWeight: "bold" }}>YES</text>
-              </box>
-              <box
-                style={{
-                  backgroundColor: theme.bg,
-                  paddingLeft: 2,
-                  paddingRight: 2
-                }}
-                onMouseDown={(event) => {
-                  if (event.button !== 0) return;
-                  cancelDeleteSelectedFromModal();
-                }}
-              >
-                <text style={{ color: theme.warn, fontWeight: "bold" }}>NO</text>
+          {uiState.modal.type === "delete" ? (
+            <box style={{ padding: 2, backgroundColor: theme.warn, color: theme.bg }}>
+              <text>DELETE SELECTED TASK? (y/n)</text>
+              <text>{uiState.modal.taskTitle}</text>
+              <text>ID: {uiState.modal.taskId.slice(0, 8)}</text>
+              <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
+                <box
+                  style={{
+                    backgroundColor: theme.bg,
+                    paddingLeft: 2,
+                    paddingRight: 2
+                  }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    confirmDeleteSelectedFromModal();
+                  }}
+                >
+                  <text style={{ color: theme.warn, fontWeight: "bold" }}>YES</text>
+                </box>
+                <box
+                  style={{
+                    backgroundColor: theme.bg,
+                    paddingLeft: 2,
+                    paddingRight: 2
+                  }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    cancelDeleteSelectedFromModal();
+                  }}
+                >
+                  <text style={{ color: theme.warn, fontWeight: "bold" }}>NO</text>
+                </box>
               </box>
             </box>
-          </box>
+          ) : activeOverdueModal ? (
+            <OverdueNotificationModal
+              event={activeOverdueModal.event}
+              task={activeOverdueTask}
+              nowMs={now}
+              onSnooze={handleOverdueModalSnooze}
+              onDone={handleOverdueModalDone}
+              onGoToTask={handleOverdueModalGoToTask}
+              onDismiss={() => {
+                applyEscUnwind();
+              }}
+            />
+          ) : null}
         </box>
       ) : null}
 

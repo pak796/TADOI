@@ -1,12 +1,22 @@
 import { FocusTarget, Mode, isEditorMode, isModalMode, type Mode as ModeType } from "./modeFocus";
+import type { TaskOverdueEvent } from "../notifications/types";
 
-export type UIConfirmModal = {
+export type UIDeleteModal = {
   type: "delete";
   taskId: string;
   taskTitle: string;
   previousMode: Exclude<ModeType, typeof Mode.MODAL_CONFIRM>;
   previousFocus: FocusTarget;
 };
+
+export type UIOverdueModal = {
+  type: "overdue";
+  event: TaskOverdueEvent;
+  previousMode: Exclude<ModeType, typeof Mode.MODAL_CONFIRM>;
+  previousFocus: FocusTarget;
+};
+
+export type UIConfirmModal = UIDeleteModal | UIOverdueModal;
 
 export type UIState = {
   mode: ModeType;
@@ -15,6 +25,7 @@ export type UIState = {
   scrollOffset: number;
   editorScrollOffset: number;
   modal: UIConfirmModal | null;
+  notificationModalQueue: TaskOverdueEvent[];
   previousMode: ModeType;
   previousFocus: FocusTarget;
 };
@@ -23,6 +34,9 @@ export type UIAction =
   | { type: "setMode"; mode: ModeType }
   | { type: "setFocus"; focus: FocusTarget }
   | { type: "setModal"; modal: UIConfirmModal | null }
+  | { type: "enqueueNotificationModal"; event: TaskOverdueEvent }
+  | { type: "dequeueNotificationModal" }
+  | { type: "clearNotificationModalQueue" }
   | { type: "setSelectedIndex"; selectedIndex: number }
   | { type: "setScrollOffset"; scrollOffset: number }
   | { type: "setEditorScrollOffset"; scrollOffset: number }
@@ -41,6 +55,7 @@ export const initialUIState: UIState = {
   scrollOffset: 0,
   editorScrollOffset: 0,
   modal: null,
+  notificationModalQueue: [],
   previousMode: Mode.LIST,
   previousFocus: FocusTarget.TASK_LIST
 };
@@ -53,6 +68,24 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
       return { ...state, focus: action.focus };
     case "setModal":
       return { ...state, modal: action.modal };
+    case "enqueueNotificationModal":
+      return {
+        ...state,
+        notificationModalQueue: [...state.notificationModalQueue, action.event]
+      };
+    case "dequeueNotificationModal":
+      if (state.notificationModalQueue.length === 0) {
+        return state;
+      }
+      return {
+        ...state,
+        notificationModalQueue: state.notificationModalQueue.slice(1)
+      };
+    case "clearNotificationModalQueue":
+      if (state.notificationModalQueue.length === 0) {
+        return state;
+      }
+      return { ...state, notificationModalQueue: [] };
     case "setSelectedIndex":
       return { ...state, selectedIndex: action.selectedIndex };
     case "setScrollOffset":

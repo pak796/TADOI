@@ -5,12 +5,12 @@
 Build a keyboard-first terminal TUI todo app with a **retro Star Trek-inspired layout**, using **OpenTUI** + **@opentui/react** on **Bun**.
 Naming: use **TADOI** consistently in the app UI and filenames.
 
-v0.2.8 scope note:
+v0.2.9 scope note:
 - This version carries forward foundation polish, packaging readiness, data portability, and dashboard contracts from prior increments.
 - It keeps persistence and routing discipline strict while aligning runtime/documentation behavior to current release expectations.
 - It codifies graceful interactive exit teardown (`renderer.destroy()` in app handlers) and renderer-managed `Ctrl+C` behavior.
-- Current app version surfaces are aligned to `v0.2.8` / `0.2.8`.
-- Runtime addendum (post-v0.2.8 docs sync): notifications now surface as actionable overdue popups (modal queue) and theme registry includes expanded accessibility/brand palettes.
+- Current app version surfaces are aligned to `v0.2.9` / `0.2.9`.
+- Runtime addendum (post-v0.2.9 docs sync): notifications now surface as actionable overdue popups (modal queue) and theme registry includes expanded accessibility/brand palettes.
 
 recurrence extension note:
 - Recurring tasks are now implemented with RRULE-style metadata (`dtstart`, `rrule`, `exdates`, `series_id`) and sparse materialization (`instance_of` rows for per-occurrence overrides/history).
@@ -87,7 +87,7 @@ Deliverables:
 55. **Left rail logo separator**: render a horizontal ASCII separator under TADOI logo before version/menu metadata.
 56. **Help pane app version**: show the current app version in the Help overlay.
 57. **Rotating theme mode**: support a `rotating` theme option that auto-cycles concrete palettes every 15 seconds.
-58. **v0.2.8 version surfaces**: app version indicators and package metadata are aligned to `v0.2.8` / `0.2.8`.
+58. **v0.2.9 version surfaces**: app version indicators and package metadata are aligned to `v0.2.9` / `0.2.9`.
 59. **Daily-driver list navigation primitives**: add `gg` (top), `G` (bottom), page navigation (`ctrl+u` / `ctrl+d`, plus PageUp/PageDown), and attention jumps (`[`/`]` for overdue, `{`/`}` for due-today).
 60. **Saved Views (filter presets)**: users can save/apply/delete up to 9 filter presets (`v`, `ctrl+s`, `1..9`) with persistence and schema migration support.
 61. **Global active-tag cycle filter**: `t` cycles through tags from all active (open) tasks, not only the selected task.
@@ -736,7 +736,7 @@ Version contract:
 - App version is centralized in `src/app/version.ts` as `APP_VERSION`.
 - Left rail displays `APP_VERSION`.
 - Help pane displays `App Version: <APP_VERSION>`.
-- Package metadata in `package.json` matches the same release (`0.2.8`).
+- Package metadata in `package.json` matches the same release (`0.2.9`).
 
 ---
 
@@ -1105,7 +1105,7 @@ Tests:
 
 ---
 
-# Appendix J — v0.2.8 Interaction Polish (Mouse + Flash + Input Guard)
+# Appendix J — v0.2.9 Interaction Polish (Mouse + Flash + Input Guard)
 
 This appendix defines interaction-polish contracts added after dashboard MVP scope.
 

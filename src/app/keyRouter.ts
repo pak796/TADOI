@@ -80,6 +80,9 @@ export type KeyRouterAction =
   | { scope: "domain"; type: "SNOOZE_SELECTED_OCCURRENCE" }
   | { scope: "domain"; type: "OPEN_DELETE_CONFIRM" }
   | { scope: "domain"; type: "MODAL_CONFIRM_DELETE" }
+  | { scope: "domain"; type: "MODAL_OVERDUE_SNOOZE" }
+  | { scope: "domain"; type: "MODAL_OVERDUE_DONE" }
+  | { scope: "domain"; type: "MODAL_OVERDUE_GO_TO_TASK" }
   | { scope: "domain"; type: "CYCLE_STATUS" }
   | { scope: "domain"; type: "CYCLE_SORT" }
   | { scope: "domain"; type: "CYCLE_DUE" }
@@ -242,11 +245,27 @@ export function handleKey(
   }
 
   if (mode === Mode.MODAL_CONFIRM) {
-    if (name === "y" || sequence === "y") {
-      return [{ scope: "domain", type: "MODAL_CONFIRM_DELETE" }];
+    if (uiState.modal?.type === "delete") {
+      if (name === "y" || sequence === "y") {
+        return [{ scope: "domain", type: "MODAL_CONFIRM_DELETE" }];
+      }
+      if (name === "n" || sequence === "n") {
+        return [{ scope: "ui", type: "UNWIND" }];
+      }
+      return [];
     }
-    if (name === "n" || sequence === "n") {
-      return [{ scope: "ui", type: "UNWIND" }];
+    if (uiState.modal?.type === "overdue") {
+      const lowerName = name.toLowerCase();
+      if (lowerName === "s" || sequence === "s" || sequence === "S") {
+        return [{ scope: "domain", type: "MODAL_OVERDUE_SNOOZE" }];
+      }
+      if (lowerName === "d" || sequence === "d" || sequence === "D") {
+        return [{ scope: "domain", type: "MODAL_OVERDUE_DONE" }];
+      }
+      if (lowerName === "g" || sequence === "g" || sequence === "G") {
+        return [{ scope: "domain", type: "MODAL_OVERDUE_GO_TO_TASK" }];
+      }
+      return [];
     }
     return [];
   }

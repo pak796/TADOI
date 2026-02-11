@@ -80,7 +80,14 @@ describe("handleKey", () => {
     const modalState = {
       ...initialUIState,
       mode: Mode.MODAL_CONFIRM,
-      focus: FocusTarget.MODAL
+      focus: FocusTarget.MODAL,
+      modal: {
+        type: "delete" as const,
+        taskId: "task-1",
+        taskTitle: "Task",
+        previousMode: Mode.LIST,
+        previousFocus: FocusTarget.TASK_LIST
+      }
     };
     expect(run({ name: "j", sequence: "j" }, { uiState: modalState })).toEqual([]);
     expect(run({ name: "space" }, { uiState: modalState })).toEqual([]);
@@ -89,6 +96,35 @@ describe("handleKey", () => {
     ]);
     expect(run({ name: "n", sequence: "n" }, { uiState: modalState })).toEqual([
       { scope: "ui", type: "UNWIND" }
+    ]);
+  });
+
+  it("routes overdue modal keys", () => {
+    const modalState = {
+      ...initialUIState,
+      mode: Mode.MODAL_CONFIRM,
+      focus: FocusTarget.MODAL,
+      modal: {
+        type: "overdue" as const,
+        event: {
+          type: "TASK_OVERDUE" as const,
+          taskId: "task-1",
+          title: "Task",
+          dueAt: "2026-02-10T09:00:00.000Z",
+          firedAt: "2026-02-10T09:01:00.000Z"
+        },
+        previousMode: Mode.LIST,
+        previousFocus: FocusTarget.TASK_LIST
+      }
+    };
+    expect(run({ name: "s", sequence: "s" }, { uiState: modalState })).toEqual([
+      { scope: "domain", type: "MODAL_OVERDUE_SNOOZE" }
+    ]);
+    expect(run({ name: "D", sequence: "D" }, { uiState: modalState })).toEqual([
+      { scope: "domain", type: "MODAL_OVERDUE_DONE" }
+    ]);
+    expect(run({ name: "g", sequence: "g" }, { uiState: modalState })).toEqual([
+      { scope: "domain", type: "MODAL_OVERDUE_GO_TO_TASK" }
     ]);
   });
 

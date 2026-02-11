@@ -24,6 +24,7 @@ The format is based on Keep a Changelog.
   - `go to task` resolves recurring-row fallbacks for reliable reveal behavior
 
 ### Changed
+- Version surfaces are now aligned to `0.2.9` / `v0.2.9` in app/runtime docs.
 - Backup Center copy/layout polish for clearer step labels, safety messaging, and action hints.
 - Documentation refreshed for Backup Center usage and keybindings (`README.md`, in-app Help text).
 - Theme system now includes additional concrete palettes (`lightSlate`, `paperWhite`, `midnightBlack`) in both manual cycling and rotating mode.

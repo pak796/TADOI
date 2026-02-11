@@ -4,7 +4,7 @@ Terminal Accessible Digital Organization Interface
 
 Keyboard-first TUI todo list with due dates, completion, and tag autocomplete (OpenTUI + React on Bun).
 
-Current release baseline: `v0.2.8` (`package.json` `0.2.8`).
+Current release baseline: `v0.2.9` (`package.json` `0.2.9`).
 
 ## Setup
 
@@ -306,7 +306,7 @@ bun run pack:smoke
 Install from generated tarball (example):
 
 ```bash
-bun add -g ./dist/tarball/tadoi-0.2.8.tgz
+bun add -g ./dist/tarball/tadoi-0.2.9.tgz
 tadoi --help
 ```
 
@@ -318,13 +318,13 @@ Build machine (create artifact):
 bun run pack:dry
 ```
 
-Copy `dist/tarball/tadoi-0.2.8.tgz` to the target test machine, then install:
+Copy `dist/tarball/tadoi-0.2.9.tgz` to the target test machine, then install:
 
 macOS/Linux:
 
 ```bash
 bun --version
-bun add -g ./tadoi-0.2.8.tgz
+bun add -g ./tadoi-0.2.9.tgz
 tadoi --help
 tadoi
 ```
@@ -333,7 +333,7 @@ Windows (PowerShell):
 
 ```powershell
 bun --version
-bun add -g .\tadoi-0.2.8.tgz
+bun add -g .\tadoi-0.2.9.tgz
 tadoi --help
 tadoi
 ```

@@ -10,6 +10,12 @@ export type ThemeId =
   | "sonora"
   | "tigers"
   | "tech"
+  | "deuteranopia"
+  | "protanopia"
+  | "tritanopia"
+  | "blueAngels"
+  | "southwest"
+  | "rams"
   | "rotating";
 
 export type ConcreteThemeId = Exclude<ThemeId, "rotating">;
@@ -184,6 +190,90 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     selectionBg: "#e0cf99",
     selectionText: "#002c5f"
   },
+  deuteranopia: {
+    bg: "#11161d",
+    panel: "#1c2430",
+    text: "#f1f5f9",
+    mutedText: "#9fb0c3",
+    border: "#4f6278",
+    accent: "#ffb347",
+    accent2: "#5bb6ff",
+    ok: "#7bc4d6",
+    warn: "#ffd166",
+    danger: "#b084f5",
+    selectionBg: "#2d4761",
+    selectionText: "#f1f5f9"
+  },
+  protanopia: {
+    bg: "#101821",
+    panel: "#1a2836",
+    text: "#f6f8fb",
+    mutedText: "#a9bbcd",
+    border: "#58708a",
+    accent: "#4ecdc4",
+    accent2: "#f4c95d",
+    ok: "#5ec2b7",
+    warn: "#ffd166",
+    danger: "#7d6cf0",
+    selectionBg: "#2c4f6e",
+    selectionText: "#f6f8fb"
+  },
+  tritanopia: {
+    bg: "#1a1416",
+    panel: "#2a1f24",
+    text: "#f7f2f4",
+    mutedText: "#c6b3bb",
+    border: "#8a6c78",
+    accent: "#e76f51",
+    accent2: "#2a9d8f",
+    ok: "#6bcf8c",
+    warn: "#f4a261",
+    danger: "#d45087",
+    selectionBg: "#5a3245",
+    selectionText: "#f7f2f4"
+  },
+  blueAngels: {
+    bg: "#081a35",
+    panel: "#102a52",
+    text: "#f8fbff",
+    mutedText: "#b9c9e6",
+    border: "#f2c24f",
+    accent: "#f2c24f",
+    accent2: "#2f6fd8",
+    ok: "#5ca6ff",
+    warn: "#ffd56a",
+    danger: "#d67a3c",
+    selectionBg: "#f2c24f",
+    selectionText: "#081a35"
+  },
+  southwest: {
+    bg: "#1f2f5a",
+    panel: "#2b3f75",
+    text: "#f9fbff",
+    mutedText: "#c6d2eb",
+    border: "#f9b233",
+    accent: "#f0523f",
+    accent2: "#2e4ea2",
+    ok: "#58b0c4",
+    warn: "#f9b233",
+    danger: "#d63b2e",
+    selectionBg: "#f0523f",
+    selectionText: "#ffffff"
+  },
+  rams: {
+    bg: "#003594",
+    panel: "#0b4db8",
+    text: "#ffffff",
+    mutedText: "#d7e3ff",
+    border: "#ffd100",
+    accent: "#ffd100",
+    accent2: "#1e6fd9",
+    ok: "#8fd3ff",
+    warn: "#ffd54a",
+    danger: "#1f4fa3",
+    selectionBg: "#ffd100",
+    selectionText: "#003594"
+  },
   // "rotating" is a virtual mode; this fallback prevents invalid lookups before
   // runtime rotation applies a concrete palette.
   rotating: {
@@ -214,6 +304,12 @@ export const THEME_ORDER: ThemeId[] = [
   "sonora",
   "tigers",
   "tech",
+  "deuteranopia",
+  "protanopia",
+  "tritanopia",
+  "blueAngels",
+  "southwest",
+  "rams",
   "rotating"
 ];
 
@@ -228,7 +324,13 @@ export const ROTATING_THEME_ORDER: ConcreteThemeId[] = [
   "jester",
   "sonora",
   "tigers",
-  "tech"
+  "tech",
+  "deuteranopia",
+  "protanopia",
+  "tritanopia",
+  "blueAngels",
+  "southwest",
+  "rams"
 ];
 
 export function cycleTheme(current: ThemeId): ThemeId {
@@ -251,6 +353,12 @@ export function isThemeId(value: unknown): value is ThemeId {
       value === "sonora" ||
       value === "tigers" ||
       value === "tech" ||
+      value === "deuteranopia" ||
+      value === "protanopia" ||
+      value === "tritanopia" ||
+      value === "blueAngels" ||
+      value === "southwest" ||
+      value === "rams" ||
       value === "rotating")
   );
 }

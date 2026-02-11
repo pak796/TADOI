@@ -1,4 +1,4 @@
-# TADOI QA Guide (v0.2.8)
+# TADOI QA Guide (v0.2.9)
 
 ## 1) Purpose
 
