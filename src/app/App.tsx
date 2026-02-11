@@ -829,9 +829,12 @@ function formatLinkSnippet(label: string | undefined, target: string): string {
   return `${value.slice(0, 47)}…`;
 }
 
-function formatLogoModeLabel(mode: LogoMode): "Default" | "Alternate" | "Rotate" {
+function formatLogoModeLabel(
+  mode: LogoMode
+): "Default" | "Alternate" | "Slash" | "Rotate" {
   if (mode === "default") return "Default";
   if (mode === "alternate32") return "Alternate";
+  if (mode === "alternate_slash32") return "Slash";
   return "Rotate";
 }
 

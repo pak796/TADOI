@@ -198,6 +198,24 @@ describe("loadSettings", () => {
     expect(invalid.settings.logoMode).toBe(DEFAULT_LOGO_MODE);
   });
 
+  it("accepts slash logo mode when provided", async () => {
+    const homeDir = await makeTempDir();
+    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    await fs.mkdir(path.dirname(primary), { recursive: true });
+    await fs.writeFile(
+      primary,
+      JSON.stringify({
+        themeId: "retro",
+        logoMode: "alternate_slash32",
+        flashMode: "slow"
+      }),
+      "utf8"
+    );
+
+    const result = await loadSettings({ homeDir, platform: "linux" });
+    expect(result.settings.logoMode).toBe("alternate_slash32");
+  });
+
   it("normalizes invalid notification settings to defaults", async () => {
     const homeDir = await makeTempDir();
     const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });

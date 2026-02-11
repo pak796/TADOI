@@ -26,18 +26,18 @@ export const SETTINGS_FALLBACK_DIR_NAME = `.${BRAND_SLUG}`;
 export const LOGO_MAX_WIDTH = 32;
 
 export const ASCII_LOGO = {
-  FULL: ` _____   _    ____   ___ ___
-|_   _| / \\  |  _ \\ / _ \\_ _|
-  | |  / _ \\ | | | | | | | |
-  | | / ___ \\| |_| | |_| | |
-  |_|/_/   \\_\\____/ \\___/___|`,
+  FULL: `   _____   _    ____   ___ ___
+  |_   _| / \\  |  _ \\ / _ \\_ _|
+    | |  / _ \\ | | | | | | | |
+    | | / ___ \\| |_| | |_| | |
+    |_|/_/   \\_\\____/ \\___/___|`,
   COMPACT: `TTTT  A  DD   OO  III
   T  AAA D D O  O  I`,
   MICRO: `[TADOI]`
 } as const;
 
 export type AsciiLogoVariant = keyof typeof ASCII_LOGO;
-export type LogoVariantId = "default" | "alternate32";
+export type LogoVariantId = "default" | "alternate32" | "alternate_slash32";
 
 const ALTERNATE_LOGO_32 = ` _____ ___ ______ _____ _____ 
 |_   _/ _ \\|  _  \\  _  |_   _|
@@ -47,12 +47,23 @@ const ALTERNATE_LOGO_32 = ` _____ ___ ______ _____ _____
   \\_/\\_| |_/___/  \\___/ \\___/ 
                                `;
 
+const ALTERNATE_SLASH_LOGO_32 = `   _________   ___  ____  ____
+  /_  __/ _ | / _ \\/ __ \\/  _/
+   / / / __ |/ // / /_/ // /  
+  /_/ /_/ |_/____/\\____/___/  
+                              `;
+
 export const LOGO_VARIANTS: Record<LogoVariantId, string[]> = {
   default: ASCII_LOGO.FULL.split("\n"),
-  alternate32: ALTERNATE_LOGO_32.split("\n")
+  alternate32: ALTERNATE_LOGO_32.split("\n"),
+  alternate_slash32: ALTERNATE_SLASH_LOGO_32.split("\n")
 };
 
-export const ROTATING_LOGO_ORDER: LogoVariantId[] = ["default", "alternate32"];
+export const ROTATING_LOGO_ORDER: LogoVariantId[] = [
+  "default",
+  "alternate32",
+  "alternate_slash32"
+];
 
 export function getAsciiLogoLines(variant: AsciiLogoVariant): string[] {
   return ASCII_LOGO[variant].split("\n");

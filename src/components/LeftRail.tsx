@@ -10,6 +10,7 @@ import {
   APP_TAGLINE,
   LOGO_MAX_WIDTH,
   LOGO_VARIANTS,
+  type LogoVariantId,
   PRODUCT_NAME_TM,
   ROTATING_LOGO_ORDER
 } from "../brand/brand";
@@ -42,6 +43,7 @@ type LeftRailProps = {
 
 const HINT_LINE_WIDTH = 18;
 const LOGO_ROTATE_INTERVAL_MS = 30_000;
+const ROTATE_ORDER: LogoVariantId[] = ROTATING_LOGO_ORDER;
 const HINT_LINES = [
   "j/k: MOVE",
   "c: COPY",
@@ -193,7 +195,7 @@ export function LeftRail({
     // Rotate mode always starts from the default logo when enabled.
     setRotatingLogoIndex(0);
     const intervalId = setInterval(() => {
-      setRotatingLogoIndex((prev) => (prev + 1) % ROTATING_LOGO_ORDER.length);
+      setRotatingLogoIndex((prev) => (prev + 1) % ROTATE_ORDER.length);
     }, LOGO_ROTATE_INTERVAL_MS);
     return () => clearInterval(intervalId);
   }, [logoMode]);
@@ -201,7 +203,7 @@ export function LeftRail({
   const effectiveLogoId = useMemo(
     () =>
       logoMode === "rotate"
-        ? ROTATING_LOGO_ORDER[rotatingLogoIndex % ROTATING_LOGO_ORDER.length]
+        ? ROTATE_ORDER[rotatingLogoIndex % ROTATE_ORDER.length]
         : logoMode,
     [logoMode, rotatingLogoIndex]
   );
