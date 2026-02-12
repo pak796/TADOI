@@ -7,7 +7,7 @@ import {
   type ThemeTextTokenKey,
   type ThemeTextTokenOverrides
 } from "../settings/settings";
-import type { ThemeTokens } from "../theme/themes";
+import { formatThemeDisplayName, type RotatingThemeId, type ThemeTokens } from "../theme/themes";
 import {
   THEME_TEXT_TOKEN_KEYS,
   formatRgbRow,
@@ -49,7 +49,7 @@ export type BuiltInThemeTextEditorHandle = {
 };
 
 type BuiltInThemeTextEditorProps = {
-  themeId: string;
+  themeId: RotatingThemeId;
   baseTokens: Pick<ThemeTokens, ThemeTextTokenKey>;
   draftGlobal: ThemeTextTokenOverrides;
   draftObjects: Partial<Record<ThemeObjectId, ThemeTextTokenOverrides>>;
@@ -431,7 +431,7 @@ export const BuiltInThemeTextEditor = React.forwardRef<
   return (
     <box style={{ flexDirection: "column", gap: 1 }}>
       <text style={{ color: helpTheme.text, fontWeight: "bold" }}>
-        Built-in Text Editor ({themeId})
+        Built-in Text Editor ({formatThemeDisplayName(themeId)})
       </text>
       <box
         style={{

@@ -1,5 +1,6 @@
 import { diffLocalDays, getLocalDayNumber, startOfLocalDayMs } from "./dates";
 import { Filters, SortMode, Task } from "./models";
+import { normalizePriorityFilterValue, resolveTaskPriorityTag } from "./priorityTags";
 import { matchesTagFilter } from "./tagFilter";
 
 export const SORT_MODE_ORDER: SortMode[] = ["due", "updated", "created", "title"];
@@ -81,6 +82,7 @@ function compareByTitle(a: Task, b: Task): number {
 export function filterTasks(tasks: Task[], filters: Filters, now: number): Task[] {
   const start = startOfLocalDayMs(now);
   const search = (filters.searchText ?? "").trim().toLowerCase();
+  const priorityFilter = normalizePriorityFilterValue(filters.priority);
 
   return tasks.filter((task) => {
     if (filters.status === "all") {
@@ -90,6 +92,10 @@ export function filterTasks(tasks: Task[], filters: Filters, now: number): Task[
     }
 
     if (!matchesTagFilter(task.tags, filters)) {
+      return false;
+    }
+
+    if (priorityFilter && resolveTaskPriorityTag(task.tags) !== priorityFilter) {
       return false;
     }
 

@@ -26,6 +26,10 @@ export type ThemeId =
   | "trooper"
   | "twilight"
   | "msdos"
+  | "niners"
+  | "mcrn"
+  | "zeke"
+  | "gundam"
   | "custom1"
   | "rotating";
 
@@ -328,6 +332,62 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     selectionBg: "#aaaaaa",
     selectionText: "#0000aa"
   },
+  niners: {
+    bg: "#1f0a0a",
+    panel: "#3a1111",
+    text: "#fff4d6",
+    mutedText: "#d6c39a",
+    border: "#b3995d",
+    accent: "#b3995d",
+    accent2: "#d62839",
+    ok: "#c6b17a",
+    warn: "#e3be63",
+    danger: "#d95a4e",
+    selectionBg: "#b3995d",
+    selectionText: "#1f0a0a"
+  },
+  mcrn: {
+    bg: "#0a0d12",
+    panel: "#141a23",
+    text: "#e6edf7",
+    mutedText: "#9aa8be",
+    border: "#ff6a00",
+    accent: "#ff6a00",
+    accent2: "#c43e2f",
+    ok: "#6ed3a5",
+    warn: "#ffc857",
+    danger: "#ff4d4d",
+    selectionBg: "#ff6a00",
+    selectionText: "#0a0d12"
+  },
+  zeke: {
+    bg: "#0e1a14",
+    panel: "#163025",
+    text: "#d7f5e3",
+    mutedText: "#8fb7a0",
+    border: "#3e7d62",
+    accent: "#7bcb9a",
+    accent2: "#c85c8e",
+    ok: "#5fd08c",
+    warn: "#e3c265",
+    danger: "#d96b6b",
+    selectionBg: "#2f6b53",
+    selectionText: "#dff7ea"
+  },
+  gundam: {
+    bg: "#0b1e3a",
+    panel: "#123261",
+    text: "#f5f8ff",
+    mutedText: "#c7d5ee",
+    border: "#f9d648",
+    accent: "#e53935",
+    accent2: "#4da3ff",
+    ok: "#5bc0eb",
+    warn: "#f9d648",
+    danger: "#ff5a5a",
+    selectionBg: "#f9d648",
+    selectionText: "#0b1e3a"
+  },
   custom1: {
     bg: "#0b0f14",
     panel: "#1a202c",
@@ -381,6 +441,10 @@ export const THEME_ORDER: ThemeId[] = [
   "trooper",
   "twilight",
   "msdos",
+  "niners",
+  "mcrn",
+  "zeke",
+  "gundam",
   "custom1",
   "rotating"
 ];
@@ -405,13 +469,28 @@ export const ROTATING_THEME_ORDER: RotatingThemeId[] = [
   "rams",
   "trooper",
   "twilight",
-  "msdos"
+  "msdos",
+  "niners",
+  "mcrn",
+  "zeke",
+  "gundam"
 ];
 
 export function cycleTheme(current: ThemeId): ThemeId {
   const index = THEME_ORDER.indexOf(current);
   const safeIndex = index === -1 ? 0 : index;
   return THEME_ORDER[(safeIndex + 1) % THEME_ORDER.length];
+}
+
+export function formatThemeDisplayName(themeId: ThemeId | RotatingThemeId): string {
+  if (themeId === "msdos") return "MS-DOS";
+  if (themeId === "mcrn") return "MCRN";
+  if (themeId === "gundam") return "GUNDAM";
+  const spaced = themeId
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+    .trim();
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
 export type ResolveThemeTokensOptions = {
@@ -486,6 +565,10 @@ export function isThemeId(value: unknown): value is ThemeId {
       value === "trooper" ||
       value === "twilight" ||
       value === "msdos" ||
+      value === "niners" ||
+      value === "mcrn" ||
+      value === "zeke" ||
+      value === "gundam" ||
       value === "custom1" ||
       value === "rotating")
   );

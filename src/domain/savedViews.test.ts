@@ -13,6 +13,7 @@ import {
 const BASE_FILTERS: Filters = {
   status: "open",
   due: "today",
+  priority: "#p2",
   tag: "work",
   searchText: " important "
 };
@@ -34,6 +35,7 @@ describe("saved views", () => {
     expect(applied).toEqual({
       status: "open",
       due: "today",
+      priority: "#p2",
       tag: "work",
       searchText: "important"
     });
@@ -43,6 +45,7 @@ describe("saved views", () => {
     const snapped = snapshotFilters({
       status: "open",
       due: "today",
+      priority: "P3",
       tag: "work",
       tagFilter: {
         all: ["#Work", "home"],
@@ -54,6 +57,7 @@ describe("saved views", () => {
     expect(snapped).toEqual({
       status: "open",
       due: "today",
+      priority: "#p3",
       tagFilter: {
         all: ["home", "work"],
         any: ["work"]
@@ -129,13 +133,31 @@ describe("saved views", () => {
     const view = makeView("Today", BASE_FILTERS);
     expect(
       isSavedViewActive(
-        { status: "open", due: "today", tag: "work", searchText: "important" },
+        {
+          status: "open",
+          due: "today",
+          priority: "#p2",
+          tag: "work",
+          searchText: "important"
+        },
         view
       )
     ).toBe(true);
     expect(
       isSavedViewActive(
-        { status: "open", due: "today", tag: "work", searchText: "different" },
+        {
+          status: "open",
+          due: "today",
+          priority: "#p2",
+          tag: "work",
+          searchText: "different"
+        },
+        view
+      )
+    ).toBe(false);
+    expect(
+      isSavedViewActive(
+        { status: "open", due: "today", priority: "#p3", tag: "work", searchText: "important" },
         view
       )
     ).toBe(false);

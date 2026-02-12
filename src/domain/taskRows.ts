@@ -1,6 +1,10 @@
 import { addLocalDaysMs, diffLocalDays, startOfLocalDayMs } from "./dates";
 import { Filters, SortMode, Task, TaskStatus } from "./models";
-import { normalizePriorityTags } from "./priorityTags";
+import {
+  normalizePriorityFilterValue,
+  normalizePriorityTags,
+  resolveTaskPriorityTag
+} from "./priorityTags";
 import { sortTasks } from "./query";
 import { matchesTagFilter } from "./tagFilter";
 import {
@@ -84,6 +88,15 @@ function matchesSearchFilter(
   return task.tags.some((tag) => tag.toLowerCase().includes(search));
 }
 
+function matchesPriorityFilter(
+  task: Pick<Task, "tags">,
+  priority: Filters["priority"]
+): boolean {
+  const normalizedPriority = normalizePriorityFilterValue(priority);
+  if (!normalizedPriority) return true;
+  return resolveTaskPriorityTag(task.tags) === normalizedPriority;
+}
+
 function matchesDueFilter(task: Pick<Task, "status" | "dueAt" | "hasExplicitTime">, due: Filters["due"], now: number): boolean {
   if (due === "any") return true;
   if (task.status === "archived") return false;
@@ -113,6 +126,9 @@ function matchesCommonFilters(
     return false;
   }
   if (!matchesTagFilter(task.tags, filters)) {
+    return false;
+  }
+  if (!matchesPriorityFilter(task, filters.priority)) {
     return false;
   }
   if (!matchesSearchFilter(task, search)) {
@@ -157,6 +173,9 @@ function buildSeriesVirtualRows(
 
   const statusMatches = matchesStatusFilter("open", filters.status);
   if (!statusMatches) {
+    return [];
+  }
+  if (!matchesPriorityFilter(seriesTask, filters.priority)) {
     return [];
   }
 

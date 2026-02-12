@@ -59,6 +59,36 @@ export type Task = {
   external?: TaskExternalMetadata;
 };
 
+export type CompletionEvent = {
+  taskId: string;
+  at: number;
+  tags: string[];
+};
+
+export type AchievementUnlock = {
+  id: string;
+  unlockedAt: number;
+  meta?: Record<string, string | number>;
+};
+
+export type EngagementState = {
+  completionLog: CompletionEvent[];
+  achievements: Record<string, AchievementUnlock>;
+  streak: {
+    currentDays: number;
+    bestDays: number;
+    lastCompletionDayKey: string | null;
+  };
+};
+
+export type EngagementToast = {
+  id: string;
+  message: string;
+  priority: 1 | 2 | 3 | 4;
+  createdAt: number;
+  durationMs: number;
+};
+
 export type TagIndexEntry = {
   tagName: string;
   usageCount: number;
@@ -74,6 +104,7 @@ export type TagFilter = {
 export type Filters = {
   status: "all" | "open" | "done" | "archived";
   due: "any" | "overdue" | "today" | "next7";
+  priority?: string;
   tag?: string;
   tagFilter?: TagFilter;
   searchText?: string;
@@ -134,6 +165,9 @@ export type AppState = {
   tasks: Task[];
   tagIndex: Record<string, TagIndexEntry>;
   savedViews: SavedView[];
+  engagement: EngagementState;
+  engagementToastQueue: EngagementToast[];
+  engagementToastActive: EngagementToast | null;
   filters: Filters;
   sortMode: SortMode;
   selectedId?: string;

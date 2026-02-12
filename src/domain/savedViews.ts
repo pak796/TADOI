@@ -1,4 +1,5 @@
 import { Filters, SavedView } from "./models";
+import { normalizePriorityFilterValue } from "./priorityTags";
 import { normalizeTagFilter, normalizeTagToken } from "./tagFilter";
 
 export const MAX_SAVED_VIEWS = 9;
@@ -39,12 +40,14 @@ function areTagFiltersEqual(left: Filters["tagFilter"], right: Filters["tagFilte
 
 export function snapshotFilters(filters: Filters): Filters {
   const normalizedTagFilter = normalizeTagFilter(filters.tagFilter);
+  const normalizedPriority = normalizePriorityFilterValue(filters.priority);
   const normalizedTag = filters.tag ? normalizeTagToken(filters.tag) : undefined;
 
   if (normalizedTagFilter) {
     return {
       status: filters.status,
       due: filters.due,
+      ...(normalizedPriority ? { priority: normalizedPriority } : {}),
       tagFilter: normalizedTagFilter,
       searchText: normalizeSearchText(filters.searchText)
     };
@@ -53,6 +56,7 @@ export function snapshotFilters(filters: Filters): Filters {
   return {
     status: filters.status,
     due: filters.due,
+    ...(normalizedPriority ? { priority: normalizedPriority } : {}),
     tag: normalizedTag,
     searchText: normalizeSearchText(filters.searchText)
   };
@@ -68,6 +72,7 @@ export function isSavedViewActive(currentFilters: Filters, view: SavedView): boo
   return (
     current.status === target.status &&
     current.due === target.due &&
+    current.priority === target.priority &&
     current.tag === target.tag &&
     areTagFiltersEqual(current.tagFilter, target.tagFilter) &&
     current.searchText === target.searchText

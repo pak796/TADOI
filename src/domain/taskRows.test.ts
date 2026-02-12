@@ -188,6 +188,46 @@ describe("buildVisibleTaskRows recurring expansion", () => {
     expect(rows[0]?.tags).toEqual(["#p10", "work", "home"]);
   });
 
+  it("applies priority filter to regular and virtual recurring rows", () => {
+    const tasks: Task[] = [
+      makeTask({
+        id: "regular-priority",
+        title: "regular priority",
+        status: "open",
+        tags: ["work", "#p2"]
+      }),
+      makeTask({
+        id: "regular-non-priority",
+        title: "regular non-priority",
+        status: "open",
+        tags: ["work", "#p3"]
+      }),
+      makeTask({
+        id: "series-priority-filter",
+        title: "series priority filter",
+        status: "open",
+        hasExplicitTime: true,
+        tags: ["work", "p2"],
+        recurrence: {
+          dtstart: "2026-02-10T09:00:00",
+          rrule: "FREQ=DAILY;INTERVAL=1;COUNT=2",
+          series_id: "series:priority-filter"
+        }
+      })
+    ];
+
+    const rows = buildRows(tasks, { status: "all", due: "today", priority: "P2" }, now);
+    expect(rows.map((row) => row.id)).toEqual([
+      "series_occurrence:series%3Apriority-filter:2026-02-10T09%3A00%3A00"
+    ]);
+
+    const anyDueRows = buildRows(tasks, { status: "all", due: "any", priority: "#p2" }, now);
+    expect(anyDueRows.map((row) => row.id)).toEqual([
+      "series_occurrence:series%3Apriority-filter:2026-02-10T09%3A00%3A00",
+      "regular-priority"
+    ]);
+  });
+
   it("suppresses virtual row when a matching materialized instance exists", () => {
     const tasks: Task[] = [
       makeTask({

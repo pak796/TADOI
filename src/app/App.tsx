@@ -101,7 +101,12 @@ import {
   rankTags,
   updateTagIndex
 } from "../domain/tagIndex";
-import { normalizePriorityFromTokens } from "../domain/priorityTags";
+import {
+  isPriorityToken,
+  normalizePriorityFilterValue,
+  normalizePriorityFromTokens,
+  resolveTaskPriorityTag
+} from "../domain/priorityTags";
 import {
   getSortModeLabel,
   SORT_MODE_ORDER
@@ -119,6 +124,7 @@ import {
   TaskLink
 } from "../domain/models";
 import {
+  formatThemeDisplayName,
   ROTATING_THEME_ORDER,
   THEMES,
   type RotatingThemeId,
@@ -155,6 +161,7 @@ import {
   initialUIState,
   uiReducer,
   unwind,
+  type UIState,
   type UIDeleteModal,
   type UITaskLinkFormField,
   type UITaskLinkFormModal,
@@ -215,6 +222,7 @@ const TICKER_INTERVAL_MS = 6000;
 const SLOW_PULSE_INTERVAL_MS = 2000;
 const FAST_PULSE_INTERVAL_MS = 700;
 const NOTIFICATION_EVALUATION_INTERVAL_MS = 10000;
+const ENGAGEMENT_TOAST_TICK_INTERVAL_MS = 350;
 const ROTATING_THEME_INTERVAL_MS = 15000;
 const G_PREFIX_TIMEOUT_MS = 280;
 const NAV_BANNER_TIMEOUT_MS = 1800;
@@ -356,13 +364,7 @@ const HELP_CUSTOM1_NAV_ITEMS: HelpNavItem[] = [
 ];
 
 function formatThemeIdLabel(themeId: RotatingThemeId): string {
-  if (!themeId) return "";
-  if (themeId === "msdos") return "MS-DOS";
-  const spaced = themeId
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
-    .trim();
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+  return formatThemeDisplayName(themeId);
 }
 
 const HELP_TEXT_TUNING_THEMES: RotatingThemeId[] = [...ROTATING_THEME_ORDER];
@@ -437,8 +439,12 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
     title: "Tags & Filters",
     items: [
       {
-        title: "f status, s sort, g due, t single tag",
-        description: "Use t for quick single-tag cycle."
+        title: "f status, s sort, g due, r priority, t single tag",
+        description: "Use r for priority cycle and t for quick single-tag cycle."
+      },
+      {
+        title: "PRIORITY (r)",
+        description: "Cycle priority filter based on open-task priority tags."
       },
       {
         title: "TAG PANEL (p)",
@@ -928,13 +934,55 @@ function buildTagTickerSegments(
 function summarizeViewFilters(filters: SavedView["filters"]): string {
   const search = filters.searchText?.trim();
   const searchLabel = search ? ` search=${search}` : "";
+  const priority = normalizePriorityFilterValue(filters.priority);
+  const priorityLabel = priority ? ` priority=${priority}` : "";
   const booleanTagSummary = formatTagFilterBooleanSummary(filters.tagFilter);
   const tagLabel = booleanTagSummary
     ? ` tags=${booleanTagSummary}`
     : filters.tag
       ? ` tag=#${filters.tag}`
       : "";
-  return `status=${filters.status} due=${filters.due}${tagLabel}${searchLabel}`;
+  return `status=${filters.status} due=${filters.due}${priorityLabel}${tagLabel}${searchLabel}`;
+}
+
+function comparePriorityDigits(left: string, right: string): number {
+  const normalizedLeft = left.replace(/^0+(?=\d)/, "");
+  const normalizedRight = right.replace(/^0+(?=\d)/, "");
+  if (normalizedLeft.length !== normalizedRight.length) {
+    return normalizedLeft.length - normalizedRight.length;
+  }
+  const magnitudeCompare = normalizedLeft.localeCompare(normalizedRight);
+  if (magnitudeCompare !== 0) {
+    return magnitudeCompare;
+  }
+  if (left.length !== right.length) {
+    return left.length - right.length;
+  }
+  return left.localeCompare(right);
+}
+
+function comparePriorityTags(left: string, right: string): number {
+  const leftDigits = isPriorityToken(left)?.digits;
+  const rightDigits = isPriorityToken(right)?.digits;
+  if (!leftDigits || !rightDigits) {
+    return left.localeCompare(right);
+  }
+  const digitCompare = comparePriorityDigits(leftDigits, rightDigits);
+  if (digitCompare !== 0) {
+    return digitCompare;
+  }
+  return left.localeCompare(right);
+}
+
+function getSortedOpenTaskPriorities(tasks: Task[]): string[] {
+  const priorities = new Set<string>();
+  for (const task of tasks) {
+    if (task.status !== "open") continue;
+    const priority = resolveTaskPriorityTag(task.tags);
+    if (!priority) continue;
+    priorities.add(priority);
+  }
+  return Array.from(priorities).sort(comparePriorityTags);
 }
 
 function cycleTaskLinkFormField(
@@ -967,6 +1015,15 @@ function formatLinkSnippet(label: string | undefined, target: string): string {
   return `${value.slice(0, 47)}…`;
 }
 
+function isBlockingOverlayOpen(uiState: UIState): boolean {
+  return (
+    uiState.mode === Mode.MODAL_CONFIRM ||
+    uiState.mode === Mode.HELP ||
+    uiState.mode === Mode.BACKUP_CENTER ||
+    uiState.mode === Mode.TAG_FILTER
+  );
+}
+
 type AppProps = {
   initialData?: LoadedData;
   skipInitialSave?: boolean;
@@ -986,7 +1043,10 @@ function initState(data?: LoadedData): AppState {
     ...initialState,
     tasks: data?.tasks ?? [],
     tagIndex: data?.tagIndex ?? {},
-    savedViews: data?.savedViews ?? []
+    savedViews: data?.savedViews ?? [],
+    engagement: data?.engagement ?? initialState.engagement,
+    engagementToastQueue: [],
+    engagementToastActive: null
   };
 }
 
@@ -1525,10 +1585,10 @@ export function App({
       ? ROTATING_THEME_ORDER[rotatingThemeIndex % ROTATING_THEME_ORDER.length]
       : selectedThemeMode;
   const helpThemeStatusLineRaw = helpPreviewThemeMode
-    ? `Theme mode: ${settingsState.themeId} (preview: ${helpPreviewThemeMode})`
+    ? `Theme mode: ${formatThemeDisplayName(settingsState.themeId)} (preview: ${formatThemeDisplayName(helpPreviewThemeMode)})`
     : settingsState.themeId === "rotating"
-      ? `Theme mode: rotating (active: ${activeThemeId})`
-      : `Theme mode: ${settingsState.themeId}`;
+      ? `Theme mode: Rotating (active: ${formatThemeDisplayName(activeThemeId)})`
+      : `Theme mode: ${formatThemeDisplayName(settingsState.themeId)}`;
   const effectiveLogoModeForHelp = helpDraftLogoMode ?? settingsState.logoMode;
   const helpLogoStatusLineRaw =
     helpDraftLogoMode && helpDraftLogoMode !== settingsState.logoMode
@@ -1596,6 +1656,15 @@ export function App({
   const activeOverdueTask = activeOverdueModal
     ? findTaskForOverdueEvent(activeOverdueModal.event)
     : undefined;
+  const blockingOverlayOpen = isBlockingOverlayOpen(uiState);
+  const activeEngagementToast =
+    !blockingOverlayOpen && state.engagementToastActive ? state.engagementToastActive : null;
+  const engagementToastLine = activeEngagementToast
+    ? fitLineToWidth(
+        activeEngagementToast.message,
+        Math.max(1, bottomBarWidth - 4)
+      )
+    : "";
   const renderStartMs = Date.now();
 
   function formatSaveTimestamp(epochMs: number): string {
@@ -1633,7 +1702,8 @@ export function App({
           schemaVersion: CURRENT_SCHEMA_VERSION,
           tasks: state.tasks,
           tagIndex: state.tagIndex,
-          savedViews: state.savedViews
+          savedViews: state.savedViews,
+          engagement: state.engagement
         },
         Date.now()
       );
@@ -1642,7 +1712,7 @@ export function App({
       }
     }, 60 * 60 * 1000);
     return () => clearInterval(id);
-  }, [state.tasks, state.tagIndex]);
+  }, [state.tasks, state.tagIndex, state.engagement, state.savedViews]);
 
   useEffect(() => {
     if (isStaticFlashMode) {
@@ -1679,6 +1749,17 @@ export function App({
     }, NOTIFICATION_EVALUATION_INTERVAL_MS);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      dispatch({
+        type: "tickEngagementToast",
+        now: Date.now(),
+        overlayBlocked: blockingOverlayOpen
+      });
+    }, ENGAGEMENT_TOAST_TICK_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [blockingOverlayOpen]);
 
   useEffect(() => {
     evaluateNotificationsRef.current(Date.now());
@@ -1885,14 +1966,15 @@ export function App({
         schemaVersion: CURRENT_SCHEMA_VERSION,
         tasks: state.tasks,
         tagIndex: state.tagIndex,
-        savedViews: state.savedViews
+        savedViews: state.savedViews,
+        engagement: state.engagement
       },
       350,
       undefined,
       undefined,
       handleSaveResult
     );
-  }, [state.tasks, state.tagIndex, state.savedViews]);
+  }, [state.tasks, state.tagIndex, state.savedViews, state.engagement]);
 
   useEffect(() => {
     if (!PERF_DEBUG_ENABLED) return;
@@ -2887,6 +2969,9 @@ export function App({
         return;
       case "CYCLE_DUE":
         cycleDue();
+        return;
+      case "CYCLE_PRIORITY":
+        cyclePriority();
         return;
       case "TOGGLE_TAG_FILTER":
         toggleTagFilter();
@@ -4231,6 +4316,7 @@ export function App({
       filters: {
         status: nextFilters.status,
         due: nextFilters.due,
+        priority: nextFilters.priority,
         tag: nextFilters.tag,
         tagFilter: nextFilters.tagFilter,
         searchText: nextFilters.searchText
@@ -4251,6 +4337,7 @@ export function App({
         type: "setFilters",
         filters: {
           ...DEFAULT_VIEW_FILTERS,
+          priority: undefined,
           tag: undefined,
           tagFilter: undefined,
           searchText: undefined
@@ -4410,6 +4497,46 @@ export function App({
     };
   }
 
+  /*
+   * Engagement QA checklist:
+   * - open -> done records exactly one completion event
+   * - done -> open records no completion event
+   * - recurring completion paths emit once per completed occurrence
+   * - blocked overlays suppress active toast rendering; queue resumes after close
+   */
+  function emitCompletionForTransition(params: {
+    taskId: string;
+    previousStatus: Task["status"] | undefined;
+    nextStatus: Task["status"];
+    tags: string[];
+    at: number;
+  }) {
+    if (params.previousStatus !== "open" || params.nextStatus !== "done") {
+      return;
+    }
+    dispatch({
+      type: "recordCompletion",
+      taskId: params.taskId,
+      at: params.at,
+      tags: params.tags
+    });
+    dispatch({ type: "evaluateEngagement", at: params.at });
+  }
+
+  function emitCompletionFromDiff(previousTasks: Task[], nextTasks: Task[], at: number) {
+    const previousById = new Map(previousTasks.map((task) => [task.id, task]));
+    for (const nextTask of nextTasks) {
+      const previousTask = previousById.get(nextTask.id);
+      emitCompletionForTransition({
+        taskId: nextTask.id,
+        previousStatus: previousTask?.status ?? "open",
+        nextStatus: nextTask.status,
+        tags: nextTask.tags,
+        at
+      });
+    }
+  }
+
   function completeRecurringOccurrence() {
     const context = resolveSelectedOccurrenceContext();
     if (!context) {
@@ -4436,6 +4563,13 @@ export function App({
       });
       dispatch({ type: "setTasks", tasks: updatedTasks });
       dispatch({ type: "setSelected", id: context.instanceTask.id });
+      emitCompletionForTransition({
+        taskId: context.instanceTask.id,
+        previousStatus: context.instanceTask.status,
+        nextStatus,
+        tags: context.instanceTask.tags,
+        at: nowMs
+      });
       return;
     }
 
@@ -4471,6 +4605,13 @@ export function App({
       tagIndex: updateTagIndex(state.tagIndex, doneInstance.tags, nowMs)
     });
     dispatch({ type: "setSelected", id: instanceId });
+    emitCompletionForTransition({
+      taskId: instanceId,
+      previousStatus: "open",
+      nextStatus: "done",
+      tags: doneInstance.tags,
+      at: nowMs
+    });
   }
 
   function skipSelectedOccurrence() {
@@ -4582,6 +4723,13 @@ export function App({
     dispatch({
       type: "setTasks",
       tasks: state.tasks.map((task) => (task.id === updated.id ? updated : task))
+    });
+    emitCompletionForTransition({
+      taskId: updated.id,
+      previousStatus: persisted.status,
+      nextStatus,
+      tags: updated.tags,
+      at: nowMs
     });
   }
 
@@ -5033,8 +5181,10 @@ export function App({
   function handleOverdueModalDone() {
     const event = getActiveOverdueModalEvent();
     if (!event) return;
-    const updatedTasks = applyOverdueMarkDone(state.tasks, event, Date.now());
+    const nowMs = Date.now();
+    const updatedTasks = applyOverdueMarkDone(state.tasks, event, nowMs);
     dispatch({ type: "setTasks", tasks: updatedTasks });
+    emitCompletionFromDiff(state.tasks, updatedTasks, nowMs);
     applyEscUnwind();
   }
 
@@ -5048,6 +5198,7 @@ export function App({
       filters: {
         status: "all",
         due: "any",
+        priority: undefined,
         tag: undefined,
         tagFilter: undefined,
         searchText: undefined
@@ -5060,6 +5211,7 @@ export function App({
       {
         status: "all",
         due: "any",
+        priority: undefined,
         tag: undefined,
         tagFilter: undefined,
         searchText: undefined
@@ -5210,6 +5362,29 @@ export function App({
     const current = order.indexOf(state.filters.due);
     const next = order[(current + 1) % order.length];
     dispatch({ type: "setFilters", filters: { due: next } });
+  }
+
+  function cyclePriority() {
+    const priorities = getSortedOpenTaskPriorities(state.tasks);
+    if (priorities.length === 0) {
+      dispatch({ type: "setFilters", filters: { priority: undefined } });
+      showShortNavigationBanner("No priority tags on open tasks");
+      return;
+    }
+
+    const current = normalizePriorityFilterValue(state.filters.priority);
+    const currentIndex = current ? priorities.indexOf(current) : -1;
+    if (currentIndex < 0) {
+      dispatch({ type: "setFilters", filters: { priority: priorities[0] } });
+      return;
+    }
+
+    const nextIndex = currentIndex + 1;
+    if (nextIndex >= priorities.length) {
+      dispatch({ type: "setFilters", filters: { priority: undefined } });
+      return;
+    }
+    dispatch({ type: "setFilters", filters: { priority: priorities[nextIndex] } });
   }
 
   function moveDashboardTagSelection(delta: 1 | -1) {
@@ -5795,6 +5970,25 @@ export function App({
           )}
         </box>
       </box>
+
+      {activeEngagementToast ? (
+        <box
+          style={{
+            position: "absolute",
+            left: layout.railWidth + 1,
+            right: 1,
+            bottom: 1,
+            paddingLeft: 1,
+            paddingRight: 1,
+            backgroundColor: theme.panel,
+            border: true,
+            borderStyle: "single",
+            borderColor: theme.outline
+          }}
+        >
+          <text style={{ color: theme.text }}>{engagementToastLine}</text>
+        </box>
+      ) : null}
 
       {uiState.mode === Mode.MODAL_CONFIRM && uiState.modal ? (
         <box

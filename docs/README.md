@@ -11,6 +11,7 @@ This index links the current user-facing TADOI documentation set.
 - [Calendar Export Spec (v0.2)](../TADOI_Spec_Calendar_Export_ICS_v0.2.md)
 - [Calendar Import Spec (v0.1)](../TADOI_Spec_Calendar_Import_ICS_RoundTrip_v0.1.md)
 - [Task Links and Attachments Spec (v0.2)](../TADOI_Task_Links_Attachments_Spec_v0.2.md)
+- [Engagement Notifications Spec (v0.1)](../TADOI_Engagement_Notifications_Spec_v0.1.md)
 
 ## Operations and Design Docs
 - [Backup Center (In-App)](./backup-center.md)

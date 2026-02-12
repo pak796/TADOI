@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { createDefaultEngagementState } from "../domain/engagement";
 import type { LoadedData } from "./persistence";
 import {
   importState,
@@ -87,6 +88,15 @@ describe("mergeTasksByIdNewestUpdatedAt", () => {
     );
     expect(incomingWinsOnFinalTie.merged[0]?.title).toBe("Incoming tie");
   });
+
+  it("preserves canonical priority tags when normalizing merged tasks", () => {
+    const local = [{ ...BASE_LOCAL_TASK, tags: ["work"] }];
+    const incoming = [{ ...BASE_INCOMING_TASK, updatedAt: 999, tags: ["work", "P3", "#p1", "home"] }];
+
+    const result = mergeTasksByIdNewestUpdatedAt(local, incoming);
+
+    expect(result.merged[0]?.tags).toEqual(["#p1", "work", "home"]);
+  });
 });
 
 describe("recomputeTagIndex", () => {
@@ -124,7 +134,8 @@ describe("importState", () => {
     schemaVersion: 4,
     tasks,
     tagIndex: {},
-    savedViews: []
+    savedViews: [],
+    engagement: createDefaultEngagementState()
   });
 
   it("produces merge stats and recomputes tagIndex", () => {
@@ -237,6 +248,116 @@ describe("importState", () => {
     expect(result.stats.savedViews.updated).toBe(0);
     expect(result.stats.savedViews.unchanged).toBe(1);
   });
+
+  it("treats saved-view priority differences as updates", () => {
+    const current = baseState([{ ...BASE_LOCAL_TASK }]);
+    current.savedViews = [
+      {
+        id: "view-priority",
+        name: "Priority",
+        createdAt: 1,
+        updatedAt: 10,
+        filters: {
+          status: "open",
+          due: "today",
+          priority: "#p1"
+        }
+      }
+    ];
+    const incoming = baseState([{ ...BASE_LOCAL_TASK }]);
+    incoming.savedViews = [
+      {
+        id: "view-priority",
+        name: "Priority",
+        createdAt: 1,
+        updatedAt: 10,
+        filters: {
+          status: "open",
+          due: "today",
+          priority: "#p2"
+        }
+      }
+    ];
+
+    const result = importState(current, incoming, { mode: "merge", now: 1 });
+    expect(result.stats.savedViews.updated).toBe(1);
+    expect(result.nextState.savedViews[0]?.filters.priority).toBe("#p2");
+  });
+
+  it("treats equivalent canonicalized saved-view priority values as unchanged", () => {
+    const current = baseState([{ ...BASE_LOCAL_TASK }]);
+    current.savedViews = [
+      {
+        id: "view-priority-eq",
+        name: "Priority Eq",
+        createdAt: 1,
+        updatedAt: 10,
+        filters: {
+          status: "open",
+          due: "today",
+          priority: "#p2"
+        }
+      }
+    ];
+    const incoming = baseState([{ ...BASE_LOCAL_TASK }]);
+    incoming.savedViews = [
+      {
+        id: "view-priority-eq",
+        name: "Priority Eq",
+        createdAt: 1,
+        updatedAt: 10,
+        filters: {
+          status: "open",
+          due: "today",
+          priority: "P2"
+        }
+      }
+    ];
+
+    const result = importState(current, incoming, { mode: "merge", now: 1 });
+    expect(result.stats.savedViews.updated).toBe(0);
+    expect(result.stats.savedViews.unchanged).toBe(1);
+  });
+
+  it("merges engagement achievements by newest unlock timestamp", () => {
+    const current = baseState([{ ...BASE_LOCAL_TASK }]);
+    current.engagement = {
+      ...createDefaultEngagementState(),
+      achievements: {
+        FIRST_TASK_DONE: {
+          id: "FIRST_TASK_DONE",
+          unlockedAt: 100
+        }
+      }
+    };
+    const incoming = baseState([{ ...BASE_LOCAL_TASK }]);
+    incoming.engagement = {
+      ...createDefaultEngagementState(),
+      achievements: {
+        FIRST_TASK_DONE: {
+          id: "FIRST_TASK_DONE",
+          unlockedAt: 200
+        }
+      }
+    };
+
+    const result = importState(current, incoming, { mode: "merge", now: 1 });
+    expect(result.nextState.engagement?.achievements.FIRST_TASK_DONE?.unlockedAt).toBe(200);
+  });
+
+  it("uses incoming engagement in replace mode", () => {
+    const current = baseState([{ ...BASE_LOCAL_TASK }]);
+    current.engagement = createDefaultEngagementState();
+    const incoming = baseState([{ ...BASE_INCOMING_TASK }]);
+    incoming.engagement = {
+      ...createDefaultEngagementState(),
+      completionLog: [{ taskId: "incoming", at: 1234, tags: ["work"] }]
+    };
+
+    const result = importState(current, incoming, { mode: "replace", now: 1 });
+    expect(result.nextState.engagement?.completionLog).toHaveLength(1);
+    expect(result.nextState.engagement?.completionLog[0]?.taskId).toBe("incoming");
+  });
 });
 
 describe("redactStateForExport", () => {
@@ -316,6 +437,7 @@ describe("redactStateForExport", () => {
     expect(task?.links).toBeUndefined();
     expect(task?.dueAt).toBeUndefined();
     expect(task?.external).toBeUndefined();
+    expect(redacted.engagement?.completionLog).toEqual([]);
     expect(redacted.settings?.notifications).toEqual(DEFAULT_NOTIFICATIONS);
     expect(redacted.settings?.security?.nonHttpLinkPolicy).toBe("prompt");
   });

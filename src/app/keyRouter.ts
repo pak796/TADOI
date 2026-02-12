@@ -117,6 +117,7 @@ export type KeyRouterAction =
   | { scope: "domain"; type: "CYCLE_STATUS" }
   | { scope: "domain"; type: "CYCLE_SORT" }
   | { scope: "domain"; type: "CYCLE_DUE" }
+  | { scope: "domain"; type: "CYCLE_PRIORITY" }
   | { scope: "domain"; type: "TOGGLE_TAG_FILTER" }
   | { scope: "domain"; type: "APPLY_DASHBOARD_SELECTED_TAG" }
   | { scope: "domain"; type: "SAVE_EDITOR" }
@@ -222,6 +223,7 @@ function listModeActions(key: KeyInput): KeyRouterAction[] {
   if (name === "f") return [{ scope: "domain", type: "CYCLE_STATUS" }];
   if (!ctrl && name === "s") return [{ scope: "domain", type: "CYCLE_SORT" }];
   if (!ctrl && name === "g") return [{ scope: "domain", type: "CYCLE_DUE" }];
+  if (!ctrl && name === "r") return [{ scope: "domain", type: "CYCLE_PRIORITY" }];
   if (isTagPanelOpenKey(name, sequence, ctrl, shift)) {
     return [{ scope: "ui", type: "OPEN_TAG_FILTER_PANEL" }];
   }
@@ -520,6 +522,7 @@ export function handleKey(
     if (name === "q") return [{ scope: "domain", type: "EXIT_APP" }];
     if (name === "f") return [{ scope: "domain", type: "CYCLE_STATUS" }];
     if (!ctrl && name === "g") return [{ scope: "domain", type: "CYCLE_DUE" }];
+    if (!ctrl && name === "r") return [{ scope: "domain", type: "CYCLE_PRIORITY" }];
     if (isTagPanelOpenKey(name, sequence, ctrl, shift)) {
       return [{ scope: "ui", type: "OPEN_TAG_FILTER_PANEL" }];
     }

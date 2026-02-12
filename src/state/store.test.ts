@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import { applyArchiveAging, createDraftFromTask } from "./store";
+import { createDefaultEngagementState } from "../domain/engagement";
+import { applyArchiveAging, createDraftFromTask, initialState, reducer } from "./store";
 import { LoadedData } from "./persistence";
 import { Task } from "../domain/models";
 
@@ -44,7 +45,8 @@ describe("applyArchiveAging startup behavior", () => {
         })
       ],
       tagIndex: {},
-      savedViews: []
+      savedViews: [],
+      engagement: createDefaultEngagementState()
     };
 
     const result = applyArchiveAging(data, now);
@@ -70,5 +72,71 @@ describe("createDraftFromTask priority tag display", () => {
     );
 
     expect(draft.tagsText).toBe("#p1 #work #home");
+  });
+});
+
+describe("engagement reducer actions", () => {
+  it("records open->done completion and evaluates first-task milestone", () => {
+    const at = new Date(2026, 1, 12, 10, 0, 0).getTime();
+    const recorded = reducer(initialState, {
+      type: "recordCompletion",
+      taskId: "task-1",
+      at,
+      tags: ["work"]
+    });
+
+    expect(recorded.engagement.completionLog).toHaveLength(1);
+    expect(recorded.engagement.streak.currentDays).toBe(1);
+
+    const evaluated = reducer(recorded, { type: "evaluateEngagement", at });
+    expect(evaluated.engagement.achievements.FIRST_TASK_DONE).toBeDefined();
+    expect(evaluated.engagementToastQueue[0]?.id).toBe("FIRST_TASK_DONE");
+  });
+
+  it("does not advance streak for same-day completions", () => {
+    const day = new Date(2026, 1, 12, 10, 0, 0).getTime();
+    const withFirst = reducer(initialState, {
+      type: "recordCompletion",
+      taskId: "task-1",
+      at: day,
+      tags: []
+    });
+    const withSecond = reducer(withFirst, {
+      type: "recordCompletion",
+      taskId: "task-2",
+      at: day + 60_000,
+      tags: []
+    });
+
+    expect(withSecond.engagement.streak.currentDays).toBe(1);
+  });
+
+  it("promotes queued toast only when overlays are clear", () => {
+    const now = Date.now();
+    const queued = reducer(initialState, {
+      type: "pushEngagementToast",
+      toast: {
+        id: "toast-1",
+        message: "First task completed.",
+        priority: 1,
+        createdAt: now,
+        durationMs: 1000
+      }
+    });
+
+    const blockedTick = reducer(queued, {
+      type: "tickEngagementToast",
+      now: now + 200,
+      overlayBlocked: true
+    });
+    expect(blockedTick.engagementToastActive).toBeNull();
+
+    const clearTick = reducer(blockedTick, {
+      type: "tickEngagementToast",
+      now: now + 300,
+      overlayBlocked: false
+    });
+    expect(clearTick.engagementToastActive?.id).toBe("toast-1");
+    expect(clearTick.engagementToastQueue).toHaveLength(0);
   });
 });

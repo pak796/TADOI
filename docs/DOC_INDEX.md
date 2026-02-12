@@ -21,6 +21,7 @@ Active runtime baseline: `v0.3.5`
 - `DASHBOARD_SPEC_MVP.md`: dashboard runtime contract.
 - `TADOI_BackupCenter_InApp_Spec.md`: backup center behavior contract.
 - `TADOI_Notifications_Spec_Tier1-2_v0.2.md`: notifications tier contract.
+- `TADOI_Engagement_Notifications_Spec_v0.1.md`: non-interactive engagement toast contract.
 - `TADOI_Installable_Distribution_Spec.md`: build/distribution contract.
 
 ## 4) Operations and Governance

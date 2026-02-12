@@ -382,6 +382,9 @@ describe("handleKey", () => {
     expect(run({ name: "s", sequence: "s" })).toEqual([
       { scope: "domain", type: "CYCLE_SORT" }
     ]);
+    expect(run({ name: "r", sequence: "r" })).toEqual([
+      { scope: "domain", type: "CYCLE_PRIORITY" }
+    ]);
     expect(run({ name: "t", sequence: "t" })).toEqual([
       { scope: "domain", type: "TOGGLE_TAG_FILTER" }
     ]);
@@ -521,6 +524,12 @@ describe("handleKey", () => {
         { uiState: searchState }
       )
     ).toEqual([]);
+    expect(
+      run(
+        { name: "r", sequence: "r" },
+        { uiState: searchState }
+      )
+    ).toEqual([]);
     expect(run({ name: "enter" }, { uiState: searchState })).toEqual([
       { scope: "ui", type: "CLOSE_SEARCH" }
     ]);
@@ -548,6 +557,9 @@ describe("handleKey", () => {
     ]);
     expect(run({ name: "g", sequence: "g" }, { uiState: dashboardState })).toEqual([
       { scope: "domain", type: "CYCLE_DUE" }
+    ]);
+    expect(run({ name: "r", sequence: "r" }, { uiState: dashboardState })).toEqual([
+      { scope: "domain", type: "CYCLE_PRIORITY" }
     ]);
     expect(run({ name: "t", sequence: "t" }, { uiState: dashboardState })).toEqual([
       { scope: "domain", type: "TOGGLE_TAG_FILTER" }
@@ -701,6 +713,7 @@ describe("handleKey", () => {
         { uiState: panelState }
       )
     ).toEqual([]);
+    expect(run({ name: "r", sequence: "r" }, { uiState: panelState })).toEqual([]);
     expect(run({ name: "escape" }, { uiState: panelState })).toEqual([
       { scope: "ui", type: "UNWIND" }
     ]);

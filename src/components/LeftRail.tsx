@@ -4,6 +4,7 @@ import { formatDate } from "../state/store";
 import { colorForTag, theme, styles } from "../app/theme";
 import { formatTagFilterBooleanSummary } from "../domain/tagFilter";
 import { formatTagForDisplay } from "../domain/tagIndex";
+import { normalizePriorityFilterValue } from "../domain/priorityTags";
 import { APP_VERSION } from "../app/version";
 import { getSortModeLabel } from "../domain/query";
 import {
@@ -14,7 +15,7 @@ import {
   PRODUCT_NAME_TM
 } from "../brand/brand";
 import type { FlashMode, LogoMode } from "../settings/settings";
-import type { ThemeId } from "../theme/themes";
+import { formatThemeDisplayName, type ThemeId } from "../theme/themes";
 import { centerLogoInBox } from "./logoLayout";
 
 export type LeftRailMenuItem =
@@ -50,6 +51,7 @@ const LOGO_RENDER_HEIGHT = Math.max(
 const HINT_LINES = [
   "j/k: MOVE",
   "p: TAG PANEL",
+  "r: PRIORITY",
   "c: COPY",
   "SPACE: TOGGLE"
 ] as const;
@@ -173,10 +175,6 @@ function formatHintLine(line: string): string {
     : line.padEnd(HINT_LINE_WIDTH, " ");
 }
 
-function formatThemeName(themeId: ThemeId): string {
-  return themeId.replace(/([a-z])([A-Z])/g, "$1 $2").toUpperCase();
-}
-
 function formatMenuItemLabel(item: LeftRailMenuItem): string {
   if (item === "DASHBOARD") return "DASHBOARD (B)";
   if (item === "ADD") return "ADD (A)";
@@ -281,6 +279,7 @@ export function LeftRail({
           ? theme.dueLater
           : "transparent";
   const dueText = dueBg === "transparent" ? theme.text : theme.bg;
+  const priorityLabel = normalizePriorityFilterValue(filters.priority) ?? "(any)";
   const booleanTagSummary = formatTagFilterBooleanSummary(filters.tagFilter);
 
   const rawLogoLines = showLogo ? LOGO_VARIANTS[effectiveLogoId] : [];
@@ -288,7 +287,7 @@ export function LeftRail({
     ? centerLogoInBox(rawLogoLines, LOGO_MAX_WIDTH, LOGO_RENDER_HEIGHT)
     : [];
   const taglineLines = showLogo ? wrapWords(APP_TAGLINE, LOGO_MAX_WIDTH) : [];
-  const activeThemeLabel = activeThemeId ? formatThemeName(activeThemeId) : null;
+  const activeThemeLabel = activeThemeId ? formatThemeDisplayName(activeThemeId) : null;
   const blocksLogoNeedsDarkInk =
     effectiveLogoId === "alternate_blocks32" && isLightHexColor(theme.accentPurple);
   const logoPrimaryColor = blocksLogoNeedsDarkInk ? "#000000" : theme.text;
@@ -395,6 +394,7 @@ export function LeftRail({
             <text style={{ color: dueText }}>{dueLabel}</text>
           </box>
         </box>
+        <text style={{ color: theme.text }}>PRIORITY (R): {priorityLabel}</text>
         {booleanTagSummary ? (
           <text style={{ color: theme.text }}>TAGS (T): {booleanTagSummary}</text>
         ) : filters.tag ? (

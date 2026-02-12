@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 5,
+  "tasks": [
+    {
+      "id": "current-1",
+      "title": "Current Task",
+      "status": "open",
+      "createdAt": 1700000000000,
+      "updatedAt": 1700000000000,
+      "hasExplicitTime": false,
+      "tags": [
+        "alpha",
+        "work"
+      ]
+    },
+    {
+      "id": "series-1",
+      "title": "Weekly Standup",
+      "status": "open",
+      "createdAt": 1700000000000,
+      "updatedAt": 1700000000000,
+      "dueAt": 1760432400000,
+      "hasExplicitTime": true,
+      "tags": [
+        "team",
+        "work"
+      ],
+      "recurrence": {
+        "dtstart": "2025-10-14T09:00:00",
+        "rrule": "FREQ=WEEKLY;INTERVAL=1;BYDAY=TU",
+        "series_id": "series:series-1",
+        "exdates": [
+          "2025-10-21T09:00:00"
+        ]
+      }
+    },
+    {
+      "id": "inst-1",
+      "title": "Weekly Standup",
+      "status": "done",
+      "createdAt": 1700000001000,
+      "updatedAt": 1700000002000,
+      "closedAt": 1700000002000,
+      "dueAt": 1761037200000,
+      "hasExplicitTime": true,
+      "tags": [
+        "team",
+        "work"
+      ],
+      "instance_of": {
+        "series_id": "series:series-1",
+        "occurrence": "2025-10-21T09:00:00"
+      }
+    }
+  ],
+  "tagIndex": {
+    "work": {
+      "tagName": "work",
+      "usageCount": 2,
+      "lastUsedAt": 1700000002000
+    }
+  },
+  "savedViews": [
+    {
+      "id": "view-1",
+      "name": "Today Focus",
+      "filters": {
+        "status": "open",
+        "due": "today",
+        "tag": "work",
+        "searchText": "priority"
+      },
+      "createdAt": 1700000000000,
+      "updatedAt": 1700000000000
+    }
+  ],
+  "engagement": {
+    "completionLog": [],
+    "achievements": {},
+    "streak": {
+      "currentDays": 0,
+      "bestDays": 0,
+      "lastCompletionDayKey": null
+    }
+  }
+}

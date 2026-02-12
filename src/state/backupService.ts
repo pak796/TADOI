@@ -390,6 +390,7 @@ export async function exportBackup(
     tasks: stateResult.data.tasks,
     tagIndex: stateResult.data.tagIndex,
     savedViews: stateResult.data.savedViews,
+    engagement: stateResult.data.engagement,
     settings: settingsResult.settings
   };
 

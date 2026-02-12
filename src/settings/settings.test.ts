@@ -141,6 +141,17 @@ describe("loadSettings", () => {
     expect(result.settings.customThemes).toEqual(expectedCustomThemesFor("trooper"));
   });
 
+  it("accepts niners as a valid theme id and seeds custom1 from niners", async () => {
+    const homeDir = await makeTempDir();
+    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    await fs.mkdir(path.dirname(primary), { recursive: true });
+    await fs.writeFile(primary, JSON.stringify({ themeId: "niners" }), "utf8");
+
+    const result = await loadSettings({ homeDir, platform: "linux" });
+    expect(result.settings.themeId).toBe("niners");
+    expect(result.settings.customThemes).toEqual(expectedCustomThemesFor("niners"));
+  });
+
   it("normalizes invalid theme ids to default", async () => {
     const homeDir = await makeTempDir();
     const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });

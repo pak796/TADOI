@@ -5,6 +5,7 @@ import { createRoot } from "@opentui/react";
 import { App } from "../app/App";
 import { applyThemeWithSettings } from "../app/theme";
 import { startOfLocalDayMs } from "../domain/dates";
+import { normalizeEngagementState } from "../domain/engagement";
 import { normalizeTagIndex, normalizeTags } from "../domain/tagIndex";
 import { loadSettings } from "../settings/settings";
 import { CURRENT_SCHEMA_VERSION, safeLoadState } from "../state/persistence";
@@ -110,7 +111,8 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     tasks: normalizedTasks,
     tagIndex: normalizedTagIndex,
-    savedViews: Array.isArray(loaded.savedViews) ? loaded.savedViews : []
+    savedViews: Array.isArray(loaded.savedViews) ? loaded.savedViews : [],
+    engagement: normalizeEngagementState(loaded.engagement)
   };
 
   const now = Date.now();

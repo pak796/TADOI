@@ -1,5 +1,9 @@
 import { normalizeTagIndex, normalizeTags } from "../domain/tagIndex";
 import {
+  createDefaultEngagementState,
+  normalizeEngagementState
+} from "../domain/engagement";
+import {
   formatDateToLocalIso,
   parseLocalIsoToDate
 } from "../domain/recurrence/rruleAdapter";
@@ -11,7 +15,8 @@ const migrations: Record<number, MigrationFn> = {
   0: migrateV0ToV1,
   1: migrateV1ToV2,
   2: migrateV2ToV3,
-  3: migrateV3ToV4
+  3: migrateV3ToV4,
+  4: migrateV4ToV5
 };
 
 function migrateV0ToV1(state: LoadedData): LoadedData {
@@ -19,7 +24,8 @@ function migrateV0ToV1(state: LoadedData): LoadedData {
     schemaVersion: 1,
     tasks: Array.isArray(state.tasks) ? state.tasks : [],
     tagIndex: normalizeTagIndex(state.tagIndex ?? {}),
-    savedViews: []
+    savedViews: [],
+    engagement: createDefaultEngagementState()
   };
 }
 
@@ -40,7 +46,8 @@ function migrateV1ToV2(state: LoadedData): LoadedData {
     schemaVersion: 2,
     tasks,
     tagIndex: normalizeTagIndex(state.tagIndex ?? {}),
-    savedViews: []
+    savedViews: [],
+    engagement: createDefaultEngagementState()
   };
 }
 
@@ -49,7 +56,8 @@ function migrateV2ToV3(state: LoadedData): LoadedData {
     schemaVersion: 3,
     tasks: state.tasks,
     tagIndex: normalizeTagIndex(state.tagIndex ?? {}),
-    savedViews: []
+    savedViews: [],
+    engagement: createDefaultEngagementState()
   };
 }
 
@@ -151,7 +159,18 @@ function migrateV3ToV4(state: LoadedData): LoadedData {
     schemaVersion: 4,
     tasks,
     tagIndex: normalizeTagIndex(state.tagIndex ?? {}),
-    savedViews: Array.isArray(state.savedViews) ? state.savedViews : []
+    savedViews: Array.isArray(state.savedViews) ? state.savedViews : [],
+    engagement: createDefaultEngagementState()
+  };
+}
+
+function migrateV4ToV5(state: LoadedData): LoadedData {
+  return {
+    schemaVersion: 5,
+    tasks: state.tasks,
+    tagIndex: normalizeTagIndex(state.tagIndex ?? {}),
+    savedViews: Array.isArray(state.savedViews) ? state.savedViews : [],
+    engagement: normalizeEngagementState(state.engagement)
   };
 }
 
@@ -165,11 +184,12 @@ export function migratePersistedStateToCurrent(
     );
   }
 
-  let next = {
+  let next: LoadedData = {
     ...input,
     tasks: Array.isArray(input.tasks) ? input.tasks : [],
     tagIndex: input.tagIndex ?? {},
-    savedViews: Array.isArray(input.savedViews) ? input.savedViews : []
+    savedViews: Array.isArray(input.savedViews) ? input.savedViews : [],
+    engagement: normalizeEngagementState(input.engagement)
   };
 
   while (next.schemaVersion < currentVersion) {

@@ -222,6 +222,30 @@ describe("loadStateStrict", () => {
     expect(result.didMigrate).toBe(false);
   });
 
+  it("accepts priority-aware canonical task tags", async () => {
+    const dir = await makeTempDir();
+    const filePath = path.join(dir, "tadoi_data.json");
+    const payload: LoadedData = {
+      schemaVersion: 4,
+      tasks: [
+        {
+          id: "priority-task",
+          title: "Priority task",
+          status: "open",
+          createdAt: 1,
+          updatedAt: 1,
+          tags: ["#p2", "work", "home"]
+        }
+      ],
+      tagIndex: {},
+      savedViews: []
+    };
+    await fs.writeFile(filePath, JSON.stringify(payload), "utf8");
+
+    const result = await loadStateStrict({ filePath });
+    expect(result.data.tasks[0]?.tags).toEqual(["#p2", "work", "home"]);
+  });
+
   it("throws on malformed json without mutating files", async () => {
     const dir = await makeTempDir();
     const filePath = path.join(dir, "tadoi_data.json");

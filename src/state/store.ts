@@ -1,5 +1,14 @@
 import { filterTasks, sortTasks } from "../domain/query";
 import {
+  createDefaultEngagementState,
+  enqueueToastsWithCap,
+  enforceCompletionRetention,
+  evaluateMilestones,
+  normalizeEngagementState,
+  suppressActiveToastWithCap,
+  updateStreak
+} from "../domain/engagement";
+import {
   combineLocalDateAndTime,
   diffLocalDays,
   formatLocalTimeHHmm,
@@ -12,6 +21,7 @@ import { parseRRule } from "../domain/recurrence/rruleAdapter";
 import {
   AppState,
   EditorDraft,
+  EngagementToast,
   Filters,
   SavedView,
   SortMode,
@@ -23,6 +33,11 @@ import type { LoadedData } from "./persistence";
 
 export type Action =
   | { type: "load"; data: LoadedData }
+  | { type: "recordCompletion"; taskId: string; at: number; tags: string[] }
+  | { type: "evaluateEngagement"; at: number }
+  | { type: "pushEngagementToast"; toast: EngagementToast }
+  | { type: "tickEngagementToast"; now: number; overlayBlocked: boolean }
+  | { type: "popEngagementToast" }
   | { type: "setSelected"; id?: string }
   | { type: "setFilters"; filters: Partial<Filters> }
   | { type: "setEditor"; editor: EditorDraft | null }
@@ -36,6 +51,9 @@ export const initialState: AppState = {
   tasks: [],
   tagIndex: {},
   savedViews: [],
+  engagement: createDefaultEngagementState(),
+  engagementToastQueue: [],
+  engagementToastActive: null,
   filters: {
     status: "all",
     due: "any"
@@ -65,7 +83,13 @@ export function applyArchiveAging(
 
 export function archiveOldDoneTasks(tasks: Task[], now: number): Task[] {
   return applyArchiveAging(
-    { schemaVersion: 4, tasks, tagIndex: {}, savedViews: [] },
+    {
+      schemaVersion: 5,
+      tasks,
+      tagIndex: {},
+      savedViews: [],
+      engagement: createDefaultEngagementState()
+    },
     now
   ).data.tasks;
 }
@@ -77,7 +101,89 @@ export function reducer(state: AppState, action: Action): AppState {
         ...state,
         tasks: action.data.tasks,
         tagIndex: action.data.tagIndex,
-        savedViews: action.data.savedViews
+        savedViews: action.data.savedViews,
+        engagement: normalizeEngagementState(action.data.engagement),
+        engagementToastQueue: [],
+        engagementToastActive: null
+      };
+    case "recordCompletion": {
+      const nextLog = enforceCompletionRetention(
+        [
+          ...state.engagement.completionLog,
+          {
+            taskId: action.taskId,
+            at: action.at,
+            tags: Array.from(new Set(action.tags)).sort((left, right) =>
+              left.localeCompare(right)
+            )
+          }
+        ],
+        action.at
+      );
+      return {
+        ...state,
+        engagement: {
+          ...state.engagement,
+          completionLog: nextLog,
+          streak: updateStreak(state.engagement.streak, action.at)
+        }
+      };
+    }
+    case "evaluateEngagement": {
+      const result = evaluateMilestones(state.engagement, action.at);
+      const nextQueue =
+        result.toasts.length > 0
+          ? enqueueToastsWithCap(state.engagementToastQueue, result.toasts)
+          : state.engagementToastQueue;
+      return {
+        ...state,
+        engagement: result.engagement,
+        engagementToastQueue: nextQueue
+      };
+    }
+    case "pushEngagementToast":
+      return {
+        ...state,
+        engagementToastQueue: enqueueToastsWithCap(state.engagementToastQueue, [action.toast])
+      };
+    case "tickEngagementToast": {
+      let active = state.engagementToastActive;
+      let queue = state.engagementToastQueue;
+      let changed = false;
+
+      if (action.overlayBlocked && active) {
+        queue = suppressActiveToastWithCap(active, queue);
+        active = null;
+        changed = true;
+      }
+
+      if (active && action.now - active.createdAt >= active.durationMs) {
+        active = null;
+        changed = true;
+      }
+
+      if (!active && !action.overlayBlocked && queue.length > 0) {
+        const [next, ...rest] = queue;
+        active = {
+          ...next,
+          createdAt: action.now
+        };
+        queue = rest;
+        changed = true;
+      }
+
+      if (!changed) return state;
+      return {
+        ...state,
+        engagementToastQueue: queue,
+        engagementToastActive: active
+      };
+    }
+    case "popEngagementToast":
+      if (!state.engagementToastActive) return state;
+      return {
+        ...state,
+        engagementToastActive: null
       };
     case "setSelected":
       return { ...state, selectedId: action.id };

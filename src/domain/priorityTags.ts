@@ -39,3 +39,20 @@ export function normalizePriorityFromTokens(tokens: string[]): string[] {
 export function normalizePriorityTags(tags: string[]): string[] {
   return normalizePriorityFromTokens(tags);
 }
+
+export function resolveTaskPriorityTag(tags: string[]): string | undefined {
+  let priority: string | undefined;
+  for (const tag of tags) {
+    const match = isPriorityToken(tag);
+    if (!match) continue;
+    priority = canonicalPriorityTag(match.digits);
+  }
+  return priority;
+}
+
+export function normalizePriorityFilterValue(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  const match = isPriorityToken(raw);
+  if (!match) return undefined;
+  return canonicalPriorityTag(match.digits);
+}

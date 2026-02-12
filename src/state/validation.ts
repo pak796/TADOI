@@ -1,5 +1,9 @@
-import { normalizeTags } from "../domain/tagIndex";
+import {
+  normalizePriorityFilterValue,
+  normalizePriorityTags
+} from "../domain/priorityTags";
 import { normalizeTagFilter } from "../domain/tagFilter";
+import { normalizeEngagementState } from "../domain/engagement";
 import {
   formatDateToLocalIso,
   parseLocalIsoToDate
@@ -74,6 +78,11 @@ export function validatePersistedState(
     errors.push("savedViews must be an array when present");
   }
 
+  const engagement = input.engagement;
+  if (engagement !== undefined && !isRecord(engagement)) {
+    errors.push("engagement must be an object when present");
+  }
+
   if (errors.length > 0) {
     return { ok: false, errors };
   }
@@ -82,7 +91,8 @@ export function validatePersistedState(
     schemaVersion: schemaVersion as number,
     tasks: tasks as LoadedData["tasks"],
     tagIndex: (tagIndex as LoadedData["tagIndex"]) ?? {},
-    savedViews: Array.isArray(savedViews) ? (savedViews as LoadedData["savedViews"]) : []
+    savedViews: Array.isArray(savedViews) ? (savedViews as LoadedData["savedViews"]) : [],
+    engagement: normalizeEngagementState(engagement)
   };
 
   if (mode === "minimal") {
@@ -234,12 +244,14 @@ export function validatePersistedState(
       continue;
     }
 
-    const normalizedTags = normalizeTags(task.tags);
+    const normalizedTags = normalizePriorityTags(task.tags);
     if (
       normalizedTags.length !== task.tags.length ||
       normalizedTags.some((tag, index) => tag !== task.tags[index])
     ) {
-      errors.push(`task.tags must be normalized/deduped/sorted (${String(task.id)})`);
+      errors.push(
+        `task.tags must be normalized/deduped (priority-aware, last-wins, priority-first) (${String(task.id)})`
+      );
     }
   }
 
@@ -270,6 +282,20 @@ export function validatePersistedState(
     }
     if (!["any", "overdue", "today", "next7"].includes(String(view.filters.due))) {
       errors.push(`savedView.filters.due invalid (${String(view.id)})`);
+    }
+    if (
+      view.filters.priority !== undefined &&
+      typeof view.filters.priority !== "string"
+    ) {
+      errors.push(`savedView.filters.priority must be string (${String(view.id)})`);
+    }
+    if (typeof view.filters.priority === "string") {
+      const normalizedPriority = normalizePriorityFilterValue(view.filters.priority);
+      if (!normalizedPriority) {
+        errors.push(`savedView.filters.priority must be canonical #pN (${String(view.id)})`);
+      } else if (view.filters.priority !== normalizedPriority) {
+        errors.push(`savedView.filters.priority must be canonical #pN (${String(view.id)})`);
+      }
     }
     if (
       view.filters.tag !== undefined &&
@@ -343,9 +369,119 @@ export function validatePersistedState(
     }
   }
 
+  const inputSchemaVersion =
+    typeof schemaVersion === "number" && Number.isFinite(schemaVersion) ? schemaVersion : 0;
+  const engagementRecord =
+    engagement !== undefined && isRecord(engagement) ? engagement : undefined;
+
+  if (inputSchemaVersion >= 5 && engagementRecord === undefined) {
+    errors.push("engagement must be present for schemaVersion >= 5");
+  }
+
+  if (engagementRecord) {
+    const completionLog = engagementRecord.completionLog;
+    if (!Array.isArray(completionLog)) {
+      errors.push("engagement.completionLog must be an array");
+    } else {
+      for (const event of completionLog) {
+        if (!isRecord(event)) {
+          errors.push("engagement.completionLog[] must be an object");
+          continue;
+        }
+        if (!isNonEmptyString(event.taskId)) {
+          errors.push("engagement.completionLog[].taskId must be a non-empty string");
+        }
+        if (!isFiniteNumber(event.at)) {
+          errors.push("engagement.completionLog[].at must be a number");
+        }
+        if (!Array.isArray(event.tags) || !event.tags.every((tag) => typeof tag === "string")) {
+          errors.push("engagement.completionLog[].tags must be a string array");
+        } else {
+          const normalizedTags = Array.from(
+            new Set(
+              event.tags
+                .map((tag) => String(tag).trim())
+                .filter((tag) => tag.length > 0)
+            )
+          ).sort((left, right) => left.localeCompare(right));
+          if (!areStringArraysEqual(event.tags, normalizedTags)) {
+            errors.push(
+              "engagement.completionLog[].tags must be normalized/deduped/sorted"
+            );
+          }
+        }
+      }
+    }
+
+    const achievements = engagementRecord.achievements;
+    if (!isRecord(achievements)) {
+      errors.push("engagement.achievements must be an object");
+    } else {
+      for (const unlock of Object.values(achievements)) {
+        if (!isRecord(unlock)) {
+          errors.push("engagement.achievements[] must be an object");
+          continue;
+        }
+        if (!isNonEmptyString(unlock.id)) {
+          errors.push("engagement.achievements[].id must be a non-empty string");
+        }
+        if (!isFiniteNumber(unlock.unlockedAt)) {
+          errors.push("engagement.achievements[].unlockedAt must be a number");
+        }
+        if (unlock.meta !== undefined) {
+          if (!isRecord(unlock.meta)) {
+            errors.push("engagement.achievements[].meta must be an object when present");
+          } else {
+            for (const metaValue of Object.values(unlock.meta)) {
+              if (typeof metaValue !== "string" && typeof metaValue !== "number") {
+                errors.push(
+                  "engagement.achievements[].meta values must be string|number"
+                );
+              }
+            }
+          }
+        }
+      }
+    }
+
+    const streak = engagementRecord.streak;
+    if (!isRecord(streak)) {
+      errors.push("engagement.streak must be an object");
+    } else {
+      if (!isFiniteNumber(streak.currentDays) || streak.currentDays < 0) {
+        errors.push("engagement.streak.currentDays must be a non-negative number");
+      }
+      if (!isFiniteNumber(streak.bestDays) || streak.bestDays < 0) {
+        errors.push("engagement.streak.bestDays must be a non-negative number");
+      }
+      if (
+        streak.lastCompletionDayKey !== null &&
+        streak.lastCompletionDayKey !== undefined &&
+        normalizeDateString(streak.lastCompletionDayKey) === undefined
+      ) {
+        errors.push(
+          "engagement.streak.lastCompletionDayKey must be YYYY-MM-DD or null"
+        );
+      }
+    }
+  }
+
   if (errors.length > 0) {
     return { ok: false, errors };
   }
 
   return { ok: true, data: normalized };
+}
+
+function normalizeDateString(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return undefined;
+  const parsed = new Date(`${trimmed}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return undefined;
+  const yyyy = String(parsed.getFullYear());
+  const mm = String(parsed.getMonth() + 1).padStart(2, "0");
+  const dd = String(parsed.getDate()).padStart(2, "0");
+  const normalized = `${yyyy}-${mm}-${dd}`;
+  return normalized === trimmed ? trimmed : undefined;
 }

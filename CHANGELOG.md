@@ -5,7 +5,18 @@ All notable changes to TADOI are documented in this file.
 The format is based on Keep a Changelog.
 
 ## [Unreleased]
-No entries yet.
+### Added
+- Non-interactive engagement toasts in the bottom bar for completion milestones:
+  - first completed task
+  - 3 completed today
+  - 5 completions for a tag in the last 7 days
+  - 3-day completion streak
+- Persisted engagement state with schema migration `4 -> 5`, completion retention limits,
+  and deterministic cooldown/unlock tracking.
+
+### Changed
+- Engagement toasts are queued (cap 3), priority ordered, auto-dismissed, and suppressed while
+  blocking overlays are open, then resumed after overlays close.
 
 ## [0.3.5] - 2026-02-12
 ### Added

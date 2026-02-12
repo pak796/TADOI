@@ -118,6 +118,52 @@ describe("filterTasks tagFilter boolean semantics", () => {
   });
 });
 
+describe("filterTasks priority filter semantics", () => {
+  const now = new Date(2026, 1, 8, 12, 0, 0, 0).getTime();
+  const tasks: Task[] = [
+    makeTask({ id: "a", title: "a", tags: ["work", "p1"] }),
+    makeTask({ id: "b", title: "b", tags: ["work", "#P2"] }),
+    makeTask({ id: "c", title: "c", tags: ["work", "P1", "#p3"] }),
+    makeTask({ id: "d", title: "d", tags: ["work"] })
+  ];
+
+  it("matches canonical and legacy priority tokens with last-wins normalization", () => {
+    expect(
+      filterTasks(tasks, { status: "all", due: "any", priority: "#p1" }, now).map(
+        (task) => task.id
+      )
+    ).toEqual(["a"]);
+
+    expect(
+      filterTasks(tasks, { status: "all", due: "any", priority: "P2" }, now).map(
+        (task) => task.id
+      )
+    ).toEqual(["b"]);
+
+    expect(
+      filterTasks(tasks, { status: "all", due: "any", priority: "p3" }, now).map(
+        (task) => task.id
+      )
+    ).toEqual(["c"]);
+  });
+
+  it("composes priority filter with other filters", () => {
+    expect(
+      filterTasks(
+        tasks,
+        {
+          status: "all",
+          due: "any",
+          priority: "#p1",
+          tagFilter: { all: ["work"] },
+          searchText: "a"
+        },
+        now
+      ).map((task) => task.id)
+    ).toEqual(["a"]);
+  });
+});
+
 describe("sortTasks with explicit time on same day", () => {
   it("orders explicit time tasks before date-only on the same day", () => {
     const now = new Date(2026, 1, 8, 12, 0, 0, 0).getTime();

@@ -25,6 +25,37 @@ describe("validatePersistedState", () => {
     expect(result.ok).toBe(true);
   });
 
+  it("requires engagement for schema v5 payloads", () => {
+    const result = validatePersistedState(
+      {
+        ...BASE_STATE,
+        schemaVersion: 5
+      },
+      "strict"
+    );
+    expect(result.ok).toBe(false);
+  });
+
+  it("accepts valid engagement payload in schema v5", () => {
+    const result = validatePersistedState(
+      {
+        ...BASE_STATE,
+        schemaVersion: 5,
+        engagement: {
+          completionLog: [],
+          achievements: {},
+          streak: {
+            currentDays: 0,
+            bestDays: 0,
+            lastCompletionDayKey: null
+          }
+        }
+      },
+      "strict"
+    );
+    expect(result.ok).toBe(true);
+  });
+
   it("rejects missing schemaVersion", () => {
     const result = validatePersistedState(
       { ...BASE_STATE, schemaVersion: undefined },
@@ -99,6 +130,28 @@ describe("validatePersistedState", () => {
       "strict"
     );
     expect(result.ok).toBe(true);
+  });
+
+  it("accepts priority-aware normalized task tags", () => {
+    const result = validatePersistedState(
+      {
+        ...BASE_STATE,
+        tasks: [{ ...BASE_STATE.tasks[0], tags: ["#p2", "work", "home"] }]
+      },
+      "strict"
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it("rejects non-normalized priority-aware task tags", () => {
+    const result = validatePersistedState(
+      {
+        ...BASE_STATE,
+        tasks: [{ ...BASE_STATE.tasks[0], tags: ["work", "#p2", "#p1"] }]
+      },
+      "strict"
+    );
+    expect(result.ok).toBe(false);
   });
 
   it("accepts calendar_import source and path link kind", () => {
@@ -353,5 +406,51 @@ describe("validatePersistedState", () => {
       "strict"
     );
     expect(nonNormalized.ok).toBe(false);
+  });
+
+  it("accepts canonical savedView.filters.priority", () => {
+    const result = validatePersistedState(
+      {
+        ...BASE_STATE,
+        savedViews: [
+          {
+            id: "view-priority",
+            name: "Priority View",
+            createdAt: 1,
+            updatedAt: 2,
+            filters: {
+              status: "open",
+              due: "today",
+              priority: "#p2"
+            }
+          }
+        ]
+      },
+      "strict"
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it("rejects non-canonical savedView.filters.priority", () => {
+    const result = validatePersistedState(
+      {
+        ...BASE_STATE,
+        savedViews: [
+          {
+            id: "view-priority-bad",
+            name: "Priority View Bad",
+            createdAt: 1,
+            updatedAt: 2,
+            filters: {
+              status: "open",
+              due: "today",
+              priority: "p2"
+            }
+          }
+        ]
+      },
+      "strict"
+    );
+    expect(result.ok).toBe(false);
   });
 });

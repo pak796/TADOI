@@ -2,8 +2,10 @@ import { describe, expect, it } from "bun:test";
 import {
   canonicalPriorityTag,
   isPriorityToken,
+  normalizePriorityFilterValue,
   normalizePriorityFromTokens,
-  normalizePriorityTags
+  normalizePriorityTags,
+  resolveTaskPriorityTag
 } from "./priorityTags";
 
 describe("priorityTags", () => {
@@ -55,5 +57,18 @@ describe("priorityTags", () => {
       "work",
       "home"
     ]);
+  });
+
+  it("resolves the last task priority tag as canonical", () => {
+    expect(resolveTaskPriorityTag(["work", "P3", "home", "#p1"])).toBe("#p1");
+    expect(resolveTaskPriorityTag(["work", "home"])).toBeUndefined();
+  });
+
+  it("normalizes priority filter values to canonical form", () => {
+    expect(normalizePriorityFilterValue("p1")).toBe("#p1");
+    expect(normalizePriorityFilterValue("P2")).toBe("#p2");
+    expect(normalizePriorityFilterValue("#P3")).toBe("#p3");
+    expect(normalizePriorityFilterValue("work")).toBeUndefined();
+    expect(normalizePriorityFilterValue(undefined)).toBeUndefined();
   });
 });

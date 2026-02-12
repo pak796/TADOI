@@ -1,4 +1,13 @@
 import { normalizeTags } from "../domain/tagIndex";
+import {
+  createDefaultEngagementState,
+  mergeEngagementStates,
+  normalizeEngagementState
+} from "../domain/engagement";
+import {
+  normalizePriorityFilterValue,
+  normalizePriorityTags
+} from "../domain/priorityTags";
 import { normalizeTagFilter } from "../domain/tagFilter";
 import type { SavedView, TagIndexEntry, Task } from "../domain/models";
 import { getDefaultSettings, type TadoiSettings } from "../settings/settings";
@@ -67,7 +76,7 @@ function asTimestamp(value: unknown, fallback = 0): number {
 function normalizeTask(task: Task): Task {
   return {
     ...task,
-    tags: normalizeTags(Array.isArray(task.tags) ? task.tags : [])
+    tags: normalizePriorityTags(Array.isArray(task.tags) ? task.tags : [])
   };
 }
 
@@ -144,6 +153,8 @@ function areTagFiltersEquivalent(
 }
 
 function areViewsEquivalent(left: SavedView, right: SavedView): boolean {
+  const leftPriority = normalizePriorityFilterValue(left.filters.priority);
+  const rightPriority = normalizePriorityFilterValue(right.filters.priority);
   return (
     left.id === right.id &&
     left.name === right.name &&
@@ -151,6 +162,7 @@ function areViewsEquivalent(left: SavedView, right: SavedView): boolean {
     left.updatedAt === right.updatedAt &&
     left.filters.status === right.filters.status &&
     left.filters.due === right.filters.due &&
+    leftPriority === rightPriority &&
     left.filters.tag === right.filters.tag &&
     areTagFiltersEquivalent(left.filters.tagFilter, right.filters.tagFilter) &&
     left.filters.searchText === right.filters.searchText
@@ -425,7 +437,8 @@ export function importState(
       schemaVersion: incomingState.schemaVersion,
       tasks: normalizedTasks,
       tagIndex: recomputeTagIndex(normalizedTasks, now),
-      savedViews: incomingState.savedViews.map((view) => ({ ...view }))
+      savedViews: incomingState.savedViews.map((view) => ({ ...view })),
+      engagement: normalizeEngagementState(incomingState.engagement, now)
     };
 
     return {
@@ -453,7 +466,12 @@ export function importState(
     schemaVersion: incomingState.schemaVersion,
     tasks: mergedTasks.merged,
     tagIndex: recomputeTagIndex(mergedTasks.merged, now),
-    savedViews: mergedViews.merged
+    savedViews: mergedViews.merged,
+    engagement: mergeEngagementStates(
+      normalizeEngagementState(currentState.engagement, now),
+      normalizeEngagementState(incomingState.engagement, now),
+      now
+    )
   };
 
   return {
@@ -503,6 +521,7 @@ export function redactStateForExport(
       instance_of: undefined,
       external: undefined
     })),
+    engagement: createDefaultEngagementState(),
     settings: payload.settings
       ? {
           ...payload.settings,

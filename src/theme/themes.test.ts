@@ -1,5 +1,39 @@
 import { describe, expect, it } from "bun:test";
-import { ROTATING_THEME_ORDER, THEME_ORDER, THEMES, cycleTheme } from "./themes";
+import {
+  ROTATING_THEME_ORDER,
+  THEME_ORDER,
+  THEMES,
+  cycleTheme,
+  formatThemeDisplayName
+} from "./themes";
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const normalized = hex.trim().replace(/^#/, "");
+  return {
+    r: Number.parseInt(normalized.slice(0, 2), 16),
+    g: Number.parseInt(normalized.slice(2, 4), 16),
+    b: Number.parseInt(normalized.slice(4, 6), 16)
+  };
+}
+
+function srgbToLinear(channel: number): number {
+  const normalized = channel / 255;
+  return normalized <= 0.03928
+    ? normalized / 12.92
+    : ((normalized + 0.055) / 1.055) ** 2.4;
+}
+
+function contrastRatio(foreground: string, background: string): number {
+  const fg = hexToRgb(foreground);
+  const bg = hexToRgb(background);
+  const fgLuminance =
+    0.2126 * srgbToLinear(fg.r) + 0.7152 * srgbToLinear(fg.g) + 0.0722 * srgbToLinear(fg.b);
+  const bgLuminance =
+    0.2126 * srgbToLinear(bg.r) + 0.7152 * srgbToLinear(bg.g) + 0.0722 * srgbToLinear(bg.b);
+  const lighter = Math.max(fgLuminance, bgLuminance);
+  const darker = Math.min(fgLuminance, bgLuminance);
+  return (lighter + 0.05) / (darker + 0.05);
+}
 
 describe("theme registry", () => {
   it("cycles through all themes in declared order", () => {
@@ -22,7 +56,11 @@ describe("theme registry", () => {
     expect(cycleTheme("rams")).toBe("trooper");
     expect(cycleTheme("trooper")).toBe("twilight");
     expect(cycleTheme("twilight")).toBe("msdos");
-    expect(cycleTheme("msdos")).toBe("custom1");
+    expect(cycleTheme("msdos")).toBe("niners");
+    expect(cycleTheme("niners")).toBe("mcrn");
+    expect(cycleTheme("mcrn")).toBe("zeke");
+    expect(cycleTheme("zeke")).toBe("gundam");
+    expect(cycleTheme("gundam")).toBe("custom1");
     expect(cycleTheme("custom1")).toBe("rotating");
     expect(cycleTheme("rotating")).toBe("default");
   });
@@ -49,6 +87,10 @@ describe("theme registry", () => {
       "trooper",
       "twilight",
       "msdos",
+      "niners",
+      "mcrn",
+      "zeke",
+      "gundam",
       "custom1",
       "rotating"
     ]);
@@ -75,7 +117,11 @@ describe("theme registry", () => {
       "rams",
       "trooper",
       "twilight",
-      "msdos"
+      "msdos",
+      "niners",
+      "mcrn",
+      "zeke",
+      "gundam"
     ]);
   });
 
@@ -380,5 +426,91 @@ describe("theme registry", () => {
       selectionBg: "#aaaaaa",
       selectionText: "#0000aa"
     });
+  });
+
+  it("defines niners palette tokens", () => {
+    expect(THEMES.niners).toMatchObject({
+      bg: "#1f0a0a",
+      panel: "#3a1111",
+      text: "#fff4d6",
+      mutedText: "#d6c39a",
+      border: "#b3995d",
+      accent: "#b3995d",
+      accent2: "#d62839",
+      ok: "#c6b17a",
+      warn: "#e3be63",
+      danger: "#d95a4e",
+      selectionBg: "#b3995d",
+      selectionText: "#1f0a0a"
+    });
+  });
+
+  it("defines mcrn palette tokens", () => {
+    expect(THEMES.mcrn).toMatchObject({
+      bg: "#0a0d12",
+      panel: "#141a23",
+      text: "#e6edf7",
+      mutedText: "#9aa8be",
+      border: "#ff6a00",
+      accent: "#ff6a00",
+      accent2: "#c43e2f",
+      ok: "#6ed3a5",
+      warn: "#ffc857",
+      danger: "#ff4d4d",
+      selectionBg: "#ff6a00",
+      selectionText: "#0a0d12"
+    });
+  });
+
+  it("defines zeke palette tokens", () => {
+    expect(THEMES.zeke).toMatchObject({
+      bg: "#0e1a14",
+      panel: "#163025",
+      text: "#d7f5e3",
+      mutedText: "#8fb7a0",
+      border: "#3e7d62",
+      accent: "#7bcb9a",
+      accent2: "#c85c8e",
+      ok: "#5fd08c",
+      warn: "#e3c265",
+      danger: "#d96b6b",
+      selectionBg: "#2f6b53",
+      selectionText: "#dff7ea"
+    });
+  });
+
+  it("defines gundam palette tokens", () => {
+    expect(THEMES.gundam).toMatchObject({
+      bg: "#0b1e3a",
+      panel: "#123261",
+      text: "#f5f8ff",
+      mutedText: "#c7d5ee",
+      border: "#f9d648",
+      accent: "#e53935",
+      accent2: "#4da3ff",
+      ok: "#5bc0eb",
+      warn: "#f9d648",
+      danger: "#ff5a5a",
+      selectionBg: "#f9d648",
+      selectionText: "#0b1e3a"
+    });
+  });
+
+  it("keeps niners/mcrn/zeke/gundam text and selection contrast readable", () => {
+    for (const themeId of ["niners", "mcrn", "zeke", "gundam"] as const) {
+      const tokens = THEMES[themeId];
+      expect(tokens.text).not.toBe(tokens.bg);
+      expect(tokens.selectionText).not.toBe(tokens.selectionBg);
+      expect(contrastRatio(tokens.text, tokens.bg)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(tokens.selectionText, tokens.selectionBg)).toBeGreaterThanOrEqual(
+        4.5
+      );
+    }
+  });
+
+  it("formats special display names for selected themes", () => {
+    expect(formatThemeDisplayName("mcrn")).toBe("MCRN");
+    expect(formatThemeDisplayName("gundam")).toBe("GUNDAM");
+    expect(formatThemeDisplayName("msdos")).toBe("MS-DOS");
   });
 });
