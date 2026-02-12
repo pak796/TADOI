@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { applyArchiveAging } from "./store";
+import { applyArchiveAging, createDraftFromTask } from "./store";
 import { LoadedData } from "./persistence";
 import { Task } from "../domain/models";
 
@@ -56,5 +56,19 @@ describe("applyArchiveAging startup behavior", () => {
     expect(statuses.old).toBe("archived");
     expect(statuses.recent).toBe("done");
     expect(statuses.open).toBe("open");
+  });
+});
+
+describe("createDraftFromTask priority tag display", () => {
+  it("shows the canonical priority tag first with last-priority precedence", () => {
+    const draft = createDraftFromTask(
+      makeTask({
+        id: "priority",
+        title: "priority task",
+        tags: ["work", "P3", "home", "#p1", "home"]
+      })
+    );
+
+    expect(draft.tagsText).toBe("#p1 #work #home");
   });
 });

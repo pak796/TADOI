@@ -98,10 +98,10 @@ import {
   formatTagForDisplay,
   getTagCompletion,
   normalizeTagPrefix,
-  normalizeTagsFromInput,
   rankTags,
   updateTagIndex
 } from "../domain/tagIndex";
+import { normalizePriorityFromTokens } from "../domain/priorityTags";
 import {
   getSortModeLabel,
   SORT_MODE_ORDER
@@ -803,6 +803,11 @@ function getTagQuery(tagsText: string): string | null {
   const lastToken = tokens[tokens.length - 1];
   const normalized = normalizeTagPrefix(lastToken);
   return normalized.length ? normalized : null;
+}
+
+function parseTagsInput(input: string): string[] {
+  const tokens = input.split(/[\s,]+/).filter(Boolean);
+  return normalizePriorityFromTokens(tokens);
 }
 
 function getDueSuggestion(dueText: string, now: number): string | null {
@@ -4769,7 +4774,7 @@ export function App({
     }
 
     const { dueAt, hasExplicitTime } = combineDueDateTime(draft.dueText, timeText);
-    const tags = normalizeTagsFromInput(draft.tagsText);
+    const tags = parseTagsInput(draft.tagsText);
     const notes = draft.notes.trim() || undefined;
     const links = draft.links.map((link) => ({ ...link }));
 

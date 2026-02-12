@@ -1,5 +1,6 @@
 import { formatLocalTimeHHmm } from "../domain/dates";
 import type { Task } from "../domain/models";
+import { normalizePriorityTags } from "../domain/priorityTags";
 import { formatTagForDisplay } from "../domain/tagIndex";
 import { themeForObject } from "../app/theme";
 import { formatDate } from "../state/store";
@@ -52,7 +53,7 @@ export function OverdueNotificationModal({
   const theme = themeForObject("notifications");
   const dueLabel = formatDueDateTimeLabel(event.dueAt);
   const overdueBy = formatOverdueBy(nowMs, event.dueAt);
-  const tags = task?.tags ?? [];
+  const tags = normalizePriorityTags(task?.tags ?? []);
 
   return (
     <box

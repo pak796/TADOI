@@ -1,5 +1,6 @@
 import { addLocalDaysMs, diffLocalDays, startOfLocalDayMs } from "./dates";
 import { Filters, SortMode, Task, TaskStatus } from "./models";
+import { normalizePriorityTags } from "./priorityTags";
 import { sortTasks } from "./query";
 import { matchesTagFilter } from "./tagFilter";
 import {
@@ -127,6 +128,7 @@ function toRegularRow(task: Task): VisibleTaskRow {
   if (task.instance_of) {
     return {
       ...task,
+      tags: normalizePriorityTags(task.tags),
       rowKind: "series_occurrence_instance",
       sourceTaskId: task.id,
       seriesId: task.instance_of.series_id,
@@ -136,6 +138,7 @@ function toRegularRow(task: Task): VisibleTaskRow {
 
   return {
     ...task,
+    tags: normalizePriorityTags(task.tags),
     rowKind: "regular",
     sourceTaskId: task.id
   };
@@ -201,6 +204,7 @@ function buildSeriesVirtualRows(
       ...seriesTask,
       id: buildSeriesOccurrenceRowId(recurrence.series_id, occurrenceIso),
       dueAt,
+      tags: normalizePriorityTags(seriesTask.tags),
       rowKind: "series_occurrence_virtual",
       sourceTaskId: seriesTask.id,
       seriesId: recurrence.series_id,

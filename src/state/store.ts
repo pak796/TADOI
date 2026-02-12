@@ -18,6 +18,7 @@ import {
   TagIndexEntry,
   Task
 } from "../domain/models";
+import { normalizePriorityTags } from "../domain/priorityTags";
 import type { LoadedData } from "./persistence";
 
 export type Action =
@@ -149,7 +150,9 @@ export function createDraftFromTask(task: Task): EditorDraft {
     title: task.title,
     dueText: task.dueAt ? formatDate(task.dueAt) : "",
     timeText: task.hasExplicitTime && task.dueAt ? formatLocalTimeHHmm(task.dueAt) : "",
-    tagsText: task.tags.map((tag) => formatTagForDisplay(tag)).join(" "),
+    tagsText: normalizePriorityTags(task.tags)
+      .map((tag) => formatTagForDisplay(tag))
+      .join(" "),
     notes: task.notes ?? "",
     links: (task.links ?? []).map((link) => ({ ...link })),
     repeatMode,

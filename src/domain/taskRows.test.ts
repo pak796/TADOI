@@ -149,6 +149,45 @@ describe("buildVisibleTaskRows recurring expansion", () => {
     expect(excludedRows).toHaveLength(0);
   });
 
+  it("normalizes priority tags for regular rows with last-token precedence", () => {
+    const tasks: Task[] = [
+      makeTask({
+        id: "task-priority",
+        title: "priority task",
+        status: "open",
+        tags: ["work", "P3", "home", "#p1", "home"]
+      })
+    ];
+
+    const rows = buildRows(tasks, { status: "all", due: "any" }, now);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.tags).toEqual(["#p1", "work", "home"]);
+  });
+
+  it("normalizes priority tags for virtual recurring rows", () => {
+    const tasks: Task[] = [
+      makeTask({
+        id: "series-priority",
+        title: "priority recurring",
+        status: "open",
+        hasExplicitTime: true,
+        tags: ["work", "#P2", "home", "p10", "work"],
+        recurrence: {
+          dtstart: "2026-02-10T09:00:00",
+          rrule: "FREQ=DAILY;INTERVAL=1;COUNT=2",
+          series_id: "series:priority"
+        }
+      })
+    ];
+
+    const rows = buildRows(tasks, { status: "all", due: "today" }, now);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.rowKind).toBe("series_occurrence_virtual");
+    expect(rows[0]?.tags).toEqual(["#p10", "work", "home"]);
+  });
+
   it("suppresses virtual row when a matching materialized instance exists", () => {
     const tasks: Task[] = [
       makeTask({
