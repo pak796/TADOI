@@ -233,6 +233,23 @@ describe("unwind", () => {
     });
   });
 
+  it("closes dashboard back to list/task list", () => {
+    const result = unwind({
+      ...initialUIState,
+      mode: Mode.DASHBOARD,
+      focus: FocusTarget.DASHBOARD
+    });
+
+    expect(result).toEqual({
+      state: {
+        ...initialUIState,
+        mode: Mode.LIST,
+        focus: FocusTarget.TASK_LIST
+      },
+      clearEditorDraft: false
+    });
+  });
+
   it("exits add/edit and requests editor draft clear", () => {
     const addResult = unwind({
       ...initialUIState,

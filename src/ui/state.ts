@@ -257,6 +257,17 @@ export function unwind(state: UIState): UnwindResult | null {
     };
   }
 
+  if (state.mode === Mode.DASHBOARD) {
+    return {
+      state: {
+        ...state,
+        mode: Mode.LIST,
+        focus: FocusTarget.TASK_LIST
+      },
+      clearEditorDraft: false
+    };
+  }
+
   if (isEditorMode(state.mode)) {
     return {
       state: {
