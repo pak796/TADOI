@@ -15,6 +15,7 @@ import {
 } from "../brand/brand";
 import type { FlashMode, LogoMode } from "../settings/settings";
 import type { ThemeId } from "../theme/themes";
+import { centerLogoInBox } from "./logoLayout";
 
 export type LeftRailMenuItem =
   | "LIST"
@@ -46,7 +47,6 @@ const LOGO_ROTATE_INTERVAL_MS = 30_000;
 const LOGO_RENDER_HEIGHT = Math.max(
   ...Object.values(LOGO_VARIANTS).map((lines) => lines.length)
 );
-const LOGO_PADDING_LINE = " ".repeat(LOGO_MAX_WIDTH);
 const HINT_LINES = [
   "j/k: MOVE",
   "p: TAG PANEL",
@@ -54,12 +54,23 @@ const HINT_LINES = [
   "SPACE: TOGGLE"
 ] as const;
 
-function padLogoLines(lines: string[], renderHeight: number): string[] {
-  if (lines.length >= renderHeight) return lines;
-  return [
-    ...lines,
-    ...Array.from({ length: renderHeight - lines.length }, () => LOGO_PADDING_LINE)
-  ];
+const LOGO_WIDTH_WARNINGS = Object.entries(LOGO_VARIANTS).flatMap(
+  ([variantId, lines]) =>
+    lines.flatMap((line, lineIndex) =>
+      line.length > LOGO_MAX_WIDTH
+        ? [`${variantId}[${lineIndex + 1}] => ${line.length}`]
+        : []
+    )
+);
+
+if (
+  typeof process !== "undefined" &&
+  process.env.NODE_ENV !== "production" &&
+  LOGO_WIDTH_WARNINGS.length > 0
+) {
+  console.warn(
+    `[LeftRail] Logo lines exceed ${LOGO_MAX_WIDTH} columns: ${LOGO_WIDTH_WARNINGS.join(", ")}`
+  );
 }
 
 function getModeLabel(mode: Mode): string {
@@ -272,8 +283,9 @@ export function LeftRail({
   const dueText = dueBg === "transparent" ? theme.text : theme.bg;
   const booleanTagSummary = formatTagFilterBooleanSummary(filters.tagFilter);
 
+  const rawLogoLines = showLogo ? LOGO_VARIANTS[effectiveLogoId] : [];
   const logoLines = showLogo
-    ? padLogoLines(LOGO_VARIANTS[effectiveLogoId], LOGO_RENDER_HEIGHT)
+    ? centerLogoInBox(rawLogoLines, LOGO_MAX_WIDTH, LOGO_RENDER_HEIGHT)
     : [];
   const taglineLines = showLogo ? wrapWords(APP_TAGLINE, LOGO_MAX_WIDTH) : [];
   const activeThemeLabel = activeThemeId ? formatThemeName(activeThemeId) : null;
