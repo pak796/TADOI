@@ -23,6 +23,36 @@ type OutputDirs = {
   installerDir: string;
 };
 
+function requiredSigningEnvVars(target: Target): string[] {
+  if (target === "macos") {
+    return ["TADOI_MAC_SIGN_IDENTITY_INSTALLER", "TADOI_MAC_NOTARY_PROFILE"];
+  }
+  if (target === "windows") {
+    return ["TADOI_WIN_SIGN_CERT_PATH", "TADOI_WIN_SIGN_CERT_PASSWORD"];
+  }
+  return [];
+}
+
+function assertStrictSigningPrerequisites(target: Target, format: Format, mode: Mode): void {
+  if (mode !== "build" || format !== "installer") return;
+  if (process.env.TADOI_REQUIRE_SIGNING !== "1") return;
+
+  const requiredEnvVars = requiredSigningEnvVars(target);
+  const missing = requiredEnvVars.filter((name) => {
+    const value = process.env[name];
+    return value === undefined || value.trim() === "";
+  });
+
+  if (missing.length > 0) {
+    console.error(
+      `[build-binary] strict signing enabled (TADOI_REQUIRE_SIGNING=1); missing required env vars for ${target}: ${missing.join(
+        ", "
+      )}`
+    );
+    process.exit(1);
+  }
+}
+
 function parseArg(name: string): string | null {
   const prefix = `${name}=`;
   for (let i = 0; i < process.argv.length; i += 1) {
@@ -320,6 +350,8 @@ function main(): void {
     writeInstallerPlan(target, timestamp, outputDirs);
     return;
   }
+
+  assertStrictSigningPrerequisites(target, format, mode);
 
   const version = readPackageVersion();
   const currentHostTarget = hostTarget();

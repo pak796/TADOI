@@ -4,7 +4,7 @@ import {
   formatDateToLocalIso,
   parseLocalIsoToDate
 } from "../domain/recurrence/rruleAdapter";
-import type { TaskLinkKind, TaskStatus } from "../domain/models";
+import type { TaskLinkKind, TaskLinkSource, TaskStatus } from "../domain/models";
 import type { LoadedData } from "./persistence";
 
 export type ValidationMode = "minimal" | "strict";
@@ -15,6 +15,7 @@ export type ValidationResult =
 
 const VALID_STATUS = new Set<TaskStatus>(["open", "done", "archived"]);
 const VALID_TASK_LINK_KINDS = new Set<TaskLinkKind>(["url", "path"]);
+const VALID_TASK_LINK_SOURCES = new Set<TaskLinkSource>(["manual", "calendar_import"]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -215,6 +216,14 @@ export function validatePersistedState(
             !VALID_TASK_LINK_KINDS.has(link.kind as TaskLinkKind)
           ) {
             errors.push(`task.links[].kind must be url|path when present (${String(task.id)})`);
+          }
+          if (
+            link.source !== undefined &&
+            !VALID_TASK_LINK_SOURCES.has(link.source as TaskLinkSource)
+          ) {
+            errors.push(
+              `task.links[].source must be manual|calendar_import when present (${String(task.id)})`
+            );
           }
         }
       }

@@ -1,14 +1,14 @@
 # TADOI™ Spec Sheet — Calendar Export (ICS) (One‑Way)
 
 **Repo version context:** `v0.3.4` (runtime baseline)  
-**Generated:** 2026-02-11  
-**Feature status:** Proposed / Not yet implemented
+**Updated:** 2026-02-12  
+**Feature status:** Implemented (user-facing CLI: `calendar:export`)
 
 ---
 
 ## 1) Objective
 
-Ship a **one-way iCalendar export** that writes an `.ics` file representing due-dated tasks as calendar events. This provides meaningful “calendar integration” value **without OAuth, sync, background daemons, or vendor APIs**.
+Ship and maintain a **one-way iCalendar export** that writes an `.ics` file representing due-dated tasks as calendar events. This provides meaningful calendar integration value **without OAuth, sync loops, background daemons, or vendor APIs**.
 
 This spec is aligned to TADOI’s existing baseline contracts for recurrence (RRULE-style fields + sparse instance materialization) and task links (`links[]`).  
 
@@ -17,7 +17,7 @@ This spec is aligned to TADOI’s existing baseline contracts for recurrence (RR
 ## 2) Goals / Non‑Goals
 
 ### Goals
-- Add CLI command: `tadoi calendar:export --out <file.ics> [--view <name>] [--range next7|month|all]`
+- Add CLI command: `tadoi calendar:export --out <file.ics> [--view <name>] [--range next7|month|all] [--privacy minimal|full]`
 - Export mappings:
   - **date-only due** → **all-day VEVENT**
   - **due date+time** → **timed VEVENT**
@@ -29,7 +29,7 @@ This spec is aligned to TADOI’s existing baseline contracts for recurrence (RR
 - Add in-app Help section entry: **“Calendar export (ICS)”**.
 
 ### Non‑Goals
-- No import.
+- No user-facing `calendar:import` CLI command yet (import foundation exists at service layer).
 - No bidirectional sync, CalDAV, Google/Microsoft APIs, OAuth.
 - No live refresh or background export.
 - No alarms/VALARM in v1.
@@ -41,7 +41,7 @@ This spec is aligned to TADOI’s existing baseline contracts for recurrence (RR
 
 ### Command
 ```bash
-tadoi calendar:export --out tadoi.ics [--view <name>] [--range next7|month|all]
+tadoi calendar:export --out tadoi.ics [--view <name>] [--range next7|month|all] [--privacy minimal|full]
 ```
 
 ### Flags
@@ -56,6 +56,11 @@ tadoi calendar:export --out tadoi.ics [--view <name>] [--range next7|month|all]
   - `month`: rolling 30 local days (today..+29).
   - `all`: all eligible tasks (with safeguards; see §8).
 
+- `--privacy minimal|full` *(optional; default `minimal`)*  
+  - `minimal`: summary + schedule fields only.
+  - `full`: include notes/tags/links/url metadata.
+  - Compatibility alias: `--include-details` => `--privacy full`.
+
 ### Exit Codes
 - `0` success
 - `1` usage/validation errors
@@ -66,7 +71,7 @@ tadoi calendar:export --out tadoi.ics [--view <name>] [--range next7|month|all]
 ## 4) Eligibility & Filtering
 
 ### Status policy (v1 default)
-- Include: **open** and **overdue** tasks.
+- Include: **open** tasks.
 - Exclude: **done/closed** tasks and done-history instances.
 
 ### View filtering

@@ -23,6 +23,9 @@ const DEFAULT_NOTIFICATIONS = {
   bannerDurationMs: 5000,
   bellCooldownMs: 2000
 };
+const DEFAULT_SECURITY = {
+  nonHttpLinkPolicy: "prompt"
+} as const;
 const DEFAULT_LOGO_MODE = getDefaultSettings().logoMode;
 const DEFAULT_CUSTOM_THEMES = getDefaultSettings().customThemes;
 
@@ -75,6 +78,7 @@ describe("loadSettings", () => {
     expect(result.settings.themeId).toBe("default");
     expect(result.settings.logoMode).toBe(DEFAULT_LOGO_MODE);
     expect(result.settings.notifications).toEqual(DEFAULT_NOTIFICATIONS);
+    expect(result.settings.security).toEqual(DEFAULT_SECURITY);
     expect(result.settings.customThemes).toEqual(expectedCustomThemesFor("default"));
     expect(result.settings.customThemes?.textByTheme).toBeUndefined();
     expect(result.resolvedPath).toBe(
@@ -162,6 +166,7 @@ describe("loadSettings", () => {
       logoMode: DEFAULT_LOGO_MODE,
       flashMode: "slow",
       notifications: DEFAULT_NOTIFICATIONS,
+      security: DEFAULT_SECURITY,
       customThemes: expectedCustomThemesFor("retro")
     });
 
@@ -176,6 +181,7 @@ describe("loadSettings", () => {
       logoMode: DEFAULT_LOGO_MODE,
       flashMode: "slow",
       notifications: DEFAULT_NOTIFICATIONS,
+      security: DEFAULT_SECURITY,
       customThemes: expectedCustomThemesFor("retro")
     });
   });
@@ -247,8 +253,65 @@ describe("loadSettings", () => {
       logoMode: DEFAULT_LOGO_MODE,
       flashMode: "static",
       notifications: DEFAULT_NOTIFICATIONS,
+      security: DEFAULT_SECURITY,
       customThemes: expectedCustomThemesFor("retro")
     });
+  });
+
+  it("normalizes notification durations to positive integers", async () => {
+    const homeDir = await makeTempDir();
+    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    await fs.mkdir(path.dirname(primary), { recursive: true });
+    await fs.writeFile(
+      primary,
+      JSON.stringify({
+        themeId: "retro",
+        notifications: {
+          enabled: true,
+          inAppOverdueBanner: true,
+          terminalBellOnOverdue: false,
+          bannerDurationMs: 1234.9,
+          bellCooldownMs: 2000.1
+        }
+      }),
+      "utf8"
+    );
+
+    const result = await loadSettings({ homeDir, platform: "linux" });
+    expect(result.settings.notifications.bannerDurationMs).toBe(1234);
+    expect(result.settings.notifications.bellCooldownMs).toBe(2000);
+  });
+
+  it("normalizes security policy values to prompt|block", async () => {
+    const homeDir = await makeTempDir();
+    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    await fs.mkdir(path.dirname(primary), { recursive: true });
+
+    await fs.writeFile(
+      primary,
+      JSON.stringify({
+        themeId: "retro",
+        security: {
+          nonHttpLinkPolicy: "block"
+        }
+      }),
+      "utf8"
+    );
+    const blocked = await loadSettings({ homeDir, platform: "linux" });
+    expect(blocked.settings.security.nonHttpLinkPolicy).toBe("block");
+
+    await fs.writeFile(
+      primary,
+      JSON.stringify({
+        themeId: "retro",
+        security: {
+          nonHttpLinkPolicy: "danger"
+        }
+      }),
+      "utf8"
+    );
+    const normalized = await loadSettings({ homeDir, platform: "linux" });
+    expect(normalized.settings.security.nonHttpLinkPolicy).toBe("prompt");
   });
 
   it("seeds custom1 global palette from active non-rotating theme when missing", async () => {
@@ -330,6 +393,43 @@ describe("loadSettings", () => {
       }
     });
   });
+
+  it("reports warning and falls back when primary settings JSON is malformed", async () => {
+    const homeDir = await makeTempDir();
+    const { primary, fallback } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    await fs.mkdir(path.dirname(primary), { recursive: true });
+    await fs.mkdir(path.dirname(fallback), { recursive: true });
+    await fs.writeFile(primary, "{broken", "utf8");
+    await fs.writeFile(
+      fallback,
+      JSON.stringify({ themeId: "retro", flashMode: "static" }),
+      "utf8"
+    );
+
+    const result = await loadSettings({ homeDir, platform: "linux" });
+    expect(result.settings.themeId).toBe("retro");
+    expect(result.resolvedPath).toBe(fallback);
+    expect(result.warnings).toContain(
+      "primary settings file is not valid JSON; using fallback/default settings"
+    );
+  });
+
+  it("reports both warnings and returns defaults when primary/fallback are malformed", async () => {
+    const homeDir = await makeTempDir();
+    const { primary, fallback } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    await fs.mkdir(path.dirname(primary), { recursive: true });
+    await fs.mkdir(path.dirname(fallback), { recursive: true });
+    await fs.writeFile(primary, "{broken", "utf8");
+    await fs.writeFile(fallback, "{broken-too", "utf8");
+
+    const result = await loadSettings({ homeDir, platform: "linux" });
+    expect(result.resolvedPath).toBe(primary);
+    expect(result.settings).toEqual(getDefaultSettings());
+    expect(result.warnings).toEqual([
+      "primary settings file is not valid JSON; using fallback/default settings",
+      "fallback settings file is not valid JSON; using fallback/default settings"
+    ]);
+  });
 });
 
 describe("saveSettingsDebounced", () => {
@@ -341,7 +441,8 @@ describe("saveSettingsDebounced", () => {
         themeId: "highContrast",
         logoMode: "default",
         flashMode: "static",
-        notifications: DEFAULT_NOTIFICATIONS
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY
       },
       20,
       { filePath: primary, homeDir, platform: "linux" }
@@ -354,6 +455,7 @@ describe("saveSettingsDebounced", () => {
       logoMode: "default",
       flashMode: "static",
       notifications: DEFAULT_NOTIFICATIONS,
+      security: DEFAULT_SECURITY,
       customThemes: expectedCustomThemesFor("highContrast")
     });
   });
@@ -366,7 +468,8 @@ describe("saveSettingsDebounced", () => {
         themeId: "retro",
         logoMode: "default",
         flashMode: "slow",
-        notifications: DEFAULT_NOTIFICATIONS
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY
       },
       20,
       { filePath: primary, homeDir, platform: "linux" }
@@ -376,7 +479,8 @@ describe("saveSettingsDebounced", () => {
         themeId: "neonHacker",
         logoMode: "default",
         flashMode: "static",
-        notifications: DEFAULT_NOTIFICATIONS
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY
       },
       20,
       { filePath: primary, homeDir, platform: "linux" }
@@ -389,6 +493,7 @@ describe("saveSettingsDebounced", () => {
       logoMode: "default",
       flashMode: "static",
       notifications: DEFAULT_NOTIFICATIONS,
+      security: DEFAULT_SECURITY,
       customThemes: expectedCustomThemesFor("neonHacker")
     });
   });
@@ -416,7 +521,8 @@ describe("saveSettingsDebounced", () => {
         themeId: "retro",
         logoMode: "default",
         flashMode: "static",
-        notifications: DEFAULT_NOTIFICATIONS
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY
       },
       20,
       { homeDir, platform: "linux", fsOps }
@@ -434,6 +540,7 @@ describe("saveSettingsDebounced", () => {
       logoMode: "default",
       flashMode: "static",
       notifications: DEFAULT_NOTIFICATIONS,
+      security: DEFAULT_SECURITY,
       customThemes: expectedCustomThemesFor("retro")
     });
   });
@@ -449,7 +556,8 @@ describe("saveSettingsStrict", () => {
         themeId: "retro",
         logoMode: "default",
         flashMode: "slow",
-        notifications: DEFAULT_NOTIFICATIONS
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY
       },
       { filePath: primary, homeDir, platform: "linux" }
     );
@@ -462,6 +570,7 @@ describe("saveSettingsStrict", () => {
       logoMode: "default",
       flashMode: "slow",
       notifications: DEFAULT_NOTIFICATIONS,
+      security: DEFAULT_SECURITY,
       customThemes: expectedCustomThemesFor("retro")
     });
   });
@@ -489,7 +598,8 @@ describe("saveSettingsStrict", () => {
         themeId: "highContrast",
         logoMode: "default",
         flashMode: "static",
-        notifications: DEFAULT_NOTIFICATIONS
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY
       },
       { homeDir, platform: "linux", fsOps }
     );
@@ -502,6 +612,7 @@ describe("saveSettingsStrict", () => {
       logoMode: "default",
       flashMode: "static",
       notifications: DEFAULT_NOTIFICATIONS,
+      security: DEFAULT_SECURITY,
       customThemes: expectedCustomThemesFor("highContrast")
     });
   });

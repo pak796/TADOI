@@ -13,10 +13,25 @@ The format is based on Keep a Changelog.
   - add/edit/delete and unknown-scheme confirmation modals via existing modal framework
   - cross-platform safe open/copy wrappers using argument-based process spawning
   - Add-mode editor shortcut `Ctrl+L` to attach links before saving a new task
+- Calendar import foundation modules (service + parser + mapper):
+  - `src/state/calendarImportService.ts`
+  - `src/calendar/icsParser.ts`
+  - `src/calendar/importMapper.ts`
+  - Supports merge/update/create import modes, dry-run/report output, recurrence override handling, and import-size guardrails.
+- Settings security surface:
+  - `settings.security.nonHttpLinkPolicy` (`prompt` or `block`) persisted with defaults and import/export validation support.
+- Startup path privacy control:
+  - startup logs now redact absolute paths by default.
+  - `TADOI_VERBOSE_PATH_LOGS=1` enables full-path startup logging for debugging.
 
 ### Changed
 - List-mode focus routing now supports toggling between task list and details links with `Tab` / `Shift+Tab`.
 - URL scheme gating now requires explicit confirmation for non-allowlisted schemes before opening external handlers.
+- Calendar export CLI privacy contract now defaults to `--privacy minimal`; `--privacy full` and `--include-details` provide compatibility/full metadata behavior.
+- Link-open policy is source-aware:
+  - links imported from ICS default to confirm-on-open behavior.
+  - path/file and non-HTTP opens can be blocked entirely via `security.nonHttpLinkPolicy=block`.
+- Windows link open path now uses `explorer` argument-based spawn with control-character rejection in targets.
 
 ## [0.3.4] - 2026-02-12
 ### Added

@@ -167,6 +167,77 @@ describe("backupService import/export", () => {
     }
   });
 
+  it("enforces JSON import size limits at boundary values", async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-import-size-"));
+    const dataPath = path.join(tempDir, "tadoi_data.json");
+    const importPath = path.join(tempDir, "incoming.json");
+    await fs.writeFile(
+      dataPath,
+      JSON.stringify({ schemaVersion: 4, tasks: [], tagIndex: {}, savedViews: [] }, null, 2),
+      "utf8"
+    );
+    await fs.writeFile(
+      importPath,
+      JSON.stringify(
+        {
+          schemaVersion: 4,
+          tasks: [
+            {
+              id: "incoming-1",
+              title: "INCOMING",
+              status: "open",
+              createdAt: 1,
+              updatedAt: 1,
+              tags: ["incoming"]
+            }
+          ],
+          tagIndex: {},
+          savedViews: []
+        },
+        null,
+        2
+      ),
+      "utf8"
+    );
+
+    const fileSize = (await fs.stat(importPath)).size;
+    const originalDataPath = process.env.TADOI_DATA_PATH;
+    process.env.TADOI_DATA_PATH = dataPath;
+
+    try {
+      await expect(
+        importBackup({
+          inputPath: importPath,
+          mode: "merge",
+          dryRun: true,
+          maxImportBytesJson: fileSize - 1
+        })
+      ).rejects.toThrow("Import file exceeds maximum size");
+
+      const atLimit = await importBackup({
+        inputPath: importPath,
+        mode: "merge",
+        dryRun: true,
+        maxImportBytesJson: fileSize
+      });
+      expect(atLimit.tasks.added).toBe(1);
+
+      const underLimit = await importBackup({
+        inputPath: importPath,
+        mode: "merge",
+        dryRun: true,
+        maxImportBytesJson: fileSize + 1
+      });
+      expect(underLimit.tasks.added).toBe(1);
+    } finally {
+      if (originalDataPath === undefined) {
+        delete process.env.TADOI_DATA_PATH;
+      } else {
+        process.env.TADOI_DATA_PATH = originalDataPath;
+      }
+    }
+  });
+
   it("commits replace import and creates backup by default", async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-import-commit-"));
     const dataPath = path.join(tempDir, "tadoi_data.json");
@@ -314,6 +385,9 @@ describe("backupService import/export", () => {
           terminalBellOnOverdue: true,
           bannerDurationMs: 6000,
           bellCooldownMs: 3000
+        },
+        security: {
+          nonHttpLinkPolicy: "prompt"
         },
         customThemes: expectedCustomThemesFor("retro")
       });

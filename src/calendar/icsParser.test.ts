@@ -92,4 +92,74 @@ describe("parseIcs", () => {
     expect(event?.xInstanceOf).toBe("abc");
     expect(event?.dtstart?.tzid).toBe("America/Chicago");
   });
+
+  it("parses comma-separated EXDATE/RDATE temporal lists", () => {
+    const ics = [
+      "BEGIN:VCALENDAR",
+      "BEGIN:VEVENT",
+      "UID:list-values",
+      "DTSTART;TZID=America/Chicago:20260219T090000",
+      "EXDATE;TZID=America/Chicago:20260220T090000,20260221T090000",
+      "RDATE;TZID=America/Chicago:20260222T090000,20260223T090000",
+      "END:VEVENT",
+      "END:VCALENDAR"
+    ].join("\r\n");
+
+    const parsed = parseIcs(ics);
+    expect(parsed.events).toHaveLength(1);
+    expect(parsed.events[0]?.exdates.map((value) => value.raw)).toEqual([
+      "20260220T090000",
+      "20260221T090000"
+    ]);
+    expect(parsed.events[0]?.rdates.map((value) => value.raw)).toEqual([
+      "20260222T090000",
+      "20260223T090000"
+    ]);
+  });
+
+  it("resolves TZID wall-clock datetimes across DST boundaries deterministically", () => {
+    const ics = [
+      "BEGIN:VCALENDAR",
+      "BEGIN:VEVENT",
+      "UID:dst-before",
+      "DTSTART;TZID=America/Chicago:20260307T090000",
+      "END:VEVENT",
+      "BEGIN:VEVENT",
+      "UID:dst-after",
+      "DTSTART;TZID=America/Chicago:20260310T090000",
+      "END:VEVENT",
+      "END:VCALENDAR"
+    ].join("\r\n");
+
+    const parsed = parseIcs(ics);
+    const before = parsed.events[0]?.dtstart;
+    const after = parsed.events[1]?.dtstart;
+    expect(before?.tzid).toBe("America/Chicago");
+    expect(after?.tzid).toBe("America/Chicago");
+    expect(before?.epochMs).toBeDefined();
+    expect(after?.epochMs).toBeDefined();
+    expect((after?.epochMs ?? 0) - (before?.epochMs ?? 0)).toBe(71 * 60 * 60 * 1000);
+  });
+
+  it("throws on invalid temporal values", () => {
+    const invalidDate = [
+      "BEGIN:VCALENDAR",
+      "BEGIN:VEVENT",
+      "UID:bad-date",
+      "DTSTART;VALUE=DATE:20260230",
+      "END:VEVENT",
+      "END:VCALENDAR"
+    ].join("\r\n");
+    expect(() => parseIcs(invalidDate)).toThrow("Invalid DATE value");
+
+    const invalidDateTime = [
+      "BEGIN:VCALENDAR",
+      "BEGIN:VEVENT",
+      "UID:bad-datetime",
+      "DTSTART:20260210T250000",
+      "END:VEVENT",
+      "END:VCALENDAR"
+    ].join("\r\n");
+    expect(() => parseIcs(invalidDateTime)).toThrow("Invalid DATE-TIME value");
+  });
 });

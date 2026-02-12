@@ -14,6 +14,7 @@ import {
   importState,
   redactStateForExport,
   type ImportMode,
+  type RedactMode,
   type PortableExportPayload
 } from "./portability";
 import {
@@ -36,6 +37,7 @@ export type BackupExportOptions = {
   filename?: string;
   pretty?: boolean;
   redact?: boolean;
+  redactMode?: RedactMode;
   cwd?: string;
   now?: Date;
 };
@@ -53,6 +55,7 @@ export type BackupImportOptions = {
   mode: ImportMode;
   dryRun: boolean;
   backup?: boolean;
+  maxImportBytesJson?: number;
   cwd?: string;
   now?: number;
 };
@@ -92,6 +95,8 @@ export class BackupImportPartialError extends Error {
     this.summary = summary;
   }
 }
+
+export const DEFAULT_MAX_IMPORT_BYTES_JSON = 25 * 1024 * 1024;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -183,6 +188,7 @@ function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | un
 
   const defaultSettings = getDefaultSettings();
   const defaultNotifications = defaultSettings.notifications;
+  const defaultSecurity = defaultSettings.security;
   const notificationsRaw = settings.notifications;
   if (notificationsRaw !== undefined && !isRecord(notificationsRaw)) {
     return { ok: false, error: "settings.notifications must be an object when present" };
@@ -223,6 +229,23 @@ function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | un
     return bellCooldownResult;
   }
 
+  const securityRaw = settings.security;
+  if (securityRaw !== undefined && !isRecord(securityRaw)) {
+    return { ok: false, error: "settings.security must be an object when present" };
+  }
+  const nonHttpLinkPolicyRaw = (securityRaw as Record<string, unknown> | undefined)
+    ?.nonHttpLinkPolicy;
+  if (
+    nonHttpLinkPolicyRaw !== undefined &&
+    nonHttpLinkPolicyRaw !== "prompt" &&
+    nonHttpLinkPolicyRaw !== "block"
+  ) {
+    return {
+      ok: false,
+      error: "settings.security.nonHttpLinkPolicy is invalid"
+    };
+  }
+
   return {
     ok: true,
     value: {
@@ -243,6 +266,12 @@ function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | un
         bannerDurationMs: bannerDurationResult.value,
         bellCooldownMs: bellCooldownResult.value
       },
+      security: {
+        nonHttpLinkPolicy:
+          nonHttpLinkPolicyRaw === "block"
+            ? "block"
+            : defaultSecurity.nonHttpLinkPolicy
+      },
       customThemes:
         customThemesRaw === undefined
           ? undefined
@@ -251,10 +280,20 @@ function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | un
   };
 }
 
-async function parseIncomingStateFromFile(inPath: string): Promise<{
+async function parseIncomingStateFromFile(
+  inPath: string,
+  maxImportBytes = DEFAULT_MAX_IMPORT_BYTES_JSON
+): Promise<{
   state: LoadedData;
   settings?: TadoiSettings;
 }> {
+  const stat = await fs.stat(inPath);
+  if (stat.size > maxImportBytes) {
+    throw new Error(
+      `Import file exceeds maximum size (${String(stat.size)} bytes > ${String(maxImportBytes)} bytes): ${inPath}`
+    );
+  }
+
   const raw = await fs.readFile(inPath, "utf8");
   let parsed: unknown;
 
@@ -354,7 +393,8 @@ export async function exportBackup(
     settings: settingsResult.settings
   };
 
-  const exportPayload = opts.redact ? redactStateForExport(payload) : payload;
+  const redactMode = opts.redactMode ?? (opts.redact ? "strict" : undefined);
+  const exportPayload = redactMode ? redactStateForExport(payload, redactMode) : payload;
   await writeJsonAtomic(exportPayload, {
     filePath: outputPath,
     pretty: opts.pretty === true
@@ -387,7 +427,14 @@ export async function importBackup(
 
   const currentState = await loadStateStrict({ filePath: resolvedDataPath });
   const currentSettings = await loadSettings();
-  const incoming = await parseIncomingStateFromFile(inPath);
+  const maxImportBytes =
+    typeof opts.maxImportBytesJson === "number" &&
+    Number.isFinite(opts.maxImportBytesJson) &&
+    opts.maxImportBytesJson > 0
+      ? Math.floor(opts.maxImportBytesJson)
+      : DEFAULT_MAX_IMPORT_BYTES_JSON;
+
+  const incoming = await parseIncomingStateFromFile(inPath, maxImportBytes);
 
   const importResult = importState(currentState.data, incoming.state, {
     mode: opts.mode,

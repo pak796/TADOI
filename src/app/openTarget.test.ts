@@ -31,8 +31,8 @@ describe("getOpenTargetCommandForPlatform", () => {
 
   it("returns Windows command args", () => {
     expect(getOpenTargetCommandForPlatform("https://example.com", "win32")).toEqual({
-      command: "cmd",
-      args: ["/c", "start", "", "https://example.com"]
+      command: "explorer",
+      args: ["https://example.com"]
     });
   });
 });
@@ -77,5 +77,50 @@ describe("openTarget", () => {
     await expect(
       openTarget("https://example.com", { platform: "linux", spawnImpl })
     ).rejects.toThrow("spawn failed");
+  });
+
+  it("rejects targets containing control characters", async () => {
+    await expect(
+      openTarget("https://example.com/\nmalformed", { platform: "linux" })
+    ).rejects.toThrow("Target contains control characters");
+  });
+
+  it("trims surrounding whitespace before dispatching open command", async () => {
+    const calls: Array<{ command: string; args: string[] }> = [];
+    const child = new MockChildProcess();
+    const spawnImpl: OpenTargetSpawn = (command, args) => {
+      calls.push({ command, args });
+      queueMicrotask(() => {
+        child.emit("spawn");
+      });
+      return child;
+    };
+
+    await openTarget("   https://example.com/path  ", {
+      platform: "linux",
+      spawnImpl
+    });
+    expect(calls).toEqual([{ command: "xdg-open", args: ["https://example.com/path"] }]);
+  });
+
+  it("preserves spaces inside a file path target across platforms", () => {
+    expect(
+      getOpenTargetCommandForPlatform("/tmp/Quarterly Report.pdf", "darwin")
+    ).toEqual({
+      command: "open",
+      args: ["/tmp/Quarterly Report.pdf"]
+    });
+    expect(
+      getOpenTargetCommandForPlatform("C:\\Users\\me\\Project Notes.txt", "win32")
+    ).toEqual({
+      command: "explorer",
+      args: ["C:\\Users\\me\\Project Notes.txt"]
+    });
+  });
+
+  it("rejects empty targets after trimming whitespace", async () => {
+    await expect(openTarget("   ", { platform: "darwin" })).rejects.toThrow(
+      "Target is required"
+    );
   });
 });

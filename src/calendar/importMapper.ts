@@ -139,7 +139,8 @@ function buildImportedLinks(
       id: crypto.randomUUID(),
       target: normalizedTarget,
       ...(label ? { label } : {}),
-      kind: inferTaskLinkKind(normalizedTarget)
+      kind: inferTaskLinkKind(normalizedTarget),
+      source: "calendar_import"
     });
   };
 
@@ -167,7 +168,8 @@ function unionLinks(existing: TaskLink[] | undefined, incoming: TaskLink[]): Tas
       id: crypto.randomUUID(),
       target: link.target,
       ...(link.label ? { label: link.label } : {}),
-      ...(link.kind ? { kind: link.kind } : {})
+      ...(link.kind ? { kind: link.kind } : {}),
+      ...(link.source ? { source: link.source } : {})
     });
     seenTargets.add(link.target);
   }
@@ -209,7 +211,8 @@ function computeImportHash(draft: CalendarMappedTaskDraft): string {
     links: draft.links.map((link) => ({
       target: link.target,
       label: link.label ?? "",
-      kind: link.kind ?? inferTaskLinkKind(link.target)
+      kind: link.kind ?? inferTaskLinkKind(link.target),
+      source: link.source ?? "manual"
     })),
     recurrenceId: draft.recurrenceId ?? "",
     seriesUid: draft.seriesUid ?? ""
@@ -260,7 +263,8 @@ function areTaskFieldsEqual(left: Task, right: Task): boolean {
     if (
       l.target !== r.target ||
       (l.label ?? "") !== (r.label ?? "") ||
-      (l.kind ?? inferTaskLinkKind(l.target)) !== (r.kind ?? inferTaskLinkKind(r.target))
+      (l.kind ?? inferTaskLinkKind(l.target)) !== (r.kind ?? inferTaskLinkKind(r.target)) ||
+      (l.source ?? "manual") !== (r.source ?? "manual")
     ) {
       return false;
     }

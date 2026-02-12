@@ -13,6 +13,7 @@ import {
 const DEFAULT_TIMED_DURATION_MS = 30 * 60 * 1000;
 
 export type CalendarTimeMode = "tzid" | "utc";
+export type CalendarEventPrivacyMode = "minimal" | "full";
 
 export type CalendarTimeContext = {
   mode: CalendarTimeMode;
@@ -319,10 +320,23 @@ function buildExdates(
   };
 }
 
-function buildCommonFields(task: Task): Pick<
+function buildCommonFields(
+  task: Task,
+  privacyMode: CalendarEventPrivacyMode
+): Pick<
   CalendarVEvent,
   "summary" | "description" | "categories" | "transp" | "url"
 > {
+  if (privacyMode === "minimal") {
+    return {
+      summary: task.title,
+      description: undefined,
+      categories: [],
+      transp: "TRANSPARENT",
+      url: undefined
+    };
+  }
+
   return {
     summary: task.title,
     description: buildDescription(task),
@@ -337,11 +351,12 @@ function createBaseEvent(params: {
   task: Task;
   temporal: { dtstart: CalendarTemporalValue; dtend: CalendarTemporalValue };
   generatedAt: Date;
+  privacyMode: CalendarEventPrivacyMode;
   relatedTo?: string;
   rrule?: string;
   exdates?: CalendarExdates;
 }): CalendarVEvent {
-  const common = buildCommonFields(params.task);
+  const common = buildCommonFields(params.task, params.privacyMode);
   return {
     uid: params.uid,
     dtstampUtc: formatUtcDateTime(params.generatedAt),
@@ -358,7 +373,8 @@ function createBaseEvent(params: {
 export function mapNonRecurringTaskToEvent(
   task: Task,
   timeContext: CalendarTimeContext,
-  generatedAt: Date
+  generatedAt: Date,
+  privacyMode: CalendarEventPrivacyMode = "full"
 ): CalendarVEvent | null {
   if (task.recurrence || task.instance_of) return null;
   if (task.dueAt === undefined) return null;
@@ -367,7 +383,8 @@ export function mapNonRecurringTaskToEvent(
     uid: `tadoi-${task.id}@local`,
     task,
     temporal: buildTemporalFromEpoch(task.dueAt, task.hasExplicitTime === true, timeContext),
-    generatedAt
+    generatedAt,
+    privacyMode
   });
 }
 
@@ -375,7 +392,8 @@ export function mapInstanceOverrideTaskToEvent(
   task: Task,
   timeContext: CalendarTimeContext,
   generatedAt: Date,
-  relatedToSeriesUid?: string
+  relatedToSeriesUid?: string,
+  privacyMode: CalendarEventPrivacyMode = "full"
 ): CalendarVEvent | null {
   if (!task.instance_of) return null;
   if (task.dueAt === undefined) return null;
@@ -385,6 +403,7 @@ export function mapInstanceOverrideTaskToEvent(
     task,
     temporal: buildTemporalFromEpoch(task.dueAt, task.hasExplicitTime === true, timeContext),
     generatedAt,
+    privacyMode,
     relatedTo: relatedToSeriesUid
   });
 }
@@ -392,7 +411,8 @@ export function mapInstanceOverrideTaskToEvent(
 export function mapSeriesTaskToRecurringEvent(
   task: Task,
   timeContext: CalendarTimeContext,
-  generatedAt: Date
+  generatedAt: Date,
+  privacyMode: CalendarEventPrivacyMode = "full"
 ): CalendarVEvent | null {
   if (!task.recurrence || task.instance_of) return null;
 
@@ -414,6 +434,7 @@ export function mapSeriesTaskToRecurringEvent(
     task,
     temporal,
     generatedAt,
+    privacyMode,
     rrule: toRRuleLine(task.recurrence.rrule),
     exdates
   });
@@ -423,7 +444,8 @@ export function mapSeriesOccurrenceToEvent(
   task: Task,
   occurrenceIso: string,
   timeContext: CalendarTimeContext,
-  generatedAt: Date
+  generatedAt: Date,
+  privacyMode: CalendarEventPrivacyMode = "full"
 ): CalendarVEvent | null {
   if (!task.recurrence || task.instance_of) return null;
 
@@ -444,6 +466,7 @@ export function mapSeriesOccurrenceToEvent(
     task,
     temporal,
     generatedAt,
+    privacyMode,
     relatedTo: `tadoi-series-${task.id}@local`
   });
 }

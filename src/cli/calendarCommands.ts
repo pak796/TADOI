@@ -3,6 +3,7 @@ import {
   runCalendarExportCommand
 } from "../commands/calendarExport";
 import type { CalendarExportRange } from "../calendar/range";
+import type { CalendarEventPrivacyMode } from "../calendar/calendarMapper";
 
 type ParseResult<T> =
   | { ok: true; value: T }
@@ -12,6 +13,7 @@ export type CalendarExportCommandOptions = {
   outPath: string;
   viewName?: string;
   range: CalendarExportRange;
+  privacy: CalendarEventPrivacyMode;
   help: boolean;
 };
 
@@ -27,12 +29,17 @@ function isCalendarRange(value: string): value is CalendarExportRange {
   return value === "next7" || value === "month" || value === "all";
 }
 
+function isPrivacyMode(value: string): value is CalendarEventPrivacyMode {
+  return value === "minimal" || value === "full";
+}
+
 export function parseCalendarExportArgs(
   args: string[]
 ): ParseResult<CalendarExportCommandOptions> {
   let outPath = "";
   let viewName: string | undefined;
   let range: CalendarExportRange = "next7";
+  let privacy: CalendarEventPrivacyMode = "minimal";
   let help = false;
 
   for (let i = 0; i < args.length; i += 1) {
@@ -90,6 +97,32 @@ export function parseCalendarExportArgs(
       continue;
     }
 
+    if (arg === "--privacy") {
+      const next = requireNextArg(args, i, "--privacy");
+      if (!next.ok) return next;
+      const normalized = next.value.trim().toLowerCase();
+      if (!isPrivacyMode(normalized)) {
+        return { ok: false, error: "--privacy must be minimal or full" };
+      }
+      privacy = normalized;
+      i += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--privacy=")) {
+      const normalized = arg.slice("--privacy=".length).trim().toLowerCase();
+      if (!isPrivacyMode(normalized)) {
+        return { ok: false, error: "--privacy must be minimal or full" };
+      }
+      privacy = normalized;
+      continue;
+    }
+
+    if (arg === "--include-details") {
+      privacy = "full";
+      continue;
+    }
+
     if (arg.startsWith("-")) {
       return { ok: false, error: `Unknown option for calendar:export: ${arg}` };
     }
@@ -109,6 +142,7 @@ export function parseCalendarExportArgs(
     value: {
       outPath: outPath.trim(),
       range,
+      privacy,
       ...(viewName?.trim() ? { viewName: viewName.trim() } : {}),
       help
     }

@@ -28,9 +28,11 @@ import { isValidRRuleFragment, normalizeRRuleFragment } from "../calendar/rrule"
 import { loadSettings } from "../settings/settings";
 import { writeJsonAtomic, loadStateStrict, resolveDataPath } from "./persistence";
 import { recomputeTagIndex } from "./portability";
+import { validatePersistedState } from "./validation";
 
 const HARD_MATERIALIZATION_CAP = 2000;
 const MAX_HORIZON_DAYS = 3650;
+export const DEFAULT_MAX_IMPORT_BYTES_ICS = 10 * 1024 * 1024;
 
 export class CalendarImportUsageError extends Error {
   constructor(message: string) {
@@ -52,6 +54,7 @@ export type CalendarImportOptions = {
   range?: CalendarExportRange;
   mode?: CalendarImportMode;
   horizonDays?: number;
+  maxImportBytes?: number;
   dryRun?: boolean;
   importTag?: string;
   reportPath?: string;
@@ -389,10 +392,38 @@ export async function importCalendarIcs(
   const mode = options.mode ?? "merge";
   const dryRun = options.dryRun === true;
   const horizonDays = coerceHorizonDays(options.horizonDays);
+  const maxImportBytes =
+    typeof options.maxImportBytes === "number" &&
+    Number.isFinite(options.maxImportBytes) &&
+    options.maxImportBytes > 0
+      ? Math.floor(options.maxImportBytes)
+      : DEFAULT_MAX_IMPORT_BYTES_ICS;
   const inputPath = normalizeInputPath(options.inputPath, cwd);
 
   if (mode !== "merge" && mode !== "update" && mode !== "create") {
     throw new CalendarImportUsageError("--mode must be merge, update, or create");
+  }
+
+  try {
+    const stat = await fs.stat(inputPath);
+    if (!stat.isFile()) {
+      throw new CalendarImportUsageError(`Input path is not a file: ${inputPath}`);
+    }
+    if (stat.size > maxImportBytes) {
+      throw new CalendarImportUsageError(
+        `Input ICS exceeds maximum size (${String(stat.size)} bytes > ${String(maxImportBytes)} bytes): ${inputPath}`
+      );
+    }
+  } catch (error: unknown) {
+    if (error instanceof CalendarImportUsageError) {
+      throw error;
+    }
+    if (isErrnoException(error) && error.code === "ENOENT") {
+      throw new CalendarImportUsageError(`Input file not found: ${inputPath}`);
+    }
+    throw new CalendarImportFilesystemError(
+      `Failed to inspect input ICS file at ${inputPath}: ${toErrorMessage(error)}`
+    );
   }
 
   let inputContent = "";
@@ -634,7 +665,7 @@ export async function importCalendarIcs(
         allowOverwrite
       });
 
-      let nextTask = {
+      let nextTask: Task = {
         ...merged.task,
         recurrence: {
           ...recurrence,
@@ -1027,6 +1058,14 @@ export async function importCalendarIcs(
       tasks,
       tagIndex: recomputeTagIndex(tasks, nowMs)
     };
+    if (process.env.NODE_ENV !== "production") {
+      const validation = validatePersistedState(nextState, "strict");
+      if (!validation.ok) {
+        throw new CalendarImportFilesystemError(
+          `Post-import state validation failed: ${validation.errors.join("; ")}`
+        );
+      }
+    }
     try {
       await writeJsonAtomic(nextState, {
         filePath: resolveDataPath(),

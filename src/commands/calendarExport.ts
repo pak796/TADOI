@@ -17,10 +17,13 @@ export function printCalendarExportHelp(): void {
   console.log("  --out <path>                 Output .ics path (required)");
   console.log("  --view <name>                Saved view display name");
   console.log("  --range <next7|month|all>    Date range (default: next7)");
+  console.log("  --privacy <minimal|full>     Export metadata detail (default: minimal)");
+  console.log("  --include-details            Compatibility alias for --privacy=full");
   console.log("  -h, --help                   Show calendar export help");
   console.log("");
   console.log("Notes:");
   console.log("  - Exports open tasks only (done/archived excluded).");
+  console.log("  - Privacy default is minimal (no notes/tags/links/url in output).");
   console.log("  - next7 uses rolling local days: today..+6.");
   console.log("  - Recurring series export RRULE + EXDATE when valid.");
   console.log("  - Invalid RRULE in --range all returns an error.");
@@ -46,7 +49,8 @@ export async function runCalendarExportCommand(
     const result = await exportCalendarIcs({
       outputPath: parsed.outPath,
       viewName: parsed.viewName,
-      range: parsed.range
+      range: parsed.range,
+      privacy: parsed.privacy
     });
 
     console.log(`[calendar:export] wrote: ${result.outputPath}`);
@@ -62,6 +66,7 @@ export async function runCalendarExportCommand(
     console.log(
       `[calendar:export] filters: range=${result.rangeApplied} view=${result.viewApplied ?? "(none)"}`
     );
+    console.log(`[calendar:export] privacy: ${result.privacyApplied}`);
     if (result.timeContext.mode === "tzid") {
       console.log(`[calendar:export] timezone: ${result.timeContext.timeZone}`);
     } else {

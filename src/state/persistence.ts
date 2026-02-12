@@ -1,4 +1,5 @@
 import os from "os";
+import { randomUUID } from "node:crypto";
 import { promises as fs } from "fs";
 import path from "path";
 import { SavedView, TagIndexEntry, Task } from "../domain/models";
@@ -31,6 +32,7 @@ export type PersistenceFsOps = Pick<
   | "readdir"
   | "rename"
   | "stat"
+  | "open"
   | "writeFile"
 >;
 
@@ -79,6 +81,7 @@ export type WriteJsonAtomicOptions = {
   filePath?: string;
   fsOps?: PersistenceFsOps;
   pretty?: boolean;
+  fsyncBeforeRename?: boolean;
 };
 
 export type CreateDataBackupOptions = {
@@ -159,6 +162,24 @@ async function pathExists(filePath: string, fsOps: PersistenceFsOps): Promise<bo
   } catch {
     return false;
   }
+}
+
+async function nextAtomicTempFilePath(
+  filePath: string,
+  fsOps: PersistenceFsOps
+): Promise<string> {
+  const dir = path.dirname(filePath);
+  const base = path.basename(filePath);
+
+  for (let attempt = 0; attempt < 16; attempt += 1) {
+    const suffix = `${Date.now().toString(36)}-${process.pid}-${randomUUID().slice(0, 8)}-${attempt}`;
+    const candidate = path.join(dir, `.${base}.tmp-${suffix}`);
+    if (!(await pathExists(candidate, fsOps))) {
+      return candidate;
+    }
+  }
+
+  throw new Error(`Failed to allocate unique temporary file for atomic write: ${filePath}`);
 }
 
 async function nextBackupPath(
@@ -383,12 +404,21 @@ export async function writeJsonAtomic(
   const filePath = options.filePath ?? DATA_FILE;
   const fsOps = options.fsOps ?? DEFAULT_FS_OPS;
   const pretty = options.pretty !== false;
+  const fsyncBeforeRename = options.fsyncBeforeRename === true;
   await fsOps.mkdir(path.dirname(filePath), { recursive: true });
-  const tmpFile = `${filePath}.tmp`;
+  const tmpFile = await nextAtomicTempFilePath(filePath, fsOps);
   const content = pretty
     ? JSON.stringify(payload, null, 2)
     : JSON.stringify(payload);
   await fsOps.writeFile(tmpFile, content, "utf8");
+  if (fsyncBeforeRename) {
+    const handle = await fsOps.open(tmpFile, "r");
+    try {
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
+  }
   await fsOps.rename(tmpFile, filePath);
 }
 

@@ -4,6 +4,7 @@ import {
   addTaskLink,
   deleteTaskLink,
   inferTaskLinkKind,
+  resolveTaskLinkOpenPolicy,
   requiresExternalSchemeConfirm,
   updateTaskLink
 } from "./taskLinks";
@@ -36,6 +37,11 @@ describe("inferTaskLinkKind", () => {
     expect(inferTaskLinkKind("/Users/a b/file.txt")).toBe("path");
     expect(inferTaskLinkKind("C:\\A B\\file.txt")).toBe("path");
   });
+
+  it("classifies host-like targets deterministically", () => {
+    expect(inferTaskLinkKind("example.com")).toBe("path");
+    expect(inferTaskLinkKind("localhost:3000/dashboard")).toBe("url");
+  });
 });
 
 describe("requiresExternalSchemeConfirm", () => {
@@ -49,6 +55,83 @@ describe("requiresExternalSchemeConfirm", () => {
     expect(
       requiresExternalSchemeConfirm({ target: "https://example.com", kind: "url" })
     ).toBe(false);
+  });
+
+  it("requires confirmation for file URLs and filesystem paths", () => {
+    expect(
+      requiresExternalSchemeConfirm({ target: "file:///tmp/notes.txt", kind: "url" })
+    ).toBe(true);
+    expect(
+      requiresExternalSchemeConfirm({ target: "/Users/a/file.txt", kind: "path" })
+    ).toBe(true);
+  });
+
+  it("requires confirmation for calendar-imported links by default", () => {
+    expect(
+      requiresExternalSchemeConfirm({
+        target: "https://example.com",
+        kind: "url",
+        source: "calendar_import"
+      })
+    ).toBe(true);
+  });
+});
+
+describe("resolveTaskLinkOpenPolicy", () => {
+  it("blocks non-http links when policy is block", () => {
+    expect(
+      resolveTaskLinkOpenPolicy(
+        { target: "file:///tmp/a.txt", kind: "url" },
+        { nonHttpLinkPolicy: "block" }
+      )
+    ).toBe("block");
+    expect(
+      resolveTaskLinkOpenPolicy(
+        { target: "/tmp/a.txt", kind: "path" },
+        { nonHttpLinkPolicy: "block" }
+      )
+    ).toBe("block");
+  });
+
+  it("keeps manual https links allowlisted", () => {
+    expect(
+      resolveTaskLinkOpenPolicy({ target: "https://example.com", kind: "url" })
+    ).toBe("allow");
+  });
+
+  it("treats file URLs and windows/UNC-style paths as risky", () => {
+    expect(
+      resolveTaskLinkOpenPolicy({ target: "file:///C:/Docs/report.txt", kind: "url" })
+    ).toBe("confirm");
+    expect(
+      resolveTaskLinkOpenPolicy({ target: "C:\\Users\\me\\notes.txt", kind: "path" })
+    ).toBe("confirm");
+    expect(
+      resolveTaskLinkOpenPolicy({ target: "\\\\server\\share\\report.docx", kind: "path" })
+    ).toBe("confirm");
+  });
+
+  it("blocks calendar-imported risky links when policy is block", () => {
+    expect(
+      resolveTaskLinkOpenPolicy(
+        {
+          target: "vscode://repo/file",
+          kind: "url",
+          source: "calendar_import"
+        },
+        { nonHttpLinkPolicy: "block" }
+      )
+    ).toBe("block");
+  });
+
+  it("keeps calendar-imported safe schemes on confirm", () => {
+    expect(
+      resolveTaskLinkOpenPolicy({
+        target: "https://example.com",
+        kind: "url",
+        source: "calendar_import"
+      })
+    ).toBe("confirm");
   });
 });
 

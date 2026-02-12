@@ -1,0 +1,86 @@
+=== PRE-FLIGHT EVIDENCE CAPTURE ===
+Repo: /Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TUI_TODO
+Local timestamp: 2026-02-12 01:34:36 CST
+UTC timestamp: 2026-02-12T07:34:36Z
+
+--- [1/3] bun audit ---
+Start local: 2026-02-12 01:34:36 CST
+Start utc: 2026-02-12T07:34:36Z
+diff  >=6.0.0 <8.0.3
+  @opentui/core › diff
+  low: jsdiff has a Denial of Service vulnerability in parsePatch and applyPatch - https://github.com/advisories/GHSA-73rr-hh4g-fpgx
+
+1 vulnerabilities (1 low)
+
+To update all dependencies to the latest compatible versions:
+  bun update
+
+To update all dependencies to the latest versions (including breaking changes):
+  bun update --latest
+
+Exit code: 1
+End local: 2026-02-12 01:34:36 CST
+End utc: 2026-02-12T07:34:36Z
+
+--- [2/3] bun run test ---
+Start local: 2026-02-12 01:34:36 CST
+Start utc: 2026-02-12T07:34:36Z
+bun test v1.3.9 (cf6cdbbb)
+[import] mode: merge (dry-run)
+[import] schemaVersion: 4
+[import] data path: /var/folders/mq/sh4dvnjd5g5fqs2bs4s53vwc0000gn/T/tadoi-import-dryrun-KPtdux/tadoi_data.json
+[import] tasks added=1 updated=0 unchanged=0 removed=0
+[import] conflicts resolved by updatedAt: 0
+[import] saved views added=0 updated=0 unchanged=0
+[import] mode: replace
+[import] schemaVersion: 4
+[import] data path: /var/folders/mq/sh4dvnjd5g5fqs2bs4s53vwc0000gn/T/tadoi-import-backup-CIrSxI/tadoi_data.json
+[import] backup: /var/folders/mq/sh4dvnjd5g5fqs2bs4s53vwc0000gn/T/tadoi-import-backup-CIrSxI/tadoi_data.json.backup.20260212-073437
+[import] tasks added=1 updated=0 unchanged=0 removed=1
+[import] conflicts resolved by updatedAt: 0
+[import] saved views added=0 updated=0 unchanged=0
+Usage: tadoi calendar:export --out <file.ics> [options]
+
+Options:
+  --out <path>                 Output .ics path (required)
+  --view <name>                Saved view display name
+  --range <next7|month|all>    Date range (default: next7)
+  -h, --help                   Show calendar export help
+
+Notes:
+  - Exports open tasks only (done/archived excluded).
+  - next7 uses rolling local days: today..+6.
+  - Recurring series export RRULE + EXDATE when valid.
+  - Invalid RRULE in --range all returns an error.
+  - One-way export only (no calendar sync/import).
+
+Examples:
+  tadoi calendar:export --out ./tadoi.ics
+  tadoi calendar:export --out ~/Downloads/tadoi.ics --view Work --range month
+  tadoi calendar:export --out ./tadoi.ics --range all
+Exit code: 0
+End local: 2026-02-12 01:34:38 CST
+End utc: 2026-02-12T07:34:38Z
+
+--- [3/3] bun run typecheck ---
+Start local: 2026-02-12 01:34:38 CST
+Start utc: 2026-02-12T07:34:38Z
+src/state/calendarExportService.test.ts(137,28): error TS2345: Argument of type '{ schemaVersion: 4; tasks: ({ id: string; title: string; status: "open"; createdAt: number; updatedAt: number; dueAt: number; hasExplicitTime: boolean; notes: string; tags: string[]; links?: undefined; recurrence?: undefined; instance_of?: undefined; } | { ...; } | { ...; } | { ...; })[]; tagIndex: {}; savedViews: n...' is not assignable to parameter of type '{ schemaVersion: 4; tasks: PersistedTask[]; tagIndex: Record<string, never>; savedViews: unknown[]; }'.
+  Types of property 'tasks' are incompatible.
+    Type '({ id: string; title: string; status: "open"; createdAt: number; updatedAt: number; dueAt: number; hasExplicitTime: boolean; notes: string; tags: string[]; links?: undefined; recurrence?: undefined; instance_of?: undefined; } | { ...; } | { ...; } | { ...; })[]' is not assignable to type 'PersistedTask[]'.
+      Type '{ id: string; title: string; status: "open"; createdAt: number; updatedAt: number; dueAt: number; hasExplicitTime: boolean; notes: string; tags: string[]; links?: undefined; recurrence?: undefined; instance_of?: undefined; } | { ...; } | { ...; } | { ...; }' is not assignable to type 'PersistedTask'.
+        Type '{ id: string; title: string; status: "open"; createdAt: number; updatedAt: number; dueAt: number; hasExplicitTime: boolean; tags: string[]; links: { id: string; target: string; label: string; kind: string; }[]; notes?: undefined; recurrence?: undefined; instance_of?: undefined; }' is not assignable to type 'PersistedTask'.
+          Types of property 'links' are incompatible.
+            Type '{ id: string; target: string; label: string; kind: string; }[]' is not assignable to type '{ id: string; target: string; label?: string | undefined; kind?: "url" | "path" | undefined; }[]'.
+              Type '{ id: string; target: string; label: string; kind: string; }' is not assignable to type '{ id: string; target: string; label?: string | undefined; kind?: "url" | "path" | undefined; }'.
+                Types of property 'kind' are incompatible.
+                  Type 'string' is not assignable to type '"url" | "path" | undefined'.
+src/state/calendarImportService.ts(677,7): error TS2322: Type 'Task' is not assignable to type '{ recurrence: { exdates?: string[]; dtstart: string; rrule: string; series_id: string; }; id: string; title: string; status: TaskStatus; createdAt: number; updatedAt: number; ... 7 more ...; external?: TaskExternalMetadata; }'.
+  Types of property 'recurrence' are incompatible.
+    Type 'TaskRecurrence | undefined' is not assignable to type '{ exdates?: string[]; dtstart: string; rrule: string; series_id: string; }'.
+      Type 'undefined' is not assignable to type '{ exdates?: string[]; dtstart: string; rrule: string; series_id: string; }'.
+Exit code: 2
+End local: 2026-02-12 01:34:39 CST
+End utc: 2026-02-12T07:34:39Z
+
+SUMMARY: audit=1, test=0, typecheck=2

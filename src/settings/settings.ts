@@ -71,6 +71,7 @@ export type TadoiSettings = {
   logoMode: LogoMode;
   flashMode: FlashMode;
   notifications: NotificationSettings;
+  security: SecuritySettings;
   customThemes?: CustomThemes;
 };
 
@@ -88,6 +89,12 @@ export type NotificationSettings = {
   terminalBellOnOverdue: boolean;
   bannerDurationMs: number;
   bellCooldownMs: number;
+};
+
+export type NonHttpLinkPolicy = "prompt" | "block";
+
+export type SecuritySettings = {
+  nonHttpLinkPolicy: NonHttpLinkPolicy;
 };
 
 export type SettingsFsOps = Pick<typeof fs, "mkdir" | "readFile" | "writeFile">;
@@ -110,6 +117,7 @@ export type SaveSettingsOptions = ResolveSettingsPathOptions & {
 export type LoadSettingsResult = {
   settings: TadoiSettings;
   resolvedPath: string;
+  warnings: string[];
 };
 
 export type SaveSettingsStrictResult = {
@@ -130,6 +138,9 @@ const DEFAULT_SETTINGS: TadoiSettings = {
   logoMode: "default",
   flashMode: "slow",
   notifications: DEFAULT_NOTIFICATION_SETTINGS,
+  security: {
+    nonHttpLinkPolicy: "prompt"
+  },
   customThemes: {
     custom1: {
       global: { ...THEMES.default }
@@ -351,6 +362,16 @@ function normalizeNotifications(input: unknown): NotificationSettings {
   };
 }
 
+function normalizeSecurity(input: unknown): SecuritySettings {
+  if (!isRecord(input)) {
+    return { ...DEFAULT_SETTINGS.security };
+  }
+  const rawPolicy = input.nonHttpLinkPolicy;
+  return {
+    nonHttpLinkPolicy: rawPolicy === "block" ? "block" : "prompt"
+  };
+}
+
 function normalizeSettings(input: unknown): TadoiSettings {
   if (!isRecord(input)) {
     return getDefaultSettings();
@@ -359,26 +380,49 @@ function normalizeSettings(input: unknown): TadoiSettings {
   const maybeLogoMode = input.logoMode;
   const maybeFlashMode = input.flashMode;
   const maybeNotifications = input.notifications;
+  const maybeSecurity = input.security;
   const themeId = isThemeId(maybeThemeId) ? maybeThemeId : DEFAULT_SETTINGS.themeId;
   return {
     themeId,
     logoMode: isLogoMode(maybeLogoMode) ? maybeLogoMode : DEFAULT_SETTINGS.logoMode,
     flashMode: isFlashMode(maybeFlashMode) ? maybeFlashMode : DEFAULT_SETTINGS.flashMode,
     notifications: normalizeNotifications(maybeNotifications),
+    security: normalizeSecurity(maybeSecurity),
     customThemes: normalizeCustomThemes(input.customThemes, themeId)
   };
 }
 
 async function readSettingsFile(
+  label: "primary" | "fallback",
   filePath: string,
   fsOps: SettingsFsOps
-): Promise<TadoiSettings | null> {
+): Promise<{ settings: TadoiSettings | null; warning?: string }> {
+  let raw: string;
   try {
-    const raw = await fsOps.readFile(filePath, "utf8");
+    raw = await fsOps.readFile(filePath, "utf8");
+  } catch (error: unknown) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error as NodeJS.ErrnoException).code === "ENOENT"
+    ) {
+      return { settings: null };
+    }
+    return {
+      settings: null,
+      warning: `${label} settings file could not be read; using fallback/default settings`
+    };
+  }
+
+  try {
     const parsed = JSON.parse(raw) as unknown;
-    return normalizeSettings(parsed);
+    return { settings: normalizeSettings(parsed) };
   } catch {
-    return null;
+    return {
+      settings: null,
+      warning: `${label} settings file is not valid JSON; using fallback/default settings`
+    };
   }
 }
 
@@ -396,21 +440,28 @@ export async function loadSettings(
 ): Promise<LoadSettingsResult> {
   const fsOps = options.fsOps ?? DEFAULT_FS_OPS;
   const { primary, fallback } = resolveSettingsPaths(options);
+  const warnings: string[] = [];
 
-  const primarySettings = await readSettingsFile(primary, fsOps);
-  if (primarySettings) {
+  const primaryResult = await readSettingsFile("primary", primary, fsOps);
+  if (primaryResult.warning) {
+    warnings.push(primaryResult.warning);
+  }
+  if (primaryResult.settings) {
     lastResolvedPath = primary;
-    return { settings: primarySettings, resolvedPath: primary };
+    return { settings: primaryResult.settings, resolvedPath: primary, warnings };
   }
 
-  const fallbackSettings = await readSettingsFile(fallback, fsOps);
-  if (fallbackSettings) {
+  const fallbackResult = await readSettingsFile("fallback", fallback, fsOps);
+  if (fallbackResult.warning) {
+    warnings.push(fallbackResult.warning);
+  }
+  if (fallbackResult.settings) {
     lastResolvedPath = fallback;
-    return { settings: fallbackSettings, resolvedPath: fallback };
+    return { settings: fallbackResult.settings, resolvedPath: fallback, warnings };
   }
 
   lastResolvedPath = primary;
-  return { settings: getDefaultSettings(), resolvedPath: primary };
+  return { settings: getDefaultSettings(), resolvedPath: primary, warnings };
 }
 
 export function saveSettingsDebounced(
@@ -489,6 +540,7 @@ export function getDefaultSettings(): TadoiSettings {
   return {
     ...DEFAULT_SETTINGS,
     notifications: { ...DEFAULT_NOTIFICATION_SETTINGS },
+    security: { ...DEFAULT_SETTINGS.security },
     customThemes
   };
 }

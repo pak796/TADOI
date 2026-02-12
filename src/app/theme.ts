@@ -29,6 +29,8 @@ export type RuntimeTheme = {
   selectionText: string;
 };
 
+const HEX_COLOR_RE = /^#[0-9A-F]{6}$/i;
+
 function runtimeThemeFromTokens(tokens: ThemeTokens): RuntimeTheme {
   return {
     bg: tokens.bg,
@@ -116,12 +118,33 @@ function syncStyles(): void {
   styles.buttonDanger.color = theme.bg;
 }
 
+function assertRuntimeThemesValid(context: string): void {
+  if (process.env.NODE_ENV === "production") return;
+
+  for (const objectId of THEME_OBJECT_IDS) {
+    const runtimeTheme = runtimeThemeByObject[objectId];
+    for (const [key, value] of Object.entries(runtimeTheme)) {
+      if (typeof value !== "string" || value.trim().length === 0) {
+        throw new Error(
+          `Invalid runtime theme token (${context}) for ${objectId}.${key}: empty value`
+        );
+      }
+      if (!HEX_COLOR_RE.test(value)) {
+        throw new Error(
+          `Invalid runtime theme token (${context}) for ${objectId}.${key}: ${value}`
+        );
+      }
+    }
+  }
+}
+
 export function applyTheme(themeId: ThemeId): void {
   for (const objectId of THEME_OBJECT_IDS) {
     const tokens = resolveThemeTokens(themeId, undefined, { objectId });
     Object.assign(runtimeThemeByObject[objectId], runtimeThemeFromTokens(tokens));
   }
   syncStyles();
+  assertRuntimeThemesValid(`applyTheme(${themeId})`);
 }
 
 export function applyThemeWithSettings(
@@ -141,6 +164,7 @@ export function applyThemeWithSettings(
     Object.assign(runtimeThemeByObject[objectId], runtimeThemeFromTokens(tokens));
   }
   syncStyles();
+  assertRuntimeThemesValid(`applyThemeWithSettings(${themeId})`);
 }
 
 const tagPalette = [

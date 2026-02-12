@@ -1,7 +1,7 @@
 import { normalizeTags } from "../domain/tagIndex";
 import { normalizeTagFilter } from "../domain/tagFilter";
 import type { SavedView, TagIndexEntry, Task } from "../domain/models";
-import type { TadoiSettings } from "../settings/settings";
+import { getDefaultSettings, type TadoiSettings } from "../settings/settings";
 import type { LoadedData } from "./persistence";
 
 export type PortableExportPayload = LoadedData & {
@@ -9,6 +9,7 @@ export type PortableExportPayload = LoadedData & {
 };
 
 export type ImportMode = "merge" | "replace";
+export type RedactMode = "basic" | "strict";
 
 export type MergeTasksStats = {
   added: number;
@@ -93,7 +94,8 @@ function areTaskLinksEquivalent(left: Task["links"], right: Task["links"]): bool
       leftLink.id !== rightLink.id ||
       leftLink.target !== rightLink.target ||
       leftLink.label !== rightLink.label ||
-      leftLink.kind !== rightLink.kind
+      leftLink.kind !== rightLink.kind ||
+      leftLink.source !== rightLink.source
     ) {
       return false;
     }
@@ -471,13 +473,42 @@ export function importState(
   };
 }
 
-export function redactStateForExport(payload: PortableExportPayload): PortableExportPayload {
+export function redactStateForExport(
+  payload: PortableExportPayload,
+  mode: RedactMode = "basic"
+): PortableExportPayload {
+  if (mode === "basic") {
+    return {
+      ...payload,
+      tasks: payload.tasks.map((task) => ({
+        ...task,
+        title: "",
+        notes: ""
+      }))
+    };
+  }
+
+  const defaultSettings = getDefaultSettings();
   return {
     ...payload,
     tasks: payload.tasks.map((task) => ({
       ...task,
       title: "",
-      notes: ""
-    }))
+      notes: "",
+      tags: [],
+      links: undefined,
+      dueAt: undefined,
+      hasExplicitTime: undefined,
+      recurrence: undefined,
+      instance_of: undefined,
+      external: undefined
+    })),
+    settings: payload.settings
+      ? {
+          ...payload.settings,
+          notifications: defaultSettings.notifications,
+          security: defaultSettings.security
+        }
+      : undefined
   };
 }

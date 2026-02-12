@@ -8,6 +8,9 @@ This index links the current user-facing TADOI documentation set.
 - [Feature List (v0.3.4)](./TADOI_Feature_List_v0.3.4.md)
 - [Product Spec (v0.3.4)](../TADOI_SPEC_v0.3.4.md)
 - [Task List (v0.3.4)](../TADOI_TASKS_v0.3.4.md)
+- [Calendar Export Spec (v0.2)](../TADOI_Spec_Calendar_Export_ICS_v0.2.md)
+- [Calendar Import Spec (v0.1)](../TADOI_Spec_Calendar_Import_ICS_RoundTrip_v0.1.md)
+- [Task Links and Attachments Spec (v0.2)](../TADOI_Task_Links_Attachments_Spec_v0.2.md)
 
 ## Operations and Design Docs
 - [Backup Center (In-App)](./backup-center.md)
@@ -17,6 +20,8 @@ This index links the current user-facing TADOI documentation set.
 - [Documentation Index](./DOC_INDEX.md)
 - [Documentation Audit Report](./DOC_AUDIT_REPORT.md)
 - [Notion Sync Checklist](./NOTION_SYNC.md)
+- [Security/Privacy Audit (2026-02-12)](./audits/tadoi-security-privacy-audit-2026-02-12.md)
+- [Security/Privacy Remediation Plan (2026-02-12)](./audits/tadoi-security-privacy-remediation-2026-02-12.md)
 
 ## Release Context
 - Runtime baseline: `v0.3.4`

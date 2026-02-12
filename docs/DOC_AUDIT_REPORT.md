@@ -1,97 +1,100 @@
 # TADOI™ Documentation Audit Report
 
-Date: 2026-02-12
-Scope: repository docs + Notion docs synchronization
+Date: 2026-02-12  
+Scope: full documentator sync (local markdown + Notion page alignment)  
 Baseline: runtime `v0.3.4`, package `0.3.4`
 
 ## 1) Summary
 
-This audit reconciled active documentation against current code behavior and test surfaces.
+This audit re-validated documentation against current code and tests with focus on:
+- calendar export/import behavior accuracy
+- security and privacy behavior accuracy
+- QA/installation/readme contract consistency
 
 Primary outcomes:
-- Active docs baseline remains `v0.3.4` / `0.3.4`.
-- New release-accurate spec/task artifacts were added for `v0.3.4`.
-- Stale runtime baseline mentions in active auxiliary specs were corrected.
-- Notion Documents database pages were updated in place, including new spec/task pages.
-- Validation snapshot: `bun run test` passed (`355/355`), `bun run typecheck` passed.
+- Active docs remain on `v0.3.4` / `0.3.4`.
+- Calendar docs now accurately state:
+  - CLI export is available (`calendar:export`)
+  - import foundation exists at service level, but `calendar:import` CLI routing is not yet exposed
+- Security/privacy docs now include:
+  - `security.nonHttpLinkPolicy` behavior
+  - source-aware link confirmation for calendar-imported links
+  - startup path redaction default + verbose opt-in flag
+- QA guide snapshot and checklist are aligned to current validation:
+  - `bun run test`: `403 pass / 0 fail / 403 total`
+  - `bun run typecheck`: pass
 
-## 2) Verification Sources (Code Truth)
+## 2) Code-Truth Verification Sources
 
-Key files verified during this audit:
-- `src/app/version.ts`
-- `package.json`
-- `src/app/layoutGuard.ts`
-- `src/app/keyRouter.ts`
+Key files used as canonical behavior sources:
+- `src/cli.ts`
+- `src/cli/calendarCommands.ts`
+- `src/commands/calendarExport.ts`
+- `src/state/calendarExportService.ts`
+- `src/state/calendarImportService.ts`
+- `src/calendar/icsParser.ts`
+- `src/calendar/importMapper.ts`
 - `src/domain/models.ts`
-- `src/domain/query.ts`
-- `src/domain/tagFilter.ts`
-- `src/components/TagFilterPanel.tsx`
-- `src/ui/state.ts`
 - `src/domain/taskLinks.ts`
+- `src/app/openTarget.ts`
+- `src/tui/runTui.tsx`
+- `src/settings/settings.ts`
 
 ## 3) Drift Findings and Resolutions
 
-### Resolved
-- Missing active release spec/task artifacts for `v0.3.4`.
-  - Added `TADOI_SPEC_v0.3.4.md` and `TADOI_TASKS_v0.3.4.md`.
-- Active auxiliary spec references used stale `v0.3.0` runtime baseline.
-  - Updated `TADOI_BackupCenter_InApp_Spec.md` and `TADOI_Notifications_Spec_Tier1-2_v0.2.md` to `v0.3.4` context.
-- Active QA/feature docs did not explicitly cover all task-link workflows.
-  - Added feature bullets and QA cases `QA-049..QA-051`.
-- Notion QA page still referenced `342/342` and `QA-001..QA-048`.
-  - Updated to `355/355` and `QA-001..QA-051`.
+### Resolved in this pass
+- QA guide previously documented `calendar:import` CLI steps that are not reachable from current CLI routing.
+  - Replaced with export CLI coverage plus import-foundation verification tied to automated tests.
+- README calendar section now reflects export-available/import-foundation status and current privacy defaults.
+- Feature/spec/task docs now include security policy and privacy controls (`nonHttpLinkPolicy`, redacted startup logs).
+- Calendar and security docs now point to current audit/remediation artifacts under `docs/audits/`.
+- Automated validation snapshot updated from older counts to current `403/403`.
 
-### Known non-blocking audit noise
-- Automated keybind extraction includes parser aliases and terminal-level key handling signals (for example `Ctrl+C`) that are not all directly represented in key-router code.
-- Generic drift scanners include dependency/vendor docs (`node_modules`, `dist/install-check/node_modules`) and over-report missing evidence unrelated to project-owned docs.
-- Historical versioned docs intentionally contain prior-version references.
+### Known intentional boundaries
+- Import service implementation exists, but CLI exposure is intentionally pending.
+- Historical versioned docs remain unchanged and may include older snapshots by design.
 
-## 4) Files Updated in This Audit
+## 4) Files Updated in This Audit Pass
 
 - `README.md`
 - `CHANGELOG.md`
 - `TADOI_SPEC_v0.3.4.md`
 - `TADOI_TASKS_v0.3.4.md`
-- `TADOI_BackupCenter_InApp_Spec.md`
-- `TADOI_Notifications_Spec_Tier1-2_v0.2.md`
-- `docs/README.md`
-- `docs/TADOI_QA_Guide_v0.3.4.md`
+- `TADOI_Spec_Calendar_Export_ICS_v0.2.md`
+- `TADOI_Spec_Calendar_Import_ICS_RoundTrip_v0.1.md`
+- `TADOI_Task_Links_Attachments_Spec_v0.2.md`
+- `docs/TADOI_Installation_Guide_All_Platforms.md`
 - `docs/TADOI_Feature_List_v0.3.4.md`
+- `docs/TADOI_QA_Guide_v0.3.4.md`
+- `docs/README.md`
 - `docs/DOC_INDEX.md`
 - `docs/DOC_AUDIT_REPORT.md`
 - `docs/NOTION_SYNC.md`
-- `docs/ops/branding.md`
 - `docs/ops/notion_v0.3.4_sync_pack.md`
 
-## 5) Commands and Snapshots Used
+## 5) Validation Commands and Results
 
-- keybinding audit:
-  - `~/.codex/skills/keybind-source-of-truth/scripts/keybind_sync_audit.py`
-- docs drift scan:
-  - `~/.codex/skills/spec-task-drift-guard/scripts/doc_drift_scan.py`
-- post-edit keybind scan summary:
-  - canonical `61`, missing-in-docs `15`, missing-in-code `13`, semantic mismatches `1`
-- post-edit docs drift scan summary:
-  - `1596` findings total, with high noise from non-project docs under dependency/vendor trees
-- targeted code/doc verification with `rg`, `sed`, test, and typecheck commands
+- `bun run test` -> `403 pass / 0 fail / 403 total`
+- `bun run typecheck` -> pass
 
-## 6) Notion Sync Results
+## 6) Notion Sync Scope (Documents Database)
 
-Updated existing pages in `collection://3035aa1e-f93f-80a3-ba35-000b3b596866`:
+Target data source:
+- `collection://3035aa1e-f93f-80a3-ba35-000b3b596866`
+
+Pages updated in place:
 - Installation guide: `3045aa1e-f93f-8191-848a-cbc69ec6e869`
 - QA guide: `3045aa1e-f93f-8103-bda5-f77d2bf55e8e`
 - User guide: `3045aa1e-f93f-810c-82a5-c03e17858168`
-- App overview: `3045aa1e-f93f-81fd-84cd-c93a6b68b49c`
-
-Created pages:
+- App overview + feature catalog: `3045aa1e-f93f-81fd-84cd-c93a6b68b49c`
 - Product spec: `3055aa1e-f93f-812d-ad44-f3d94b8a7219`
 - Task list: `3055aa1e-f93f-8159-b07c-ee692df137eb`
 
-## 7) Next Recommended Doc Work
+## 7) Next Recommended Documentation Work
 
-1. Add generated keybinding reference doc sourced from key-router tests.
-2. Add docs-only CI link checker.
-3. Consolidate historical version docs into a dedicated archive index page.
+1. Expose `calendar:import` CLI route and command wrapper, then promote import checklist items from engineering verification to full user-facing manual QA.
+2. Add docs link-check/lint workflow for docs-only changes.
+3. Generate canonical keybinding table directly from router tests to reduce future drift.
 
 ## Trademark Notice
 TADOI™ is a trademark of <OWNER>. Other names may be trademarks of their respective owners.

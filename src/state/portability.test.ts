@@ -240,7 +240,7 @@ describe("importState", () => {
 });
 
 describe("redactStateForExport", () => {
-  it("blanks title and notes while preserving structure", () => {
+  it("blanks title and notes in basic mode while preserving structure", () => {
     const payload: PortableExportPayload = {
       schemaVersion: 4,
       tasks: [
@@ -260,11 +260,14 @@ describe("redactStateForExport", () => {
         themeId: "default",
         logoMode: "default",
         flashMode: "slow",
-        notifications: DEFAULT_NOTIFICATIONS
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: {
+          nonHttpLinkPolicy: "prompt"
+        }
       }
     };
 
-    const redacted = redactStateForExport(payload);
+    const redacted = redactStateForExport(payload, "basic");
 
     expect(redacted.tasks[0]?.title).toBe("");
     expect(redacted.tasks[0]?.notes).toBe("");
@@ -272,6 +275,49 @@ describe("redactStateForExport", () => {
     expect(redacted.settings?.themeId).toBe("default");
     expect(redacted.settings?.flashMode).toBe("slow");
     expect(redacted.settings?.notifications).toEqual(DEFAULT_NOTIFICATIONS);
+  });
+
+  it("strips metadata in strict mode", () => {
+    const payload: PortableExportPayload = {
+      schemaVersion: 4,
+      tasks: [
+        {
+          id: "a",
+          title: "secret",
+          status: "open",
+          createdAt: 1,
+          updatedAt: 1,
+          dueAt: 1700000000000,
+          hasExplicitTime: true,
+          notes: "private",
+          tags: ["work"],
+          links: [{ id: "link-1", target: "https://example.com", source: "manual" }],
+          external: { calendar: { uid: "uid-1", lastImportedAt: "2026-02-12T00:00:00.000Z" } }
+        }
+      ],
+      tagIndex: {},
+      savedViews: [],
+      settings: {
+        themeId: "default",
+        logoMode: "default",
+        flashMode: "slow",
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: {
+          nonHttpLinkPolicy: "block"
+        }
+      }
+    };
+
+    const redacted = redactStateForExport(payload, "strict");
+    const task = redacted.tasks[0];
+    expect(task?.title).toBe("");
+    expect(task?.notes).toBe("");
+    expect(task?.tags).toEqual([]);
+    expect(task?.links).toBeUndefined();
+    expect(task?.dueAt).toBeUndefined();
+    expect(task?.external).toBeUndefined();
+    expect(redacted.settings?.notifications).toEqual(DEFAULT_NOTIFICATIONS);
+    expect(redacted.settings?.security?.nonHttpLinkPolicy).toBe("prompt");
   });
 
   it("treats recurrence field changes as task updates", () => {

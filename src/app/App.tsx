@@ -58,9 +58,9 @@ import {
   addTaskLink,
   deleteTaskLink,
   extractUrlScheme,
-  requiresExternalSchemeConfirm,
   updateTaskLink
 } from "../domain/taskLinks";
+import { decideTaskLinkOpen } from "./linkOpenFlow";
 import {
   applyAutocomplete,
   getAutocompleteStep,
@@ -144,6 +144,7 @@ import {
   type CustomThemes,
   type FlashMode,
   type LogoMode,
+  type SecuritySettings,
   type NotificationSettings,
   type ThemeObjectId,
   type ThemeTextTokenOverrides
@@ -226,6 +227,7 @@ const HELP_PANEL_CHROME_ROWS = HELP_HEADER_ROWS + HELP_DIVIDER_ROWS + HELP_FOOTE
 const HELP_SECTION_SCROLL_PADDING = 1;
 const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings =
   getDefaultSettings().notifications;
+const DEFAULT_SECURITY_SETTINGS: SecuritySettings = getDefaultSettings().security;
 const DEFAULT_LOGO_MODE: LogoMode = getDefaultSettings().logoMode;
 const DEFAULT_CUSTOM_THEMES: CustomThemes | undefined = getDefaultSettings().customThemes;
 const TASK_LINK_FORM_FIELD_ORDER: UITaskLinkFormField[] = [
@@ -958,6 +960,7 @@ type AppProps = {
   initialLogoMode?: LogoMode;
   initialFlashMode?: FlashMode;
   initialNotificationSettings?: NotificationSettings;
+  initialSecuritySettings?: SecuritySettings;
   initialCustomThemes?: CustomThemes;
   settingsPath?: string;
   showLogo?: boolean;
@@ -980,6 +983,7 @@ export function App({
   initialLogoMode = DEFAULT_LOGO_MODE,
   initialFlashMode = "slow",
   initialNotificationSettings = DEFAULT_NOTIFICATION_SETTINGS,
+  initialSecuritySettings = DEFAULT_SECURITY_SETTINGS,
   initialCustomThemes = DEFAULT_CUSTOM_THEMES,
   settingsPath,
   showLogo = true
@@ -991,6 +995,7 @@ export function App({
     logoMode: initialLogoMode,
     flashMode: initialFlashMode,
     notifications: initialNotificationSettings,
+    security: initialSecuritySettings,
     customThemes: initialCustomThemes
   });
   const [uiState, uiDispatch] = useReducer(uiReducer, initialUIState);
@@ -1839,6 +1844,7 @@ export function App({
         logoMode: settingsState.logoMode,
         flashMode: settingsState.flashMode,
         notifications: settingsState.notifications,
+        security: settingsState.security,
         customThemes: settingsState.customThemes
       },
       150,
@@ -1850,6 +1856,7 @@ export function App({
     settingsState.flashMode,
     settingsState.logoMode,
     settingsState.notifications,
+    settingsState.security,
     settingsState.themeId
   ]);
 
@@ -2070,6 +2077,10 @@ export function App({
       notifications: settingsResult.settings.notifications
     });
     settingsDispatch({
+      type: "setSecurity",
+      security: settingsResult.settings.security
+    });
+    settingsDispatch({
       type: "setCustomThemes",
       customThemes: settingsResult.settings.customThemes
     });
@@ -2230,7 +2241,52 @@ export function App({
     }
   }
 
+  function assertLinkActionInvariant(action: KeyRouterAction): void {
+    if (process.env.NODE_ENV === "production") return;
+
+    const detailsFocusOnly = new Set<KeyRouterAction["type"]>([
+      "MOVE_LINK_SELECTION",
+      "OPEN_SELECTED_LINK",
+      "COPY_SELECTED_LINK",
+      "OPEN_EDIT_TASK_LINK_MODAL",
+      "OPEN_DELETE_TASK_LINK_MODAL"
+    ]);
+    const modalOnly = new Set<KeyRouterAction["type"]>([
+      "MODAL_CONFIRM_TASK_LINK_DELETE",
+      "MODAL_CONFIRM_TASK_LINK_OPEN_EXTERNAL",
+      "MODAL_SUBMIT_TASK_LINK_FORM",
+      "MODAL_MOVE_TASK_LINK_FORM_FOCUS",
+      "MODAL_CYCLE_TASK_LINK_FORM_TYPE"
+    ]);
+
+    if (
+      detailsFocusOnly.has(action.type) &&
+      (uiState.mode !== Mode.LIST || uiState.focus !== FocusTarget.DETAILS_LINKS)
+    ) {
+      throw new Error(
+        `Link action ${action.type} requires LIST + DETAILS_LINKS (got ${uiState.mode}/${uiState.focus})`
+      );
+    }
+
+    if (
+      action.type === "OPEN_ADD_TASK_LINK_MODAL" &&
+      uiState.mode !== Mode.LIST &&
+      uiState.mode !== Mode.ADD
+    ) {
+      throw new Error(
+        `Link action ${action.type} requires LIST or ADD mode (got ${uiState.mode})`
+      );
+    }
+
+    if (modalOnly.has(action.type) && uiState.mode !== Mode.MODAL_CONFIRM) {
+      throw new Error(
+        `Link modal action ${action.type} requires MODAL_CONFIRM mode (got ${uiState.mode})`
+      );
+    }
+  }
+
   function runRoutedAction(action: KeyRouterAction) {
+    assertLinkActionInvariant(action);
     switch (action.type) {
       case "UNWIND":
         applyEscUnwind();
@@ -3515,20 +3571,26 @@ export function App({
       showShortNavigationBanner("No link selected");
       return;
     }
-    if (requiresExternalSchemeConfirm(selectedTaskLink)) {
-      const scheme = extractUrlScheme(selectedTaskLink.target) ?? "unknown";
+    const openDecision = decideTaskLinkOpen(selectedTaskLink, {
+      nonHttpLinkPolicy: settingsState.security.nonHttpLinkPolicy
+    });
+    if (openDecision.policy === "block") {
+      showShortNavigationBanner("Blocked by security policy.");
+      return;
+    }
+    if (openDecision.policy === "confirm") {
       openModalWithContext({
         type: "task_link_open_external",
         taskId: selectedPersistedTask.id,
         linkId: selectedTaskLink.id,
-        target: selectedTaskLink.target,
-        scheme,
+        target: openDecision.target,
+        scheme: openDecision.scheme,
         previousMode: Mode.LIST,
         previousFocus: uiState.focus
       });
       return;
     }
-    void openTaskLinkTarget(selectedTaskLink.target);
+    void openTaskLinkTarget(openDecision.target);
   }
 
   function copySelectedTaskLink() {
@@ -3598,7 +3660,8 @@ export function App({
         id: crypto.randomUUID(),
         target,
         ...(label ? { label } : {}),
-        ...(kind ? { kind } : {})
+        ...(kind ? { kind } : {}),
+        source: "manual"
       };
       dispatch({
         type: "updateEditor",
@@ -3616,7 +3679,8 @@ export function App({
         id: crypto.randomUUID(),
         target,
         ...(label ? { label } : {}),
-        ...(kind ? { kind } : {})
+        ...(kind ? { kind } : {}),
+        source: "manual"
       };
       const updatedTask = applyTaskLinkMutation(modal.source.taskId, (task) =>
         addTaskLink(task, link)

@@ -16,7 +16,8 @@ export const BRAND_SLUG = "tadoi";
 
 export const ENV_VARS = {
   DATA_PATH: "TADOI_DATA_PATH",
-  PERF_DEBUG: "TADOI_PERF_DEBUG"
+  PERF_DEBUG: "TADOI_PERF_DEBUG",
+  VERBOSE_PATH_LOGS: "TADOI_VERBOSE_PATH_LOGS"
 } as const;
 
 export const DATA_FILE_NAME = `${BRAND_SLUG}_data.json`;

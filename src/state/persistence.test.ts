@@ -11,7 +11,8 @@ import {
   nextTimestampedSiblingPath,
   resolveDataPath,
   safeLoadState,
-  saveStateDebounced
+  saveStateDebounced,
+  writeJsonAtomic
 } from "./persistence";
 
 function sleep(ms: number): Promise<void> {
@@ -277,6 +278,63 @@ describe("backup helpers", () => {
 
     expect(path.basename(backupPath)).toBe("tadoi_data.json.backup.20260210-120000.1");
     expect(path.basename(corruptPath)).toBe("tadoi_data.json.corrupt.20260210-120000.1");
+  });
+});
+
+describe("writeJsonAtomic", () => {
+  it("uses unique sibling temp paths for concurrent writes", async () => {
+    const dir = await makeTempDir();
+    const filePath = path.join(dir, "tadoi_data.json");
+    const tempWrites: string[] = [];
+
+    const fsOps: PersistenceFsOps = {
+      ...fs,
+      writeFile: (async (targetPath, data, options) => {
+        const asString = String(targetPath);
+        if (asString.includes(".tmp-")) {
+          tempWrites.push(asString);
+          expect(asString.endsWith(".tmp")).toBe(false);
+        }
+        return fs.writeFile(
+          targetPath,
+          data as Parameters<typeof fs.writeFile>[1],
+          options as Parameters<typeof fs.writeFile>[2]
+        );
+      }) as PersistenceFsOps["writeFile"]
+    };
+
+    await Promise.all([
+      writeJsonAtomic({ marker: "one" }, { filePath, fsOps }),
+      writeJsonAtomic({ marker: "two" }, { filePath, fsOps })
+    ]);
+
+    expect(tempWrites.length).toBeGreaterThanOrEqual(2);
+    expect(new Set(tempWrites).size).toBe(tempWrites.length);
+    const parsed = JSON.parse(await fs.readFile(filePath, "utf8")) as { marker: string };
+    expect(["one", "two"]).toContain(parsed.marker);
+  });
+
+  it("fsyncs before rename when requested", async () => {
+    const dir = await makeTempDir();
+    const filePath = path.join(dir, "tadoi_data.json");
+    let syncCalled = false;
+
+    const fsOps: PersistenceFsOps = {
+      ...fs,
+      open: (async () =>
+        ({
+          sync: async () => {
+            syncCalled = true;
+          },
+          close: async () => {}
+        }) as Awaited<ReturnType<typeof fs.open>>) as PersistenceFsOps["open"]
+    };
+
+    await writeJsonAtomic(
+      { ok: true },
+      { filePath, fsOps, fsyncBeforeRename: true, pretty: false }
+    );
+    expect(syncCalled).toBe(true);
   });
 });
 

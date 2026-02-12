@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 4,
+  "tasks": [
+    {
+      "id": "all-day-1",
+      "title": "All day source",
+      "status": "open",
+      "createdAt": 1,
+      "updatedAt": 1,
+      "dueAt": 1771113600000,
+      "hasExplicitTime": false,
+      "tags": [
+        "ops"
+      ]
+    },
+    {
+      "id": "timed-1",
+      "title": "Timed source",
+      "status": "open",
+      "createdAt": 2,
+      "updatedAt": 2,
+      "dueAt": 1771250400000,
+      "hasExplicitTime": true,
+      "notes": "Before import",
+      "tags": [
+        "ops"
+      ],
+      "links": [
+        {
+          "id": "link-1",
+          "target": "https://example.com/source",
+          "kind": "url",
+          "source": "manual"
+        }
+      ]
+    },
+    {
+      "id": "series-root",
+      "title": "Series source",
+      "status": "open",
+      "createdAt": 3,
+      "updatedAt": 3,
+      "dueAt": 1770714000000,
+      "hasExplicitTime": true,
+      "tags": [
+        "team"
+      ],
+      "recurrence": {
+        "dtstart": "2026-02-10T09:00:00",
+        "rrule": "FREQ=DAILY;INTERVAL=1",
+        "series_id": "series:root"
+      }
+    }
+  ],
+  "tagIndex": {},
+  "savedViews": []
+}

@@ -1,14 +1,18 @@
 import type { Task, TaskLink, TaskLinkKind } from "./models";
 
-const ALLOWED_URL_SCHEMES = new Set(["http", "https", "mailto", "file"]);
+const SAFE_URL_SCHEMES = new Set(["http", "https", "mailto"]);
 const WINDOWS_DRIVE_PATH_RE = /^[a-zA-Z]:[\\/]/;
 const SCHEME_RE = /^([a-zA-Z][a-zA-Z\d+.-]*):/;
+const LOCAL_PATH_RE = /^[./~]/;
 
 export type LinkUpdatePatch = {
   target?: string;
   label?: string;
   kind?: TaskLinkKind;
 };
+
+export type NonHttpLinkPolicy = "prompt" | "block";
+export type TaskLinkOpenPolicy = "allow" | "confirm" | "block";
 
 export function extractUrlScheme(target: string): string | undefined {
   const trimmed = target.trim();
@@ -28,15 +32,38 @@ export function resolveTaskLinkKind(link: Pick<TaskLink, "target" | "kind">): Ta
   return link.kind ?? inferTaskLinkKind(link.target);
 }
 
-export function requiresExternalSchemeConfirm(
-  link: Pick<TaskLink, "target" | "kind">
-): boolean {
-  if (resolveTaskLinkKind(link) !== "url") {
-    return false;
+export function resolveTaskLinkOpenPolicy(
+  link: Pick<TaskLink, "target" | "kind" | "source">,
+  options: { nonHttpLinkPolicy?: NonHttpLinkPolicy } = {}
+): TaskLinkOpenPolicy {
+  const nonHttpLinkPolicy = options.nonHttpLinkPolicy ?? "prompt";
+  const kind = resolveTaskLinkKind(link);
+
+  if (kind === "path" || LOCAL_PATH_RE.test(link.target.trim())) {
+    return nonHttpLinkPolicy === "block" ? "block" : "confirm";
   }
+
   const scheme = extractUrlScheme(link.target);
-  if (!scheme) return false;
-  return !ALLOWED_URL_SCHEMES.has(scheme);
+  if (!scheme) {
+    return link.source === "calendar_import" ? "confirm" : "allow";
+  }
+
+  if (!SAFE_URL_SCHEMES.has(scheme)) {
+    return nonHttpLinkPolicy === "block" ? "block" : "confirm";
+  }
+
+  if (link.source === "calendar_import") {
+    return "confirm";
+  }
+
+  return "allow";
+}
+
+export function requiresExternalSchemeConfirm(
+  link: Pick<TaskLink, "target" | "kind" | "source">,
+  options: { nonHttpLinkPolicy?: NonHttpLinkPolicy } = {}
+): boolean {
+  return resolveTaskLinkOpenPolicy(link, options) === "confirm";
 }
 
 export function addTaskLink(task: Task, link: TaskLink): Task {

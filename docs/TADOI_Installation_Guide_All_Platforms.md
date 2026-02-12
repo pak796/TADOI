@@ -101,6 +101,20 @@ Optional notification check:
 - Create a timed task due within 1 minute and keep the app open.
 - Confirm overdue popup modal appears and responds to `S`/`D`/`G`/`Esc`.
 
+## 4.5 Calendar and Security Quick Checks
+
+1. Run ICS export:
+   - `bun run start -- calendar:export --out ./tadoi-install-check.ics`
+2. Validate export privacy default:
+   - command summary should report `privacy: minimal`.
+3. Validate full export mode:
+   - `bun run start -- calendar:export --out ./tadoi-install-check-full.ics --privacy full`
+4. Confirm current import scope:
+   - `calendar:import` is not yet exposed as a public CLI command in this baseline.
+5. Validate link-open security posture:
+   - add a local path link and attempt open from details pane.
+   - expected: confirmation prompt (or block message if `security.nonHttpLinkPolicy` is set to `block`).
+
 ## 5) Data File Locations by Platform
 
 Default data path resolution:
@@ -180,6 +194,13 @@ Optional signing env vars:
 
 - TADOI requires minimum terminal size `104x24`.
 - Resize the terminal window larger.
+
+### Startup logs show redacted paths
+
+- This is expected privacy behavior (`~/...` path redaction).
+- For full absolute startup paths during debugging, run with:
+  - macOS/Linux: `TADOI_VERBOSE_PATH_LOGS=1 bun run dev`
+  - Windows PowerShell: `$env:TADOI_VERBOSE_PATH_LOGS=\"1\"; bun run dev`
 
 ### Data save errors
 

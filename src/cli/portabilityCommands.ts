@@ -11,6 +11,7 @@ export type ExportCommandOptions = {
   format: "json";
   pretty: boolean;
   redact: boolean;
+  redactMode?: "basic" | "strict";
   help: boolean;
 };
 
@@ -48,6 +49,7 @@ export function parseExportArgs(args: string[]): ParseResult<ExportCommandOption
   let format: "json" = "json";
   let pretty = false;
   let redact = false;
+  let redactMode: "basic" | "strict" | undefined;
   let help = false;
 
   for (let i = 0; i < args.length; i += 1) {
@@ -102,6 +104,27 @@ export function parseExportArgs(args: string[]): ParseResult<ExportCommandOption
       continue;
     }
 
+    if (arg === "--redact-mode") {
+      const next = requireNextArg(args, i, "--redact-mode");
+      if (!next.ok) return next;
+      const normalized = next.value.trim().toLowerCase();
+      if (normalized !== "basic" && normalized !== "strict") {
+        return { ok: false, error: "--redact-mode must be basic or strict" };
+      }
+      redactMode = normalized;
+      i += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--redact-mode=")) {
+      const normalized = arg.slice("--redact-mode=".length).trim().toLowerCase();
+      if (normalized !== "basic" && normalized !== "strict") {
+        return { ok: false, error: "--redact-mode must be basic or strict" };
+      }
+      redactMode = normalized;
+      continue;
+    }
+
     if (arg.startsWith("-")) {
       return { ok: false, error: `Unknown option for export: ${arg}` };
     }
@@ -120,6 +143,7 @@ export function parseExportArgs(args: string[]): ParseResult<ExportCommandOption
       format,
       pretty,
       redact,
+      ...(redactMode ? { redactMode } : {}),
       help
     }
   };

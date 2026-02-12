@@ -19,6 +19,35 @@ describe("parseExportArgs", () => {
     const parsed = parseExportArgs(["--out", "./export.json", "--wat"]);
     expect(parsed.ok).toBe(false);
   });
+
+  it("parses redact mode and legacy --redact alias", () => {
+    const strict = parseExportArgs([
+      "--out",
+      "./export.json",
+      "--redact-mode",
+      "strict"
+    ]);
+    expect(strict.ok).toBe(true);
+    if (strict.ok) {
+      expect(strict.value.redactMode).toBe("strict");
+    }
+
+    const legacy = parseExportArgs(["--out", "./export.json", "--redact"]);
+    expect(legacy.ok).toBe(true);
+    if (legacy.ok) {
+      expect(legacy.value.redact).toBe(true);
+    }
+  });
+
+  it("rejects invalid redact modes", () => {
+    const parsed = parseExportArgs([
+      "--out",
+      "./export.json",
+      "--redact-mode",
+      "max"
+    ]);
+    expect(parsed.ok).toBe(false);
+  });
 });
 
 describe("parseImportArgs", () => {

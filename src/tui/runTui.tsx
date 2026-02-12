@@ -1,3 +1,5 @@
+import os from "os";
+import path from "path";
 import { createCliRenderer } from "@opentui/core";
 import { createRoot } from "@opentui/react";
 import { App } from "../app/App";
@@ -7,11 +9,41 @@ import { normalizeTagIndex, normalizeTags } from "../domain/tagIndex";
 import { loadSettings } from "../settings/settings";
 import { CURRENT_SCHEMA_VERSION, safeLoadState } from "../state/persistence";
 import { applyArchiveAging } from "../state/store";
-import { APP_NAME, PRODUCT_NAME_TM } from "../brand/brand";
+import { APP_NAME, ENV_VARS, PRODUCT_NAME_TM } from "../brand/brand";
 
 export type RunTuiOptions = {
   showLogo: boolean;
 };
+
+export function redactStartupPath(
+  pathValue: string,
+  options: { homeDir?: string; env?: NodeJS.ProcessEnv } = {}
+): string {
+  const env = options.env ?? process.env;
+  if (env[ENV_VARS.VERBOSE_PATH_LOGS] === "1") {
+    return pathValue;
+  }
+  const normalizedInput = pathValue.trim();
+  if (!normalizedInput) {
+    return pathValue;
+  }
+
+  const homeDir = options.homeDir ?? os.homedir();
+  const normalizedPath = normalizedInput.replaceAll("\\", "/");
+  const normalizedHome = homeDir.replaceAll("\\", "/");
+
+  if (normalizedPath === normalizedHome) {
+    return "~";
+  }
+  if (normalizedPath.startsWith(`${normalizedHome}/`)) {
+    return `~/${normalizedPath.slice(normalizedHome.length + 1)}`;
+  }
+  if (path.isAbsolute(normalizedInput)) {
+    const basename = path.basename(normalizedInput);
+    return basename ? `~/.../${basename}` : "~/...";
+  }
+  return normalizedInput;
+}
 
 export async function runTui(options: RunTuiOptions): Promise<void> {
   const renderer = await createCliRenderer({ exitOnCtrlC: true });
@@ -19,9 +51,18 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
   applyThemeWithSettings(settingsResult.settings.themeId, settingsResult.settings);
   const loadResult = await safeLoadState();
   const loaded = loadResult.data;
+  const startupWarnings = [...settingsResult.warnings];
+  if (loadResult.bannerMessage) {
+    startupWarnings.push(loadResult.bannerMessage);
+  }
+  const startupBanner =
+    startupWarnings.length > 0 ? startupWarnings.join(" | ") : undefined;
 
-  console.log(`[${APP_NAME}] data path: ${loadResult.resolvedPath}`);
-  console.log(`[${APP_NAME}] settings path: ${settingsResult.resolvedPath}`);
+  console.log(`[${APP_NAME}] data path: ${redactStartupPath(loadResult.resolvedPath)}`);
+  console.log(`[${APP_NAME}] settings path: ${redactStartupPath(settingsResult.resolvedPath)}`);
+  for (const warning of settingsResult.warnings) {
+    console.warn(`[${APP_NAME}] ${warning}`);
+  }
   if (loadResult.bannerMessage) {
     console.warn(`[${APP_NAME}] ${loadResult.bannerMessage}`);
   }
@@ -88,14 +129,15 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
     <App
       initialData={agedData}
       skipInitialSave={!shouldSaveInitial}
-      startupBanner={loadResult.bannerMessage}
       initialThemeId={settingsResult.settings.themeId}
       initialLogoMode={settingsResult.settings.logoMode}
       initialFlashMode={settingsResult.settings.flashMode}
       initialNotificationSettings={settingsResult.settings.notifications}
+      initialSecuritySettings={settingsResult.settings.security}
       initialCustomThemes={settingsResult.settings.customThemes}
       settingsPath={settingsResult.resolvedPath}
       showLogo={options.showLogo}
+      startupBanner={startupBanner}
     />
   );
 }

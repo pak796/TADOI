@@ -4,12 +4,14 @@ export { FocusTarget, Mode } from "../ui/modeFocus";
 export type TaskStatus = "open" | "done" | "archived";
 
 export type TaskLinkKind = "url" | "path";
+export type TaskLinkSource = "manual" | "calendar_import";
 
 export type TaskLink = {
   id: string;
   target: string;
   label?: string;
   kind?: TaskLinkKind;
+  source?: TaskLinkSource;
 };
 
 export type RecurrenceFrequency = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";

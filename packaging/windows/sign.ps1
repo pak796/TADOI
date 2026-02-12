@@ -11,8 +11,12 @@ if (-not (Test-Path -LiteralPath $FilePath)) {
 
 $certPath = $env:TADOI_WIN_SIGN_CERT_PATH
 $certPassword = $env:TADOI_WIN_SIGN_CERT_PASSWORD
+$requireSigning = $env:TADOI_REQUIRE_SIGNING -eq "1"
 
 if ([string]::IsNullOrWhiteSpace($certPath) -or [string]::IsNullOrWhiteSpace($certPassword)) {
+  if ($requireSigning) {
+    throw "[sign] strict signing enabled (TADOI_REQUIRE_SIGNING=1); missing required signing env vars: TADOI_WIN_SIGN_CERT_PATH, TADOI_WIN_SIGN_CERT_PASSWORD"
+  }
   Write-Host "[sign] signing env vars not set; skipping"
   Write-Host "[sign] expected: TADOI_WIN_SIGN_CERT_PATH, TADOI_WIN_SIGN_CERT_PASSWORD"
   exit 0

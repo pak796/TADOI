@@ -16,7 +16,7 @@ In scope:
 - Dashboard parity with list data.
 - Left-rail menu and logo-mode surface behavior.
 - Recurrence creation, occurrence actions, and delete variants.
-- Calendar ICS export/import CLI workflows, including recurrence round-trip behavior.
+- Calendar ICS export CLI workflows plus import foundation verification (service-layer baseline).
 - Backup/import/export safety flows.
 - Theme/settings persistence, including `custom1` behavior.
 - Notification modal behavior and bell cooldown.
@@ -25,7 +25,7 @@ In scope:
 ## 2) Current Automated Validation Snapshot
 
 Local workspace snapshot (captured for transparency):
-- `bun run test`: **355 pass / 0 fail / 355 total**.
+- `bun run test`: **403 pass / 0 fail / 403 total**.
 - `bun run typecheck`: **pass**.
 
 Manual QA is still required for cross-platform interaction and rendering coverage.
@@ -300,52 +300,36 @@ Smoke pass criteria:
   - Steps: attempt open action; test confirm (`y`) and cancel (`n`/`Esc`) paths.
   - Expected: modal blocks background input; cancel aborts open; confirm proceeds.
 
-### L) Calendar ICS Export and Import (Round-Trip)
+### L) Calendar Export + Import Foundation
 
 - [ ] `QA-052 [SMOKE]` Calendar export command writes a valid `.ics` file.
   - Preconditions: dataset has open tasks with at least one due date.
   - Steps: run `bun run start -- calendar:export --out ./qa-export.ics`.
   - Expected: command exits `0`; file is created; summary includes scanned/written counts.
-- [ ] `QA-053 [SMOKE]` Calendar import round-trip updates by `X-TADOI-TASK-ID` without duplicates.
-  - Preconditions: run `QA-052` and keep exported file.
-  - Steps: run `bun run start -- calendar:import --in ./qa-export.ics --mode merge` twice.
-  - Expected: first run imports/merges; second run is idempotent (no duplicate tasks created).
-- [ ] `QA-054` Identity fallback precedence works (`UID` conventions, then external UID).
-  - Preconditions: ICS contains events without `X-TADOI-TASK-ID` but with TADOI UID format or known external UID.
-  - Steps: import with `--mode merge` and inspect matched targets.
-  - Expected: match order is `X-TADOI-TASK-ID` > `tadoi-* UID` > `task.external.calendar.uid`.
-- [ ] `QA-055` Merge mode is conservative (tags/links union, notes append, minimal overwrite).
-  - Preconditions: task already exists with local edits.
-  - Steps: import a conflicting event with `--mode merge`.
-  - Expected: tags and links are unioned; notes append import block; title/due only overwrite when safe; conflicts are reported.
-- [ ] `QA-056` Update mode applies calendar-wins overwrite for mapped fields.
-  - Preconditions: existing task differs from ICS event.
-  - Steps: run `bun run start -- calendar:import --in <file> --mode update`.
-  - Expected: title/due/notes/tags/links align to ICS mapping; summary reports updates.
-- [ ] `QA-057` Create mode always creates new tasks.
-  - Preconditions: ICS event can already match an existing task.
-  - Steps: run `bun run start -- calendar:import --in <file> --mode create`.
-  - Expected: new tasks are created regardless of matches.
-- [ ] `QA-058` RRULE validity gate rejects invalid recurring series.
-  - Preconditions: ICS contains a recurring VEVENT with invalid `RRULE`.
-  - Steps: import file and capture stdout/report.
-  - Expected: import returns validation error (`exit 1`); clear RRULE error is recorded.
-- [ ] `QA-059` RECURRENCE-ID override creates/updates instance task and adds base `EXDATE`.
-  - Preconditions: recurring base event plus override VEVENT with `RECURRENCE-ID`.
-  - Steps: import and inspect base series + instance rows.
-  - Expected: instance task is created or updated with `instance_of`; base series includes `EXDATE` for original occurrence.
-- [ ] `QA-060` Cancelled override applies cancellation semantics.
-  - Preconditions: recurring base + override VEVENT with `STATUS:CANCELLED`.
-  - Steps: import and inspect tasks.
-  - Expected: base series gains `EXDATE`; matching instance task is closed if open; cancellation count increments.
-- [ ] `QA-061` Range and view filters match export semantics.
-  - Preconditions: saved view exists; ICS spans dates inside and outside `next7`/`month`.
-  - Steps: import with `--view <name>` and each `--range` variant.
-  - Expected: `next7` and `month` use local start-of-day windows; `all` disables date window; view filtering matches list/dashboard semantics.
-- [ ] `QA-062` Dry-run/report/horizon controls behave correctly.
-  - Preconditions: ICS includes recurrence that could expand many occurrences.
-  - Steps: run with `--dry-run --report ./import-report.json --horizon-days 365`.
-  - Expected: no persistence on dry-run; JSON report written; bounded recurrence handling respects horizon/cap.
+- [ ] `QA-053 [SMOKE]` Calendar export defaults to privacy `minimal`.
+  - Preconditions: at least one task has notes/tags/links.
+  - Steps: run export without `--privacy`, then inspect resulting `.ics`.
+  - Expected: summary reports `privacy: minimal`; metadata fields for notes/tags/links/url are omitted.
+- [ ] `QA-054` Calendar export `--privacy full` includes metadata.
+  - Preconditions: task includes notes/tags/links.
+  - Steps: run `bun run start -- calendar:export --out ./qa-export-full.ics --privacy full`.
+  - Expected: metadata fields are present in exported events.
+- [ ] `QA-055` Export range/view/recurrence behavior stays aligned to runtime filters.
+  - Preconditions: saved view exists; dataset contains recurring series and overrides.
+  - Steps: run `--range next7|month|all`, with and without `--view`.
+  - Expected: range semantics match app contract; recurrence serializes as RRULE/EXDATE when valid.
+- [ ] `QA-056` Import foundation guardrails remain enforced (automated verification).
+  - Preconditions: local test environment.
+  - Steps: run `bun test src/state/calendarImportService.test.ts src/calendar/icsParser.test.ts src/calendar/importMapper.test.ts`.
+  - Expected: size limits, parser semantics, and imported-link provenance checks pass.
+- [ ] `QA-057` Link security policy blocks or confirms risky opens.
+  - Preconditions: selected task has a local path link or non-allowlisted URL scheme.
+  - Steps: test open flow under default policy, then set `settings.security.nonHttpLinkPolicy` to `block` and retry.
+  - Expected: default policy prompts; block policy prevents open and shows a security banner.
+- [ ] `QA-058` Startup path logging redaction and verbose override.
+  - Preconditions: app can be launched from terminal.
+  - Steps: launch normally, then launch with `TADOI_VERBOSE_PATH_LOGS=1`.
+  - Expected: default startup logs redact absolute paths; verbose mode prints full paths.
 
 ## 7) Automated Coverage Mapping
 
@@ -357,7 +341,7 @@ Smoke pass criteria:
 | Recurrence engine + draft + delete | `src/domain/recurrence/engine.test.ts`, `src/domain/recurrence/draft.test.ts`, `src/domain/recurrence/delete.test.ts`, `src/domain/taskRows.test.ts` |
 | Dashboard KPIs and tags | `src/domain/dashboard.test.ts`, `src/domain/dashboardKpis.test.ts`, `src/domain/tagStats.test.ts` |
 | Backup/import/export + portability | `src/state/backupCenterFlow.test.ts`, `src/state/backupService.test.ts`, `src/state/portability.test.ts` |
-| Calendar ICS export/import | `src/calendar/icsWriter.test.ts`, `src/calendar/icsParser.test.ts`, `src/calendar/calendarMapper.test.ts`, `src/calendar/range.test.ts`, `src/calendar/rrule.test.ts`, `src/state/calendarExportService.test.ts` |
+| Calendar ICS export/import foundation | `src/calendar/icsWriter.test.ts`, `src/calendar/icsParser.test.ts`, `src/calendar/importMapper.test.ts`, `src/calendar/calendarMapper.test.ts`, `src/calendar/range.test.ts`, `src/calendar/rrule.test.ts`, `src/state/calendarExportService.test.ts`, `src/state/calendarImportService.test.ts` |
 | Notifications | `src/notifications/notificationManager.test.ts`, `src/notifications/overdueTaskActions.test.ts`, `src/notifications/notifiers/inAppModalNotifier.test.ts`, `src/notifications/notifiers/terminalBellNotifier.test.ts` |
 | Settings/theme/custom1 | `src/settings/settings.test.ts`, `src/theme/themes.test.ts`, `src/theme/resolveThemeTokens.test.ts`, `src/theme/custom1ColorUtils.test.ts` |
 | Brand/logo + left rail | `src/brand/brand.test.ts`, `src/components/LeftRail.tsx`, `src/app/keyRouter.test.ts` |
@@ -367,7 +351,7 @@ Smoke pass criteria:
 ## 8) Known Issues in Current Workspace
 
 No known automated failures at this snapshot (`2026-02-12`):
-- `bun run test`: 355/355 passing.
+- `bun run test`: 403/403 passing.
 - `bun run typecheck`: passing.
 
 Residual risk still covered by manual QA:
@@ -399,6 +383,6 @@ Defect report format:
 
 Release candidate is manual-QA ready when:
 1. All smoke cases pass on macOS, Windows, Linux.
-2. Full case set (`QA-001` to `QA-062`) is executed at least once per target platform.
+2. Full case set (`QA-001` to `QA-058`) is executed at least once per target platform.
 3. No open `P0` or `P1` defects remain.
 4. Known automated failures are either resolved or explicitly accepted with owner and follow-up.

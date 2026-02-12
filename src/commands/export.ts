@@ -13,7 +13,8 @@ export function printExportHelp(): void {
   console.log("  --out <path>        Output file path (required)");
   console.log("  --format json       Export format (json only)");
   console.log("  --pretty            Pretty-print output JSON");
-  console.log("  --redact            Blank task title/notes in export");
+  console.log("  --redact-mode <basic|strict>  Redaction profile");
+  console.log("  --redact            Compatibility alias for --redact-mode=strict");
   console.log("  -h, --help          Show export help");
 }
 
@@ -24,10 +25,12 @@ export async function runExportCommand(parsed: ExportCommandOptions): Promise<nu
   }
 
   try {
+    const redactMode = parsed.redactMode ?? (parsed.redact ? "strict" : undefined);
     const result = await exportBackup({
       outputPath: parsed.outPath,
       pretty: parsed.pretty,
-      redact: parsed.redact
+      redact: parsed.redact,
+      redactMode
     });
 
     console.log(`[export] wrote: ${result.outputPath}`);

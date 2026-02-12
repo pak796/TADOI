@@ -53,8 +53,12 @@ For each updated page:
 - Confirm terminal minimum in all guides is `104x24`.
 - Confirm tag panel key is `p` and search close is `Enter/Esc`.
 - Confirm recurrence delete copy includes `y` and `f` behavior.
-- Confirm feature and QA pages include task links/attachments coverage.
-- Confirm QA page includes expanded regression range through `QA-051`.
+- Confirm calendar docs state: `calendar:export` is user-facing and import is currently service-layer foundation (CLI not exposed).
+- Confirm security/privacy docs include:
+  - `security.nonHttpLinkPolicy` behavior (`prompt|block`)
+  - startup path redaction default and verbose override (`TADOI_VERBOSE_PATH_LOGS=1`)
+- Confirm feature and QA pages include task links/attachments plus security-policy coverage.
+- Confirm QA page checklist range is aligned through `QA-058`.
 
 ## Trademark Notice
 TADOI™ is a trademark of <OWNER>. Other names may be trademarks of their respective owners.

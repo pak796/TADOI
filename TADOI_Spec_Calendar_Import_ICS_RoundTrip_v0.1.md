@@ -1,20 +1,20 @@
 # TADOI™ Spec Sheet — Calendar Import (ICS) (One-Way, Round-Trip)
 
-**Repo context:** calendar export groundwork already landed (CLI + service + domain modules + tests).  
-**Generated:** 2026-02-12  
-**Feature status:** Proposed (next phase)
+**Repo context:** calendar export is shipped; import parser/mapper/service groundwork has landed.  
+**Updated:** 2026-02-12  
+**Feature status:** Partially implemented (service-level import available; CLI command exposure pending)
 
 ---
 
 ## 1) Objective
 
-Add **ICS calendar import** to complement existing ICS export, enabling a **true round‑trip** workflow:
+Complete **ICS calendar import** to complement existing ICS export, enabling a **true round‑trip** workflow:
 
 - Export tasks to `.ics`
 - Modify events in an external calendar (time move, notes/tags, exceptions)
 - Import `.ics` back to update TADOI tasks **idempotently** and **conservatively**
 
-This is still **one-way per action** (explicit import command). No OAuth, no sync loop, no background watchers.
+This is still **one-way per action** (explicit import operation). No OAuth, no sync loop, no background watchers.
 
 ---
 
@@ -30,7 +30,7 @@ This is still **one-way per action** (explicit import command). No OAuth, no syn
 ## 3) Goals / Non-Goals
 
 ### Goals
-- CLI: `tadoi calendar:import --in <file.ics> [...]`
+- Expose user-facing CLI command: `tadoi calendar:import --in <file.ics> [...]`
 - Parse `.ics` robustly enough to support:
   - VEVENT all-day + timed
   - TZID/UTC timestamps
@@ -61,12 +61,15 @@ Calendar command plumbing and export path already exist; import should mirror pa
 
 ### Service layer (mirror for import)
 - `src/state/calendarExportService.ts` *(pattern: orchestration + reuse saved views path)*
+- `src/state/calendarImportService.ts` *(implemented import orchestration baseline)*
 
 ### Domain modules (reuse contracts/parity)
 - `src/calendar/range.ts`
 - `src/calendar/rrule.ts`
 - `src/calendar/calendarMapper.ts`
 - `src/calendar/icsWriter.ts`
+- `src/calendar/icsParser.ts`
+- `src/calendar/importMapper.ts`
 
 ### Test baseline
 - `src/state/__fixtures__/calendar-export.golden.ics`
@@ -75,6 +78,9 @@ Calendar command plumbing and export path already exist; import should mirror pa
 - `src/calendar/icsWriter.test.ts`
 - `src/calendar/range.test.ts`
 - `src/calendar/rrule.test.ts`
+- `src/state/calendarImportService.test.ts`
+- `src/calendar/icsParser.test.ts`
+- `src/calendar/importMapper.test.ts`
 
 ---
 
@@ -86,6 +92,10 @@ tadoi calendar:import --in tadoi.ics [--view <name>] [--range next7|month|all]
                     [--mode merge|update|create] [--horizon-days <n>]
                     [--dry-run] [--tag imported] [--report <path.json>]
 ```
+
+Status note:
+- This CLI signature is the target contract.
+- Current implementation supports this contract at service level (`importCalendarIcs`) but is not yet routed from `src/cli.ts`.
 
 ### Flags
 - `--in <path>` *(required)*  
@@ -290,11 +300,14 @@ If VEVENT includes `RDATE`:
 
 ## 12) Implementation Plan (Repo-Concrete)
 
-### New files (expected)
-- `src/commands/calendarImport.ts`
-- `src/state/calendarImportService.ts`
-- `src/calendar/icsParser.ts`
-- `src/calendar/importMapper.ts`
+### Current implementation state
+- Implemented:
+  - `src/state/calendarImportService.ts`
+  - `src/calendar/icsParser.ts`
+  - `src/calendar/importMapper.ts`
+- Pending for full user-facing completion:
+  - `src/commands/calendarImport.ts`
+  - CLI route integration in `src/cli.ts` / `src/cli/calendarCommands.ts`
 
 ### Integrate command
 - Add subcommand in `src/cli/calendarCommands.ts` (mirroring export wiring).

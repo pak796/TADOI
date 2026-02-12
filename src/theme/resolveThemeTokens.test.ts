@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { resolveThemeTokens, THEMES, type ThemeTokens } from "./themes";
-import type { TadoiSettings } from "../settings/settings";
+import { THEME_OBJECT_IDS, type TadoiSettings } from "../settings/settings";
+import { THEME_TOKEN_KEYS } from "./custom1ColorUtils";
 
 const CUSTOM_GLOBAL: ThemeTokens = {
   bg: "#101010",
@@ -28,6 +29,9 @@ function makeSettings(): TadoiSettings {
       terminalBellOnOverdue: false,
       bannerDurationMs: 5000,
       bellCooldownMs: 2000
+    },
+    security: {
+      nonHttpLinkPolicy: "prompt"
     },
     customThemes: {
       custom1: {
@@ -122,5 +126,39 @@ describe("resolveThemeTokens", () => {
     expect(resolved.text).toBe("#112233");
     expect(resolved.mutedText).toBe("#445566");
     expect(resolved.bg).toBe(THEMES.retro.bg);
+  });
+
+  it("returns full token maps for all registered theme objects", () => {
+    const settings = makeSettings();
+    for (const objectId of THEME_OBJECT_IDS) {
+      const resolved = resolveThemeTokens("custom1", settings, { objectId });
+      expect(Object.keys(resolved).sort()).toEqual([...THEME_TOKEN_KEYS].sort());
+      for (const token of THEME_TOKEN_KEYS) {
+        expect(resolved[token]).toBeDefined();
+      }
+    }
+  });
+
+  it("keeps rotating fallback tokens stable while applying text-only overrides", () => {
+    const settings = makeSettings();
+    const resolved = resolveThemeTokens("rotating", settings, {
+      objectId: "taskRow",
+      builtInTextDraft: {
+        default: {
+          global: {
+            text: "#ABCDEF"
+          },
+          objects: {
+            taskRow: {
+              mutedText: "#112233"
+            }
+          }
+        }
+      }
+    });
+    expect(resolved.bg).toBe(THEMES.rotating.bg);
+    expect(resolved.panel).toBe(THEMES.rotating.panel);
+    expect(resolved.text).toBe(THEMES.rotating.text);
+    expect(resolved.mutedText).toBe(THEMES.rotating.mutedText);
   });
 });

@@ -67,7 +67,12 @@ async function withTempDataFile<T>(
 
 describe("calendarExportService", () => {
   it("writes deterministic ICS output for a mixed fixture dataset", async () => {
-    const payload = {
+    const payload: {
+      schemaVersion: 4;
+      tasks: PersistedTask[];
+      tagIndex: Record<string, never>;
+      savedViews: unknown[];
+    } = {
       schemaVersion: 4 as const,
       tasks: [
         {
@@ -140,7 +145,8 @@ describe("calendarExportService", () => {
         outputPath: outputBasePath,
         range: "all",
         now: new Date(Date.UTC(2026, 1, 12, 12, 30, 0)),
-        timeZone: "UTC"
+        timeZone: "UTC",
+        privacy: "full"
       });
 
       expect(result.outputPath).toBe(`${outputBasePath}.ics`);
@@ -149,6 +155,7 @@ describe("calendarExportService", () => {
       expect(result.seriesRruleExported).toBe(1);
       expect(result.instanceOverridesExported).toBe(1);
       expect(result.exdateCount).toBe(1);
+      expect(result.privacyApplied).toBe("full");
 
       const fixturePath = fileURLToPath(
         new URL("./__fixtures__/calendar-export.golden.ics", import.meta.url).href
@@ -160,7 +167,12 @@ describe("calendarExportService", () => {
   });
 
   it("fails --range all when a recurring task has invalid RRULE", async () => {
-    const payload = {
+    const payload: {
+      schemaVersion: 4;
+      tasks: PersistedTask[];
+      tagIndex: Record<string, never>;
+      savedViews: unknown[];
+    } = {
       schemaVersion: 4 as const,
       tasks: [
         {
@@ -190,12 +202,55 @@ describe("calendarExportService", () => {
           outputPath: path.join(tempDir, "invalid.ics"),
           range: "all",
           now: new Date(Date.UTC(2026, 1, 12, 12, 30, 0)),
-          timeZone: "UTC"
+          timeZone: "UTC",
+          privacy: "minimal"
         });
       } catch (error: unknown) {
         thrown = error;
       }
       expect(thrown).toBeInstanceOf(CalendarExportUsageError);
+    });
+  });
+
+  it("uses minimal privacy mode by default", async () => {
+    const payload: {
+      schemaVersion: 4;
+      tasks: PersistedTask[];
+      tagIndex: Record<string, never>;
+      savedViews: unknown[];
+    } = {
+      schemaVersion: 4 as const,
+      tasks: [
+        {
+          id: "task-1",
+          title: "Task",
+          status: "open",
+          createdAt: 1,
+          updatedAt: 1,
+          dueAt: Date.UTC(2026, 1, 15, 10, 0, 0),
+          hasExplicitTime: true,
+          notes: "Sensitive notes",
+          tags: ["private"],
+          links: [{ id: "link-1", target: "https://example.com", kind: "url" }]
+        }
+      ],
+      tagIndex: {},
+      savedViews: []
+    };
+
+    await withTempDataFile(payload, async ({ tempDir }) => {
+      const result = await exportCalendarIcs({
+        outputPath: path.join(tempDir, "minimal.ics"),
+        range: "all",
+        now: new Date(Date.UTC(2026, 1, 12, 12, 30, 0)),
+        timeZone: "UTC"
+      });
+
+      expect(result.privacyApplied).toBe("minimal");
+      const actual = await fs.readFile(result.outputPath, "utf8");
+      expect(actual).not.toContain("DESCRIPTION:");
+      expect(actual).not.toContain("CATEGORIES:");
+      expect(actual).not.toContain("\nURL:");
     });
   });
 });

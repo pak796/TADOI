@@ -4,6 +4,7 @@ import {
   CustomThemes,
   FlashMode,
   LogoMode,
+  SecuritySettings,
   NotificationSettings,
   getDefaultSettings
 } from "../settings/settings";
@@ -13,6 +14,7 @@ export type SettingsState = {
   logoMode: LogoMode;
   flashMode: FlashMode;
   notifications: NotificationSettings;
+  security: SecuritySettings;
   customThemes?: CustomThemes;
 };
 
@@ -24,6 +26,7 @@ export type SettingsAction =
   | { type: "setFlashMode"; flashMode: FlashMode }
   | { type: "toggleFlashMode" }
   | { type: "setNotifications"; notifications: NotificationSettings }
+  | { type: "setSecurity"; security: SecuritySettings }
   | { type: "setCustomThemes"; customThemes?: CustomThemes }
   | { type: "toggleNotificationsEnabled" }
   | { type: "toggleInAppOverdueBanner" }
@@ -39,6 +42,9 @@ export const initialSettingsState: SettingsState = {
     terminalBellOnOverdue: false,
     bannerDurationMs: 5000,
     bellCooldownMs: 2000
+  },
+  security: {
+    nonHttpLinkPolicy: "prompt"
   },
   customThemes: getDefaultSettings().customThemes
 };
@@ -62,6 +68,8 @@ export function settingsReducer(
       return { ...state, flashMode: state.flashMode === "slow" ? "static" : "slow" };
     case "setNotifications":
       return { ...state, notifications: action.notifications };
+    case "setSecurity":
+      return { ...state, security: action.security };
     case "setCustomThemes":
       return { ...state, customThemes: action.customThemes };
     case "toggleNotificationsEnabled":

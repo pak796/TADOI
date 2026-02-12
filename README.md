@@ -16,6 +16,13 @@ Task list: [`TADOI_TASKS_v0.3.4.md`](./TADOI_TASKS_v0.3.4.md)
 bun install
 ```
 
+## Dependency Policy
+
+- Direct runtime dependencies are pinned to explicit versions in `package.json` (no `latest` specifiers).
+- Lockfile determinism is required in CI: `bun install --frozen-lockfile`.
+- Security gate: run `bun audit` on every remediation/release PR; fail on unresolved advisories unless explicitly risk-accepted with owner and expiry.
+- Transitive advisory control uses `overrides` where safe; current policy forces `diff@8.0.3`.
+
 ## Run
 
 ```bash
@@ -106,7 +113,7 @@ Safety checks:
 Reference:
 - [`docs/backup-center.md`](./docs/backup-center.md)
 
-### Calendar Export (ICS, One-Way)
+### Calendar Integration (ICS Export + Import Foundation)
 
 Export tasks to iCalendar format:
 
@@ -120,15 +127,20 @@ Examples:
 bun run start -- calendar:export --out ./tadoi.ics --range next7
 bun run start -- calendar:export --out ./tadoi.ics --view Work --range month
 bun run start -- calendar:export --out ./tadoi.ics --range all
+bun run start -- calendar:export --out ./tadoi.ics --privacy full
 ```
 
 Behavior notes:
-- One-way export only (no calendar import/sync).
+- User-facing CLI currently exposes `calendar:export` only.
+- ICS import foundation exists in `src/state/calendarImportService.ts` (range/mode/dry-run/report/hard-cap logic), but `calendar:import` CLI routing is not exposed yet.
 - Exports open tasks only (done/archived excluded).
+- Privacy defaults to `minimal` (notes/tags/links/url omitted); use `--privacy full` to include full metadata.
+- Compatibility alias: `--include-details` maps to `--privacy full`.
 - `next7` uses rolling local days (`today..+6`); `month` uses `today..+29`.
 - Recurring series export as `RRULE` + `EXDATE` when valid.
 - Instance overrides (`instance_of`) export as standalone events.
 - `--range all` requires valid recurring `RRULE` fragments.
+- Import safety baseline (service layer): max ICS size `10 MiB` by default, bounded recurrence horizon, hard expansion cap.
 
 ## Keybindings
 
@@ -276,7 +288,7 @@ Type `#` in the Tags field to get suggestions ranked by usage. Selecting a sugge
 
 ## Settings File
 
-Theme, flash, and notification preferences are persisted in `settings.json`:
+Theme, logo, flash, notification, and security preferences are persisted in `settings.json`:
 - Primary: `~/.config/tadoi/settings.json`
 - Fallback: `~/.tadoi/settings.json`
 
@@ -298,6 +310,15 @@ Notification defaults:
 - `notifications.bannerDurationMs`: `5000` (retained compatibility field; currently not used by modal UX)
 - `notifications.bellCooldownMs`: `2000`
 
+Security defaults:
+- `security.nonHttpLinkPolicy`: `prompt`
+  - `prompt`: require confirmation for filesystem paths and non-allowlisted schemes.
+  - `block`: block those open attempts and show a security banner.
+
+Privacy defaults:
+- Startup path logs are redacted (`~/...`) by default.
+- Set `TADOI_VERBOSE_PATH_LOGS=1` only when full absolute startup paths are needed for debugging.
+
 Example:
 
 ```json
@@ -310,6 +331,9 @@ Example:
     "terminalBellOnOverdue": false,
     "bannerDurationMs": 5000,
     "bellCooldownMs": 2000
+  },
+  "security": {
+    "nonHttpLinkPolicy": "prompt"
   }
 }
 ```

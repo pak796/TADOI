@@ -18,6 +18,7 @@ describe("parseCalendarExportArgs", () => {
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     expect(parsed.value.range).toBe("next7");
+    expect(parsed.value.privacy).toBe("minimal");
   });
 
   it("parses view and range flags", () => {
@@ -26,13 +27,16 @@ describe("parseCalendarExportArgs", () => {
       "--view",
       "Work",
       "--range",
-      "month"
+      "month",
+      "--privacy",
+      "full"
     ]);
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     expect(parsed.value.outPath).toBe("./out.ics");
     expect(parsed.value.viewName).toBe("Work");
     expect(parsed.value.range).toBe("month");
+    expect(parsed.value.privacy).toBe("full");
   });
 
   it("rejects invalid ranges", () => {
@@ -41,6 +45,27 @@ describe("parseCalendarExportArgs", () => {
       "./out.ics",
       "--range",
       "year"
+    ]);
+    expect(parsed.ok).toBe(false);
+  });
+
+  it("supports --include-details compatibility flag", () => {
+    const parsed = parseCalendarExportArgs([
+      "--out",
+      "./out.ics",
+      "--include-details"
+    ]);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.value.privacy).toBe("full");
+  });
+
+  it("rejects invalid privacy values", () => {
+    const parsed = parseCalendarExportArgs([
+      "--out",
+      "./out.ics",
+      "--privacy",
+      "everything"
     ]);
     expect(parsed.ok).toBe(false);
   });

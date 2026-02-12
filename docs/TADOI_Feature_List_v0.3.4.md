@@ -54,6 +54,23 @@ This list reflects current runtime behavior as of **2026-02-12**.
 - Save-failure banner with retry on next domain mutation.
 - In-app Backup Center for export/import with dry-run and replace confirmation gate.
 
+## Calendar Integration
+- User-facing CLI export: `calendar:export` with `--out`, `--view`, `--range`, and `--privacy`.
+- Export privacy modes:
+  - `minimal` (default): omit notes/tags/links/url.
+  - `full`: include full metadata.
+  - `--include-details` compatibility alias to `full`.
+- Recurrence-aware ICS export includes RRULE/EXDATE and instance override events.
+- Import foundation is implemented in service modules (`icsParser`, `importMapper`, `calendarImportService`) with dry-run/report/mode support, but `calendar:import` is not yet exposed as a CLI route.
+
+## Security and Privacy Enhancements
+- Persisted security policy: `security.nonHttpLinkPolicy` (`prompt` or `block`).
+- Link-open policy is source-aware:
+  - calendar-imported links require confirmation before open.
+  - non-allowlisted schemes and path/file targets are confirmed or blocked by policy.
+- Open target execution rejects control-character payloads and uses argument-based process spawning.
+- Startup path logs are redacted by default; opt-in full paths with `TADOI_VERBOSE_PATH_LOGS=1`.
+
 ## Notifications and Settings
 - Overdue modal queue with actions: snooze, done, go-to, dismiss.
 - Optional terminal bell with cooldown.

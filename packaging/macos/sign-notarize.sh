@@ -33,8 +33,14 @@ fi
 
 SIGN_IDENTITY="${TADOI_MAC_SIGN_IDENTITY_INSTALLER:-}"
 NOTARY_PROFILE="${TADOI_MAC_NOTARY_PROFILE:-}"
+REQUIRE_SIGNING="${TADOI_REQUIRE_SIGNING:-0}"
 
 if [[ -z "$SIGN_IDENTITY" || -z "$NOTARY_PROFILE" ]]; then
+  if [[ "$REQUIRE_SIGNING" == "1" ]]; then
+    echo "[sign-notarize] strict signing enabled (TADOI_REQUIRE_SIGNING=1); missing required env vars" >&2
+    echo "[sign-notarize] expected: TADOI_MAC_SIGN_IDENTITY_INSTALLER, TADOI_MAC_NOTARY_PROFILE" >&2
+    exit 1
+  fi
   echo "[sign-notarize] signing/notarization env vars not set; skipping"
   echo "[sign-notarize] expected: TADOI_MAC_SIGN_IDENTITY_INSTALLER, TADOI_MAC_NOTARY_PROFILE"
   exit 0

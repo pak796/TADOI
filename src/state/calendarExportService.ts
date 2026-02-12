@@ -6,6 +6,7 @@ import { applySavedView } from "../domain/savedViews";
 import { buildVisibleTaskRows } from "../domain/taskRows";
 import {
   type CalendarTimeContext,
+  type CalendarEventPrivacyMode,
   mapInstanceOverrideTaskToEvent,
   mapNonRecurringTaskToEvent,
   mapSeriesOccurrenceToEvent,
@@ -39,6 +40,7 @@ export type CalendarExportOptions = {
   outputPath: string;
   viewName?: string;
   range?: CalendarExportRange;
+  privacy?: CalendarEventPrivacyMode;
   cwd?: string;
   now?: Date;
   timeZone?: string;
@@ -52,6 +54,7 @@ export type CalendarExportResult = {
   instanceOverridesExported: number;
   exdateCount: number;
   rangeApplied: CalendarExportRange;
+  privacyApplied: CalendarEventPrivacyMode;
   viewApplied?: string;
   timeContext: CalendarTimeContext;
 };
@@ -192,6 +195,7 @@ export async function exportCalendarIcs(
   const now = options.now ?? new Date();
   const nowMs = now.getTime();
   const range = options.range ?? "next7";
+  const privacy = options.privacy ?? "minimal";
   const cwd = options.cwd ?? process.cwd();
   const outputPath = await resolveIcsOutputPath(options.outputPath, cwd);
 
@@ -254,7 +258,8 @@ export async function exportCalendarIcs(
         task,
         timeContext,
         now,
-        getRelatedSeriesUid(task, seriesTaskBySeriesId)
+        getRelatedSeriesUid(task, seriesTaskBySeriesId),
+        privacy
       );
       if (!event) continue;
       events.push(event);
@@ -285,7 +290,13 @@ export async function exportCalendarIcs(
           rangeWindow.endMs - 1
         );
         for (const occurrence of occurrences) {
-          const event = mapSeriesOccurrenceToEvent(task, occurrence, timeContext, now);
+          const event = mapSeriesOccurrenceToEvent(
+            task,
+            occurrence,
+            timeContext,
+            now,
+            privacy
+          );
           if (event) {
             events.push(event);
           }
@@ -302,7 +313,7 @@ export async function exportCalendarIcs(
         continue;
       }
 
-      const event = mapSeriesTaskToRecurringEvent(task, timeContext, now);
+      const event = mapSeriesTaskToRecurringEvent(task, timeContext, now, privacy);
       if (!event) continue;
       events.push(event);
       seriesRruleExported += 1;
@@ -313,7 +324,7 @@ export async function exportCalendarIcs(
     if (task.dueAt === undefined || !isTimestampInRange(task.dueAt, rangeWindow)) {
       continue;
     }
-    const event = mapNonRecurringTaskToEvent(task, timeContext, now);
+    const event = mapNonRecurringTaskToEvent(task, timeContext, now, privacy);
     if (event) {
       events.push(event);
     }
@@ -341,6 +352,7 @@ export async function exportCalendarIcs(
     instanceOverridesExported,
     exdateCount,
     rangeApplied: range,
+    privacyApplied: privacy,
     ...(viewApplied ? { viewApplied } : {}),
     timeContext
   };

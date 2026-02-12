@@ -116,7 +116,32 @@ Capabilities:
 - `replace` requires typed `REPLACE`
 - pre-import backup on commit path
 
-### 2.10 Branding / Left Rail Contract
+### 2.10 Calendar Integration Contract
+Export (user-facing CLI):
+- `tadoi calendar:export --out <file.ics> [--view <name>] [--range next7|month|all] [--privacy minimal|full]`
+- default privacy is `minimal`
+- `--include-details` aliases to `--privacy full`
+- export includes open tasks only, with recurrence support (`RRULE`, `EXDATE`, instance overrides)
+
+Import (current implementation boundary):
+- import engine exists in `src/state/calendarImportService.ts` with:
+  - `merge|update|create` modes
+  - `next7|month|all` range handling
+  - dry-run/report support
+  - recurrence override/cancellation handling
+  - bounded horizon and hard expansion caps
+- `calendar:import` CLI routing is not yet exposed in `src/cli.ts`.
+
+### 2.11 Security and Privacy Contract
+- External link policy is settings-driven:
+  - `security.nonHttpLinkPolicy: prompt|block`
+  - `prompt` requires explicit confirmation for paths and non-allowlisted schemes.
+  - `block` blocks those open attempts.
+- Links imported from calendar sources default to confirm-on-open behavior.
+- Open-target execution rejects control-character payloads and uses argument-based process spawning.
+- Startup logs redact absolute paths by default; full paths are opt-in via `TADOI_VERBOSE_PATH_LOGS=1`.
+
+### 2.12 Branding / Left Rail Contract
 - Left rail includes `TAG PANEL (P)` menu row.
 - Hint strip includes `p: TAG PANEL`.
 - Logo modes include:
@@ -129,7 +154,12 @@ Capabilities:
 ## 3) Data Model Contract
 
 Domain core (`src/domain/models.ts`):
-- `Task` includes `tags[]`, optional `links[]`, optional `recurrence`, optional `instance_of`.
+- `Task` includes:
+  - `tags[]`
+  - optional `links[]`
+  - optional `recurrence`
+  - optional `instance_of`
+  - optional `external.calendar` metadata (UID/source/tzid/import tracking fields)
 - `Filters` includes:
   - `status`
   - `due`
@@ -162,7 +192,7 @@ Global/overlay:
 ## 5) Quality and Validation Baseline
 
 Automated snapshot captured during docs audit:
-- `bun run test`: `355 pass / 0 fail / 355 total`
+- `bun run test`: `403 pass / 0 fail / 403 total`
 - `bun run typecheck`: `pass`
 
 Manual coverage baseline:
@@ -173,12 +203,16 @@ Manual coverage baseline:
 - collaboration/multi-user editing
 - background daemon delivery while app is closed
 - broad NLP natural-language date parsing
+- user-facing `calendar:import` CLI command (service layer exists; CLI wiring pending)
 
 ## 7) Related Documents
 - `README.md`
 - `docs/TADOI_Installation_Guide_All_Platforms.md`
 - `docs/TADOI_QA_Guide_v0.3.4.md`
 - `docs/TADOI_Feature_List_v0.3.4.md`
+- `TADOI_Spec_Calendar_Export_ICS_v0.2.md`
+- `TADOI_Spec_Calendar_Import_ICS_RoundTrip_v0.1.md`
+- `TADOI_Task_Links_Attachments_Spec_v0.2.md`
 - `DASHBOARD_SPEC_MVP.md`
 - `TADOI_BackupCenter_InApp_Spec.md`
 - `TADOI_Notifications_Spec_Tier1-2_v0.2.md`

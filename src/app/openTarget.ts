@@ -1,5 +1,7 @@
 import { spawn, type ChildProcess, type SpawnOptionsWithoutStdio } from "node:child_process";
 
+const CONTROL_CHARS_RE = /[\u0000-\u001F\u007F]/;
+
 export type OpenTargetSpawn = (
   command: string,
   args: string[],
@@ -40,8 +42,8 @@ function resolveOpenCommand(target: string, platform: NodeJS.Platform): {
 
   if (platform === "win32") {
     return {
-      command: "cmd",
-      args: ["/c", "start", "", target],
+      command: "explorer",
+      args: [target],
       options: baseOptions
     };
   }
@@ -64,6 +66,9 @@ export async function openTarget(
   const trimmed = target.trim();
   if (!trimmed) {
     throw new Error("Target is required");
+  }
+  if (CONTROL_CHARS_RE.test(trimmed)) {
+    throw new Error("Target contains control characters");
   }
 
   const platform = options.platform ?? process.platform;

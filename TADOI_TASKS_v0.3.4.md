@@ -48,6 +48,12 @@ Package baseline: `0.3.4`
 - `TA-053` Corrupt-file recovery path with timestamped backup output. (`Complete`)
 - `TA-054` One-way Calendar export (ICS) CLI with RRULE/EXDATE + instance override support. (`Complete`)
 
+### A7) Calendar + Security/Privacy Hardening
+- `TA-055` Calendar export privacy controls (`minimal` default, `full`, `--include-details` alias). (`Complete`)
+- `TA-056` Calendar import foundation implemented at service layer (parser/mapper/import service + bounded size/horizon protections). (`Complete`)
+- `TA-057` Source-aware link safety (`calendar_import` provenance + confirm/block policy for risky opens). (`Complete`)
+- `TA-058` Startup path-log redaction default with debug opt-in (`TADOI_VERBOSE_PATH_LOGS=1`). (`Complete`)
+
 ## B) Documentation and Release Governance
 
 ### B1) Completed in this docs sync
@@ -66,7 +72,7 @@ Package baseline: `0.3.4`
 ## C) QA Execution Matrix (Manual)
 
 Smoke baseline (required all platforms):
-- `QA-001`, `QA-002`, `QA-005`, `QA-008`, `QA-013`, `QA-019`, `QA-023`, `QA-029`, `QA-032`, `QA-036`, `QA-039`, `QA-042`
+- `QA-001`, `QA-002`, `QA-005`, `QA-008`, `QA-013`, `QA-019`, `QA-023`, `QA-029`, `QA-032`, `QA-036`, `QA-039`, `QA-042`, `QA-052`, `QA-053`
 
 Extended functional smoke:
 - `QA-047` logo rotation parity
@@ -74,6 +80,10 @@ Extended functional smoke:
 - `QA-049` task link add/edit/delete
 - `QA-050` task link open/copy behavior
 - `QA-051` external link scheme confirmation modal
+- `QA-054` calendar export range/view filtering
+- `QA-055` calendar export recurrence/override serialization
+- `QA-056` calendar import service size/hard-cap protections (automated gate)
+- `QA-057` security policy block mode for risky link opens
 
 Reference: `docs/TADOI_QA_Guide_v0.3.4.md`
 
@@ -87,6 +97,9 @@ Reference: `docs/TADOI_QA_Guide_v0.3.4.md`
   - richer link kind detection and validation hints.
 - `PN-003` Packaging confidence:
   - expand installer smoke tests to all artifact outputs in CI.
+- `PN-004` Calendar import CLI exposure:
+  - wire `calendar:import` route through `src/cli.ts` and add `src/commands/calendarImport.ts`.
+  - keep docs/QA in sync once user-facing command is released.
 
 ## E) Acceptance Criteria for This Task Sheet
 

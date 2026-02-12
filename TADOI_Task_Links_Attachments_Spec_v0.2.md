@@ -1,7 +1,7 @@
 # TADOI™ — Task Links / Attachments Spec (MVP+)
 Version: v0.2  
 Date: February 11, 2026  
-Status: Draft / Ready for implementation  
+Status: Implemented baseline + security hardening  
 Audience: Codex agent + Solo Dev  
 
 ---
@@ -27,10 +27,10 @@ Add a per-task **Links / Attachments** feature that stores **URLs and filesystem
 - Cross-platform open:
   - macOS: `open`
   - Linux: `xdg-open`
-  - Windows: `start` (via `cmd /c start "" "<target>"`)
+  - Windows: `explorer <target>` (argument-based spawn)
 - Clipboard copy of the raw target string
 - Safe process spawning (no string concatenation shell exec)
-- URL scheme allowlist with confirm for unknown schemes
+- Source-aware open policy with confirm/block behavior for risky targets
 
 ### Out of Scope (MVP)
 - Uploading/storing binary files in TADOI
@@ -52,6 +52,7 @@ export type TaskLink = {
   target: string;      // raw user input: URL or filesystem path
   label?: string;      // optional display name
   kind?: TaskLinkKind; // optional; inferred when omitted
+  source?: "manual" | "calendar_import";
   createdAt?: string;  // optional ISO timestamp
 };
 ```
@@ -176,11 +177,16 @@ Open behavior:
 
 ## 9.2 URL Scheme Allowlist
 Allow by default:
-- `http`, `https`, `mailto`, `file`
+- `http`, `https`, `mailto`
 
-For other schemes:
-- Show confirm modal: `Open external scheme "<scheme>"?`
-- Default selection: `No`
+Require confirm by default:
+- filesystem paths
+- `file:` URLs
+- non-allowlisted URL schemes
+- links imported from calendar sources (`source=calendar_import`)
+
+Optional hard block:
+- `settings.security.nonHttpLinkPolicy = "block"` prevents risky open targets and shows a block banner.
 
 Rationale:
 - Prevent accidental opening of custom handlers that may trigger unintended apps/actions.

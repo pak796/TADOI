@@ -807,4 +807,56 @@ describe("handleKey", () => {
       )
     ).toEqual([{ scope: "domain", type: "ACCEPT_TAG_INLINE" }]);
   });
+
+  it("keeps link hotkeys scoped to list/details focus and blocks leakage elsewhere", () => {
+    const detailsState = {
+      ...initialUIState,
+      mode: Mode.LIST,
+      focus: FocusTarget.DETAILS_LINKS
+    };
+    expect(run({ name: "o", sequence: "o" }, { uiState: detailsState })).toEqual([
+      { scope: "domain", type: "OPEN_SELECTED_LINK" }
+    ]);
+    expect(run({ name: "backspace" }, { uiState: detailsState })).toEqual([
+      { scope: "domain", type: "OPEN_DELETE_TASK_LINK_MODAL" }
+    ]);
+
+    const blockedStates = [
+      { mode: Mode.MODAL_CONFIRM, focus: FocusTarget.MODAL },
+      { mode: Mode.HELP, focus: FocusTarget.TASK_LIST },
+      { mode: Mode.SEARCH, focus: FocusTarget.SEARCH_INPUT },
+      { mode: Mode.ADD, focus: FocusTarget.EDITOR_TITLE },
+      { mode: Mode.EDIT, focus: FocusTarget.EDITOR_TITLE },
+      { mode: Mode.TAG_FILTER, focus: FocusTarget.TAG_FILTER_INPUT }
+    ];
+    const linkHotkeys: Array<Partial<KeyInput>> = [
+      { name: "enter" },
+      { name: "o", sequence: "o" },
+      { name: "c", sequence: "c" },
+      { name: "l", sequence: "l" },
+      { name: "e", sequence: "e" },
+      { name: "d", sequence: "d" },
+      { name: "backspace" }
+    ];
+    const linkActionTypes = new Set([
+      "OPEN_SELECTED_LINK",
+      "COPY_SELECTED_LINK",
+      "OPEN_ADD_TASK_LINK_MODAL",
+      "OPEN_EDIT_TASK_LINK_MODAL",
+      "OPEN_DELETE_TASK_LINK_MODAL"
+    ]);
+
+    for (const blockedState of blockedStates) {
+      for (const key of linkHotkeys) {
+        const actions = run(key, {
+          uiState: {
+            ...initialUIState,
+            mode: blockedState.mode,
+            focus: blockedState.focus
+          }
+        });
+        expect(actions.some((action) => linkActionTypes.has(action.type))).toBe(false);
+      }
+    }
+  });
 });

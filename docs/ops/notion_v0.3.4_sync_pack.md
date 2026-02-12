@@ -32,7 +32,7 @@ Page ID: `3045aa1e-f93f-8103-bda5-f77d2bf55e8e`
 Property updates:
 - `Name`: `TADOI QA Guide (v0.3.4)`
 - `date:Date:start`: `2026-02-12`
-- `Notes`: `Synced to v0.3.4 runtime and latest automated snapshot (355/355 pass, typecheck pass).`
+- `Notes`: `Synced to v0.3.4 runtime and latest automated snapshot (403/403 pass, typecheck pass). Calendar import docs corrected to service-foundation status.`
 
 Replace the release baseline section with:
 ```md
@@ -47,17 +47,24 @@ Replace the automated snapshot section with:
 ```md
 ## Current Automated Validation Snapshot
 
-- `bun run test`: **355 pass / 0 fail / 355 total**
+- `bun run test`: **403 pass / 0 fail / 403 total**
 - `bun run typecheck`: **pass**
 ```
 
-Add these checklist cases under Data Safety/Mouse:
+Ensure these checklist cases are present:
 ```md
 - [ ] QA-047 Logo mode cycles through all variants, including blocks.
 - [ ] QA-048 Tag panel open behavior parity from list, dashboard, and left rail.
 - [ ] QA-049 Task link create/edit/delete flow from details pane.
 - [ ] QA-050 Task link open/copy behavior for URL and local path targets.
 - [ ] QA-051 External scheme confirmation modal for non-allowlisted URL scheme.
+- [ ] QA-052 Calendar export writes valid .ics output.
+- [ ] QA-053 Calendar export default privacy is minimal.
+- [ ] QA-054 Calendar export full privacy includes metadata.
+- [ ] QA-055 Export range/view/recurrence behavior parity.
+- [ ] QA-056 Import foundation guardrails verified via automated tests.
+- [ ] QA-057 Security policy block mode for risky links.
+- [ ] QA-058 Startup path redaction/verbose override behavior.
 ```
 
 ## Page 3: User Guide
@@ -99,6 +106,9 @@ Replace/update feature bullets with:
 - Recurrence-aware list/dashboard behavior with occurrence actions (`Space`, `x`, `z`, `e`, `E`, `d` with `y/f/n`).
 - In-app Backup Center and portability flows with dry-run and replace confirmation.
 - Task links and attachments workflow (add/edit/open/copy/delete + external scheme confirmation).
+- Calendar export CLI supports privacy modes (`minimal` default, `full` optional).
+- Calendar import foundation is implemented at service layer; CLI `calendar:import` routing is pending.
+- Security/privacy controls include `security.nonHttpLinkPolicy` and startup path redaction defaults.
 ```
 
 ## Page 5: Product Spec (v0.3.4)
@@ -127,5 +137,6 @@ Use this source file:
 - Confirm each page title and date property shows `2026-02-12`.
 - Confirm all runtime/package references show `v0.3.4` / `0.3.4`.
 - Confirm tag panel key is `p` (not `Shift+T`).
-- Confirm QA page includes `QA-047` through `QA-051`.
+- Confirm QA page includes `QA-047` through `QA-058`.
+- Confirm docs clearly state: export CLI is available, import is currently service-layer foundation (not exposed CLI).
 - Confirm Product Spec and Task List pages exist at `v0.3.4`.

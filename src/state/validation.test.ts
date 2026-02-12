@@ -89,7 +89,31 @@ describe("validatePersistedState", () => {
                 id: "link-1",
                 target: "https://example.com",
                 label: "Spec",
-                kind: "url"
+                kind: "url",
+                source: "manual"
+              }
+            ]
+          }
+        ]
+      },
+      "strict"
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it("accepts calendar_import source and path link kind", () => {
+    const result = validatePersistedState(
+      {
+        ...BASE_STATE,
+        tasks: [
+          {
+            ...BASE_STATE.tasks[0],
+            links: [
+              {
+                id: "link-1",
+                target: "/tmp/report.txt",
+                kind: "path",
+                source: "calendar_import"
               }
             ]
           }
@@ -134,6 +158,26 @@ describe("validatePersistedState", () => {
       "strict"
     );
     expect(missingTarget.ok).toBe(false);
+
+    const invalidSource = validatePersistedState(
+      {
+        ...BASE_STATE,
+        tasks: [
+          {
+            ...BASE_STATE.tasks[0],
+            links: [
+              {
+                id: "link-3",
+                target: "https://example.com",
+                source: "imported"
+              }
+            ]
+          }
+        ]
+      },
+      "strict"
+    );
+    expect(invalidSource.ok).toBe(false);
   });
 
   it("tolerates unknown extra fields", () => {
@@ -205,6 +249,28 @@ describe("validatePersistedState", () => {
             instance_of: {
               series_id: "series:a",
               occurrence: "2026-02-17T09:00:00"
+            }
+          }
+        ]
+      },
+      "strict"
+    );
+    expect(result.ok).toBe(false);
+  });
+
+  it("rejects non-normalized recurrence exdates ordering", () => {
+    const result = validatePersistedState(
+      {
+        ...BASE_STATE,
+        tasks: [
+          {
+            ...BASE_STATE.tasks[0],
+            id: "series",
+            recurrence: {
+              dtstart: "2026-02-10T09:00:00",
+              rrule: "FREQ=DAILY;INTERVAL=1",
+              series_id: "series:test",
+              exdates: ["2026-02-12T09:00:00", "2026-02-11T09:00:00"]
             }
           }
         ]
