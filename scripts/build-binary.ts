@@ -259,14 +259,14 @@ function writeRawPlan(target: Target, timestamp: string, outputDirs: OutputDirs)
   writePlanFile(
     filePath,
     [
-      "TADOI binary scaffold output",
+      "TADOI binary build plan",
       `Target: ${target}`,
       "Format: raw",
       `Generated: ${timestamp}`,
       "",
-      "This is a scaffold-only artifact.",
-      "No native binary is produced in this phase.",
-      "Future phase will replace this plan with real build outputs."
+      "This is a plan-mode output only.",
+      "No native binary is produced in plan mode.",
+      "Run with --mode build to emit a real binary."
     ].join("\n")
   );
   console.log(`[build-binary] scaffold written: ${filePath}`);
@@ -287,15 +287,17 @@ function writeInstallerPlan(target: Target, timestamp: string, outputDirs: Outpu
   writePlanFile(
     filePath,
     [
-      "TADOI installer scaffold output",
+      "TADOI installer build plan",
       `Target: ${target}`,
       "Format: installer",
       `Generated: ${timestamp}`,
       "",
-      "Installer generation is intentionally not implemented in this phase.",
+      "This is a plan-mode output only.",
+      "No installer is produced in plan mode.",
       "Planned outputs:",
       plannedOutput,
       "",
+      "Run with --mode build to generate installer artifacts.",
       "See packaging docs for signing/notarization prerequisites."
     ].join("\n")
   );

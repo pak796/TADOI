@@ -29,6 +29,10 @@
     "build:bin:mac": "bun scripts/build-binary.ts --target macos --format raw",
     "build:bin:win": "bun scripts/build-binary.ts --target windows --format raw",
     "build:bin:linux": "bun scripts/build-binary.ts --target linux --format raw",
+    "build:installer:mac:raw": "bun scripts/build-binary.ts --target macos --format raw --mode build",
+    "build:installer:mac": "bun scripts/build-binary.ts --target macos --format installer --mode build",
+    "build:installer:mac:all": "bun run build:installer:mac:raw && bun run build:installer:mac",
+    "release:mac:test": "bun run test && bun run typecheck && bun run build:installer:mac:all",
     "dev": "bun src/index.tsx",
     "start": "bun src/index.tsx"
   },

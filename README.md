@@ -339,6 +339,9 @@ bun scripts/build-binary.ts --target windows --format installer
 # Real build outputs
 bun scripts/build-binary.ts --target macos --format raw --mode build
 bun scripts/build-binary.ts --target macos --format installer --mode build
+
+# Convenience script for macOS test installer output
+bun run build:installer:mac:all
 ```
 
 ### Output locations
@@ -374,6 +377,17 @@ Windows optional environment variables:
 - `TADOI_WIN_SIGN_CERT_PASSWORD`
 
 If signing env vars are not present, packaging scripts log a skip message and continue local builds.
+
+### Downloadable macOS artifacts from GitHub
+
+Use `.github/workflows/package-macos.yml` to build and download macOS install artifacts:
+
+1. Push your branch to GitHub.
+2. Run **Package macOS Installer** from Actions (or push to `main` to run automatically).
+3. Download artifact `tadoi-macos-<commit-sha>` from the workflow run.
+4. Install on another Mac using `TADOI-macOS-<version>.dmg` (contains `TADOI-<version>.pkg`).
+
+Tagged releases still publish cross-platform assets through `.github/workflows/release.yml`.
 
 ## Tarball Channel (Non-Live)
 

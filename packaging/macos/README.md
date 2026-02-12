@@ -15,3 +15,6 @@ Scripts in this directory build installable macOS artifacts for the TADOI CLI.
 ## Optional signing env vars
 - `TADOI_MAC_SIGN_IDENTITY_INSTALLER`
 - `TADOI_MAC_NOTARY_PROFILE`
+
+## Quick build command
+- `bun run build:installer:mac:all`

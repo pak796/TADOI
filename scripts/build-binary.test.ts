@@ -64,7 +64,7 @@ describe("build-binary script argument and mode behavior", () => {
 
       const planPath = path.join(tempDir, "dist", "bin", "linux", "BUILD_PLAN.txt");
       const plan = readFileSync(planPath, "utf8");
-      expect(plan).toContain("TADOI binary scaffold output");
+      expect(plan).toContain("TADOI binary build plan");
       expect(plan).toContain("Target: linux");
       expect(plan).toContain("Format: raw");
     } finally {
@@ -88,7 +88,7 @@ describe("build-binary script argument and mode behavior", () => {
         "WINDOWS_INSTALLER_PLAN.txt"
       );
       const plan = readFileSync(planPath, "utf8");
-      expect(plan).toContain("TADOI installer scaffold output");
+      expect(plan).toContain("TADOI installer build plan");
       expect(plan).toContain("Target: windows");
       expect(plan).toContain("Format: installer");
     } finally {
@@ -118,4 +118,3 @@ describe("build-binary script argument and mode behavior", () => {
     }
   });
 });
-

@@ -35,6 +35,13 @@ Expected release artifacts:
 - Windows: `TADOI-Setup-x64-<version>.exe`
 - Linux: `tadoi_<version>_amd64.deb` and/or `tadoi-<version>-x86_64.AppImage`
 
+GitHub download paths:
+- Release assets for version tags (`v*`) via `.github/workflows/release.yml`
+- Per-commit macOS artifacts via `.github/workflows/package-macos.yml`:
+  1. Push branch to GitHub.
+  2. Trigger **Package macOS Installer** in Actions (or push to `main`).
+  3. Download `tadoi-macos-<commit-sha>` artifact from the run.
+
 Install from artifacts:
 - macOS:
   1. Open DMG.
@@ -144,6 +151,7 @@ Real build mode:
 - `bun scripts/build-binary.ts --target windows --format installer --mode build`
 - `bun scripts/build-binary.ts --target linux --format raw --mode build`
 - `bun scripts/build-binary.ts --target linux --format installer --mode build`
+- `bun run build:installer:mac:all` (raw binary + DMG/PKG in one command)
 
 Tool prerequisites:
 - macOS: `pkgbuild`, `productbuild`, `hdiutil` (Xcode command line tools)

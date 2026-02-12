@@ -9,24 +9,24 @@
     },
     {
       "id": "binary-macos",
-      "status": "planned",
+      "status": "active",
       "outputDir": "dist/bin/macos",
       "installerOutputDir": "dist/installers",
-      "description": "Future macOS binary and DMG installer pipeline"
+      "description": "macOS binary and DMG installer pipeline"
     },
     {
       "id": "binary-windows",
-      "status": "planned",
+      "status": "active",
       "outputDir": "dist/bin/windows",
       "installerOutputDir": "dist/installers",
-      "description": "Future Windows binary and EXE/MSI installer pipeline"
+      "description": "Windows binary and EXE installer pipeline"
     },
     {
       "id": "binary-linux",
-      "status": "planned",
+      "status": "active",
       "outputDir": "dist/bin/linux",
       "installerOutputDir": "dist/installers",
-      "description": "Future Linux binary and AppImage/DEB installer pipeline"
+      "description": "Linux binary and AppImage/DEB installer pipeline"
     }
   ]
 }
