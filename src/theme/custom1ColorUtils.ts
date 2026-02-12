@@ -15,6 +15,10 @@ export const THEME_TOKEN_KEYS: Array<keyof ThemeTokens> = [
   "selectionText"
 ];
 
+export const THEME_TEXT_TOKEN_KEYS: Array<
+  keyof Pick<ThemeTokens, "text" | "mutedText" | "selectionText">
+> = ["text", "mutedText", "selectionText"];
+
 export type RgbColor = {
   r: number;
   g: number;

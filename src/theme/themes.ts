@@ -1,4 +1,9 @@
-import type { CustomThemeConfig, TadoiSettings, ThemeObjectId } from "../settings/settings";
+import type {
+  BuiltInThemeTextOverrides,
+  CustomThemeConfig,
+  TadoiSettings,
+  ThemeObjectId
+} from "../settings/settings";
 
 export type ThemeId =
   | "default"
@@ -412,6 +417,7 @@ export function cycleTheme(current: ThemeId): ThemeId {
 export type ResolveThemeTokensOptions = {
   objectId?: ThemeObjectId;
   draft?: CustomThemeConfig;
+  builtInTextDraft?: BuiltInThemeTextOverrides;
 };
 
 export function resolveThemeTokens(
@@ -419,21 +425,41 @@ export function resolveThemeTokens(
   settings: Pick<TadoiSettings, "customThemes"> | undefined,
   options: ResolveThemeTokensOptions = {}
 ): ThemeTokens {
-  if (themeId !== "custom1") {
-    return THEMES[themeId];
+  if (themeId === "custom1") {
+    const base =
+      options.draft?.global ?? settings?.customThemes?.custom1?.global ?? THEMES.default;
+    if (!options.objectId) {
+      return { ...base };
+    }
+
+    const override =
+      options.draft?.objects?.[options.objectId] ??
+      settings?.customThemes?.custom1?.objects?.[options.objectId];
+    return {
+      ...base,
+      ...override
+    };
   }
 
-  const base = options.draft?.global ?? settings?.customThemes?.custom1?.global ?? THEMES.default;
-  if (!options.objectId) {
-    return { ...base };
+  const base = THEMES[themeId];
+  const isRotatingTheme = ROTATING_THEME_ORDER.includes(themeId as RotatingThemeId);
+  if (!isRotatingTheme) {
+    return base;
   }
 
-  const override =
-    options.draft?.objects?.[options.objectId] ??
-    settings?.customThemes?.custom1?.objects?.[options.objectId];
+  const rotatingThemeId = themeId as RotatingThemeId;
+  const persistedTextOverrides = settings?.customThemes?.textByTheme?.[rotatingThemeId];
+  const draftTextOverrides = options.builtInTextDraft?.[rotatingThemeId];
+  const globalTextOverride = draftTextOverrides?.global ?? persistedTextOverrides?.global;
+  const objectTextOverride = options.objectId
+    ? draftTextOverrides?.objects?.[options.objectId] ??
+      persistedTextOverrides?.objects?.[options.objectId]
+    : undefined;
+
   return {
     ...base,
-    ...override
+    ...globalTextOverride,
+    ...objectTextOverride
   };
 }
 

@@ -1,5 +1,11 @@
 import { THEMES, ThemeId, ThemeTokens, resolveThemeTokens } from "../theme/themes";
-import { CustomThemeConfig, THEME_OBJECT_IDS, ThemeObjectId, TadoiSettings } from "../settings/settings";
+import {
+  BuiltInThemeTextOverrides,
+  CustomThemeConfig,
+  THEME_OBJECT_IDS,
+  ThemeObjectId,
+  TadoiSettings
+} from "../settings/settings";
 
 export type RuntimeTheme = {
   bg: string;
@@ -123,12 +129,14 @@ export function applyThemeWithSettings(
   settings: Pick<TadoiSettings, "customThemes">,
   options: {
     draft?: CustomThemeConfig;
+    builtInTextDraft?: BuiltInThemeTextOverrides;
   } = {}
 ): void {
   for (const objectId of THEME_OBJECT_IDS) {
     const tokens = resolveThemeTokens(themeId, settings, {
       objectId,
-      draft: options.draft
+      draft: options.draft,
+      builtInTextDraft: options.builtInTextDraft
     });
     Object.assign(runtimeThemeByObject[objectId], runtimeThemeFromTokens(tokens));
   }

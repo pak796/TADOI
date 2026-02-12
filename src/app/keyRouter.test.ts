@@ -644,6 +644,12 @@ describe("handleKey", () => {
     expect(
       run({ name: "escape" }, { uiState: helpState, helpPage: "custom1" })
     ).toEqual([{ scope: "ui", type: "HELP_NAV_BACK" }]);
+    expect(
+      run({ name: "right" }, { uiState: helpState, helpPage: "textTuning" })
+    ).toEqual([{ scope: "ui", type: "HELP_NAV_FORWARD" }]);
+    expect(
+      run({ name: "left" }, { uiState: helpState, helpPage: "textTuningTheme" })
+    ).toEqual([{ scope: "ui", type: "HELP_NAV_BACK" }]);
   });
 
   it("does not consume editor navigation keys on custom1 edit page", () => {
@@ -669,6 +675,15 @@ describe("handleKey", () => {
     ).toEqual([]);
     expect(
       run({ name: "backspace" }, { uiState: helpState, helpPage: "custom1Edit" })
+    ).toEqual([]);
+    expect(
+      run({ name: "up" }, { uiState: helpState, helpPage: "textTuningEdit" })
+    ).toEqual([]);
+    expect(
+      run({ name: "right" }, { uiState: helpState, helpPage: "textTuningEdit" })
+    ).toEqual([]);
+    expect(
+      run({ name: "enter" }, { uiState: helpState, helpPage: "textTuningEdit" })
     ).toEqual([]);
   });
 

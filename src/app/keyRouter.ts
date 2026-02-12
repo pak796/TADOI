@@ -19,7 +19,15 @@ export type KeyRouterContext = {
   viewsOverlayOpen: boolean;
   saveViewPromptOpen: boolean;
   backupScreen: BackupCenterScreen | null;
-  helpPage?: "help" | "settings" | "theme" | "custom1" | "custom1Edit";
+  helpPage?:
+    | "help"
+    | "settings"
+    | "theme"
+    | "custom1"
+    | "custom1Edit"
+    | "textTuning"
+    | "textTuningTheme"
+    | "textTuningEdit";
 };
 
 export type KeyRouterAction =
@@ -393,7 +401,7 @@ export function handleKey(
 
   if (mode === Mode.HELP) {
     const activeHelpPage = helpPage ?? "help";
-    if (activeHelpPage === "custom1Edit") {
+    if (activeHelpPage === "custom1Edit" || activeHelpPage === "textTuningEdit") {
       if (isHelpCloseKey(name, sequence)) {
         return [{ scope: "ui", type: "CLOSE_HELP" }];
       }

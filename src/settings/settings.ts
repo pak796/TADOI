@@ -1,7 +1,14 @@
 import os from "os";
 import { promises as fs } from "fs";
 import path from "path";
-import { ThemeId, ThemeTokens, THEMES, isThemeId } from "../theme/themes";
+import {
+  ThemeId,
+  ThemeTokens,
+  THEMES,
+  ROTATING_THEME_ORDER,
+  type RotatingThemeId,
+  isThemeId
+} from "../theme/themes";
 import {
   LOGO_VARIANTS,
   ROTATING_LOGO_ORDER,
@@ -10,7 +17,11 @@ import {
   SETTINGS_FILE_NAME,
   type LogoVariantId
 } from "../brand/brand";
-import { THEME_TOKEN_KEYS, normalizeHexColor } from "../theme/custom1ColorUtils";
+import {
+  THEME_TEXT_TOKEN_KEYS,
+  THEME_TOKEN_KEYS,
+  normalizeHexColor
+} from "../theme/custom1ColorUtils";
 
 export type ThemeObjectId =
   | "appChrome"
@@ -38,8 +49,21 @@ export type CustomThemeConfig = {
   objects?: Partial<Record<ThemeObjectId, Partial<ThemeTokens>>>;
 };
 
+export type ThemeTextTokenKey = (typeof THEME_TEXT_TOKEN_KEYS)[number];
+export type ThemeTextTokenOverrides = Partial<Pick<ThemeTokens, ThemeTextTokenKey>>;
+
+export type BuiltInThemeTextOverrideConfig = {
+  global?: ThemeTextTokenOverrides;
+  objects?: Partial<Record<ThemeObjectId, ThemeTextTokenOverrides>>;
+};
+
+export type BuiltInThemeTextOverrides = Partial<
+  Record<RotatingThemeId, BuiltInThemeTextOverrideConfig>
+>;
+
 export type CustomThemes = {
   custom1?: CustomThemeConfig;
+  textByTheme?: BuiltInThemeTextOverrides;
 };
 
 export type TadoiSettings = {
@@ -213,6 +237,57 @@ function normalizeThemeObjectOverrides(
   return Object.keys(normalized).length > 0 ? normalized : undefined;
 }
 
+function normalizeThemeTextTokenOverrides(
+  input: unknown
+): ThemeTextTokenOverrides | undefined {
+  if (!isRecord(input)) return undefined;
+  const normalized: ThemeTextTokenOverrides = {};
+  for (const token of THEME_TEXT_TOKEN_KEYS) {
+    const parsed = normalizeHexColor(input[token]);
+    if (parsed) {
+      normalized[token] = parsed;
+    }
+  }
+  return Object.keys(normalized).length > 0 ? normalized : undefined;
+}
+
+function normalizeThemeTextObjectOverrides(
+  input: unknown
+): Partial<Record<ThemeObjectId, ThemeTextTokenOverrides>> | undefined {
+  if (!isRecord(input)) return undefined;
+  const normalized: Partial<Record<ThemeObjectId, ThemeTextTokenOverrides>> = {};
+  for (const objectId of THEME_OBJECT_IDS) {
+    const objectOverride = normalizeThemeTextTokenOverrides(input[objectId]);
+    if (objectOverride) {
+      normalized[objectId] = objectOverride;
+    }
+  }
+  return Object.keys(normalized).length > 0 ? normalized : undefined;
+}
+
+function normalizeBuiltInThemeTextOverrides(
+  input: unknown
+): BuiltInThemeTextOverrides | undefined {
+  if (!isRecord(input)) return undefined;
+  const normalized: BuiltInThemeTextOverrides = {};
+  for (const themeId of ROTATING_THEME_ORDER) {
+    const themeInput = input[themeId];
+    if (!isRecord(themeInput)) continue;
+    const global = normalizeThemeTextTokenOverrides(themeInput.global);
+    const objects = normalizeThemeTextObjectOverrides(themeInput.objects);
+    if (!global && !objects) continue;
+    const config: BuiltInThemeTextOverrideConfig = {};
+    if (global) {
+      config.global = global;
+    }
+    if (objects) {
+      config.objects = objects;
+    }
+    normalized[themeId] = config;
+  }
+  return Object.keys(normalized).length > 0 ? normalized : undefined;
+}
+
 function resolveCustom1SeedTheme(themeId: ThemeId): ThemeTokens {
   if (themeId === "rotating") {
     return cloneThemeTokens(THEMES.default);
@@ -225,12 +300,17 @@ function normalizeCustomThemes(input: unknown, themeId: ThemeId): CustomThemes {
   const custom1Input = isRecord(customThemesInput.custom1)
     ? customThemesInput.custom1
     : {};
+  const textByTheme = normalizeBuiltInThemeTextOverrides(customThemesInput.textByTheme);
   const seedGlobal = resolveCustom1SeedTheme(themeId);
   const global = normalizeThemeTokens(custom1Input.global, seedGlobal);
   const objects = normalizeThemeObjectOverrides(custom1Input.objects);
-  return {
+  const normalized: CustomThemes = {
     custom1: objects ? { global, objects } : { global }
   };
+  if (textByTheme) {
+    normalized.textByTheme = textByTheme;
+  }
+  return normalized;
 }
 
 function normalizeNotifications(input: unknown): NotificationSettings {

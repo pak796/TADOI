@@ -76,6 +76,7 @@ describe("loadSettings", () => {
     expect(result.settings.logoMode).toBe(DEFAULT_LOGO_MODE);
     expect(result.settings.notifications).toEqual(DEFAULT_NOTIFICATIONS);
     expect(result.settings.customThemes).toEqual(expectedCustomThemesFor("default"));
+    expect(result.settings.customThemes?.textByTheme).toBeUndefined();
     expect(result.resolvedPath).toBe(
       path.posix.join(homeDir, ".config", "tadoi", "settings.json")
     );
@@ -270,6 +271,64 @@ describe("loadSettings", () => {
     const result = await loadSettings({ homeDir, platform: "linux" });
     expect(result.settings.customThemes?.custom1?.global.bg).toBe("#0B0F14");
     expect(result.settings.customThemes?.custom1?.global.panel).toBe("#1A202C");
+  });
+
+  it("normalizes built-in text overrides and drops invalid/empty entries", async () => {
+    const homeDir = await makeTempDir();
+    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    await fs.mkdir(path.dirname(primary), { recursive: true });
+    await fs.writeFile(
+      primary,
+      JSON.stringify({
+        themeId: "retro",
+        customThemes: {
+          textByTheme: {
+            retro: {
+              global: {
+                text: "#abc123",
+                panel: "#FFFFFF"
+              },
+              objects: {
+                taskList: {
+                  mutedText: "#123abc",
+                  selectionText: "#ffff00",
+                  border: "#888888"
+                },
+                modal: {
+                  text: "oops"
+                }
+              }
+            },
+            rotating: {
+              global: {
+                text: "#FFFFFF"
+              }
+            },
+            fakeTheme: {
+              global: {
+                text: "#FFFFFF"
+              }
+            }
+          }
+        }
+      }),
+      "utf8"
+    );
+
+    const result = await loadSettings({ homeDir, platform: "linux" });
+    expect(result.settings.customThemes?.textByTheme).toEqual({
+      retro: {
+        global: {
+          text: "#ABC123"
+        },
+        objects: {
+          taskList: {
+            mutedText: "#123ABC",
+            selectionText: "#FFFF00"
+          }
+        }
+      }
+    });
   });
 });
 

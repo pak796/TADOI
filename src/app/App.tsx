@@ -27,6 +27,10 @@ import {
   Custom1ThemeEditor,
   type Custom1ThemeEditorHandle
 } from "../components/Custom1ThemeEditor";
+import {
+  BuiltInThemeTextEditor,
+  type BuiltInThemeTextEditorHandle
+} from "../components/BuiltInThemeTextEditor";
 import { OverdueNotificationModal } from "../components/OverdueNotificationModal";
 import { diffLocalDays, startOfLocalDayMs } from "../domain/dates";
 import { computeTopTagsOpen } from "../domain/dashboard";
@@ -114,7 +118,13 @@ import {
   Task,
   TaskLink
 } from "../domain/models";
-import { ROTATING_THEME_ORDER, ThemeId } from "../theme/themes";
+import {
+  ROTATING_THEME_ORDER,
+  THEMES,
+  type RotatingThemeId,
+  type ThemeId,
+  type ThemeTokens
+} from "../theme/themes";
 import {
   applySavedView,
   DEFAULT_VIEW_FILTERS,
@@ -128,12 +138,15 @@ import {
   getDefaultSettings,
   loadSettings,
   saveSettingsDebounced,
+  type BuiltInThemeTextOverrideConfig,
+  type BuiltInThemeTextOverrides,
   type CustomThemeConfig,
   type CustomThemes,
   type FlashMode,
   type LogoMode,
   type NotificationSettings,
-  type ThemeObjectId
+  type ThemeObjectId,
+  type ThemeTextTokenOverrides
 } from "../settings/settings";
 import { settingsReducer } from "../state/settingsStore";
 import { isEditorMode } from "../ui/modeFocus";
@@ -184,7 +197,6 @@ import {
   TRADEMARK_NOTICE_LINES,
   formatLogoModeLabel
 } from "../brand/brand";
-import type { ThemeTokens } from "../theme/themes";
 import { copyToClipboard } from "./copyToClipboard";
 import { openTarget } from "./openTarget";
 
@@ -259,12 +271,22 @@ type HelpScrollbarThumb = {
   endRow: number;
 };
 
-type HelpPage = "help" | "settings" | "theme" | "custom1" | "custom1Edit";
+type HelpPage =
+  | "help"
+  | "settings"
+  | "theme"
+  | "custom1"
+  | "custom1Edit"
+  | "textTuning"
+  | "textTuningTheme"
+  | "textTuningEdit";
 
 type HelpNavSelectionByPage = {
   settings: number;
   theme: number;
   custom1: number;
+  textTuning: number;
+  textTuningTheme: number;
 };
 
 type HelpNavItem = {
@@ -307,12 +329,38 @@ const HELP_THEME_NAV_ITEMS: HelpNavItem[] = [
   {
     title: "Custom1",
     description: "Global palette plus per-object overrides."
+  },
+  {
+    title: "Text Tuning",
+    description: "Tune text colors for built-in themes one-by-one."
   }
 ];
 
 const HELP_CUSTOM1_NAV_ITEMS: HelpNavItem[] = [
   {
     title: "Edit Colors",
+    description: "Open editor (live preview, save/cancel/reset)."
+  }
+];
+
+function formatThemeIdLabel(themeId: RotatingThemeId): string {
+  if (!themeId) return "";
+  if (themeId === "msdos") return "MS-DOS";
+  const spaced = themeId
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+    .trim();
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+const HELP_TEXT_TUNING_THEMES: RotatingThemeId[] = [...ROTATING_THEME_ORDER];
+const HELP_TEXT_TUNING_NAV_ITEMS: HelpNavItem[] = HELP_TEXT_TUNING_THEMES.map((themeId) => ({
+  title: formatThemeIdLabel(themeId),
+  description: "Per-theme + per-object text color overrides."
+}));
+const HELP_TEXT_TUNING_THEME_NAV_ITEMS: HelpNavItem[] = [
+  {
+    title: "Edit Text Colors",
     description: "Open editor (live preview, save/cancel/reset)."
   }
 ];
@@ -660,6 +708,64 @@ function resolveCustom1Config(customThemes: CustomThemes | undefined): CustomThe
   };
 }
 
+function cloneThemeTextTokenOverrides(
+  overrides: ThemeTextTokenOverrides | undefined
+): ThemeTextTokenOverrides {
+  if (!overrides) return {};
+  return { ...overrides };
+}
+
+function cloneThemeTextObjectOverrides(
+  objects: Partial<Record<ThemeObjectId, ThemeTextTokenOverrides>> | undefined
+): Partial<Record<ThemeObjectId, ThemeTextTokenOverrides>> {
+  if (!objects) return {};
+  const next: Partial<Record<ThemeObjectId, ThemeTextTokenOverrides>> = {};
+  for (const [objectId, overrides] of Object.entries(objects) as Array<
+    [ThemeObjectId, ThemeTextTokenOverrides]
+  >) {
+    next[objectId] = { ...overrides };
+  }
+  return next;
+}
+
+function sanitizeThemeTextTokenOverrides(
+  overrides: ThemeTextTokenOverrides
+): ThemeTextTokenOverrides | undefined {
+  const next: ThemeTextTokenOverrides = {};
+  if (overrides.text) next.text = overrides.text;
+  if (overrides.mutedText) next.mutedText = overrides.mutedText;
+  if (overrides.selectionText) next.selectionText = overrides.selectionText;
+  return Object.keys(next).length > 0 ? next : undefined;
+}
+
+function sanitizeThemeTextObjectOverrides(
+  objects: Partial<Record<ThemeObjectId, ThemeTextTokenOverrides>>
+): Partial<Record<ThemeObjectId, ThemeTextTokenOverrides>> | undefined {
+  const next: Partial<Record<ThemeObjectId, ThemeTextTokenOverrides>> = {};
+  for (const [objectId, overrides] of Object.entries(objects) as Array<
+    [ThemeObjectId, ThemeTextTokenOverrides]
+  >) {
+    const sanitized = sanitizeThemeTextTokenOverrides(overrides);
+    if (sanitized) {
+      next[objectId] = sanitized;
+    }
+  }
+  return Object.keys(next).length > 0 ? next : undefined;
+}
+
+function resolveBuiltInThemeTextConfig(
+  customThemes: CustomThemes | undefined,
+  themeId: RotatingThemeId
+): BuiltInThemeTextOverrideConfig {
+  const source = customThemes?.textByTheme?.[themeId];
+  const global = cloneThemeTextTokenOverrides(source?.global);
+  const objects = cloneThemeTextObjectOverrides(source?.objects);
+  return {
+    global,
+    objects
+  };
+}
+
 function resolveDashboardTopTagLimit(panelHeight: number): number {
   const availableRows = Math.max(1, panelHeight - 8);
   if (availableRows < DASHBOARD_TOP_TAG_MIN) {
@@ -909,16 +1015,27 @@ export function App({
   const [helpNavSelection, setHelpNavSelection] = useState<HelpNavSelectionByPage>({
     settings: 0,
     theme: 0,
-    custom1: 0
+    custom1: 0,
+    textTuning: 0,
+    textTuningTheme: 0
   });
   const [helpPreviewThemeMode, setHelpPreviewThemeMode] = useState<ThemeId | null>(null);
   const [helpDraftLogoMode, setHelpDraftLogoMode] = useState<LogoMode | null>(null);
+  const [helpTextTuningThemeId, setHelpTextTuningThemeId] = useState<RotatingThemeId>(
+    HELP_TEXT_TUNING_THEMES[0] ?? "default"
+  );
   const [custom1DraftGlobal, setCustom1DraftGlobal] = useState<ThemeTokens>(() =>
     resolveCustom1Config(initialCustomThemes).global
   );
   const [custom1DraftObjects, setCustom1DraftObjects] = useState<
     Partial<Record<ThemeObjectId, Partial<ThemeTokens>>>
   >(() => resolveCustom1Config(initialCustomThemes).objects ?? {});
+  const [builtInTextDraftGlobal, setBuiltInTextDraftGlobal] = useState<ThemeTextTokenOverrides>(
+    {}
+  );
+  const [builtInTextDraftObjects, setBuiltInTextDraftObjects] = useState<
+    Partial<Record<ThemeObjectId, ThemeTextTokenOverrides>>
+  >({});
   const skipInitialSaveRef = useRef(skipInitialSave);
   const skipSettingsSaveRef = useRef(true);
   const lastSuccessfulSaveAtRef = useRef<number | undefined>(undefined);
@@ -933,6 +1050,7 @@ export function App({
   });
   const helpPreviewRestoreThemeRef = useRef<ThemeId | null>(null);
   const custom1EditorRef = useRef<Custom1ThemeEditorHandle | null>(null);
+  const builtInTextEditorRef = useRef<BuiltInThemeTextEditorHandle | null>(null);
   const { height: terminalHeight, width: terminalWidth } = useTerminalDimensions();
   const terminalIsSupported = isTerminalSizeSupported(terminalWidth, terminalHeight);
   const terminalSizeWarning = getTerminalSizeWarning(terminalWidth, terminalHeight);
@@ -995,6 +1113,18 @@ export function App({
     () => resolveCustom1Config(settingsState.customThemes),
     [settingsState.customThemes]
   );
+  const persistedBuiltInTextConfig = React.useMemo(
+    () => resolveBuiltInThemeTextConfig(settingsState.customThemes, helpTextTuningThemeId),
+    [helpTextTuningThemeId, settingsState.customThemes]
+  );
+  const builtInTextBaseTokens = React.useMemo(
+    () => ({
+      text: THEMES[helpTextTuningThemeId].text,
+      mutedText: THEMES[helpTextTuningThemeId].mutedText,
+      selectionText: THEMES[helpTextTuningThemeId].selectionText
+    }),
+    [helpTextTuningThemeId]
+  );
   const custom1Draft: CustomThemeConfig = React.useMemo(
     () => ({
       global: custom1DraftGlobal,
@@ -1002,6 +1132,23 @@ export function App({
     }),
     [custom1DraftGlobal, custom1DraftObjects]
   );
+  const builtInTextDraft: BuiltInThemeTextOverrides = React.useMemo(() => {
+    const global = sanitizeThemeTextTokenOverrides(builtInTextDraftGlobal);
+    const objects = sanitizeThemeTextObjectOverrides(builtInTextDraftObjects);
+    if (!global && !objects) {
+      return {};
+    }
+    const config: BuiltInThemeTextOverrideConfig = {};
+    if (global) {
+      config.global = global;
+    }
+    if (objects) {
+      config.objects = objects;
+    }
+    return {
+      [helpTextTuningThemeId]: config
+    };
+  }, [builtInTextDraftGlobal, builtInTextDraftObjects, helpTextTuningThemeId]);
   const clampedHelpFocusedSectionIndex = Math.max(
     0,
     Math.min(helpFocusedSectionIndex, HELP_MENU_SECTIONS.length - 1)
@@ -1015,16 +1162,24 @@ export function App({
       ? HELP_SETTINGS_NAV_ITEMS
       : activeHelpPage === "theme"
         ? HELP_THEME_NAV_ITEMS
-        : activeHelpPage === "custom1"
-          ? HELP_CUSTOM1_NAV_ITEMS
+      : activeHelpPage === "custom1"
+        ? HELP_CUSTOM1_NAV_ITEMS
+      : activeHelpPage === "textTuning"
+        ? HELP_TEXT_TUNING_NAV_ITEMS
+        : activeHelpPage === "textTuningTheme"
+          ? HELP_TEXT_TUNING_THEME_NAV_ITEMS
           : [];
   const helpNavSelectionIndex =
     activeHelpPage === "settings"
       ? helpNavSelection.settings
       : activeHelpPage === "theme"
         ? helpNavSelection.theme
-        : activeHelpPage === "custom1"
-          ? helpNavSelection.custom1
+      : activeHelpPage === "custom1"
+        ? helpNavSelection.custom1
+        : activeHelpPage === "textTuning"
+          ? helpNavSelection.textTuning
+          : activeHelpPage === "textTuningTheme"
+            ? helpNavSelection.textTuningTheme
           : 0;
   const clampedHelpNavSelectionIndex =
     helpNavItems.length === 0
@@ -1033,7 +1188,7 @@ export function App({
   const helpBodyLineCount =
     activeHelpPage === "help"
       ? helpRows.length
-      : activeHelpPage === "custom1Edit"
+      : activeHelpPage === "custom1Edit" || activeHelpPage === "textTuningEdit"
         ? 22
         : Math.max(4, helpNavItems.length * 2 + 2);
   const helpPanelMaxWidth = Math.max(20, terminalWidth - HELP_PANEL_HORIZONTAL_MARGIN * 2);
@@ -1092,7 +1247,7 @@ export function App({
       ? helpHasOverflow
         ? "1 Backup Center | Enter/Right on Settings opens Settings pages | Up/Down focus | Enter/Space expand | Left collapse | Esc close | Scroll"
         : "1 Backup Center | Enter/Right on Settings opens Settings pages | Up/Down focus | Enter/Space expand | Left collapse | Esc close"
-      : activeHelpPage === "custom1Edit"
+      : activeHelpPage === "custom1Edit" || activeHelpPage === "textTuningEdit"
         ? "S save | C/Esc cancel | R reset token | Tab next focus | Arrows adjust/jump | Enter commit"
         : activeHelpPage === "settings" &&
             clampedHelpNavSelectionIndex === HELP_SETTINGS_LOGO_NAV_INDEX
@@ -1115,7 +1270,13 @@ export function App({
           ? "Help / Settings / Theme"
           : activeHelpPage === "custom1"
             ? "Help / Settings / Theme / Custom1"
-            : "Help / Settings / Theme / Custom1 / Edit Colors";
+            : activeHelpPage === "custom1Edit"
+              ? "Help / Settings / Theme / Custom1 / Edit Colors"
+              : activeHelpPage === "textTuning"
+                ? "Help / Settings / Theme / Text Tuning"
+                : activeHelpPage === "textTuningTheme"
+                  ? `Help / Settings / Theme / Text Tuning / ${formatThemeIdLabel(helpTextTuningThemeId)}`
+                  : `Help / Settings / Theme / Text Tuning / ${formatThemeIdLabel(helpTextTuningThemeId)} / Edit Text Colors`;
   const helpTheme = themeForObject("help");
   const modalTheme = themeForObject("modal");
   const inputTheme = themeForObject("inputs");
@@ -1642,9 +1803,20 @@ export function App({
       draft:
         uiState.mode === Mode.HELP && activeHelpPage === "custom1Edit"
           ? custom1Draft
+          : undefined,
+      builtInTextDraft:
+        uiState.mode === Mode.HELP && activeHelpPage === "textTuningEdit"
+          ? builtInTextDraft
           : undefined
     });
-  }, [activeHelpPage, activeThemeId, custom1Draft, settingsState, uiState.mode]);
+  }, [
+    activeHelpPage,
+    activeThemeId,
+    builtInTextDraft,
+    custom1Draft,
+    settingsState,
+    uiState.mode
+  ]);
 
   useEffect(() => {
     if (skipSettingsSaveRef.current) {
@@ -1833,7 +2005,9 @@ export function App({
     helpScrollOffset,
     helpFooterHintsLine,
     helpFooterDataPathLine,
-    custom1Draft
+    custom1Draft,
+    builtInTextDraft,
+    helpTextTuningThemeId
   ]);
 
   function applyEscUnwind(): boolean {
@@ -2335,6 +2509,12 @@ export function App({
         return;
       }
     }
+    if (uiState.mode === Mode.HELP && activeHelpPage === "textTuningEdit") {
+      const handled = builtInTextEditorRef.current?.handleKey(key) ?? false;
+      if (handled) {
+        return;
+      }
+    }
 
     const keyName = key.name ?? "";
     if (
@@ -2400,9 +2580,18 @@ export function App({
     helpScrollTopRef.current = 0;
     setHelpScrollOffset(0);
     setHelpNavStack(["help"]);
-    setHelpNavSelection({ settings: 0, theme: 0, custom1: 0 });
+    setHelpNavSelection({
+      settings: 0,
+      theme: 0,
+      custom1: 0,
+      textTuning: 0,
+      textTuningTheme: 0
+    });
+    setHelpTextTuningThemeId(HELP_TEXT_TUNING_THEMES[0] ?? "default");
     setHelpPreviewThemeMode(null);
     setHelpDraftLogoMode(null);
+    setBuiltInTextDraftGlobal({});
+    setBuiltInTextDraftObjects({});
     helpPreviewRestoreThemeRef.current = null;
     helpReturnContextRef.current = {
       mode: uiState.mode,
@@ -2487,6 +2676,74 @@ export function App({
       prev[prev.length - 1] === "custom1Edit" ? prev.slice(0, -1) : prev
     );
     showShortNavigationBanner("Custom1 theme saved");
+  }
+
+  function openBuiltInTextEditor() {
+    setBuiltInTextDraftGlobal(cloneThemeTextTokenOverrides(persistedBuiltInTextConfig.global));
+    setBuiltInTextDraftObjects(cloneThemeTextObjectOverrides(persistedBuiltInTextConfig.objects));
+    helpPreviewRestoreThemeRef.current = settingsState.themeId;
+    setHelpPreviewThemeMode(helpTextTuningThemeId);
+    pushHelpPage("textTuningEdit");
+  }
+
+  function closeBuiltInTextEditorCancel() {
+    const restoreTheme = helpPreviewRestoreThemeRef.current;
+    setBuiltInTextDraftGlobal(cloneThemeTextTokenOverrides(persistedBuiltInTextConfig.global));
+    setBuiltInTextDraftObjects(cloneThemeTextObjectOverrides(persistedBuiltInTextConfig.objects));
+    setHelpPreviewThemeMode(null);
+    if (restoreTheme && settingsState.themeId !== restoreTheme) {
+      settingsDispatch({ type: "setTheme", themeId: restoreTheme });
+    }
+    helpPreviewRestoreThemeRef.current = null;
+    setHelpNavStack((prev) =>
+      prev[prev.length - 1] === "textTuningEdit" ? prev.slice(0, -1) : prev
+    );
+  }
+
+  function saveBuiltInTextEditor() {
+    const sanitizedGlobal = sanitizeThemeTextTokenOverrides(builtInTextDraftGlobal);
+    const sanitizedObjects = sanitizeThemeTextObjectOverrides(builtInTextDraftObjects);
+    const existingTextByTheme = {
+      ...(settingsState.customThemes?.textByTheme ?? {})
+    };
+
+    if (!sanitizedGlobal && !sanitizedObjects) {
+      delete existingTextByTheme[helpTextTuningThemeId];
+    } else {
+      const nextConfig: BuiltInThemeTextOverrideConfig = {};
+      if (sanitizedGlobal) {
+        nextConfig.global = sanitizedGlobal;
+      }
+      if (sanitizedObjects) {
+        nextConfig.objects = sanitizedObjects;
+      }
+      existingTextByTheme[helpTextTuningThemeId] = nextConfig;
+    }
+
+    const nextCustomThemes: CustomThemes = {
+      ...(settingsState.customThemes ?? {})
+    };
+    if (Object.keys(existingTextByTheme).length > 0) {
+      nextCustomThemes.textByTheme = existingTextByTheme;
+    } else {
+      delete nextCustomThemes.textByTheme;
+    }
+
+    settingsDispatch({
+      type: "setCustomThemes",
+      customThemes: nextCustomThemes
+    });
+
+    const restoreTheme = helpPreviewRestoreThemeRef.current;
+    setHelpPreviewThemeMode(null);
+    if (restoreTheme && settingsState.themeId !== restoreTheme) {
+      settingsDispatch({ type: "setTheme", themeId: restoreTheme });
+    }
+    helpPreviewRestoreThemeRef.current = null;
+    setHelpNavStack((prev) =>
+      prev[prev.length - 1] === "textTuningEdit" ? prev.slice(0, -1) : prev
+    );
+    showShortNavigationBanner(`${formatThemeIdLabel(helpTextTuningThemeId)} text colors saved`);
   }
 
   function cycleLogoModeSetting(direction: 1 | -1, commit: boolean) {
@@ -2594,6 +2851,9 @@ export function App({
     if (helpNavStack[helpNavStack.length - 1] === "custom1Edit") {
       closeCustom1EditorCancel();
     }
+    if (helpNavStack[helpNavStack.length - 1] === "textTuningEdit") {
+      closeBuiltInTextEditorCancel();
+    }
     cancelLogoModeSetting();
     const { mode: returnMode, focus: returnFocus } = normalizeHelpReturnContext(
       helpReturnContextRef.current.mode,
@@ -2627,6 +2887,22 @@ export function App({
           custom1: Math.max(
             0,
             Math.min(prev.custom1 + delta, HELP_CUSTOM1_NAV_ITEMS.length - 1)
+          )
+        }));
+      } else if (activeHelpPage === "textTuning") {
+        setHelpNavSelection((prev) => ({
+          ...prev,
+          textTuning: Math.max(
+            0,
+            Math.min(prev.textTuning + delta, HELP_TEXT_TUNING_NAV_ITEMS.length - 1)
+          )
+        }));
+      } else if (activeHelpPage === "textTuningTheme") {
+        setHelpNavSelection((prev) => ({
+          ...prev,
+          textTuningTheme: Math.max(
+            0,
+            Math.min(prev.textTuningTheme + delta, HELP_TEXT_TUNING_THEME_NAV_ITEMS.length - 1)
           )
         }));
       }
@@ -2727,6 +3003,14 @@ export function App({
     }
     if (activeHelpPage === "custom1") {
       setHelpNavSelection((prev) => ({ ...prev, custom1: index }));
+      return;
+    }
+    if (activeHelpPage === "textTuning") {
+      setHelpNavSelection((prev) => ({ ...prev, textTuning: index }));
+      return;
+    }
+    if (activeHelpPage === "textTuningTheme") {
+      setHelpNavSelection((prev) => ({ ...prev, textTuningTheme: index }));
     }
   }
 
@@ -2748,11 +3032,26 @@ export function App({
     if (activeHelpPage === "theme") {
       if (targetIndex === 0) cycleThemeModeSetting();
       if (targetIndex === 1) pushHelpPage("custom1");
+      if (targetIndex === 2) pushHelpPage("textTuning");
       return;
     }
     if (activeHelpPage === "custom1") {
       if (targetIndex === 0) {
         openCustom1Editor();
+      }
+      return;
+    }
+    if (activeHelpPage === "textTuning") {
+      const targetThemeId = HELP_TEXT_TUNING_THEMES[targetIndex];
+      if (!targetThemeId) return;
+      setHelpTextTuningThemeId(targetThemeId);
+      setHelpNavSelection((prev) => ({ ...prev, textTuningTheme: 0 }));
+      pushHelpPage("textTuningTheme");
+      return;
+    }
+    if (activeHelpPage === "textTuningTheme") {
+      if (targetIndex === 0) {
+        openBuiltInTextEditor();
       }
     }
   }
@@ -2760,6 +3059,10 @@ export function App({
   function handleHelpNavBack() {
     if (activeHelpPage === "custom1Edit") {
       closeCustom1EditorCancel();
+      return;
+    }
+    if (activeHelpPage === "textTuningEdit") {
+      closeBuiltInTextEditorCancel();
       return;
     }
     if (activeHelpPage === "settings") {
@@ -5583,6 +5886,18 @@ export function App({
                   onChangeObjects={setCustom1DraftObjects}
                   onSave={saveCustom1Editor}
                   onCancel={closeCustom1EditorCancel}
+                />
+              ) : activeHelpPage === "textTuningEdit" ? (
+                <BuiltInThemeTextEditor
+                  ref={builtInTextEditorRef}
+                  themeId={helpTextTuningThemeId}
+                  baseTokens={builtInTextBaseTokens}
+                  draftGlobal={builtInTextDraftGlobal}
+                  draftObjects={builtInTextDraftObjects}
+                  onChangeGlobal={setBuiltInTextDraftGlobal}
+                  onChangeObjects={setBuiltInTextDraftObjects}
+                  onSave={saveBuiltInTextEditor}
+                  onCancel={closeBuiltInTextEditorCancel}
                 />
               ) : activeHelpPage === "help" ? (
                 <box

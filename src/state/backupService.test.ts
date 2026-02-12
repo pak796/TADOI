@@ -379,6 +379,18 @@ describe("backupService import/export", () => {
                     panel: "#123456"
                   }
                 }
+              },
+              textByTheme: {
+                retro: {
+                  global: {
+                    text: "#A1B2C3"
+                  },
+                  objects: {
+                    help: {
+                      mutedText: "#445566"
+                    }
+                  }
+                }
               }
             }
           }
@@ -407,13 +419,25 @@ describe("backupService import/export", () => {
       const resolvedSettingsPath = (await fs.stat(primary).then(() => primary).catch(() => fallback));
       const rawSettings = await fs.readFile(resolvedSettingsPath, "utf8");
       const parsed = JSON.parse(rawSettings) as {
-        customThemes?: { custom1?: { objects?: { taskList?: { panel?: string } } } };
+        customThemes?: {
+          custom1?: { objects?: { taskList?: { panel?: string } } };
+          textByTheme?: {
+            retro?: {
+              global?: { text?: string };
+              objects?: { help?: { mutedText?: string } };
+            };
+          };
+        };
         themeId?: string;
         logoMode?: string;
       };
       expect(parsed.themeId).toBe("custom1");
       expect(parsed.logoMode).toBe("default");
       expect(parsed.customThemes?.custom1?.objects?.taskList?.panel).toBe("#123456");
+      expect(parsed.customThemes?.textByTheme?.retro?.global?.text).toBe("#A1B2C3");
+      expect(parsed.customThemes?.textByTheme?.retro?.objects?.help?.mutedText).toBe(
+        "#445566"
+      );
     } finally {
       if (originalDataPath === undefined) {
         delete process.env.TADOI_DATA_PATH;
