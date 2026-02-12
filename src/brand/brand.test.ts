@@ -35,6 +35,7 @@ describe("brand constants", () => {
     expect(LOGO_VARIANTS.default.length).toBeGreaterThan(0);
     expect(LOGO_VARIANTS.alternate32.length).toBeGreaterThan(0);
     expect(LOGO_VARIANTS.alternate_slash32.length).toBeGreaterThan(0);
+    expect(LOGO_VARIANTS.alternate_blocks32.length).toBeGreaterThan(0);
   });
 });
 
@@ -61,11 +62,16 @@ describe("brand logo rendering helpers", () => {
     }
   });
 
-  it("uses default -> alternate -> slash order for rotate mode", () => {
+  it("uses default -> alternate -> slash -> blocks order for rotate mode", () => {
     expect(ROTATING_LOGO_ORDER).toEqual([
       "default",
       "alternate32",
-      "alternate_slash32"
+      "alternate_slash32",
+      "alternate_blocks32"
     ]);
+  });
+
+  it("keeps blocks logo top row non-blank", () => {
+    expect(LOGO_VARIANTS.alternate_blocks32[0].trim().length).toBeGreaterThan(0);
   });
 });

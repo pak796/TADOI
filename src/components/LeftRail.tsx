@@ -11,8 +11,7 @@ import {
   LOGO_MAX_WIDTH,
   LOGO_VARIANTS,
   type LogoVariantId,
-  PRODUCT_NAME_TM,
-  ROTATING_LOGO_ORDER
+  PRODUCT_NAME_TM
 } from "../brand/brand";
 import type { FlashMode, LogoMode } from "../settings/settings";
 import type { ThemeId } from "../theme/themes";
@@ -24,6 +23,7 @@ export type LeftRailMenuItem =
   | "ADD"
   | "EDIT"
   | "SEARCH"
+  | "TAG_PANEL"
   | "HELP"
   | "DELETE";
 
@@ -43,12 +43,30 @@ type LeftRailProps = {
 
 const HINT_LINE_WIDTH = 18;
 const LOGO_ROTATE_INTERVAL_MS = 30_000;
-const ROTATE_ORDER: LogoVariantId[] = ROTATING_LOGO_ORDER;
+const ROTATE_ORDER: LogoVariantId[] = [
+  "default",
+  "alternate32",
+  "alternate_slash32",
+  "alternate_blocks32"
+];
+const LOGO_RENDER_HEIGHT = Math.max(
+  ...Object.values(LOGO_VARIANTS).map((lines) => lines.length)
+);
+const LOGO_PADDING_LINE = " ".repeat(LOGO_MAX_WIDTH);
 const HINT_LINES = [
   "j/k: MOVE",
+  "p: TAG PANEL",
   "c: COPY",
   "SPACE: TOGGLE"
 ] as const;
+
+function padLogoLines(lines: string[], renderHeight: number): string[] {
+  if (lines.length >= renderHeight) return lines;
+  return [
+    ...lines,
+    ...Array.from({ length: renderHeight - lines.length }, () => LOGO_PADDING_LINE)
+  ];
+}
 
 function getModeLabel(mode: Mode): string {
   switch (mode) {
@@ -159,17 +177,21 @@ function formatMenuItemLabel(item: LeftRailMenuItem): string {
   if (item === "ADD") return "ADD (A)";
   if (item === "EDIT") return "EDIT (E)";
   if (item === "SEARCH") return "SEARCH (/)";
+  if (item === "TAG_PANEL") return "TAG PANEL (P)";
   if (item === "HELP") return "HELP (?)";
   if (item === "DELETE") return "DELETE (D)";
   return item;
 }
 
-function trimTrailingBlankLogoLines(lines: string[]): string[] {
-  let end = lines.length;
-  while (end > 0 && lines[end - 1].trim().length === 0) {
-    end -= 1;
-  }
-  return end === lines.length ? lines : lines.slice(0, end);
+function isLightHexColor(color: string): boolean {
+  const match = color.trim().match(/^#([0-9a-fA-F]{6})$/);
+  if (!match) return false;
+  const hex = match[1];
+  const r = Number.parseInt(hex.slice(0, 2), 16);
+  const g = Number.parseInt(hex.slice(2, 4), 16);
+  const b = Number.parseInt(hex.slice(4, 6), 16);
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+  return brightness >= 186;
 }
 
 export function LeftRail({
@@ -225,6 +247,7 @@ export function LeftRail({
     "ADD",
     "EDIT",
     "SEARCH",
+    "TAG_PANEL",
     "HELP",
     "DELETE"
   ];
@@ -255,9 +278,14 @@ export function LeftRail({
   const dueText = dueBg === "transparent" ? theme.text : theme.bg;
   const booleanTagSummary = formatTagFilterBooleanSummary(filters.tagFilter);
 
-  const logoLines = showLogo ? trimTrailingBlankLogoLines(LOGO_VARIANTS[effectiveLogoId]) : [];
+  const logoLines = showLogo
+    ? padLogoLines(LOGO_VARIANTS[effectiveLogoId], LOGO_RENDER_HEIGHT)
+    : [];
   const taglineLines = showLogo ? wrapWords(APP_TAGLINE, LOGO_MAX_WIDTH) : [];
   const activeThemeLabel = activeThemeId ? formatThemeName(activeThemeId) : null;
+  const blocksLogoNeedsDarkInk =
+    effectiveLogoId === "alternate_blocks32" && isLightHexColor(theme.accentPurple);
+  const logoPrimaryColor = blocksLogoNeedsDarkInk ? "#000000" : theme.text;
 
   return (
     <box style={{ flexDirection: "column", gap: 0, height: "100%" }}>
@@ -266,13 +294,15 @@ export function LeftRail({
           <box style={{ flexDirection: "column", width: "100%", alignItems: "center" }}>
             <box style={{ flexDirection: "column", width: LOGO_MAX_WIDTH }}>
               {logoLines.map((line, index) => (
-                <text key={`logo-${effectiveLogoId}-${index}`} style={{ color: theme.text }}>
+                <text key={`logo-${effectiveLogoId}-${index}`} style={{ color: logoPrimaryColor }}>
                   {line}
                 </text>
               ))}
               {logoLines.length > 0 ? (
                 <box style={{ flexDirection: "row", justifyContent: "center", width: "100%" }}>
-                  <text style={{ color: theme.text, fontWeight: "bold" }}>{PRODUCT_NAME_TM}</text>
+                  <text style={{ color: logoPrimaryColor, fontWeight: "bold" }}>
+                    {PRODUCT_NAME_TM}
+                  </text>
                 </box>
               ) : null}
               {taglineLines.length > 0 ? (
@@ -311,7 +341,8 @@ export function LeftRail({
       <box style={{ marginTop: 1, flexDirection: "column", gap: 0 }}>
         <text style={styles.muted}>MENU</text>
         {menuItems.map((item) => {
-          const active = item === modeLabel;
+          const active =
+            item === modeLabel || (item === "TAG_PANEL" && mode === Mode.TAG_FILTER);
           return (
             <box
               key={item}

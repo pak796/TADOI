@@ -123,7 +123,7 @@ describe("handleKey", () => {
     expect(run({ name: "space" }, { uiState: modalState })).toEqual([]);
     expect(
       run(
-        { name: "T", sequence: "T", shift: true },
+        { name: "p", sequence: "p" },
         { uiState: modalState }
       )
     ).toEqual([]);
@@ -388,9 +388,10 @@ describe("handleKey", () => {
     expect(run({ name: "l", sequence: "l" })).toEqual([
       { scope: "domain", type: "OPEN_ADD_TASK_LINK_MODAL" }
     ]);
-    expect(run({ name: "T", sequence: "T", shift: true })).toEqual([
+    expect(run({ name: "p", sequence: "p" })).toEqual([
       { scope: "ui", type: "OPEN_TAG_FILTER_PANEL" }
     ]);
+    expect(run({ name: "T", sequence: "T", shift: true })).toEqual([]);
     expect(run({ name: "x", sequence: "x" })).toEqual([
       { scope: "domain", type: "SKIP_SELECTED_OCCURRENCE" }
     ]);
@@ -516,7 +517,7 @@ describe("handleKey", () => {
     expect(run({ name: "j", sequence: "j" }, { uiState: searchState })).toEqual([]);
     expect(
       run(
-        { name: "T", sequence: "T", shift: true },
+        { name: "p", sequence: "p" },
         { uiState: searchState }
       )
     ).toEqual([]);
@@ -553,10 +554,16 @@ describe("handleKey", () => {
     ]);
     expect(
       run(
-        { name: "T", sequence: "T", shift: true },
+        { name: "p", sequence: "p" },
         { uiState: dashboardState }
       )
     ).toEqual([{ scope: "ui", type: "OPEN_TAG_FILTER_PANEL" }]);
+    expect(
+      run(
+        { name: "T", sequence: "T", shift: true },
+        { uiState: dashboardState }
+      )
+    ).toEqual([]);
     expect(run({ name: "q", sequence: "q" }, { uiState: dashboardState })).toEqual([
       { scope: "domain", type: "EXIT_APP" }
     ]);

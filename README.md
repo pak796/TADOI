@@ -4,9 +4,9 @@ Terminal Accessible Digital Organization Interface
 
 Keyboard-first TUI todo list with due dates, completion, and tag autocomplete (OpenTUI + React on Bun).
 
-Current version: `v0.3.1` (`package.json`: `0.3.1`).
-Feature list: [`docs/TADOI_Feature_List_v0.3.0.md`](./docs/TADOI_Feature_List_v0.3.0.md)
-QA guide: [`docs/TADOI_QA_Guide_v0.3.1.md`](./docs/TADOI_QA_Guide_v0.3.1.md)
+Current version: `v0.3.4` (`package.json`: `0.3.4`).
+Feature list: [`docs/TADOI_Feature_List_v0.3.4.md`](./docs/TADOI_Feature_List_v0.3.4.md)
+QA guide: [`docs/TADOI_QA_Guide_v0.3.4.md`](./docs/TADOI_QA_Guide_v0.3.4.md)
 
 ## Setup
 
@@ -131,7 +131,7 @@ Reference:
   - `s`: cycle sort mode (`DUE` default keeps open tasks with due dates at the top)
   - `g`: cycle due filter
   - `t`: cycle tag filter across tags on all active (open) tasks
-  - `Shift+T`: open boolean tag filter panel (`ALL` / `ANY` / `NONE`)
+  - `p`: open boolean tag filter panel (`ALL` / `ANY` / `NONE`)
   - Details links focus (`Tab` from task list):
     - `up`/`down` or `j`/`k`: select previous/next link
     - `Enter` / `o`: open selected link/path
@@ -143,7 +143,7 @@ Reference:
   - `f`: cycle status filter (shared with list)
   - `g`: cycle due filter (shared with list)
   - `t`: cycle tag filter (shared with list)
-  - `Shift+T`: open boolean tag filter panel (`ALL` / `ANY` / `NONE`)
+  - `p`: open boolean tag filter panel (`ALL` / `ANY` / `NONE`)
   - `up` / `down`: select `TOP TAGS (OPEN)` rows
   - `Enter`: apply selected dashboard tag to active `tag` filter
   - `?`: open help
@@ -223,7 +223,7 @@ Type `#` in the Tags field to get suggestions ranked by usage. Selecting a sugge
 ## Tag Filtering Modes
 
 - `t`: cycles the legacy single-tag filter across tags on open tasks, then clears.
-- `Shift+T`: opens the boolean tag filter panel with `ALL (AND)`, `ANY (OR)`, and `NONE (NOT)` buckets.
+- `p`: opens the boolean tag filter panel with `ALL (AND)`, `ANY (OR)`, and `NONE (NOT)` buckets.
 - Boolean tag precedence: when `tagFilter` is non-empty, it overrides legacy `tag` matching.
 
 ## Recurring Tasks
@@ -389,7 +389,7 @@ bun run pack:smoke
 Install from generated tarball (example):
 
 ```bash
-bun add -g ./dist/tarball/tadoi-0.3.0.tgz
+bun add -g ./dist/tarball/tadoi-0.3.4.tgz
 tadoi --help
 ```
 

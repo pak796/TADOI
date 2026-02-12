@@ -37,7 +37,11 @@ export const ASCII_LOGO = {
 } as const;
 
 export type AsciiLogoVariant = keyof typeof ASCII_LOGO;
-export type LogoVariantId = "default" | "alternate32" | "alternate_slash32";
+export type LogoVariantId =
+  | "default"
+  | "alternate32"
+  | "alternate_slash32"
+  | "alternate_blocks32";
 
 const ALTERNATE_LOGO_32 = ` _____ ___ ______ _____ _____ 
 |_   _/ _ \\|  _  \\  _  |_   _|
@@ -53,16 +57,25 @@ const ALTERNATE_SLASH_LOGO_32 = `   _________   ___  ____  ____
   /_/ /_/ |_/____/\\____/___/  
                               `;
 
+const ALTERNATE_BLOCKS_LOGO_32 = `  ▗▄▄▄▖▗▄▖ ▗▄▄▄  ▗▄▖ ▗▄▄▄▖
+    █ ▐▌ ▐▌▐▌  █▐▌ ▐▌  █  
+    █ ▐▛▀▜▌▐▌  █▐▌ ▐▌  █  
+    █ ▐▌ ▐▌▐▙▄▄▀▝▚▄▞▘▗▄█▄▖
+                          
+                          `;
+
 export const LOGO_VARIANTS: Record<LogoVariantId, string[]> = {
   default: ASCII_LOGO.FULL.split("\n"),
   alternate32: ALTERNATE_LOGO_32.split("\n"),
-  alternate_slash32: ALTERNATE_SLASH_LOGO_32.split("\n")
+  alternate_slash32: ALTERNATE_SLASH_LOGO_32.split("\n"),
+  alternate_blocks32: ALTERNATE_BLOCKS_LOGO_32.split("\n")
 };
 
 export const ROTATING_LOGO_ORDER: LogoVariantId[] = [
   "default",
   "alternate32",
-  "alternate_slash32"
+  "alternate_slash32",
+  "alternate_blocks32"
 ];
 
 export function getAsciiLogoLines(variant: AsciiLogoVariant): string[] {

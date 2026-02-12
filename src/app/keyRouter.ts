@@ -145,6 +145,15 @@ function isDashboardToggleKey(name: string, sequence: string, ctrl: boolean): bo
   return !ctrl && (name === "b" || name === "B" || sequence === "b" || sequence === "B");
 }
 
+function isTagPanelOpenKey(
+  name: string,
+  sequence: string,
+  ctrl: boolean,
+  shift: boolean
+): boolean {
+  return !ctrl && !shift && (name === "p" || sequence === "p");
+}
+
 function listModeActions(key: KeyInput): KeyRouterAction[] {
   const { name, sequence, ctrl, shift } = key;
   if (sequence === "?") return [{ scope: "ui", type: "OPEN_HELP" }];
@@ -204,7 +213,7 @@ function listModeActions(key: KeyInput): KeyRouterAction[] {
   if (name === "f") return [{ scope: "domain", type: "CYCLE_STATUS" }];
   if (!ctrl && name === "s") return [{ scope: "domain", type: "CYCLE_SORT" }];
   if (!ctrl && name === "g") return [{ scope: "domain", type: "CYCLE_DUE" }];
-  if (!ctrl && shift && (name === "T" || sequence === "T")) {
+  if (isTagPanelOpenKey(name, sequence, ctrl, shift)) {
     return [{ scope: "ui", type: "OPEN_TAG_FILTER_PANEL" }];
   }
   if (name === "t") return [{ scope: "domain", type: "TOGGLE_TAG_FILTER" }];
@@ -484,7 +493,7 @@ export function handleKey(
     if (name === "q") return [{ scope: "domain", type: "EXIT_APP" }];
     if (name === "f") return [{ scope: "domain", type: "CYCLE_STATUS" }];
     if (!ctrl && name === "g") return [{ scope: "domain", type: "CYCLE_DUE" }];
-    if (!ctrl && shift && (name === "T" || sequence === "T")) {
+    if (isTagPanelOpenKey(name, sequence, ctrl, shift)) {
       return [{ scope: "ui", type: "OPEN_TAG_FILTER_PANEL" }];
     }
     if (name === "t") return [{ scope: "domain", type: "TOGGLE_TAG_FILTER" }];

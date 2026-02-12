@@ -48,12 +48,18 @@ export type TadoiSettings = {
 };
 
 export type FlashMode = "slow" | "static";
-export type LogoMode = "default" | "alternate32" | "alternate_slash32" | "rotate";
+export type LogoMode =
+  | "default"
+  | "alternate32"
+  | "alternate_slash32"
+  | "alternate_blocks32"
+  | "rotate";
 
 export const LOGO_MODE_ORDER: LogoMode[] = [
   "default",
   "alternate32",
   "alternate_slash32",
+  "alternate_blocks32",
   "rotate"
 ];
 
@@ -145,6 +151,7 @@ export function isLogoMode(value: unknown): value is LogoMode {
     value === "default" ||
     value === "alternate32" ||
     value === "alternate_slash32" ||
+    value === "alternate_blocks32" ||
     value === "rotate"
   );
 }

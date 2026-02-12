@@ -5,7 +5,7 @@
 > 2) 8-bucket due chart (left panel)
 > 3) TOP TAGS (OPEN) Pareto chart (right panel)
 >
-> Release baseline: `v0.3.0`.
+> Release baseline: `v0.3.4`.
 
 ---
 
@@ -51,7 +51,7 @@ Single source of truth:
 - Toggle is ignored in text-entry contexts (`SEARCH`, `ADD`, `EDIT`, save-view-name prompt).
 
 ### Dashboard key contract
-- Allowed: `b`/`B`, `f`, `g`, `t`, `Shift+T`, `up`, `down`, `enter`, `?`, `q`
+- Allowed: `b`/`B`, `f`, `g`, `t`, `p`, `up`, `down`, `enter`, `?`, `q`
 - Blocked: list movement/action keys (`j/k`, paging, jumps, etc.)
 - Routing remains centralized in `src/app/keyRouter.ts`.
 

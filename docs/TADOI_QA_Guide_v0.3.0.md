@@ -104,7 +104,7 @@ Expected: selection remains valid; no mode leakage.
 ### C. Filters, Sort, Search, Saved Views
 
 1. Cycle status (`f`), due (`g`), sort (`s`), and legacy tag cycle (`t`).
-2. Open boolean tag filter panel (`Shift+T`), add at least one tag in `ALL`, and apply.
+2. Open boolean tag filter panel (`p`), add at least one tag in `ALL`, and apply.
 3. Validate precedence: with non-empty boolean `tagFilter`, matching should follow `ALL/ANY/NONE` rules instead of legacy `tag`.
 4. Search (`/`) by title/tag fragments; exit with `Enter` and `Esc`.
 5. Saved views:

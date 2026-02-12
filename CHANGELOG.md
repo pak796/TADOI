@@ -18,6 +18,25 @@ The format is based on Keep a Changelog.
 - List-mode focus routing now supports toggling between task list and details links with `Tab` / `Shift+Tab`.
 - URL scheme gating now requires explicit confirmation for non-allowlisted schemes before opening external handlers.
 
+## [0.3.4] - 2026-02-12
+### Added
+- New release documentation artifacts:
+  - `docs/TADOI_Feature_List_v0.3.4.md`
+  - `docs/TADOI_QA_Guide_v0.3.4.md`
+  - `docs/ops/notion_v0.3.4_sync_pack.md`
+
+### Changed
+- Tag panel open key is standardized to `p` in list/dashboard routing and reflected in Help copy.
+- Left rail now includes a dedicated `TAG PANEL (P)` menu row and matching hints.
+- Brand/logo surface now includes `alternate_blocks32` as a first-class logo mode and in rotating mode order.
+- Active docs baselines are aligned to `v0.3.4` / `0.3.4`:
+  - `README.md`
+  - `docs/README.md`
+  - `docs/TADOI_Installation_Guide_All_Platforms.md`
+  - `DASHBOARD_SPEC_MVP.md`
+  - `docs/backup-center.md`
+  - `docs/recurring-tasks-implementation-plan.md`
+
 ## [0.3.0] - 2026-02-11
 ### Added
 - Versioned release documentation artifacts for `v0.3.0`:
@@ -29,10 +48,10 @@ The format is based on Keep a Changelog.
 ### Changed
 - Version surfaces are aligned to `0.3.0` / `v0.3.0` in runtime and documentation.
 - Documentation contracts are synchronized to current behavior:
-  - tag filtering now documents legacy cycle (`t`) and boolean panel (`Shift+T`, `ALL/ANY/NONE`)
+  - tag filtering now documents legacy cycle (`t`) and boolean panel (`p`, `ALL/ANY/NONE`)
   - search lifecycle copy aligns to `/` open and `Enter`/`Esc` close
   - minimum terminal-size references are normalized to `104x24`
-- Dashboard runtime spec now includes boolean tag-filter shape in `Filters` and documents dashboard `Shift+T` support.
+- Dashboard runtime spec now includes boolean tag-filter shape in `Filters` and documents dashboard `p` support.
 - Installable distribution spec entrypoint notes now match current split CLI/TUI runtime structure.
 - Notion documents in `Patrick’s Projects > TADOI > Documents` were updated in place for the same `v0.3.0` accuracy sync.
 

@@ -1,6 +1,6 @@
-# TADOI™ Feature List (v0.3.0)
+# TADOI™ Feature List (v0.3.4)
 
-This list reflects current runtime behavior as of **2026-02-11**.
+This list reflects current runtime behavior as of **2026-02-12**.
 
 ## Core Workflow
 - Create, edit, duplicate, complete/reopen, and delete tasks.
@@ -21,6 +21,13 @@ This list reflects current runtime behavior as of **2026-02-11**.
   - `ANY (OR)`
   - `NONE (NOT)`
 - Matching precedence: non-empty boolean `tagFilter` overrides legacy single `tag`.
+
+## Left Rail and Branding Surface
+- Left rail menu includes `TAG PANEL (P)` with the same action as keyboard `p`.
+- Left rail hint strip includes `p: TAG PANEL` for discoverability.
+- Logo mode supports `default`, `alternate32`, `alternate_slash32`, `alternate_blocks32`, and `rotating`.
+- Rotating logo order includes all four concrete logo variants.
+- Blocks logo uses contrast-safe dark ink when accent colors are too light.
 
 ## Recurring Tasks
 - Recurrence model: `dtstart`, `rrule`, `exdates`, `series_id`.
@@ -52,5 +59,5 @@ This list reflects current runtime behavior as of **2026-02-11**.
 - Below minimum, app shows blocking guard: `Terminal too small (min 104x24)`.
 
 ## Version Surface
-- App version: `v0.3.0`.
-- Package version: `0.3.0`.
+- App version: `v0.3.4`.
+- Package version: `0.3.4`.

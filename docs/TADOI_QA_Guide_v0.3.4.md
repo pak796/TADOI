@@ -1,8 +1,8 @@
-# TADOI™ QA Guide (v0.3.1)
+# TADOI™ QA Guide (v0.3.4)
 
-Validation date: **2026-02-11**
-Runtime baseline: **v0.3.1**
-Package baseline: **0.3.1**
+Validation date: **2026-02-12**
+Runtime baseline: **v0.3.4**
+Package baseline: **0.3.4**
 
 ## 1) Purpose and Scope
 
@@ -14,6 +14,7 @@ In scope:
 - Task lifecycle, keyboard routing, and mode safety.
 - Search, legacy tag cycle, boolean tag filtering, and saved views.
 - Dashboard parity with list data.
+- Left-rail menu and logo-mode surface behavior.
 - Recurrence creation, occurrence actions, and delete variants.
 - Backup/import/export safety flows.
 - Theme/settings persistence, including `custom1` behavior.
@@ -23,10 +24,10 @@ In scope:
 ## 2) Current Automated Validation Snapshot
 
 Local workspace snapshot (captured for transparency):
-- `bun run test`: **287 pass / 14 fail / 301 total**.
+- `bun run test`: **342 pass / 0 fail / 342 total**.
 - `bun run typecheck`: **pass**.
 
-Manual QA is still required and proceeds with known issues documented in Section 8.
+Manual QA is still required for cross-platform interaction and rendering coverage.
 
 ## 3) Platform Matrix
 
@@ -272,11 +273,19 @@ Smoke pass criteria:
 - [ ] `QA-045` Mouse list/rail/editor interactions.
   - Preconditions: mouse support enabled terminal.
   - Steps: click list rows, left rail rows, editor save/cancel.
-  - Expected: mouse actions map to expected commands.
+  - Expected: mouse actions map to expected commands, including `TAG PANEL (P)` row behavior.
 - [ ] `QA-046` Mouse actions for overdue modal and info-bar quick filters.
   - Preconditions: overdue modal and tagged filters available.
   - Steps: click modal actions and bottom quick-filter controls.
   - Expected: click interactions match keyboard semantics.
+- [ ] `QA-047` Logo mode cycles through all variants, including blocks.
+  - Preconditions: app running with visible left rail logo.
+  - Steps: open Help and cycle logo mode until each concrete variant appears.
+  - Expected: `default`, `alternate32`, `alternate_slash32`, and `alternate_blocks32` render correctly.
+- [ ] `QA-048` Tag panel open behavior parity from list, dashboard, and left rail.
+  - Preconditions: app has at least one tagged task.
+  - Steps: open panel via `p` in list mode, `p` in dashboard mode, and `TAG PANEL (P)` left rail row.
+  - Expected: all entry points open the same boolean panel and preserve filter-state semantics.
 
 ## 7) Automated Coverage Mapping
 
@@ -290,31 +299,19 @@ Smoke pass criteria:
 | Backup/import/export + portability | `src/state/backupCenterFlow.test.ts`, `src/state/backupService.test.ts`, `src/state/portability.test.ts` |
 | Notifications | `src/notifications/notificationManager.test.ts`, `src/notifications/overdueTaskActions.test.ts`, `src/notifications/notifiers/inAppModalNotifier.test.ts`, `src/notifications/notifiers/terminalBellNotifier.test.ts` |
 | Settings/theme/custom1 | `src/settings/settings.test.ts`, `src/theme/themes.test.ts`, `src/theme/resolveThemeTokens.test.ts`, `src/theme/custom1ColorUtils.test.ts` |
+| Brand/logo + left rail | `src/brand/brand.test.ts`, `src/components/LeftRail.tsx`, `src/app/keyRouter.test.ts` |
 | Persistence and recovery | `src/state/persistence.test.ts`, `src/state/validation.test.ts` |
 
 ## 8) Known Issues in Current Workspace
 
-The following automated failures are currently present and should be tracked during QA runs:
+No known automated failures at this snapshot (`2026-02-12`):
+- `bun run test`: 342/342 passing.
+- `bun run typecheck`: passing.
 
-### A) Settings load normalization failures (`src/settings/settings.test.ts`)
-- `loadSettings > returns defaults when settings files are missing`
-- `loadSettings > reads primary settings file first when valid`
-- `loadSettings > uses fallback file when primary is missing`
-- `loadSettings > normalizes invalid theme ids to default`
-- `loadSettings > defaults flash mode when missing or invalid`
-- `loadSettings > normalizes invalid notification settings to defaults`
-- `loadSettings > seeds custom1 global palette from active non-rotating theme when missing`
-- `loadSettings > seeds custom1 global palette from default when rotating is active`
-
-### B) Settings persistence write-path failures (`src/settings/settings.test.ts`)
-- `saveSettingsDebounced > creates parent directories and writes settings`
-- `saveSettingsDebounced > coalesces rapid updates and persists only the latest value`
-- `saveSettingsDebounced > falls back to ~/.tadoi/settings.json when primary write fails`
-- `saveSettingsStrict > writes settings immediately to preferred path`
-- `saveSettingsStrict > falls back from primary to fallback path when primary write fails`
-
-### C) Backup/settings integration failure (`src/state/backupService.test.ts`)
-- `backupService import/export > imports nested notification settings and writes them to settings.json`
+Residual risk still covered by manual QA:
+- cross-platform terminal rendering differences
+- mouse input behavior differences by terminal emulator
+- packaging/install verification outside source-run workflows
 
 ## 9) Evidence and Defect Reporting Template
 
@@ -340,6 +337,6 @@ Defect report format:
 
 Release candidate is manual-QA ready when:
 1. All smoke cases pass on macOS, Windows, Linux.
-2. Full case set (`QA-001` to `QA-046`) is executed at least once per target platform.
+2. Full case set (`QA-001` to `QA-048`) is executed at least once per target platform.
 3. No open `P0` or `P1` defects remain.
 4. Known automated failures are either resolved or explicitly accepted with owner and follow-up.

@@ -376,8 +376,12 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
     title: "Tags & Filters",
     items: [
       {
-        title: "f status, s sort, g due, t single tag, T boolean tags",
-        description: "Use t for quick single-tag cycle and T for boolean tag panel."
+        title: "f status, s sort, g due, t single tag",
+        description: "Use t for quick single-tag cycle."
+      },
+      {
+        title: "TAG PANEL (p)",
+        description: "Open boolean tag filter panel (ALL/ANY/NONE)."
       },
       {
         title: "Bottom quick filters are clickable",
@@ -831,10 +835,11 @@ function formatLinkSnippet(label: string | undefined, target: string): string {
 
 function formatLogoModeLabel(
   mode: LogoMode
-): "Default" | "Alternate" | "Slash" | "Rotate" {
+): "Default" | "Alternate" | "Slash" | "Blocks" | "Rotate" {
   if (mode === "default") return "Default";
   if (mode === "alternate32") return "Alternate";
   if (mode === "alternate_slash32") return "Slash";
+  if (mode === "alternate_blocks32") return "Blocks";
   return "Rotate";
 }
 
@@ -3006,6 +3011,9 @@ export function App({
         return;
       case "SEARCH":
         openSearchMode();
+        return;
+      case "TAG_PANEL":
+        openTagFilterPanel();
         return;
       case "HELP":
         if (uiState.mode === Mode.HELP) return;

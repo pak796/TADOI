@@ -1,8 +1,8 @@
 # TADOI™ Installation Guide (macOS, Windows, Linux)
 
 This guide covers binary and source installs on macOS, Windows, and Linux.
-Runtime baseline: **v0.3.1**.
-Manual QA reference: `docs/TADOI_QA_Guide_v0.3.1.md`.
+Runtime baseline: **v0.3.4**.
+Manual QA reference: `docs/TADOI_QA_Guide_v0.3.4.md`.
 
 ## 1) What You Need
 
@@ -85,7 +85,7 @@ Check these basics:
    - `o`/`O` overdue popup
    - `l`/`L` terminal bell
 5. Press `/`, type a search term, then press `Enter` (or `Esc`) to close Search.
-6. Press `Shift+T` to open the boolean tag filter panel, then press `Esc` to close.
+6. Press `p` to open the boolean tag filter panel, then press `Esc` to close.
 7. Press `q` to quit.
 
 If these checks pass, your install is healthy.
