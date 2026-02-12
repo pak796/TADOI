@@ -10,6 +10,14 @@ describe("resolveCliRoute", () => {
     expect(route.args).toEqual(["--help"]);
   });
 
+  it("routes calendar export before global flags", () => {
+    const route = resolveCliRoute(["calendar:export", "--help"]);
+    expect(route.kind).toBe("calendar");
+    if (route.kind !== "calendar") return;
+    expect(route.command).toBe("export");
+    expect(route.args).toEqual(["--help"]);
+  });
+
   it("routes --version without starting tui", () => {
     const route = resolveCliRoute(["--version"]);
     expect(route).toEqual({ kind: "version" });
@@ -25,6 +33,7 @@ describe("runCli", () => {
   function createDeps() {
     const calls = {
       portability: 0,
+      calendar: 0,
       tui: 0,
       smoke: 0,
       help: 0,
@@ -34,6 +43,10 @@ describe("runCli", () => {
     const deps: CliRunDeps = {
       async runPortability() {
         calls.portability += 1;
+        return 0;
+      },
+      async runCalendar() {
+        calls.calendar += 1;
         return 0;
       },
       async runInteractiveTui() {
@@ -69,6 +82,17 @@ describe("runCli", () => {
     const code = await runCli(["export", "--help"], deps);
     expect(code).toBe(0);
     expect(calls.portability).toBe(1);
+    expect(calls.calendar).toBe(0);
+    expect(calls.tui).toBe(0);
+    expect(calls.smoke).toBe(0);
+  });
+
+  it("keeps calendar:export --help headless", async () => {
+    const { calls, deps } = createDeps();
+    const code = await runCli(["calendar:export", "--help"], deps);
+    expect(code).toBe(0);
+    expect(calls.portability).toBe(0);
+    expect(calls.calendar).toBe(1);
     expect(calls.tui).toBe(0);
     expect(calls.smoke).toBe(0);
   });
@@ -100,5 +124,6 @@ describe("printHelp", () => {
     expect(output).toContain("TADOI");
     expect(output).toContain("Terminal Accessible Digital Organization Interface");
     expect(output).toContain("Usage: tadoi [options]");
+    expect(output).toContain("calendar:export");
   });
 });

@@ -7,6 +7,7 @@ import {
 } from "./brand/brand";
 import { APP_VERSION } from "./app/version";
 import { runPortabilityCommand } from "./cli/portabilityCommands";
+import { runCalendarCommand } from "./cli/calendarCommands";
 import { runTui, runTuiSmoke, type RunTuiOptions } from "./tui/runTui";
 
 type CliOptions = {
@@ -21,6 +22,7 @@ export type CliRoute =
   | { kind: "version" }
   | { kind: "smoke_tui" }
   | { kind: "portability"; command: "export" | "import"; args: string[] }
+  | { kind: "calendar"; command: "export"; args: string[] }
   | { kind: "tui"; showLogo: boolean };
 
 export type CliRunDeps = {
@@ -28,6 +30,7 @@ export type CliRunDeps = {
     command: "export" | "import",
     args: string[]
   ) => Promise<number>;
+  runCalendar: (command: "export", args: string[]) => Promise<number>;
   runInteractiveTui: (options: RunTuiOptions) => Promise<void>;
   runSmokeTui: () => Promise<number>;
   printHelp: (showLogo: boolean) => void;
@@ -61,6 +64,7 @@ export function printHelp(showLogo: boolean): void {
   console.log("Commands:");
   console.log("  export          Export full persisted state (plus settings)");
   console.log("  import          Import state from a JSON export");
+  console.log("  calendar:export Export one-way calendar ICS file");
   console.log(`  Run '${CLI_NAME} <command> --help' for command-specific flags`);
   console.log("");
   console.log("Environment:");
@@ -74,6 +78,7 @@ function printVersion(): void {
 
 const DEFAULT_DEPS: CliRunDeps = {
   runPortability: runPortabilityCommand,
+  runCalendar: runCalendarCommand,
   runInteractiveTui: runTui,
   runSmokeTui: runTuiSmoke,
   printHelp,
@@ -86,6 +91,13 @@ export function resolveCliRoute(argv: string[]): CliRoute {
     return {
       kind: "portability",
       command,
+      args: argv.slice(1)
+    };
+  }
+  if (command === "calendar:export") {
+    return {
+      kind: "calendar",
+      command: "export",
       args: argv.slice(1)
     };
   }
@@ -114,6 +126,9 @@ export async function runCli(
 
   if (route.kind === "portability") {
     return deps.runPortability(route.command, route.args);
+  }
+  if (route.kind === "calendar") {
+    return deps.runCalendar(route.command, route.args);
   }
 
   if (route.kind === "help") {

@@ -454,6 +454,16 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
         description: "Use backup exports for portability and recovery."
       },
       {
+        title: "Calendar export (ICS): one-way CLI",
+        description: [
+          "Command: tadoi calendar:export --out ./tadoi.ics [--view NAME] [--range next7|month|all]",
+          "Range semantics: next7 = today..+6 local days, month = today..+29, all = full eligible set.",
+          "Scope: open tasks only; recurring series export RRULE+EXDATE; instance overrides export standalone.",
+          "Timezone: uses TZID + VTIMEZONE for local/DST-safe times when available.",
+          "Limitation: export-only (no calendar import/sync)."
+        ]
+      },
+      {
         title: "Cloud sync integrations (placeholder)",
         description: "Reserved for future workspace sync options."
       }

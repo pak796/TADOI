@@ -46,6 +46,7 @@ Package baseline: `0.3.4`
 - `TA-051` Import dry-run gating and replace confirmation (`REPLACE`). (`Complete`)
 - `TA-052` Overdue modal queue + terminal bell cooldown preferences. (`Complete`)
 - `TA-053` Corrupt-file recovery path with timestamped backup output. (`Complete`)
+- `TA-054` One-way Calendar export (ICS) CLI with RRULE/EXDATE + instance override support. (`Complete`)
 
 ## B) Documentation and Release Governance
 

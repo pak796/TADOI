@@ -106,6 +106,30 @@ Safety checks:
 Reference:
 - [`docs/backup-center.md`](./docs/backup-center.md)
 
+### Calendar Export (ICS, One-Way)
+
+Export tasks to iCalendar format:
+
+```bash
+bun run start -- calendar:export --out ./tadoi.ics
+```
+
+Examples:
+
+```bash
+bun run start -- calendar:export --out ./tadoi.ics --range next7
+bun run start -- calendar:export --out ./tadoi.ics --view Work --range month
+bun run start -- calendar:export --out ./tadoi.ics --range all
+```
+
+Behavior notes:
+- One-way export only (no calendar import/sync).
+- Exports open tasks only (done/archived excluded).
+- `next7` uses rolling local days (`today..+6`); `month` uses `today..+29`.
+- Recurring series export as `RRULE` + `EXDATE` when valid.
+- Instance overrides (`instance_of`) export as standalone events.
+- `--range all` requires valid recurring `RRULE` fragments.
+
 ## Keybindings
 
 - LIST mode navigation:

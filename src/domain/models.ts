@@ -26,6 +26,20 @@ export type TaskInstanceOf = {
   occurrence: string; // original scheduled local floating ISO timestamp
 };
 
+export type TaskExternalCalendarMetadata = {
+  uid: string;
+  source?: string;
+  tzid?: string;
+  lastImportedAt: string;
+  lastImportedHash?: string;
+  recurrenceId?: string;
+  seriesUid?: string;
+};
+
+export type TaskExternalMetadata = {
+  calendar?: TaskExternalCalendarMetadata;
+};
+
 export type Task = {
   id: string;
   title: string;
@@ -40,6 +54,7 @@ export type Task = {
   links?: TaskLink[];
   recurrence?: TaskRecurrence;
   instance_of?: TaskInstanceOf;
+  external?: TaskExternalMetadata;
 };
 
 export type TagIndexEntry = {
