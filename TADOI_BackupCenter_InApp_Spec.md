@@ -1,7 +1,7 @@
 # TADOI™ — In‑App Import/Export + Backup Center (TUI) — Spec Sheet (Codex-ready)
 
-**Repo version context:** v0.3.0 (current runtime baseline)  
-**Generated:** 2026-02-10 21:35:46
+**Repo version context:** v0.3.4 (current runtime baseline)  
+**Generated:** 2026-02-12
 
 ---
 
@@ -52,7 +52,8 @@ Your tree indicates these primary integration surfaces:
 
 ### CLI Entrypoint
 - **`bin/tadoi.js`** (packaged CLI launcher)
-- **`src/cli/`** (actual CLI command implementation)
+- **`src/cli.ts`** (actual CLI command router)
+- **`src/state/backupService.ts`** (shared import/export service consumed by CLI + TUI)
 
 ### App / TUI Shell
 - **`src/index.tsx`** (app boot)
@@ -77,9 +78,8 @@ All export/import work must flow through the same logic used by the CLI today.
 **Implementation expectation**
 - If CLI logic is currently embedded in command handlers, refactor to a shared service module **called by both CLI and TUI**.
 
-**Recommended module location**
-- `src/domain/io/` or `src/domain/backup/`  
-  (Pick the pattern you already use for domain services.)
+**Current module location**
+- `src/state/backupService.ts` (active shared portability service)
 
 ---
 
@@ -289,20 +289,17 @@ Common errors:
 
 ## 12) Codex Task List (Implementation Sequence)
 
-1. **Locate** existing CLI import/export implementation under `src/cli/` and identify the core functions.
-2. **Refactor** CLI handlers to call a shared domain service:
-   - create `src/domain/io/backupService.ts` (or your preferred domain folder)
-3. **Add** Help menu item and new route/screen in `src/app/`.
-4. **Implement** Backup Center menu UI (in `src/ui/`).
-5. **Implement** Export flow UI + call `exportBackup()`.
-6. **Implement** Import flow UI:
+1. **Validate** shared backup service wiring in `src/state/backupService.ts` and CLI router paths in `src/cli.ts`.
+2. **Verify** Help menu route and Backup Center state transitions in `src/app/` and `src/ui/`.
+3. **Verify** Export flow UI + call path to `exportBackup()`.
+4. **Verify** Import flow UI:
    - path input
    - mode select
    - replace confirm
    - dry-run summary
    - commit + results
-7. **Implement** Show data path view calling `getDataPath()`.
-8. **Add** minimal tests (if you have a harness):
+5. **Verify** Show data path view calling `getDataPath()`.
+6. **Maintain** minimal tests:
    - export filename/path generation
    - import dry-run returns counts
    - replace confirm gate blocks commit without `REPLACE`

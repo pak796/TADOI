@@ -21,19 +21,31 @@ The format is based on Keep a Changelog.
 ## [0.3.4] - 2026-02-12
 ### Added
 - New release documentation artifacts:
+  - `TADOI_SPEC_v0.3.4.md`
+  - `TADOI_TASKS_v0.3.4.md`
   - `docs/TADOI_Feature_List_v0.3.4.md`
   - `docs/TADOI_QA_Guide_v0.3.4.md`
+  - `docs/DOC_INDEX.md`
+  - `docs/DOC_AUDIT_REPORT.md`
+  - `docs/NOTION_SYNC.md`
   - `docs/ops/notion_v0.3.4_sync_pack.md`
 
 ### Changed
 - Tag panel open key is standardized to `p` in list/dashboard routing and reflected in Help copy.
 - Left rail now includes a dedicated `TAG PANEL (P)` menu row and matching hints.
 - Brand/logo surface now includes `alternate_blocks32` as a first-class logo mode and in rotating mode order.
+- Notion documentation set in `Patrick's Projects > TADOI > Documents` is synchronized to this `v0.3.4` baseline, including spec/task artifacts.
 - Active docs baselines are aligned to `v0.3.4` / `0.3.4`:
   - `README.md`
   - `docs/README.md`
+  - `TADOI_SPEC_v0.3.4.md`
+  - `TADOI_TASKS_v0.3.4.md`
   - `docs/TADOI_Installation_Guide_All_Platforms.md`
+  - `docs/TADOI_Feature_List_v0.3.4.md`
+  - `docs/TADOI_QA_Guide_v0.3.4.md`
   - `DASHBOARD_SPEC_MVP.md`
+  - `TADOI_BackupCenter_InApp_Spec.md`
+  - `TADOI_Notifications_Spec_Tier1-2_v0.2.md`
   - `docs/backup-center.md`
   - `docs/recurring-tasks-implementation-plan.md`
 

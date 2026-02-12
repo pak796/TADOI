@@ -7,6 +7,8 @@ Keyboard-first TUI todo list with due dates, completion, and tag autocomplete (O
 Current version: `v0.3.4` (`package.json`: `0.3.4`).
 Feature list: [`docs/TADOI_Feature_List_v0.3.4.md`](./docs/TADOI_Feature_List_v0.3.4.md)
 QA guide: [`docs/TADOI_QA_Guide_v0.3.4.md`](./docs/TADOI_QA_Guide_v0.3.4.md)
+Product spec: [`TADOI_SPEC_v0.3.4.md`](./TADOI_SPEC_v0.3.4.md)
+Task list: [`TADOI_TASKS_v0.3.4.md`](./TADOI_TASKS_v0.3.4.md)
 
 ## Setup
 

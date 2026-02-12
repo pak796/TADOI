@@ -7,6 +7,12 @@ This list reflects current runtime behavior as of **2026-02-12**.
 - Keyboard-first navigation with wrap-around movement, paging, and jump shortcuts.
 - Mouse support for key UI surfaces (task rows, menu rows, editor actions, quick filters, overdue modal actions).
 
+## Task Links and Attachments
+- Per-task links/attachments with optional labels and inferred kind (`url` or `path`).
+- Details pane links focus mode with open, copy, add, edit, and delete flows.
+- Add-mode shortcut `Ctrl+L` to attach links before saving a new task.
+- External unknown-scheme URL opens are gated behind an explicit confirmation modal.
+
 ## Filtering and Views
 - Status filter (`f`): `all`, `open`, `done`, `archived`.
 - Due filter (`g`): `any`, `overdue`, `today`, `next7`.

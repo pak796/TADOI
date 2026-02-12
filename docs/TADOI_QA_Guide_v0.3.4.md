@@ -24,7 +24,7 @@ In scope:
 ## 2) Current Automated Validation Snapshot
 
 Local workspace snapshot (captured for transparency):
-- `bun run test`: **342 pass / 0 fail / 342 total**.
+- `bun run test`: **355 pass / 0 fail / 355 total**.
 - `bun run typecheck`: **pass**.
 
 Manual QA is still required for cross-platform interaction and rendering coverage.
@@ -286,6 +286,18 @@ Smoke pass criteria:
   - Preconditions: app has at least one tagged task.
   - Steps: open panel via `p` in list mode, `p` in dashboard mode, and `TAG PANEL (P)` left rail row.
   - Expected: all entry points open the same boolean panel and preserve filter-state semantics.
+- [ ] `QA-049` Task link create/edit/delete flow from details pane.
+  - Preconditions: selected task exists.
+  - Steps: `Tab` to links focus, add link (`l`), edit (`e`), delete (`d`/`Backspace`).
+  - Expected: link list updates correctly and focus/mode restore remains stable.
+- [ ] `QA-050` Task link open/copy behavior for URL and local path targets.
+  - Preconditions: task has one URL link and one path link.
+  - Steps: select each link, use `Enter`/`o` to open, and `c` to copy target.
+  - Expected: open action routes by target kind and copy action writes exact target text.
+- [ ] `QA-051` External scheme confirmation modal for non-allowlisted URL scheme.
+  - Preconditions: task link target uses non-allowlisted scheme.
+  - Steps: attempt open action; test confirm (`y`) and cancel (`n`/`Esc`) paths.
+  - Expected: modal blocks background input; cancel aborts open; confirm proceeds.
 
 ## 7) Automated Coverage Mapping
 
@@ -300,12 +312,13 @@ Smoke pass criteria:
 | Notifications | `src/notifications/notificationManager.test.ts`, `src/notifications/overdueTaskActions.test.ts`, `src/notifications/notifiers/inAppModalNotifier.test.ts`, `src/notifications/notifiers/terminalBellNotifier.test.ts` |
 | Settings/theme/custom1 | `src/settings/settings.test.ts`, `src/theme/themes.test.ts`, `src/theme/resolveThemeTokens.test.ts`, `src/theme/custom1ColorUtils.test.ts` |
 | Brand/logo + left rail | `src/brand/brand.test.ts`, `src/components/LeftRail.tsx`, `src/app/keyRouter.test.ts` |
+| Task links/attachments | `src/domain/taskLinks.test.ts`, `src/app/keyRouter.test.ts`, `src/ui/state.test.ts` |
 | Persistence and recovery | `src/state/persistence.test.ts`, `src/state/validation.test.ts` |
 
 ## 8) Known Issues in Current Workspace
 
 No known automated failures at this snapshot (`2026-02-12`):
-- `bun run test`: 342/342 passing.
+- `bun run test`: 355/355 passing.
 - `bun run typecheck`: passing.
 
 Residual risk still covered by manual QA:
@@ -337,6 +350,6 @@ Defect report format:
 
 Release candidate is manual-QA ready when:
 1. All smoke cases pass on macOS, Windows, Linux.
-2. Full case set (`QA-001` to `QA-048`) is executed at least once per target platform.
+2. Full case set (`QA-001` to `QA-051`) is executed at least once per target platform.
 3. No open `P0` or `P1` defects remain.
 4. Known automated failures are either resolved or explicitly accepted with owner and follow-up.

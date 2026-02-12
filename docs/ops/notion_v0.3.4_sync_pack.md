@@ -3,8 +3,8 @@
 Date: `2026-02-12`
 
 ## Status
-Direct Notion MCP writes are currently blocked in this environment due auth refresh failure (`invalid_grant` on MCP initialize).  
-Use this pack to apply the same `v0.3.4` updates manually in Notion.
+Notion sync is available through MCP in this environment.  
+This pack has been applied in-place on `2026-02-12` and remains the canonical payload for repeat syncs.
 
 Target database: `collection://3035aa1e-f93f-80a3-ba35-000b3b596866`  
 Parent project: `Patrick's Projects > TADOI`
@@ -32,7 +32,7 @@ Page ID: `3045aa1e-f93f-8103-bda5-f77d2bf55e8e`
 Property updates:
 - `Name`: `TADOI QA Guide (v0.3.4)`
 - `date:Date:start`: `2026-02-12`
-- `Notes`: `Synced to v0.3.4 runtime and latest automated snapshot (342/342 pass, typecheck pass).`
+- `Notes`: `Synced to v0.3.4 runtime and latest automated snapshot (355/355 pass, typecheck pass).`
 
 Replace the release baseline section with:
 ```md
@@ -47,7 +47,7 @@ Replace the automated snapshot section with:
 ```md
 ## Current Automated Validation Snapshot
 
-- `bun run test`: **342 pass / 0 fail / 342 total**
+- `bun run test`: **355 pass / 0 fail / 355 total**
 - `bun run typecheck`: **pass**
 ```
 
@@ -55,6 +55,9 @@ Add these checklist cases under Data Safety/Mouse:
 ```md
 - [ ] QA-047 Logo mode cycles through all variants, including blocks.
 - [ ] QA-048 Tag panel open behavior parity from list, dashboard, and left rail.
+- [ ] QA-049 Task link create/edit/delete flow from details pane.
+- [ ] QA-050 Task link open/copy behavior for URL and local path targets.
+- [ ] QA-051 External scheme confirmation modal for non-allowlisted URL scheme.
 ```
 
 ## Page 3: User Guide
@@ -95,10 +98,34 @@ Replace/update feature bullets with:
 - Minimum terminal size contract: `104x24`.
 - Recurrence-aware list/dashboard behavior with occurrence actions (`Space`, `x`, `z`, `e`, `E`, `d` with `y/f/n`).
 - In-app Backup Center and portability flows with dry-run and replace confirmation.
+- Task links and attachments workflow (add/edit/open/copy/delete + external scheme confirmation).
 ```
+
+## Page 5: Product Spec (v0.3.4)
+Page ID: `3055aa1e-f93f-812d-ad44-f3d94b8a7219`
+
+Property updates:
+- `Name`: `TADOI Product Spec (v0.3.4)`
+- `date:Date:start`: `2026-02-12`
+- `Notes`: `Created from code-truth audit and linked to active runtime contracts.`
+
+Use this source file:
+`TADOI_SPEC_v0.3.4.md`
+
+## Page 6: Task List (v0.3.4)
+Page ID: `3055aa1e-f93f-8159-b07c-ee692df137eb`
+
+Property updates:
+- `Name`: `TADOI Task List (v0.3.4)`
+- `date:Date:start`: `2026-02-12`
+- `Notes`: `Created from code-truth audit with completed scope and pending follow-up items.`
+
+Use this source file:
+`TADOI_TASKS_v0.3.4.md`
 
 ## Validation Checklist After Notion Paste
 - Confirm each page title and date property shows `2026-02-12`.
 - Confirm all runtime/package references show `v0.3.4` / `0.3.4`.
 - Confirm tag panel key is `p` (not `Shift+T`).
-- Confirm QA page includes `QA-047` and `QA-048`.
+- Confirm QA page includes `QA-047` through `QA-051`.
+- Confirm Product Spec and Task List pages exist at `v0.3.4`.
