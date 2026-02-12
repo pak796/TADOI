@@ -104,16 +104,23 @@ Backup Center flow:
 - `Export backup`: creates a timestamped backup in the default backups folder.
 - `Import data...`: path input -> mode select (`merge` or `replace`) -> dry-run summary -> commit.
 - `Show data path`: shows the exact runtime data path.
+- `Calendar (ICS)...`: opens calendar export/import guided flows.
+
+Calendar submenu flow:
+- `Export Calendar (.ics)`: intro -> range -> view -> privacy -> path -> confirm -> export.
+- `Import Calendar (.ics)`: intro -> path -> range -> view -> mode -> horizon -> tag -> mandatory dry-run -> commit.
 
 Safety checks:
 - `replace` requires typed confirmation: `REPLACE`.
 - Import commit is gated behind dry-run (dry-run always runs first).
 - Commit creates a pre-import backup by default.
+- Calendar import commit is also gated behind dry-run and creates a pre-import backup.
+- High-impact calendar imports (`mode=update` or `range=all`) require typed `IMPORT`.
 
 Reference:
 - [`docs/backup-center.md`](./docs/backup-center.md)
 
-### Calendar Integration (ICS Export + Import Foundation)
+### Calendar Integration (ICS)
 
 Export tasks to iCalendar format:
 
@@ -131,8 +138,8 @@ bun run start -- calendar:export --out ./tadoi.ics --privacy full
 ```
 
 Behavior notes:
-- User-facing CLI currently exposes `calendar:export` only.
-- ICS import foundation exists in `src/state/calendarImportService.ts` (range/mode/dry-run/report/hard-cap logic), but `calendar:import` CLI routing is not exposed yet.
+- In-app Backup Center exposes both `Export Calendar (.ics)` and `Import Calendar (.ics)` guided flows.
+- CLI currently exposes `calendar:export`; import service is consumed by Backup Center.
 - Exports open tasks only (done/archived excluded).
 - Privacy defaults to `minimal` (notes/tags/links/url omitted); use `--privacy full` to include full metadata.
 - Compatibility alias: `--include-details` maps to `--privacy full`.
@@ -140,7 +147,7 @@ Behavior notes:
 - Recurring series export as `RRULE` + `EXDATE` when valid.
 - Instance overrides (`instance_of`) export as standalone events.
 - `--range all` requires valid recurring `RRULE` fragments.
-- Import safety baseline (service layer): max ICS size `10 MiB` by default, bounded recurrence horizon, hard expansion cap.
+- Import safety baseline: max ICS size `10 MiB` by default, bounded recurrence horizon, hard expansion cap, and mandatory dry-run before commit in Backup Center.
 
 ## Keybindings
 
@@ -232,7 +239,8 @@ Behavior notes:
   - `ctrl+d` / `PageDown`: page Help content down
   - `Esc` or `?`: close help
 - Backup Center mode:
-  - `1` / `2` / `3`: choose menu option
+  - `1` / `2` / `3` / `4`: choose root menu option
+  - In Calendar submenu and select steps, number keys choose options shown on-screen
   - `j` / `k`: move menu selection
   - `Enter`: confirm current step
   - `Esc`: back (or close Backup Center from menu)

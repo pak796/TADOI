@@ -1,11 +1,15 @@
 import { describe, expect, it } from "bun:test";
 import {
   backupCenterReducer,
+  hasMatchingCalendarImportDryRun,
   hasMatchingDryRun,
+  isCalendarImportConfirmValid,
   initialBackupCenterState,
-  isReplaceConfirmationValid
+  isReplaceConfirmationValid,
+  shouldRequireCalendarImportConfirm
 } from "./backupCenterFlow";
 import type { BackupImportSummary } from "./backupService";
+import { buildCalendarImportFingerprint } from "./backupCenterCalendarController";
 
 function makeSummary(mode: "merge" | "replace"): BackupImportSummary {
   return {
@@ -29,6 +33,23 @@ function makeSummary(mode: "merge" | "replace"): BackupImportSummary {
       includedInImport: false,
       applied: false
     }
+  };
+}
+
+function makeCalendarSummary() {
+  return {
+    eventsParsed: 12,
+    matchedByTaskId: 4,
+    matchedByUid: 2,
+    created: 3,
+    updated: 1,
+    merged: 2,
+    skipped: 0,
+    errors: 0,
+    recurringSeriesImported: 1,
+    overridesCreated: 1,
+    overridesUpdated: 0,
+    cancellationsApplied: 0
   };
 }
 
@@ -99,5 +120,86 @@ describe("backupCenterFlow", () => {
 
     expect(state.dryRun).toBeUndefined();
     expect(hasMatchingDryRun(state)).toBe(false);
+  });
+
+  it("blocks calendar import commit until matching dry-run exists", () => {
+    let state = backupCenterReducer(initialBackupCenterState, {
+      type: "setCalendarImportPath",
+      value: "./calendar.ics"
+    });
+    state = backupCenterReducer(state, { type: "setCalendarImportRange", range: "next7" });
+    state = backupCenterReducer(state, { type: "setCalendarImportMode", mode: "merge" });
+    state = backupCenterReducer(state, { type: "setCalendarImportHorizonInput", value: "365" });
+    state = backupCenterReducer(state, { type: "setCalendarImportTagInput", value: "imported" });
+    state = backupCenterReducer(state, { type: "setScreen", screen: "calendar_import_dryrun" });
+
+    const blocked = backupCenterReducer(state, { type: "startCalendarImporting" });
+    expect(blocked.screen).toBe("calendar_import_dryrun");
+
+    const fingerprint = buildCalendarImportFingerprint({
+      inputPath: "./calendar.ics",
+      range: "next7",
+      mode: "merge",
+      horizonDays: 365,
+      importTag: "imported"
+    });
+    state = backupCenterReducer(state, {
+      type: "calendarImportDryRunSucceeded",
+      summary: makeCalendarSummary(),
+      hasErrors: false,
+      errorReasons: [],
+      fingerprint
+    });
+    expect(hasMatchingCalendarImportDryRun(state)).toBe(true);
+
+    const started = backupCenterReducer(state, { type: "startCalendarImporting" });
+    expect(started.screen).toBe("calendar_importing");
+  });
+
+  it("blocks calendar commit when dry-run has RRULE errors", () => {
+    let state = backupCenterReducer(initialBackupCenterState, {
+      type: "setCalendarImportPath",
+      value: "./calendar.ics"
+    });
+    state = backupCenterReducer(state, { type: "setCalendarImportRange", range: "all" });
+    state = backupCenterReducer(state, { type: "setCalendarImportMode", mode: "update" });
+    state = backupCenterReducer(state, { type: "setCalendarImportHorizonInput", value: "365" });
+    state = backupCenterReducer(state, { type: "setScreen", screen: "calendar_import_dryrun" });
+
+    const fingerprint = buildCalendarImportFingerprint({
+      inputPath: "./calendar.ics",
+      range: "all",
+      mode: "update",
+      horizonDays: 365
+    });
+    state = backupCenterReducer(state, {
+      type: "calendarImportDryRunSucceeded",
+      summary: {
+        ...makeCalendarSummary(),
+        errors: 2
+      },
+      hasErrors: true,
+      errorReasons: ["Invalid RRULE: FREQ=NOPE"],
+      fingerprint
+    });
+    expect(shouldRequireCalendarImportConfirm(state)).toBe(true);
+
+    const blocked = backupCenterReducer(state, { type: "startCalendarImporting" });
+    expect(blocked.screen).toBe("calendar_import_dryrun");
+  });
+
+  it("requires IMPORT confirmation for update/all calendar imports", () => {
+    let state = backupCenterReducer(initialBackupCenterState, {
+      type: "setCalendarImportPath",
+      value: "./calendar.ics"
+    });
+    state = backupCenterReducer(state, { type: "setCalendarImportRange", range: "all" });
+    state = backupCenterReducer(state, { type: "setCalendarImportMode", mode: "update" });
+    state = backupCenterReducer(state, { type: "setCalendarImportHorizonInput", value: "365" });
+    state = backupCenterReducer(state, {
+      type: "setCalendarImportConfirmInput",
+      value: "IMPORT"
+    });
+    expect(isCalendarImportConfirmValid(state)).toBe(true);
   });
 });

@@ -43,7 +43,8 @@ export type KeyRouterAction =
   | { scope: "ui"; type: "BACKUP_PRIMARY" }
   | { scope: "ui"; type: "BACKUP_BACK" }
   | { scope: "ui"; type: "BACKUP_MOVE_MENU_SELECTION"; delta: 1 | -1 }
-  | { scope: "ui"; type: "BACKUP_SELECT_MENU_OPTION"; index: 0 | 1 | 2 }
+  | { scope: "ui"; type: "BACKUP_SELECT_MENU_OPTION"; index: 0 | 1 | 2 | 3 }
+  | { scope: "ui"; type: "BACKUP_SELECT_DIGIT"; digit: number }
   | { scope: "ui"; type: "BACKUP_SET_IMPORT_MODE"; mode: ImportMode }
   | { scope: "ui"; type: "MOVE_EDITOR_FOCUS"; direction: 1 | -1 }
   | {
@@ -462,6 +463,8 @@ export function handleKey(
   }
 
   if (mode === Mode.BACKUP_CENTER) {
+    const maybeDigit = sequence.length === 1 && /\d/.test(sequence) ? Number(sequence) : NaN;
+
     if (backupScreen === "menu") {
       if (sequence === "1" || name === "1") {
         return [{ scope: "ui", type: "BACKUP_SELECT_MENU_OPTION", index: 0 }];
@@ -472,6 +475,18 @@ export function handleKey(
       if (sequence === "3" || name === "3") {
         return [{ scope: "ui", type: "BACKUP_SELECT_MENU_OPTION", index: 2 }];
       }
+      if (sequence === "4" || name === "4") {
+        return [{ scope: "ui", type: "BACKUP_SELECT_MENU_OPTION", index: 3 }];
+      }
+      if (name === "j" || name === "down") {
+        return [{ scope: "ui", type: "BACKUP_MOVE_MENU_SELECTION", delta: 1 }];
+      }
+      if (name === "k" || name === "up") {
+        return [{ scope: "ui", type: "BACKUP_MOVE_MENU_SELECTION", delta: -1 }];
+      }
+    }
+
+    if (backupScreen === "calendar_menu") {
       if (name === "j" || name === "down") {
         return [{ scope: "ui", type: "BACKUP_MOVE_MENU_SELECTION", delta: 1 }];
       }
@@ -487,6 +502,10 @@ export function handleKey(
       if (sequence === "2" || name === "2") {
         return [{ scope: "ui", type: "BACKUP_SET_IMPORT_MODE", mode: "replace" }];
       }
+    }
+
+    if (Number.isFinite(maybeDigit)) {
+      return [{ scope: "ui", type: "BACKUP_SELECT_DIGIT", digit: maybeDigit }];
     }
 
     if (name === "return" || name === "enter") {

@@ -721,6 +721,12 @@ describe("handleKey", () => {
     ).toEqual([{ scope: "ui", type: "BACKUP_SELECT_MENU_OPTION", index: 0 }]);
     expect(
       run(
+        { name: "4", sequence: "4" },
+        { uiState: backupState, backupScreen: "menu" }
+      )
+    ).toEqual([{ scope: "ui", type: "BACKUP_SELECT_MENU_OPTION", index: 3 }]);
+    expect(
+      run(
         { name: "down" },
         { uiState: backupState, backupScreen: "menu" }
       )
@@ -742,7 +748,13 @@ describe("handleKey", () => {
         { name: "3", sequence: "3" },
         { uiState: backupState, backupScreen: "import_path" }
       )
-    ).toEqual([]);
+    ).toEqual([{ scope: "ui", type: "BACKUP_SELECT_DIGIT", digit: 3 }]);
+    expect(
+      run(
+        { name: "2", sequence: "2" },
+        { uiState: backupState, backupScreen: "calendar_import_mode" }
+      )
+    ).toEqual([{ scope: "ui", type: "BACKUP_SELECT_DIGIT", digit: 2 }]);
   });
 
   it("prevents list-key leakage in add/edit text-input modes", () => {

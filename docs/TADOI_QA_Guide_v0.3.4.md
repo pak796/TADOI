@@ -300,33 +300,41 @@ Smoke pass criteria:
   - Steps: attempt open action; test confirm (`y`) and cancel (`n`/`Esc`) paths.
   - Expected: modal blocks background input; cancel aborts open; confirm proceeds.
 
-### L) Calendar Export + Import Foundation
+### L) Calendar Export + Import (Backup Center)
 
-- [ ] `QA-052 [SMOKE]` Calendar export command writes a valid `.ics` file.
-  - Preconditions: dataset has open tasks with at least one due date.
-  - Steps: run `bun run start -- calendar:export --out ./qa-export.ics`.
-  - Expected: command exits `0`; file is created; summary includes scanned/written counts.
-- [ ] `QA-053 [SMOKE]` Calendar export defaults to privacy `minimal`.
-  - Preconditions: at least one task has notes/tags/links.
-  - Steps: run export without `--privacy`, then inspect resulting `.ics`.
-  - Expected: summary reports `privacy: minimal`; metadata fields for notes/tags/links/url are omitted.
-- [ ] `QA-054` Calendar export `--privacy full` includes metadata.
-  - Preconditions: task includes notes/tags/links.
-  - Steps: run `bun run start -- calendar:export --out ./qa-export-full.ics --privacy full`.
-  - Expected: metadata fields are present in exported events.
-- [ ] `QA-055` Export range/view/recurrence behavior stays aligned to runtime filters.
-  - Preconditions: saved view exists; dataset contains recurring series and overrides.
-  - Steps: run `--range next7|month|all`, with and without `--view`.
-  - Expected: range semantics match app contract; recurrence serializes as RRULE/EXDATE when valid.
-- [ ] `QA-056` Import foundation guardrails remain enforced (automated verification).
-  - Preconditions: local test environment.
-  - Steps: run `bun test src/state/calendarImportService.test.ts src/calendar/icsParser.test.ts src/calendar/importMapper.test.ts`.
-  - Expected: size limits, parser semantics, and imported-link provenance checks pass.
-- [ ] `QA-057` Link security policy blocks or confirms risky opens.
+- [ ] `QA-052 [SMOKE]` Backup Center exposes Calendar submenu and keyboard navigation.
+  - Preconditions: app running.
+  - Steps: `?` then `1`; select `4) Calendar (ICS)...`; use `j/k`, `1/2/3`, `Enter`, `Esc`.
+  - Expected: submenu opens and navigates correctly; `Esc` returns one level (submenu -> menu), root `Esc` closes Backup Center.
+- [ ] `QA-053 [SMOKE]` In-app calendar export writes `.ics` with selected range/view/privacy.
+  - Preconditions: open tasks exist (include recurring + instance override if possible).
+  - Steps: Backup Center -> Calendar -> Export; choose range/view/privacy/path; commit export.
+  - Expected: `.ics` file is written; summary shows events written, series RRULE count, instance overrides, EXDATE count.
+- [ ] `QA-054` Calendar export privacy behavior (`minimal` vs `full`) is correct.
+  - Preconditions: tasks include notes/tags/links/url.
+  - Steps: export once with `minimal`, once with `full`.
+  - Expected: minimal omits notes/tags/links/url fields; full includes them.
+- [ ] `QA-055 [SMOKE]` Calendar import enforces mandatory dry-run-before-commit.
+  - Preconditions: valid ICS file path.
+  - Steps: Backup Center -> Calendar -> Import; complete steps through dry-run.
+  - Expected: commit is blocked/disabled until dry-run succeeds with matching input/options.
+- [ ] `QA-056` Import mode pass-through (`merge|update|create`) and safety confirmations.
+  - Preconditions: ICS with potential matches to existing tasks.
+  - Steps: dry-run each mode and compare summary outcomes; for `update` or `range=all`, verify typed `IMPORT` confirmation gate.
+  - Expected: mode semantics match selected mode; high-impact confirmation is required before commit.
+- [ ] `QA-057` RRULE/recurrence error handling blocks commit with clear guidance.
+  - Preconditions: ICS with invalid recurring RRULE.
+  - Steps: run calendar import dry-run in Backup Center.
+  - Expected: dry-run reports errors (including RRULE reason), commit remains blocked, and report details path is shown.
+- [ ] `QA-058` RECURRENCE-ID override/cancellation summaries are surfaced in dry-run.
+  - Preconditions: ICS fixture with override + cancelled occurrence.
+  - Steps: run import dry-run.
+  - Expected: summary counters include overrides created/updated and cancellations applied.
+- [ ] `QA-059` Link security policy blocks or confirms risky opens.
   - Preconditions: selected task has a local path link or non-allowlisted URL scheme.
   - Steps: test open flow under default policy, then set `settings.security.nonHttpLinkPolicy` to `block` and retry.
   - Expected: default policy prompts; block policy prevents open and shows a security banner.
-- [ ] `QA-058` Startup path logging redaction and verbose override.
+- [ ] `QA-060` Startup path logging redaction and verbose override.
   - Preconditions: app can be launched from terminal.
   - Steps: launch normally, then launch with `TADOI_VERBOSE_PATH_LOGS=1`.
   - Expected: default startup logs redact absolute paths; verbose mode prints full paths.
@@ -341,7 +349,7 @@ Smoke pass criteria:
 | Recurrence engine + draft + delete | `src/domain/recurrence/engine.test.ts`, `src/domain/recurrence/draft.test.ts`, `src/domain/recurrence/delete.test.ts`, `src/domain/taskRows.test.ts` |
 | Dashboard KPIs and tags | `src/domain/dashboard.test.ts`, `src/domain/dashboardKpis.test.ts`, `src/domain/tagStats.test.ts` |
 | Backup/import/export + portability | `src/state/backupCenterFlow.test.ts`, `src/state/backupService.test.ts`, `src/state/portability.test.ts` |
-| Calendar ICS export/import foundation | `src/calendar/icsWriter.test.ts`, `src/calendar/icsParser.test.ts`, `src/calendar/importMapper.test.ts`, `src/calendar/calendarMapper.test.ts`, `src/calendar/range.test.ts`, `src/calendar/rrule.test.ts`, `src/state/calendarExportService.test.ts`, `src/state/calendarImportService.test.ts` |
+| Calendar ICS export/import (Backup Center + services) | `src/state/backupCenterFlow.test.ts`, `src/state/backupCenterCalendarController.test.ts`, `src/calendar/icsWriter.test.ts`, `src/calendar/icsParser.test.ts`, `src/calendar/importMapper.test.ts`, `src/calendar/calendarMapper.test.ts`, `src/calendar/range.test.ts`, `src/calendar/rrule.test.ts`, `src/state/calendarExportService.test.ts`, `src/state/calendarImportService.test.ts` |
 | Notifications | `src/notifications/notificationManager.test.ts`, `src/notifications/overdueTaskActions.test.ts`, `src/notifications/notifiers/inAppModalNotifier.test.ts`, `src/notifications/notifiers/terminalBellNotifier.test.ts` |
 | Settings/theme/custom1 | `src/settings/settings.test.ts`, `src/theme/themes.test.ts`, `src/theme/resolveThemeTokens.test.ts`, `src/theme/custom1ColorUtils.test.ts` |
 | Brand/logo + left rail | `src/brand/brand.test.ts`, `src/components/LeftRail.tsx`, `src/app/keyRouter.test.ts` |
@@ -383,6 +391,6 @@ Defect report format:
 
 Release candidate is manual-QA ready when:
 1. All smoke cases pass on macOS, Windows, Linux.
-2. Full case set (`QA-001` to `QA-058`) is executed at least once per target platform.
+2. Full case set (`QA-001` to `QA-060`) is executed at least once per target platform.
 3. No open `P0` or `P1` defects remain.
 4. Known automated failures are either resolved or explicitly accepted with owner and follow-up.

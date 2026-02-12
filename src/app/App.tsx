@@ -162,10 +162,20 @@ import {
 } from "../ui/state";
 import {
   backupCenterReducer,
+  hasMatchingCalendarImportDryRun,
   hasMatchingDryRun,
+  isCalendarImportConfirmValid,
   initialBackupCenterState,
-  isReplaceConfirmationValid
+  isReplaceConfirmationValid,
+  shouldRequireCalendarImportConfirm,
+  type BackupCenterScreen as BackupCenterFlowScreen
 } from "../state/backupCenterFlow";
+import {
+  buildDefaultCalendarImportReportPath,
+  runCalendarExportFlow,
+  runCalendarImportCommitFlow,
+  runCalendarImportDryRunFlow
+} from "../state/backupCenterCalendarController";
 import {
   BackupImportPartialError,
   buildTimestampedBackupPath,
@@ -449,20 +459,20 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
     items: [
       {
         title: "Press 1 in Help to open Backup Center",
-        description: "Guided flow: path -> mode -> confirm -> dry-run -> commit."
+        description: "Guided DATA and CALENDAR flows with dry-run safety gates."
       },
       {
         title: "CLI export/import commands available",
         description: "Use backup exports for portability and recovery."
       },
       {
-        title: "Calendar export (ICS): one-way CLI",
+        title: "Calendar (ICS) in Backup Center",
         description: [
-          "Command: tadoi calendar:export --out ./tadoi.ics [--view NAME] [--range next7|month|all]",
-          "Range semantics: next7 = today..+6 local days, month = today..+29, all = full eligible set.",
-          "Scope: open tasks only; recurring series export RRULE+EXDATE; instance overrides export standalone.",
-          "Timezone: uses TZID + VTIMEZONE for local/DST-safe times when available.",
-          "Limitation: export-only (no calendar import/sync)."
+          "Open Backup Center -> Calendar (ICS)... -> Export Calendar (.ics) or Import Calendar (.ics).",
+          "Export: range/view/privacy + timestamped .ics path with deterministic output.",
+          "Import: merge/update/create + horizon cap + mandatory dry-run before commit.",
+          "Round-trip identity: X-TADOI-TASK-ID first, then TADOI UID conventions, then external UID.",
+          "Boundary: one-way actions per run (not live calendar sync)."
         ]
       },
       {
@@ -2050,12 +2060,44 @@ export function App({
     return true;
   }
 
-  function openBackupError(message: string, error?: unknown) {
+  function openBackupError(
+    message: string,
+    error?: unknown,
+    returnScreen?: BackupCenterFlowScreen
+  ) {
     backupDispatch({
       type: "setError",
       message,
-      detail: error ? normalizeErrorDetail(error) : undefined
+      detail: error ? normalizeErrorDetail(error) : undefined,
+      returnScreen
     });
+  }
+
+  function resolveConfiguredCalendarTimeZone(settings: unknown): string | undefined {
+    if (typeof settings !== "object" || settings === null) return undefined;
+    const record = settings as Record<string, unknown>;
+    const timeZone = record.timeZone ?? record.timezone;
+    if (typeof timeZone !== "string") return undefined;
+    const trimmed = timeZone.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }
+
+  async function refreshCalendarTimeZoneHint() {
+    try {
+      const settingsResult = await loadSettings();
+      const fromSettings = resolveConfiguredCalendarTimeZone(settingsResult.settings);
+      const fromSystem = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      backupDispatch({
+        type: "setCalendarTimeZoneHint",
+        value: fromSettings ?? fromSystem ?? undefined
+      });
+    } catch {
+      const fromSystem = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      backupDispatch({
+        type: "setCalendarTimeZoneHint",
+        value: fromSystem ?? undefined
+      });
+    }
   }
 
   async function refreshRuntimeStateFromDisk() {
@@ -2098,7 +2140,7 @@ export function App({
         });
         backupDispatch({ type: "exportSucceeded", outputPath: result.outputPath });
       } catch (error: unknown) {
-        openBackupError("Export failed", error);
+        openBackupError("Export failed", error, "menu");
       }
     })();
   }
@@ -2131,7 +2173,7 @@ export function App({
         });
         backupDispatch({ type: "dryRunSucceeded", summary, inputPath });
       } catch (error: unknown) {
-        openBackupError("Dry-run failed", error);
+        openBackupError("Dry-run failed", error, "import_mode");
       }
     })();
   }
@@ -2165,12 +2207,189 @@ export function App({
             // Best effort refresh for partial success paths.
           }
         }
-        openBackupError("Import failed", error);
+        openBackupError("Import failed", error, "import_dryrun");
       }
     })();
   }
 
-  function handleBackupMenuSelect(index: 0 | 1 | 2) {
+  function resolveCalendarViewSelectionDigit(digit: number): string | undefined | null {
+    if (digit <= 0) return null;
+    if (digit === 1) return undefined;
+    const view = state.savedViews[digit - 2];
+    return view ? view.name : null;
+  }
+
+  function parseCalendarImportHorizonOrThrow(): number {
+    const raw = backupState.calendarImportHorizonInput.trim();
+    const parsed = Number.parseInt(raw, 10);
+    if (!Number.isInteger(parsed) || parsed <= 0 || parsed > 3650) {
+      throw new Error("Horizon days must be a positive integer <= 3650.");
+    }
+    return parsed;
+  }
+
+  function runCalendarExportFromBackupCenter() {
+    if (backupState.screen === "calendar_exporting") return;
+    backupDispatch({ type: "startCalendarExport" });
+    void (async () => {
+      try {
+        const result = await runCalendarExportFlow({
+          range: backupState.calendarExportRange,
+          viewName: backupState.calendarExportViewName,
+          privacy: backupState.calendarExportPrivacy,
+          outputPathInput: backupState.calendarExportPathInput
+        });
+        backupDispatch({ type: "calendarExportSucceeded", result });
+      } catch (error: unknown) {
+        openBackupError("Calendar export failed", error, "calendar_export_confirm");
+      }
+    })();
+  }
+
+  function runCalendarImportDryRunFromBackupCenter() {
+    const inputPath = backupState.calendarImportPathInput.trim();
+    if (!inputPath) {
+      openBackupError("Calendar import path is required.", undefined, "calendar_import_path");
+      return;
+    }
+
+    let horizonDays = 0;
+    try {
+      horizonDays = parseCalendarImportHorizonOrThrow();
+    } catch (error: unknown) {
+      openBackupError(
+        "Invalid horizon days.",
+        error,
+        "calendar_import_horizon"
+      );
+      return;
+    }
+
+    backupDispatch({ type: "startCalendarImportDryRun" });
+    void (async () => {
+      try {
+        const reportPath = await buildDefaultCalendarImportReportPath({});
+        const dryRun = await runCalendarImportDryRunFlow({
+          inputPath,
+          range: backupState.calendarImportRange,
+          viewName: backupState.calendarImportViewName,
+          mode: backupState.calendarImportMode,
+          horizonDays,
+          importTag: backupState.calendarImportTagInput,
+          reportPath
+        });
+        backupDispatch({
+          type: "calendarImportDryRunSucceeded",
+          summary: dryRun.result.summary,
+          hasErrors: dryRun.result.hasErrors,
+          errorReasons: dryRun.errorReasons,
+          fingerprint: dryRun.fingerprint,
+          reportPath: dryRun.result.outputReportPath
+        });
+      } catch (error: unknown) {
+        openBackupError("Calendar dry-run failed", error, "calendar_import_tag");
+      }
+    })();
+  }
+
+  function runCalendarImportCommitFromBackupCenter() {
+    if (!hasMatchingCalendarImportDryRun(backupState)) {
+      openBackupError(
+        "A matching dry-run is required before commit.",
+        undefined,
+        "calendar_import_dryrun"
+      );
+      return;
+    }
+    if (backupState.calendarImportDryRunHasErrors) {
+      openBackupError(
+        "Dry-run reported errors. Resolve errors before commit.",
+        undefined,
+        "calendar_import_dryrun"
+      );
+      return;
+    }
+    if (
+      shouldRequireCalendarImportConfirm(backupState) &&
+      !isCalendarImportConfirmValid(backupState)
+    ) {
+      backupDispatch({ type: "setScreen", screen: "calendar_import_confirm" });
+      return;
+    }
+
+    let horizonDays = 0;
+    try {
+      horizonDays = parseCalendarImportHorizonOrThrow();
+    } catch (error: unknown) {
+      openBackupError(
+        "Invalid horizon days.",
+        error,
+        "calendar_import_horizon"
+      );
+      return;
+    }
+
+    backupDispatch({ type: "startCalendarImporting" });
+    void (async () => {
+      try {
+        const reportPath =
+          backupState.calendarImportDryRunReportPath ??
+          (await buildDefaultCalendarImportReportPath({}));
+        const commitResult = await runCalendarImportCommitFlow({
+          inputPath: backupState.calendarImportPathInput.trim(),
+          range: backupState.calendarImportRange,
+          viewName: backupState.calendarImportViewName,
+          mode: backupState.calendarImportMode,
+          horizonDays,
+          importTag: backupState.calendarImportTagInput,
+          reportPath
+        });
+        backupDispatch({
+          type: "calendarImportSucceeded",
+          summary: commitResult.result.summary,
+          reportPath: commitResult.result.outputReportPath,
+          backupPath: commitResult.backupPath
+        });
+        await refreshRuntimeStateFromDisk();
+      } catch (error: unknown) {
+        openBackupError(
+          "Calendar import failed",
+          error,
+          "calendar_import_dryrun"
+        );
+      }
+    })();
+  }
+
+  function handleCalendarMenuSelect(index: 0 | 1 | 2) {
+    switch (index) {
+      case 0:
+        backupDispatch({ type: "setCalendarExportRange", range: "next7" });
+        backupDispatch({ type: "setCalendarExportViewName", viewName: undefined });
+        backupDispatch({ type: "setCalendarExportPrivacy", privacy: "minimal" });
+        backupDispatch({ type: "setCalendarExportPath", value: "" });
+        void refreshCalendarTimeZoneHint();
+        backupDispatch({ type: "setScreen", screen: "calendar_export_intro" });
+        return;
+      case 1:
+        backupDispatch({ type: "setCalendarImportPath", value: "" });
+        backupDispatch({ type: "setCalendarImportRange", range: "next7" });
+        backupDispatch({ type: "setCalendarImportViewName", viewName: undefined });
+        backupDispatch({ type: "setCalendarImportMode", mode: "merge" });
+        backupDispatch({ type: "setCalendarImportHorizonInput", value: "365" });
+        backupDispatch({ type: "setCalendarImportTagInput", value: "" });
+        backupDispatch({ type: "setCalendarImportConfirmInput", value: "" });
+        backupDispatch({ type: "setScreen", screen: "calendar_import_intro" });
+        return;
+      case 2:
+        backupDispatch({ type: "setScreen", screen: "menu" });
+        return;
+      default:
+        return;
+    }
+  }
+
+  function handleBackupMenuSelect(index: 0 | 1 | 2 | 3) {
     switch (index) {
       case 0:
         runBackupExportFlow();
@@ -2180,6 +2399,56 @@ export function App({
         return;
       case 2:
         backupDispatch({ type: "showDataPath", path: getResolvedDataPath() });
+        return;
+      case 3:
+        backupDispatch({ type: "setScreen", screen: "calendar_menu" });
+        return;
+      default:
+        return;
+    }
+  }
+
+  function handleBackupDigitSelection(digit: number) {
+    switch (backupState.screen) {
+      case "calendar_menu":
+        if (digit >= 1 && digit <= 3) {
+          const index = (digit - 1) as 0 | 1 | 2;
+          backupDispatch({ type: "setCalendarMenuIndex", index });
+          handleCalendarMenuSelect(index);
+        }
+        return;
+      case "calendar_export_range":
+        if (digit === 1) backupDispatch({ type: "setCalendarExportRange", range: "next7" });
+        if (digit === 2) backupDispatch({ type: "setCalendarExportRange", range: "month" });
+        if (digit === 3) backupDispatch({ type: "setCalendarExportRange", range: "all" });
+        return;
+      case "calendar_export_view": {
+        const selected = resolveCalendarViewSelectionDigit(digit);
+        if (selected !== null) {
+          backupDispatch({ type: "setCalendarExportViewName", viewName: selected });
+        }
+        return;
+      }
+      case "calendar_export_privacy":
+        if (digit === 1) backupDispatch({ type: "setCalendarExportPrivacy", privacy: "minimal" });
+        if (digit === 2) backupDispatch({ type: "setCalendarExportPrivacy", privacy: "full" });
+        return;
+      case "calendar_import_range":
+        if (digit === 1) backupDispatch({ type: "setCalendarImportRange", range: "next7" });
+        if (digit === 2) backupDispatch({ type: "setCalendarImportRange", range: "month" });
+        if (digit === 3) backupDispatch({ type: "setCalendarImportRange", range: "all" });
+        return;
+      case "calendar_import_view": {
+        const selected = resolveCalendarViewSelectionDigit(digit);
+        if (selected !== null) {
+          backupDispatch({ type: "setCalendarImportViewName", viewName: selected });
+        }
+        return;
+      }
+      case "calendar_import_mode":
+        if (digit === 1) backupDispatch({ type: "setCalendarImportMode", mode: "merge" });
+        if (digit === 2) backupDispatch({ type: "setCalendarImportMode", mode: "update" });
+        if (digit === 3) backupDispatch({ type: "setCalendarImportMode", mode: "create" });
         return;
       default:
         return;
@@ -2205,15 +2474,24 @@ export function App({
       case "menu":
         handleBackupMenuSelect(backupState.menuIndex);
         return;
+      case "calendar_menu":
+        handleCalendarMenuSelect(backupState.calendarMenuIndex);
+        return;
       case "export_done":
       case "import_done":
       case "show_path":
-      case "error":
         backupDispatch({ type: "openMenu" });
+        return;
+      case "calendar_export_done":
+      case "calendar_import_done":
+        backupDispatch({ type: "setScreen", screen: "calendar_menu" });
+        return;
+      case "error":
+        backupDispatch({ type: "back" });
         return;
       case "import_path":
         if (!backupState.importPathInput.trim()) {
-          openBackupError("Import path is required.");
+          openBackupError("Import path is required.", undefined, "import_path");
           return;
         }
         backupDispatch({ type: "openImportMode" });
@@ -2234,8 +2512,91 @@ export function App({
       case "import_dryrun":
         runBackupImportCommitFlow();
         return;
+      case "calendar_export_intro":
+        backupDispatch({ type: "setScreen", screen: "calendar_export_range" });
+        return;
+      case "calendar_export_range":
+        backupDispatch({ type: "setScreen", screen: "calendar_export_view" });
+        return;
+      case "calendar_export_view":
+        backupDispatch({ type: "setScreen", screen: "calendar_export_privacy" });
+        return;
+      case "calendar_export_privacy":
+        backupDispatch({ type: "setScreen", screen: "calendar_export_path" });
+        return;
+      case "calendar_export_path":
+        backupDispatch({ type: "setScreen", screen: "calendar_export_confirm" });
+        return;
+      case "calendar_export_confirm":
+        runCalendarExportFromBackupCenter();
+        return;
+      case "calendar_import_intro":
+        backupDispatch({ type: "setScreen", screen: "calendar_import_path" });
+        return;
+      case "calendar_import_path":
+        if (!backupState.calendarImportPathInput.trim()) {
+          openBackupError(
+            "Calendar import path is required.",
+            undefined,
+            "calendar_import_path"
+          );
+          return;
+        }
+        backupDispatch({ type: "setScreen", screen: "calendar_import_range" });
+        return;
+      case "calendar_import_range":
+        backupDispatch({ type: "setScreen", screen: "calendar_import_view" });
+        return;
+      case "calendar_import_view":
+        backupDispatch({ type: "setScreen", screen: "calendar_import_mode" });
+        return;
+      case "calendar_import_mode":
+        backupDispatch({ type: "setScreen", screen: "calendar_import_horizon" });
+        return;
+      case "calendar_import_horizon":
+        try {
+          parseCalendarImportHorizonOrThrow();
+        } catch (error: unknown) {
+          openBackupError("Invalid horizon days.", error, "calendar_import_horizon");
+          return;
+        }
+        backupDispatch({ type: "setScreen", screen: "calendar_import_tag" });
+        return;
+      case "calendar_import_tag":
+        runCalendarImportDryRunFromBackupCenter();
+        return;
+      case "calendar_import_dryrun":
+        if (
+          !hasMatchingCalendarImportDryRun(backupState) ||
+          backupState.calendarImportDryRunHasErrors
+        ) {
+          return;
+        }
+        if (
+          shouldRequireCalendarImportConfirm(backupState) &&
+          !isCalendarImportConfirmValid(backupState)
+        ) {
+          backupDispatch({ type: "setScreen", screen: "calendar_import_confirm" });
+          return;
+        }
+        runCalendarImportCommitFromBackupCenter();
+        return;
+      case "calendar_import_confirm":
+        if (!isCalendarImportConfirmValid(backupState)) {
+          openBackupError(
+            "Type IMPORT to confirm this high-impact import.",
+            undefined,
+            "calendar_import_confirm"
+          );
+          return;
+        }
+        runCalendarImportCommitFromBackupCenter();
+        return;
       case "exporting":
       case "importing":
+      case "calendar_exporting":
+      case "calendar_import_dryrun_running":
+      case "calendar_importing":
       default:
         return;
     }
@@ -2339,6 +2700,9 @@ export function App({
       case "BACKUP_SELECT_MENU_OPTION":
         backupDispatch({ type: "setMenuIndex", index: action.index });
         handleBackupMenuSelect(action.index);
+        return;
+      case "BACKUP_SELECT_DIGIT":
+        handleBackupDigitSelection(action.digit);
         return;
       case "BACKUP_SET_IMPORT_MODE":
         backupDispatch({ type: "setImportMode", mode: action.mode });
@@ -5868,17 +6232,52 @@ export function App({
           <BackupCenterScreen
             state={backupState}
             dataPath={getDataFilePath()}
+            savedViewNames={state.savedViews.map((view) => view.name)}
             onImportPathChange={(value) =>
               backupDispatch({ type: "setImportPath", value })
             }
             onReplaceConfirmChange={(value) =>
               backupDispatch({ type: "setReplaceConfirmInput", value })
             }
+            onCalendarExportPathChange={(value) =>
+              backupDispatch({ type: "setCalendarExportPath", value })
+            }
+            onCalendarImportPathChange={(value) =>
+              backupDispatch({ type: "setCalendarImportPath", value })
+            }
+            onCalendarImportHorizonChange={(value) =>
+              backupDispatch({ type: "setCalendarImportHorizonInput", value })
+            }
+            onCalendarImportTagChange={(value) =>
+              backupDispatch({ type: "setCalendarImportTagInput", value })
+            }
+            onCalendarImportConfirmChange={(value) =>
+              backupDispatch({ type: "setCalendarImportConfirmInput", value })
+            }
             onPrimaryAction={handleBackupPrimaryAction}
             onBackAction={handleBackupBackAction}
             onMenuSelect={handleBackupMenuSelect}
+            onCalendarMenuSelect={handleCalendarMenuSelect}
             onImportModeSelect={(mode) =>
               backupDispatch({ type: "setImportMode", mode })
+            }
+            onCalendarExportRangeSelect={(range) =>
+              backupDispatch({ type: "setCalendarExportRange", range })
+            }
+            onCalendarExportViewSelect={(viewName) =>
+              backupDispatch({ type: "setCalendarExportViewName", viewName })
+            }
+            onCalendarExportPrivacySelect={(privacy) =>
+              backupDispatch({ type: "setCalendarExportPrivacy", privacy })
+            }
+            onCalendarImportRangeSelect={(range) =>
+              backupDispatch({ type: "setCalendarImportRange", range })
+            }
+            onCalendarImportViewSelect={(viewName) =>
+              backupDispatch({ type: "setCalendarImportViewName", viewName })
+            }
+            onCalendarImportModeSelect={(mode) =>
+              backupDispatch({ type: "setCalendarImportMode", mode })
             }
           />
         </box>
