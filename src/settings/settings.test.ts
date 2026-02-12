@@ -3,8 +3,11 @@ import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
 import {
+  cycleLogoMode,
   getDefaultSettings,
+  isLogoMode,
   loadSettings,
+  LOGO_MODE_ORDER,
   resetSettingsStateForTests,
   resolveSettingsPaths,
   saveSettingsDebounced,
@@ -198,40 +201,23 @@ describe("loadSettings", () => {
     expect(invalid.settings.logoMode).toBe(DEFAULT_LOGO_MODE);
   });
 
-  it("accepts slash logo mode when provided", async () => {
+  it("accepts all supported logo modes when provided", async () => {
     const homeDir = await makeTempDir();
     const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
     await fs.mkdir(path.dirname(primary), { recursive: true });
-    await fs.writeFile(
-      primary,
-      JSON.stringify({
-        themeId: "retro",
-        logoMode: "alternate_slash32",
-        flashMode: "slow"
-      }),
-      "utf8"
-    );
-
-    const result = await loadSettings({ homeDir, platform: "linux" });
-    expect(result.settings.logoMode).toBe("alternate_slash32");
-  });
-
-  it("accepts blocks logo mode when provided", async () => {
-    const homeDir = await makeTempDir();
-    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
-    await fs.mkdir(path.dirname(primary), { recursive: true });
-    await fs.writeFile(
-      primary,
-      JSON.stringify({
-        themeId: "retro",
-        logoMode: "alternate_blocks32",
-        flashMode: "slow"
-      }),
-      "utf8"
-    );
-
-    const result = await loadSettings({ homeDir, platform: "linux" });
-    expect(result.settings.logoMode).toBe("alternate_blocks32");
+    for (const logoMode of LOGO_MODE_ORDER) {
+      await fs.writeFile(
+        primary,
+        JSON.stringify({
+          themeId: "retro",
+          logoMode,
+          flashMode: "slow"
+        }),
+        "utf8"
+      );
+      const result = await loadSettings({ homeDir, platform: "linux" });
+      expect(result.settings.logoMode).toBe(logoMode);
+    }
   });
 
   it("normalizes invalid notification settings to defaults", async () => {
@@ -459,5 +445,29 @@ describe("saveSettingsStrict", () => {
       notifications: DEFAULT_NOTIFICATIONS,
       customThemes: expectedCustomThemesFor("highContrast")
     });
+  });
+});
+
+describe("logo mode helpers", () => {
+  it("validates every known logo mode", () => {
+    for (const mode of LOGO_MODE_ORDER) {
+      expect(isLogoMode(mode)).toBe(true);
+    }
+    expect(isLogoMode("invalid")).toBe(false);
+    expect(isLogoMode(123)).toBe(false);
+    expect(isLogoMode(null)).toBe(false);
+  });
+
+  it("cycles forward and backward through the full logo mode order", () => {
+    let current = LOGO_MODE_ORDER[0];
+    for (let i = 1; i < LOGO_MODE_ORDER.length; i += 1) {
+      current = cycleLogoMode(current, 1);
+      expect(current).toBe(LOGO_MODE_ORDER[i]);
+    }
+
+    expect(cycleLogoMode(current, 1)).toBe(LOGO_MODE_ORDER[0]);
+    expect(cycleLogoMode(LOGO_MODE_ORDER[0], -1)).toBe(
+      LOGO_MODE_ORDER[LOGO_MODE_ORDER.length - 1]
+    );
   });
 });

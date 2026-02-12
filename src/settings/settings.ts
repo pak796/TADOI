@@ -3,9 +3,12 @@ import { promises as fs } from "fs";
 import path from "path";
 import { ThemeId, ThemeTokens, THEMES, isThemeId } from "../theme/themes";
 import {
+  LOGO_VARIANTS,
+  ROTATING_LOGO_ORDER,
   SETTINGS_DIR_NAME,
   SETTINGS_FALLBACK_DIR_NAME,
-  SETTINGS_FILE_NAME
+  SETTINGS_FILE_NAME,
+  type LogoVariantId
 } from "../brand/brand";
 import { THEME_TOKEN_KEYS, normalizeHexColor } from "../theme/custom1ColorUtils";
 
@@ -48,18 +51,10 @@ export type TadoiSettings = {
 };
 
 export type FlashMode = "slow" | "static";
-export type LogoMode =
-  | "default"
-  | "alternate32"
-  | "alternate_slash32"
-  | "alternate_blocks32"
-  | "rotate";
+export type LogoMode = LogoVariantId | "rotate";
 
 export const LOGO_MODE_ORDER: LogoMode[] = [
-  "default",
-  "alternate32",
-  "alternate_slash32",
-  "alternate_blocks32",
+  ...ROTATING_LOGO_ORDER,
   "rotate"
 ];
 
@@ -147,13 +142,9 @@ export function isFlashMode(value: unknown): value is FlashMode {
 }
 
 export function isLogoMode(value: unknown): value is LogoMode {
-  return (
-    value === "default" ||
-    value === "alternate32" ||
-    value === "alternate_slash32" ||
-    value === "alternate_blocks32" ||
-    value === "rotate"
-  );
+  if (value === "rotate") return true;
+  if (typeof value !== "string") return false;
+  return Object.prototype.hasOwnProperty.call(LOGO_VARIANTS, value);
 }
 
 export function cycleLogoMode(current: LogoMode, direction: 1 | -1 = 1): LogoMode {

@@ -181,7 +181,8 @@ import {
   APP_TAGLINE,
   ENV_VARS,
   PRODUCT_NAME_TM,
-  TRADEMARK_NOTICE_LINES
+  TRADEMARK_NOTICE_LINES,
+  formatLogoModeLabel
 } from "../brand/brand";
 import type { ThemeTokens } from "../theme/themes";
 import { copyToClipboard } from "./copyToClipboard";
@@ -831,16 +832,6 @@ function formatLinkSnippet(label: string | undefined, target: string): string {
   const value = label?.trim().length ? label.trim() : target;
   if (value.length <= 48) return value;
   return `${value.slice(0, 47)}…`;
-}
-
-function formatLogoModeLabel(
-  mode: LogoMode
-): "Default" | "Alternate" | "Slash" | "Blocks" | "Rotate" {
-  if (mode === "default") return "Default";
-  if (mode === "alternate32") return "Alternate";
-  if (mode === "alternate_slash32") return "Slash";
-  if (mode === "alternate_blocks32") return "Blocks";
-  return "Rotate";
 }
 
 type AppProps = {

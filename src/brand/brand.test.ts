@@ -5,12 +5,14 @@ import {
   ASCII_LOGO,
   CLI_NAME,
   LOGO_MAX_WIDTH,
+  LOGO_VARIANT_LABELS,
   LOGO_VARIANTS,
   PRODUCT_NAME,
   PRODUCT_NAME_TM,
   ROTATING_LOGO_ORDER,
   TRADEMARK_NOTICE,
   TRADEMARK_OWNER,
+  formatLogoModeLabel,
   getAsciiLogoLines,
   getHeaderLogoVariant
 } from "./brand";
@@ -32,10 +34,10 @@ describe("brand constants", () => {
     expect(ASCII_LOGO.FULL.length).toBeGreaterThan(0);
     expect(ASCII_LOGO.COMPACT.length).toBeGreaterThan(0);
     expect(ASCII_LOGO.MICRO.length).toBeGreaterThan(0);
-    expect(LOGO_VARIANTS.default.length).toBeGreaterThan(0);
-    expect(LOGO_VARIANTS.alternate32.length).toBeGreaterThan(0);
-    expect(LOGO_VARIANTS.alternate_slash32.length).toBeGreaterThan(0);
-    expect(LOGO_VARIANTS.alternate_blocks32.length).toBeGreaterThan(0);
+    expect(Object.keys(LOGO_VARIANTS)).toHaveLength(12);
+    for (const lines of Object.values(LOGO_VARIANTS)) {
+      expect(lines.length).toBeGreaterThan(0);
+    }
   });
 });
 
@@ -62,16 +64,39 @@ describe("brand logo rendering helpers", () => {
     }
   });
 
-  it("uses default -> alternate -> slash -> blocks order for rotate mode", () => {
+  it("keeps all logo registry variants within max height", () => {
+    for (const variantLines of Object.values(LOGO_VARIANTS)) {
+      expect(variantLines.length).toBeLessThanOrEqual(7);
+    }
+  });
+
+  it("uses the full curated rotation order", () => {
     expect(ROTATING_LOGO_ORDER).toEqual([
       "default",
       "alternate32",
       "alternate_slash32",
-      "alternate_blocks32"
+      "alternate_blocks32",
+      "taag_slant32",
+      "taag_rectangles32",
+      "taag_lcd32",
+      "taag_puffy32",
+      "taag_bulbhead32",
+      "taag_braced32",
+      "taag_double32",
+      "taag_small32"
     ]);
   });
 
   it("keeps blocks logo top row non-blank", () => {
     expect(LOGO_VARIANTS.alternate_blocks32[0].trim().length).toBeGreaterThan(0);
+  });
+
+  it("provides labels for each logo mode including rotate", () => {
+    for (const variantId of Object.keys(LOGO_VARIANTS)) {
+      const typedVariant = variantId as keyof typeof LOGO_VARIANT_LABELS;
+      expect(LOGO_VARIANT_LABELS[typedVariant].trim().length).toBeGreaterThan(0);
+      expect(formatLogoModeLabel(typedVariant).trim().length).toBeGreaterThan(0);
+    }
+    expect(formatLogoModeLabel("rotate")).toBe("Rotate");
   });
 });

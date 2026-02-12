@@ -10,7 +10,7 @@ import {
   APP_TAGLINE,
   LOGO_MAX_WIDTH,
   LOGO_VARIANTS,
-  type LogoVariantId,
+  ROTATING_LOGO_ORDER,
   PRODUCT_NAME_TM
 } from "../brand/brand";
 import type { FlashMode, LogoMode } from "../settings/settings";
@@ -43,12 +43,6 @@ type LeftRailProps = {
 
 const HINT_LINE_WIDTH = 18;
 const LOGO_ROTATE_INTERVAL_MS = 30_000;
-const ROTATE_ORDER: LogoVariantId[] = [
-  "default",
-  "alternate32",
-  "alternate_slash32",
-  "alternate_blocks32"
-];
 const LOGO_RENDER_HEIGHT = Math.max(
   ...Object.values(LOGO_VARIANTS).map((lines) => lines.length)
 );
@@ -217,7 +211,7 @@ export function LeftRail({
     // Rotate mode always starts from the default logo when enabled.
     setRotatingLogoIndex(0);
     const intervalId = setInterval(() => {
-      setRotatingLogoIndex((prev) => (prev + 1) % ROTATE_ORDER.length);
+      setRotatingLogoIndex((prev) => (prev + 1) % ROTATING_LOGO_ORDER.length);
     }, LOGO_ROTATE_INTERVAL_MS);
     return () => clearInterval(intervalId);
   }, [logoMode]);
@@ -225,7 +219,7 @@ export function LeftRail({
   const effectiveLogoId = useMemo(
     () =>
       logoMode === "rotate"
-        ? ROTATE_ORDER[rotatingLogoIndex % ROTATE_ORDER.length]
+        ? ROTATING_LOGO_ORDER[rotatingLogoIndex % ROTATING_LOGO_ORDER.length]
         : logoMode,
     [logoMode, rotatingLogoIndex]
   );
