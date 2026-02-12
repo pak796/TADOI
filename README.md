@@ -149,6 +149,12 @@ Behavior notes:
 - `--range all` requires valid recurring `RRULE` fragments.
 - Import safety baseline: max ICS size `10 MiB` by default, bounded recurrence horizon, hard expansion cap, and mandatory dry-run before commit in Backup Center.
 
+## Stability Notes (As of v0.3.4)
+
+- `Canonical`: filter semantics, routing boundaries, and list/dashboard filtered-data parity.
+- `Current Behavior (May Change)`: dashboard presentation/layout details and theme-onboarding UX flow.
+- Canonical behavior changes require explicit release-note callouts.
+
 ## Keybindings
 
 - LIST mode navigation:

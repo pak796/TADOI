@@ -5,6 +5,10 @@ Runtime baseline: `v0.3.4`
 Package baseline: `0.3.4`
 Persistence schema baseline: `4`
 
+Stability taxonomy:
+- `Canonical`: compatibility contract expected to remain stable across patch/minor updates.
+- `Current Behavior (May Change)`: documented runtime behavior that may evolve without migration.
+
 ## 1) Product Definition
 
 TADOI is a keyboard-first terminal task manager focused on fast personal execution workflows.

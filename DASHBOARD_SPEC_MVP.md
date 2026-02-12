@@ -6,6 +6,8 @@
 > 3) TOP TAGS (OPEN) Pareto chart (right panel)
 >
 > Release baseline: `v0.3.4`.
+> As of: `v0.3.4`.
+> Stability: core filter/routing/parity contracts are `Canonical`; presentation details are `Current Behavior (May Change)`.
 
 ---
 
