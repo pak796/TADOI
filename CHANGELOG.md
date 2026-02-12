@@ -5,33 +5,38 @@ All notable changes to TADOI are documented in this file.
 The format is based on Keep a Changelog.
 
 ## [Unreleased]
+No entries yet.
+
+## [0.3.5] - 2026-02-12
 ### Added
-- Task Links / Attachments in task details:
-  - per-task `links[]` with URL/path targets, optional labels, and optional kind hints
-  - details-pane section `Links / Attachments (N)` with empty state and row rendering
-  - keyboard actions for links focus: open, copy, add (`l`), edit, delete
-  - add/edit/delete and unknown-scheme confirmation modals via existing modal framework
-  - cross-platform safe open/copy wrappers using argument-based process spawning
-  - Add-mode editor shortcut `Ctrl+L` to attach links before saving a new task
-- Calendar import foundation modules (service + parser + mapper):
+- Task links / attachments runtime:
+  - per-task `links[]` support with optional labels/kind hints
+  - details-links focus actions (open/copy/add/edit/delete)
+  - add-mode `Ctrl+L` link attach flow
+  - unknown-scheme confirmation modal path
+- Calendar import foundation and in-app guided flow support:
   - `src/state/calendarImportService.ts`
   - `src/calendar/icsParser.ts`
   - `src/calendar/importMapper.ts`
-  - Supports merge/update/create import modes, dry-run/report output, recurrence override handling, and import-size guardrails.
-- Settings security surface:
-  - `settings.security.nonHttpLinkPolicy` (`prompt` or `block`) persisted with defaults and import/export validation support.
-- Startup path privacy control:
-  - startup logs now redact absolute paths by default.
-  - `TADOI_VERBOSE_PATH_LOGS=1` enables full-path startup logging for debugging.
+  - Backup Center calendar import/export guided steps with dry-run-first commit gating
+- Security settings surface:
+  - `settings.security.nonHttpLinkPolicy` (`prompt|block`)
+  - startup path redaction default with verbose override (`TADOI_VERBOSE_PATH_LOGS=1`)
+- Versioned release docs for `v0.3.5`:
+  - `TADOI_SPEC_v0.3.5.md`
+  - `TADOI_TASKS_v0.3.5.md`
+  - `docs/TADOI_Feature_List_v0.3.5.md`
+  - `docs/TADOI_QA_Guide_v0.3.5.md`
+  - `docs/ops/notion_v0.3.5_sync_pack.md`
 
 ### Changed
-- List-mode focus routing now supports toggling between task list and details links with `Tab` / `Shift+Tab`.
-- URL scheme gating now requires explicit confirmation for non-allowlisted schemes before opening external handlers.
-- Calendar export CLI privacy contract now defaults to `--privacy minimal`; `--privacy full` and `--include-details` provide compatibility/full metadata behavior.
-- Link-open policy is source-aware:
-  - links imported from ICS default to confirm-on-open behavior.
-  - path/file and non-HTTP opens can be blocked entirely via `security.nonHttpLinkPolicy=block`.
-- Windows link open path now uses `explorer` argument-based spawn with control-character rejection in targets.
+- List-mode routing now supports explicit list/details focus toggle via `Tab` / `Shift+Tab`.
+- Link-open policy is source-aware and policy-driven:
+  - calendar-imported links default to confirm-on-open behavior
+  - non-HTTP and path/file targets can be blocked by `security.nonHttpLinkPolicy=block`
+- Calendar export CLI privacy defaults to `--privacy minimal`; `--privacy full` and `--include-details` remain available.
+- Windows open-target path now uses argument-based `explorer` spawn with control-character rejection.
+- Active docs baselines are aligned to `v0.3.5` / `0.3.5`, including install, QA, feature, spec, and task artifacts.
 
 ## [0.3.4] - 2026-02-12
 ### Added

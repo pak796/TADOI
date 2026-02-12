@@ -1,8 +1,8 @@
-# TADOI™ Task List (v0.3.4)
+# TADOI™ Task List (v0.3.5)
 
 Updated: 2026-02-12
-Runtime baseline: `v0.3.4`
-Package baseline: `0.3.4`
+Runtime baseline: `v0.3.5`
+Package baseline: `0.3.5`
 
 ## Conventions
 - Status labels: `Complete`, `In Progress`, `Pending`, `Blocked`.
@@ -57,9 +57,9 @@ Package baseline: `0.3.4`
 ## B) Documentation and Release Governance
 
 ### B1) Completed in this docs sync
-- `TD-001` Update active docs to `v0.3.4` baseline alignment. (`Complete`)
-- `TD-002` Create versioned spec artifact: `TADOI_SPEC_v0.3.4.md`. (`Complete`)
-- `TD-003` Create versioned task artifact: `TADOI_TASKS_v0.3.4.md`. (`Complete`)
+- `TD-001` Update active docs to `v0.3.5` baseline alignment. (`Complete`)
+- `TD-002` Create versioned spec artifact: `TADOI_SPEC_v0.3.5.md`. (`Complete`)
+- `TD-003` Create versioned task artifact: `TADOI_TASKS_v0.3.5.md`. (`Complete`)
 - `TD-004` Refresh installation/QA/feature docs for code-truth parity. (`Complete`)
 - `TD-005` Update changelog/docs index references for active artifacts. (`Complete`)
 - `TD-006` Produce docs audit inventory and Notion sync manifest. (`Complete`)
@@ -88,9 +88,9 @@ Extended functional smoke:
 - `QA-059` security policy block mode for risky link opens
 - `QA-060` startup log redaction and verbose override behavior
 
-Reference: `docs/TADOI_QA_Guide_v0.3.4.md`
+Reference: `docs/TADOI_QA_Guide_v0.3.5.md`
 
-## D) Next Candidate Phase (v0.3.5 Planning)
+## D) Next Candidate Phase (v0.3.6 Planning)
 
 - `PN-001` Docs automation:
   - Generate keybinding docs from `keyRouter` and tests.
@@ -107,7 +107,7 @@ Reference: `docs/TADOI_QA_Guide_v0.3.4.md`
 ## E) Acceptance Criteria for This Task Sheet
 
 This file is considered current when:
-1. Runtime baseline remains `v0.3.4` / `0.3.4`.
+1. Runtime baseline remains `v0.3.5` / `0.3.5`.
 2. Completed items match current code behavior and keybindings.
 3. QA references map to active QA guide case IDs.
 4. Pending items are actionable and non-duplicative.

@@ -5,10 +5,10 @@ Terminal Accessible Digital Organization Interface
 Keyboard-first TUI todo list with due dates, completion, and tag autocomplete (OpenTUI + React on Bun).
 
 Current version: `v0.3.5` (`package.json`: `0.3.5`).
-Feature list: [`docs/TADOI_Feature_List_v0.3.4.md`](./docs/TADOI_Feature_List_v0.3.4.md)
-QA guide: [`docs/TADOI_QA_Guide_v0.3.4.md`](./docs/TADOI_QA_Guide_v0.3.4.md)
-Product spec: [`TADOI_SPEC_v0.3.4.md`](./TADOI_SPEC_v0.3.4.md)
-Task list: [`TADOI_TASKS_v0.3.4.md`](./TADOI_TASKS_v0.3.4.md)
+Feature list: [`docs/TADOI_Feature_List_v0.3.5.md`](./docs/TADOI_Feature_List_v0.3.5.md)
+QA guide: [`docs/TADOI_QA_Guide_v0.3.5.md`](./docs/TADOI_QA_Guide_v0.3.5.md)
+Product spec: [`TADOI_SPEC_v0.3.5.md`](./TADOI_SPEC_v0.3.5.md)
+Task list: [`TADOI_TASKS_v0.3.5.md`](./TADOI_TASKS_v0.3.5.md)
 
 ## Setup
 
@@ -149,7 +149,7 @@ Behavior notes:
 - `--range all` requires valid recurring `RRULE` fragments.
 - Import safety baseline: max ICS size `10 MiB` by default, bounded recurrence horizon, hard expansion cap, and mandatory dry-run before commit in Backup Center.
 
-## Stability Notes (As of v0.3.4)
+## Stability Notes (As of v0.3.5)
 
 - `Canonical`: filter semantics, routing boundaries, and list/dashboard filtered-data parity.
 - `Current Behavior (May Change)`: dashboard presentation/layout details and theme-onboarding UX flow.

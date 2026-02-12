@@ -1,8 +1,8 @@
 # TADOI™ Installation Guide (macOS, Windows, Linux)
 
 This guide covers binary and source installs on macOS, Windows, and Linux.
-Runtime baseline: **v0.3.4**.
-Manual QA reference: `docs/TADOI_QA_Guide_v0.3.4.md`.
+Runtime baseline: **v0.3.5**.
+Manual QA reference: `docs/TADOI_QA_Guide_v0.3.5.md`.
 
 ## 1) What You Need
 
@@ -110,7 +110,8 @@ Optional notification check:
 3. Validate full export mode:
    - `bun run start -- calendar:export --out ./tadoi-install-check-full.ics --privacy full`
 4. Confirm current import scope:
-   - `calendar:import` is not yet exposed as a public CLI command in this baseline.
+   - top-level `calendar:import` CLI command is not exposed in this baseline.
+   - in-app import is available: `?` -> `1` -> `4) Calendar (ICS)...` -> `2) Import Calendar (.ics)`.
 5. Validate link-open security posture:
    - add a local path link and attempt open from details pane.
    - expected: confirmation prompt (or block message if `security.nonHttpLinkPolicy` is set to `block`).

@@ -1,4 +1,4 @@
-# Dashboard + Filter Invariants (As of v0.3.4)
+# Dashboard + Filter Invariants (As of v0.3.5)
 
 Stability split:
 - `Canonical`: filter semantics, routing boundaries, list/dashboard data parity.

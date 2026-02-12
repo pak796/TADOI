@@ -5,8 +5,8 @@ Report bugs and support requests via GitHub Issues in this repository.
 
 ## Before Filing
 - Check the README first (environment requirements, packaging/install steps, and data-path behavior).
-- Confirm you are on a supported terminal and minimum size (`80x24`).
-- Reproduce once on the latest `0.2.5` build/tarball.
+- Confirm you are on a supported terminal and minimum size (`104x24`).
+- Reproduce once on the latest `0.3.5` release (or latest main commit if testing unreleased changes).
 
 ## What to Include in a Bug Report
 Please include:
