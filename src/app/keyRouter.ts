@@ -1,5 +1,5 @@
 import { FocusTarget, Mode } from "../domain/models";
-import { UIState } from "../ui/state";
+import { UIState, type EmptyNuxStep } from "../ui/state";
 import type { BackupCenterScreen } from "../state/backupCenterFlow";
 import type { ImportMode } from "../state/portability";
 
@@ -32,7 +32,16 @@ export type KeyRouterContext = {
 
 export type KeyRouterAction =
   | { scope: "ui"; type: "UNWIND" }
+  | {
+      scope: "ui";
+      type: "OPEN_EMPTY_NUX";
+      step?: EmptyNuxStep;
+      startedFromNux?: boolean;
+      createdTaskId?: string;
+    }
   | { scope: "ui"; type: "DISMISS_EMPTY_NUX" }
+  | { scope: "ui"; type: "CLEAR_EMPTY_NUX" }
+  | { scope: "ui"; type: "SET_MODAL"; modal: UIState["modal"] }
   | { scope: "ui"; type: "TOGGLE_DASHBOARD" }
   | { scope: "ui"; type: "OPEN_HELP" }
   | { scope: "ui"; type: "OPEN_BACKUP_CENTER" }
@@ -289,7 +298,8 @@ function resolveEscapeActions(
     return [{ scope: "ui", type: "SET_G_PREFIX", active: false }];
   }
   if (mode === Mode.MODAL_CONFIRM && uiState.modal?.type === "emptyNux") {
-    return [{ scope: "ui", type: "DISMISS_EMPTY_NUX" }];
+    // Step-specific Escape behavior is handled by resolveModalModeActions.
+    return null;
   }
   if (mode === Mode.BACKUP_CENTER) {
     return [{ scope: "ui", type: "BACKUP_BACK" }];
@@ -315,19 +325,76 @@ function resolveModalModeActions(
   if (uiState.mode !== Mode.MODAL_CONFIRM) return null;
 
   if (uiState.modal?.type === "emptyNux") {
-    if (
-      name === "return" ||
-      name === "enter" ||
-      name === "a" ||
-      name === "A" ||
-      sequence === "a" ||
-      sequence === "A"
-    ) {
-      return [
-        { scope: "ui", type: "DISMISS_EMPTY_NUX" },
-        { scope: "domain", type: "OPEN_ADD" }
-      ];
+    const step = uiState.emptyNux?.step ?? "welcome";
+    const lowerName = name.toLowerCase();
+    const lowerSequence = sequence.toLowerCase();
+    const createActions: KeyRouterAction[] = [
+      {
+        scope: "ui",
+        type: "OPEN_EMPTY_NUX",
+        step: "adding",
+        startedFromNux: true
+      },
+      {
+        scope: "ui",
+        type: "SET_MODAL",
+        modal: null
+      },
+      { scope: "domain", type: "OPEN_ADD" }
+    ];
+
+    if (step === "welcome") {
+      if (
+        name === "return" ||
+        name === "enter" ||
+        lowerName === "a" ||
+        lowerSequence === "a"
+      ) {
+        return createActions;
+      }
+      if (lowerName === "h" || lowerSequence === "h") {
+        return [{ scope: "ui", type: "OPEN_EMPTY_NUX", step: "shortcuts" }];
+      }
+      if (lowerName === "s" || lowerSequence === "s" || name === "escape") {
+        return [{ scope: "ui", type: "DISMISS_EMPTY_NUX" }];
+      }
+      return [];
     }
+
+    if (step === "shortcuts") {
+      if (name === "escape") {
+        return [{ scope: "ui", type: "OPEN_EMPTY_NUX", step: "welcome" }];
+      }
+      if (
+        name === "return" ||
+        name === "enter" ||
+        lowerName === "a" ||
+        lowerSequence === "a"
+      ) {
+        return createActions;
+      }
+      return [];
+    }
+
+    if (step === "celebrate") {
+      if (name === "return" || name === "enter") {
+        return [
+          { scope: "ui", type: "CLEAR_EMPTY_NUX" },
+          { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.TASK_LIST }
+        ];
+      }
+      if (lowerName === "a" || lowerSequence === "a") {
+        return createActions;
+      }
+      if (lowerName === "h" || lowerSequence === "h") {
+        return [{ scope: "ui", type: "OPEN_EMPTY_NUX", step: "shortcuts" }];
+      }
+      if (name === "escape") {
+        return [{ scope: "ui", type: "CLEAR_EMPTY_NUX" }];
+      }
+      return [];
+    }
+
     return [];
   }
   if (uiState.modal?.type === "delete") {

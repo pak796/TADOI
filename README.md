@@ -4,11 +4,11 @@ Terminal Accessible Digital Organization Interface
 
 Keyboard-first TUI todo list with due dates, completion, and tag autocomplete (OpenTUI + React on Bun).
 
-Current version: `v0.3.5` (`package.json`: `0.3.5`).
-Feature list: [`docs/TADOI_Feature_List_v0.3.5.md`](./docs/TADOI_Feature_List_v0.3.5.md)
-QA guide: [`docs/TADOI_QA_Guide_v0.3.5.md`](./docs/TADOI_QA_Guide_v0.3.5.md)
-Product spec: [`TADOI_SPEC_v0.3.5.md`](./TADOI_SPEC_v0.3.5.md)
-Task list: [`TADOI_TASKS_v0.3.5.md`](./TADOI_TASKS_v0.3.5.md)
+Current version: `v0.3.6` (`package.json`: `0.3.6`).
+Feature list: [`docs/TADOI_Feature_List_v0.3.6.md`](./docs/TADOI_Feature_List_v0.3.6.md)
+QA guide: [`docs/TADOI_QA_Guide_v0.3.6.md`](./docs/TADOI_QA_Guide_v0.3.6.md)
+Product spec: [`TADOI_SPEC_v0.3.6.md`](./TADOI_SPEC_v0.3.6.md)
+Task list: [`TADOI_TASKS_v0.3.6.md`](./TADOI_TASKS_v0.3.6.md)
 
 ## Setup
 
@@ -161,7 +161,7 @@ Behavior notes:
 - `calendar:import` exit codes: `0` success, `1` usage/validation/parse errors (including import-domain errors), `2` filesystem errors.
 - Report write failures are non-fatal warnings when import processing succeeds.
 
-## Stability Notes (As of v0.3.5)
+## Stability Notes (As of v0.3.6)
 
 - `Canonical`: filter semantics, routing boundaries, and list/dashboard filtered-data parity.
 - `Current Behavior (May Change)`: dashboard presentation/layout details and theme-onboarding UX flow.
@@ -490,7 +490,7 @@ bun run pack:smoke
 Install from generated tarball (example):
 
 ```bash
-bun add -g ./dist/tarball/tadoi-0.3.5.tgz
+bun add -g ./dist/tarball/tadoi-0.3.6.tgz
 tadoi --help
 ```
 

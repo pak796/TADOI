@@ -1,8 +1,8 @@
 # TADOI™ Documentation Audit Report
 
-Date: 2026-02-12  
+Date: 2026-02-13  
 Scope: full documentator sync (local markdown + Notion update-pack generation)  
-Baseline: runtime `v0.3.5`, package `0.3.5`
+Baseline: runtime `v0.3.6`, package `0.3.6`
 
 ## 1) Summary
 
@@ -12,19 +12,19 @@ This audit re-validated documentation against current code and tests with focus 
 - QA/installation/readme contract consistency
 
 Primary outcomes:
-- Active docs remain on `v0.3.5` / `0.3.5`.
+- Active docs remain on `v0.3.6` / `0.3.6`.
 - Persistence schema references are aligned to `5` for active release docs.
 - Calendar docs now accurately state:
   - CLI export is available (`calendar:export`)
+  - CLI import is available (`calendar:import`)
   - in-app Backup Center exposes guided calendar export/import flows
-  - import foundation exists at service level, and top-level `calendar:import` CLI routing is not yet exposed
 - Security/privacy docs now include:
   - `security.nonHttpLinkPolicy` behavior
   - source-aware link confirmation for calendar-imported links
   - startup path redaction default + verbose opt-in flag
 - Engagement docs now include non-interactive milestone toast behavior and persisted engagement-state coverage.
 - QA guide snapshot and checklist are aligned to current validation:
-  - `bun run test`: `445 pass / 0 fail / 445 total`
+  - `bun run test`: `555 pass / 0 fail / 555 total`
   - `bun run typecheck`: pass
 
 ## 2) Code-Truth Verification Sources
@@ -54,31 +54,30 @@ Key files used as canonical behavior sources:
 - README calendar section now reflects CLI export plus Backup Center calendar import/export behavior.
 - Feature/spec/task docs now include security policy and privacy controls (`nonHttpLinkPolicy`, redacted startup logs).
 - Calendar and security docs now point to current audit/remediation artifacts under `docs/audits/`.
-- Automated validation snapshot updated from older counts to current `445/445`.
-- Notion update payload is prepared at `docs/ops/notion_v0.3.5_sync_pack.md`; direct MCP writes are currently blocked by auth refresh failure.
+- Automated validation snapshot updated from older counts to current `555/555`.
+- Notion update payload is prepared at `docs/ops/notion_v0.3.6_sync_pack.md` for direct MCP page updates in the current session.
 
 ### Known intentional boundaries
-- Import service implementation and in-app exposure exist, but top-level CLI import exposure is intentionally pending.
 - Historical versioned docs may include older snapshots by design and are not treated as active release source-of-truth.
 
 ## 4) Files Updated in This Audit Pass
 
 - `README.md`
 - `CHANGELOG.md`
-- `TADOI_SPEC_v0.3.5.md`
-- `TADOI_TASKS_v0.3.5.md`
+- `TADOI_SPEC_v0.3.6.md`
+- `TADOI_TASKS_v0.3.6.md`
 - `docs/TADOI_Installation_Guide_All_Platforms.md`
-- `docs/TADOI_Feature_List_v0.3.5.md`
-- `docs/TADOI_QA_Guide_v0.3.5.md`
+- `docs/TADOI_Feature_List_v0.3.6.md`
+- `docs/TADOI_QA_Guide_v0.3.6.md`
 - `docs/README.md`
 - `docs/DOC_INDEX.md`
 - `docs/DOC_AUDIT_REPORT.md`
 - `docs/NOTION_SYNC.md`
-- `docs/ops/notion_v0.3.5_sync_pack.md`
+- `docs/ops/notion_v0.3.6_sync_pack.md`
 
 ## 5) Validation Commands and Results
 
-- `bun run test` -> `445 pass / 0 fail / 445 total`
+- `bun run test` -> `555 pass / 0 fail / 555 total`
 - `bun run typecheck` -> pass
 
 ## 6) Notion Sync Scope (Documents Database)
@@ -95,8 +94,7 @@ Pages targeted for update:
 - Task list: `3055aa1e-f93f-8159-b07c-ee692df137eb`
 
 Execution note:
-- Direct Notion updates were not applied in this run because MCP auth refresh currently returns `invalid_grant`.
-- Apply `docs/ops/notion_v0.3.5_sync_pack.md` manually in Notion until MCP auth is restored.
+- Notion page IDs and source mappings are documented for direct MCP updates in this pass.
 
 ## 7) Next Recommended Documentation Work
 

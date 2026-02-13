@@ -75,6 +75,14 @@ export type UIEmptyNuxModal = {
   type: "emptyNux";
 };
 
+export type EmptyNuxStep = "welcome" | "shortcuts" | "adding" | "celebrate";
+
+export type EmptyNuxState = {
+  step: EmptyNuxStep;
+  startedFromNux?: boolean;
+  createdTaskId?: string;
+};
+
 export type UIConfirmModal =
   | UIDeleteModal
   | UIOverdueModal
@@ -92,6 +100,8 @@ export type UIState = {
   modal: UIConfirmModal | null;
   notificationModalQueue: TaskOverdueEvent[];
   emptyNuxDismissed: boolean;
+  emptyNux?: EmptyNuxState;
+  emptyNuxCelebratePending?: boolean;
   previousMode: ModeType;
   previousFocus: FocusTarget;
 };
@@ -100,8 +110,15 @@ export type UIAction =
   | { type: "setMode"; mode: ModeType }
   | { type: "setFocus"; focus: FocusTarget }
   | { type: "setModal"; modal: UIConfirmModal | null }
-  | { type: "OPEN_EMPTY_NUX" }
+  | {
+      type: "OPEN_EMPTY_NUX";
+      step?: EmptyNuxStep;
+      startedFromNux?: boolean;
+      createdTaskId?: string;
+    }
   | { type: "DISMISS_EMPTY_NUX" }
+  | { type: "CLEAR_EMPTY_NUX" }
+  | { type: "SET_EMPTY_NUX_CELEBRATE_PENDING"; pending: boolean }
   | { type: "enqueueNotificationModal"; event: TaskOverdueEvent }
   | { type: "dequeueNotificationModal" }
   | { type: "clearNotificationModalQueue" }
@@ -125,9 +142,41 @@ export const initialUIState: UIState = {
   modal: null,
   notificationModalQueue: [],
   emptyNuxDismissed: false,
+  emptyNux: undefined,
+  emptyNuxCelebratePending: false,
   previousMode: Mode.LIST,
   previousFocus: FocusTarget.TASK_LIST
 };
+
+export function openEmptyNux(options?: {
+  step?: EmptyNuxStep;
+  startedFromNux?: boolean;
+  createdTaskId?: string;
+}): UIAction {
+  return {
+    type: "OPEN_EMPTY_NUX",
+    ...(options ?? {})
+  };
+}
+
+export function dismissEmptyNux(): UIAction {
+  return {
+    type: "DISMISS_EMPTY_NUX"
+  };
+}
+
+export function clearEmptyNux(): UIAction {
+  return {
+    type: "CLEAR_EMPTY_NUX"
+  };
+}
+
+export function setEmptyNuxCelebratePending(pending: boolean): UIAction {
+  return {
+    type: "SET_EMPTY_NUX_CELEBRATE_PENDING",
+    pending
+  };
+}
 
 export function uiReducer(state: UIState, action: UIAction): UIState {
   switch (action.type) {
@@ -138,25 +187,69 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
     case "setModal":
       return { ...state, modal: action.modal };
     case "OPEN_EMPTY_NUX":
-      if (state.modal || state.emptyNuxDismissed) {
+      if (state.modal && state.modal.type !== "emptyNux") {
         return state;
       }
+      if (state.emptyNuxDismissed) {
+        return state;
+      }
+      {
+        const step = action.step ?? state.emptyNux?.step ?? "welcome";
+        const nextEmptyNux: EmptyNuxState = {
+          ...(state.emptyNux ?? { step }),
+          step,
+          ...(action.startedFromNux !== undefined
+            ? { startedFromNux: action.startedFromNux }
+            : {}),
+          ...(action.createdTaskId !== undefined
+            ? { createdTaskId: action.createdTaskId }
+            : {})
+        };
+        return {
+          ...state,
+          modal: {
+            type: "emptyNux"
+          },
+          emptyNux: nextEmptyNux,
+          emptyNuxCelebratePending:
+            step === "celebrate" ? false : state.emptyNuxCelebratePending
+        };
+      }
+    case "DISMISS_EMPTY_NUX": {
+      const closingActiveEmptyNux = state.modal?.type === "emptyNux";
       return {
         ...state,
-        modal: {
-          type: "emptyNux"
-        }
+        ...(closingActiveEmptyNux
+          ? {
+              mode: Mode.LIST,
+              focus: FocusTarget.TASK_LIST
+            }
+          : {}),
+        emptyNuxDismissed: true,
+        modal: closingActiveEmptyNux ? null : state.modal,
+        emptyNux: undefined,
+        emptyNuxCelebratePending: false
       };
-    case "DISMISS_EMPTY_NUX":
-      if (state.modal?.type !== "emptyNux") {
-        return state;
-      }
+    }
+    case "CLEAR_EMPTY_NUX": {
+      const closingActiveEmptyNux = state.modal?.type === "emptyNux";
       return {
         ...state,
-        mode: Mode.LIST,
-        focus: FocusTarget.TASK_LIST,
-        modal: null,
-        emptyNuxDismissed: true
+        ...(closingActiveEmptyNux
+          ? {
+              mode: Mode.LIST,
+              focus: FocusTarget.TASK_LIST
+            }
+          : {}),
+        modal: closingActiveEmptyNux ? null : state.modal,
+        emptyNux: undefined,
+        emptyNuxCelebratePending: false
+      };
+    }
+    case "SET_EMPTY_NUX_CELEBRATE_PENDING":
+      return {
+        ...state,
+        emptyNuxCelebratePending: action.pending
       };
     case "enqueueNotificationModal":
       return {
@@ -204,7 +297,9 @@ export function unwind(state: UIState): UnwindResult | null {
           mode: Mode.LIST,
           focus: FocusTarget.TASK_LIST,
           modal: null,
-          emptyNuxDismissed: true
+          emptyNuxDismissed: true,
+          emptyNux: undefined,
+          emptyNuxCelebratePending: false
         },
         clearEditorDraft: false
       };

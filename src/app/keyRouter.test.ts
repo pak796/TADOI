@@ -278,7 +278,7 @@ describe("handleKey", () => {
   });
 
   it("routes empty NUX modal keys", () => {
-    const modalState = {
+    const welcomeModalState = {
       ...initialUIState,
       mode: Mode.MODAL_CONFIRM,
       focus: FocusTarget.MODAL,
@@ -287,19 +287,61 @@ describe("handleKey", () => {
       }
     };
 
-    expect(run({ name: "a", sequence: "a" }, { uiState: modalState })).toEqual([
-      { scope: "ui", type: "DISMISS_EMPTY_NUX" },
+    const createFromWelcome = [
+      {
+        scope: "ui",
+        type: "OPEN_EMPTY_NUX" as const,
+        step: "adding" as const,
+        startedFromNux: true
+      },
+      { scope: "ui", type: "SET_MODAL" as const, modal: null },
       { scope: "domain", type: "OPEN_ADD" }
+    ] as const;
+
+    expect(run({ name: "a", sequence: "a" }, { uiState: welcomeModalState })).toEqual(
+      createFromWelcome
+    );
+    expect(run({ name: "enter" }, { uiState: welcomeModalState })).toEqual(
+      createFromWelcome
+    );
+    expect(run({ name: "h", sequence: "h" }, { uiState: welcomeModalState })).toEqual([
+      { scope: "ui", type: "OPEN_EMPTY_NUX", step: "shortcuts" }
     ]);
-    expect(run({ name: "A", sequence: "A" }, { uiState: modalState })).toEqual([
-      { scope: "ui", type: "DISMISS_EMPTY_NUX" },
-      { scope: "domain", type: "OPEN_ADD" }
+    expect(run({ name: "s", sequence: "s" }, { uiState: welcomeModalState })).toEqual([
+      { scope: "ui", type: "DISMISS_EMPTY_NUX" }
     ]);
-    expect(run({ name: "enter" }, { uiState: modalState })).toEqual([
-      { scope: "ui", type: "DISMISS_EMPTY_NUX" },
-      { scope: "domain", type: "OPEN_ADD" }
+    expect(run({ name: "escape" }, { uiState: welcomeModalState })).toEqual([
+      { scope: "ui", type: "DISMISS_EMPTY_NUX" }
     ]);
-    expect(run({ name: "j", sequence: "j" }, { uiState: modalState })).toEqual([]);
+
+    const shortcutsModalState = {
+      ...welcomeModalState,
+      emptyNux: { step: "shortcuts" as const }
+    };
+    expect(run({ name: "escape" }, { uiState: shortcutsModalState })).toEqual([
+      { scope: "ui", type: "OPEN_EMPTY_NUX", step: "welcome" }
+    ]);
+    expect(run({ name: "a", sequence: "a" }, { uiState: shortcutsModalState })).toEqual(
+      createFromWelcome
+    );
+
+    const celebrateModalState = {
+      ...welcomeModalState,
+      emptyNux: { step: "celebrate" as const, startedFromNux: true, createdTaskId: "task-1" }
+    };
+    expect(run({ name: "enter" }, { uiState: celebrateModalState })).toEqual([
+      { scope: "ui", type: "CLEAR_EMPTY_NUX" },
+      { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.TASK_LIST }
+    ]);
+    expect(run({ name: "a", sequence: "a" }, { uiState: celebrateModalState })).toEqual(
+      createFromWelcome
+    );
+    expect(run({ name: "h", sequence: "h" }, { uiState: celebrateModalState })).toEqual([
+      { scope: "ui", type: "OPEN_EMPTY_NUX", step: "shortcuts" }
+    ]);
+    expect(run({ name: "escape" }, { uiState: celebrateModalState })).toEqual([
+      { scope: "ui", type: "CLEAR_EMPTY_NUX" }
+    ]);
   });
 
   it("keeps list navigation active only in list/task_list focus", () => {

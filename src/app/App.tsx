@@ -160,11 +160,16 @@ import {
 import { settingsReducer } from "../state/settingsStore";
 import { isEditorMode } from "../ui/modeFocus";
 import {
+  clearEmptyNux,
+  dismissEmptyNux,
   initialUIState,
+  openEmptyNux,
+  setEmptyNuxCelebratePending,
   uiReducer,
   unwind,
   type UIState,
   type UIDeleteModal,
+  type EmptyNuxStep,
   type UITaskLinkFormField,
   type UITaskLinkFormModal,
   type UITaskLinkModalKind
@@ -1170,7 +1175,8 @@ export function App({
   const lastSuccessfulSaveAtRef = useRef<number | undefined>(undefined);
   const gPrefixTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navBannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const emptyNuxEligibilityCheckedRef = useRef(false);
+  const previousTaskCountRef = useRef(state.tasks.length);
+  const pendingCelebrateTaskIdRef = useRef<string | undefined>(undefined);
   const helpScrollTopRef = useRef(0);
   const helpFocusedSectionRef = useRef(0);
   const helpReturnContextRef = useRef({
@@ -1705,6 +1711,11 @@ export function App({
   const activeOverdueTask = activeOverdueModal
     ? findTaskForOverdueEvent(activeOverdueModal.event)
     : undefined;
+  const isNuxIdle =
+    uiState.modal === null &&
+    uiState.notificationModalQueue.length === 0 &&
+    uiState.mode === Mode.LIST;
+  const activeEmptyNuxStep: EmptyNuxStep = uiState.emptyNux?.step ?? "welcome";
   const blockingOverlayOpen = isBlockingOverlayOpen(uiState);
   const activeEngagementToast =
     !blockingOverlayOpen && state.engagementToastActive ? state.engagementToastActive : null;
@@ -1820,30 +1831,87 @@ export function App({
   }, [state.tasks]);
 
   useEffect(() => {
-    if (emptyNuxEligibilityCheckedRef.current) return;
-    if (uiState.modal) return;
-    if (uiState.notificationModalQueue.length > 0) return;
-
-    if (state.tasks.length > 0) {
-      emptyNuxEligibilityCheckedRef.current = true;
-      return;
-    }
-
+    if (state.tasks.length !== 0) return;
     if (uiState.emptyNuxDismissed) {
-      emptyNuxEligibilityCheckedRef.current = true;
       return;
     }
-
-    uiDispatch({ type: "OPEN_EMPTY_NUX" });
-    uiDispatch({ type: "setMode", mode: Mode.MODAL_CONFIRM });
-    uiDispatch({ type: "setFocus", focus: FocusTarget.MODAL });
-    emptyNuxEligibilityCheckedRef.current = true;
+    if (!isNuxIdle) return;
+    openEmptyNuxModal({ step: "welcome" });
   }, [
     state.tasks.length,
-    uiState.modal,
-    uiState.notificationModalQueue.length,
-    uiState.emptyNuxDismissed
+    uiState.emptyNuxDismissed,
+    isNuxIdle
   ]);
+
+  useEffect(() => {
+    if (uiState.emptyNux?.step !== "adding") return;
+    if (state.tasks.length !== 0) return;
+    if (uiState.emptyNuxDismissed) return;
+    if (!isNuxIdle) return;
+    openEmptyNuxModal({
+      step: "welcome",
+      startedFromNux: true,
+      createdTaskId: uiState.emptyNux.createdTaskId
+    });
+  }, [
+    state.tasks.length,
+    uiState.emptyNux?.step,
+    uiState.emptyNux?.createdTaskId,
+    uiState.emptyNuxDismissed,
+    isNuxIdle
+  ]);
+
+  useEffect(() => {
+    const previousTaskCount = previousTaskCountRef.current;
+    const nextTaskCount = state.tasks.length;
+    const transitionedFromEmptyToNonEmpty = previousTaskCount === 0 && nextTaskCount > 0;
+
+    if (
+      transitionedFromEmptyToNonEmpty &&
+      uiState.emptyNux?.step === "adding" &&
+      uiState.emptyNux.startedFromNux === true
+    ) {
+      const createdTaskId = state.selectedId;
+      if (isNuxIdle) {
+        openEmptyNuxModal({
+          step: "celebrate",
+          startedFromNux: true,
+          createdTaskId
+        });
+      } else {
+        pendingCelebrateTaskIdRef.current = createdTaskId;
+        uiDispatch(setEmptyNuxCelebratePending(true));
+      }
+    }
+
+    previousTaskCountRef.current = nextTaskCount;
+  }, [
+    state.tasks.length,
+    state.selectedId,
+    uiState.emptyNux?.step,
+    uiState.emptyNux?.startedFromNux,
+    isNuxIdle
+  ]);
+
+  useEffect(() => {
+    if (!uiState.emptyNuxCelebratePending) return;
+    if (!isNuxIdle) return;
+
+    uiDispatch(setEmptyNuxCelebratePending(false));
+    openEmptyNuxModal({
+      step: "celebrate",
+      startedFromNux: true,
+      createdTaskId: pendingCelebrateTaskIdRef.current
+    });
+    pendingCelebrateTaskIdRef.current = undefined;
+  }, [uiState.emptyNuxCelebratePending, isNuxIdle]);
+
+  useEffect(() => {
+    if (state.tasks.length === 0) return;
+    if (uiState.modal?.type !== "emptyNux") return;
+    if (uiState.emptyNux?.startedFromNux === true) return;
+    uiDispatch(clearEmptyNux());
+  }, [state.tasks.length, uiState.modal, uiState.emptyNux?.startedFromNux]);
 
   useEffect(() => {
     if (
@@ -2799,8 +2867,21 @@ export function App({
       case "UNWIND":
         applyEscUnwind();
         return;
+      case "OPEN_EMPTY_NUX":
+        openEmptyNuxModal({
+          step: action.step,
+          startedFromNux: action.startedFromNux,
+          createdTaskId: action.createdTaskId
+        });
+        return;
       case "DISMISS_EMPTY_NUX":
-        uiDispatch({ type: "DISMISS_EMPTY_NUX" });
+        uiDispatch(dismissEmptyNux());
+        return;
+      case "CLEAR_EMPTY_NUX":
+        uiDispatch(clearEmptyNux());
+        return;
+      case "SET_MODAL":
+        uiDispatch({ type: "setModal", modal: action.modal });
         return;
       case "TOGGLE_DASHBOARD":
         toggleDashboard();
@@ -5324,13 +5405,58 @@ export function App({
     applyEscUnwind();
   }
 
+  function openEmptyNuxModal(options?: {
+    step?: EmptyNuxStep;
+    startedFromNux?: boolean;
+    createdTaskId?: string;
+  }) {
+    if (uiState.modal && uiState.modal.type !== "emptyNux") return;
+    uiDispatch(openEmptyNux(options));
+    uiDispatch({ type: "setMode", mode: Mode.MODAL_CONFIRM });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.MODAL });
+  }
+
+  function startEmptyNuxAddFlow() {
+    uiDispatch(
+      openEmptyNux({
+        step: "adding",
+        startedFromNux: true
+      })
+    );
+    uiDispatch({ type: "setModal", modal: null });
+    openAdd();
+  }
+
   function dismissEmptyNuxModal() {
-    uiDispatch({ type: "DISMISS_EMPTY_NUX" });
+    uiDispatch(dismissEmptyNux());
+  }
+
+  function showEmptyNuxShortcutsModal() {
+    openEmptyNuxModal({ step: "shortcuts" });
+  }
+
+  function returnToEmptyNuxWelcomeModal() {
+    openEmptyNuxModal({ step: "welcome" });
+  }
+
+  function clearEmptyNuxWalkthrough() {
+    uiDispatch(clearEmptyNux());
+  }
+
+  function closeCelebrateToList() {
+    const createdTaskId = uiState.emptyNux?.createdTaskId;
+    uiDispatch(clearEmptyNux());
+    clearPendingGPrefix();
+    closeViewsOverlay();
+    uiDispatch({ type: "setMode", mode: Mode.LIST });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.TASK_LIST });
+    if (createdTaskId) {
+      dispatch({ type: "setSelected", id: createdTaskId });
+    }
   }
 
   function createTaskFromEmptyNuxModal() {
-    uiDispatch({ type: "DISMISS_EMPTY_NUX" });
-    openAdd();
+    startEmptyNuxAddFlow();
   }
 
   function getActiveOverdueModalEvent(): TaskOverdueEvent | null {
@@ -6593,8 +6719,13 @@ export function App({
             </box>
           ) : uiState.modal.type === "emptyNux" ? (
             <EmptyNuxModal
-              onClose={dismissEmptyNuxModal}
+              step={activeEmptyNuxStep}
+              onDismissSession={dismissEmptyNuxModal}
+              onClearWalkthrough={clearEmptyNuxWalkthrough}
               onCreateTask={createTaskFromEmptyNuxModal}
+              onShowShortcuts={showEmptyNuxShortcutsModal}
+              onBackToWelcome={returnToEmptyNuxWelcomeModal}
+              onGoToList={closeCelebrateToList}
             />
           ) : activeOverdueModal ? (
             <OverdueNotificationModal

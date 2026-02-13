@@ -4,10 +4,10 @@ This index links the current user-facing TADOI documentation set.
 
 ## Core Docs
 - [Installation Guide (All Platforms)](./TADOI_Installation_Guide_All_Platforms.md)
-- [QA Guide (v0.3.5)](./TADOI_QA_Guide_v0.3.5.md)
-- [Feature List (v0.3.5)](./TADOI_Feature_List_v0.3.5.md)
-- [Product Spec (v0.3.5)](../TADOI_SPEC_v0.3.5.md)
-- [Task List (v0.3.5)](../TADOI_TASKS_v0.3.5.md)
+- [QA Guide (v0.3.6)](./TADOI_QA_Guide_v0.3.6.md)
+- [Feature List (v0.3.6)](./TADOI_Feature_List_v0.3.6.md)
+- [Product Spec (v0.3.6)](../TADOI_SPEC_v0.3.6.md)
+- [Task List (v0.3.6)](../TADOI_TASKS_v0.3.6.md)
 - [Calendar Export Spec (v0.2)](../TADOI_Spec_Calendar_Export_ICS_v0.2.md)
 - [Calendar Import Spec (v0.1)](../TADOI_Spec_Calendar_Import_ICS_RoundTrip_v0.1.md)
 - [Task Links and Attachments Spec (v0.2)](../TADOI_Task_Links_Attachments_Spec_v0.2.md)
@@ -17,7 +17,7 @@ This index links the current user-facing TADOI documentation set.
 - [Backup Center (In-App)](./backup-center.md)
 - [Recurring Tasks Implementation Plan](./recurring-tasks-implementation-plan.md)
 - [Branding Operations Guide](./ops/branding.md)
-- [Notion Sync Pack (v0.3.5)](./ops/notion_v0.3.5_sync_pack.md)
+- [Notion Sync Pack (v0.3.6)](./ops/notion_v0.3.6_sync_pack.md)
 - [Documentation Index](./DOC_INDEX.md)
 - [Documentation Audit Report](./DOC_AUDIT_REPORT.md)
 - [Notion Sync Checklist](./NOTION_SYNC.md)
@@ -25,8 +25,8 @@ This index links the current user-facing TADOI documentation set.
 - [Security/Privacy Remediation Plan (2026-02-12)](./audits/tadoi-security-privacy-remediation-2026-02-12.md)
 
 ## Release Context
-- Runtime baseline: `v0.3.5`
-- Package baseline: `0.3.5`
+- Runtime baseline: `v0.3.6`
+- Package baseline: `0.3.6`
 
 ## Trademark Notice
 TADOI™ is a trademark of <OWNER>. Other names may be trademarks of their respective owners.

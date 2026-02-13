@@ -15,6 +15,8 @@ describe("ui state", () => {
     expect(initialUIState.mode).toBe(Mode.LIST);
     expect(initialUIState.focus).toBe(FocusTarget.TASK_LIST);
     expect(initialUIState.emptyNuxDismissed).toBe(false);
+    expect(initialUIState.emptyNux).toBeUndefined();
+    expect(initialUIState.emptyNuxCelebratePending).toBe(false);
   });
 
   it("enqueues and dequeues notification modal events", () => {
@@ -37,9 +39,10 @@ describe("ui state", () => {
     expect(cleared.notificationModalQueue).toEqual([]);
   });
 
-  it("opens empty NUX only when eligible", () => {
+  it("opens empty NUX with default welcome step and merges payload", () => {
     const opened = uiReducer(initialUIState, { type: "OPEN_EMPTY_NUX" });
     expect(opened.modal).toEqual({ type: "emptyNux" });
+    expect(opened.emptyNux).toEqual({ step: "welcome" });
 
     const blockedByModal = uiReducer(
       {
@@ -62,6 +65,19 @@ describe("ui state", () => {
       { type: "OPEN_EMPTY_NUX" }
     );
     expect(blockedByDismissed.modal).toBeNull();
+
+    const merged = uiReducer(opened, {
+      type: "OPEN_EMPTY_NUX",
+      step: "shortcuts",
+      startedFromNux: true,
+      createdTaskId: "task-123"
+    });
+    expect(merged.modal).toEqual({ type: "emptyNux" });
+    expect(merged.emptyNux).toEqual({
+      step: "shortcuts",
+      startedFromNux: true,
+      createdTaskId: "task-123"
+    });
   });
 
   it("dismisses empty NUX and marks session dismissed", () => {
@@ -70,7 +86,9 @@ describe("ui state", () => {
         ...initialUIState,
         mode: Mode.MODAL_CONFIRM,
         focus: FocusTarget.MODAL,
-        modal: { type: "emptyNux" }
+        modal: { type: "emptyNux" },
+        emptyNux: { step: "celebrate", startedFromNux: true, createdTaskId: "task-1" },
+        emptyNuxCelebratePending: true
       },
       { type: "DISMISS_EMPTY_NUX" }
     );
@@ -79,6 +97,43 @@ describe("ui state", () => {
     expect(dismissed.focus).toBe(FocusTarget.TASK_LIST);
     expect(dismissed.modal).toBeNull();
     expect(dismissed.emptyNuxDismissed).toBe(true);
+    expect(dismissed.emptyNux).toBeUndefined();
+    expect(dismissed.emptyNuxCelebratePending).toBe(false);
+  });
+
+  it("clears empty NUX transient state without session dismissal", () => {
+    const cleared = uiReducer(
+      {
+        ...initialUIState,
+        mode: Mode.MODAL_CONFIRM,
+        focus: FocusTarget.MODAL,
+        modal: { type: "emptyNux" },
+        emptyNux: { step: "shortcuts" },
+        emptyNuxCelebratePending: true
+      },
+      { type: "CLEAR_EMPTY_NUX" }
+    );
+
+    expect(cleared.mode).toBe(Mode.LIST);
+    expect(cleared.focus).toBe(FocusTarget.TASK_LIST);
+    expect(cleared.modal).toBeNull();
+    expect(cleared.emptyNuxDismissed).toBe(false);
+    expect(cleared.emptyNux).toBeUndefined();
+    expect(cleared.emptyNuxCelebratePending).toBe(false);
+  });
+
+  it("toggles empty NUX celebrate pending", () => {
+    const enabled = uiReducer(initialUIState, {
+      type: "SET_EMPTY_NUX_CELEBRATE_PENDING",
+      pending: true
+    });
+    expect(enabled.emptyNuxCelebratePending).toBe(true);
+
+    const disabled = uiReducer(enabled, {
+      type: "SET_EMPTY_NUX_CELEBRATE_PENDING",
+      pending: false
+    });
+    expect(disabled.emptyNuxCelebratePending).toBe(false);
   });
 });
 
@@ -149,7 +204,9 @@ describe("unwind", () => {
         mode: Mode.LIST,
         focus: FocusTarget.TASK_LIST,
         modal: null,
-        emptyNuxDismissed: true
+        emptyNuxDismissed: true,
+        emptyNux: undefined,
+        emptyNuxCelebratePending: false
       },
       clearEditorDraft: false
     });

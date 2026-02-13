@@ -1,8 +1,8 @@
-# TADOI™ Product Spec (v0.3.5)
+# TADOI™ Product Spec (v0.3.6)
 
 Updated: 2026-02-12
-Runtime baseline: `v0.3.5`
-Package baseline: `0.3.5`
+Runtime baseline: `v0.3.6`
+Package baseline: `0.3.6`
 Persistence schema baseline: `5`
 
 Stability taxonomy:
@@ -232,7 +232,7 @@ Automated snapshot captured during docs audit:
 - `bun run typecheck`: `pass`
 
 Manual coverage baseline:
-- `docs/TADOI_QA_Guide_v0.3.5.md`
+- `docs/TADOI_QA_Guide_v0.3.6.md`
 
 ## 6) Non-goals (Current Baseline)
 - cloud sync or accounts
@@ -244,8 +244,8 @@ Manual coverage baseline:
 ## 7) Related Documents
 - `README.md`
 - `docs/TADOI_Installation_Guide_All_Platforms.md`
-- `docs/TADOI_QA_Guide_v0.3.5.md`
-- `docs/TADOI_Feature_List_v0.3.5.md`
+- `docs/TADOI_QA_Guide_v0.3.6.md`
+- `docs/TADOI_Feature_List_v0.3.6.md`
 - `TADOI_Spec_Calendar_Export_ICS_v0.2.md`
 - `TADOI_Spec_Calendar_Import_ICS_RoundTrip_v0.1.md`
 - `TADOI_Task_Links_Attachments_Spec_v0.2.md`

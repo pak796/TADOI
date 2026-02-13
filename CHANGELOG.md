@@ -23,6 +23,27 @@ The format is based on Keep a Changelog.
   - `bun run typecheck`, `bun run test`, and `bun run contract:dtf:check` passed.
   - `bun audit` failed in this environment with `ConnectionRefused: audit request failed`;
     dependency advisory verification is still pending rerun on a network-enabled runner.
+- Documentation accuracy sweep on February 13, 2026:
+  - active docs now describe both `calendar:export` and `calendar:import` CLI availability
+  - QA snapshot updated to `555 pass / 0 fail / 555 total`
+  - Notion sync payload refreshed to mirror current repo docs
+
+## [0.3.6] - 2026-02-13
+### Changed
+- Version surfaces are aligned to `v0.3.6` / `0.3.6` in runtime and active documentation.
+- Active release docs now point to the `v0.3.6` artifacts:
+  - `TADOI_SPEC_v0.3.6.md`
+  - `TADOI_TASKS_v0.3.6.md`
+  - `docs/TADOI_Feature_List_v0.3.6.md`
+  - `docs/TADOI_QA_Guide_v0.3.6.md`
+  - `docs/ops/notion_v0.3.6_sync_pack.md`
+- Documentation baselines were refreshed to `v0.3.6` in:
+  - `README.md`
+  - `docs/README.md`
+  - `docs/DOC_INDEX.md`
+  - `docs/DOC_AUDIT_REPORT.md`
+  - `docs/NOTION_SYNC.md`
+  - `docs/TADOI_Installation_Guide_All_Platforms.md`
 
 ## [0.3.5] - 2026-02-12
 ### Added
