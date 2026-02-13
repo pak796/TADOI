@@ -11,6 +11,7 @@ import os from "node:os";
 import path from "node:path";
 
 type Target = "macos" | "windows" | "linux";
+type SmokeScope = "binary" | "installer" | "all";
 
 type SmokePaths = {
   binaryPath: string;
@@ -54,6 +55,18 @@ export function parseTargetArg(
     return requested;
   }
   fail(`invalid --target. expected macos|windows|linux, got: ${requested}`);
+}
+
+export function parseScopeArg(
+  argv: string[] = process.argv.slice(2),
+  defaultScope: SmokeScope = "all"
+): SmokeScope {
+  const requested = parseArg(argv, "--scope");
+  if (requested === null || requested.trim() === "") return defaultScope;
+  if (requested === "binary" || requested === "installer" || requested === "all") {
+    return requested;
+  }
+  fail(`invalid --scope. expected binary|installer|all, got: ${requested}`);
 }
 
 function readPackageVersion(rootDir: string): string {
@@ -166,6 +179,8 @@ function smokeMacInstaller(paths: SmokePaths): void {
     const expectedPkgName = `TADOI-${paths.packageVersion}.pkg`;
     const pkgFromDmg = path.join(mountPoint, expectedPkgName);
     ensureFile(pkgFromDmg, "PKG payload inside DMG");
+    const readmeFromDmg = path.join(mountPoint, "README.txt");
+    ensureFile(readmeFromDmg, "README payload inside DMG");
   } finally {
     spawnSync("hdiutil", ["detach", mountPoint], {
       stdio: "ignore",
@@ -184,7 +199,15 @@ function smokeWindowsInstaller(paths: SmokePaths): void {
 }
 
 function smokeLinuxInstallers(paths: SmokePaths): void {
+  if (!commandExists("appimagetool")) {
+    fail(
+      "appimagetool is required for Linux AppImage smoke checks (strict installer mode)."
+    );
+  }
+
   ensureFile(paths.linuxDebPath, "Linux DEB");
+  ensureFile(paths.linuxAppImagePath, "Linux AppImage");
+  ensureExecutable(paths.linuxAppImagePath, "Linux AppImage");
 
   if (!commandExists("dpkg-deb")) {
     fail("dpkg-deb is required for Linux DEB smoke checks");
@@ -193,41 +216,42 @@ function smokeLinuxInstallers(paths: SmokePaths): void {
   if (!/\/usr\/bin\/tadoi(?:\s|$)/m.test(debListing)) {
     fail("Linux DEB listing did not include /usr/bin/tadoi payload");
   }
-
-  if (existsSync(paths.linuxAppImagePath)) {
-    ensureExecutable(paths.linuxAppImagePath, "Linux AppImage");
-    return;
-  }
-
-  if (commandExists("appimagetool")) {
-    fail(`appimagetool exists but AppImage artifact is missing: ${paths.linuxAppImagePath}`);
-  }
-
-  console.log(
-    "[installer:smoke] appimagetool is not installed; AppImage artifact check skipped (DEB verified)."
-  );
 }
 
-export function runInstallerSmoke(rootDir: string, target: Target): void {
+export function runInstallerSmoke(
+  rootDir: string,
+  target: Target,
+  scope: SmokeScope = "all"
+): void {
   const paths = resolveSmokePaths(rootDir, target);
-  smokeBinary(paths.binaryPath, paths.packageVersion);
-
-  if (target === "macos") {
-    smokeMacInstaller(paths);
-  } else if (target === "windows") {
-    smokeWindowsInstaller(paths);
-  } else {
-    smokeLinuxInstallers(paths);
+  if (scope === "binary" || scope === "all") {
+    smokeBinary(paths.binaryPath, paths.packageVersion);
   }
 
-  console.log(
-    `[installer:smoke] OK (${target}): binary runtime and installer artifact checks passed.`
-  );
+  if (scope === "installer" || scope === "all") {
+    if (target === "macos") {
+      smokeMacInstaller(paths);
+    } else if (target === "windows") {
+      smokeWindowsInstaller(paths);
+    } else {
+      smokeLinuxInstallers(paths);
+    }
+  }
+
+  const scopeLabel =
+    scope === "all"
+      ? "binary runtime and installer artifact checks"
+      : scope === "binary"
+        ? "binary runtime checks"
+        : "installer artifact checks";
+  console.log(`[installer:smoke] OK (${target}): ${scopeLabel} passed.`);
 }
 
 function main(): void {
-  const target = parseTargetArg(process.argv.slice(2), hostTarget());
-  runInstallerSmoke(process.cwd(), target);
+  const argv = process.argv.slice(2);
+  const target = parseTargetArg(argv, hostTarget());
+  const scope = parseScopeArg(argv, "all");
+  runInstallerSmoke(process.cwd(), target, scope);
 }
 
 if (import.meta.main) {

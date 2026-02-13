@@ -31,9 +31,11 @@ Verify:
 ## 3) Installable Binaries (Preferred for End Users)
 
 Expected release artifacts:
-- macOS: `TADOI-macOS-<version>.dmg` (contains `TADOI-<version>.pkg`)
+- macOS: `TADOI-macOS-<version>.dmg` (contains `TADOI-<version>.pkg` + `README.txt`)
 - Windows: `TADOI-Setup-x64-<version>.exe`
-- Linux: `tadoi_<version>_amd64.deb` and/or `tadoi-<version>-x86_64.AppImage`
+- Linux: `tadoi_<version>_amd64.deb` and `tadoi-<version>-x86_64.AppImage`
+- Per-target manifest: `TADOI-<target>-<version>-manifest.json`
+- Per-target checksum file: `SHA256SUMS-<target>.txt`
 
 GitHub download paths:
 - Release assets for version tags (`v*`) via `.github/workflows/release.yml`
@@ -45,15 +47,26 @@ GitHub download paths:
 Install from artifacts:
 - macOS:
   1. Open DMG.
-  2. Run the included PKG installer.
-  3. Verify in terminal: `tadoi --version`
+  2. Confirm it includes `TADOI-<version>.pkg` and `README.txt`.
+  3. Run the included PKG installer.
+  4. Open a new terminal session.
+  5. Verify in terminal: `tadoi --version`
 - Windows:
   1. Run setup EXE.
-  2. Open a new terminal session.
-  3. Verify: `tadoi --version`
+  2. Accept UAC prompt (admin install).
+  3. Open a new terminal session (required after PATH update).
+  4. Verify: `tadoi --version`
 - Linux:
-  - DEB: `sudo dpkg -i tadoi_<version>_amd64.deb`
-  - AppImage: `chmod +x tadoi-<version>-x86_64.AppImage && ./tadoi-<version>-x86_64.AppImage --version`
+  1. Install DEB: `sudo dpkg -i tadoi_<version>_amd64.deb`
+  2. Validate binary: `tadoi --version`
+  3. Optional AppImage run: `chmod +x tadoi-<version>-x86_64.AppImage && ./tadoi-<version>-x86_64.AppImage --version`
+
+Verify manifest-backed artifacts:
+1. Confirm `TADOI-<target>-<version>-manifest.json` is present in your artifact bundle.
+2. Run gate check in repo root:
+   - `bun run installer:gate --target macos`
+   - `bun run installer:gate --target windows`
+   - `bun run installer:gate --target linux`
 
 ## 4) Source Install (Developer Workflow)
 
@@ -174,11 +187,14 @@ Real build mode:
 Tool prerequisites:
 - macOS: `pkgbuild`, `productbuild`, `hdiutil` (Xcode command line tools)
 - Windows: Inno Setup compiler (`iscc`)
-- Linux: `dpkg-deb` for DEB, `appimagetool` for AppImage
+- Linux: `dpkg-deb` for DEB and `appimagetool` for AppImage (strict requirement in installer build mode)
 
 Optional signing env vars:
 - macOS: `TADOI_MAC_SIGN_IDENTITY_INSTALLER`, `TADOI_MAC_NOTARY_PROFILE`
 - Windows: `TADOI_WIN_SIGN_CERT_PATH`, `TADOI_WIN_SIGN_CERT_PASSWORD`
+
+Installer manifest gate:
+- `bun run installer:gate --target <macos|windows|linux>`
 
 ## 8) Troubleshooting
 
@@ -211,6 +227,27 @@ Optional signing env vars:
 - Use Help (`?`) to inspect data path.
 - Ensure the target directory is writable.
 - Temporarily set `TADOI_DATA_PATH` to a writable directory and retry.
+
+### Windows installer finished but `tadoi` is not found
+
+- The installer updates user `PATH`, but existing terminals keep old environment values.
+- Close and reopen terminal, then rerun `tadoi --version`.
+
+### Linux installer build fails for missing `dpkg-deb` or `appimagetool`
+
+- Installer build mode is strict and fails without both tools.
+- Debian/Ubuntu example:
+  - `sudo apt-get update && sudo apt-get install -y dpkg-dev`
+- Install AppImageKit `appimagetool` and ensure it is on `PATH`.
+- Re-run:
+  - `bun scripts/build-binary.ts --target linux --format installer --mode build`
+
+### macOS DMG smoke check fails
+
+- DMG must contain `TADOI-<version>.pkg` and `README.txt`.
+- Ensure package version in `package.json` matches installer filenames under `dist/installers`.
+- Rebuild:
+  - `bun run build:installer:mac:all`
 
 ## 9) Upgrade Workflow
 

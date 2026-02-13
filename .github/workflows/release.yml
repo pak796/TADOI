@@ -20,13 +20,10 @@ jobs:
         include:
           - os: macos-latest
             target: macos
-            binary: dist/bin/macos/tadoi
           - os: windows-latest
             target: windows
-            binary: dist/bin/windows/tadoi.exe
           - os: ubuntu-latest
             target: linux
-            binary: dist/bin/linux/tadoi
 
     steps:
       - name: Checkout
@@ -46,35 +43,96 @@ jobs:
       - name: Typecheck
         run: bun run typecheck
 
+      - name: Verify macOS packaging prerequisites
+        if: matrix.target == 'macos'
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tool in pkgbuild productbuild hdiutil; do
+            if ! command -v "$tool" >/dev/null 2>&1; then
+              echo "missing required macOS packaging tool: $tool" >&2
+              echo "install Xcode command line tools and retry." >&2
+              exit 1
+            fi
+          done
+
       - name: Install Inno Setup (Windows)
         if: matrix.target == 'windows'
         run: choco install innosetup --no-progress -y
 
+      - name: Verify Inno Setup compiler (Windows)
+        if: matrix.target == 'windows'
+        shell: pwsh
+        run: |
+          $iscc = Get-Command iscc -ErrorAction SilentlyContinue
+          if (-not $iscc) {
+            throw "Inno Setup compiler (iscc) was not found after installation."
+          }
+          Write-Host "iscc path: $($iscc.Source)"
+
+      - name: Install Linux packaging prerequisites
+        if: matrix.target == 'linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y dpkg-dev
+
+          if ! command -v dpkg-deb >/dev/null 2>&1; then
+            echo "dpkg-deb not found after installing dpkg-dev." >&2
+            exit 1
+          fi
+
+          appimagetool_version="13"
+          appimage_path="$RUNNER_TEMP/appimagetool-${appimagetool_version}.AppImage"
+          wrapper_path="$RUNNER_TEMP/appimagetool"
+          curl -fsSL "https://github.com/AppImage/AppImageKit/releases/download/${appimagetool_version}/appimagetool-x86_64.AppImage" -o "$appimage_path"
+          chmod +x "$appimage_path"
+          cat > "$wrapper_path" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+APPIMAGE_EXTRACT_AND_RUN=1 "$appimage_path" "\$@"
+EOF
+          chmod +x "$wrapper_path"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+          if ! appimagetool --help >/dev/null 2>&1; then
+            echo "appimagetool wrapper install failed." >&2
+            exit 1
+          fi
+
       - name: Build raw binary
         run: bun scripts/build-binary.ts --target ${{ matrix.target }} --format raw --mode build
+
+      - name: Binary smoke test
+        run: bun run installer:smoke --target ${{ matrix.target }} --scope binary
 
       - name: Build installer
         run: bun scripts/build-binary.ts --target ${{ matrix.target }} --format installer --mode build
 
+      - name: Installer artifact manifest gate
+        run: bun run installer:gate --target ${{ matrix.target }}
+
       - name: Installer smoke test
-        run: bun run installer:smoke --target ${{ matrix.target }}
+        run: bun run installer:smoke --target ${{ matrix.target }} --scope installer
 
       - name: SHA256SUMS (Unix)
         if: matrix.target != 'windows'
         shell: bash
         run: |
+          set -euo pipefail
           mkdir -p dist
-          OUTPUT="dist/SHA256SUMS-${{ matrix.target }}.txt"
-          : > "$OUTPUT"
+          output="dist/SHA256SUMS-${{ matrix.target }}.txt"
+          : > "$output"
           if [ -d "dist/bin/${{ matrix.target }}" ]; then
             while IFS= read -r -d '' file; do
-              shasum -a 256 "$file" >> "$OUTPUT"
+              shasum -a 256 "$file" >> "$output"
             done < <(find "dist/bin/${{ matrix.target }}" -type f -print0)
           fi
           if [ -d "dist/installers" ]; then
             while IFS= read -r -d '' file; do
-              shasum -a 256 "$file" >> "$OUTPUT"
-            done < <(find dist/installers -type f -print0)
+              shasum -a 256 "$file" >> "$output"
+            done < <(find "dist/installers" -type f -print0)
           fi
 
       - name: SHA256SUMS (Windows)
@@ -101,6 +159,7 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: tadoi-${{ matrix.target }}
+          if-no-files-found: error
           path: |
             dist/bin/${{ matrix.target }}/**
             dist/installers/**
@@ -115,6 +174,17 @@ jobs:
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           path: release-artifacts
+
+      - name: Verify release manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          for target in macos windows linux; do
+            if ! find "release-artifacts" -type f -name "TADOI-${target}-*-manifest.json" | grep -q .; then
+              echo "missing release manifest for target: ${target}" >&2
+              exit 1
+            fi
+          done
 
       - name: Publish GitHub Release assets
         uses: softprops/action-gh-release@5be0e66d93ac7ed76da52eca8bb058f665c3a5fe # v2.4.2

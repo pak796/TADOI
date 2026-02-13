@@ -101,12 +101,14 @@ end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
+  { Keep CLI discoverable after install without requiring manual PATH edits. }
   if CurStep = ssPostInstall then
     AddToUserPath(ExpandConstant('{app}'));
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
+  { Remove only our install directory from user PATH during uninstall. }
   if CurUninstallStep = usUninstall then
     RemoveFromUserPath(ExpandConstant('{app}'));
 end;

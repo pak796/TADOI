@@ -1,8 +1,15 @@
 import { describe, expect, it } from "bun:test";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync
+} from "node:fs";
 import { spawnSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
+import { createInstallerManifest, writeInstallerManifest } from "./build-binary";
 
 const SCRIPT_PATH = path.resolve("scripts/build-binary.ts");
 
@@ -179,6 +186,84 @@ describe("build-binary script argument and mode behavior", () => {
         { TADOI_REQUIRE_SIGNING: "1" }
       );
       expect(result.status).toBe(0);
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("build-binary installer manifest helpers", () => {
+  it("creates manifest entries for linux binary and installers", () => {
+    const tempDir = createTempDir("tadoi-build-binary-manifest-linux-");
+    try {
+      const rawDir = path.join(tempDir, "dist", "bin", "linux");
+      const installerDir = path.join(tempDir, "dist", "installers");
+      mkdirSync(rawDir, { recursive: true });
+      mkdirSync(installerDir, { recursive: true });
+
+      const binaryPath = path.join(rawDir, "tadoi");
+      const debPath = path.join(installerDir, "tadoi_1.2.3_amd64.deb");
+      const appImagePath = path.join(installerDir, "tadoi-1.2.3-x86_64.AppImage");
+      writeFileSync(binaryPath, "binary-bytes", "utf8");
+      writeFileSync(debPath, "deb-bytes", "utf8");
+      writeFileSync(appImagePath, "appimage-bytes", "utf8");
+
+      const manifest = createInstallerManifest(
+        "linux",
+        "1.2.3",
+        binaryPath,
+        installerDir,
+        tempDir
+      );
+
+      expect(manifest.schemaVersion).toBe(1);
+      expect(manifest.target).toBe("linux");
+      expect(manifest.packageVersion).toBe("1.2.3");
+      expect(manifest.outputs.map((entry) => entry.kind).sort()).toEqual([
+        "appimage",
+        "binary",
+        "deb"
+      ]);
+      for (const output of manifest.outputs) {
+        expect(output.path.startsWith("dist/")).toBe(true);
+        expect(output.sizeBytes).toBeGreaterThan(0);
+        expect(output.sha256).toMatch(/^[a-f0-9]{64}$/);
+      }
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("writes manifest file with expected name", () => {
+    const tempDir = createTempDir("tadoi-build-binary-manifest-write-");
+    try {
+      const rawDir = path.join(tempDir, "dist", "bin", "windows");
+      const installerDir = path.join(tempDir, "dist", "installers");
+      mkdirSync(rawDir, { recursive: true });
+      mkdirSync(installerDir, { recursive: true });
+
+      const binaryPath = path.join(rawDir, "tadoi.exe");
+      const exePath = path.join(installerDir, "TADOI-Setup-x64-2.0.0.exe");
+      writeFileSync(binaryPath, "binary-bytes", "utf8");
+      writeFileSync(exePath, "exe-bytes", "utf8");
+
+      const manifestPath = writeInstallerManifest(
+        "windows",
+        "2.0.0",
+        binaryPath,
+        installerDir,
+        tempDir
+      );
+      expect(manifestPath).toBe(
+        path.join(installerDir, "TADOI-windows-2.0.0-manifest.json")
+      );
+
+      const parsed = JSON.parse(readFileSync(manifestPath, "utf8")) as {
+        schemaVersion: number;
+        target: string;
+      };
+      expect(parsed.schemaVersion).toBe(1);
+      expect(parsed.target).toBe("windows");
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }

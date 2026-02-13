@@ -39,7 +39,8 @@
     "notion:mcp:repair": "bash scripts/notion-mcp-setup.sh --reset --login",
     "dev": "bun src/index.tsx",
     "start": "bun src/index.tsx",
-    "installer:smoke": "bun scripts/installer-smoke-test.ts"
+    "installer:smoke": "bun scripts/installer-smoke-test.ts",
+    "installer:gate": "bun scripts/installer-artifact-gate.ts"
   },
   "devDependencies": {
     "bun-types": "^1.3.9",

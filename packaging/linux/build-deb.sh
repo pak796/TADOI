@@ -37,8 +37,9 @@ if [[ ! -f "$BINARY_PATH" ]]; then
 fi
 
 if ! command -v dpkg-deb >/dev/null 2>&1; then
-  echo "[build-deb] dpkg-deb not found; linux .deb output is planned but skipped"
-  exit 0
+  echo "[build-deb] dpkg-deb not found." >&2
+  echo "[build-deb] install hint: Debian/Ubuntu -> sudo apt-get install -y dpkg-dev" >&2
+  exit 1
 fi
 
 mkdir -p "$OUT_DIR"

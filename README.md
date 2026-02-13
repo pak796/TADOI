@@ -388,9 +388,9 @@ CI runs on:
 All matrix legs must be green for merges.
 
 Required checks:
-- `ci (ubuntu-latest)`: Bun setup, install, test, coverage, typecheck, brand check, and packaging validation
-- `ci (macos-latest)`: Bun setup, install, test, coverage, typecheck, and brand check
-- `ci (windows-latest)`: Bun setup, install, test, coverage, typecheck, and brand check
+- `ci (ubuntu-latest)`: Bun setup, install, test, coverage, typecheck, brand check, tarball packaging validation, installer build, installer manifest gate, and installer smoke checks
+- `ci (macos-latest)`: Bun setup, install, test, coverage, typecheck, brand check, installer build, installer manifest gate, and installer smoke checks
+- `ci (windows-latest)`: Bun setup, install, test, coverage, typecheck, brand check, installer build, installer manifest gate, and installer smoke checks
 
 Packaging validation (`pack:dry`, `pack:inspect`, `pack:smoke`) runs on the Ubuntu matrix leg.
 
@@ -440,10 +440,12 @@ bun run build:installer:mac:all
   - `dist/bin/windows/tadoi.exe`
   - `dist/bin/linux/tadoi`
 - Installer outputs:
+  - `dist/installers/TADOI-<version>.pkg`
   - `dist/installers/TADOI-macOS-<version>.dmg`
   - `dist/installers/TADOI-Setup-x64-<version>.exe`
-  - `dist/installers/tadoi_<version>_amd64.deb` (when `dpkg-deb` exists)
-  - `dist/installers/tadoi-<version>-x86_64.AppImage` (when `appimagetool` exists)
+  - `dist/installers/tadoi_<version>_amd64.deb`
+  - `dist/installers/tadoi-<version>-x86_64.AppImage`
+  - `dist/installers/TADOI-<target>-<version>-manifest.json` (`target` in `macos|windows|linux`)
 
 ### Platform tool prerequisites
 
@@ -453,7 +455,7 @@ bun run build:installer:mac:all
   - Inno Setup compiler (`iscc`)
 - Linux:
   - `dpkg-deb` for `.deb`
-  - `appimagetool` for AppImage (optional)
+  - `appimagetool` for AppImage (required in installer build mode)
 
 ### Signing and notarization (optional)
 
@@ -467,6 +469,12 @@ Windows optional environment variables:
 
 If signing env vars are not present, packaging scripts log a skip message and continue local builds.
 
+Installer manifest gate command:
+
+```bash
+bun run installer:gate --target macos
+```
+
 ### Downloadable macOS artifacts from GitHub
 
 Use `.github/workflows/package-macos.yml` to build and download macOS install artifacts:
@@ -477,6 +485,12 @@ Use `.github/workflows/package-macos.yml` to build and download macOS install ar
 4. Install on another Mac using `TADOI-macOS-<version>.dmg` (contains `TADOI-<version>.pkg`).
 
 Tagged releases still publish cross-platform assets through `.github/workflows/release.yml`.
+
+### Beta installer troubleshooting (quick)
+
+- Windows: installer adds `Program Files\\TADOI` to user `PATH`; open a new terminal session before running `tadoi --version`.
+- Linux: installer build is strict; missing `dpkg-deb` or `appimagetool` now fails with install hints.
+- macOS: DMG should contain both `TADOI-<version>.pkg` and `README.txt`; naming/version mismatches fail installer smoke.
 
 ## Tarball Channel (Non-Live)
 

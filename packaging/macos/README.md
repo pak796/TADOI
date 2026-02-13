@@ -7,6 +7,11 @@ Scripts in this directory build installable macOS artifacts for the TADOI CLI.
 - `sign-notarize.sh`: optional signing/notarization (skips when env vars are absent)
 - `build-dmg.sh`: creates `TADOI-macOS-<version>.dmg` containing the PKG + README
 
+Expected install flow:
+1. Open `TADOI-macOS-<version>.dmg`.
+2. Run `TADOI-<version>.pkg`.
+3. Open a new terminal and run `tadoi --version`.
+
 ## Required tools
 - `pkgbuild`
 - `productbuild`
