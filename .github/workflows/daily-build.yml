@@ -40,6 +40,19 @@ jobs:
       - name: Build daily artifacts
         run: bun run build:daily
 
+      - name: Assert Windows installer output
+        if: matrix.target == 'windows'
+        shell: pwsh
+        run: |
+          $matches = @(Get-ChildItem -Path "dist/artifacts" -Recurse -File -Filter "TADOI-Setup-x64-*.exe" -ErrorAction SilentlyContinue)
+          if ($matches.Count -lt 1) {
+            Write-Error "Expected Windows installer (TADOI-Setup-x64-*.exe) under dist/artifacts, but none was found."
+            exit 1
+          }
+
+          Write-Host "Found Windows installer artifact(s):"
+          $matches | ForEach-Object { Write-Host " - $($_.FullName)" }
+
       - name: Upload artifacts
         if: always()
         uses: actions/upload-artifact@v4
