@@ -246,222 +246,231 @@ export function handleKey(
   key: KeyInput,
   context: KeyRouterContext
 ): KeyRouterAction[] {
-  const { name, sequence, ctrl, shift } = key;
+  const resolvers: Array<(k: KeyInput, c: KeyRouterContext) => KeyRouterAction[] | null> = [
+    resolveEscapeActions,
+    resolveModalModeActions,
+    resolveDashboardToggleActions,
+    resolveHelpModeActions,
+    resolveBackupCenterModeActions,
+    resolveDashboardModeActions,
+    resolveSearchModeActions,
+    resolveEditorModeActions,
+    resolveListModeActions
+  ];
+
+  for (const resolve of resolvers) {
+    const actions = resolve(key, context);
+    if (actions !== null) return actions;
+  }
+
+  return [];
+}
+
+function resolveEscapeActions(
+  key: KeyInput,
+  context: KeyRouterContext
+): KeyRouterAction[] | null {
+  const { name } = key;
+  if (name !== "escape") return null;
+
   const {
     uiState,
-    hasTagInlineSuggestion,
-    hasDueSuggestion,
-    timeAutocompleteStep,
     hasPendingGPrefix,
-    viewsOverlayOpen,
     saveViewPromptOpen,
-    backupScreen,
+    viewsOverlayOpen,
     helpPage
   } = context;
   const { mode, focus } = uiState;
 
-  if (name === "escape") {
-    if (mode === Mode.HELP && (helpPage ?? "help") !== "help") {
-      return [{ scope: "ui", type: "HELP_NAV_BACK" }];
-    }
-    if (hasPendingGPrefix) {
-      return [{ scope: "ui", type: "SET_G_PREFIX", active: false }];
-    }
-    if (mode === Mode.MODAL_CONFIRM && uiState.modal?.type === "emptyNux") {
-      return [{ scope: "ui", type: "DISMISS_EMPTY_NUX" }];
-    }
-    if (mode === Mode.BACKUP_CENTER) {
-      return [{ scope: "ui", type: "BACKUP_BACK" }];
-    }
-    if (mode === Mode.LIST && saveViewPromptOpen) {
-      return [{ scope: "ui", type: "CANCEL_SAVE_VIEW_PROMPT" }];
-    }
-    if (mode === Mode.LIST && viewsOverlayOpen) {
-      return [{ scope: "ui", type: "CLOSE_VIEWS_OVERLAY" }];
-    }
-    if (mode === Mode.LIST && focus === FocusTarget.DETAILS_LINKS) {
-      return [{ scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.TASK_LIST }];
-    }
-    return [{ scope: "ui", type: "UNWIND" }];
+  if (mode === Mode.HELP && (helpPage ?? "help") !== "help") {
+    return [{ scope: "ui", type: "HELP_NAV_BACK" }];
   }
+  if (hasPendingGPrefix) {
+    return [{ scope: "ui", type: "SET_G_PREFIX", active: false }];
+  }
+  if (mode === Mode.MODAL_CONFIRM && uiState.modal?.type === "emptyNux") {
+    return [{ scope: "ui", type: "DISMISS_EMPTY_NUX" }];
+  }
+  if (mode === Mode.BACKUP_CENTER) {
+    return [{ scope: "ui", type: "BACKUP_BACK" }];
+  }
+  if (mode === Mode.LIST && saveViewPromptOpen) {
+    return [{ scope: "ui", type: "CANCEL_SAVE_VIEW_PROMPT" }];
+  }
+  if (mode === Mode.LIST && viewsOverlayOpen) {
+    return [{ scope: "ui", type: "CLOSE_VIEWS_OVERLAY" }];
+  }
+  if (mode === Mode.LIST && focus === FocusTarget.DETAILS_LINKS) {
+    return [{ scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.TASK_LIST }];
+  }
+  return [{ scope: "ui", type: "UNWIND" }];
+}
 
-  if (mode === Mode.MODAL_CONFIRM) {
-    if (uiState.modal?.type === "emptyNux") {
-      if (
-        name === "return" ||
-        name === "enter" ||
-        name === "a" ||
-        name === "A" ||
-        sequence === "a" ||
-        sequence === "A"
-      ) {
-        return [
-          { scope: "ui", type: "DISMISS_EMPTY_NUX" },
-          { scope: "domain", type: "OPEN_ADD" }
-        ];
-      }
-      return [];
+function resolveModalModeActions(
+  key: KeyInput,
+  context: KeyRouterContext
+): KeyRouterAction[] | null {
+  const { name, sequence, ctrl, shift } = key;
+  const { uiState } = context;
+  if (uiState.mode !== Mode.MODAL_CONFIRM) return null;
+
+  if (uiState.modal?.type === "emptyNux") {
+    if (
+      name === "return" ||
+      name === "enter" ||
+      name === "a" ||
+      name === "A" ||
+      sequence === "a" ||
+      sequence === "A"
+    ) {
+      return [
+        { scope: "ui", type: "DISMISS_EMPTY_NUX" },
+        { scope: "domain", type: "OPEN_ADD" }
+      ];
     }
-    if (uiState.modal?.type === "delete") {
-      const lowerName = name.toLowerCase();
-      const lowerSequence = sequence.toLowerCase();
-      if (lowerName === "y" || lowerSequence === "y") {
-        return [{ scope: "domain", type: "MODAL_CONFIRM_DELETE" }];
-      }
-      if (
-        uiState.modal.target === "recurring_occurrence" &&
-        (lowerName === "f" || lowerSequence === "f")
-      ) {
-        return [{ scope: "domain", type: "MODAL_CONFIRM_DELETE_FUTURE" }];
-      }
-      if (lowerName === "n" || lowerSequence === "n") {
+    return [];
+  }
+  if (uiState.modal?.type === "delete") {
+    const lowerName = name.toLowerCase();
+    const lowerSequence = sequence.toLowerCase();
+    if (lowerName === "y" || lowerSequence === "y") {
+      return [{ scope: "domain", type: "MODAL_CONFIRM_DELETE" }];
+    }
+    if (
+      uiState.modal.target === "recurring_occurrence" &&
+      (lowerName === "f" || lowerSequence === "f")
+    ) {
+      return [{ scope: "domain", type: "MODAL_CONFIRM_DELETE_FUTURE" }];
+    }
+    if (lowerName === "n" || lowerSequence === "n") {
+      return [{ scope: "ui", type: "UNWIND" }];
+    }
+    return [];
+  }
+  if (uiState.modal?.type === "overdue") {
+    const lowerName = name.toLowerCase();
+    if (lowerName === "s" || sequence === "s" || sequence === "S") {
+      return [{ scope: "domain", type: "MODAL_OVERDUE_SNOOZE" }];
+    }
+    if (lowerName === "d" || sequence === "d" || sequence === "D") {
+      return [{ scope: "domain", type: "MODAL_OVERDUE_DONE" }];
+    }
+    if (lowerName === "g" || sequence === "g" || sequence === "G") {
+      return [{ scope: "domain", type: "MODAL_OVERDUE_GO_TO_TASK" }];
+    }
+    return [];
+  }
+  if (uiState.modal?.type === "task_link_delete") {
+    const lowerName = name.toLowerCase();
+    const lowerSequence = sequence.toLowerCase();
+    if (lowerName === "y" || lowerSequence === "y") {
+      return [{ scope: "domain", type: "MODAL_CONFIRM_TASK_LINK_DELETE" }];
+    }
+    if (lowerName === "n" || lowerSequence === "n") {
+      return [{ scope: "ui", type: "UNWIND" }];
+    }
+    return [];
+  }
+  if (uiState.modal?.type === "task_link_open_external") {
+    const lowerName = name.toLowerCase();
+    const lowerSequence = sequence.toLowerCase();
+    if (lowerName === "y" || lowerSequence === "y") {
+      return [{ scope: "domain", type: "MODAL_CONFIRM_TASK_LINK_OPEN_EXTERNAL" }];
+    }
+    if (lowerName === "n" || lowerSequence === "n") {
+      return [{ scope: "ui", type: "UNWIND" }];
+    }
+    return [];
+  }
+  if (uiState.modal?.type === "task_link_form") {
+    if (ctrl && name === "s") {
+      return [{ scope: "domain", type: "MODAL_SUBMIT_TASK_LINK_FORM" }];
+    }
+    if (name === "tab") {
+      return [
+        {
+          scope: "ui",
+          type: "MODAL_MOVE_TASK_LINK_FORM_FOCUS",
+          direction: shift ? -1 : 1
+        }
+      ];
+    }
+    if (name === "left" && uiState.modal.activeField === "type") {
+      return [{ scope: "ui", type: "MODAL_CYCLE_TASK_LINK_FORM_TYPE", direction: -1 }];
+    }
+    if (name === "right" && uiState.modal.activeField === "type") {
+      return [{ scope: "ui", type: "MODAL_CYCLE_TASK_LINK_FORM_TYPE", direction: 1 }];
+    }
+    if (name === "up") {
+      return [{ scope: "ui", type: "MODAL_MOVE_TASK_LINK_FORM_FOCUS", direction: -1 }];
+    }
+    if (name === "down") {
+      return [{ scope: "ui", type: "MODAL_MOVE_TASK_LINK_FORM_FOCUS", direction: 1 }];
+    }
+    if (name === "return" || name === "enter") {
+      if (uiState.modal.activeField === "cancel") {
         return [{ scope: "ui", type: "UNWIND" }];
       }
-      return [];
-    }
-    if (uiState.modal?.type === "overdue") {
-      const lowerName = name.toLowerCase();
-      if (lowerName === "s" || sequence === "s" || sequence === "S") {
-        return [{ scope: "domain", type: "MODAL_OVERDUE_SNOOZE" }];
-      }
-      if (lowerName === "d" || sequence === "d" || sequence === "D") {
-        return [{ scope: "domain", type: "MODAL_OVERDUE_DONE" }];
-      }
-      if (lowerName === "g" || sequence === "g" || sequence === "G") {
-        return [{ scope: "domain", type: "MODAL_OVERDUE_GO_TO_TASK" }];
-      }
-      return [];
-    }
-    if (uiState.modal?.type === "task_link_delete") {
-      const lowerName = name.toLowerCase();
-      const lowerSequence = sequence.toLowerCase();
-      if (lowerName === "y" || lowerSequence === "y") {
-        return [{ scope: "domain", type: "MODAL_CONFIRM_TASK_LINK_DELETE" }];
-      }
-      if (lowerName === "n" || lowerSequence === "n") {
-        return [{ scope: "ui", type: "UNWIND" }];
-      }
-      return [];
-    }
-    if (uiState.modal?.type === "task_link_open_external") {
-      const lowerName = name.toLowerCase();
-      const lowerSequence = sequence.toLowerCase();
-      if (lowerName === "y" || lowerSequence === "y") {
-        return [{ scope: "domain", type: "MODAL_CONFIRM_TASK_LINK_OPEN_EXTERNAL" }];
-      }
-      if (lowerName === "n" || lowerSequence === "n") {
-        return [{ scope: "ui", type: "UNWIND" }];
-      }
-      return [];
-    }
-    if (uiState.modal?.type === "task_link_form") {
-      if (ctrl && name === "s") {
-        return [{ scope: "domain", type: "MODAL_SUBMIT_TASK_LINK_FORM" }];
-      }
-      if (name === "tab") {
-        return [
-          {
-            scope: "ui",
-            type: "MODAL_MOVE_TASK_LINK_FORM_FOCUS",
-            direction: shift ? -1 : 1
-          }
-        ];
-      }
-      if (name === "left" && uiState.modal.activeField === "type") {
-        return [{ scope: "ui", type: "MODAL_CYCLE_TASK_LINK_FORM_TYPE", direction: -1 }];
-      }
-      if (name === "right" && uiState.modal.activeField === "type") {
+      if (uiState.modal.activeField === "type") {
         return [{ scope: "ui", type: "MODAL_CYCLE_TASK_LINK_FORM_TYPE", direction: 1 }];
       }
-      if (name === "up") {
-        return [{ scope: "ui", type: "MODAL_MOVE_TASK_LINK_FORM_FOCUS", direction: -1 }];
+      if (uiState.modal.activeField === "save") {
+        return [{ scope: "domain", type: "MODAL_SUBMIT_TASK_LINK_FORM" }];
       }
-      if (name === "down") {
-        return [{ scope: "ui", type: "MODAL_MOVE_TASK_LINK_FORM_FOCUS", direction: 1 }];
-      }
-      if (name === "return" || name === "enter") {
-        if (uiState.modal.activeField === "cancel") {
-          return [{ scope: "ui", type: "UNWIND" }];
-        }
-        if (uiState.modal.activeField === "type") {
-          return [{ scope: "ui", type: "MODAL_CYCLE_TASK_LINK_FORM_TYPE", direction: 1 }];
-        }
-        if (uiState.modal.activeField === "save") {
-          return [{ scope: "domain", type: "MODAL_SUBMIT_TASK_LINK_FORM" }];
-        }
-      }
-      return [];
+    }
+    return [];
+  }
+  return [];
+}
+
+function resolveDashboardToggleActions(
+  key: KeyInput,
+  context: KeyRouterContext
+): KeyRouterAction[] | null {
+  const { name, sequence, ctrl } = key;
+  const { uiState, saveViewPromptOpen } = context;
+  const { mode } = uiState;
+  if (!isDashboardToggleKey(name, sequence, ctrl)) return null;
+
+  const inTextEntryContext =
+    mode === Mode.SEARCH ||
+    mode === Mode.ADD ||
+    mode === Mode.EDIT ||
+    mode === Mode.HELP ||
+    mode === Mode.BACKUP_CENTER ||
+    saveViewPromptOpen;
+  if (inTextEntryContext) return [];
+  return [{ scope: "ui", type: "TOGGLE_DASHBOARD" }];
+}
+
+function resolveHelpModeActions(
+  key: KeyInput,
+  context: KeyRouterContext
+): KeyRouterAction[] | null {
+  const { name, sequence, ctrl } = key;
+  const { uiState, helpPage } = context;
+  if (uiState.mode !== Mode.HELP) return null;
+
+  const activeHelpPage = helpPage ?? "help";
+  if (activeHelpPage === "custom1Edit" || activeHelpPage === "textTuningEdit") {
+    if (isHelpCloseKey(name, sequence)) {
+      return [{ scope: "ui", type: "CLOSE_HELP" }];
     }
     return [];
   }
 
-  if (isDashboardToggleKey(name, sequence, ctrl)) {
-    const inTextEntryContext =
-      mode === Mode.SEARCH ||
-      mode === Mode.ADD ||
-      mode === Mode.EDIT ||
-      mode === Mode.HELP ||
-      mode === Mode.BACKUP_CENTER ||
-      saveViewPromptOpen;
-    if (inTextEntryContext) return [];
-    return [{ scope: "ui", type: "TOGGLE_DASHBOARD" }];
-  }
-
-  if (mode === Mode.HELP) {
-    const activeHelpPage = helpPage ?? "help";
-    if (activeHelpPage === "custom1Edit" || activeHelpPage === "textTuningEdit") {
-      if (isHelpCloseKey(name, sequence)) {
-        return [{ scope: "ui", type: "CLOSE_HELP" }];
-      }
-      return [];
-    }
-
-    if (activeHelpPage !== "help") {
-      if (name === "up") {
-        return [{ scope: "ui", type: "HELP_MOVE_SECTION_FOCUS", delta: -1 }];
-      }
-      if (name === "down") {
-        return [{ scope: "ui", type: "HELP_MOVE_SECTION_FOCUS", delta: 1 }];
-      }
-      if (name === "left" || name === "backspace") {
-        return [{ scope: "ui", type: "HELP_NAV_BACK" }];
-      }
-      if (name === "right" || name === "return" || name === "enter") {
-        return [{ scope: "ui", type: "HELP_NAV_FORWARD" }];
-      }
-      if (isHelpCloseKey(name, sequence)) {
-        return [{ scope: "ui", type: "CLOSE_HELP" }];
-      }
-      return [];
-    }
-
+  if (activeHelpPage !== "help") {
     if (name === "up") {
       return [{ scope: "ui", type: "HELP_MOVE_SECTION_FOCUS", delta: -1 }];
     }
     if (name === "down") {
       return [{ scope: "ui", type: "HELP_MOVE_SECTION_FOCUS", delta: 1 }];
     }
-    if (isPageUpKey(name, ctrl)) {
-      return [{ scope: "ui", type: "HELP_SCROLL_PAGE", direction: -1 }];
+    if (name === "left" || name === "backspace") {
+      return [{ scope: "ui", type: "HELP_NAV_BACK" }];
     }
-    if (isPageDownKey(name, ctrl)) {
-      return [{ scope: "ui", type: "HELP_SCROLL_PAGE", direction: 1 }];
-    }
-    if (name === "left") {
-      return [
-        { scope: "ui", type: "HELP_SET_FOCUSED_SECTION_EXPANDED", expanded: false }
-      ];
-    }
-    if (name === "right") {
-      return [
-        { scope: "ui", type: "HELP_SET_FOCUSED_SECTION_EXPANDED", expanded: true }
-      ];
-    }
-    if (name === "space" || name === "return" || name === "enter") {
-      return [{ scope: "ui", type: "HELP_TOGGLE_FOCUSED_SECTION" }];
-    }
-    if (sequence === "1" || name === "1") {
-      return [{ scope: "ui", type: "OPEN_BACKUP_CENTER" }];
+    if (name === "right" || name === "return" || name === "enter") {
+      return [{ scope: "ui", type: "HELP_NAV_FORWARD" }];
     }
     if (isHelpCloseKey(name, sequence)) {
       return [{ scope: "ui", type: "CLOSE_HELP" }];
@@ -469,171 +478,220 @@ export function handleKey(
     return [];
   }
 
-  if (mode === Mode.BACKUP_CENTER) {
-    const maybeDigit = sequence.length === 1 && /\d/.test(sequence) ? Number(sequence) : NaN;
+  if (name === "up") {
+    return [{ scope: "ui", type: "HELP_MOVE_SECTION_FOCUS", delta: -1 }];
+  }
+  if (name === "down") {
+    return [{ scope: "ui", type: "HELP_MOVE_SECTION_FOCUS", delta: 1 }];
+  }
+  if (isPageUpKey(name, ctrl)) {
+    return [{ scope: "ui", type: "HELP_SCROLL_PAGE", direction: -1 }];
+  }
+  if (isPageDownKey(name, ctrl)) {
+    return [{ scope: "ui", type: "HELP_SCROLL_PAGE", direction: 1 }];
+  }
+  if (name === "left") {
+    return [{ scope: "ui", type: "HELP_SET_FOCUSED_SECTION_EXPANDED", expanded: false }];
+  }
+  if (name === "right") {
+    return [{ scope: "ui", type: "HELP_SET_FOCUSED_SECTION_EXPANDED", expanded: true }];
+  }
+  if (name === "space" || name === "return" || name === "enter") {
+    return [{ scope: "ui", type: "HELP_TOGGLE_FOCUSED_SECTION" }];
+  }
+  if (sequence === "1" || name === "1") {
+    return [{ scope: "ui", type: "OPEN_BACKUP_CENTER" }];
+  }
+  if (isHelpCloseKey(name, sequence)) {
+    return [{ scope: "ui", type: "CLOSE_HELP" }];
+  }
+  return [];
+}
 
-    if (backupScreen === "menu") {
-      if (sequence === "1" || name === "1") {
-        return [{ scope: "ui", type: "BACKUP_SELECT_MENU_OPTION", index: 0 }];
-      }
-      if (sequence === "2" || name === "2") {
-        return [{ scope: "ui", type: "BACKUP_SELECT_MENU_OPTION", index: 1 }];
-      }
-      if (sequence === "3" || name === "3") {
-        return [{ scope: "ui", type: "BACKUP_SELECT_MENU_OPTION", index: 2 }];
-      }
-      if (sequence === "4" || name === "4") {
-        return [{ scope: "ui", type: "BACKUP_SELECT_MENU_OPTION", index: 3 }];
-      }
-      if (name === "j" || name === "down") {
-        return [{ scope: "ui", type: "BACKUP_MOVE_MENU_SELECTION", delta: 1 }];
-      }
-      if (name === "k" || name === "up") {
-        return [{ scope: "ui", type: "BACKUP_MOVE_MENU_SELECTION", delta: -1 }];
-      }
+function resolveBackupCenterModeActions(
+  key: KeyInput,
+  context: KeyRouterContext
+): KeyRouterAction[] | null {
+  const { name, sequence } = key;
+  const { uiState, backupScreen } = context;
+  if (uiState.mode !== Mode.BACKUP_CENTER) return null;
+
+  const maybeDigit = sequence.length === 1 && /\d/.test(sequence) ? Number(sequence) : NaN;
+
+  if (backupScreen === "menu") {
+    if (sequence === "1" || name === "1") {
+      return [{ scope: "ui", type: "BACKUP_SELECT_MENU_OPTION", index: 0 }];
     }
-
-    if (backupScreen === "calendar_menu") {
-      if (name === "j" || name === "down") {
-        return [{ scope: "ui", type: "BACKUP_MOVE_MENU_SELECTION", delta: 1 }];
-      }
-      if (name === "k" || name === "up") {
-        return [{ scope: "ui", type: "BACKUP_MOVE_MENU_SELECTION", delta: -1 }];
-      }
+    if (sequence === "2" || name === "2") {
+      return [{ scope: "ui", type: "BACKUP_SELECT_MENU_OPTION", index: 1 }];
     }
-
-    if (backupScreen === "import_mode") {
-      if (sequence === "1" || name === "1") {
-        return [{ scope: "ui", type: "BACKUP_SET_IMPORT_MODE", mode: "merge" }];
-      }
-      if (sequence === "2" || name === "2") {
-        return [{ scope: "ui", type: "BACKUP_SET_IMPORT_MODE", mode: "replace" }];
-      }
+    if (sequence === "3" || name === "3") {
+      return [{ scope: "ui", type: "BACKUP_SELECT_MENU_OPTION", index: 2 }];
     }
-
-    if (Number.isFinite(maybeDigit)) {
-      return [{ scope: "ui", type: "BACKUP_SELECT_DIGIT", digit: maybeDigit }];
+    if (sequence === "4" || name === "4") {
+      return [{ scope: "ui", type: "BACKUP_SELECT_MENU_OPTION", index: 3 }];
     }
-
-    if (name === "return" || name === "enter") {
-      return [{ scope: "ui", type: "BACKUP_PRIMARY" }];
+    if (name === "j" || name === "down") {
+      return [{ scope: "ui", type: "BACKUP_MOVE_MENU_SELECTION", delta: 1 }];
     }
-
-    return [];
+    if (name === "k" || name === "up") {
+      return [{ scope: "ui", type: "BACKUP_MOVE_MENU_SELECTION", delta: -1 }];
+    }
   }
 
-  if (mode === Mode.DASHBOARD) {
-    if (sequence === "?") return [{ scope: "ui", type: "OPEN_HELP" }];
-    if (name === "q") return [{ scope: "domain", type: "EXIT_APP" }];
-    if (name === "f") return [{ scope: "domain", type: "CYCLE_STATUS" }];
-    if (!ctrl && name === "g") return [{ scope: "domain", type: "CYCLE_DUE" }];
-    if (!ctrl && name === "r") return [{ scope: "domain", type: "CYCLE_PRIORITY" }];
-    if (!ctrl && !shift && (name === "u" || sequence === "u")) {
-      return [{ scope: "ui", type: "OPEN_BACKUP_CENTER" }];
+  if (backupScreen === "calendar_menu") {
+    if (name === "j" || name === "down") {
+      return [{ scope: "ui", type: "BACKUP_MOVE_MENU_SELECTION", delta: 1 }];
     }
-    if (isTagPanelOpenKey(name, sequence, ctrl, shift)) {
-      return [{ scope: "ui", type: "OPEN_TAG_FILTER_PANEL" }];
+    if (name === "k" || name === "up") {
+      return [{ scope: "ui", type: "BACKUP_MOVE_MENU_SELECTION", delta: -1 }];
     }
-    if (name === "t") return [{ scope: "domain", type: "TOGGLE_TAG_FILTER" }];
-    if (name === "down") {
-      return [{ scope: "ui", type: "MOVE_DASHBOARD_TAG_SELECTION", delta: 1 }];
-    }
-    if (name === "up") {
-      return [{ scope: "ui", type: "MOVE_DASHBOARD_TAG_SELECTION", delta: -1 }];
-    }
-    if (name === "return" || name === "enter") {
-      return [{ scope: "domain", type: "APPLY_DASHBOARD_SELECTED_TAG" }];
-    }
-    return [];
   }
 
-  if (mode === Mode.TAG_FILTER) {
-    return [];
+  if (backupScreen === "import_mode") {
+    if (sequence === "1" || name === "1") {
+      return [{ scope: "ui", type: "BACKUP_SET_IMPORT_MODE", mode: "merge" }];
+    }
+    if (sequence === "2" || name === "2") {
+      return [{ scope: "ui", type: "BACKUP_SET_IMPORT_MODE", mode: "replace" }];
+    }
   }
 
-  if (mode === Mode.SEARCH) {
-    if (isSearchCloseKey(name)) {
-      return [{ scope: "ui", type: "CLOSE_SEARCH" }];
-    }
-    // Text input owns printable characters in SEARCH mode.
-    return [];
+  if (Number.isFinite(maybeDigit)) {
+    return [{ scope: "ui", type: "BACKUP_SELECT_DIGIT", digit: maybeDigit }];
+  }
+  if (name === "return" || name === "enter") {
+    return [{ scope: "ui", type: "BACKUP_PRIMARY" }];
+  }
+  return [];
+}
+
+function resolveDashboardModeActions(
+  key: KeyInput,
+  context: KeyRouterContext
+): KeyRouterAction[] | null {
+  const { name, sequence, ctrl, shift } = key;
+  const { uiState } = context;
+  if (uiState.mode !== Mode.DASHBOARD) return null;
+
+  if (sequence === "?") return [{ scope: "ui", type: "OPEN_HELP" }];
+  if (name === "q") return [{ scope: "domain", type: "EXIT_APP" }];
+  if (name === "f") return [{ scope: "domain", type: "CYCLE_STATUS" }];
+  if (!ctrl && name === "g") return [{ scope: "domain", type: "CYCLE_DUE" }];
+  if (!ctrl && name === "r") return [{ scope: "domain", type: "CYCLE_PRIORITY" }];
+  if (!ctrl && !shift && (name === "u" || sequence === "u")) {
+    return [{ scope: "ui", type: "OPEN_BACKUP_CENTER" }];
+  }
+  if (isTagPanelOpenKey(name, sequence, ctrl, shift)) {
+    return [{ scope: "ui", type: "OPEN_TAG_FILTER_PANEL" }];
+  }
+  if (name === "t") return [{ scope: "domain", type: "TOGGLE_TAG_FILTER" }];
+  if (name === "down") {
+    return [{ scope: "ui", type: "MOVE_DASHBOARD_TAG_SELECTION", delta: 1 }];
+  }
+  if (name === "up") {
+    return [{ scope: "ui", type: "MOVE_DASHBOARD_TAG_SELECTION", delta: -1 }];
+  }
+  if (name === "return" || name === "enter") {
+    return [{ scope: "domain", type: "APPLY_DASHBOARD_SELECTED_TAG" }];
+  }
+  return [];
+}
+
+function resolveSearchModeActions(
+  key: KeyInput,
+  context: KeyRouterContext
+): KeyRouterAction[] | null {
+  const { name } = key;
+  const { uiState } = context;
+  if (uiState.mode !== Mode.SEARCH) return null;
+
+  if (isSearchCloseKey(name)) {
+    return [{ scope: "ui", type: "CLOSE_SEARCH" }];
+  }
+  // Text input owns printable characters in SEARCH mode.
+  return [];
+}
+
+function resolveEditorModeActions(
+  key: KeyInput,
+  context: KeyRouterContext
+): KeyRouterAction[] | null {
+  const { name, ctrl, shift } = key;
+  const { uiState, hasTagInlineSuggestion, hasDueSuggestion, timeAutocompleteStep } =
+    context;
+  const { mode, focus } = uiState;
+  if (mode !== Mode.ADD && mode !== Mode.EDIT) return null;
+
+  if (ctrl && name === "s") {
+    return [{ scope: "domain", type: "SAVE_EDITOR" }];
+  }
+  if (mode === Mode.ADD && ctrl && name === "l") {
+    return [{ scope: "domain", type: "OPEN_ADD_TASK_LINK_MODAL" }];
   }
 
-  if (mode === Mode.ADD || mode === Mode.EDIT) {
-    if (ctrl && name === "s") {
-      return [{ scope: "domain", type: "SAVE_EDITOR" }];
+  if (isPageUpKey(name, ctrl)) {
+    return [{ scope: "ui", type: "SCROLL_EDITOR_PAGE", direction: -1 }];
+  }
+  if (isPageDownKey(name, ctrl)) {
+    return [{ scope: "ui", type: "SCROLL_EDITOR_PAGE", direction: 1 }];
+  }
+  if (name === "tab") {
+    const actions: KeyRouterAction[] = [];
+    if (focus === FocusTarget.EDITOR_TAGS && hasTagInlineSuggestion) {
+      actions.push({ scope: "domain", type: "ACCEPT_TAG_INLINE" });
     }
-    if (mode === Mode.ADD && ctrl && name === "l") {
-      return [{ scope: "domain", type: "OPEN_ADD_TASK_LINK_MODAL" }];
-    }
-
-    if (isPageUpKey(name, ctrl)) {
-      return [{ scope: "ui", type: "SCROLL_EDITOR_PAGE", direction: -1 }];
-    }
-
-    if (isPageDownKey(name, ctrl)) {
-      return [{ scope: "ui", type: "SCROLL_EDITOR_PAGE", direction: 1 }];
-    }
-
-    if (name === "tab") {
-      const actions: KeyRouterAction[] = [];
-      if (focus === FocusTarget.EDITOR_TAGS && hasTagInlineSuggestion) {
-        actions.push({ scope: "domain", type: "ACCEPT_TAG_INLINE" });
-      }
-      actions.push({
-        scope: "ui",
-        type: "MOVE_EDITOR_FOCUS",
-        direction: shift ? -1 : 1
-      });
-      return actions;
-    }
-
-    if (name === "right") {
-      if (
-        mode === Mode.ADD &&
-        focus === FocusTarget.EDITOR_DUE_TIME &&
-        (timeAutocompleteStep === "hour" || timeAutocompleteStep === "minute")
-      ) {
-        return [{ scope: "domain", type: "APPLY_TIME_AUTOCOMPLETE" }];
-      }
-      if (focus === FocusTarget.EDITOR_DUE_DATE && hasDueSuggestion) {
-        return [{ scope: "domain", type: "ACCEPT_DUE_SUGGESTION" }];
-      }
-      if (focus === FocusTarget.EDITOR_TAGS && hasTagInlineSuggestion) {
-        return [{ scope: "domain", type: "ACCEPT_TAG_INLINE" }];
-      }
-      return [];
-    }
-
+    actions.push({
+      scope: "ui",
+      type: "MOVE_EDITOR_FOCUS",
+      direction: shift ? -1 : 1
+    });
+    return actions;
+  }
+  if (name === "right") {
     if (
-      (name === "return" || name === "enter") &&
-      focus === FocusTarget.EDITOR_TAGS &&
-      hasTagInlineSuggestion
+      mode === Mode.ADD &&
+      focus === FocusTarget.EDITOR_DUE_TIME &&
+      (timeAutocompleteStep === "hour" || timeAutocompleteStep === "minute")
     ) {
+      return [{ scope: "domain", type: "APPLY_TIME_AUTOCOMPLETE" }];
+    }
+    if (focus === FocusTarget.EDITOR_DUE_DATE && hasDueSuggestion) {
+      return [{ scope: "domain", type: "ACCEPT_DUE_SUGGESTION" }];
+    }
+    if (focus === FocusTarget.EDITOR_TAGS && hasTagInlineSuggestion) {
       return [{ scope: "domain", type: "ACCEPT_TAG_INLINE" }];
     }
-
-    if (
-      (name === "return" || name === "enter") &&
-      focus === FocusTarget.EDITOR_SAVE
-    ) {
-      return [{ scope: "domain", type: "SAVE_EDITOR" }];
-    }
-
-    if (
-      (name === "return" || name === "enter") &&
-      focus === FocusTarget.EDITOR_CANCEL
-    ) {
-      return [{ scope: "ui", type: "UNWIND" }];
-    }
-
-    // Text input owns printable characters in editor modes.
     return [];
   }
-
-  if (mode !== Mode.LIST) {
-    return [];
+  if (
+    (name === "return" || name === "enter") &&
+    focus === FocusTarget.EDITOR_TAGS &&
+    hasTagInlineSuggestion
+  ) {
+    return [{ scope: "domain", type: "ACCEPT_TAG_INLINE" }];
   }
+  if ((name === "return" || name === "enter") && focus === FocusTarget.EDITOR_SAVE) {
+    return [{ scope: "domain", type: "SAVE_EDITOR" }];
+  }
+  if ((name === "return" || name === "enter") && focus === FocusTarget.EDITOR_CANCEL) {
+    return [{ scope: "ui", type: "UNWIND" }];
+  }
+
+  // Text input owns printable characters in editor modes.
+  return [];
+}
+
+function resolveListModeActions(
+  key: KeyInput,
+  context: KeyRouterContext
+): KeyRouterAction[] | null {
+  const { name, sequence, ctrl, shift } = key;
+  const { uiState, hasPendingGPrefix, viewsOverlayOpen, saveViewPromptOpen } = context;
+  const { mode, focus } = uiState;
+
+  if (mode === Mode.TAG_FILTER) return [];
+  if (mode !== Mode.LIST) return null;
 
   if (saveViewPromptOpen) {
     if (name === "escape") return [{ scope: "ui", type: "CANCEL_SAVE_VIEW_PROMPT" }];
@@ -644,7 +702,9 @@ export function handleKey(
   }
 
   if (viewsOverlayOpen) {
-    if (name === "escape" || name === "v") return [{ scope: "ui", type: "CLOSE_VIEWS_OVERLAY" }];
+    if (name === "escape" || name === "v") {
+      return [{ scope: "ui", type: "CLOSE_VIEWS_OVERLAY" }];
+    }
     if (name === "j" || name === "down") {
       return [{ scope: "ui", type: "MOVE_VIEW_SELECTION", delta: 1 }];
     }
@@ -713,9 +773,7 @@ export function handleKey(
     return [];
   }
 
-  if (focus !== FocusTarget.TASK_LIST) {
-    return [];
-  }
+  if (focus !== FocusTarget.TASK_LIST) return [];
 
   if (hasPendingGPrefix) {
     if (isLowerG(name, sequence, ctrl, shift)) {

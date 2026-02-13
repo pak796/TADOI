@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { FocusTarget, Mode } from "../domain/models";
 import { handleKey, type KeyInput, type KeyRouterContext } from "./keyRouter";
-import { initialUIState } from "../ui/state";
+import { initialUIState, unwind } from "../ui/state";
 
 function run(
   key: Partial<KeyInput>,
@@ -103,6 +103,22 @@ describe("handleKey", () => {
         }
       )
     ).toEqual([{ scope: "ui", type: "BACKUP_BACK" }]);
+  });
+
+  it("esc from dashboard returns to list/task-list after unwind", () => {
+    const dashboardState = {
+      ...initialUIState,
+      mode: Mode.DASHBOARD,
+      focus: FocusTarget.DASHBOARD
+    };
+    expect(run({ name: "escape" }, { uiState: dashboardState })).toEqual([
+      { scope: "ui", type: "UNWIND" }
+    ]);
+
+    const result = unwind(dashboardState);
+    expect(result.state.mode).toBe(Mode.LIST);
+    expect(result.state.focus).toBe(FocusTarget.TASK_LIST);
+    expect(result.clearEditorDraft).toBe(false);
   });
 
   it("blocks non-modal keys while modal is open", () => {

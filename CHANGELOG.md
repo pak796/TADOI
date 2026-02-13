@@ -19,6 +19,10 @@ The format is based on Keep a Changelog.
 ### Changed
 - Engagement toasts are queued (cap 3), priority ordered, auto-dismissed, and suppressed while
   blocking overlays are open, then resumed after overlays close.
+- Release-readiness audit pass on February 13, 2026:
+  - `bun run typecheck`, `bun run test`, and `bun run contract:dtf:check` passed.
+  - `bun audit` failed in this environment with `ConnectionRefused: audit request failed`;
+    dependency advisory verification is still pending rerun on a network-enabled runner.
 
 ## [0.3.5] - 2026-02-12
 ### Added

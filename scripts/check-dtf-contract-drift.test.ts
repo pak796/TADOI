@@ -149,4 +149,114 @@ describe("contract", () => {
       rmSync(tempDir, { recursive: true, force: true });
     }
   });
+
+  it("falls back to highest versioned spec when README spec link is absent", async () => {
+    const tempDir = createTempDir("tadoi-dtf-drift-fallback-");
+    try {
+      write(tempDir, "README.md", "No explicit product spec link here.");
+      write(
+        tempDir,
+        "TADOI_SPEC_v0.9.8.md",
+        `
+| ID | Contract |
+| --- | --- |
+| DTF-098 | Older |
+`
+      );
+      write(
+        tempDir,
+        "TADOI_SPEC_v0.9.9.md",
+        `
+| ID | Contract |
+| --- | --- |
+| DTF-099 | Newer |
+`
+      );
+      write(
+        tempDir,
+        "DASHBOARD_SPEC_MVP.md",
+        `
+| ID | Contract |
+| --- | --- |
+| DTF-001 | Dashboard |
+`
+      );
+      write(
+        tempDir,
+        "src/app/contract.test.ts",
+        `
+import { describe, it } from "bun:test";
+describe("contract", () => {
+  it("DTF-001: Dashboard", () => {});
+  it("DTF-099: Newer", () => {});
+});
+`
+      );
+
+      const result = await runDtfContractDriftCheck(tempDir);
+      expect(result.specFiles).toEqual(["DASHBOARD_SPEC_MVP.md", "TADOI_SPEC_v0.9.9.md"]);
+      expect(result.specIds).toEqual(["DTF-001", "DTF-099"]);
+      expect(result.missingIds).toEqual([]);
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("prefers TADOI_SPEC_PATH override over README link", async () => {
+    const tempDir = createTempDir("tadoi-dtf-drift-env-");
+    try {
+      write(
+        tempDir,
+        "README.md",
+        "Canonical contract in `TADOI_SPEC_v0.9.9.md` and dashboard in docs."
+      );
+      write(
+        tempDir,
+        "TADOI_SPEC_v0.9.8.md",
+        `
+| ID | Contract |
+| --- | --- |
+| DTF-888 | Env |
+`
+      );
+      write(
+        tempDir,
+        "TADOI_SPEC_v0.9.9.md",
+        `
+| ID | Contract |
+| --- | --- |
+| DTF-999 | Readme |
+`
+      );
+      write(
+        tempDir,
+        "DASHBOARD_SPEC_MVP.md",
+        `
+| ID | Contract |
+| --- | --- |
+| DTF-001 | Dashboard |
+`
+      );
+      write(
+        tempDir,
+        "src/app/contract.test.ts",
+        `
+import { describe, it } from "bun:test";
+describe("contract", () => {
+  it("DTF-001: Dashboard", () => {});
+  it("DTF-888: Env", () => {});
+});
+`
+      );
+
+      const result = await runDtfContractDriftCheck(tempDir, {
+        TADOI_SPEC_PATH: "TADOI_SPEC_v0.9.8.md"
+      });
+      expect(result.specFiles).toEqual(["DASHBOARD_SPEC_MVP.md", "TADOI_SPEC_v0.9.8.md"]);
+      expect(result.specIds).toEqual(["DTF-001", "DTF-888"]);
+      expect(result.missingIds).toEqual([]);
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
 });
