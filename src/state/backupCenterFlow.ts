@@ -66,6 +66,7 @@ export type BackupCenterState = {
   calendarExportPrivacy: CalendarEventPrivacyMode;
   calendarExportPathInput: string;
   calendarExportResult?: CalendarExportResult;
+  calendarExportWarnings: string[];
 
   // CALENDAR import state.
   calendarImportPathInput: string;
@@ -82,6 +83,8 @@ export type BackupCenterState = {
   calendarImportCommitted?: CalendarImportSummary;
   calendarImportCommittedReportPath?: string;
   calendarImportCommittedBackupPath?: string;
+  calendarImportDryRunWarnings: string[];
+  calendarImportCommittedWarnings: string[];
   calendarImportConfirmInput: string;
 
   errorMessage?: string;
@@ -117,7 +120,7 @@ export type BackupCenterAction =
   | { type: "setCalendarExportPrivacy"; privacy: CalendarEventPrivacyMode }
   | { type: "setCalendarExportPath"; value: string }
   | { type: "startCalendarExport" }
-  | { type: "calendarExportSucceeded"; result: CalendarExportResult }
+  | { type: "calendarExportSucceeded"; result: CalendarExportResult; warnings?: string[] }
   | { type: "setCalendarImportPath"; value: string }
   | { type: "setCalendarImportRange"; range: CalendarExportRange }
   | { type: "setCalendarImportViewName"; viewName?: string }
@@ -133,6 +136,7 @@ export type BackupCenterAction =
       errorReasons: string[];
       fingerprint: string;
       reportPath?: string;
+      warnings?: string[];
     }
   | { type: "startCalendarImporting" }
   | {
@@ -140,6 +144,7 @@ export type BackupCenterAction =
       summary: CalendarImportSummary;
       reportPath?: string;
       backupPath?: string;
+      warnings?: string[];
     }
   | { type: "setError"; message: string; detail?: string; returnScreen?: BackupCenterScreen }
   | { type: "back" };
@@ -155,6 +160,7 @@ export const initialBackupCenterState: BackupCenterState = {
   calendarExportRange: "next7",
   calendarExportPrivacy: "minimal",
   calendarExportPathInput: "",
+  calendarExportWarnings: [],
   calendarImportPathInput: "",
   calendarImportRange: "next7",
   calendarImportMode: "merge",
@@ -162,6 +168,8 @@ export const initialBackupCenterState: BackupCenterState = {
   calendarImportTagInput: "",
   calendarImportDryRunHasErrors: false,
   calendarImportDryRunErrorReasons: [],
+  calendarImportDryRunWarnings: [],
+  calendarImportCommittedWarnings: [],
   calendarImportConfirmInput: ""
 };
 
@@ -218,7 +226,8 @@ function resetCalendarExportState(state: BackupCenterState): BackupCenterState {
     calendarExportViewName: undefined,
     calendarExportPrivacy: "minimal",
     calendarExportPathInput: "",
-    calendarExportResult: undefined
+    calendarExportResult: undefined,
+    calendarExportWarnings: []
   };
 }
 
@@ -239,6 +248,8 @@ function resetCalendarImportState(state: BackupCenterState): BackupCenterState {
     calendarImportCommitted: undefined,
     calendarImportCommittedReportPath: undefined,
     calendarImportCommittedBackupPath: undefined,
+    calendarImportDryRunWarnings: [],
+    calendarImportCommittedWarnings: [],
     calendarImportConfirmInput: ""
   };
 }
@@ -432,6 +443,7 @@ export function backupCenterReducer(
         ...state,
         screen: "calendar_exporting",
         calendarExportResult: undefined,
+        calendarExportWarnings: [],
         errorMessage: undefined,
         errorDetail: undefined,
         errorReturnScreen: undefined
@@ -441,6 +453,7 @@ export function backupCenterReducer(
         ...state,
         screen: "calendar_export_done",
         calendarExportResult: action.result,
+        calendarExportWarnings: [...(action.warnings ?? [])],
         errorMessage: undefined,
         errorDetail: undefined,
         errorReturnScreen: undefined
@@ -457,6 +470,8 @@ export function backupCenterReducer(
         calendarImportCommitted: undefined,
         calendarImportCommittedReportPath: undefined,
         calendarImportCommittedBackupPath: undefined,
+        calendarImportDryRunWarnings: [],
+        calendarImportCommittedWarnings: [],
         calendarImportConfirmInput: ""
       };
     case "setCalendarImportRange":
@@ -471,6 +486,8 @@ export function backupCenterReducer(
         calendarImportCommitted: undefined,
         calendarImportCommittedReportPath: undefined,
         calendarImportCommittedBackupPath: undefined,
+        calendarImportDryRunWarnings: [],
+        calendarImportCommittedWarnings: [],
         calendarImportConfirmInput: ""
       };
     case "setCalendarImportViewName":
@@ -485,6 +502,8 @@ export function backupCenterReducer(
         calendarImportCommitted: undefined,
         calendarImportCommittedReportPath: undefined,
         calendarImportCommittedBackupPath: undefined,
+        calendarImportDryRunWarnings: [],
+        calendarImportCommittedWarnings: [],
         calendarImportConfirmInput: ""
       };
     case "setCalendarImportMode":
@@ -499,6 +518,8 @@ export function backupCenterReducer(
         calendarImportCommitted: undefined,
         calendarImportCommittedReportPath: undefined,
         calendarImportCommittedBackupPath: undefined,
+        calendarImportDryRunWarnings: [],
+        calendarImportCommittedWarnings: [],
         calendarImportConfirmInput: ""
       };
     case "setCalendarImportHorizonInput":
@@ -513,6 +534,8 @@ export function backupCenterReducer(
         calendarImportCommitted: undefined,
         calendarImportCommittedReportPath: undefined,
         calendarImportCommittedBackupPath: undefined,
+        calendarImportDryRunWarnings: [],
+        calendarImportCommittedWarnings: [],
         calendarImportConfirmInput: ""
       };
     case "setCalendarImportTagInput":
@@ -527,6 +550,8 @@ export function backupCenterReducer(
         calendarImportCommitted: undefined,
         calendarImportCommittedReportPath: undefined,
         calendarImportCommittedBackupPath: undefined,
+        calendarImportDryRunWarnings: [],
+        calendarImportCommittedWarnings: [],
         calendarImportConfirmInput: ""
       };
     case "setCalendarImportConfirmInput":
@@ -543,9 +568,11 @@ export function backupCenterReducer(
         calendarImportDryRunErrorReasons: [],
         calendarImportDryRunReportPath: undefined,
         calendarImportDryRunFingerprint: undefined,
+        calendarImportDryRunWarnings: [],
         calendarImportCommitted: undefined,
         calendarImportCommittedReportPath: undefined,
         calendarImportCommittedBackupPath: undefined,
+        calendarImportCommittedWarnings: [],
         calendarImportConfirmInput: "",
         errorMessage: undefined,
         errorDetail: undefined,
@@ -560,9 +587,11 @@ export function backupCenterReducer(
         calendarImportDryRunErrorReasons: action.errorReasons,
         calendarImportDryRunFingerprint: action.fingerprint,
         calendarImportDryRunReportPath: action.reportPath,
+        calendarImportDryRunWarnings: [...(action.warnings ?? [])],
         calendarImportCommitted: undefined,
         calendarImportCommittedReportPath: undefined,
         calendarImportCommittedBackupPath: undefined,
+        calendarImportCommittedWarnings: [],
         calendarImportConfirmInput: "",
         errorMessage: undefined,
         errorDetail: undefined,
@@ -591,6 +620,7 @@ export function backupCenterReducer(
         calendarImportCommitted: action.summary,
         calendarImportCommittedReportPath: action.reportPath,
         calendarImportCommittedBackupPath: action.backupPath,
+        calendarImportCommittedWarnings: [...(action.warnings ?? [])],
         errorMessage: undefined,
         errorDetail: undefined,
         errorReturnScreen: undefined

@@ -43,6 +43,9 @@ export type CalendarExdates = {
 
 export type CalendarVEvent = {
   uid: string;
+  xTaskId?: string;
+  xSeriesId?: string;
+  xInstanceOf?: string;
   dtstampUtc: string;
   summary: string;
   description?: string;
@@ -355,10 +358,16 @@ function createBaseEvent(params: {
   relatedTo?: string;
   rrule?: string;
   exdates?: CalendarExdates;
+  xTaskId?: string;
+  xSeriesId?: string;
+  xInstanceOf?: string;
 }): CalendarVEvent {
   const common = buildCommonFields(params.task, params.privacyMode);
   return {
     uid: params.uid,
+    ...(params.xTaskId ? { xTaskId: params.xTaskId } : {}),
+    ...(params.xSeriesId ? { xSeriesId: params.xSeriesId } : {}),
+    ...(params.xInstanceOf ? { xInstanceOf: params.xInstanceOf } : {}),
     dtstampUtc: formatUtcDateTime(params.generatedAt),
     ...common,
     dtstart: params.temporal.dtstart,
@@ -381,6 +390,7 @@ export function mapNonRecurringTaskToEvent(
 
   return createBaseEvent({
     uid: `tadoi-${task.id}@local`,
+    xTaskId: task.id,
     task,
     temporal: buildTemporalFromEpoch(task.dueAt, task.hasExplicitTime === true, timeContext),
     generatedAt,
@@ -400,6 +410,8 @@ export function mapInstanceOverrideTaskToEvent(
 
   return createBaseEvent({
     uid: `tadoi-inst-${task.id}@local`,
+    xTaskId: task.id,
+    xInstanceOf: task.instance_of.series_id,
     task,
     temporal: buildTemporalFromEpoch(task.dueAt, task.hasExplicitTime === true, timeContext),
     generatedAt,
@@ -431,6 +443,8 @@ export function mapSeriesTaskToRecurringEvent(
 
   return createBaseEvent({
     uid: `tadoi-series-${task.id}@local`,
+    xTaskId: task.id,
+    xSeriesId: task.recurrence.series_id,
     task,
     temporal,
     generatedAt,
@@ -463,6 +477,8 @@ export function mapSeriesOccurrenceToEvent(
 
   return createBaseEvent({
     uid: `tadoi-occ-${task.id}-${compactOccurrence}@local`,
+    xTaskId: task.id,
+    xSeriesId: task.recurrence.series_id,
     task,
     temporal,
     generatedAt,

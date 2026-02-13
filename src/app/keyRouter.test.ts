@@ -279,6 +279,10 @@ describe("handleKey", () => {
       { scope: "ui", type: "DISMISS_EMPTY_NUX" },
       { scope: "domain", type: "OPEN_ADD" }
     ]);
+    expect(run({ name: "enter" }, { uiState: modalState })).toEqual([
+      { scope: "ui", type: "DISMISS_EMPTY_NUX" },
+      { scope: "domain", type: "OPEN_ADD" }
+    ]);
     expect(run({ name: "j", sequence: "j" }, { uiState: modalState })).toEqual([]);
   });
 

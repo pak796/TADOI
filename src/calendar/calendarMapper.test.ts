@@ -40,6 +40,7 @@ describe("calendarMapper", () => {
 
     expect(event.dtstart).toEqual({ kind: "date", value: "20260215" });
     expect(event.dtend).toEqual({ kind: "date", value: "20260216" });
+    expect(event.xTaskId).toBe("all-day");
   });
 
   it("maps timed tasks with a default 30-minute duration", () => {
@@ -68,6 +69,7 @@ describe("calendarMapper", () => {
       value: "20260216T143000Z",
       utc: true
     });
+    expect(event.xTaskId).toBe("timed");
   });
 
   it("keeps local wall-clock DTSTART stable across DST in America/Chicago", () => {

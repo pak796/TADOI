@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { addLocalDaysMs, startOfLocalDayMs } from "../domain/dates";
-import { computeTopTagsOpen } from "../domain/dashboard";
+import { computePriorityBucketBreakdown, computeTopTagsOpen } from "../domain/dashboard";
 import { computeDashboardKpis } from "../domain/dashboardKpis";
 import { type Filters, FocusTarget, Mode, type Task } from "../domain/models";
 import { filterTasks } from "../domain/query";
@@ -159,7 +159,7 @@ describe("dashboard/tag-filter canonical invariant contract", () => {
         title: "daily standup",
         status: "open",
         hasExplicitTime: true,
-        tags: ["work"],
+        tags: ["work", "P2"],
         recurrence: {
           dtstart: "2026-02-13T09:00:00",
           rrule: "FREQ=DAILY;INTERVAL=1;COUNT=3",
@@ -180,5 +180,8 @@ describe("dashboard/tag-filter canonical invariant contract", () => {
 
     const topTags = computeTopTagsOpen(visibleRows, 5);
     expect(topTags).toEqual([{ tag: "work", count: 1 }]);
+
+    const priorityBuckets = computePriorityBucketBreakdown(visibleRows);
+    expect(priorityBuckets).toEqual([{ priority: "P2", count: 1 }]);
   });
 });

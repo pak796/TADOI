@@ -57,6 +57,7 @@ export type CalendarExportResult = {
   privacyApplied: CalendarEventPrivacyMode;
   viewApplied?: string;
   timeContext: CalendarTimeContext;
+  warnings?: string[];
 };
 
 function toErrorMessage(error: unknown): string {
@@ -192,6 +193,7 @@ function getRelatedSeriesUid(
 export async function exportCalendarIcs(
   options: CalendarExportOptions
 ): Promise<CalendarExportResult> {
+  const warnings: string[] = [];
   const now = options.now ?? new Date();
   const nowMs = now.getTime();
   const range = options.range ?? "next7";
@@ -210,10 +212,11 @@ export async function exportCalendarIcs(
   try {
     const settingsResult = await loadSettings();
     settingsTz = resolveConfiguredTimeZone(settingsResult.settings);
+    for (const warning of settingsResult.warnings) {
+      warnings.push(`Settings: ${warning}`);
+    }
   } catch (error: unknown) {
-    throw new CalendarExportFilesystemError(
-      `Failed to load settings: ${toErrorMessage(error)}`
-    );
+    warnings.push(`Settings unavailable during export: ${toErrorMessage(error)}`);
   }
   const timeContext = resolveTimeContext(options.timeZone?.trim() || settingsTz);
 
@@ -354,6 +357,7 @@ export async function exportCalendarIcs(
     rangeApplied: range,
     privacyApplied: privacy,
     ...(viewApplied ? { viewApplied } : {}),
-    timeContext
+    timeContext,
+    ...(warnings.length > 0 ? { warnings } : {})
   };
 }

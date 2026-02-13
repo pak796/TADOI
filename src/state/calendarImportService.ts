@@ -105,11 +105,21 @@ export type CalendarImportResult = {
   report: CalendarImportReport;
   outputReportPath?: string;
   hasErrors: boolean;
+  warnings?: string[];
 };
 
 type MatchResult = {
   task: Task;
   matchedBy: "x-task-id" | "uid" | "external-uid";
+};
+
+type TaskLookup = {
+  byId: Map<string, Task>;
+  indexById: Map<string, number>;
+  byExternalUid: Map<string, string>;
+  bySeriesExternalUid: Map<string, string>;
+  bySeriesOccurrence: Map<string, string>;
+  bySeriesUidAndRecurrence: Map<string, string>;
 };
 
 function toErrorMessage(error: unknown): string {
@@ -143,9 +153,15 @@ function extractVisibleSourceTaskIds(tasks: Task[], view: SavedView, nowMs: numb
   return new Set(rows.map((row) => row.sourceTaskId));
 }
 
-function isTaskVisibleInView(task: Task, tasks: Task[], view: SavedView, nowMs: number): boolean {
+function isTaskVisibleInView(
+  task: Task,
+  tasks: Task[],
+  view: SavedView,
+  nowMs: number,
+  existingIndexById?: Map<string, number>
+): boolean {
   const filters = applySavedView(view);
-  const existingIndex = tasks.findIndex((entry) => entry.id === task.id);
+  const existingIndex = existingIndexById?.get(task.id) ?? -1;
   const evaluationTasks =
     existingIndex >= 0
       ? tasks.map((entry, index) => (index === existingIndex ? task : entry))
@@ -175,29 +191,93 @@ function pushReportEntry(
   reportEntries.push(entry);
 }
 
-function mapSeriesUidToTaskId(tasks: Task[]): Map<string, string> {
-  const map = new Map<string, string>();
-  for (const task of tasks) {
-    if (!task.recurrence || task.instance_of) continue;
-    const uid = task.external?.calendar?.uid;
-    if (uid) {
-      map.set(uid, task.id);
-    }
-  }
-  return map;
+function toSeriesOccurrenceKey(seriesId: string, occurrenceIso: string): string {
+  return `${seriesId}::${occurrenceIso}`;
 }
 
-function findTaskByExternalUid(tasks: Task[], uid: string): Task | undefined {
-  return tasks.find((task) => task.external?.calendar?.uid === uid);
+function toSeriesRecurrenceKey(seriesUid: string, recurrenceId: string): string {
+  return `${seriesUid}::${recurrenceId}`;
+}
+
+function buildTaskLookup(tasks: Task[]): TaskLookup {
+  const byId = new Map<string, Task>();
+  const indexById = new Map<string, number>();
+  const byExternalUid = new Map<string, string>();
+  const bySeriesExternalUid = new Map<string, string>();
+  const bySeriesOccurrence = new Map<string, string>();
+  const bySeriesUidAndRecurrence = new Map<string, string>();
+
+  for (let index = 0; index < tasks.length; index += 1) {
+    const task = tasks[index];
+    byId.set(task.id, task);
+    indexById.set(task.id, index);
+  }
+
+  for (const task of tasks) {
+    const externalUid = task.external?.calendar?.uid?.trim();
+    if (externalUid && !byExternalUid.has(externalUid)) {
+      byExternalUid.set(externalUid, task.id);
+    }
+
+    if (task.recurrence && !task.instance_of && externalUid && !bySeriesExternalUid.has(externalUid)) {
+      bySeriesExternalUid.set(externalUid, task.id);
+    }
+
+    if (task.instance_of) {
+      const occurrenceKey = toSeriesOccurrenceKey(
+        task.instance_of.series_id,
+        task.instance_of.occurrence
+      );
+      if (!bySeriesOccurrence.has(occurrenceKey)) {
+        bySeriesOccurrence.set(occurrenceKey, task.id);
+      }
+    }
+
+    const seriesUid = task.external?.calendar?.seriesUid?.trim();
+    const recurrenceId = task.external?.calendar?.recurrenceId?.trim();
+    if (seriesUid && recurrenceId) {
+      const key = toSeriesRecurrenceKey(seriesUid, recurrenceId);
+      if (!bySeriesUidAndRecurrence.has(key)) {
+        bySeriesUidAndRecurrence.set(key, task.id);
+      }
+    }
+  }
+
+  return {
+    byId,
+    indexById,
+    byExternalUid,
+    bySeriesExternalUid,
+    bySeriesOccurrence,
+    bySeriesUidAndRecurrence
+  };
+}
+
+function replaceTaskById(
+  tasks: Task[],
+  lookup: TaskLookup,
+  nextTask: Task
+): TaskLookup {
+  const index = lookup.indexById.get(nextTask.id);
+  if (index === undefined) {
+    return lookup;
+  }
+  tasks[index] = nextTask;
+  return buildTaskLookup(tasks);
+}
+
+function appendTask(tasks: Task[], nextTask: Task): TaskLookup {
+  tasks.push(nextTask);
+  return buildTaskLookup(tasks);
 }
 
 function resolveTaskMatch(
   event: ParsedIcsEvent,
-  tasks: Task[]
+  lookup: TaskLookup
 ): MatchResult | undefined {
   const xTaskId = event.xTaskId?.trim();
   if (xTaskId) {
-    const byId = tasks.find((task) => task.id === xTaskId);
+    const byId = lookup.byId.get(xTaskId);
     if (byId) {
       return { task: byId, matchedBy: "x-task-id" };
     }
@@ -205,7 +285,7 @@ function resolveTaskMatch(
 
   const uidIdentity = parseTadoiIdentityFromUid(event.uid);
   if (uidIdentity) {
-    const byUidId = tasks.find((task) => task.id === uidIdentity.taskId);
+    const byUidId = lookup.byId.get(uidIdentity.taskId);
     if (byUidId) {
       return { task: byUidId, matchedBy: "uid" };
     }
@@ -213,9 +293,12 @@ function resolveTaskMatch(
 
   const normalizedUid = event.uid?.trim();
   if (normalizedUid) {
-    const byExternalUid = findTaskByExternalUid(tasks, normalizedUid);
-    if (byExternalUid) {
-      return { task: byExternalUid, matchedBy: "external-uid" };
+    const byExternalUidTaskId = lookup.byExternalUid.get(normalizedUid);
+    if (byExternalUidTaskId) {
+      const byExternalUid = lookup.byId.get(byExternalUidTaskId);
+      if (byExternalUid) {
+        return { task: byExternalUid, matchedBy: "external-uid" };
+      }
     }
   }
 
@@ -224,12 +307,11 @@ function resolveTaskMatch(
 
 function resolveSeriesTaskForOverride(
   event: ParsedIcsEvent,
-  tasks: Task[],
-  seriesTaskIdByUid: Map<string, string>
+  lookup: TaskLookup
 ): MatchResult | undefined {
   const xTaskId = event.xTaskId?.trim();
   if (xTaskId) {
-    const byX = tasks.find((task) => task.id === xTaskId);
+    const byX = lookup.byId.get(xTaskId);
     if (byX?.recurrence) {
       return { task: byX, matchedBy: "x-task-id" };
     }
@@ -240,29 +322,19 @@ function resolveSeriesTaskForOverride(
   );
 
   for (const uid of baseUidCandidates) {
-    const taskId = seriesTaskIdByUid.get(uid);
-    if (taskId) {
-      const task = tasks.find((entry) => entry.id === taskId);
-      if (task?.recurrence) {
-        return { task, matchedBy: "uid" };
+    const parsed = parseTadoiIdentityFromUid(uid);
+    if (parsed) {
+      const byParsed = lookup.byId.get(parsed.taskId);
+      if (byParsed?.recurrence) {
+        return { task: byParsed, matchedBy: "uid" };
       }
     }
 
-    const byExternal = tasks.find(
-      (task) =>
-        task.recurrence &&
-        !task.instance_of &&
-        task.external?.calendar?.uid === uid
-    );
-    if (byExternal) {
-      return { task: byExternal, matchedBy: "external-uid" };
-    }
-
-    const parsed = parseTadoiIdentityFromUid(uid);
-    if (parsed) {
-      const byParsed = tasks.find((task) => task.id === parsed.taskId);
-      if (byParsed?.recurrence) {
-        return { task: byParsed, matchedBy: "uid" };
+    const taskId = lookup.bySeriesExternalUid.get(uid);
+    if (taskId) {
+      const task = lookup.byId.get(taskId);
+      if (task?.recurrence) {
+        return { task, matchedBy: "external-uid" };
       }
     }
   }
@@ -274,31 +346,36 @@ function resolveInstanceMatch(
   event: ParsedIcsEvent,
   seriesTask: Task,
   occurrenceIso: string,
-  tasks: Task[]
+  lookup: TaskLookup
 ): MatchResult | undefined {
-  const directMatch = resolveTaskMatch(event, tasks);
+  const directMatch = resolveTaskMatch(event, lookup);
   if (directMatch) {
     return directMatch;
   }
 
-  const byOccurrence = tasks.find(
-    (task) =>
-      task.instance_of?.series_id === seriesTask.recurrence?.series_id &&
-      task.instance_of?.occurrence === occurrenceIso
-  );
-  if (byOccurrence) {
-    return { task: byOccurrence, matchedBy: "external-uid" };
+  const seriesId = seriesTask.recurrence?.series_id;
+  if (seriesId) {
+    const occurrenceTaskId = lookup.bySeriesOccurrence.get(
+      toSeriesOccurrenceKey(seriesId, occurrenceIso)
+    );
+    if (occurrenceTaskId) {
+      const byOccurrence = lookup.byId.get(occurrenceTaskId);
+      if (byOccurrence) {
+        return { task: byOccurrence, matchedBy: "external-uid" };
+      }
+    }
   }
 
   const uid = event.uid?.trim();
   if (uid) {
-    const byExternal = tasks.find(
-      (task) =>
-        task.external?.calendar?.seriesUid === uid &&
-        task.external?.calendar?.recurrenceId === occurrenceIso
+    const recurrenceTaskId = lookup.bySeriesUidAndRecurrence.get(
+      toSeriesRecurrenceKey(uid, occurrenceIso)
     );
-    if (byExternal) {
-      return { task: byExternal, matchedBy: "external-uid" };
+    if (recurrenceTaskId) {
+      const byExternal = lookup.byId.get(recurrenceTaskId);
+      if (byExternal) {
+        return { task: byExternal, matchedBy: "external-uid" };
+      }
     }
   }
 
@@ -384,6 +461,7 @@ function shouldSkipByRange(
 export async function importCalendarIcs(
   options: CalendarImportOptions
 ): Promise<CalendarImportResult> {
+  const warnings: string[] = [];
   const now = options.now ?? new Date();
   const nowMs = now.getTime();
   const importedAtIso = now.toISOString();
@@ -456,14 +534,16 @@ export async function importCalendarIcs(
   }
 
   try {
-    await loadSettings();
+    const settingsResult = await loadSettings();
+    for (const warning of settingsResult.warnings) {
+      warnings.push(`Settings: ${warning}`);
+    }
   } catch (error: unknown) {
-    throw new CalendarImportFilesystemError(
-      `Failed to load settings: ${toErrorMessage(error)}`
-    );
+    warnings.push(`Settings unavailable during import: ${toErrorMessage(error)}`);
   }
 
   const tasks = stateResult.data.tasks.map((task) => ({ ...task }));
+  let taskLookup = buildTaskLookup(tasks);
   const savedViews = stateResult.data.savedViews;
   const rangeWindow = resolveCalendarRangeWindow(range, nowMs);
 
@@ -497,7 +577,6 @@ export async function importCalendarIcs(
   };
 
   const reportEntries: CalendarImportReportEntry[] = [];
-  const seriesTaskIdByUid = mapSeriesUidToTaskId(tasks);
 
   const baseEvents = parsed.events.filter((event) => !event.recurrenceId);
   const overrideEvents = parsed.events.filter((event) => Boolean(event.recurrenceId));
@@ -534,7 +613,7 @@ export async function importCalendarIcs(
       continue;
     }
 
-    const match = mode === "create" ? undefined : resolveTaskMatch(event, tasks);
+    const match = mode === "create" ? undefined : resolveTaskMatch(event, taskLookup);
     if (match) {
       if (match.matchedBy === "x-task-id") {
         summary.matchedByTaskId += 1;
@@ -624,7 +703,10 @@ export async function importCalendarIcs(
           continue;
         }
 
-        if (view && !isTaskVisibleInView(created, tasks, view, nowMs)) {
+        if (
+          view &&
+          !isTaskVisibleInView(created, tasks, view, nowMs, taskLookup.indexById)
+        ) {
           summary.skipped += 1;
           pushReportEntry(reportEntries, {
             uid: event.uid,
@@ -634,12 +716,10 @@ export async function importCalendarIcs(
           continue;
         }
 
-        tasks.push(normalizeSeriesExdates(created));
+        const normalizedCreated = normalizeSeriesExdates(created);
+        taskLookup = appendTask(tasks, normalizedCreated);
         summary.created += 1;
         summary.recurringSeriesImported += 1;
-        if (event.uid) {
-          seriesTaskIdByUid.set(event.uid, created.id);
-        }
         if (visibleSourceIds) {
           visibleSourceIds = extractVisibleSourceTaskIds(tasks, view as SavedView, nowMs);
         }
@@ -647,7 +727,7 @@ export async function importCalendarIcs(
           uid: event.uid,
           action: "created",
           match: match?.matchedBy ?? "none",
-          taskId: created.id
+          taskId: normalizedCreated.id
         });
         continue;
       }
@@ -693,7 +773,10 @@ export async function importCalendarIcs(
         continue;
       }
 
-      if (view && !isTaskVisibleInView(nextTask, tasks, view, nowMs)) {
+      if (
+        view &&
+        !isTaskVisibleInView(nextTask, tasks, view, nowMs, taskLookup.indexById)
+      ) {
         summary.skipped += 1;
         pushReportEntry(reportEntries, {
           uid: event.uid,
@@ -706,13 +789,7 @@ export async function importCalendarIcs(
       }
 
       nextTask = normalizeSeriesExdates(nextTask);
-      const index = tasks.findIndex((task) => task.id === existing.id);
-      if (index >= 0) {
-        tasks[index] = nextTask;
-      }
-      if (event.uid) {
-        seriesTaskIdByUid.set(event.uid, nextTask.id);
-      }
+      taskLookup = replaceTaskById(tasks, taskLookup, nextTask);
 
       if (merged.action === "updated") {
         summary.updated += 1;
@@ -740,7 +817,10 @@ export async function importCalendarIcs(
 
     if (!match || mode === "create") {
       const created = createTaskFromDraft(draft, nowMs, importedAtIso);
-      if (view && !isTaskVisibleInView(created, tasks, view, nowMs)) {
+      if (
+        view &&
+        !isTaskVisibleInView(created, tasks, view, nowMs, taskLookup.indexById)
+      ) {
         summary.skipped += 1;
         pushReportEntry(reportEntries, {
           uid: event.uid,
@@ -749,7 +829,7 @@ export async function importCalendarIcs(
         });
         continue;
       }
-      tasks.push(created);
+      taskLookup = appendTask(tasks, created);
       summary.created += 1;
       if (visibleSourceIds) {
         visibleSourceIds = extractVisibleSourceTaskIds(tasks, view as SavedView, nowMs);
@@ -775,7 +855,10 @@ export async function importCalendarIcs(
       mode: mode === "update" ? "update" : "merge",
       allowOverwrite
     });
-    if (view && !isTaskVisibleInView(merged.task, tasks, view, nowMs)) {
+    if (
+      view &&
+      !isTaskVisibleInView(merged.task, tasks, view, nowMs, taskLookup.indexById)
+    ) {
       summary.skipped += 1;
       pushReportEntry(reportEntries, {
         uid: event.uid,
@@ -787,10 +870,7 @@ export async function importCalendarIcs(
       continue;
     }
 
-    const index = tasks.findIndex((task) => task.id === match.task.id);
-    if (index >= 0) {
-      tasks[index] = merged.task;
-    }
+    taskLookup = replaceTaskById(tasks, taskLookup, merged.task);
 
     if (merged.action === "updated") {
       summary.updated += 1;
@@ -831,7 +911,7 @@ export async function importCalendarIcs(
       continue;
     }
 
-    const seriesMatch = resolveSeriesTaskForOverride(event, tasks, seriesTaskIdByUid);
+    const seriesMatch = resolveSeriesTaskForOverride(event, taskLookup);
     if (!seriesMatch || !seriesMatch.task.recurrence) {
       summary.errors += 1;
       pushReportEntry(reportEntries, {
@@ -849,7 +929,7 @@ export async function importCalendarIcs(
       summary.matchedByUid += 1;
     }
 
-    const seriesTaskIndex = tasks.findIndex((task) => task.id === seriesMatch.task.id);
+    const seriesTaskIndex = taskLookup.indexById.get(seriesMatch.task.id) ?? -1;
     if (seriesTaskIndex < 0) {
       summary.errors += 1;
       pushReportEntry(reportEntries, {
@@ -862,6 +942,22 @@ export async function importCalendarIcs(
     }
 
     const seriesTask = tasks[seriesTaskIndex];
+    if (
+      view &&
+      !isTaskVisibleInView(seriesTask, tasks, view, nowMs, taskLookup.indexById)
+    ) {
+      summary.skipped += 1;
+      pushReportEntry(reportEntries, {
+        uid: event.uid,
+        recurrenceId: occurrenceIso,
+        action: "skipped",
+        match: seriesMatch.matchedBy,
+        taskId: seriesTask.id,
+        message: `Series/override not visible in saved view "${viewApplied}"`
+      });
+      continue;
+    }
+
     const exdates = Array.from(
       new Set([...(seriesTask.recurrence?.exdates ?? []), occurrenceIso])
     ).sort((left, right) => left.localeCompare(right));
@@ -873,10 +969,11 @@ export async function importCalendarIcs(
       },
       updatedAt: nowMs
     };
+    taskLookup = buildTaskLookup(tasks);
 
     const instanceMatch = mode === "create"
       ? undefined
-      : resolveInstanceMatch(event, tasks[seriesTaskIndex], occurrenceIso, tasks);
+      : resolveInstanceMatch(event, tasks[seriesTaskIndex], occurrenceIso, taskLookup);
 
     if (event.status === "CANCELLED") {
       let cancelledAny = false;
@@ -897,10 +994,9 @@ export async function importCalendarIcs(
         }
       }
       if (cancelledAny) {
-        summary.cancellationsApplied += 1;
-      } else {
-        summary.cancellationsApplied += 1;
+        taskLookup = buildTaskLookup(tasks);
       }
+      summary.cancellationsApplied += 1;
       pushReportEntry(reportEntries, {
         uid: event.uid,
         recurrenceId: occurrenceIso,
@@ -957,7 +1053,10 @@ export async function importCalendarIcs(
         }
       };
 
-      if (view && !isTaskVisibleInView(created, tasks, view, nowMs)) {
+      if (
+        view &&
+        !isTaskVisibleInView(created, tasks, view, nowMs, taskLookup.indexById)
+      ) {
         summary.skipped += 1;
         pushReportEntry(reportEntries, {
           uid: event.uid,
@@ -968,7 +1067,7 @@ export async function importCalendarIcs(
         continue;
       }
 
-      tasks.push(created);
+      taskLookup = appendTask(tasks, created);
       summary.created += 1;
       summary.overridesCreated += 1;
       pushReportEntry(reportEntries, {
@@ -1001,7 +1100,10 @@ export async function importCalendarIcs(
       }
     };
 
-    if (view && !isTaskVisibleInView(mergedTaskWithInstance, tasks, view, nowMs)) {
+    if (
+      view &&
+      !isTaskVisibleInView(mergedTaskWithInstance, tasks, view, nowMs, taskLookup.indexById)
+    ) {
       summary.skipped += 1;
       pushReportEntry(reportEntries, {
         uid: event.uid,
@@ -1014,10 +1116,7 @@ export async function importCalendarIcs(
       continue;
     }
 
-    const index = tasks.findIndex((task) => task.id === instanceMatch.task.id);
-    if (index >= 0) {
-      tasks[index] = mergedTaskWithInstance;
-    }
+    taskLookup = replaceTaskById(tasks, taskLookup, mergedTaskWithInstance);
 
     if (merged.action === "updated") {
       summary.updated += 1;
@@ -1083,15 +1182,14 @@ export async function importCalendarIcs(
   try {
     outputReportPath = await maybeWriteReport(options.reportPath, report, cwd);
   } catch (error: unknown) {
-    throw new CalendarImportFilesystemError(
-      `Failed to write import report: ${toErrorMessage(error)}`
-    );
+    warnings.push(`Failed to write import report: ${toErrorMessage(error)}`);
   }
 
   return {
     summary,
     report,
     ...(outputReportPath ? { outputReportPath } : {}),
-    hasErrors: summary.errors > 0
+    hasErrors: summary.errors > 0,
+    ...(warnings.length > 0 ? { warnings } : {})
   };
 }

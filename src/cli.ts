@@ -22,7 +22,7 @@ export type CliRoute =
   | { kind: "version" }
   | { kind: "smoke_tui" }
   | { kind: "portability"; command: "export" | "import"; args: string[] }
-  | { kind: "calendar"; command: "export"; args: string[] }
+  | { kind: "calendar"; command: "export" | "import"; args: string[] }
   | { kind: "tui"; showLogo: boolean };
 
 export type CliRunDeps = {
@@ -30,7 +30,7 @@ export type CliRunDeps = {
     command: "export" | "import",
     args: string[]
   ) => Promise<number>;
-  runCalendar: (command: "export", args: string[]) => Promise<number>;
+  runCalendar: (command: "export" | "import", args: string[]) => Promise<number>;
   runInteractiveTui: (options: RunTuiOptions) => Promise<void>;
   runSmokeTui: () => Promise<number>;
   printHelp: (showLogo: boolean) => void;
@@ -65,6 +65,7 @@ export function printHelp(showLogo: boolean): void {
   console.log("  export          Export full persisted state (plus settings)");
   console.log("  import          Import state from a JSON export");
   console.log("  calendar:export Export one-way calendar ICS file");
+  console.log("  calendar:import Import one-way calendar ICS file");
   console.log(`  Run '${CLI_NAME} <command> --help' for command-specific flags`);
   console.log("");
   console.log("Environment:");
@@ -98,6 +99,13 @@ export function resolveCliRoute(argv: string[]): CliRoute {
     return {
       kind: "calendar",
       command: "export",
+      args: argv.slice(1)
+    };
+  }
+  if (command === "calendar:import") {
+    return {
+      kind: "calendar",
+      command: "import",
       args: argv.slice(1)
     };
   }

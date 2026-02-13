@@ -6,8 +6,10 @@ import {
   computeBacklogTrend7,
   computeDueBuckets8,
   computeOverdueAgingBuckets,
+  computePriorityBucketBreakdown,
   computeTopTagsOpen
 } from "./dashboard";
+import { buildVisibleTaskRows } from "./taskRows";
 
 function baseTask(partial: Partial<Task>): Task {
   return {
@@ -20,7 +22,9 @@ function baseTask(partial: Partial<Task>): Task {
     hasExplicitTime: partial.hasExplicitTime,
     closedAt: partial.closedAt,
     notes: partial.notes,
-    tags: partial.tags ?? []
+    tags: partial.tags ?? [],
+    recurrence: partial.recurrence,
+    instance_of: partial.instance_of
   };
 }
 
@@ -100,11 +104,11 @@ describe("computeBacklogTrend7", () => {
 });
 
 describe("computeTopTagsOpen", () => {
-  it("counts tags from open tasks only and sorts by count desc then tag asc", () => {
+  it("counts tags from open tasks only, excludes P1..P5 tags, and sorts by count desc then tag asc", () => {
     const tasks: Task[] = [
-      baseTask({ id: "o1", status: "open", tags: ["work", "home"] }),
+      baseTask({ id: "o1", status: "open", tags: ["work", "home", "p1"] }),
       baseTask({ id: "o2", status: "open", tags: ["work", "tadoi"] }),
-      baseTask({ id: "o3", status: "open", tags: ["tadoi"] }),
+      baseTask({ id: "o3", status: "open", tags: ["tadoi", "#P2"] }),
       baseTask({ id: "o4", status: "done", tags: ["work", "zzz"] }),
       baseTask({ id: "o5", status: "archived", tags: ["home", "zzz"] })
     ];
@@ -113,6 +117,28 @@ describe("computeTopTagsOpen", () => {
       { tag: "tadoi", count: 2 },
       { tag: "work", count: 2 },
       { tag: "home", count: 1 }
+    ]);
+  });
+
+  it("keeps non-priority tags from mixed [tag + priority] tasks", () => {
+    const tasks: Task[] = [
+      baseTask({ id: "a", status: "open", tags: ["work", "p2"] }),
+      baseTask({ id: "b", status: "open", tags: ["work"] }),
+      baseTask({ id: "c", status: "open", tags: ["#P1"] })
+    ];
+
+    expect(computeTopTagsOpen(tasks, 10)).toEqual([{ tag: "work", count: 2 }]);
+  });
+
+  it("does not exclude non-P1..P5 tokens like #p10", () => {
+    const tasks: Task[] = [
+      baseTask({ id: "a", status: "open", tags: ["#p10", "work"] }),
+      baseTask({ id: "b", status: "open", tags: ["work"] })
+    ];
+
+    expect(computeTopTagsOpen(tasks, 10)).toEqual([
+      { tag: "work", count: 2 },
+      { tag: "#p10", count: 1 }
     ]);
   });
 
@@ -134,6 +160,64 @@ describe("computeTopTagsOpen", () => {
       baseTask({ id: "y", status: "done", tags: ["work"] })
     ];
     expect(computeTopTagsOpen(tasks, 5)).toEqual([]);
+  });
+});
+
+describe("computePriorityBucketBreakdown", () => {
+  it("counts effective priorities and normalizes variants", () => {
+    const tasks: Task[] = [
+      baseTask({ id: "a", status: "open", tags: ["work", "P1"] }),
+      baseTask({ id: "b", status: "open", tags: ["#p1", "home"] }),
+      baseTask({ id: "c", status: "open", tags: ["p2"] }),
+      baseTask({ id: "d", status: "open", tags: ["work", "#P2"] })
+    ];
+
+    expect(computePriorityBucketBreakdown(tasks)).toEqual([
+      { priority: "P1", count: 2 },
+      { priority: "P2", count: 2 }
+    ]);
+  });
+
+  it("renders only priorities present and omits tasks with no priority", () => {
+    const tasks: Task[] = [
+      baseTask({ id: "a", status: "open", tags: ["work"] }),
+      baseTask({ id: "b", status: "open", tags: ["p2"] }),
+      baseTask({ id: "c", status: "done", tags: ["#P2"] })
+    ];
+
+    expect(computePriorityBucketBreakdown(tasks)).toEqual([{ priority: "P2", count: 2 }]);
+  });
+
+  it("ignores non-P1..P5 priorities", () => {
+    const tasks: Task[] = [
+      baseTask({ id: "a", status: "open", tags: ["#p10"] }),
+      baseTask({ id: "b", status: "open", tags: ["p5"] })
+    ];
+
+    expect(computePriorityBucketBreakdown(tasks)).toEqual([{ priority: "P5", count: 1 }]);
+  });
+
+  it("respects visible-task row pipeline inputs", () => {
+    const now = new Date(2026, 1, 13, 12, 0, 0, 0).getTime();
+    const tasks: Task[] = [
+      baseTask({
+        id: "series-1",
+        title: "daily standup",
+        status: "open",
+        hasExplicitTime: true,
+        tags: ["work", "#P2"],
+        recurrence: {
+          dtstart: "2026-02-13T09:00:00",
+          rrule: "FREQ=DAILY;INTERVAL=1;COUNT=3",
+          series_id: "series:standup"
+        }
+      })
+    ];
+
+    const visibleRows = buildVisibleTaskRows(tasks, { status: "all", due: "today" }, "due", now);
+    expect(visibleRows).toHaveLength(1);
+    expect(computeTopTagsOpen(visibleRows, 5)).toEqual([{ tag: "work", count: 1 }]);
+    expect(computePriorityBucketBreakdown(visibleRows)).toEqual([{ priority: "P2", count: 1 }]);
   });
 });
 

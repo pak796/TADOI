@@ -115,4 +115,95 @@ describe("calendar export/import round-trip", () => {
       expect(secondOverrides[0]?.instance_of?.occurrence).toBe(firstOccurrence);
     });
   });
+
+  it("keeps identity precedence as X-TADOI-TASK-ID > TADOI UID > external UID", async () => {
+    await withRoundTripEnv(async ({ tempDir, dataPath }) => {
+      const exportPath = path.join(tempDir, "identity-export.ics");
+      const xTaskImportPath = path.join(tempDir, "identity-x-task.ics");
+      const uidPriorityImportPath = path.join(tempDir, "identity-uid-priority.ics");
+
+      const exported = await exportCalendarIcs({
+        outputPath: exportPath,
+        range: "all",
+        privacy: "full",
+        timeZone: "UTC",
+        now: new Date(Date.UTC(2026, 1, 12, 12, 30, 0))
+      });
+      let exportedRaw = await fs.readFile(exported.outputPath, "utf8");
+      exportedRaw = exportedRaw.replace(
+        "UID:tadoi-timed-1@local",
+        "UID:foreign-calendar-uid-1"
+      );
+      exportedRaw = exportedRaw.replace("SUMMARY:Timed source", "SUMMARY:Timed source (x-task-id)");
+      await fs.writeFile(xTaskImportPath, exportedRaw, "utf8");
+
+      const importByTaskId = await importCalendarIcs({
+        inputPath: xTaskImportPath,
+        range: "all",
+        mode: "merge",
+        dryRun: false
+      });
+      expect(importByTaskId.hasErrors).toBe(false);
+
+      const afterTaskId = JSON.parse(await fs.readFile(dataPath, "utf8")) as unknown;
+      const afterTaskIdValidation = validatePersistedState(afterTaskId, "strict");
+      expect(afterTaskIdValidation.ok).toBe(true);
+      if (!afterTaskIdValidation.ok) return;
+      const timedAfterTaskId = afterTaskIdValidation.data.tasks.find((task) => task.id === "timed-1");
+      expect(timedAfterTaskId?.title).toBe("Timed source (x-task-id)");
+
+      // Force an external UID collision and verify TADOI UID parsing still wins.
+      const mutated = {
+        ...afterTaskIdValidation.data,
+        tasks: afterTaskIdValidation.data.tasks.map((task) =>
+          task.id === "timed-1"
+            ? {
+                ...task,
+                external: {
+                  ...task.external,
+                  calendar: {
+                    ...(task.external?.calendar ?? {}),
+                    uid: "tadoi-all-day-1@local",
+                    lastImportedAt: task.external?.calendar?.lastImportedAt ?? new Date().toISOString()
+                  }
+                }
+              }
+            : task
+        )
+      };
+      await fs.writeFile(dataPath, JSON.stringify(mutated, null, 2), "utf8");
+
+      const uidPriorityIcs = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//TADOI//EN",
+        "BEGIN:VEVENT",
+        "UID:tadoi-all-day-1@local",
+        "SUMMARY:All day source (uid-priority)",
+        "DTSTART;VALUE=DATE:20260215",
+        "DTEND;VALUE=DATE:20260216",
+        "END:VEVENT",
+        "END:VCALENDAR"
+      ].join("\n");
+      await fs.writeFile(uidPriorityImportPath, uidPriorityIcs, "utf8");
+
+      const importByUid = await importCalendarIcs({
+        inputPath: uidPriorityImportPath,
+        range: "all",
+        mode: "merge",
+        dryRun: false
+      });
+      expect(importByUid.hasErrors).toBe(false);
+
+      const afterUid = JSON.parse(await fs.readFile(dataPath, "utf8")) as unknown;
+      const afterUidValidation = validatePersistedState(afterUid, "strict");
+      expect(afterUidValidation.ok).toBe(true);
+      if (!afterUidValidation.ok) return;
+
+      const allDay = afterUidValidation.data.tasks.find((task) => task.id === "all-day-1");
+      const timed = afterUidValidation.data.tasks.find((task) => task.id === "timed-1");
+      expect(allDay?.title).toBe("All day source (uid-priority)");
+      expect(timed?.title).toBe("Timed source (x-task-id)");
+    });
+  });
 });

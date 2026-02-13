@@ -43,6 +43,7 @@ import {
   formatDateToLocalIso,
   parseLocalIsoToDate
 } from "../domain/recurrence/rruleAdapter";
+import { isRepeatOccurrenceAfterSeriesStart } from "../domain/recurrence/repeatOccurrence";
 import {
   deleteRecurringOccurrence,
   deleteRecurringOccurrenceAndFuture
@@ -53,7 +54,7 @@ import {
   isTaskOverdue
 } from "../domain/navigation";
 import { clampScrollOffset, ensureSelectedVisible } from "../domain/scroll";
-import { computeTopTagStats } from "../domain/tagStats";
+import { computeOpenPriorityStats, computeTopTagStats } from "../domain/tagStats";
 import {
   addTaskLink,
   deleteTaskLink,
@@ -221,6 +222,7 @@ import { openTarget } from "./openTarget";
 import { redactPathForDisplay } from "./pathRedaction";
 
 const TICKER_INTERVAL_MS = 6000;
+const BOTTOM_INFO_VIEW_ORDER = ["summary", "tags", "priorities"] as const;
 const SLOW_PULSE_INTERVAL_MS = 2000;
 const FAST_PULSE_INTERVAL_MS = 700;
 const NOTIFICATION_EVALUATION_INTERVAL_MS = 10000;
@@ -888,6 +890,14 @@ type TagTickerSegment = {
   displayTag: string;
 };
 
+type BottomInfoView = (typeof BOTTOM_INFO_VIEW_ORDER)[number];
+
+type PriorityTickerSegment = {
+  priorityTag: string;
+  displayPriority: string;
+  total: number;
+};
+
 const TAG_PILL_PADDING = 2;
 
 function truncateTagDisplay(value: string, maxLen: number): string {
@@ -931,6 +941,30 @@ function buildTagTickerSegments(
       segments.push({ ...stat, displayTag: truncatedTag });
     }
     break;
+  }
+
+  return segments;
+}
+
+function buildPriorityTickerSegments(
+  stats: ReturnType<typeof computeOpenPriorityStats>,
+  maxWidth: number
+): PriorityTickerSegment[] {
+  const separator = "  ";
+  const segments: PriorityTickerSegment[] = [];
+  let used = 0;
+
+  for (const stat of stats) {
+    const segmentText = `${stat.total} ${stat.displayPriority}`;
+    const segmentLen = segmentText.length + TAG_PILL_PADDING;
+    const extra = segments.length ? separator.length : 0;
+
+    if (used + extra + segmentLen > maxWidth) {
+      break;
+    }
+
+    segments.push({ ...stat });
+    used += extra + segmentLen;
   }
 
   return segments;
@@ -1085,7 +1119,7 @@ export function App({
   );
   const [pulseOn, setPulseOn] = useState(false);
   const [fastPulseOn, setFastPulseOn] = useState(false);
-  const [showTagTicker, setShowTagTicker] = useState(false);
+  const [bottomInfoView, setBottomInfoView] = useState<BottomInfoView>("summary");
   const [rotatingThemeIndex, setRotatingThemeIndex] = useState(0);
   const [timeSuggestion, setTimeSuggestion] = useState<SuggestedTime | null>(null);
   const [saveFailureBanner, setSaveFailureBanner] = useState<string | null>(null);
@@ -1542,6 +1576,10 @@ export function App({
     () => computeTopTagStats(summaryTagRows, dayKey, 5),
     [summaryTagRows, dayKey]
   );
+  const openPriorityStats = React.useMemo(
+    () => computeOpenPriorityStats(state.tasks),
+    [state.tasks]
+  );
 
   const bottomBarWidth = Math.max(0, terminalWidth - layout.railWidth);
   const bottomBarContentWidth = Math.max(0, bottomBarWidth - 2);
@@ -1549,6 +1587,12 @@ export function App({
     () => buildTagTickerSegments(tagStats, bottomBarContentWidth),
     [tagStats, bottomBarContentWidth]
   );
+  const priorityTickerSegments = React.useMemo(
+    () => buildPriorityTickerSegments(openPriorityStats, bottomBarContentWidth),
+    [openPriorityStats, bottomBarContentWidth]
+  );
+  const priorityTickerNeedsWiderLayout =
+    openPriorityStats.length > 0 && priorityTickerSegments.length === 0;
   const dashboardTopTagLimit = React.useMemo(
     () => resolveDashboardTopTagLimit(dashboardPaneHeight),
     [dashboardPaneHeight]
@@ -1743,7 +1787,12 @@ export function App({
 
   useEffect(() => {
     const id = setInterval(() => {
-      setShowTagTicker((prev) => !prev);
+      setBottomInfoView((prev) => {
+        const index = BOTTOM_INFO_VIEW_ORDER.indexOf(prev);
+        const safeIndex = index === -1 ? 0 : index;
+        const nextIndex = (safeIndex + 1) % BOTTOM_INFO_VIEW_ORDER.length;
+        return BOTTOM_INFO_VIEW_ORDER[nextIndex] ?? "summary";
+      });
     }, TICKER_INTERVAL_MS);
     return () => clearInterval(id);
   }, []);
@@ -2331,7 +2380,11 @@ export function App({
           privacy: backupState.calendarExportPrivacy,
           outputPathInput: backupState.calendarExportPathInput
         });
-        backupDispatch({ type: "calendarExportSucceeded", result });
+        backupDispatch({
+          type: "calendarExportSucceeded",
+          result,
+          warnings: result.warnings
+        });
       } catch (error: unknown) {
         openBackupError("Calendar export failed", error, "calendar_export_confirm");
       }
@@ -2376,7 +2429,8 @@ export function App({
           hasErrors: dryRun.result.hasErrors,
           errorReasons: dryRun.errorReasons,
           fingerprint: dryRun.fingerprint,
-          reportPath: dryRun.result.outputReportPath
+          reportPath: dryRun.result.outputReportPath,
+          warnings: dryRun.result.warnings
         });
       } catch (error: unknown) {
         openBackupError("Calendar dry-run failed", error, "calendar_import_tag");
@@ -2440,7 +2494,8 @@ export function App({
           type: "calendarImportSucceeded",
           summary: commitResult.result.summary,
           reportPath: commitResult.result.outputReportPath,
-          backupPath: commitResult.backupPath
+          backupPath: commitResult.backupPath,
+          warnings: commitResult.result.warnings
         });
         await refreshRuntimeStateFromDisk();
       } catch (error: unknown) {
@@ -4533,17 +4588,6 @@ export function App({
    * - recurring completion paths emit once per completed occurrence
    * - blocked overlays suppress active toast rendering; queue resumes after close
    */
-  function isRecurringRepeatOccurrence(seriesTask: Task | undefined, occurrenceIso: string): boolean {
-    const dtstartIso = normalizeOccurrenceIso(seriesTask?.recurrence?.dtstart);
-    if (!dtstartIso) return false;
-    const occurrenceDate = parseLocalIsoToDate(occurrenceIso);
-    const startDate = parseLocalIsoToDate(dtstartIso);
-    if (!occurrenceDate || !startDate) {
-      return occurrenceIso > dtstartIso;
-    }
-    return occurrenceDate.getTime() > startDate.getTime();
-  }
-
   function triggerFirstRecurringTaskCreated(at: number, seriesId: string) {
     dispatch({
       type: "triggerEngagementMilestone",
@@ -4615,7 +4659,11 @@ export function App({
       const previousTask = previousById.get(nextTask.id);
       const instance = nextTask.instance_of;
       const recurringRepeat =
-        instance && isRecurringRepeatOccurrence(seriesById.get(instance.series_id), instance.occurrence)
+        instance &&
+        isRepeatOccurrenceAfterSeriesStart(
+          seriesById.get(instance.series_id)?.recurrence?.dtstart,
+          instance.occurrence
+        )
           ? {
               seriesId: instance.series_id,
               occurrenceIso: instance.occurrence
@@ -4658,7 +4706,10 @@ export function App({
       });
       dispatch({ type: "setTasks", tasks: updatedTasks });
       dispatch({ type: "setSelected", id: context.instanceTask.id });
-      const recurringRepeat = isRecurringRepeatOccurrence(context.seriesTask, context.occurrenceIso)
+      const recurringRepeat = isRepeatOccurrenceAfterSeriesStart(
+        context.seriesTask.recurrence?.dtstart,
+        context.occurrenceIso
+      )
         ? {
             seriesId: context.seriesId,
             occurrenceIso: context.occurrenceIso
@@ -4707,7 +4758,10 @@ export function App({
       tagIndex: updateTagIndex(state.tagIndex, doneInstance.tags, nowMs)
     });
     dispatch({ type: "setSelected", id: instanceId });
-    const recurringRepeat = isRecurringRepeatOccurrence(context.seriesTask, context.occurrenceIso)
+    const recurringRepeat = isRepeatOccurrenceAfterSeriesStart(
+      context.seriesTask.recurrence?.dtstart,
+      context.occurrenceIso
+    )
       ? {
           seriesId: context.seriesId,
           occurrenceIso: context.occurrenceIso
@@ -5615,6 +5669,47 @@ export function App({
     );
   }
 
+  function isBottomPriorityQuickFilterActive(priorityTag: string): boolean {
+    const normalizedPriority = normalizePriorityFilterValue(priorityTag);
+    if (!normalizedPriority) return false;
+    return (
+      state.filters.status === "open" &&
+      state.filters.due === "any" &&
+      normalizePriorityFilterValue(state.filters.priority) === normalizedPriority
+    );
+  }
+
+  function toggleBottomPriorityQuickFilter(priorityTag: string) {
+    const normalizedPriority = normalizePriorityFilterValue(priorityTag);
+    if (!normalizedPriority) return;
+
+    const alreadyActive = isBottomPriorityQuickFilterActive(normalizedPriority);
+    if (alreadyActive) {
+      dispatch({
+        type: "setFilters",
+        filters: {
+          status: "all",
+          due: "any",
+          priority: undefined
+        }
+      });
+      showShortNavigationBanner("Priority quick filter cleared");
+      return;
+    }
+
+    dispatch({
+      type: "setFilters",
+      filters: {
+        status: "open",
+        due: "any",
+        priority: normalizedPriority
+      }
+    });
+    const displayPriority =
+      formatPriorityForDisplay(normalizedPriority) ?? normalizedPriority;
+    showShortNavigationBanner(`Quick filter: OPEN + ${displayPriority}`);
+  }
+
   function toggleTagFilter() {
     const activeTags = Array.from(
       new Set(
@@ -5976,7 +6071,7 @@ export function App({
             alignItems: "center"
           }}
         >
-          {showTagTicker ? (
+          {bottomInfoView === "tags" ? (
             <box style={{ flexDirection: "row", gap: 0 }}>
               {tagTickerSegments.length === 0 ? (
                 <text style={{ color: theme.muted }}>NO TAGS</text>
@@ -6008,6 +6103,48 @@ export function App({
                         }}
                       >
                         {segment.total} {segment.displayTag}
+                      </text>
+                    </box>
+                  </box>
+                ))
+              )}
+            </box>
+          ) : bottomInfoView === "priorities" ? (
+            <box style={{ flexDirection: "row", gap: 0 }}>
+              {priorityTickerSegments.length === 0 ? (
+                <text style={{ color: theme.muted }}>
+                  {priorityTickerNeedsWiderLayout
+                    ? "WIDEN TO VIEW PRIORITIES"
+                    : "NO OPEN PRIORITIES"}
+                </text>
+              ) : (
+                priorityTickerSegments.map((segment, index) => (
+                  <box key={segment.priorityTag} style={{ flexDirection: "row", gap: 0 }}>
+                    {index > 0 ? (
+                      <text style={{ color: theme.muted }}>  </text>
+                    ) : null}
+                    <box
+                      style={{
+                        backgroundColor: colorForTag(segment.priorityTag),
+                        paddingLeft: 1,
+                        paddingRight: 1
+                      }}
+                      onMouseDown={(event) => {
+                        if (event.button !== 0) return;
+                        toggleBottomPriorityQuickFilter(segment.priorityTag);
+                      }}
+                    >
+                      <text
+                        style={{
+                          color: isBottomPriorityQuickFilterActive(segment.priorityTag)
+                            ? theme.text
+                            : theme.bg,
+                          fontWeight: isBottomPriorityQuickFilterActive(segment.priorityTag)
+                            ? "bold"
+                            : "normal"
+                        }}
+                      >
+                        {segment.total} {segment.displayPriority}
                       </text>
                     </box>
                   </box>

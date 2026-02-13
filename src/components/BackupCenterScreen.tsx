@@ -781,6 +781,18 @@ export function BackupCenterScreen({
             Instance overrides: {String(state.calendarExportResult?.instanceOverridesExported ?? 0)}
           </text>
           <text style={{ color: theme.muted }}>EXDATE count: {String(state.calendarExportResult?.exdateCount ?? 0)}</text>
+          {state.calendarExportWarnings.length > 0 ? (
+            <>
+              <text style={{ color: theme.warn, marginTop: 1, fontWeight: "bold" }}>
+                Warnings:
+              </text>
+              {state.calendarExportWarnings.map((warning) => (
+                <text key={warning} style={{ color: theme.warn }}>
+                  - {warning}
+                </text>
+              ))}
+            </>
+          ) : null}
           <text style={{ color: theme.muted }}>Enter or Esc: back</text>
         </box>
       ) : null}
@@ -978,6 +990,18 @@ export function BackupCenterScreen({
                   <text style={{ color: theme.text }}>{state.calendarImportDryRunReportPath}</text>
                 </>
               ) : null}
+              {state.calendarImportDryRunWarnings.length > 0 ? (
+                <>
+                  <text style={{ color: theme.warn, marginTop: 1, fontWeight: "bold" }}>
+                    Warnings:
+                  </text>
+                  {state.calendarImportDryRunWarnings.map((warning) => (
+                    <text key={warning} style={{ color: theme.warn }}>
+                      - {warning}
+                    </text>
+                  ))}
+                </>
+              ) : null}
               <text style={{ color: theme.muted, marginTop: 1 }}>
                 Enter: {shouldBlockCalendarCommit ? "commit blocked (fix dry-run errors)" : "commit import"}
               </text>
@@ -1041,6 +1065,18 @@ export function BackupCenterScreen({
             <>
               <text style={{ color: theme.muted, marginTop: 1 }}>Report:</text>
               <text style={{ color: theme.text }}>{state.calendarImportCommittedReportPath}</text>
+            </>
+          ) : null}
+          {state.calendarImportCommittedWarnings.length > 0 ? (
+            <>
+              <text style={{ color: theme.warn, marginTop: 1, fontWeight: "bold" }}>
+                Warnings:
+              </text>
+              {state.calendarImportCommittedWarnings.map((warning) => (
+                <text key={warning} style={{ color: theme.warn }}>
+                  - {warning}
+                </text>
+              ))}
             </>
           ) : null}
           <text style={{ color: theme.muted, marginTop: 1 }}>

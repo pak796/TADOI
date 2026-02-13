@@ -185,4 +185,39 @@ describe("backupCenterCalendarController", () => {
     expect(importCalledAfterBackup).toBe(true);
     expect(committed.backupPath).toContain(".backup.");
   });
+
+  it("preserves non-fatal warnings from import service in dry-run and commit results", async () => {
+    const withWarnings = {
+      ...makeCalendarImportResult(),
+      warnings: ["Failed to write import report: EISDIR"]
+    };
+
+    const dryRun = await runCalendarImportDryRunFlow(
+      {
+        inputPath: "./incoming.ics",
+        range: "next7",
+        mode: "merge",
+        horizonDays: 365
+      },
+      {
+        importCalendar: async () => withWarnings
+      }
+    );
+    expect(dryRun.result.warnings).toEqual(["Failed to write import report: EISDIR"]);
+
+    const committed = await runCalendarImportCommitFlow(
+      {
+        inputPath: "./incoming.ics",
+        range: "next7",
+        mode: "merge",
+        horizonDays: 365
+      },
+      {
+        resolveDataPath: () => "/tmp/tadoi_data.json",
+        createBackup: async () => "/tmp/tadoi_data.json.backup.20260212-000000",
+        importCalendar: async () => ({ ...withWarnings, report: { ...withWarnings.report, dryRun: false } })
+      }
+    );
+    expect(committed.result.warnings).toEqual(["Failed to write import report: EISDIR"]);
+  });
 });

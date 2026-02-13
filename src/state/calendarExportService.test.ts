@@ -65,6 +65,12 @@ async function withTempDataFile<T>(
   }
 }
 
+async function writeInvalidSettings(tempDir: string): Promise<void> {
+  const settingsPath = path.join(tempDir, ".config", "tadoi", "settings.json");
+  await fs.mkdir(path.dirname(settingsPath), { recursive: true });
+  await fs.writeFile(settingsPath, "{invalid-json", "utf8");
+}
+
 describe("calendarExportService", () => {
   it("writes deterministic ICS output for a mixed fixture dataset", async () => {
     const payload: {
@@ -251,6 +257,48 @@ describe("calendarExportService", () => {
       expect(actual).not.toContain("DESCRIPTION:");
       expect(actual).not.toContain("CATEGORIES:");
       expect(actual).not.toContain("\nURL:");
+    });
+  });
+
+  it("falls back to system timezone when settings file is invalid", async () => {
+    const payload: {
+      schemaVersion: 4;
+      tasks: PersistedTask[];
+      tagIndex: Record<string, never>;
+      savedViews: unknown[];
+    } = {
+      schemaVersion: 4 as const,
+      tasks: [
+        {
+          id: "task-1",
+          title: "Task",
+          status: "open",
+          createdAt: 1,
+          updatedAt: 1,
+          dueAt: Date.UTC(2026, 1, 15, 10, 0, 0),
+          hasExplicitTime: true,
+          tags: []
+        }
+      ],
+      tagIndex: {},
+      savedViews: []
+    };
+
+    await withTempDataFile(payload, async ({ tempDir }) => {
+      await writeInvalidSettings(tempDir);
+
+      const result = await exportCalendarIcs({
+        outputPath: path.join(tempDir, "settings-fallback.ics"),
+        range: "all",
+        now: new Date(Date.UTC(2026, 1, 12, 12, 30, 0))
+      });
+
+      expect(result.eventsWritten).toBe(1);
+      expect(
+        result.warnings?.some((warning) =>
+          warning.includes("settings file is not valid JSON")
+        )
+      ).toBe(true);
     });
   });
 });

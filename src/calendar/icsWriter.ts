@@ -274,11 +274,24 @@ export function foldIcsLine(line: string): string {
 function renderEventLines(event: CalendarVEvent): string[] {
   const lines = [
     "BEGIN:VEVENT",
-    `UID:${escapeIcsText(event.uid)}`,
+    `UID:${escapeIcsText(event.uid)}`
+  ];
+
+  if (event.xTaskId) {
+    lines.push(`X-TADOI-TASK-ID:${escapeIcsText(event.xTaskId)}`);
+  }
+  if (event.xSeriesId) {
+    lines.push(`X-TADOI-SERIES-ID:${escapeIcsText(event.xSeriesId)}`);
+  }
+  if (event.xInstanceOf) {
+    lines.push(`X-TADOI-INSTANCE-OF:${escapeIcsText(event.xInstanceOf)}`);
+  }
+
+  lines.push(
     `DTSTAMP:${event.dtstampUtc}`,
     renderTemporalLine("DTSTART", event.dtstart),
     renderTemporalLine("DTEND", event.dtend)
-  ];
+  );
 
   if (event.rrule) {
     lines.push(event.rrule);

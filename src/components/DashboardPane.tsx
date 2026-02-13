@@ -1,11 +1,13 @@
 import React from "react";
 import { colorForTag, themeForObject } from "../app/theme";
 import {
+  computePriorityBucketBreakdown,
   computeCreatedCompleted7d,
   computeDueBuckets8,
   computeOverdueAgingBuckets,
   type CreatedCompleted7d,
   type OverdueAgingBucket,
+  type PriorityBucketCount,
   type TopTagCount
 } from "../domain/dashboard";
 import { computeDashboardKpis } from "../domain/dashboardKpis";
@@ -281,6 +283,29 @@ function buildOverdueAgingLines(buckets: OverdueAgingBucket[], panelWidth: numbe
   });
 }
 
+function buildPriorityBucketLines(buckets: PriorityBucketCount[], panelWidth: number): string[] {
+  const innerWidth = Math.max(10, panelWidth - PANEL_HORIZONTAL_OVERHEAD);
+  const maxCount = Math.max(0, ...buckets.map((bucket) => bucket.count));
+  const countWidth = Math.max(1, String(maxCount).length);
+  const priorityLabelWidth = 3;
+
+  const availableBarWidth = innerWidth - priorityLabelWidth - 1 - 1 - countWidth;
+  if (availableBarWidth < 1) {
+    return ["(widen to view chart)"];
+  }
+
+  const barWidth = Math.max(1, Math.min(BAR_W, availableBarWidth));
+  const barRightSlack = Math.max(0, availableBarWidth - barWidth);
+
+  return buckets.map(({ priority, count }) => {
+    const bar = renderBlockBar(count, maxCount, barWidth);
+    const line =
+      `${priority.padEnd(priorityLabelWidth, " ")} ${bar}` +
+      `${" ".repeat(barRightSlack)} ${String(count).padStart(countWidth, " ")}`;
+    return truncateLine(line, innerWidth);
+  });
+}
+
 function renderDayGrid(labels: string[], cellWidth: number): string {
   const safeCellWidth = Math.max(2, cellWidth);
   return labels.map((label) => label.padStart(safeCellWidth, " ")).join("");
@@ -475,6 +500,14 @@ export function DashboardPane({
   const throughputLines = React.useMemo(
     () => buildThroughputLines(throughputDisplay, bottomRowLayout.rightPanelWidth),
     [throughputDisplay, bottomRowLayout.rightPanelWidth]
+  );
+  const priorityBreakdown = React.useMemo(
+    () => computePriorityBucketBreakdown(tasks),
+    [tasks]
+  );
+  const priorityBreakdownLines = React.useMemo(
+    () => buildPriorityBucketLines(priorityBreakdown, dashboardContentWidth),
+    [priorityBreakdown, dashboardContentWidth]
   );
 
   const kpiMax = Math.max(0, ...kpiItems.map((item) => item.value));
@@ -776,6 +809,21 @@ export function DashboardPane({
           </box>
         </box>
       )}
+
+      <box style={{ ...panelStyle, width: dashboardContentWidth, marginTop: 1 }}>
+        <text style={{ color: theme.text, fontWeight: "bold" }}>
+          PRIORITY BREAKDOWN (VISIBLE TASKS)
+        </text>
+        {priorityBreakdown.length === 0 ? (
+          <text style={{ color: theme.muted }}>(No prioritized tasks in current view)</text>
+        ) : (
+          priorityBreakdownLines.map((line, index) => (
+            <text key={`priority-breakdown-${index}`} style={{ color: theme.text }}>
+              {line}
+            </text>
+          ))
+        )}
+      </box>
     </box>
   );
 }

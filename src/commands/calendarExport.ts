@@ -72,6 +72,9 @@ export async function runCalendarExportCommand(
     } else {
       console.log("[calendar:export] timezone: UTC (fallback)");
     }
+    for (const warning of result.warnings ?? []) {
+      console.log(`[calendar:export] warning: ${warning}`);
+    }
     return 0;
   } catch (error: unknown) {
     if (error instanceof CalendarExportFilesystemError) {

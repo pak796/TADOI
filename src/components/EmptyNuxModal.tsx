@@ -1,5 +1,4 @@
 import { themeForObject } from "../app/theme";
-import { PRODUCT_NAME_TM } from "../brand/brand";
 
 type EmptyNuxModalProps = {
   onClose: () => void;
@@ -23,7 +22,7 @@ export function EmptyNuxModal({ onClose, onCreateTask }: EmptyNuxModalProps) {
       }}
     >
       <box style={{ flexDirection: "row", justifyContent: "space-between" }}>
-        <text style={{ fontWeight: "bold" }}>{`Welcome to ${PRODUCT_NAME_TM}`}</text>
+        <text style={{ fontWeight: "bold" }}>Welcome to TADOI</text>
         <box
           style={{ backgroundColor: theme.bg, paddingLeft: 1, paddingRight: 1 }}
           onMouseDown={(mouseEvent) => {
@@ -31,12 +30,12 @@ export function EmptyNuxModal({ onClose, onCreateTask }: EmptyNuxModalProps) {
             onClose();
           }}
         >
-          <text style={{ color: theme.text, fontWeight: "bold" }}>[ESC]</text>
+          <text style={{ color: theme.text, fontWeight: "bold" }}>(X)</text>
         </box>
       </box>
 
-      <text style={{ marginTop: 1 }}>[A] CREATE TASK OR CLICK CREATE TASK [A].</text>
-      <text style={{ color: theme.muted }}>[ESC] CLOSE</text>
+      <text style={{ marginTop: 1 }}>Press A to create a task, or click ADD.</text>
+      <text style={{ color: theme.muted }}>Esc to close</text>
 
       <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
         <box
@@ -46,7 +45,7 @@ export function EmptyNuxModal({ onClose, onCreateTask }: EmptyNuxModalProps) {
             onCreateTask();
           }}
         >
-          <text style={{ color: theme.bg, fontWeight: "bold" }}>CREATE TASK (A)</text>
+          <text style={{ color: theme.bg, fontWeight: "bold" }}>ADD (A)</text>
         </box>
         <box
           style={{ backgroundColor: theme.bg, paddingLeft: 1, paddingRight: 1 }}
@@ -55,7 +54,7 @@ export function EmptyNuxModal({ onClose, onCreateTask }: EmptyNuxModalProps) {
             onClose();
           }}
         >
-          <text style={{ color: theme.text, fontWeight: "bold" }}>CLOSE (ESC)</text>
+          <text style={{ color: theme.text, fontWeight: "bold" }}>Close (Esc)</text>
         </box>
       </box>
     </box>

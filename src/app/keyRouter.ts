@@ -288,6 +288,8 @@ export function handleKey(
   if (mode === Mode.MODAL_CONFIRM) {
     if (uiState.modal?.type === "emptyNux") {
       if (
+        name === "return" ||
+        name === "enter" ||
         name === "a" ||
         name === "A" ||
         sequence === "a" ||

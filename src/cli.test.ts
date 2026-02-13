@@ -18,6 +18,14 @@ describe("resolveCliRoute", () => {
     expect(route.args).toEqual(["--help"]);
   });
 
+  it("routes calendar import before global flags", () => {
+    const route = resolveCliRoute(["calendar:import", "--help"]);
+    expect(route.kind).toBe("calendar");
+    if (route.kind !== "calendar") return;
+    expect(route.command).toBe("import");
+    expect(route.args).toEqual(["--help"]);
+  });
+
   it("routes --version without starting tui", () => {
     const route = resolveCliRoute(["--version"]);
     expect(route).toEqual({ kind: "version" });
@@ -97,6 +105,16 @@ describe("runCli", () => {
     expect(calls.smoke).toBe(0);
   });
 
+  it("keeps calendar:import --help headless", async () => {
+    const { calls, deps } = createDeps();
+    const code = await runCli(["calendar:import", "--help"], deps);
+    expect(code).toBe(0);
+    expect(calls.portability).toBe(0);
+    expect(calls.calendar).toBe(1);
+    expect(calls.tui).toBe(0);
+    expect(calls.smoke).toBe(0);
+  });
+
   it("runs smoke mode separately from interactive tui", async () => {
     const { calls, deps } = createDeps();
     const code = await runCli(["--smoke-tui"], deps);
@@ -125,5 +143,6 @@ describe("printHelp", () => {
     expect(output).toContain("Terminal Accessible Digital Organization Interface");
     expect(output).toContain("Usage: tadoi [options]");
     expect(output).toContain("calendar:export");
+    expect(output).toContain("calendar:import");
   });
 });
