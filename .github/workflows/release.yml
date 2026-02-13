@@ -232,9 +232,9 @@ jobs:
           copy_by_name_preserve "tadoi_*.deb"
           copy_by_name_preserve "tadoi-*-x86_64.AppImage"
 
-          copy_by_path "*/dist/bin/linux/tadoi" "release-upload/tadoi-linux"
-          copy_by_path "*/dist/bin/macos/tadoi" "release-upload/tadoi-macos"
-          copy_by_path "*/dist/bin/windows/tadoi.exe" "release-upload/tadoi.exe"
+          copy_by_path "*/bin/linux/tadoi" "release-upload/tadoi-linux"
+          copy_by_path "*/bin/macos/tadoi" "release-upload/tadoi-macos"
+          copy_by_path "*/bin/windows/tadoi.exe" "release-upload/tadoi.exe"
 
       - name: Publish GitHub Release assets
         uses: softprops/action-gh-release@5be0e66d93ac7ed76da52eca8bb058f665c3a5fe # v2.4.2
