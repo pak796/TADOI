@@ -18,8 +18,14 @@ if (-not (Test-Path -LiteralPath $BinaryPath)) {
 }
 
 $workspace = Resolve-Path -LiteralPath "."
-$resolvedInstallerDir = Join-Path $workspace $InstallerDir
+$workspacePath = $workspace.Path
+$resolvedInstallerDir = if ([System.IO.Path]::IsPathRooted($InstallerDir)) {
+  $InstallerDir
+} else {
+  Join-Path $workspacePath $InstallerDir
+}
 New-Item -ItemType Directory -Force -Path $resolvedInstallerDir | Out-Null
+$resolvedInstallerDir = (Resolve-Path -LiteralPath $resolvedInstallerDir).Path
 
 $iscc = Get-Command iscc -ErrorAction SilentlyContinue
 if (-not $iscc) {
