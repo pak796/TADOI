@@ -83,10 +83,10 @@ jobs:
             exit 1
           fi
 
-          appimagetool_version="13"
+          appimagetool_version="1.9.1"
           appimage_path="$RUNNER_TEMP/appimagetool-${appimagetool_version}.AppImage"
           wrapper_path="$RUNNER_TEMP/appimagetool"
-          curl -fsSL "https://github.com/AppImage/AppImageKit/releases/download/${appimagetool_version}/appimagetool-x86_64.AppImage" -o "$appimage_path"
+          curl -fsSL "https://github.com/AppImage/appimagetool/releases/download/${appimagetool_version}/appimagetool-x86_64.AppImage" -o "$appimage_path"
           chmod +x "$appimage_path"
           {
             echo "#!/usr/bin/env bash"
