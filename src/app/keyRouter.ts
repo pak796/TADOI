@@ -224,6 +224,9 @@ function listModeActions(key: KeyInput): KeyRouterAction[] {
   if (!ctrl && name === "s") return [{ scope: "domain", type: "CYCLE_SORT" }];
   if (!ctrl && name === "g") return [{ scope: "domain", type: "CYCLE_DUE" }];
   if (!ctrl && name === "r") return [{ scope: "domain", type: "CYCLE_PRIORITY" }];
+  if (!ctrl && !shift && (name === "u" || sequence === "u")) {
+    return [{ scope: "ui", type: "OPEN_BACKUP_CENTER" }];
+  }
   if (isTagPanelOpenKey(name, sequence, ctrl, shift)) {
     return [{ scope: "ui", type: "OPEN_TAG_FILTER_PANEL" }];
   }
@@ -523,6 +526,9 @@ export function handleKey(
     if (name === "f") return [{ scope: "domain", type: "CYCLE_STATUS" }];
     if (!ctrl && name === "g") return [{ scope: "domain", type: "CYCLE_DUE" }];
     if (!ctrl && name === "r") return [{ scope: "domain", type: "CYCLE_PRIORITY" }];
+    if (!ctrl && !shift && (name === "u" || sequence === "u")) {
+      return [{ scope: "ui", type: "OPEN_BACKUP_CENTER" }];
+    }
     if (isTagPanelOpenKey(name, sequence, ctrl, shift)) {
       return [{ scope: "ui", type: "OPEN_TAG_FILTER_PANEL" }];
     }

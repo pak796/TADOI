@@ -385,6 +385,9 @@ describe("handleKey", () => {
     expect(run({ name: "r", sequence: "r" })).toEqual([
       { scope: "domain", type: "CYCLE_PRIORITY" }
     ]);
+    expect(run({ name: "u", sequence: "u" })).toEqual([
+      { scope: "ui", type: "OPEN_BACKUP_CENTER" }
+    ]);
     expect(run({ name: "t", sequence: "t" })).toEqual([
       { scope: "domain", type: "TOGGLE_TAG_FILTER" }
     ]);
@@ -578,6 +581,9 @@ describe("handleKey", () => {
     ).toEqual([]);
     expect(run({ name: "q", sequence: "q" }, { uiState: dashboardState })).toEqual([
       { scope: "domain", type: "EXIT_APP" }
+    ]);
+    expect(run({ name: "u", sequence: "u" }, { uiState: dashboardState })).toEqual([
+      { scope: "ui", type: "OPEN_BACKUP_CENTER" }
     ]);
     expect(run({ sequence: "?" }, { uiState: dashboardState })).toEqual([
       { scope: "ui", type: "OPEN_HELP" }

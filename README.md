@@ -245,14 +245,11 @@ Behavior notes:
   - `Enter` or `Esc`: return to list
 - Help mode:
   - `1`: open Backup Center (`DATA: Backup / Export / Import`)
-  - `h` / `H`: cycle theme
-  - `m` / `M`: toggle flash mode (`slow` / `static`)
-  - `n` / `N`: toggle notifications master switch
-  - `o` / `O`: toggle in-app overdue popup modal
-  - `l` / `L`: toggle terminal bell on overdue
   - `up` / `down`: move selected Help section
   - `left` / `right`: collapse/expand selected section
   - `Enter` / `Space`: toggle selected section
+  - `Enter` / `right` on the `Settings` section: open settings pages
+  - In settings pages: `up` / `down` move, `Enter` / `right` apply/select, `left` / `Backspace` / `Esc` back
   - `ctrl+u` / `PageUp`: page Help content up
   - `ctrl+d` / `PageDown`: page Help content down
   - `Esc` or `?`: close help
@@ -277,7 +274,9 @@ Behavior notes:
 - Task-row click target: the full row area that receives selection highlight.
 - Left-rail MENU rows: click a row to trigger its action (`LIST`, `DASHBOARD`, `ADD`, `EDIT`, `SEARCH`, `HELP`, `DELETE`).
 - MENU click target: the full row area that receives menu highlight.
+- Dashboard top-tags chart: click a top-tag row to apply that tag filter.
 - Editor actions: click `SAVE` or `CANCEL` in the editor pane.
+- Details links: click once to select a link, click the selected row again to open it.
 - Bottom rotating info bar: click summary buckets or tag pills to toggle quick filters; click the same item again to clear.
 
 ## Tag Autocomplete

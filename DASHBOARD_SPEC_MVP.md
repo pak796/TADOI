@@ -5,8 +5,8 @@
 > 2) 8-bucket due chart (left panel)
 > 3) TOP TAGS (OPEN) Pareto chart (right panel)
 >
-> Release baseline: `v0.3.4`.
-> As of: `v0.3.4`.
+> Release baseline: `v0.3.5`.
+> As of: `v0.3.5`.
 > Stability: core filter/routing/parity contracts are `Canonical`; presentation details are `Current Behavior (May Change)`.
 
 ---
@@ -60,6 +60,7 @@ Single source of truth:
 ### Top-tags drilldown
 - `up` / `down` selects a row in `TOP TAGS (OPEN)`.
 - `enter` applies selected tag as active legacy tag filter (`filters.tag = selectedTag`) and clears boolean `filters.tagFilter`.
+- Mouse click on a top-tag row applies the same selected-tag filter behavior.
 - If status filter is `done` or `archived`, enter shows an availability hint instead of applying a tag.
 
 ---
@@ -194,3 +195,17 @@ Tests should cover:
 - TOP TAGS rows remain aligned regardless of tag length.
 - Enter on selected top tag applies `filters.tag` immediately.
 - Dashboard toggling and resizing do not corrupt borders/layout.
+
+---
+
+## 9) Canonical Invariant Table
+
+| ID | Canonical invariant | Automated lock |
+|---|---|---|
+| DTF-001 | Non-empty boolean `tagFilter` overrides legacy `tag`. | `src/app/dashboardTagFilterContract.test.ts` |
+| DTF-002 | Empty boolean buckets are no-op and legacy `tag` matching applies. | `src/app/dashboardTagFilterContract.test.ts` |
+| DTF-003 | `due=next7` uses local-day rolling window `today..+6`. | `src/app/dashboardTagFilterContract.test.ts` |
+| DTF-004 | `due=overdue` includes prior-day overdue and same-day explicit-time overdue only after due time passes. | `src/app/dashboardTagFilterContract.test.ts` |
+| DTF-005 | In `DASHBOARD` mode, `up/down` selection + `Enter` drilldown actions are routed while list movement keys remain blocked. | `src/app/dashboardTagFilterContract.test.ts` |
+| DTF-006 | In `TAG_FILTER` mode, list/dashboard routing is blocked until unwind (`Esc`). | `src/app/dashboardTagFilterContract.test.ts` |
+| DTF-007 | Dashboard analytics consume recurrence-aware visible rows (`buildVisibleTaskRows`) so recurring occurrences affect KPI and top-tag aggregates. | `src/app/dashboardTagFilterContract.test.ts` |

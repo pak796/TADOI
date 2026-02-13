@@ -47,6 +47,8 @@ type DetailsPaneProps = {
   flashMode: FlashMode;
   selectedLinkId?: string;
   linksFocused: boolean;
+  onSelectLink?: (linkId: string) => void;
+  onOpenLink?: (linkId: string) => void;
 };
 
 export function DetailsPane({
@@ -56,7 +58,9 @@ export function DetailsPane({
   fastPulseOn,
   flashMode,
   selectedLinkId,
-  linksFocused
+  linksFocused,
+  onSelectLink,
+  onOpenLink
 }: DetailsPaneProps) {
   if (!task) {
     return <text style={{ color: theme.muted }}>Select a task to view details.</text>;
@@ -233,6 +237,14 @@ export function DetailsPane({
                     paddingLeft: 1,
                     paddingRight: 1,
                     backgroundColor: rowBackground
+                  }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    if (selected) {
+                      onOpenLink?.(link.id);
+                      return;
+                    }
+                    onSelectLink?.(link.id);
                   }}
                 >
                   <text style={{ color: rowTextColor }}>

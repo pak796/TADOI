@@ -1,8 +1,7 @@
-import os from "os";
-import path from "path";
 import { createCliRenderer } from "@opentui/core";
 import { createRoot } from "@opentui/react";
 import { App } from "../app/App";
+import { redactPathForDisplay } from "../app/pathRedaction";
 import { applyThemeWithSettings } from "../app/theme";
 import { startOfLocalDayMs } from "../domain/dates";
 import { normalizeEngagementState } from "../domain/engagement";
@@ -10,7 +9,7 @@ import { normalizeTagIndex, normalizeTags } from "../domain/tagIndex";
 import { loadSettings } from "../settings/settings";
 import { CURRENT_SCHEMA_VERSION, safeLoadState } from "../state/persistence";
 import { applyArchiveAging } from "../state/store";
-import { APP_NAME, ENV_VARS, PRODUCT_NAME_TM } from "../brand/brand";
+import { APP_NAME, PRODUCT_NAME_TM } from "../brand/brand";
 
 export type RunTuiOptions = {
   showLogo: boolean;
@@ -20,30 +19,7 @@ export function redactStartupPath(
   pathValue: string,
   options: { homeDir?: string; env?: NodeJS.ProcessEnv } = {}
 ): string {
-  const env = options.env ?? process.env;
-  if (env[ENV_VARS.VERBOSE_PATH_LOGS] === "1") {
-    return pathValue;
-  }
-  const normalizedInput = pathValue.trim();
-  if (!normalizedInput) {
-    return pathValue;
-  }
-
-  const homeDir = options.homeDir ?? os.homedir();
-  const normalizedPath = normalizedInput.replaceAll("\\", "/");
-  const normalizedHome = homeDir.replaceAll("\\", "/");
-
-  if (normalizedPath === normalizedHome) {
-    return "~";
-  }
-  if (normalizedPath.startsWith(`${normalizedHome}/`)) {
-    return `~/${normalizedPath.slice(normalizedHome.length + 1)}`;
-  }
-  if (path.isAbsolute(normalizedInput)) {
-    const basename = path.basename(normalizedInput);
-    return basename ? `~/.../${basename}` : "~/...";
-  }
-  return normalizedInput;
+  return redactPathForDisplay(pathValue, options);
 }
 
 export async function runTui(options: RunTuiOptions): Promise<void> {

@@ -30,6 +30,7 @@ const BUCKET_META: Array<{
   { bucket: "any", label: "ANY (OR)", marker: "~" },
   { bucket: "none", label: "NONE (NOT)", marker: "-" }
 ];
+const MAX_TAG_CHIPS_PER_BUCKET = 24;
 
 function getBucketTags(draft: TagFilter | undefined, bucket: TagFilterBucket): string[] {
   return draft?.[bucket] ?? [];
@@ -59,6 +60,8 @@ export function TagFilterPanel({
       style={{
         width: 78,
         maxWidth: "100%",
+        minHeight: 0,
+        maxHeight: "100%",
         flexDirection: "column",
         backgroundColor: theme.panel,
         border: true,
@@ -67,7 +70,8 @@ export function TagFilterPanel({
         paddingLeft: 1,
         paddingRight: 1,
         paddingTop: 1,
-        paddingBottom: 1
+        paddingBottom: 1,
+        overflow: "hidden"
       }}
     >
       <text style={{ color: theme.text, fontWeight: "bold" }}>
@@ -80,6 +84,8 @@ export function TagFilterPanel({
       {BUCKET_META.map((meta) => {
         const isActive = activeBucket === meta.bucket;
         const tags = getBucketTags(draft, meta.bucket);
+        const visibleTags = tags.slice(0, MAX_TAG_CHIPS_PER_BUCKET);
+        const hiddenTagCount = Math.max(0, tags.length - visibleTags.length);
         return (
           <box key={meta.bucket} style={{ flexDirection: "column", marginTop: 1 }}>
             <box
@@ -107,7 +113,7 @@ export function TagFilterPanel({
               {tags.length === 0 ? (
                 <text style={{ color: theme.muted }}>(none)</text>
               ) : (
-                tags.map((tag) => (
+                visibleTags.map((tag) => (
                   <box
                     key={`${meta.bucket}:${tag}`}
                     style={{
@@ -129,6 +135,11 @@ export function TagFilterPanel({
                 ))
               )}
             </box>
+            {hiddenTagCount > 0 ? (
+              <text style={{ color: theme.muted, paddingLeft: 1 }}>
+                ... +{hiddenTagCount} more
+              </text>
+            ) : null}
           </box>
         );
       })}

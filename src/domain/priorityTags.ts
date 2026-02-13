@@ -56,3 +56,11 @@ export function normalizePriorityFilterValue(raw: string | undefined): string | 
   if (!match) return undefined;
   return canonicalPriorityTag(match.digits);
 }
+
+export function formatPriorityForDisplay(raw: string | undefined): string | undefined {
+  const normalized = normalizePriorityFilterValue(raw);
+  if (!normalized) return undefined;
+  const digits = isPriorityToken(normalized)?.digits;
+  if (!digits) return undefined;
+  return `P${digits}`;
+}

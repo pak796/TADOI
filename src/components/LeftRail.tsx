@@ -4,11 +4,12 @@ import { formatDate } from "../state/store";
 import { colorForTag, theme, styles } from "../app/theme";
 import { formatTagFilterBooleanSummary } from "../domain/tagFilter";
 import { formatTagForDisplay } from "../domain/tagIndex";
-import { normalizePriorityFilterValue } from "../domain/priorityTags";
+import { formatPriorityForDisplay } from "../domain/priorityTags";
 import { APP_VERSION } from "../app/version";
 import { getSortModeLabel } from "../domain/query";
 import {
   APP_TAGLINE,
+  formatLogoModeLabel,
   LOGO_MAX_WIDTH,
   LOGO_VARIANTS,
   ROTATING_LOGO_ORDER,
@@ -177,6 +178,7 @@ function formatHintLine(line: string): string {
 
 function formatMenuItemLabel(item: LeftRailMenuItem): string {
   if (item === "DASHBOARD") return "DASHBOARD (B)";
+  if (item === "BACKUP") return "BACKUP (U)";
   if (item === "ADD") return "ADD (A)";
   if (item === "EDIT") return "EDIT (E)";
   if (item === "SEARCH") return "SEARCH (/)";
@@ -279,7 +281,7 @@ export function LeftRail({
           ? theme.dueLater
           : "transparent";
   const dueText = dueBg === "transparent" ? theme.text : theme.bg;
-  const priorityLabel = normalizePriorityFilterValue(filters.priority) ?? "(any)";
+  const priorityLabel = formatPriorityForDisplay(filters.priority) ?? "ANY";
   const booleanTagSummary = formatTagFilterBooleanSummary(filters.tagFilter);
 
   const rawLogoLines = showLogo ? LOGO_VARIANTS[effectiveLogoId] : [];
@@ -288,6 +290,8 @@ export function LeftRail({
     : [];
   const taglineLines = showLogo ? wrapWords(APP_TAGLINE, LOGO_MAX_WIDTH) : [];
   const activeThemeLabel = activeThemeId ? formatThemeDisplayName(activeThemeId) : null;
+  const activeRotatingLogoLabel =
+    logoMode === "rotate" ? formatLogoModeLabel(effectiveLogoId) : null;
   const blocksLogoNeedsDarkInk =
     effectiveLogoId === "alternate_blocks32" && isLightHexColor(theme.accentPurple);
   const logoPrimaryColor = blocksLogoNeedsDarkInk ? "#000000" : theme.text;
@@ -431,6 +435,9 @@ export function LeftRail({
 
       {activeThemeLabel ? (
         <text style={{ color: theme.muted }}>THEME: {activeThemeLabel}</text>
+      ) : null}
+      {activeRotatingLogoLabel ? (
+        <text style={{ color: theme.muted }}>LOGO: {activeRotatingLogoLabel}</text>
       ) : null}
     </box>
   );

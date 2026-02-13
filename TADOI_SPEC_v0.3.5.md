@@ -58,6 +58,15 @@ TADOI supports two tag flows:
 Precedence rule:
 - Non-empty boolean `tagFilter` overrides legacy single `tag`.
 
+Canonical invariant table:
+
+| ID | Invariant | Automated lock |
+|---|---|---|
+| DTF-001 | Non-empty boolean `tagFilter` overrides legacy `tag`. | `src/app/dashboardTagFilterContract.test.ts` |
+| DTF-002 | Empty boolean buckets are no-op and legacy `tag` matching applies. | `src/app/dashboardTagFilterContract.test.ts` |
+| DTF-003 | `due=next7` uses local-day rolling window `today..+6`. | `src/app/dashboardTagFilterContract.test.ts` |
+| DTF-004 | `due=overdue` includes prior-day overdue and same-day explicit-time overdue only after due time passes. | `src/app/dashboardTagFilterContract.test.ts` |
+
 ### 2.5 Recurrence Contract
 - Recurrence fields: `dtstart`, `rrule`, optional `exdates`, `series_id`.
 - Sparse occurrence materialization:
@@ -98,6 +107,14 @@ Occurrence actions:
   - Due-bucket chart
   - `TOP TAGS (OPEN)` with drilldown (`Enter` applies selected tag)
 - Dashboard also opens boolean tag panel with `p`.
+
+Canonical invariant table:
+
+| ID | Invariant | Automated lock |
+|---|---|---|
+| DTF-005 | In `DASHBOARD` mode, `up/down` moves top-tag selection and `Enter` applies selected tag action; list movement keys do not leak. | `src/app/dashboardTagFilterContract.test.ts` |
+| DTF-006 | In `TAG_FILTER` mode, list/dashboard routing is blocked until unwind (`Esc`). | `src/app/dashboardTagFilterContract.test.ts` |
+| DTF-007 | Dashboard analytics include recurrence occurrences through `buildVisibleTaskRows` parity, not raw tasks-only filtering. | `src/app/dashboardTagFilterContract.test.ts` |
 
 ### 2.8 Notifications Contract
 - Tier 1: in-app overdue modal queue.

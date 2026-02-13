@@ -244,150 +244,150 @@ export function BackupCenterScreen({
   switch (state.screen) {
     case "menu":
       footerActions = [
-        { key: "export", label: "Export", onPress: () => onMenuSelect(0) },
-        { key: "import", label: "Import", onPress: () => onMenuSelect(1) },
-        { key: "show-path", label: "Show Path", onPress: () => onMenuSelect(2) },
-        { key: "calendar", label: "Calendar", onPress: () => onMenuSelect(3) },
-        { key: "close", label: "Close", onPress: onBackAction, tone: "neutral" }
+        { key: "export", label: "EXPORT", onPress: () => onMenuSelect(0) },
+        { key: "import", label: "IMPORT", onPress: () => onMenuSelect(1) },
+        { key: "show-path", label: "SHOW PATH", onPress: () => onMenuSelect(2) },
+        { key: "calendar", label: "CALENDAR", onPress: () => onMenuSelect(3) },
+        { key: "close", label: "CLOSE", onPress: onBackAction, tone: "neutral" }
       ];
       break;
     case "calendar_menu":
       footerActions = [
-        { key: "cal-export", label: "Export ICS", onPress: () => onCalendarMenuSelect(0) },
-        { key: "cal-import", label: "Import ICS", onPress: () => onCalendarMenuSelect(1) },
-        { key: "back", label: "Back", onPress: () => onCalendarMenuSelect(2), tone: "neutral" }
+        { key: "cal-export", label: "EXPORT ICS", onPress: () => onCalendarMenuSelect(0) },
+        { key: "cal-import", label: "IMPORT ICS", onPress: () => onCalendarMenuSelect(1) },
+        { key: "back", label: "BACK", onPress: () => onCalendarMenuSelect(2), tone: "neutral" }
       ];
       break;
     case "import_mode":
       footerActions = [
         {
           key: "merge",
-          label: "Merge",
+          label: "MERGE",
           onPress: () => onImportModeSelect("merge"),
           active: state.importMode === "merge"
         },
         {
           key: "replace",
-          label: "Replace",
+          label: "REPLACE",
           onPress: () => onImportModeSelect("replace"),
           tone: "danger",
           active: state.importMode === "replace"
         },
-        { key: "dry-run", label: "Dry-run", onPress: onPrimaryAction },
-        { key: "back", label: "Back", onPress: onBackAction, tone: "neutral" }
+        { key: "dry-run", label: "DRY-RUN", onPress: onPrimaryAction },
+        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
       ];
       break;
     case "calendar_export_range":
       footerActions = [
         {
           key: "next7",
-          label: "next7",
+          label: "NEXT7",
           onPress: () => onCalendarExportRangeSelect("next7"),
           active: state.calendarExportRange === "next7"
         },
         {
           key: "month",
-          label: "month",
+          label: "MONTH",
           onPress: () => onCalendarExportRangeSelect("month"),
           active: state.calendarExportRange === "month"
         },
         {
           key: "all",
-          label: "all",
+          label: "ALL",
           onPress: () => onCalendarExportRangeSelect("all"),
           active: state.calendarExportRange === "all"
         },
-        { key: "continue", label: "Continue", onPress: onPrimaryAction },
-        { key: "back", label: "Back", onPress: onBackAction, tone: "neutral" }
+        { key: "continue", label: "CONTINUE", onPress: onPrimaryAction },
+        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
       ];
       break;
     case "calendar_export_view":
       footerActions = [
-        { key: "continue", label: "Continue", onPress: onPrimaryAction },
-        { key: "back", label: "Back", onPress: onBackAction, tone: "neutral" }
+        { key: "continue", label: "CONTINUE", onPress: onPrimaryAction },
+        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
       ];
       break;
     case "calendar_export_privacy":
       footerActions = [
         {
           key: "minimal",
-          label: "Minimal",
+          label: "MINIMAL",
           onPress: () => onCalendarExportPrivacySelect("minimal"),
           active: state.calendarExportPrivacy === "minimal"
         },
         {
           key: "full",
-          label: "Full",
+          label: "FULL",
           onPress: () => onCalendarExportPrivacySelect("full"),
           active: state.calendarExportPrivacy === "full"
         },
-        { key: "continue", label: "Continue", onPress: onPrimaryAction },
-        { key: "back", label: "Back", onPress: onBackAction, tone: "neutral" }
+        { key: "continue", label: "CONTINUE", onPress: onPrimaryAction },
+        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
       ];
       break;
     case "calendar_import_range":
       footerActions = [
         {
           key: "next7",
-          label: "next7",
+          label: "NEXT7",
           onPress: () => onCalendarImportRangeSelect("next7"),
           active: state.calendarImportRange === "next7"
         },
         {
           key: "month",
-          label: "month",
+          label: "MONTH",
           onPress: () => onCalendarImportRangeSelect("month"),
           active: state.calendarImportRange === "month"
         },
         {
           key: "all",
-          label: "all",
+          label: "ALL",
           onPress: () => onCalendarImportRangeSelect("all"),
           active: state.calendarImportRange === "all"
         },
-        { key: "continue", label: "Continue", onPress: onPrimaryAction },
-        { key: "back", label: "Back", onPress: onBackAction, tone: "neutral" }
+        { key: "continue", label: "CONTINUE", onPress: onPrimaryAction },
+        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
       ];
       break;
     case "calendar_import_view":
       footerActions = [
-        { key: "continue", label: "Continue", onPress: onPrimaryAction },
-        { key: "back", label: "Back", onPress: onBackAction, tone: "neutral" }
+        { key: "continue", label: "CONTINUE", onPress: onPrimaryAction },
+        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
       ];
       break;
     case "calendar_import_mode":
       footerActions = [
         {
           key: "merge",
-          label: "Merge",
+          label: "MERGE",
           onPress: () => onCalendarImportModeSelect("merge"),
           active: state.calendarImportMode === "merge"
         },
         {
           key: "update",
-          label: "Update",
+          label: "UPDATE",
           onPress: () => onCalendarImportModeSelect("update"),
           active: state.calendarImportMode === "update"
         },
         {
           key: "create",
-          label: "Create",
+          label: "CREATE",
           onPress: () => onCalendarImportModeSelect("create"),
           active: state.calendarImportMode === "create"
         },
-        { key: "continue", label: "Continue", onPress: onPrimaryAction },
-        { key: "back", label: "Back", onPress: onBackAction, tone: "neutral" }
+        { key: "continue", label: "CONTINUE", onPress: onPrimaryAction },
+        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
       ];
       break;
     case "calendar_import_dryrun":
       footerActions = [
         {
           key: "commit",
-          label: shouldBlockCalendarCommit ? "Commit Blocked" : "Commit Import",
+          label: shouldBlockCalendarCommit ? "COMMIT BLOCKED" : "COMMIT IMPORT",
           onPress: shouldBlockCalendarCommit ? () => {} : onPrimaryAction,
           tone: shouldBlockCalendarCommit ? "neutral" : "primary"
         },
-        { key: "back", label: "Back", onPress: onBackAction, tone: "neutral" }
+        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
       ];
       break;
     case "import_path":
@@ -400,25 +400,25 @@ export function BackupCenterScreen({
     case "calendar_import_tag":
     case "calendar_import_confirm":
       footerActions = [
-        { key: "continue", label: "Continue", onPress: onPrimaryAction },
-        { key: "back", label: "Back", onPress: onBackAction, tone: "neutral" }
+        { key: "continue", label: "CONTINUE", onPress: onPrimaryAction },
+        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
       ];
       break;
     case "import_confirm":
       footerActions = [
         {
           key: "confirm-replace",
-          label: "Confirm Replace",
+          label: "CONFIRM REPLACE",
           onPress: onPrimaryAction,
           tone: "danger"
         },
-        { key: "cancel", label: "Cancel", onPress: onBackAction, tone: "neutral" }
+        { key: "cancel", label: "CANCEL", onPress: onBackAction, tone: "neutral" }
       ];
       break;
     case "import_dryrun":
       footerActions = [
-        { key: "commit", label: "Commit Import", onPress: onPrimaryAction },
-        { key: "back", label: "Back", onPress: onBackAction, tone: "neutral" }
+        { key: "commit", label: "COMMIT IMPORT", onPress: onPrimaryAction },
+        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
       ];
       break;
     case "export_done":
@@ -427,7 +427,7 @@ export function BackupCenterScreen({
     case "calendar_export_done":
     case "calendar_import_done":
     case "error":
-      footerActions = [{ key: "back", label: "Back", onPress: onPrimaryAction }];
+      footerActions = [{ key: "back", label: "BACK", onPress: onPrimaryAction }];
       break;
     case "exporting":
     case "importing":

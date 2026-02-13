@@ -95,6 +95,29 @@ describe("safeLoadState", () => {
     expect(result.shouldPersistRecoveredState).toBe(false);
   });
 
+  it("does not treat non-ENOENT read failures as corruption recovery", async () => {
+    const dir = await makeTempDir();
+    const filePath = path.join(dir, "tadoi_data.json");
+    await fs.writeFile(filePath, await loadFixture("persisted.v5.json"), "utf8");
+
+    const fsOps: PersistenceFsOps = {
+      ...fs,
+      readFile: (async () => {
+        throw Object.assign(new Error("permission denied"), { code: "EACCES" });
+      }) as PersistenceFsOps["readFile"]
+    };
+
+    const result = await safeLoadState({ filePath, fsOps });
+    expect(result.data.tasks).toHaveLength(0);
+    expect(result.shouldPersistRecoveredState).toBe(false);
+    expect(result.corruptBackupPath).toBeUndefined();
+    expect(result.bannerMessage).toContain("Unable to read data file");
+
+    const files = await fs.readdir(dir);
+    expect(files.some((name) => name.includes(".corrupt."))).toBe(false);
+    expect(files).toContain("tadoi_data.json");
+  });
+
   it("backs up malformed JSON and returns recovery state with banner", async () => {
     const dir = await makeTempDir();
     const filePath = path.join(dir, "tadoi_data.json");

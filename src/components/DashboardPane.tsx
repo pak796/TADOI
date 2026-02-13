@@ -12,7 +12,7 @@ import { computeDashboardKpis } from "../domain/dashboardKpis";
 import { Filters, Task } from "../domain/models";
 import { formatTagFilterBooleanSummary } from "../domain/tagFilter";
 import { formatTagForDisplay } from "../domain/tagIndex";
-import { normalizePriorityFilterValue } from "../domain/priorityTags";
+import { formatPriorityForDisplay } from "../domain/priorityTags";
 
 const DUE_BUCKET_LABELS = ["OVD", "TOD", "+1", "+2", "+3", "+4", "+5", "+6"] as const;
 const KPI_ORDER = ["OVERDUE", "TODAY", "NEXT7", "OPEN", "DONE7D"] as const;
@@ -50,6 +50,7 @@ type DashboardPaneProps = {
   now: number;
   width: number;
   height: number;
+  onTopTagClick?: (index: number) => void;
 };
 
 type DashboardLayout = {
@@ -81,7 +82,7 @@ type KpiItem = {
 function getFilterLine(filters: Filters): string {
   const status = filters.status.toUpperCase();
   const due = filters.due === "next7" ? "NEXT7" : filters.due.toUpperCase();
-  const priority = normalizePriorityFilterValue(filters.priority) ?? "(any)";
+  const priority = formatPriorityForDisplay(filters.priority) ?? "(any)";
   const booleanTagSummary = formatTagFilterBooleanSummary(filters.tagFilter);
   const tag = booleanTagSummary
     ? booleanTagSummary
@@ -414,7 +415,8 @@ export function DashboardPane({
   selectedTopTagIndex,
   now,
   width,
-  height
+  height,
+  onTopTagClick
 }: DashboardPaneProps) {
   const theme = themeForObject("dashboard");
   const dueBuckets = React.useMemo(() => computeDueBuckets8(tasks, now), [tasks, now]);
@@ -606,7 +608,14 @@ export function DashboardPane({
               topTagRows.map((row, index) => {
                 const selected = index === clampedTagIndex;
                 return (
-                  <box key={`top-tag-${index}`} style={{ flexDirection: "row" }}>
+                  <box
+                    key={`top-tag-${index}`}
+                    style={{ flexDirection: "row" }}
+                    onMouseDown={(event) => {
+                      if (event.button !== 0) return;
+                      onTopTagClick?.(index);
+                    }}
+                  >
                     <box style={{ backgroundColor: colorForTag(row.tag) }}>
                       <text
                         style={{
@@ -657,7 +666,14 @@ export function DashboardPane({
               topTagRows.map((row, index) => {
                 const selected = index === clampedTagIndex;
                 return (
-                  <box key={`top-tag-${index}`} style={{ flexDirection: "row" }}>
+                  <box
+                    key={`top-tag-${index}`}
+                    style={{ flexDirection: "row" }}
+                    onMouseDown={(event) => {
+                      if (event.button !== 0) return;
+                      onTopTagClick?.(index);
+                    }}
+                  >
                     <box style={{ backgroundColor: colorForTag(row.tag) }}>
                       <text
                         style={{

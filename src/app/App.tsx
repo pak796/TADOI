@@ -102,6 +102,7 @@ import {
   updateTagIndex
 } from "../domain/tagIndex";
 import {
+  formatPriorityForDisplay,
   isPriorityToken,
   normalizePriorityFilterValue,
   normalizePriorityFromTokens,
@@ -217,6 +218,7 @@ import {
 } from "../brand/brand";
 import { copyToClipboard } from "./copyToClipboard";
 import { openTarget } from "./openTarget";
+import { redactPathForDisplay } from "./pathRedaction";
 
 const TICKER_INTERVAL_MS = 6000;
 const SLOW_PULSE_INTERVAL_MS = 2000;
@@ -258,6 +260,7 @@ const TASK_LINK_FORM_FIELD_ORDER: UITaskLinkFormField[] = [
   "cancel"
 ];
 const TASK_LINK_FORM_KIND_ORDER: UITaskLinkModalKind[] = ["auto", "url", "path"];
+const MODAL_STANDARD_WIDTH = 64;
 
 type HelpMenuItem = {
   title: string;
@@ -936,7 +939,7 @@ function buildTagTickerSegments(
 function summarizeViewFilters(filters: SavedView["filters"]): string {
   const search = filters.searchText?.trim();
   const searchLabel = search ? ` search=${search}` : "";
-  const priority = normalizePriorityFilterValue(filters.priority);
+  const priority = formatPriorityForDisplay(filters.priority);
   const priorityLabel = priority ? ` priority=${priority}` : "";
   const booleanTagSummary = formatTagFilterBooleanSummary(filters.tagFilter);
   const tagLabel = booleanTagSummary
@@ -1350,7 +1353,7 @@ export function App({
     helpFooterHintLineWidth
   );
   const helpFooterDataPathLine = fitLineToWidth(
-    `Data path: ${getDataFilePath()}`,
+    `Data path: ${redactPathForDisplay(getDataFilePath())}`,
     helpFooterWidth
   );
   const helpHeaderTitle =
@@ -4022,12 +4025,12 @@ export function App({
     }
   }
 
-  function openSelectedTaskLink() {
-    if (!selectedTaskLink || !selectedPersistedTask) {
-      showShortNavigationBanner("No link selected");
-      return;
-    }
-    const openDecision = decideTaskLinkOpen(selectedTaskLink, {
+  function openTaskLink(
+    link: TaskLink,
+    sourceTask: Task,
+    previousFocus: FocusTarget = uiState.focus
+  ) {
+    const openDecision = decideTaskLinkOpen(link, {
       nonHttpLinkPolicy: settingsState.security.nonHttpLinkPolicy
     });
     if (openDecision.policy === "block") {
@@ -4037,16 +4040,40 @@ export function App({
     if (openDecision.policy === "confirm") {
       openModalWithContext({
         type: "task_link_open_external",
-        taskId: selectedPersistedTask.id,
-        linkId: selectedTaskLink.id,
+        taskId: sourceTask.id,
+        linkId: link.id,
         target: openDecision.target,
         scheme: openDecision.scheme,
         previousMode: Mode.LIST,
-        previousFocus: uiState.focus
+        previousFocus
       });
       return;
     }
     void openTaskLinkTarget(openDecision.target);
+  }
+
+  function selectDetailsLink(linkId: string) {
+    if (uiState.mode !== Mode.LIST) return;
+    if (!selectedTaskLinks.some((link) => link.id === linkId)) return;
+    setSelectedLinkId(linkId);
+    uiDispatch({ type: "setFocus", focus: FocusTarget.DETAILS_LINKS });
+  }
+
+  function openDetailsLink(linkId: string) {
+    if (uiState.mode !== Mode.LIST || !selectedPersistedTask) return;
+    const link = selectedTaskLinks.find((candidate) => candidate.id === linkId);
+    if (!link) return;
+    setSelectedLinkId(link.id);
+    uiDispatch({ type: "setFocus", focus: FocusTarget.DETAILS_LINKS });
+    openTaskLink(link, selectedPersistedTask, FocusTarget.DETAILS_LINKS);
+  }
+
+  function openSelectedTaskLink() {
+    if (!selectedTaskLink || !selectedPersistedTask) {
+      showShortNavigationBanner("No link selected");
+      return;
+    }
+    openTaskLink(selectedTaskLink, selectedPersistedTask);
   }
 
   function copySelectedTaskLink() {
@@ -5483,8 +5510,7 @@ export function App({
     });
   }
 
-  function applyDashboardSelectedTag() {
-    if (uiState.mode !== Mode.DASHBOARD) return;
+  function applyDashboardTagAtIndex(selectionIndex: number) {
     if (state.filters.status === "done" || state.filters.status === "archived") {
       showShortNavigationBanner("Top tags available for OPEN tasks only");
       return;
@@ -5494,7 +5520,10 @@ export function App({
       return;
     }
 
-    const selected = dashboardTopTags[clampedDashboardTagSelection];
+    const clampedIndex = Math.max(0, Math.min(selectionIndex, dashboardTopTags.length - 1));
+    const selected = dashboardTopTags[clampedIndex];
+    if (!selected) return;
+    setDashboardTagSelection(clampedIndex);
     dispatch({
       type: "setFilters",
       filters: {
@@ -5503,6 +5532,16 @@ export function App({
       }
     });
     showShortNavigationBanner(`Dashboard tag filter: ${formatTagForDisplay(selected.tag)}`);
+  }
+
+  function applyDashboardSelectedTag() {
+    if (uiState.mode !== Mode.DASHBOARD) return;
+    applyDashboardTagAtIndex(clampedDashboardTagSelection);
+  }
+
+  function handleDashboardTopTagClick(index: number) {
+    if (uiState.mode !== Mode.DASHBOARD) return;
+    applyDashboardTagAtIndex(index);
   }
 
   function toggleBottomDueQuickFilter(targetDue: "overdue" | "today" | "next7") {
@@ -5774,6 +5813,7 @@ export function App({
                 now={now}
                 width={dashboardPaneWidth}
                 height={dashboardPaneHeight}
+                onTopTagClick={handleDashboardTopTagClick}
               />
             </box>
           </box>
@@ -5894,6 +5934,8 @@ export function App({
                     flashMode={settingsState.flashMode}
                     selectedLinkId={selectedLinkId}
                     linksFocused={uiState.focus === FocusTarget.DETAILS_LINKS}
+                    onSelectLink={selectDetailsLink}
+                    onOpenLink={openDetailsLink}
                   />
                 )}
               </box>
@@ -6092,8 +6134,15 @@ export function App({
         >
           {uiState.modal.type === "delete" ? (
             uiState.modal.target === "regular_task" ? (
-              <box style={{ padding: 2, backgroundColor: modalTheme.warn, color: modalTheme.bg }}>
-                <text>DELETE SELECTED TASK? (y/n)</text>
+              <box
+                style={{
+                  padding: 2,
+                  backgroundColor: modalTheme.warn,
+                  color: modalTheme.bg,
+                  minWidth: MODAL_STANDARD_WIDTH
+                }}
+              >
+                <text>DELETE SELECTED TASK? [Y/N]</text>
                 <text>{uiState.modal.taskTitle}</text>
                 <text>ID: {uiState.modal.taskId.slice(0, 8)}</text>
                 <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
@@ -6108,7 +6157,7 @@ export function App({
                       confirmDeleteSelectedFromModal();
                     }}
                   >
-                    <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>YES</text>
+                    <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>YES [Y]</text>
                   </box>
                   <box
                     style={{
@@ -6121,13 +6170,20 @@ export function App({
                       cancelDeleteSelectedFromModal();
                     }}
                   >
-                    <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>NO</text>
+                    <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>NO [N]</text>
                   </box>
                 </box>
               </box>
             ) : (
-              <box style={{ padding: 2, backgroundColor: modalTheme.warn, color: modalTheme.bg }}>
-                <text>DELETE RECURRING OCCURRENCE?</text>
+              <box
+                style={{
+                  padding: 2,
+                  backgroundColor: modalTheme.warn,
+                  color: modalTheme.bg,
+                  minWidth: MODAL_STANDARD_WIDTH
+                }}
+              >
+                <text>DELETE RECURRING OCCURRENCE? [Y/F/N]</text>
                 <text>{uiState.modal.taskTitle}</text>
                 <text>OCCURRENCE: {uiState.modal.occurrenceIso.slice(0, 16)}</text>
                 <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
@@ -6143,7 +6199,7 @@ export function App({
                     }}
                   >
                     <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>
-                      THIS EVENT [y]
+                      THIS EVENT [Y]
                     </text>
                   </box>
                   <box
@@ -6158,7 +6214,7 @@ export function App({
                     }}
                   >
                     <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>
-                      THIS + FUTURE [f]
+                      THIS + FUTURE [F]
                     </text>
                   </box>
                   <box
@@ -6173,7 +6229,7 @@ export function App({
                     }}
                   >
                     <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>
-                      CANCEL [n]
+                      CANCEL [N]
                     </text>
                   </box>
                 </box>
@@ -6187,7 +6243,7 @@ export function App({
                 border: true,
                 borderStyle: "single",
                 borderColor: theme.outline,
-                width: 64,
+                width: MODAL_STANDARD_WIDTH,
                 flexDirection: "column",
                 gap: 1
               }}
@@ -6198,7 +6254,7 @@ export function App({
                   : "EDIT LINK / ATTACHMENT"}
               </text>
               <text style={{ color: theme.muted }}>
-                Tab: next · Enter on Save: submit · Esc: cancel
+                [TAB] NEXT  [UP/DOWN] MOVE  [LEFT/RIGHT] TYPE  [ENTER/CTRL+S] SAVE  [ESC] CANCEL
               </text>
               <box
                 style={{ flexDirection: "column" }}
@@ -6305,7 +6361,7 @@ export function App({
                       fontWeight: "bold"
                     }}
                   >
-                    SAVE
+                    SAVE [ENTER/CTRL+S]
                   </text>
                 </box>
                 <box
@@ -6329,14 +6385,21 @@ export function App({
                       fontWeight: "bold"
                     }}
                   >
-                    CANCEL
+                    CANCEL [ESC]
                   </text>
                 </box>
               </box>
             </box>
           ) : uiState.modal.type === "task_link_delete" ? (
-            <box style={{ padding: 2, backgroundColor: modalTheme.warn, color: modalTheme.bg }}>
-              <text>REMOVE LINK? (y/n)</text>
+            <box
+              style={{
+                padding: 2,
+                backgroundColor: modalTheme.warn,
+                color: modalTheme.bg,
+                minWidth: MODAL_STANDARD_WIDTH
+              }}
+            >
+              <text>REMOVE LINK? [Y/N]</text>
               <text>{formatLinkSnippet(uiState.modal.label, uiState.modal.target)}</text>
               <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
                 <box
@@ -6346,7 +6409,7 @@ export function App({
                     handleDeleteTaskLinkFromModal();
                   }}
                 >
-                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>YES [y]</text>
+                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>YES [Y]</text>
                 </box>
                 <box
                   style={{ backgroundColor: modalTheme.bg, paddingLeft: 2, paddingRight: 2 }}
@@ -6355,13 +6418,20 @@ export function App({
                     applyEscUnwind();
                   }}
                 >
-                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>NO [n]</text>
+                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>NO [N]</text>
                 </box>
               </box>
             </box>
           ) : uiState.modal.type === "task_link_open_external" ? (
-            <box style={{ padding: 2, backgroundColor: modalTheme.warn, color: modalTheme.bg }}>
-              <text>{`Open external scheme \"${uiState.modal.scheme}\"?`}</text>
+            <box
+              style={{
+                padding: 2,
+                backgroundColor: modalTheme.warn,
+                color: modalTheme.bg,
+                minWidth: MODAL_STANDARD_WIDTH
+              }}
+            >
+              <text>{`OPEN EXTERNAL SCHEME \"${uiState.modal.scheme}\"? [Y/N]`}</text>
               <text>{formatLinkSnippet(undefined, uiState.modal.target)}</text>
               <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
                 <box
@@ -6371,7 +6441,7 @@ export function App({
                     handleOpenExternalTaskLinkFromModal();
                   }}
                 >
-                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>YES [y]</text>
+                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>YES [Y]</text>
                 </box>
                 <box
                   style={{ backgroundColor: modalTheme.bg, paddingLeft: 2, paddingRight: 2 }}
@@ -6380,7 +6450,7 @@ export function App({
                     applyEscUnwind();
                   }}
                 >
-                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>NO [n]</text>
+                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>NO [N]</text>
                 </box>
               </box>
             </box>
@@ -6474,10 +6544,10 @@ export function App({
         <box
           style={{
             position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
+            top: 1,
+            left: 2,
+            right: 2,
+            bottom: 1,
             justifyContent: "center",
             alignItems: "center"
           }}

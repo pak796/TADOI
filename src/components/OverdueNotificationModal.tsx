@@ -51,6 +51,7 @@ export function OverdueNotificationModal({
   onDismiss
 }: OverdueNotificationModalProps) {
   const theme = themeForObject("notifications");
+  const modalWidth = 64;
   const dueLabel = formatDueDateTimeLabel(event.dueAt);
   const overdueBy = formatOverdueBy(nowMs, event.dueAt);
   const tags = normalizePriorityTags(task?.tags ?? []);
@@ -61,13 +62,13 @@ export function OverdueNotificationModal({
         padding: 2,
         backgroundColor: theme.warn,
         color: theme.bg,
-        minWidth: 56,
+        minWidth: modalWidth,
         border: true,
         borderStyle: "single",
         borderColor: theme.outline
       }}
     >
-      <text style={{ fontWeight: "bold" }}>Task Overdue</text>
+      <text style={{ fontWeight: "bold" }}>TASK OVERDUE [S/D/G/ESC]</text>
       <text>Task: {event.title}</text>
       <text>Due: {dueLabel}</text>
       <text>Status: Overdue by {overdueBy}</text>
@@ -82,7 +83,7 @@ export function OverdueNotificationModal({
             onSnooze();
           }}
         >
-          <text style={{ color: theme.warn, fontWeight: "bold" }}>[S] Snooze 10m</text>
+          <text style={{ color: theme.warn, fontWeight: "bold" }}>[S] SNOOZE 10M</text>
         </box>
         <box
           style={{ backgroundColor: theme.bg, paddingLeft: 1, paddingRight: 1 }}
@@ -91,7 +92,7 @@ export function OverdueNotificationModal({
             onDone();
           }}
         >
-          <text style={{ color: theme.warn, fontWeight: "bold" }}>[D] Mark Done</text>
+          <text style={{ color: theme.warn, fontWeight: "bold" }}>[D] MARK DONE</text>
         </box>
         <box
           style={{ backgroundColor: theme.bg, paddingLeft: 1, paddingRight: 1 }}
@@ -100,7 +101,7 @@ export function OverdueNotificationModal({
             onGoToTask();
           }}
         >
-          <text style={{ color: theme.warn, fontWeight: "bold" }}>[G] Go to Task</text>
+          <text style={{ color: theme.warn, fontWeight: "bold" }}>[G] GO TO TASK</text>
         </box>
         <box
           style={{ backgroundColor: theme.bg, paddingLeft: 1, paddingRight: 1 }}
@@ -109,7 +110,7 @@ export function OverdueNotificationModal({
             onDismiss();
           }}
         >
-          <text style={{ color: theme.warn, fontWeight: "bold" }}>[Esc] Dismiss</text>
+          <text style={{ color: theme.warn, fontWeight: "bold" }}>[ESC] DISMISS</text>
         </box>
       </box>
     </box>

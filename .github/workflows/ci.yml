@@ -47,6 +47,9 @@ jobs:
       - name: Branding guard
         run: bun run brand:check
 
+      - name: DTF contract drift check
+        run: bun run contract:dtf:check
+
       - name: Build tarball artifact
         if: matrix.os == 'ubuntu-latest'
         run: bun run pack:dry

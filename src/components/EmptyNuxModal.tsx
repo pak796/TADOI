@@ -8,13 +8,14 @@ type EmptyNuxModalProps = {
 
 export function EmptyNuxModal({ onClose, onCreateTask }: EmptyNuxModalProps) {
   const theme = themeForObject("modal");
+  const modalWidth = 64;
   return (
     <box
       style={{
         padding: 2,
         backgroundColor: theme.panel,
         color: theme.text,
-        minWidth: 56,
+        minWidth: modalWidth,
         border: true,
         borderStyle: "single",
         borderColor: theme.outline,
@@ -30,12 +31,12 @@ export function EmptyNuxModal({ onClose, onCreateTask }: EmptyNuxModalProps) {
             onClose();
           }}
         >
-          <text style={{ color: theme.text, fontWeight: "bold" }}>(X)</text>
+          <text style={{ color: theme.text, fontWeight: "bold" }}>[ESC]</text>
         </box>
       </box>
 
-      <text style={{ marginTop: 1 }}>Press A to create a task, or click ADD.</text>
-      <text style={{ color: theme.muted }}>Esc to close</text>
+      <text style={{ marginTop: 1 }}>[A] CREATE TASK OR CLICK CREATE TASK [A].</text>
+      <text style={{ color: theme.muted }}>[ESC] CLOSE</text>
 
       <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
         <box
@@ -45,7 +46,7 @@ export function EmptyNuxModal({ onClose, onCreateTask }: EmptyNuxModalProps) {
             onCreateTask();
           }}
         >
-          <text style={{ color: theme.bg, fontWeight: "bold" }}>Create task (A)</text>
+          <text style={{ color: theme.bg, fontWeight: "bold" }}>CREATE TASK (A)</text>
         </box>
         <box
           style={{ backgroundColor: theme.bg, paddingLeft: 1, paddingRight: 1 }}
@@ -54,7 +55,7 @@ export function EmptyNuxModal({ onClose, onCreateTask }: EmptyNuxModalProps) {
             onClose();
           }}
         >
-          <text style={{ color: theme.text, fontWeight: "bold" }}>Close (Esc)</text>
+          <text style={{ color: theme.text, fontWeight: "bold" }}>CLOSE (ESC)</text>
         </box>
       </box>
     </box>

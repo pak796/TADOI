@@ -148,6 +148,13 @@ function isMissingFileError(error: unknown): boolean {
   );
 }
 
+function formatReadErrorForBanner(error: unknown): string {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message;
+  }
+  return "unknown read error";
+}
+
 function formatBackupTimestamp(now: Date): string {
   const yyyy = String(now.getFullYear());
   const mm = String(now.getMonth() + 1).padStart(2, "0");
@@ -298,7 +305,15 @@ export async function safeLoadState(options: SafeLoadOptions = {}): Promise<Safe
         didMigrate: false
       };
     }
-    return recoverFromCorruption(filePath, now, fsOps);
+    return {
+      data: emptyData(),
+      resolvedPath: filePath,
+      bannerMessage:
+        `Unable to read data file (${formatReadErrorForBanner(error)}). ` +
+        "Existing file was not modified.",
+      shouldPersistRecoveredState: false,
+      didMigrate: false
+    };
   }
 
   let parsed: unknown;

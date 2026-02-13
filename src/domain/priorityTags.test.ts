@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import {
   canonicalPriorityTag,
+  formatPriorityForDisplay,
   isPriorityToken,
   normalizePriorityFilterValue,
   normalizePriorityFromTokens,
@@ -70,5 +71,13 @@ describe("priorityTags", () => {
     expect(normalizePriorityFilterValue("#P3")).toBe("#p3");
     expect(normalizePriorityFilterValue("work")).toBeUndefined();
     expect(normalizePriorityFilterValue(undefined)).toBeUndefined();
+  });
+
+  it("formats priority values for display without hash and uppercase P", () => {
+    expect(formatPriorityForDisplay("#p1")).toBe("P1");
+    expect(formatPriorityForDisplay("p02")).toBe("P02");
+    expect(formatPriorityForDisplay("#P3")).toBe("P3");
+    expect(formatPriorityForDisplay("work")).toBeUndefined();
+    expect(formatPriorityForDisplay(undefined)).toBeUndefined();
   });
 });
