@@ -159,12 +159,12 @@ Expected: displays current resolved runtime path.
 
 ### H. Theme, Flash, and Notification Settings
 
-1. Open help (`?`), cycle theme (`h/H`).
-2. Toggle flash mode (`m/M`).
+1. Open help (`?`), cycle theme (`h`).
+2. Toggle flash mode (`m`).
 3. Toggle notification settings in Help:
-   - master (`n/N`)
-   - overdue popup (`o/O`)
-   - terminal bell (`l/L`)
+   - master (`n`)
+   - overdue popup (`o`)
+   - terminal bell (`l`)
 4. Restart app.
 Expected: settings persist and load.
 

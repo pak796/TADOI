@@ -86,10 +86,10 @@ Smoke pass criteria:
   - Preconditions: empty data file.
   - Steps: launch app.
   - Expected: welcome/empty NUX modal appears.
-- [ ] `QA-006` Empty NUX keyboard actions route correctly (`A`, `Esc`).
+- [ ] `QA-006` Empty NUX keyboard actions route correctly (`a`, `Esc`).
   - Preconditions: NUX modal open.
-  - Steps: press `A`, relaunch with empty data, press `Esc`.
-  - Expected: `A` dismisses + opens Add flow; `Esc` dismisses modal.
+  - Steps: press `a`, relaunch with empty data, press `Esc`.
+  - Expected: `a` dismisses + opens Add flow; `Esc` dismisses modal.
 - [ ] `QA-007` Empty NUX mouse actions route correctly.
   - Preconditions: NUX modal open.
   - Steps: click Create and Close targets.
@@ -241,7 +241,7 @@ Smoke pass criteria:
   - Expected: bell follows enable state and cooldown policy.
 - [ ] `QA-039 [SMOKE]` Help toggles persist across restart.
   - Preconditions: app running.
-  - Steps: toggle `h/H`, `m/M`, `n/N`, `o/O`, `l/L`; restart app.
+  - Steps: toggle `h`, `m`, `n`, `o`, `l`; restart app.
   - Expected: setting values persist after restart.
 
 ### J) Theme and Custom Theme Behavior
