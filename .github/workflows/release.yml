@@ -88,11 +88,11 @@ jobs:
           wrapper_path="$RUNNER_TEMP/appimagetool"
           curl -fsSL "https://github.com/AppImage/AppImageKit/releases/download/${appimagetool_version}/appimagetool-x86_64.AppImage" -o "$appimage_path"
           chmod +x "$appimage_path"
-          cat > "$wrapper_path" <<EOF
-#!/usr/bin/env bash
-set -euo pipefail
-APPIMAGE_EXTRACT_AND_RUN=1 "$appimage_path" "\$@"
-EOF
+          {
+            echo "#!/usr/bin/env bash"
+            echo "set -euo pipefail"
+            echo "APPIMAGE_EXTRACT_AND_RUN=1 \"$appimage_path\" \"\$@\""
+          } > "$wrapper_path"
           chmod +x "$wrapper_path"
           echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
 
