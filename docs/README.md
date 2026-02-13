@@ -4,10 +4,18 @@ This index links the current user-facing TADOI documentation set.
 
 ## Core Docs
 - [Installation Guide (All Platforms)](./TADOI_Installation_Guide_All_Platforms.md)
+- [Install (Concise)](./INSTALL.md)
+- [Usage Guide](./USAGE.md)
 - [QA Guide (v0.3.6)](./TADOI_QA_Guide_v0.3.6.md)
+- [Smoke Test Checklist](./QA/SMOKE_TEST_CHECKLIST.md)
+- [Black Box Test Matrix](./QA/BLACK_BOX_TEST_MATRIX.md)
+- [Regression Areas](./QA/REGRESSION_AREAS.md)
 - [Feature List (v0.3.6)](./TADOI_Feature_List_v0.3.6.md)
 - [Product Spec (v0.3.6)](../TADOI_SPEC_v0.3.6.md)
 - [Task List (v0.3.6)](../TADOI_TASKS_v0.3.6.md)
+- [Release Checklist](./RELEASE_CHECKLIST.md)
+- [Release Notes](./RELEASE_NOTES.md)
+- [Architecture Overview](./ARCHITECTURE_OVERVIEW.md)
 - [Calendar Export Spec (v0.2)](../TADOI_Spec_Calendar_Export_ICS_v0.2.md)
 - [Calendar Import Spec (v0.1)](../TADOI_Spec_Calendar_Import_ICS_RoundTrip_v0.1.md)
 - [Task Links and Attachments Spec (v0.2)](../TADOI_Task_Links_Attachments_Spec_v0.2.md)

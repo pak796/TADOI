@@ -8,8 +8,13 @@ Active runtime baseline: `v0.3.6`
 - `docs/README.md`: active docs landing page.
 
 ## 2) Active User Guides
+- `docs/INSTALL.md`: concise install guide.
+- `docs/USAGE.md`: core flows and keybindings.
 - `docs/TADOI_Installation_Guide_All_Platforms.md`: binary/source install and troubleshooting.
 - `docs/TADOI_QA_Guide_v0.3.6.md`: full manual QA matrix and smoke checklist.
+- `docs/QA/SMOKE_TEST_CHECKLIST.md`: daily smoke list.
+- `docs/QA/BLACK_BOX_TEST_MATRIX.md`: black box scenarios.
+- `docs/QA/REGRESSION_AREAS.md`: high-risk invariants.
 - `docs/TADOI_Feature_List_v0.3.6.md`: release-accurate feature catalog.
 
 ## 3) Active Spec and Planning
@@ -24,8 +29,13 @@ Active runtime baseline: `v0.3.6`
 - `TADOI_Engagement_Notifications_Spec_v0.1.md`: non-interactive engagement toast contract.
 - `TADOI_Installable_Distribution_Spec.md`: build/distribution contract.
 
-## 4) Operations and Governance
+## 4) Release + Packaging
+- `docs/RELEASE_CHECKLIST.md`: release readiness gate.
+- `docs/RELEASE_NOTES.md`: release notes template (root changelog is canonical).
 - `CHANGELOG.md`: release history.
+- `packaging/*`: platform packaging scripts.
+
+## 5) Operations and Governance
 - `docs/DOC_AUDIT_REPORT.md`: latest docs/code drift audit report.
 - `docs/NOTION_SYNC.md`: Notion update targets and sync checklist.
 - `docs/ARCHIVAL_PATH_POLICY.md`: archival path normalization policy and scope.
@@ -34,7 +44,7 @@ Active runtime baseline: `v0.3.6`
 - `docs/audits/tadoi-security-privacy-audit-2026-02-12.md`: security/privacy findings baseline.
 - `docs/audits/tadoi-security-privacy-remediation-2026-02-12.md`: remediation mapping and rollout order.
 
-## 5) Historical Versioned Docs
+## 6) Historical Versioned Docs
 - Historical release artifacts (`v0.2.x`, `v0.3.0`, `v0.3.1`) are retained for traceability.
 - Active release documentation should prefer the `v0.3.6` files listed above.
 

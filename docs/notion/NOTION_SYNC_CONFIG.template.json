@@ -1,0 +1,20 @@
+{
+  "workspace_root": "Patrick's Projects > TADOI",
+  "primary_documents_data_source": "collection://3035aa1e-f93f-80a3-ba35-000b3b596866",
+  "auth_token_env": "NOTION_TOKEN",
+  "pages": {
+    "installation_guide": "3045aa1e-f93f-8191-848a-cbc69ec6e869",
+    "qa_guide": "3045aa1e-f93f-8103-bda5-f77d2bf55e8e",
+    "user_guide": "3045aa1e-f93f-810c-82a5-c03e17858168",
+    "feature_list": "3045aa1e-f93f-81fd-84cd-c93a6b68b49c",
+    "product_spec": "3055aa1e-f93f-812d-ad44-f3d94b8a7219",
+    "task_list": "3055aa1e-f93f-8159-b07c-ee692df137eb",
+    "release_checklist": "3065aa1e-f93f-819b-a606-e8337a7ca1d5",
+    "usage_guide": "3065aa1e-f93f-81b5-a6cb-d4d3e64684c0",
+    "smoke_checklist": "3065aa1e-f93f-81ec-8bd6-cba6cf3876eb",
+    "black_box_matrix": "3065aa1e-f93f-8178-af7d-c31a8241854d",
+    "regression_areas": "3065aa1e-f93f-8166-998c-d94e5bc16917",
+    "architecture_overview": "3065aa1e-f93f-8131-b0ed-c9b0dfd1ad0e",
+    "release_notes": "3065aa1e-f93f-81ed-9312-f1e427c167da"
+  }
+}
