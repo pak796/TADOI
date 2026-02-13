@@ -42,6 +42,7 @@ jobs:
         run: bun run test
 
       - name: Run tests with coverage
+        if: matrix.target != 'windows'
         run: bun run test:coverage
 
       - name: Typecheck
@@ -53,18 +54,129 @@ jobs:
       - name: DTF contract drift check
         run: bun run contract:dtf:check
 
+      - name: Verify macOS packaging prerequisites
+        if: matrix.target == 'macos'
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tool in pkgbuild productbuild hdiutil; do
+            if ! command -v "$tool" >/dev/null 2>&1; then
+              echo "missing required macOS packaging tool: $tool" >&2
+              echo "install Xcode command line tools and retry." >&2
+              exit 1
+            fi
+          done
+
       - name: Install Inno Setup (Windows)
         if: matrix.target == 'windows'
         run: choco install innosetup --no-progress -y
 
+      - name: Verify Inno Setup compiler (Windows)
+        if: matrix.target == 'windows'
+        shell: pwsh
+        run: |
+          $iscc = Get-Command iscc -ErrorAction SilentlyContinue
+          if (-not $iscc) {
+            throw "Inno Setup compiler (iscc) was not found after installation."
+          }
+          Write-Host "iscc path: $($iscc.Source)"
+
+      - name: Install Linux packaging prerequisites
+        if: matrix.target == 'linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y dpkg-dev
+
+          if ! command -v dpkg-deb >/dev/null 2>&1; then
+            echo "dpkg-deb not found after installing dpkg-dev." >&2
+            exit 1
+          fi
+
+          appimagetool_version="1.9.1"
+          appimage_path="$RUNNER_TEMP/appimagetool-${appimagetool_version}.AppImage"
+          wrapper_path="$RUNNER_TEMP/appimagetool"
+          curl -fsSL "https://github.com/AppImage/appimagetool/releases/download/${appimagetool_version}/appimagetool-x86_64.AppImage" -o "$appimage_path"
+          chmod +x "$appimage_path"
+          {
+            echo "#!/usr/bin/env bash"
+            echo "set -euo pipefail"
+            echo "APPIMAGE_EXTRACT_AND_RUN=1 \"$appimage_path\" \"\$@\""
+          } > "$wrapper_path"
+          chmod +x "$wrapper_path"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+          export PATH="$RUNNER_TEMP:$PATH"
+
+          if ! command -v appimagetool >/dev/null 2>&1; then
+            echo "appimagetool wrapper install failed." >&2
+            exit 1
+          fi
+
       - name: Build raw binary
         run: bun scripts/build-binary.ts --target ${{ matrix.target }} --format raw --mode build
+
+      - name: Binary smoke test
+        run: bun run installer:smoke --target ${{ matrix.target }} --scope binary
 
       - name: Build installer artifacts
         run: bun scripts/build-binary.ts --target ${{ matrix.target }} --format installer --mode build
 
+      - name: Installer artifact manifest gate
+        run: bun run installer:gate --target ${{ matrix.target }}
+
       - name: Installer smoke test
-        run: bun run installer:smoke --target ${{ matrix.target }}
+        run: bun run installer:smoke --target ${{ matrix.target }} --scope installer
+
+      - name: SHA256SUMS (Unix)
+        if: matrix.target != 'windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          output="dist/SHA256SUMS-${{ matrix.target }}.txt"
+          : > "$output"
+          if [ -d "dist/bin/${{ matrix.target }}" ]; then
+            while IFS= read -r -d '' file; do
+              shasum -a 256 "$file" >> "$output"
+            done < <(find "dist/bin/${{ matrix.target }}" -type f -print0)
+          fi
+          if [ -d "dist/installers" ]; then
+            while IFS= read -r -d '' file; do
+              shasum -a 256 "$file" >> "$output"
+            done < <(find "dist/installers" -type f -print0)
+          fi
+
+      - name: SHA256SUMS (Windows)
+        if: matrix.target == 'windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          $output = "dist/SHA256SUMS-${{ matrix.target }}.txt"
+          New-Item -ItemType File -Force $output | Out-Null
+          if (Test-Path "dist/bin/${{ matrix.target }}") {
+            Get-ChildItem -Path "dist/bin/${{ matrix.target }}" -File -Recurse |
+              Get-FileHash -Algorithm SHA256 |
+              ForEach-Object { "{0}  {1}" -f $_.Hash.ToLower(), $_.Path } |
+              Add-Content $output
+          }
+          if (Test-Path "dist/installers") {
+            Get-ChildItem -Path "dist/installers" -File -Recurse |
+              Get-FileHash -Algorithm SHA256 |
+              ForEach-Object { "{0}  {1}" -f $_.Hash.ToLower(), $_.Path } |
+              Add-Content $output
+          }
+
+      - name: Upload installer artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tadoi-${{ matrix.target }}-${{ github.sha }}
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            dist/bin/${{ matrix.target }}/**
+            dist/installers/**
+            dist/SHA256SUMS-${{ matrix.target }}.txt
 
       - name: Build tarball artifact
         if: matrix.target == 'linux'

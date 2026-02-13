@@ -37,8 +37,10 @@ if [[ ! -f "$BINARY_PATH" ]]; then
 fi
 
 if ! command -v appimagetool >/dev/null 2>&1; then
-  echo "[build-appimage] appimagetool not found; AppImage output is planned but skipped"
-  exit 0
+  echo "[build-appimage] appimagetool not found." >&2
+  echo "[build-appimage] install hint: download AppImageKit appimagetool and put it on PATH." >&2
+  echo "[build-appimage] CI hint: wrap the AppImage binary with APPIMAGE_EXTRACT_AND_RUN=1." >&2
+  exit 1
 fi
 
 mkdir -p "$OUT_DIR"

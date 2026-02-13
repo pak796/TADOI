@@ -1,10 +1,18 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync
+} from "node:fs";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import path from "node:path";
 
 type Target = "macos" | "windows" | "linux";
 type Format = "raw" | "installer";
 type Mode = "plan" | "build";
+type ManifestOutputKind = "binary" | "pkg" | "dmg" | "exe" | "deb" | "appimage";
 
 type ReleaseTargetConfig = {
   id: string;
@@ -21,6 +29,21 @@ type ReleaseTargetsFile = {
 type OutputDirs = {
   rawDir: string;
   installerDir: string;
+};
+
+type InstallerBuildManifestOutput = {
+  kind: ManifestOutputKind;
+  path: string;
+  sizeBytes: number;
+  sha256: string;
+};
+
+type InstallerBuildManifest = {
+  schemaVersion: 1;
+  target: Target;
+  packageVersion: string;
+  generatedAt: string;
+  outputs: InstallerBuildManifestOutput[];
 };
 
 function requiredSigningEnvVars(target: Target): string[] {
@@ -48,6 +71,36 @@ function assertStrictSigningPrerequisites(target: Target, format: Format, mode: 
       `[build-binary] strict signing enabled (TADOI_REQUIRE_SIGNING=1); missing required env vars for ${target}: ${missing.join(
         ", "
       )}`
+    );
+    process.exit(1);
+  }
+}
+
+function commandExists(command: string): boolean {
+  const result = spawnSync(command, ["--help"], {
+    stdio: "ignore",
+    env: process.env
+  });
+  return !result.error;
+}
+
+function assertLinuxInstallerPrerequisites(target: Target, format: Format, mode: Mode): void {
+  if (target !== "linux" || format !== "installer" || mode !== "build") return;
+
+  if (!commandExists("dpkg-deb")) {
+    console.error(
+      "[build-binary] missing required Linux tool: dpkg-deb. Install dpkg-dev (Debian/Ubuntu) and retry."
+    );
+    process.exit(1);
+  }
+
+  if (!commandExists("appimagetool")) {
+    console.error(
+      [
+        "[build-binary] missing required Linux tool: appimagetool.",
+        "Install AppImageKit appimagetool and ensure it is on PATH.",
+        "CI hint: use an AppImage wrapper with APPIMAGE_EXTRACT_AND_RUN=1."
+      ].join(" ")
     );
     process.exit(1);
   }
@@ -126,7 +179,7 @@ function releaseTargetIdFor(target: Target): string {
   return "binary-linux";
 }
 
-function resolveOutputDirs(target: Target): OutputDirs {
+export function resolveOutputDirs(target: Target): OutputDirs {
   const defaults: OutputDirs = {
     rawDir: path.resolve("dist", "bin", target),
     installerDir: path.resolve("dist", "installers")
@@ -284,6 +337,117 @@ function buildLinuxInstallers(binaryPath: string, version: string, outputDirs: O
   ]);
 }
 
+function manifestPathFor(target: Target, version: string, installerDir: string): string {
+  return path.resolve(installerDir, `TADOI-${target}-${version}-manifest.json`);
+}
+
+function expectedInstallerOutputs(
+  target: Target,
+  version: string,
+  installerDir: string
+): Array<{ kind: Exclude<ManifestOutputKind, "binary">; filePath: string }> {
+  if (target === "macos") {
+    return [
+      { kind: "pkg", filePath: path.resolve(installerDir, `TADOI-${version}.pkg`) },
+      {
+        kind: "dmg",
+        filePath: path.resolve(installerDir, `TADOI-macOS-${version}.dmg`)
+      }
+    ];
+  }
+
+  if (target === "windows") {
+    return [
+      {
+        kind: "exe",
+        filePath: path.resolve(installerDir, `TADOI-Setup-x64-${version}.exe`)
+      }
+    ];
+  }
+
+  return [
+    {
+      kind: "deb",
+      filePath: path.resolve(installerDir, `tadoi_${version}_amd64.deb`)
+    },
+    {
+      kind: "appimage",
+      filePath: path.resolve(installerDir, `tadoi-${version}-x86_64.AppImage`)
+    }
+  ];
+}
+
+function toRelativeOutputPath(rootDir: string, filePath: string): string {
+  const relativePath = path.relative(rootDir, filePath);
+  return relativePath.split(path.sep).join("/");
+}
+
+function sha256File(filePath: string): string {
+  const hash = createHash("sha256");
+  hash.update(readFileSync(filePath));
+  return hash.digest("hex");
+}
+
+export function createInstallerManifest(
+  target: Target,
+  version: string,
+  binaryPath: string,
+  installerDir: string,
+  rootDir: string = process.cwd()
+): InstallerBuildManifest {
+  const rootPath = path.resolve(rootDir);
+  const outputs: InstallerBuildManifestOutput[] = [];
+
+  const requiredOutputs: Array<{ kind: ManifestOutputKind; filePath: string }> = [
+    { kind: "binary", filePath: path.resolve(binaryPath) },
+    ...expectedInstallerOutputs(target, version, installerDir)
+  ];
+
+  for (const entry of requiredOutputs) {
+    if (!existsSync(entry.filePath)) {
+      throw new Error(
+        `[build-binary] expected output missing for manifest (${entry.kind}): ${entry.filePath}`
+      );
+    }
+    const stats = statSync(entry.filePath);
+    outputs.push({
+      kind: entry.kind,
+      path: toRelativeOutputPath(rootPath, entry.filePath),
+      sizeBytes: stats.size,
+      sha256: sha256File(entry.filePath)
+    });
+  }
+
+  return {
+    schemaVersion: 1,
+    target,
+    packageVersion: version,
+    generatedAt: new Date().toISOString(),
+    outputs
+  };
+}
+
+export function writeInstallerManifest(
+  target: Target,
+  version: string,
+  binaryPath: string,
+  installerDir: string,
+  rootDir: string = process.cwd()
+): string {
+  const manifestPath = manifestPathFor(target, version, installerDir);
+  mkdirSync(path.dirname(manifestPath), { recursive: true });
+
+  const manifest = createInstallerManifest(
+    target,
+    version,
+    binaryPath,
+    installerDir,
+    rootDir
+  );
+  writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+  return manifestPath;
+}
+
 function writeRawPlan(target: Target, timestamp: string, outputDirs: OutputDirs): void {
   const filePath = path.resolve(outputDirs.rawDir, "BUILD_PLAN.txt");
   writePlanFile(
@@ -362,6 +526,8 @@ function main(): void {
     process.exit(1);
   }
 
+  assertLinuxInstallerPrerequisites(target, format, mode);
+
   if (format === "raw") {
     const binaryPath = buildRawBinary(target, outputDirs);
     console.log(`[build-binary] built: ${binaryPath}`);
@@ -379,7 +545,16 @@ function main(): void {
     buildLinuxInstallers(binaryPath, version, outputDirs);
   }
 
+  const manifestPath = writeInstallerManifest(
+    target,
+    version,
+    binaryPath,
+    outputDirs.installerDir
+  );
+  console.log(`[build-binary] installer manifest written: ${manifestPath}`);
   console.log(`[build-binary] installer build complete: ${outputDirs.installerDir}`);
 }
 
-main();
+if (import.meta.main) {
+  main();
+}

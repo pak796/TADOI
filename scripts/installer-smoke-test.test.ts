@@ -2,7 +2,11 @@ import { describe, expect, it } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { parseTargetArg, resolveSmokePaths } from "./installer-smoke-test";
+import {
+  parseScopeArg,
+  parseTargetArg,
+  resolveSmokePaths
+} from "./installer-smoke-test";
 
 function createTempDir(prefix: string): string {
   return mkdtempSync(path.join(os.tmpdir(), prefix));
@@ -16,6 +20,17 @@ describe("installer-smoke-test target parsing", () => {
   it("parses --target in both split and equals forms", () => {
     expect(parseTargetArg(["--target", "macos"], "linux")).toBe("macos");
     expect(parseTargetArg(["--target=windows"], "linux")).toBe("windows");
+  });
+});
+
+describe("installer-smoke-test scope parsing", () => {
+  it("uses provided default scope when no --scope arg is present", () => {
+    expect(parseScopeArg([], "binary")).toBe("binary");
+  });
+
+  it("parses --scope in both split and equals forms", () => {
+    expect(parseScopeArg(["--scope", "installer"], "all")).toBe("installer");
+    expect(parseScopeArg(["--scope=all"], "binary")).toBe("all");
   });
 });
 

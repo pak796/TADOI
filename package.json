@@ -40,6 +40,7 @@
     "dev": "bun src/index.tsx",
     "start": "bun src/index.tsx",
     "installer:smoke": "bun scripts/installer-smoke-test.ts",
+    "installer:gate": "bun scripts/installer-artifact-gate.ts",
     "build:daily": "bun scripts/build-daily.ts",
     "keybind:audit": "python3 scripts/keybind-sync-audit.py",
     "notion:sync:validate": "bun scripts/notion-sync-full.ts --validate-only",

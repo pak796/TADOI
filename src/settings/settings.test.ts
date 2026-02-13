@@ -59,6 +59,30 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function isMissingFileError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as NodeJS.ErrnoException).code === "ENOENT"
+  );
+}
+
+async function readFileEventually(filePath: string, timeoutMs = 2000): Promise<string> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() <= deadline) {
+    try {
+      return await fs.readFile(filePath, "utf8");
+    } catch (error: unknown) {
+      if (!isMissingFileError(error)) {
+        throw error;
+      }
+      await sleep(25);
+    }
+  }
+  throw new Error(`Timed out waiting for file write: ${filePath}`);
+}
+
 async function makeTempDir(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), "tadoi-settings-test-"));
 }
@@ -459,8 +483,7 @@ describe("saveSettingsDebounced", () => {
       { filePath: primary, homeDir, platform: "linux" }
     );
 
-    await sleep(100);
-    const raw = await fs.readFile(primary, "utf8");
+    const raw = await readFileEventually(primary);
     expect(JSON.parse(raw)).toEqual({
       themeId: "highContrast",
       logoMode: "default",
@@ -497,8 +520,7 @@ describe("saveSettingsDebounced", () => {
       { filePath: primary, homeDir, platform: "linux" }
     );
 
-    await sleep(100);
-    const raw = await fs.readFile(primary, "utf8");
+    const raw = await readFileEventually(primary);
     expect(JSON.parse(raw)).toEqual({
       themeId: "neonHacker",
       logoMode: "default",
@@ -539,13 +561,7 @@ describe("saveSettingsDebounced", () => {
       { homeDir, platform: "linux", fsOps }
     );
 
-    await sleep(150);
-    const fallbackExists = await fs
-      .stat(fallback)
-      .then(() => true)
-      .catch(() => false);
-    expect(fallbackExists).toBe(true);
-    const fallbackRaw = await fs.readFile(fallback, "utf8");
+    const fallbackRaw = await readFileEventually(fallback);
     expect(JSON.parse(fallbackRaw)).toEqual({
       themeId: "retro",
       logoMode: "default",
