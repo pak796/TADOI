@@ -62,7 +62,7 @@ Install from artifacts:
 1. Clone your repository:
    - `git clone <YOUR_REPO_URL>`
 2. Enter the project directory:
-   - `cd TUI_TODO`
+   - `cd TADOI`
 
 ### 4.2 Install dependencies
 

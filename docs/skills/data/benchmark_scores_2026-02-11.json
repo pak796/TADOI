@@ -1,5 +1,6 @@
 {
   "date": "2026-02-11",
+  "archival_note": "Historical snapshot: paths may reference legacy folder name TUI_TODO; current folder name is TADOI.",
   "paths": {
     "repo": "/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TUI_TODO",
     "global_skills_root": "/Users/patrickkazar/.codex/skills",

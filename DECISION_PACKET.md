@@ -1,5 +1,7 @@
 # DECISION_PACKET.md
 
+> Archival note (2026-02-13): This packet preserves historical references captured when the repository folder was named `TUI_TODO`. Absolute paths may include that legacy folder name; the current folder name is `TADOI`.
+
 ## TL;DR (Recommended Path)
 1. **Theme token semantics:** Treat the **internal token model as done**, but add a **non-power-user Simple Theme UX** (presets + guided categories + live preview) while keeping the current editor under an **Advanced** entry. Do not rename internal tokens in this cycle.
 2. **Dashboard + tag filter behavior:** Treat **filter semantics and routing as canonical now** (status/due/search/tag precedence, list-dashboard parity), but label **dashboard presentation details** as “current behavior” for one minor release while we lock a small invariant test set and doc generation workflow.

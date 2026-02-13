@@ -1,7 +1,7 @@
 # TADOI First-Task Walkthrough (Empty NUX v2) — Spec (Aligned to Existing Modal Actions)
 **Version:** v0.1.1  
 **Status:** Draft (Codex-implementable)  
-**Repository:** `TUI_TODO`  
+**Repository:** `TADOI`  
 **Scope:** Replace current single-step `emptyNux` modal with a step-driven first-task walkthrough **without introducing a new modal open/close action type** beyond existing `OPEN_EMPTY_NUX` / `DISMISS_EMPTY_NUX` + `setModal`.
 
 ---
@@ -455,4 +455,3 @@ Add key handling tests for modal `emptyNux`:
 
 ### `src/ui/state.test.ts`
 - Add reducer tests for the updated/new actions.
-

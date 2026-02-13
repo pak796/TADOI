@@ -1,5 +1,7 @@
 # Skill Robustness Benchmark (2026-02-11)
 
+> Archival note (2026-02-13): This benchmark captures a historical snapshot. Absolute paths may reference the legacy repository folder name `TUI_TODO`; current folder name is `TADOI`.
+
 ## Summary
 
 - Total skills scored: 25

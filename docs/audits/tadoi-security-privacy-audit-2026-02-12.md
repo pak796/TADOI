@@ -1,5 +1,7 @@
 # TADOI Security & Privacy Audit (2026-02-12)
 
+> Archival note (2026-02-13): This audit is a historical evidence snapshot. Absolute paths may reference the legacy repository folder name `TUI_TODO`; current folder name is `TADOI`.
+
 Date: 2026-02-12  
 Project: TADOI (`v0.3.4`)  
 Repository: `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TUI_TODO`
