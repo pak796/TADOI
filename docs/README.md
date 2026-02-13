@@ -19,6 +19,7 @@ This index links the current user-facing TADOI documentation set.
 - [Branding Operations Guide](./ops/branding.md)
 - [Notion Sync Pack (v0.3.6)](./ops/notion_v0.3.6_sync_pack.md)
 - [Documentation Index](./DOC_INDEX.md)
+- [Archival Path Policy](./ARCHIVAL_PATH_POLICY.md)
 - [Documentation Audit Report](./DOC_AUDIT_REPORT.md)
 - [Notion Sync Checklist](./NOTION_SYNC.md)
 - [Security/Privacy Audit (2026-02-12)](./audits/tadoi-security-privacy-audit-2026-02-12.md)

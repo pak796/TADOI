@@ -9,6 +9,7 @@ Sync status: `Pending apply in current MCP session`
 - Keep Notion guide content aligned to current runtime (`v0.3.6`) and package (`0.3.6`).
 - Keep first prominent mention per page as `TADOI™`.
 - Use repository docs as the canonical source for technical behavior contracts.
+- Apply archival path normalization guidance from `docs/ARCHIVAL_PATH_POLICY.md` when syncing archival artifacts.
 
 ## 2) Target Pages for Sync
 

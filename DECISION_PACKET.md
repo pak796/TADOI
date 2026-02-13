@@ -1,6 +1,6 @@
 # DECISION_PACKET.md
 
-> Archival note (2026-02-13): This packet preserves historical references captured when the repository folder was named `TUI_TODO`. Absolute paths may include that legacy folder name; the current folder name is `TADOI`.
+> Archival note (2026-02-13): This is a historical artifact. Path strings were normalized to current repository folder naming for operational consistency. Policy: `docs/ARCHIVAL_PATH_POLICY.md`.
 
 ## TL;DR (Recommended Path)
 1. **Theme token semantics:** Treat the **internal token model as done**, but add a **non-power-user Simple Theme UX** (presets + guided categories + live preview) while keeping the current editor under an **Advanced** entry. Do not rename internal tokens in this cycle.
@@ -8,19 +8,19 @@
 
 ## Grounding Snapshot (Repo-verified)
 This packet is grounded in current implementation and docs in:
-- `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TUI_TODO/src/theme/themes.ts`
-- `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TUI_TODO/src/theme/custom1ColorUtils.ts`
-- `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TUI_TODO/src/components/Custom1ThemeEditor.tsx`
-- `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TUI_TODO/src/components/BuiltInThemeTextEditor.tsx`
-- `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TUI_TODO/src/app/App.tsx`
-- `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TUI_TODO/src/domain/tagFilter.ts`
-- `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TUI_TODO/src/domain/query.ts`
-- `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TUI_TODO/src/domain/taskRows.ts`
-- `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TUI_TODO/src/components/DashboardPane.tsx`
-- `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TUI_TODO/src/app/keyRouter.ts`
-- `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TUI_TODO/TADOI_SPEC_v0.3.4.md`
-- `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TUI_TODO/DASHBOARD_SPEC_MVP.md`
-- `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TUI_TODO/README.md`
+- `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/src/theme/themes.ts`
+- `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/src/theme/custom1ColorUtils.ts`
+- `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/src/components/Custom1ThemeEditor.tsx`
+- `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/src/components/BuiltInThemeTextEditor.tsx`
+- `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/src/app/App.tsx`
+- `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/src/domain/tagFilter.ts`
+- `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/src/domain/query.ts`
+- `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/src/domain/taskRows.ts`
+- `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/src/components/DashboardPane.tsx`
+- `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/src/app/keyRouter.ts`
+- `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/TADOI_SPEC_v0.3.4.md`
+- `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/DASHBOARD_SPEC_MVP.md`
+- `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/README.md`
 
 ---
 

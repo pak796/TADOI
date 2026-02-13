@@ -1,6 +1,6 @@
 # Skill Robustness Benchmark (2026-02-11)
 
-> Archival note (2026-02-13): This benchmark captures a historical snapshot. Absolute paths may reference the legacy repository folder name `TUI_TODO`; current folder name is `TADOI`.
+> Archival note (2026-02-13): This is a historical artifact. Path strings were normalized to current repository folder naming for operational consistency. Policy: `docs/ARCHIVAL_PATH_POLICY.md`.
 
 ## Summary
 
@@ -44,4 +44,4 @@
 
 - Scores are weighted on trigger precision, workflow completeness, determinism, safety, and maintainability.
 - New skills were evaluated against full installed baseline and focused relevant slice.
-- Raw data: `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TUI_TODO/docs/skills/data/benchmark_scores_2026-02-11.json`
+- Raw data: `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/docs/skills/data/benchmark_scores_2026-02-11.json`

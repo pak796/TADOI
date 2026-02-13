@@ -1,8 +1,9 @@
 {
   "date": "2026-02-11",
-  "archival_note": "Historical snapshot: paths may reference legacy folder name TUI_TODO; current folder name is TADOI.",
+  "archival_note": "Archival note (2026-02-13): This is a historical artifact. Path strings were normalized to current repository folder naming for operational consistency.",
+  "archival_policy": "docs/ARCHIVAL_PATH_POLICY.md",
   "paths": {
-    "repo": "/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TUI_TODO",
+    "repo": "/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI",
     "global_skills_root": "/Users/patrickkazar/.codex/skills",
     "agents_skills_root": "/Users/patrickkazar/.agents/skills"
   },

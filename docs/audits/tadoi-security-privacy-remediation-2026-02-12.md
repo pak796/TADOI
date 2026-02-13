@@ -1,9 +1,9 @@
 # TADOI Security & Privacy Remediation Plan (2026-02-12)
 
-> Archival note (2026-02-13): This remediation plan references historical audit artifacts. Absolute paths may reference the legacy folder name `TUI_TODO`; current folder name is `TADOI`.
+> Archival note (2026-02-13): This is a historical artifact. Path strings were normalized to current repository folder naming for operational consistency. Policy: `docs/ARCHIVAL_PATH_POLICY.md`.
 
 Date: 2026-02-12  
-Source audit: `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TUI_TODO/docs/audits/tadoi-security-privacy-audit-2026-02-12.md`
+Source audit: `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/docs/audits/tadoi-security-privacy-audit-2026-02-12.md`
 
 ## Summary
 This backlog maps 1:1 to all non-informational findings in the audit.  

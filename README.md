@@ -9,6 +9,8 @@ Feature list: [`docs/TADOI_Feature_List_v0.3.6.md`](./docs/TADOI_Feature_List_v0
 QA guide: [`docs/TADOI_QA_Guide_v0.3.6.md`](./docs/TADOI_QA_Guide_v0.3.6.md)
 Product spec: [`TADOI_SPEC_v0.3.6.md`](./TADOI_SPEC_v0.3.6.md)
 Task list: [`TADOI_TASKS_v0.3.6.md`](./TADOI_TASKS_v0.3.6.md)
+Documentation index: [`docs/DOC_INDEX.md`](./docs/DOC_INDEX.md)
+Archival path policy: [`docs/ARCHIVAL_PATH_POLICY.md`](./docs/ARCHIVAL_PATH_POLICY.md)
 
 ## Setup
 

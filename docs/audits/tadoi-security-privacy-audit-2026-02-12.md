@@ -1,10 +1,10 @@
 # TADOI Security & Privacy Audit (2026-02-12)
 
-> Archival note (2026-02-13): This audit is a historical evidence snapshot. Absolute paths may reference the legacy repository folder name `TUI_TODO`; current folder name is `TADOI`.
+> Archival note (2026-02-13): This is a historical artifact. Path strings were normalized to current repository folder naming for operational consistency. Policy: `docs/ARCHIVAL_PATH_POLICY.md`.
 
 Date: 2026-02-12  
 Project: TADOI (`v0.3.4`)  
-Repository: `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TUI_TODO`
+Repository: `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI`
 
 ## Executive Summary
 TADOI is a local-first terminal application with a relatively small direct network surface, but its import/export and link-opening features create meaningful security and privacy risk boundaries. The highest-impact findings are around untrusted input handling (large import files and imported links), privacy leakage in calendar/export flows, and supply-chain/release hardening gaps.
@@ -23,7 +23,7 @@ Finding counts:
 
 ## Evidence Preflight
 Preflight log file:
-- `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TUI_TODO/docs/audits/logs/preflight-2026-02-12.txt`
+- `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/docs/audits/logs/preflight-2026-02-12.txt`
 
 Captured run window:
 - Start (local): 2026-02-12 01:34:36 CST

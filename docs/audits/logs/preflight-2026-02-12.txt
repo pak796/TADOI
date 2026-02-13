@@ -1,6 +1,7 @@
 === PRE-FLIGHT EVIDENCE CAPTURE ===
-NOTE: Historical evidence snapshot. Paths may reference legacy folder name TUI_TODO; current folder name is TADOI.
-Repo: /Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TUI_TODO
+NOTE: Archival note (2026-02-13): This is a historical artifact. Path strings were normalized to current repository folder naming for operational consistency.
+Policy: docs/ARCHIVAL_PATH_POLICY.md
+Repo: /Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI
 Local timestamp: 2026-02-12 01:34:36 CST
 UTC timestamp: 2026-02-12T07:34:36Z
 

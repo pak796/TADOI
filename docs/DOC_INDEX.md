@@ -28,6 +28,7 @@ Active runtime baseline: `v0.3.6`
 - `CHANGELOG.md`: release history.
 - `docs/DOC_AUDIT_REPORT.md`: latest docs/code drift audit report.
 - `docs/NOTION_SYNC.md`: Notion update targets and sync checklist.
+- `docs/ARCHIVAL_PATH_POLICY.md`: archival path normalization policy and scope.
 - `docs/ops/branding.md`: branding + external GitHub/Notion guidance.
 - `docs/ops/notion_v0.3.6_sync_pack.md`: Notion sync payload details.
 - `docs/audits/tadoi-security-privacy-audit-2026-02-12.md`: security/privacy findings baseline.

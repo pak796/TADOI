@@ -59,6 +59,7 @@ Key files used as canonical behavior sources:
 
 ### Known intentional boundaries
 - Historical versioned docs may include older snapshots by design and are not treated as active release source-of-truth.
+- Archival path normalization policy: `docs/ARCHIVAL_PATH_POLICY.md`.
 
 ## 4) Files Updated in This Audit Pass
 
