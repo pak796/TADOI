@@ -188,30 +188,57 @@ jobs:
             fi
           done
 
-      - name: Stage release assets with unique names
+      - name: Stage release assets
         shell: bash
         run: |
           set -euo pipefail
           rm -rf release-upload
           mkdir -p release-upload
-          while IFS= read -r -d '' file; do
-            base="$(basename "$file")"
-            rel="${file#release-artifacts/}"
-            artifact="${rel%%/*}"
-            target="release-upload/${base}"
-            if [ -e "$target" ]; then
-              target="release-upload/${artifact}-${base}"
+
+          copy_by_name_preserve() {
+            local pattern="$1"
+            local source
+            source="$(find release-artifacts -type f -name "$pattern" | sort | head -n1 || true)"
+            if [ -z "$source" ]; then
+              echo "missing release asset for pattern: $pattern" >&2
+              exit 1
             fi
-            suffix=1
-            while [ -e "$target" ]; do
-              target="release-upload/${artifact}-${suffix}-${base}"
-              suffix=$((suffix + 1))
-            done
-            cp "$file" "$target"
-          done < <(find release-artifacts -type f -print0)
+            cp "$source" "release-upload/$(basename "$source")"
+          }
+
+          copy_by_path() {
+            local pattern="$1"
+            local destination="$2"
+            local source
+            source="$(find release-artifacts -type f -path "$pattern" | sort | head -n1 || true)"
+            if [ -z "$source" ]; then
+              echo "missing release asset for path pattern: $pattern" >&2
+              exit 1
+            fi
+            cp "$source" "$destination"
+          }
+
+          copy_by_name_preserve "SHA256SUMS-linux.txt"
+          copy_by_name_preserve "SHA256SUMS-macos.txt"
+          copy_by_name_preserve "SHA256SUMS-windows.txt"
+
+          copy_by_name_preserve "TADOI-linux-*-manifest.json"
+          copy_by_name_preserve "TADOI-macos-*-manifest.json"
+          copy_by_name_preserve "TADOI-windows-*-manifest.json"
+
+          copy_by_name_preserve "TADOI-macOS-*.dmg"
+          copy_by_name_preserve "TADOI-*.pkg"
+          copy_by_name_preserve "TADOI-Setup-x64-*.exe"
+          copy_by_name_preserve "tadoi_*.deb"
+          copy_by_name_preserve "tadoi-*-x86_64.AppImage"
+
+          copy_by_path "*/dist/bin/linux/tadoi" "release-upload/tadoi-linux"
+          copy_by_path "*/dist/bin/macos/tadoi" "release-upload/tadoi-macos"
+          copy_by_path "*/dist/bin/windows/tadoi.exe" "release-upload/tadoi.exe"
 
       - name: Publish GitHub Release assets
         uses: softprops/action-gh-release@5be0e66d93ac7ed76da52eca8bb058f665c3a5fe # v2.4.2
         with:
+          prerelease: ${{ contains(github.ref_name, '-rc') }}
           files: |
             release-upload/*
