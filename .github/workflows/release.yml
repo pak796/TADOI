@@ -56,21 +56,8 @@ jobs:
       - name: Build installer
         run: bun scripts/build-binary.ts --target ${{ matrix.target }} --format installer --mode build
 
-      - name: Smoke test (Unix)
-        if: matrix.target != 'windows'
-        shell: bash
-        run: |
-          "${{ matrix.binary }}" --version
-          "${{ matrix.binary }}" export --help
-          "${{ matrix.binary }}" --smoke-tui
-
-      - name: Smoke test (Windows)
-        if: matrix.target == 'windows'
-        shell: pwsh
-        run: |
-          & "${{ matrix.binary }}" --version
-          & "${{ matrix.binary }}" export --help
-          & "${{ matrix.binary }}" --smoke-tui
+      - name: Installer smoke test
+        run: bun run installer:smoke --target ${{ matrix.target }}
 
       - name: SHA256SUMS (Unix)
         if: matrix.target != 'windows'
