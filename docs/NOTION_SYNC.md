@@ -43,6 +43,17 @@ Sync status: `Pending apply in current MCP session`
 - Title: `TADOI Task List (v0.3.6)`
 - Source: `TADOI_TASKS_v0.3.6.md`
 
+
+### New Docs (Needs Page IDs)
+- `docs/INSTALL.md` -> Notion page TBD
+- `docs/USAGE.md` -> Notion page TBD
+- `docs/QA/SMOKE_TEST_CHECKLIST.md` -> Notion page TBD
+- `docs/QA/BLACK_BOX_TEST_MATRIX.md` -> Notion page TBD
+- `docs/QA/REGRESSION_AREAS.md` -> Notion page TBD
+- `docs/RELEASE_CHECKLIST.md` -> Notion page TBD
+- `docs/RELEASE_NOTES.md` -> Notion page TBD
+- `docs/ARCHITECTURE_OVERVIEW.md` -> Notion page TBD
+
 ## 3) Target Property Baseline
 For each updated page:
 - `Name`: includes `v0.3.6` where applicable.
@@ -66,7 +77,11 @@ For each updated page:
 - Confirm feature and spec pages include engagement milestone toast behavior.
 - Confirm QA page checklist range is aligned through `QA-064`.
 
-## 5) Execution Note
+## 5) Sync Artifacts
+- `docs/notion/NOTION_SYNC_PAYLOAD.json`
+- `docs/notion/NOTION_SYNC_RUNBOOK.md`
+
+## 6) Execution Note
 - Use `docs/ops/notion_v0.3.6_sync_pack.md` as the authoritative copy payload for MCP page updates.
 
 ## Trademark Notice

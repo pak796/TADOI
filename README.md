@@ -6,7 +6,11 @@ Keyboard-first TUI todo list with due dates, completion, and tag autocomplete (O
 
 Current version: `v0.3.6` (`package.json`: `0.3.6`).
 Feature list: [`docs/TADOI_Feature_List_v0.3.6.md`](./docs/TADOI_Feature_List_v0.3.6.md)
+Install guide: [`docs/INSTALL.md`](./docs/INSTALL.md)
+Usage guide: [`docs/USAGE.md`](./docs/USAGE.md)
 QA guide: [`docs/TADOI_QA_Guide_v0.3.6.md`](./docs/TADOI_QA_Guide_v0.3.6.md)
+Smoke checklist: [`docs/QA/SMOKE_TEST_CHECKLIST.md`](./docs/QA/SMOKE_TEST_CHECKLIST.md)
+Release checklist: [`docs/RELEASE_CHECKLIST.md`](./docs/RELEASE_CHECKLIST.md)
 Product spec: [`TADOI_SPEC_v0.3.6.md`](./TADOI_SPEC_v0.3.6.md)
 Task list: [`TADOI_TASKS_v0.3.6.md`](./TADOI_TASKS_v0.3.6.md)
 Documentation index: [`docs/DOC_INDEX.md`](./docs/DOC_INDEX.md)
@@ -183,6 +187,9 @@ Behavior notes:
 
 ## Keybindings
 
+Full canonical list: `docs/USAGE.md` (source: `src/app/keyRouter.ts`).
+Compatibility aliases currently routed in key handlers: `C` `L` `O` `T` `r` `u`.
+
 - LIST mode navigation:
   - `j`/`k` or `up`/`down`: move selection
   - `gg`: jump to top
@@ -280,7 +287,6 @@ Behavior notes:
   - `Esc`: dismiss current modal
 - Quit:
   - `q` in LIST mode (graceful terminal teardown)
-  - `Ctrl+C` (handled by OpenTUI renderer)
 
 ## Mouse Interactions
 
@@ -394,6 +400,8 @@ Required checks:
 
 Packaging validation (`pack:dry`, `pack:inspect`, `pack:smoke`) runs on the Ubuntu matrix leg.
 
+Daily build workflow: `.github/workflows/daily-build.yml` (scheduled 14:00 UTC).
+
 Local equivalents:
 
 ```bash
@@ -432,6 +440,16 @@ bun scripts/build-binary.ts --target macos --format installer --mode build
 # Convenience script for macOS test installer output
 bun run build:installer:mac:all
 ```
+
+### Daily build (all platforms via CI)
+
+```bash
+bun run build:daily
+```
+
+Daily build outputs land in:
+- `dist/artifacts/YYYY-MM-DD/BUILD_REPORT.md`
+- `dist/artifacts/YYYY-MM-DD/<platform>/...`
 
 ### Output locations
 

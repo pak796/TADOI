@@ -3,6 +3,7 @@
 This guide covers binary and source installs on macOS, Windows, and Linux.
 Runtime baseline: **v0.3.6**.
 Manual QA reference: `docs/TADOI_QA_Guide_v0.3.6.md`.
+Concise install: `docs/INSTALL.md`.
 
 ## 1) What You Need
 
@@ -85,12 +86,12 @@ Check these basics:
 1. Press `a` to open add mode.
 2. Type a task title and press `Ctrl+S` to save.
 3. Press `?` to open Help.
-4. While Help is open, test quick toggles:
-   - `h`/`H` theme cycle
-   - `m`/`M` flash mode
-   - `n`/`N` notifications master
-   - `o`/`O` overdue popup
-   - `l`/`L` terminal bell
+4. While Help is open, test quick toggles (lowercase is canonical):
+   - `h` theme cycle
+   - `m` flash mode
+   - `n` notifications master
+   - `o` overdue popup
+   - `l` terminal bell
 5. Press `/`, type a search term, then press `Enter` (or `Esc`) to close Search.
 6. Press `p` to open the boolean tag filter panel, then press `Esc` to close.
 7. Press `q` to quit.
@@ -157,6 +158,9 @@ Optional full validation:
 5. `bun run pack:smoke`
 
 ## 7) Build and Packaging Commands
+
+Daily build (artifacts + report):
+- `bun run build:daily`
 
 Planner-only mode (default):
 - `bun scripts/build-binary.ts --target macos --format raw`
