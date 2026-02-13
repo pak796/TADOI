@@ -390,7 +390,7 @@ All matrix legs must be green for merges.
 Required checks:
 - `ci (ubuntu-latest)`: Bun setup, install, test, coverage, typecheck, brand check, tarball packaging validation, installer build, installer manifest gate, and installer smoke checks
 - `ci (macos-latest)`: Bun setup, install, test, coverage, typecheck, brand check, installer build, installer manifest gate, and installer smoke checks
-- `ci (windows-latest)`: Bun setup, install, test, coverage, typecheck, brand check, installer build, installer manifest gate, and installer smoke checks
+- `ci (windows-latest)`: Bun setup, install, test, typecheck, brand check, installer build, installer manifest gate, and installer smoke checks
 
 Packaging validation (`pack:dry`, `pack:inspect`, `pack:smoke`) runs on the Ubuntu matrix leg.
 

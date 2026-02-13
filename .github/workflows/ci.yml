@@ -42,6 +42,7 @@ jobs:
         run: bun run test
 
       - name: Run tests with coverage
+        if: matrix.target != 'windows'
         run: bun run test:coverage
 
       - name: Typecheck
