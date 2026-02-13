@@ -13,6 +13,7 @@ This audit re-validated documentation against current code and tests with focus 
 
 Primary outcomes:
 - Active docs remain on `v0.3.5` / `0.3.5`.
+- Persistence schema references are aligned to `5` for active release docs.
 - Calendar docs now accurately state:
   - CLI export is available (`calendar:export`)
   - in-app Backup Center exposes guided calendar export/import flows
@@ -21,6 +22,7 @@ Primary outcomes:
   - `security.nonHttpLinkPolicy` behavior
   - source-aware link confirmation for calendar-imported links
   - startup path redaction default + verbose opt-in flag
+- Engagement docs now include non-interactive milestone toast behavior and persisted engagement-state coverage.
 - QA guide snapshot and checklist are aligned to current validation:
   - `bun run test`: `445 pass / 0 fail / 445 total`
   - `bun run typecheck`: pass

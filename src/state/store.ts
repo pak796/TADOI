@@ -35,6 +35,18 @@ export type Action =
   | { type: "load"; data: LoadedData }
   | { type: "recordCompletion"; taskId: string; at: number; tags: string[] }
   | { type: "evaluateEngagement"; at: number }
+  | {
+      type: "triggerEngagementMilestone";
+      achievementKey: string;
+      achievementId: string;
+      at: number;
+      meta?: Record<string, string | number>;
+      toast: {
+        message: string;
+        priority: 1 | 2 | 3 | 4;
+        durationMs: number;
+      };
+    }
   | { type: "pushEngagementToast"; toast: EngagementToast }
   | { type: "tickEngagementToast"; now: number; overlayBlocked: boolean }
   | { type: "popEngagementToast" }
@@ -139,6 +151,33 @@ export function reducer(state: AppState, action: Action): AppState {
         ...state,
         engagement: result.engagement,
         engagementToastQueue: nextQueue
+      };
+    }
+    case "triggerEngagementMilestone": {
+      if (state.engagement.achievements[action.achievementKey]) {
+        return state;
+      }
+      const toast: EngagementToast = {
+        id: action.achievementKey,
+        message: action.toast.message,
+        priority: action.toast.priority,
+        createdAt: action.at,
+        durationMs: action.toast.durationMs
+      };
+      return {
+        ...state,
+        engagement: {
+          ...state.engagement,
+          achievements: {
+            ...state.engagement.achievements,
+            [action.achievementKey]: {
+              id: action.achievementId,
+              unlockedAt: action.at,
+              ...(action.meta ? { meta: action.meta } : {})
+            }
+          }
+        },
+        engagementToastQueue: enqueueToastsWithCap(state.engagementToastQueue, [toast])
       };
     }
     case "pushEngagementToast":

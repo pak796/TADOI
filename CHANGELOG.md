@@ -8,6 +8,8 @@ The format is based on Keep a Changelog.
 ### Added
 - Non-interactive engagement toasts in the bottom bar for completion milestones:
   - first completed task
+  - first recurring task created
+  - first recurring repeat occurrence completed (not the first series occurrence)
   - 3 completed today
   - 5 completions for a tag in the last 7 days
   - 3-day completion streak

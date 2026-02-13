@@ -105,9 +105,11 @@ Replace/update feature bullets with:
 - Left rail includes clickable `TAG PANEL (P)` and mode-aware focus surfaces.
 - Logo modes: `default`, `alternate32`, `alternate_slash32`, `alternate_blocks32`, `rotating`.
 - Minimum terminal size contract: `104x24`.
+- Persistence schema baseline: `5` (engagement state included).
 - Recurrence-aware list/dashboard behavior with occurrence actions (`Space`, `x`, `z`, `e`, `E`, `d` with `y/f/n`).
 - In-app Backup Center and portability flows with dry-run and replace confirmation.
 - Task links and attachments workflow (add/edit/open/copy/delete + external scheme confirmation).
+- Bottom-bar engagement toasts for milestone completions (non-interactive, queued, auto-dismissed).
 - Calendar export CLI supports privacy modes (`minimal` default, `full` optional).
 - In-app Backup Center exposes guided calendar import/export flows.
 - Import foundation is implemented at service layer; top-level CLI `calendar:import` routing remains pending.

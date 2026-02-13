@@ -54,6 +54,10 @@ Package baseline: `0.3.5`
 - `TA-057` Source-aware link safety (`calendar_import` provenance + confirm/block policy for risky opens). (`Complete`)
 - `TA-058` Startup path-log redaction default with debug opt-in (`TADOI_VERBOSE_PATH_LOGS=1`). (`Complete`)
 
+### A8) Engagement and Schema
+- `TA-059` Engagement milestone toasts implemented for first win, recurring milestones, momentum, and streak notifications. (`Complete`)
+- `TA-060` Persisted engagement state migration landed with schema bump `4 -> 5`. (`Complete`)
+
 ## B) Documentation and Release Governance
 
 ### B1) Completed in this docs sync

@@ -66,7 +66,7 @@ TADOI saves tasks to `tadoi_data.json` using this path order:
 
 The active path appears in startup logs and in the Help panel.
 
-Current persisted schema version: `4` (includes recurrence fields).
+Current persisted schema version: `5` (includes recurrence fields and engagement state).
 
 If a save fails (permissions/disk/IO), TADOI keeps running and shows a persistent banner with the error and data path. It retries on the next domain mutation (not on UI-only ticks).
 
@@ -154,6 +154,18 @@ Behavior notes:
 - `Canonical`: filter semantics, routing boundaries, and list/dashboard filtered-data parity.
 - `Current Behavior (May Change)`: dashboard presentation/layout details and theme-onboarding UX flow.
 - Canonical behavior changes require explicit release-note callouts.
+
+## Engagement Toasts
+
+- Non-interactive bottom-bar engagement toasts reinforce milestone completions.
+- Milestones currently include:
+  - first task completed
+  - first recurring task created
+  - first recurring repeat occurrence completed
+  - 3 completed today
+  - 5 completions for a tag in the last 7 days
+  - 3-day completion streak
+- Toasts are queued/priority-ordered and suppressed while blocking overlays are active.
 
 ## Keybindings
 

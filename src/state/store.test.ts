@@ -24,7 +24,7 @@ describe("applyArchiveAging startup behavior", () => {
   it("archives done tasks older than 7 days and leaves others", () => {
     const now = new Date(2026, 1, 8, 12, 0, 0, 0).getTime();
     const data: LoadedData = {
-      schemaVersion: 4,
+      schemaVersion: 5,
       tasks: [
         makeTask({
           id: "old",
@@ -138,5 +138,56 @@ describe("engagement reducer actions", () => {
     });
     expect(clearTick.engagementToastActive?.id).toBe("toast-1");
     expect(clearTick.engagementToastQueue).toHaveLength(0);
+  });
+
+  it("triggers first recurring milestones once and queues non-interactive toasts", () => {
+    const now = Date.now();
+    const withRecurringCreated = reducer(initialState, {
+      type: "triggerEngagementMilestone",
+      achievementKey: "FIRST_RECURRING_TASK_CREATED",
+      achievementId: "FIRST_RECURRING_TASK_CREATED",
+      at: now,
+      meta: { seriesId: "series:task-1" },
+      toast: {
+        message: "Created your first recurring task.",
+        priority: 3,
+        durationMs: 10_000
+      }
+    });
+
+    expect(withRecurringCreated.engagement.achievements.FIRST_RECURRING_TASK_CREATED).toBeDefined();
+    expect(withRecurringCreated.engagementToastQueue[0]?.id).toBe("FIRST_RECURRING_TASK_CREATED");
+
+    const repeated = reducer(withRecurringCreated, {
+      type: "triggerEngagementMilestone",
+      achievementKey: "FIRST_RECURRING_TASK_CREATED",
+      achievementId: "FIRST_RECURRING_TASK_CREATED",
+      at: now + 1_000,
+      toast: {
+        message: "Created your first recurring task.",
+        priority: 3,
+        durationMs: 10_000
+      }
+    });
+    expect(repeated.engagementToastQueue).toHaveLength(1);
+
+    const withRecurringRepeatDone = reducer(repeated, {
+      type: "triggerEngagementMilestone",
+      achievementKey: "FIRST_RECURRING_REPEAT_DONE",
+      achievementId: "FIRST_RECURRING_REPEAT_DONE",
+      at: now + 2_000,
+      meta: {
+        seriesId: "series:task-1",
+        occurrenceIso: "2026-02-15T09:00:00"
+      },
+      toast: {
+        message: "Completed your first recurring repeat occurrence.",
+        priority: 2,
+        durationMs: 10_000
+      }
+    });
+
+    expect(withRecurringRepeatDone.engagement.achievements.FIRST_RECURRING_REPEAT_DONE).toBeDefined();
+    expect(withRecurringRepeatDone.engagementToastQueue).toHaveLength(2);
   });
 });

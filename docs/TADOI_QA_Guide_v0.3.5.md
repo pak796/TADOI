@@ -350,7 +350,7 @@ Smoke pass criteria:
 | Dashboard KPIs and tags | `src/domain/dashboard.test.ts`, `src/domain/dashboardKpis.test.ts`, `src/domain/tagStats.test.ts` |
 | Backup/import/export + portability | `src/state/backupCenterFlow.test.ts`, `src/state/backupService.test.ts`, `src/state/portability.test.ts` |
 | Calendar ICS export/import (Backup Center + services) | `src/state/backupCenterFlow.test.ts`, `src/state/backupCenterCalendarController.test.ts`, `src/calendar/icsWriter.test.ts`, `src/calendar/icsParser.test.ts`, `src/calendar/importMapper.test.ts`, `src/calendar/calendarMapper.test.ts`, `src/calendar/range.test.ts`, `src/calendar/rrule.test.ts`, `src/state/calendarExportService.test.ts`, `src/state/calendarImportService.test.ts` |
-| Notifications | `src/notifications/notificationManager.test.ts`, `src/notifications/overdueTaskActions.test.ts`, `src/notifications/notifiers/inAppModalNotifier.test.ts`, `src/notifications/notifiers/terminalBellNotifier.test.ts` |
+| Notifications + engagement toasts | `src/notifications/notificationManager.test.ts`, `src/notifications/overdueTaskActions.test.ts`, `src/notifications/notifiers/inAppModalNotifier.test.ts`, `src/notifications/notifiers/terminalBellNotifier.test.ts`, `src/state/store.test.ts` |
 | Settings/theme/custom1 | `src/settings/settings.test.ts`, `src/theme/themes.test.ts`, `src/theme/resolveThemeTokens.test.ts`, `src/theme/custom1ColorUtils.test.ts` |
 | Brand/logo + left rail | `src/brand/brand.test.ts`, `src/components/LeftRail.tsx`, `src/app/keyRouter.test.ts` |
 | Task links/attachments | `src/domain/taskLinks.test.ts`, `src/app/keyRouter.test.ts`, `src/ui/state.test.ts` |

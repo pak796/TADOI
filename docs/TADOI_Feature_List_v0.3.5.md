@@ -49,7 +49,7 @@ This list reflects current runtime behavior as of **2026-02-12**.
 - Compact fallback rendering on narrow widths.
 
 ## Data Safety and Portability
-- JSON persistence with schema migration and strict validation (current schema `4`).
+- JSON persistence with schema migration and strict validation (current schema `5`).
 - Corrupt file recovery with timestamped `.corrupt.*` backups.
 - Save-failure banner with retry on next domain mutation.
 - In-app Backup Center for export/import with dry-run and replace confirmation gate.
@@ -78,7 +78,9 @@ This list reflects current runtime behavior as of **2026-02-12**.
 ## Notifications and Settings
 - Overdue modal queue with actions: snooze, done, go-to, dismiss.
 - Optional terminal bell with cooldown.
+- Non-interactive engagement toast milestones in the bottom bar (queued, priority-ordered, auto-dismissed).
 - Persisted settings for theme, flash mode, and notification toggles.
+- Persisted engagement state and unlock tracking for milestone toasts.
 
 ## Platform and Runtime Contracts
 - Supported baseline terminals: macOS Terminal/iTerm2, Windows Terminal, GNOME Terminal.

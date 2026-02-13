@@ -50,6 +50,7 @@ For each updated page:
 
 ## 4) Post-Sync Validation
 - Confirm all pages show `v0.3.5` / `0.3.5` consistently.
+- Confirm persistence schema references are updated to `5` in active spec/feature content.
 - Confirm terminal minimum in all guides is `104x24`.
 - Confirm tag panel key is `p` and search close is `Enter/Esc`.
 - Confirm recurrence delete copy includes `y` and `f` behavior.
@@ -61,6 +62,7 @@ For each updated page:
   - `security.nonHttpLinkPolicy` behavior (`prompt|block`)
   - startup path redaction default and verbose override (`TADOI_VERBOSE_PATH_LOGS=1`)
 - Confirm feature and QA pages include task links/attachments plus security-policy coverage.
+- Confirm feature and spec pages include engagement milestone toast behavior.
 - Confirm QA page checklist range is aligned through `QA-060`.
 
 ## 5) Execution Note

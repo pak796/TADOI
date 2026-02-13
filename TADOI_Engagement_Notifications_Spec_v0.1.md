@@ -3,9 +3,9 @@
 Updated: 2026-02-12  
 Runtime baseline: `v0.3.5`  
 Package baseline: `0.3.5`  
-Persistence schema baseline: `4` → **proposed bump to `5`** (see §6)
+Persistence schema baseline: `5`
 
-Status: Draft (implementation-ready)
+Status: Implemented baseline (v0.3.5)
 
 ---
 
@@ -298,7 +298,7 @@ type PopEngagementToastAction = {
    - Ensure older files without `engagement` are accepted.
 
 5. `src/state/migrations.ts` (or equivalent)
-   - **Proposed:** bump schema `4 → 5`
+   - Bump schema `4 → 5`
    - Migration: add default `engagement` object.
 
 ### B) UI Layer
@@ -387,7 +387,7 @@ Engagement toast rendering is suppressed when any of these are active:
 
 ---
 
-## 11) Release Notes Stub (for when shipped)
+## 11) Release Notes Snapshot (Shipped)
 Added:
 - NUX engagement notifications in bottom bar: first completion, daily momentum, weekly tag momentum, and streak milestones.
 

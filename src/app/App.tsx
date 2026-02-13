@@ -223,6 +223,8 @@ const SLOW_PULSE_INTERVAL_MS = 2000;
 const FAST_PULSE_INTERVAL_MS = 700;
 const NOTIFICATION_EVALUATION_INTERVAL_MS = 10000;
 const ENGAGEMENT_TOAST_TICK_INTERVAL_MS = 350;
+const FIRST_RECURRING_TASK_TOAST_MS = 10_000;
+const FIRST_RECURRING_REPEAT_DONE_TOAST_MS = 10_000;
 const ROTATING_THEME_INTERVAL_MS = 15000;
 const G_PREFIX_TIMEOUT_MS = 280;
 const NAV_BANNER_TIMEOUT_MS = 1800;
@@ -4504,12 +4506,57 @@ export function App({
    * - recurring completion paths emit once per completed occurrence
    * - blocked overlays suppress active toast rendering; queue resumes after close
    */
+  function isRecurringRepeatOccurrence(seriesTask: Task | undefined, occurrenceIso: string): boolean {
+    const dtstartIso = normalizeOccurrenceIso(seriesTask?.recurrence?.dtstart);
+    if (!dtstartIso) return false;
+    const occurrenceDate = parseLocalIsoToDate(occurrenceIso);
+    const startDate = parseLocalIsoToDate(dtstartIso);
+    if (!occurrenceDate || !startDate) {
+      return occurrenceIso > dtstartIso;
+    }
+    return occurrenceDate.getTime() > startDate.getTime();
+  }
+
+  function triggerFirstRecurringTaskCreated(at: number, seriesId: string) {
+    dispatch({
+      type: "triggerEngagementMilestone",
+      achievementKey: "FIRST_RECURRING_TASK_CREATED",
+      achievementId: "FIRST_RECURRING_TASK_CREATED",
+      at,
+      meta: { seriesId },
+      toast: {
+        message: "Created your first recurring task.",
+        priority: 3,
+        durationMs: FIRST_RECURRING_TASK_TOAST_MS
+      }
+    });
+  }
+
+  function triggerFirstRecurringRepeatDone(at: number, seriesId: string, occurrenceIso: string) {
+    dispatch({
+      type: "triggerEngagementMilestone",
+      achievementKey: "FIRST_RECURRING_REPEAT_DONE",
+      achievementId: "FIRST_RECURRING_REPEAT_DONE",
+      at,
+      meta: { seriesId, occurrenceIso },
+      toast: {
+        message: "Completed your first recurring repeat occurrence.",
+        priority: 2,
+        durationMs: FIRST_RECURRING_REPEAT_DONE_TOAST_MS
+      }
+    });
+  }
+
   function emitCompletionForTransition(params: {
     taskId: string;
     previousStatus: Task["status"] | undefined;
     nextStatus: Task["status"];
     tags: string[];
     at: number;
+    recurringRepeat?: {
+      seriesId: string;
+      occurrenceIso: string;
+    };
   }) {
     if (params.previousStatus !== "open" || params.nextStatus !== "done") {
       return;
@@ -4521,18 +4568,39 @@ export function App({
       tags: params.tags
     });
     dispatch({ type: "evaluateEngagement", at: params.at });
+    if (params.recurringRepeat) {
+      triggerFirstRecurringRepeatDone(
+        params.at,
+        params.recurringRepeat.seriesId,
+        params.recurringRepeat.occurrenceIso
+      );
+    }
   }
 
   function emitCompletionFromDiff(previousTasks: Task[], nextTasks: Task[], at: number) {
     const previousById = new Map(previousTasks.map((task) => [task.id, task]));
+    const seriesById = new Map(
+      nextTasks
+        .filter((task) => task.recurrence?.series_id)
+        .map((task) => [task.recurrence!.series_id, task])
+    );
     for (const nextTask of nextTasks) {
       const previousTask = previousById.get(nextTask.id);
+      const instance = nextTask.instance_of;
+      const recurringRepeat =
+        instance && isRecurringRepeatOccurrence(seriesById.get(instance.series_id), instance.occurrence)
+          ? {
+              seriesId: instance.series_id,
+              occurrenceIso: instance.occurrence
+            }
+          : undefined;
       emitCompletionForTransition({
         taskId: nextTask.id,
         previousStatus: previousTask?.status ?? "open",
         nextStatus: nextTask.status,
         tags: nextTask.tags,
-        at
+        at,
+        recurringRepeat
       });
     }
   }
@@ -4563,12 +4631,19 @@ export function App({
       });
       dispatch({ type: "setTasks", tasks: updatedTasks });
       dispatch({ type: "setSelected", id: context.instanceTask.id });
+      const recurringRepeat = isRecurringRepeatOccurrence(context.seriesTask, context.occurrenceIso)
+        ? {
+            seriesId: context.seriesId,
+            occurrenceIso: context.occurrenceIso
+          }
+        : undefined;
       emitCompletionForTransition({
         taskId: context.instanceTask.id,
         previousStatus: context.instanceTask.status,
         nextStatus,
         tags: context.instanceTask.tags,
-        at: nowMs
+        at: nowMs,
+        recurringRepeat
       });
       return;
     }
@@ -4605,12 +4680,19 @@ export function App({
       tagIndex: updateTagIndex(state.tagIndex, doneInstance.tags, nowMs)
     });
     dispatch({ type: "setSelected", id: instanceId });
+    const recurringRepeat = isRecurringRepeatOccurrence(context.seriesTask, context.occurrenceIso)
+      ? {
+          seriesId: context.seriesId,
+          occurrenceIso: context.occurrenceIso
+        }
+      : undefined;
     emitCompletionForTransition({
       taskId: instanceId,
       previousStatus: "open",
       nextStatus: "done",
       tags: doneInstance.tags,
-      at: nowMs
+      at: nowMs,
+      recurringRepeat
     });
   }
 
@@ -4957,6 +5039,9 @@ export function App({
         type: "setTagIndex",
         tagIndex: updateTagIndex(state.tagIndex, tags, nowMs)
       });
+      if (recurrenceBuild.recurrence) {
+        triggerFirstRecurringTaskCreated(nowMs, recurrenceBuild.recurrence.series_id);
+      }
       dispatch({ type: "setSelected", id: newTask.id });
       uiDispatch({ type: "setMode", mode: Mode.LIST });
       uiDispatch({ type: "setFocus", focus: FocusTarget.TASK_LIST });
@@ -5085,6 +5170,9 @@ export function App({
           type: "setTagIndex",
           tagIndex: updateTagIndex(state.tagIndex, tags, nowMs)
         });
+        if (!targetTask.recurrence && recurrenceBuild.recurrence) {
+          triggerFirstRecurringTaskCreated(nowMs, recurrenceBuild.recurrence.series_id);
+        }
       }
     }
 

@@ -3,7 +3,7 @@
 Updated: 2026-02-12
 Runtime baseline: `v0.3.5`
 Package baseline: `0.3.5`
-Persistence schema baseline: `4`
+Persistence schema baseline: `5`
 
 Stability taxonomy:
 - `Canonical`: compatibility contract expected to remain stable across patch/minor updates.
@@ -157,6 +157,17 @@ Import (current implementation boundary):
   - `alternate_blocks32`
   - `rotate`
 
+### 2.13 Engagement Toast Contract
+- Bottom-bar engagement toasts are non-interactive and auto-dismiss.
+- Toast queue is bounded and priority-ordered; blocking overlays suppress rendering while preserving queue state.
+- Current milestone set includes:
+  - first task completed
+  - first recurring task created
+  - first recurring repeat occurrence completed
+  - 3 completed today
+  - 5 completions for a tag in the last 7 days
+  - 3-day completion streak
+
 ## 3) Data Model Contract
 
 Domain core (`src/domain/models.ts`):
@@ -177,8 +188,9 @@ Domain core (`src/domain/models.ts`):
 Persistence expectations:
 - local JSON storage
 - schema migrations applied at load
-- current schema version `4`
+- current schema version `5`
 - corrupt payload recovery creates `.corrupt.<timestamp>` backup file
+- engagement state is persisted and migrated with the rest of app state
 
 ## 4) Keybindings Snapshot (Primary)
 
