@@ -137,9 +137,17 @@ bun run start -- calendar:export --out ./tadoi.ics --range all
 bun run start -- calendar:export --out ./tadoi.ics --privacy full
 ```
 
+Import events from iCalendar format:
+
+```bash
+bun run start -- calendar:import --in ./tadoi.ics --dry-run
+bun run start -- calendar:import --in ./tadoi.ics --mode merge --range month
+bun run start -- calendar:import --in ./tadoi.ics --mode update --range all --horizon-days 365
+```
+
 Behavior notes:
 - In-app Backup Center exposes both `Export Calendar (.ics)` and `Import Calendar (.ics)` guided flows.
-- CLI currently exposes `calendar:export`; import service is consumed by Backup Center.
+- CLI exposes both `calendar:export` and `calendar:import`.
 - Exports open tasks only (done/archived excluded).
 - Privacy defaults to `minimal` (notes/tags/links/url omitted); use `--privacy full` to include full metadata.
 - Compatibility alias: `--include-details` maps to `--privacy full`.
@@ -147,7 +155,11 @@ Behavior notes:
 - Recurring series export as `RRULE` + `EXDATE` when valid.
 - Instance overrides (`instance_of`) export as standalone events.
 - `--range all` requires valid recurring `RRULE` fragments.
+- Export now includes round-trip identity headers on VEVENTs: `X-TADOI-TASK-ID`, plus `X-TADOI-SERIES-ID` (series roots) and `X-TADOI-INSTANCE-OF` (instance overrides).
+- Import identity precedence is explicit: `X-TADOI-TASK-ID` > TADOI UID conventions (`tadoi-*`) > stored `external.calendar.uid`.
 - Import safety baseline: max ICS size `10 MiB` by default, bounded recurrence horizon, hard expansion cap, and mandatory dry-run before commit in Backup Center.
+- `calendar:import` exit codes: `0` success, `1` usage/validation/parse errors (including import-domain errors), `2` filesystem errors.
+- Report write failures are non-fatal warnings when import processing succeeds.
 
 ## Stability Notes (As of v0.3.5)
 

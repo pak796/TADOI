@@ -16,7 +16,7 @@ In scope:
 - Dashboard parity with list data.
 - Left-rail menu and logo-mode surface behavior.
 - Recurrence creation, occurrence actions, and delete variants.
-- Calendar ICS export CLI workflows plus in-app Backup Center calendar import/export flows.
+- Calendar ICS export/import CLI workflows plus in-app Backup Center calendar import/export flows.
 - Backup/import/export safety flows.
 - Theme/settings persistence, including `custom1` behavior.
 - Notification modal behavior and bell cooldown.
@@ -339,6 +339,25 @@ Smoke pass criteria:
   - Steps: launch normally, then launch with `TADOI_VERBOSE_PATH_LOGS=1`.
   - Expected: default startup logs redact absolute paths; verbose mode prints full paths.
 
+### M) Calendar CLI Import/Export
+
+- [ ] `QA-061` `calendar:export` + `calendar:import --dry-run` baseline.
+  - Preconditions: test dataset with open tasks and at least one due item.
+  - Steps: run `bun run start -- calendar:export --out ./qa-calendar.ics`, then `bun run start -- calendar:import --in ./qa-calendar.ics --dry-run`.
+  - Expected: export writes `.ics`; import dry-run prints parsed/match/create/update counters and exits `0`.
+- [ ] `QA-062` `calendar:import` exit-code semantics.
+  - Preconditions: shell access.
+  - Steps: run `calendar:import` with missing `--in`, then with invalid RRULE fixture, then with unreadable data-path scenario.
+  - Expected: missing/validation/import-domain errors return `1`; filesystem errors return `2`; successful runs return `0`.
+- [ ] `QA-063` Round-trip identity precedence sanity.
+  - Preconditions: exported TADOI ICS file.
+  - Steps: modify a VEVENT `UID` but keep `X-TADOI-TASK-ID`, then import.
+  - Expected: import still updates the task identified by `X-TADOI-TASK-ID` (not by altered UID).
+- [ ] `QA-064` Non-fatal report warning behavior.
+  - Preconditions: valid ICS import file.
+  - Steps: run import with `--report` pointing at a path that cannot be written as a file (for example existing directory path).
+  - Expected: import processing succeeds and summary is returned; warning is printed; run is not marked failed solely because report writing failed.
+
 ## 7) Automated Coverage Mapping
 
 | Manual area | Primary automated references |
@@ -349,7 +368,7 @@ Smoke pass criteria:
 | Recurrence engine + draft + delete | `src/domain/recurrence/engine.test.ts`, `src/domain/recurrence/draft.test.ts`, `src/domain/recurrence/delete.test.ts`, `src/domain/taskRows.test.ts` |
 | Dashboard KPIs and tags | `src/domain/dashboard.test.ts`, `src/domain/dashboardKpis.test.ts`, `src/domain/tagStats.test.ts`, `src/app/dashboardTagFilterContract.test.ts` |
 | Backup/import/export + portability | `src/state/backupCenterFlow.test.ts`, `src/state/backupService.test.ts`, `src/state/portability.test.ts` |
-| Calendar ICS export/import (Backup Center + services) | `src/state/backupCenterFlow.test.ts`, `src/state/backupCenterCalendarController.test.ts`, `src/calendar/icsWriter.test.ts`, `src/calendar/icsParser.test.ts`, `src/calendar/importMapper.test.ts`, `src/calendar/calendarMapper.test.ts`, `src/calendar/range.test.ts`, `src/calendar/rrule.test.ts`, `src/state/calendarExportService.test.ts`, `src/state/calendarImportService.test.ts` |
+| Calendar ICS export/import (CLI + Backup Center + services) | `src/cli/calendarCommands.test.ts`, `src/commands/calendarImport.test.ts`, `src/cli.test.ts`, `src/state/backupCenterFlow.test.ts`, `src/state/backupCenterCalendarController.test.ts`, `src/calendar/icsWriter.test.ts`, `src/calendar/icsParser.test.ts`, `src/calendar/importMapper.test.ts`, `src/calendar/calendarMapper.test.ts`, `src/calendar/range.test.ts`, `src/calendar/rrule.test.ts`, `src/state/calendarExportService.test.ts`, `src/state/calendarImportService.test.ts`, `src/state/calendarRoundTrip.test.ts` |
 | Notifications + engagement toasts | `src/notifications/notificationManager.test.ts`, `src/notifications/overdueTaskActions.test.ts`, `src/notifications/notifiers/inAppModalNotifier.test.ts`, `src/notifications/notifiers/terminalBellNotifier.test.ts`, `src/state/store.test.ts` |
 | Settings/theme/custom1 | `src/settings/settings.test.ts`, `src/theme/themes.test.ts`, `src/theme/resolveThemeTokens.test.ts`, `src/theme/custom1ColorUtils.test.ts` |
 | Brand/logo + left rail | `src/brand/brand.test.ts`, `src/components/LeftRail.tsx`, `src/app/keyRouter.test.ts` |

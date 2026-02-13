@@ -349,7 +349,13 @@ function resolveInstanceMatch(
   lookup: TaskLookup
 ): MatchResult | undefined {
   const directMatch = resolveTaskMatch(event, lookup);
-  if (directMatch) {
+  const directInstance = directMatch?.task.instance_of;
+  if (
+    directMatch &&
+    directInstance &&
+    directInstance.series_id === seriesTask.recurrence?.series_id &&
+    directInstance.occurrence === occurrenceIso
+  ) {
     return directMatch;
   }
 

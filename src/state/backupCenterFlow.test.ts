@@ -202,4 +202,55 @@ describe("backupCenterFlow", () => {
     });
     expect(isCalendarImportConfirmValid(state)).toBe(true);
   });
+
+  it("stores and resets calendar import/export warnings across flow transitions", () => {
+    let state = backupCenterReducer(initialBackupCenterState, {
+      type: "calendarExportSucceeded",
+      result: {
+        outputPath: "/tmp/tadoi.ics",
+        tasksScanned: 1,
+        eventsWritten: 1,
+        seriesRruleExported: 0,
+        instanceOverridesExported: 0,
+        exdateCount: 0,
+        rangeApplied: "next7",
+        privacyApplied: "minimal",
+        timeContext: { mode: "tzid", timeZone: "UTC" }
+      },
+      warnings: ["settings fallback used"]
+    });
+    expect(state.calendarExportWarnings).toEqual(["settings fallback used"]);
+
+    const fingerprint = buildCalendarImportFingerprint({
+      inputPath: "./calendar.ics",
+      range: "next7",
+      mode: "merge",
+      horizonDays: 365
+    });
+    state = backupCenterReducer(state, {
+      type: "calendarImportDryRunSucceeded",
+      summary: makeCalendarSummary(),
+      hasErrors: false,
+      errorReasons: [],
+      fingerprint,
+      warnings: ["report path unavailable"]
+    });
+    expect(state.calendarImportDryRunWarnings).toEqual(["report path unavailable"]);
+
+    state = backupCenterReducer(state, {
+      type: "calendarImportSucceeded",
+      summary: makeCalendarSummary(),
+      warnings: ["post-commit report write failed"]
+    });
+    expect(state.calendarImportCommittedWarnings).toEqual([
+      "post-commit report write failed"
+    ]);
+
+    state = backupCenterReducer(state, {
+      type: "setCalendarImportMode",
+      mode: "update"
+    });
+    expect(state.calendarImportDryRunWarnings).toEqual([]);
+    expect(state.calendarImportCommittedWarnings).toEqual([]);
+  });
 });

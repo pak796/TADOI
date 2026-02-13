@@ -74,6 +74,7 @@ Safety:
 - Pre-import backup of `tadoi_data.json` is created before calendar commit.
 - RRULE validity/horizon/hard-cap safeguards remain enforced by the calendar import service.
 - High-impact imports (`mode=update` or `range=all`) require typed `IMPORT` confirmation.
+- Non-fatal warnings (for example report-write failures after successful processing) are shown in dry-run/commit summaries and do not block commit by themselves.
 
 ## Safety Guarantees
 
@@ -81,6 +82,17 @@ Safety:
 - Dry-run summary is shown before any write.
 - Replace import requires exact typed `REPLACE`.
 - Import/export logic is shared between CLI and TUI paths.
+
+## CLI Parity
+
+Calendar flows are available through CLI and in-app Backup Center:
+- `calendar:export`
+- `calendar:import`
+
+Import exit codes:
+- `0`: success
+- `1`: usage/validation/parse/import-domain errors
+- `2`: filesystem errors
 
 ## Shared Service and Sources
 
