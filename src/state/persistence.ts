@@ -128,6 +128,7 @@ export const CURRENT_SCHEMA_VERSION = 5;
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 let lastSuccessfulSaveAt: number | undefined;
 const corruptionRecoveryByPath = new Map<string, string | undefined>();
+const atomicWriteQueueByPath = new Map<string, Promise<void>>();
 
 function emptyData(): LoadedData {
   return {
@@ -190,6 +191,25 @@ async function nextAtomicTempFilePath(
   }
 
   throw new Error(`Failed to allocate unique temporary file for atomic write: ${filePath}`);
+}
+
+function atomicWriteQueueKey(filePath: string): string {
+  const resolved = path.resolve(filePath);
+  return process.platform === "win32" ? resolved.toLowerCase() : resolved;
+}
+
+async function runWithAtomicWriteLock(filePath: string, task: () => Promise<void>): Promise<void> {
+  const queueKey = atomicWriteQueueKey(filePath);
+  const previous = atomicWriteQueueByPath.get(queueKey) ?? Promise.resolve();
+  const current = previous.catch(() => undefined).then(task);
+  atomicWriteQueueByPath.set(queueKey, current);
+  try {
+    await current;
+  } finally {
+    if (atomicWriteQueueByPath.get(queueKey) === current) {
+      atomicWriteQueueByPath.delete(queueKey);
+    }
+  }
 }
 
 async function nextBackupPath(
@@ -423,21 +443,23 @@ export async function writeJsonAtomic(
   const fsOps = options.fsOps ?? DEFAULT_FS_OPS;
   const pretty = options.pretty !== false;
   const fsyncBeforeRename = options.fsyncBeforeRename === true;
-  await fsOps.mkdir(path.dirname(filePath), { recursive: true });
-  const tmpFile = await nextAtomicTempFilePath(filePath, fsOps);
-  const content = pretty
-    ? JSON.stringify(payload, null, 2)
-    : JSON.stringify(payload);
-  await fsOps.writeFile(tmpFile, content, "utf8");
-  if (fsyncBeforeRename) {
-    const handle = await fsOps.open(tmpFile, "r");
-    try {
-      await handle.sync();
-    } finally {
-      await handle.close();
+  await runWithAtomicWriteLock(filePath, async () => {
+    await fsOps.mkdir(path.dirname(filePath), { recursive: true });
+    const tmpFile = await nextAtomicTempFilePath(filePath, fsOps);
+    const content = pretty
+      ? JSON.stringify(payload, null, 2)
+      : JSON.stringify(payload);
+    await fsOps.writeFile(tmpFile, content, "utf8");
+    if (fsyncBeforeRename) {
+      const handle = await fsOps.open(tmpFile, "r");
+      try {
+        await handle.sync();
+      } finally {
+        await handle.close();
+      }
     }
-  }
-  await fsOps.rename(tmpFile, filePath);
+    await fsOps.rename(tmpFile, filePath);
+  });
 }
 
 export async function nextTimestampedSiblingPath(
