@@ -4,11 +4,13 @@ import type { EmptyNuxStep } from "../ui/state";
 type EmptyNuxModalProps = {
   step: EmptyNuxStep;
   onCreateTask: () => void;
+  onOpenBackupImport: () => void;
   onShowShortcuts: () => void;
   onBackToWelcome: () => void;
   onDismissSession: () => void;
   onClearWalkthrough: () => void;
   onGoToList: () => void;
+  showImportBackupAction?: boolean;
 };
 
 function ActionButton(props: {
@@ -44,11 +46,13 @@ function ActionButton(props: {
 export function EmptyNuxModal({
   step,
   onCreateTask,
+  onOpenBackupImport,
   onShowShortcuts,
   onBackToWelcome,
   onDismissSession,
   onClearWalkthrough,
-  onGoToList
+  onGoToList,
+  showImportBackupAction = false
 }: EmptyNuxModalProps) {
   const theme = themeForObject("modal");
   const modalWidth = 64;
@@ -93,6 +97,9 @@ export function EmptyNuxModal({
           <text style={{ color: theme.muted }}>Esc or S to skip for this session.</text>
           <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
             <ActionButton label="ADD (A/Enter)" primary onPress={onCreateTask} />
+            {showImportBackupAction ? (
+              <ActionButton label="Import backup (I)" onPress={onOpenBackupImport} />
+            ) : null}
             <ActionButton label="Shortcuts (H)" onPress={onShowShortcuts} />
             <ActionButton label="Skip (S)" onPress={onDismissSession} />
           </box>

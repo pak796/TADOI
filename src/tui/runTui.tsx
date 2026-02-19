@@ -102,6 +102,7 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
     archiveChanged ||
     loadResult.didMigrate ||
     loadResult.shouldPersistRecoveredState;
+  const showCorruptionRecoveryImportCta = loadResult.shouldPersistRecoveredState;
 
   createRoot(renderer).render(
     <App
@@ -116,6 +117,7 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
       settingsPath={settingsResult.resolvedPath}
       showLogo={options.showLogo}
       startupBanner={startupBanner}
+      showCorruptionRecoveryImportCta={showCorruptionRecoveryImportCta}
     />
   );
 }

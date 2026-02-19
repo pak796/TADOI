@@ -62,6 +62,9 @@ import {
   updateTaskLink
 } from "../domain/taskLinks";
 import { decideTaskLinkOpen } from "./linkOpenFlow";
+import { executeCommand } from "../commands/execute";
+import { parseCommand } from "../commands/parse";
+import type { CommandOutput } from "../commands/types";
 import {
   addTagToTagFilterDraftBucket,
   resolveTagFilterDraftForApplyFromInput,
@@ -81,6 +84,7 @@ import {
   createEmptyDraft,
   formatDate,
   getDueInLabel,
+  getVisibleTasks,
   initialState,
   parseDueTime,
   reducer
@@ -1140,6 +1144,12 @@ export function App({
   const [selectedViewIndex, setSelectedViewIndex] = useState(0);
   const [saveViewPromptOpen, setSaveViewPromptOpen] = useState(false);
   const [saveViewName, setSaveViewName] = useState("");
+  const [commandActive, setCommandActive] = useState(false);
+  const [commandText, setCommandText] = useState("");
+  const commandTextRef = useRef("");
+  const [commandHistory, setCommandHistory] = useState<string[]>([]);
+  const [commandHistoryIndex, setCommandHistoryIndex] = useState<number | null>(null);
+  const [commandOutput, setCommandOutput] = useState<CommandOutput | null>(null);
   const [dashboardTagSelection, setDashboardTagSelection] = useState(0);
   const [selectedLinkId, setSelectedLinkId] = useState<string | undefined>(undefined);
   const [tagFilterDraft, setTagFilterDraft] = useState<TagFilter | undefined>(undefined);
@@ -1725,12 +1735,17 @@ export function App({
   const activeEmptyNuxStep: EmptyNuxStep = uiState.emptyNux?.step ?? "welcome";
   const blockingOverlayOpen = isBlockingOverlayOpen(uiState);
   const activeEngagementToast =
-    !blockingOverlayOpen && state.engagementToastActive ? state.engagementToastActive : null;
+    !commandActive && !blockingOverlayOpen && state.engagementToastActive
+      ? state.engagementToastActive
+      : null;
   const engagementToastLine = activeEngagementToast
     ? fitLineToWidth(
         activeEngagementToast.message,
         Math.max(1, bottomBarWidth - 4)
       )
+    : "";
+  const commandOutputLine = commandOutput
+    ? truncateToWidth(commandOutput.text.replace(/\s+/g, " ").trim(), Math.max(1, bottomBarWidth - 8))
     : "";
   const renderStartMs = Date.now();
 
@@ -2002,6 +2017,14 @@ export function App({
     setTagFilterDraft(undefined);
     setActiveTagFilterBucket("all");
   }, [uiState.mode]);
+
+  useEffect(() => {
+    if (!commandActive) return;
+    if (uiState.mode === Mode.LIST) return;
+    setCommandActive(false);
+    setCommandTextValue("");
+    setCommandHistoryIndex(null);
+  }, [commandActive, uiState.mode]);
 
   useEffect(() => {
     if (state.savedViews.length === 0) {
@@ -3163,11 +3186,110 @@ export function App({
     }
   }
 
+  function closeCommandBar() {
+    setCommandActive(false);
+    setCommandTextValue("");
+    setCommandHistoryIndex(null);
+  }
+
+  function setCommandTextValue(value: string) {
+    commandTextRef.current = value;
+    setCommandText(value);
+  }
+
+  function moveCommandHistory(direction: -1 | 1) {
+    if (commandHistory.length === 0) return;
+    if (direction === -1) {
+      const nextIndex =
+        commandHistoryIndex === null
+          ? commandHistory.length - 1
+          : Math.max(0, commandHistoryIndex - 1);
+      setCommandHistoryIndex(nextIndex);
+      setCommandTextValue(commandHistory[nextIndex]);
+      return;
+    }
+
+    if (commandHistoryIndex === null) return;
+    if (commandHistoryIndex >= commandHistory.length - 1) {
+      setCommandHistoryIndex(null);
+      setCommandTextValue("");
+      return;
+    }
+    const nextIndex = commandHistoryIndex + 1;
+    setCommandHistoryIndex(nextIndex);
+    setCommandTextValue(commandHistory[nextIndex]);
+  }
+
+  function executeCommandBar() {
+    const raw = commandTextRef.current;
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      setCommandOutput({ kind: "error", text: "Error: command is empty" });
+      return;
+    }
+
+    const parsed = parseCommand(trimmed);
+    if (!parsed.ok) {
+      setCommandOutput({ kind: "error", text: parsed.error });
+      return;
+    }
+
+    const nowMs = Date.now();
+    const visibleTasks = getVisibleTasks(state, nowMs);
+    const result = executeCommand(parsed.command, {
+      now: nowMs,
+      state,
+      visibleTasks,
+      selectedTaskId: state.selectedId ?? visibleTasks[0]?.id
+    });
+    for (const action of result.actions) {
+      dispatch(action);
+    }
+    setCommandOutput(result.output);
+    setCommandHistory((previous) => [...previous, raw]);
+    setCommandHistoryIndex(null);
+    setCommandTextValue("");
+  }
+
   useKeyboard((key) => {
     if (!terminalIsSupported) {
       if ((key.name ?? "") === "q") {
         void renderer.destroy();
       }
+      return;
+    }
+
+    const keyName = key.name ?? "";
+    const keySequence = key.sequence ?? "";
+    if (commandActive) {
+      if (keyName === "escape") {
+        closeCommandBar();
+        return;
+      }
+      if (keyName === "up") {
+        moveCommandHistory(-1);
+        return;
+      }
+      if (keyName === "down") {
+        moveCommandHistory(1);
+        return;
+      }
+      if (keyName === "return" || keyName === "enter") {
+        executeCommandBar();
+        return;
+      }
+      return;
+    }
+
+    if (
+      uiState.mode === Mode.LIST &&
+      !viewsOverlayOpen &&
+      !saveViewPromptOpen &&
+      (keySequence === "`" || keyName === "`")
+    ) {
+      setCommandActive(true);
+      setCommandTextValue("");
+      setCommandHistoryIndex(null);
       return;
     }
 
@@ -3184,7 +3306,6 @@ export function App({
       }
     }
 
-    const keyName = key.name ?? "";
     if (
       uiState.mode === Mode.HELP &&
       activeHelpPage === "settings" &&
@@ -3212,7 +3333,7 @@ export function App({
     const actions = handleKey(
       {
         name: keyName,
-        sequence: key.sequence ?? "",
+        sequence: keySequence,
         ctrl: key.ctrl === true,
         shift: key.shift === true
       },
@@ -6335,6 +6456,46 @@ export function App({
           }}
         >
           <text style={{ color: theme.text }}>{engagementToastLine}</text>
+        </box>
+      ) : null}
+
+      {commandActive ? (
+        <box
+          style={{
+            position: "absolute",
+            left: layout.railWidth + 1,
+            right: 1,
+            bottom: 1,
+            paddingLeft: 1,
+            paddingRight: 1,
+            paddingTop: 1,
+            paddingBottom: 1,
+            flexDirection: "column",
+            backgroundColor: theme.panel,
+            border: true,
+            borderStyle: "single",
+            borderColor: commandOutput?.kind === "error" ? theme.warn : theme.outline
+          }}
+        >
+          {commandOutput ? (
+            <text style={{ color: commandOutput.kind === "error" ? theme.warn : theme.ok }}>
+              {commandOutputLine}
+            </text>
+          ) : null}
+          <box style={{ flexDirection: "row" }}>
+            <text style={{ color: theme.muted, marginRight: 1 }}>:</text>
+            <input
+              value={commandText}
+              onInput={setCommandTextValue}
+              focused
+              placeholder='add "Buy milk" #errands'
+              style={{
+                backgroundColor: inputTheme.bg,
+                color: inputTheme.text,
+                flexGrow: 1
+              }}
+            />
+          </box>
         </box>
       ) : null}
 
