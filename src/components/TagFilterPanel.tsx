@@ -78,7 +78,7 @@ export function TagFilterPanel({
         TAG FILTER PANEL
       </text>
       <text style={{ color: theme.muted }}>
-        Tab: next bucket | 1/2/3: bucket | Enter: add | Ctrl+Enter: apply | Esc: close
+        Tab/Arrows: bucket | Enter: add | Ctrl+Enter/Ctrl+S: apply | Esc: close
       </text>
 
       {BUCKET_META.map((meta) => {
@@ -98,14 +98,11 @@ export function TagFilterPanel({
               }}
               onMouseDown={(event) => {
                 if (event.button !== 0) return;
+                event.preventDefault();
                 onSetBucket(meta.bucket);
               }}
             >
               <text style={{ color: isActive ? theme.bg : theme.text }}>
-                {meta.bucket === "all" ? "1" : meta.bucket === "any" ? "2" : "3"}.
-              </text>
-              <text style={{ color: isActive ? theme.bg : theme.text }}>
-                {" "}
                 {meta.label}
               </text>
             </box>
@@ -123,6 +120,7 @@ export function TagFilterPanel({
                     }}
                     onMouseDown={(event) => {
                       if (event.button !== 0) return;
+                      event.preventDefault();
                       onSetBucket(meta.bucket);
                       onRemoveTag(meta.bucket, tag);
                     }}
@@ -150,7 +148,7 @@ export function TagFilterPanel({
         </text>
         <input
           value={inputValue}
-          onChange={onInputChange}
+          onInput={onInputChange}
           onKeyDown={onInputKeyDown}
           onSubmit={onInputSubmit}
           focused

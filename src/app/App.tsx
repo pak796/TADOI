@@ -63,6 +63,12 @@ import {
 } from "../domain/taskLinks";
 import { decideTaskLinkOpen } from "./linkOpenFlow";
 import {
+  addTagToTagFilterDraftBucket,
+  resolveTagFilterDraftForApplyFromInput,
+  resolveTagFilterInputCandidateValue,
+  resolveTagFilterPanelHotkeyAction
+} from "./tagFilterPanelInput";
+import {
   applyAutocomplete,
   getAutocompleteStep,
   getSuggestedTime,
@@ -1138,6 +1144,7 @@ export function App({
   const [selectedLinkId, setSelectedLinkId] = useState<string | undefined>(undefined);
   const [tagFilterDraft, setTagFilterDraft] = useState<TagFilter | undefined>(undefined);
   const [tagFilterInput, setTagFilterInput] = useState("");
+  const tagFilterInputRef = useRef("");
   const [activeTagFilterBucket, setActiveTagFilterBucket] =
     useState<TagFilterBucket>("all");
   const [helpExpandedBySection, setHelpExpandedBySection] = useState<boolean[]>(
@@ -1991,7 +1998,7 @@ export function App({
 
   useEffect(() => {
     if (uiState.mode === Mode.TAG_FILTER) return;
-    setTagFilterInput("");
+    setTagFilterInputValue("");
     setTagFilterDraft(undefined);
     setActiveTagFilterBucket("all");
   }, [uiState.mode]);
@@ -3785,7 +3792,7 @@ export function App({
     closeViewsOverlay();
     const seedFilter = resolveEffectiveTagFilter(state.filters);
     setTagFilterDraft(normalizeTagFilter(seedFilter));
-    setTagFilterInput("");
+    setTagFilterInputValue("");
     setActiveTagFilterBucket("all");
     uiDispatch({
       type: "captureReturnContext",
@@ -3797,15 +3804,25 @@ export function App({
   }
 
   function closeTagFilterPanel() {
-    setTagFilterInput("");
+    setTagFilterInputValue("");
     setTagFilterDraft(undefined);
     setActiveTagFilterBucket("all");
     applyEscUnwind();
   }
 
   function clearTagFilterPanelDraft() {
-    setTagFilterInput("");
+    setTagFilterInputValue("");
     setTagFilterDraft(undefined);
+  }
+
+  function setTagFilterInputValue(value: string) {
+    tagFilterInputRef.current = value;
+    setTagFilterInput(value);
+  }
+
+  function setTagFilterBucketAndFocusInput(bucket: TagFilterBucket) {
+    setActiveTagFilterBucket(bucket);
+    uiDispatch({ type: "setFocus", focus: FocusTarget.TAG_FILTER_INPUT });
   }
 
   function cycleTagFilterBucket(step: 1 | -1 = 1) {
@@ -3816,11 +3833,18 @@ export function App({
         (safeIndex + step + TAG_FILTER_BUCKET_ORDER.length) % TAG_FILTER_BUCKET_ORDER.length
       ];
     });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.TAG_FILTER_INPUT });
   }
 
   function applyTagFilterPanel(includeInputCandidate = false) {
     const nextTagFilter = normalizeTagFilter(
-      resolveTagFilterDraftForApply(includeInputCandidate)
+      resolveTagFilterDraftForApplyFromInput({
+        draft: tagFilterDraft,
+        includeInputCandidate,
+        inputValue: tagFilterInputRef.current,
+        inlineSuggestion: tagFilterInlineSuggestion,
+        bucket: activeTagFilterBucket
+      })
     );
     if (nextTagFilter) {
       setTagFilter(nextTagFilter);
@@ -3831,119 +3855,69 @@ export function App({
       clearTagFilters();
       showShortNavigationBanner("Tag filter cleared");
     }
-    setTagFilterInput("");
+    setTagFilterInputValue("");
     setTagFilterDraft(undefined);
     setActiveTagFilterBucket("all");
     applyEscUnwind();
   }
 
-  function isEnterLikeKey(key: KeyEvent): boolean {
-    return (
-      key.name === "return" ||
-      key.name === "enter" ||
-      key.sequence === "\r" ||
-      key.sequence === "\n"
-    );
-  }
-
-  function resolveTagFilterInputCandidate(): string {
-    return tagFilterInlineSuggestion?.full ?? tagFilterInput;
-  }
-
-  function resolveTagFilterDraftForApply(includeInputCandidate: boolean): TagFilter | undefined {
-    if (!includeInputCandidate) return tagFilterDraft;
-    return addTagToTagFilter(
-      tagFilterDraft,
-      resolveTagFilterInputCandidate(),
-      activeTagFilterBucket
-    );
-  }
-
   function addTagFilterDraftCandidateFromInput(candidateOverride?: string): boolean {
-    const candidate = candidateOverride ?? resolveTagFilterInputCandidate();
+    const candidate =
+      candidateOverride ??
+      resolveTagFilterInputCandidateValue(
+        tagFilterInputRef.current,
+        tagFilterInlineSuggestion
+      );
     const normalizedCandidate = normalizeTagToken(candidate);
     if (!normalizedCandidate) return false;
 
     setTagFilterDraft((current) =>
-      addTagToTagFilter(current, normalizedCandidate, activeTagFilterBucket)
+      addTagToTagFilterDraftBucket(current, normalizedCandidate, activeTagFilterBucket)
     );
-    setTagFilterInput("");
+    setTagFilterInputValue("");
     return true;
   }
 
   function handleTagFilterPanelInputKeyDown(key: KeyEvent) {
-    const isEnter = isEnterLikeKey(key);
-    const isCtrlEnter =
-      (isEnter && key.ctrl) ||
-      key.sequence === "\u001b[13;5u";
+    const action = resolveTagFilterPanelHotkeyAction({
+      key,
+      hasInlineSuggestion: Boolean(tagFilterInlineSuggestion),
+      inputValue: tagFilterInputRef.current
+    });
+    if (!action) return;
 
-    if (key.name === "tab") {
-      key.preventDefault();
-      key.stopPropagation();
-      cycleTagFilterBucket(key.shift ? -1 : 1);
-      return;
-    }
+    key.preventDefault();
+    key.stopPropagation();
 
-    if (key.name === "1" || key.sequence === "1") {
-      key.preventDefault();
-      key.stopPropagation();
-      setActiveTagFilterBucket("all");
-      return;
-    }
-    if (key.name === "2" || key.sequence === "2") {
-      key.preventDefault();
-      key.stopPropagation();
-      setActiveTagFilterBucket("any");
-      return;
-    }
-    if (key.name === "3" || key.sequence === "3") {
-      key.preventDefault();
-      key.stopPropagation();
-      setActiveTagFilterBucket("none");
-      return;
-    }
-
-    if (key.ctrl && key.name === "l") {
-      key.preventDefault();
-      key.stopPropagation();
-      clearTagFilterPanelDraft();
-      return;
-    }
-
-    if (key.name === "escape") {
-      key.preventDefault();
-      key.stopPropagation();
-      closeTagFilterPanel();
-      return;
-    }
-
-    if (isCtrlEnter) {
-      key.preventDefault();
-      key.stopPropagation();
-      applyTagFilterPanel(true);
-      return;
-    }
-
-    if (key.name === "right" && tagFilterInlineSuggestion) {
-      key.preventDefault();
-      key.stopPropagation();
-      setTagFilterInput(formatTagForDisplay(tagFilterInlineSuggestion.full));
-      return;
-    }
-
-    if (key.name === "backspace" && tagFilterInput.trim().length === 0) {
-      key.preventDefault();
-      key.stopPropagation();
-      setTagFilterDraft((current) =>
-        removeLastTagFromTagFilter(current, activeTagFilterBucket)
-      );
-      return;
-    }
-
-    if (isEnter) {
-      key.preventDefault();
-      key.stopPropagation();
-      addTagFilterDraftCandidateFromInput();
+    switch (action.type) {
+      case "cycleBucket":
+        cycleTagFilterBucket(action.step);
+        return;
+      case "setBucket":
+        setTagFilterBucketAndFocusInput(action.bucket);
+        return;
+      case "clearDraft":
+        clearTagFilterPanelDraft();
+        return;
+      case "closePanel":
+        closeTagFilterPanel();
+        return;
+      case "applyWithInputCandidate":
+        applyTagFilterPanel(true);
+        return;
+      case "acceptInlineSuggestion":
+        if (tagFilterInlineSuggestion) {
+          setTagFilterInputValue(formatTagForDisplay(tagFilterInlineSuggestion.full));
+        }
+        return;
+      case "removeLastDraftTag":
+        setTagFilterDraft((current) =>
+          removeLastTagFromTagFilter(current, activeTagFilterBucket)
+        );
+        return;
+      case "addInputCandidate":
+        addTagFilterDraftCandidateFromInput();
+        return;
     }
   }
 
@@ -5568,25 +5542,6 @@ export function App({
     return normalizeTagFilter(next);
   }
 
-  function addTagToTagFilter(
-    current: TagFilter | undefined,
-    rawTag: string,
-    bucket: TagFilterBucket
-  ): TagFilter | undefined {
-    const normalizedTag = normalizeTagToken(rawTag);
-    if (!normalizedTag) return normalizeTagFilter(current);
-
-    const next: TagFilter = {
-      all: [...(current?.all ?? [])],
-      any: [...(current?.any ?? [])],
-      none: [...(current?.none ?? [])]
-    };
-    const bucketTags = new Set(next[bucket] ?? []);
-    bucketTags.add(normalizedTag);
-    next[bucket] = Array.from(bucketTags);
-    return normalizeTagFilter(next);
-  }
-
   function removeLastTagFromTagFilter(
     current: TagFilter | undefined,
     bucket: TagFilterBucket
@@ -6826,10 +6781,10 @@ export function App({
             activeBucket={activeTagFilterBucket}
             inlineSuggestion={tagFilterInlineSuggestion}
             suggestions={tagFilterSuggestions}
-            onInputChange={setTagFilterInput}
+            onInputChange={setTagFilterInputValue}
             onInputKeyDown={handleTagFilterPanelInputKeyDown}
             onInputSubmit={(value) => addTagFilterDraftCandidateFromInput(value)}
-            onSetBucket={setActiveTagFilterBucket}
+            onSetBucket={setTagFilterBucketAndFocusInput}
             onRemoveTag={(bucket, tag) =>
               setTagFilterDraft((current) =>
                 removeTagFromTagFilter(current, bucket, tag)
