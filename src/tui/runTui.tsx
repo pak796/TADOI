@@ -8,6 +8,13 @@ import { normalizeEngagementState } from "../domain/engagement";
 import { normalizeTagIndex, normalizeTags } from "../domain/tagIndex";
 import { loadSettings } from "../settings/settings";
 import { CURRENT_SCHEMA_VERSION, safeLoadState } from "../state/persistence";
+import {
+  createDefaultLockPayload,
+  getTadoiLockPath,
+  removeTadoiLock,
+  removeTadoiLockSync,
+  writeTadoiLock
+} from "../state/lockfile";
 import { applyArchiveAging } from "../state/store";
 import { APP_NAME, PRODUCT_NAME_TM } from "../brand/brand";
 
@@ -27,6 +34,50 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
   const settingsResult = await loadSettings();
   applyThemeWithSettings(settingsResult.settings.themeId, settingsResult.settings);
   const loadResult = await safeLoadState();
+  const lockPath = getTadoiLockPath(loadResult.resolvedPath);
+  let lockCleanedUp = false;
+  const cleanupLock = async (sync: boolean): Promise<void> => {
+    if (lockCleanedUp) return;
+    lockCleanedUp = true;
+    process.off("exit", onProcessExit);
+    try {
+      if (sync) {
+        removeTadoiLockSync(lockPath);
+      } else {
+        await removeTadoiLock(lockPath);
+      }
+    } catch (error: unknown) {
+      console.warn(
+        `[${APP_NAME}] failed to remove lock file (${lockPath}): ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    }
+  };
+  const onProcessExit = () => {
+    void cleanupLock(true);
+  };
+  process.on("exit", onProcessExit);
+
+  const originalDestroy = renderer.destroy.bind(renderer);
+  (renderer as { destroy: () => unknown }).destroy = () => {
+    void cleanupLock(false);
+    return originalDestroy();
+  };
+
+  try {
+    await writeTadoiLock(
+      lockPath,
+      createDefaultLockPayload(loadResult.resolvedPath)
+    );
+  } catch (error: unknown) {
+    console.warn(
+      `[${APP_NAME}] failed to create lock file (${lockPath}): ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
+  }
+
   const loaded = loadResult.data;
   const startupWarnings = [...settingsResult.warnings];
   if (loadResult.bannerMessage) {

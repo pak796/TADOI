@@ -154,9 +154,6 @@ function parseDueCommand(tokens: string[]): ParseCommandResult {
 
   const second = tokens[1];
   if (second === "clear") {
-    if (target.type !== "selected") {
-      return error('Error: due clear supports "@selected" only');
-    }
     if (tokens.length !== 2) {
       return error("Error: due clear takes no extra tokens");
     }

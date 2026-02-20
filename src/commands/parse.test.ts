@@ -92,6 +92,14 @@ describe("parseCommand", () => {
         clear: true
       }
     });
+    expect(parseCommand("due id:abc clear")).toEqual({
+      ok: true,
+      command: {
+        type: "due",
+        target: { type: "id", id: "abc" },
+        clear: true
+      }
+    });
     expect(parseCommand("due id:abc 2026-03-05 at:09:00")).toEqual({
       ok: true,
       command: {

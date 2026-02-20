@@ -210,6 +210,44 @@ describe("executeCommand", () => {
     expect(clearedAction.tasks[0].hasExplicitTime).toBe(false);
   });
 
+  it("executes due clear for id target", () => {
+    const now = new Date(2026, 1, 21, 8, 0).getTime();
+    const task: Task = {
+      id: "task-id-clear",
+      title: "Clear by id",
+      status: "open",
+      createdAt: now - 2000,
+      updatedAt: now - 1000,
+      dueAt: new Date(2026, 2, 5, 9, 0).getTime(),
+      hasExplicitTime: true,
+      tags: []
+    };
+
+    const result = executeCommand(
+      {
+        type: "due",
+        target: { type: "id", id: task.id },
+        clear: true
+      },
+      {
+        now,
+        state: createState([task], task.id),
+        visibleTasks: [task],
+        selectedTaskId: undefined
+      }
+    );
+
+    expect(result.output).toEqual({
+      kind: "ok",
+      text: "Due cleared: Clear by id"
+    });
+    expect(result.actions.map((action) => action.type)).toEqual(["setTasks", "setSelected"]);
+    const setTasksAction = result.actions[0];
+    if (setTasksAction.type !== "setTasks") return;
+    expect(setTasksAction.tasks[0].dueAt).toBeUndefined();
+    expect(setTasksAction.tasks[0].hasExplicitTime).toBe(false);
+  });
+
   it("executes help without mutations", () => {
     const result = executeCommand(
       {

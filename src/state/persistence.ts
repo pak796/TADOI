@@ -35,6 +35,7 @@ export type PersistenceFsOps = Pick<
   | "rename"
   | "stat"
   | "open"
+  | "unlink"
   | "writeFile"
 >;
 
@@ -191,6 +192,25 @@ async function nextAtomicTempFilePath(
   }
 
   throw new Error(`Failed to allocate unique temporary file for atomic write: ${filePath}`);
+}
+
+async function nextPidTempFilePath(
+  filePath: string,
+  fsOps: PersistenceFsOps
+): Promise<string> {
+  const base = `${filePath}.tmp.${process.pid}`;
+  if (!(await pathExists(base, fsOps))) {
+    return base;
+  }
+
+  for (let attempt = 1; attempt < 64; attempt += 1) {
+    const candidate = `${base}.${attempt}`;
+    if (!(await pathExists(candidate, fsOps))) {
+      return candidate;
+    }
+  }
+
+  throw new Error(`Failed to allocate pid temp file for atomic save: ${filePath}`);
 }
 
 function atomicWriteQueueKey(filePath: string): string {
@@ -459,6 +479,59 @@ export async function writeJsonAtomic(
       }
     }
     await fsOps.rename(tmpFile, filePath);
+  });
+}
+
+export async function saveStateAtomic(
+  data: LoadedData,
+  filePath = DATA_FILE,
+  fsOps: PersistenceFsOps = DEFAULT_FS_OPS
+): Promise<void> {
+  await runWithAtomicWriteLock(filePath, async () => {
+    const dirPath = path.dirname(filePath);
+    await fsOps.mkdir(dirPath, { recursive: true });
+    const tmpFile = await nextPidTempFilePath(filePath, fsOps);
+    const payload = {
+      ...data,
+      schemaVersion: data.schemaVersion ?? CURRENT_SCHEMA_VERSION
+    };
+    const content = JSON.stringify(payload, null, 2);
+    let renamed = false;
+
+    try {
+      await fsOps.writeFile(tmpFile, content, "utf8");
+      const tmpHandle = await fsOps.open(tmpFile, "r");
+      try {
+        await tmpHandle.sync();
+      } finally {
+        await tmpHandle.close();
+      }
+
+      await fsOps.rename(tmpFile, filePath);
+      renamed = true;
+
+      if (process.platform !== "win32") {
+        try {
+          const dirHandle = await fsOps.open(dirPath, "r");
+          try {
+            await dirHandle.sync();
+          } finally {
+            await dirHandle.close();
+          }
+        } catch {
+          // best-effort directory sync; file is already atomically replaced
+        }
+      }
+    } catch (error: unknown) {
+      if (!renamed) {
+        try {
+          await fsOps.unlink(tmpFile);
+        } catch {
+          // best-effort temp cleanup
+        }
+      }
+      throw error;
+    }
   });
 }
 

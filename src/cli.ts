@@ -8,6 +8,7 @@ import {
 import { APP_VERSION } from "./app/version";
 import { runPortabilityCommand } from "./cli/portabilityCommands";
 import { runCalendarCommand } from "./cli/calendarCommands";
+import { runTitCommandCli } from "./cli/main";
 import { runTui, runTuiSmoke, type RunTuiOptions } from "./tui/runTui";
 
 type CliOptions = {
@@ -62,10 +63,15 @@ export function printHelp(showLogo: boolean): void {
   console.log("      --no-logo   Hide ASCII logo in app header");
   console.log("");
   console.log("Commands:");
+  console.log("  add             Add task via TIT command engine");
+  console.log("  done            Mark task done by id via TIT command engine");
+  console.log("  due             Set/clear due by id via TIT command engine");
+  console.log("  help            Show TIT command help topics");
   console.log("  export          Export full persisted state (plus settings)");
   console.log("  import          Import state from a JSON export");
   console.log("  calendar:export Export one-way calendar ICS file");
   console.log("  calendar:import Import one-way calendar ICS file");
+  console.log(`  ${CLI_NAME} 'add \"Task\" due:2026-03-05 #tag'`);
   console.log(`  Run '${CLI_NAME} <command> --help' for command-specific flags`);
   console.log("");
   console.log("Environment:");
@@ -137,6 +143,11 @@ export async function runCli(
   }
   if (route.kind === "calendar") {
     return deps.runCalendar(route.command, route.args);
+  }
+
+  const titResult = await runTitCommandCli(argv);
+  if (titResult.handled) {
+    return titResult.exitCode ?? 0;
   }
 
   if (route.kind === "help") {

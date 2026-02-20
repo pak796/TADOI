@@ -11,6 +11,7 @@ import {
   nextTimestampedSiblingPath,
   resolveDataPath,
   safeLoadState,
+  saveStateAtomic,
   saveStateDebounced,
   writeJsonAtomic
 } from "./persistence";
@@ -382,6 +383,103 @@ describe("writeJsonAtomic", () => {
       { filePath, fsOps, fsyncBeforeRename: true, pretty: false }
     );
     expect(syncCalled).toBe(true);
+  });
+});
+
+describe("saveStateAtomic", () => {
+  it("writes schema payload atomically with pid temp file naming", async () => {
+    const dir = await makeTempDir();
+    const filePath = path.join(dir, "tadoi_data.json");
+    let tempFsyncCalled = false;
+    const openedPaths: string[] = [];
+
+    const fsOps: PersistenceFsOps = {
+      ...fs,
+      open: (async (targetPath, flags) => {
+        const target = String(targetPath);
+        openedPaths.push(target);
+        const handle = await fs.open(
+          targetPath,
+          flags as Parameters<typeof fs.open>[1]
+        );
+        return {
+          ...handle,
+          sync: async () => {
+            if (target.includes(".tmp.")) {
+              tempFsyncCalled = true;
+            }
+            await handle.sync();
+          },
+          close: async () => {
+            await handle.close();
+          },
+        } as Awaited<ReturnType<typeof fs.open>>;
+      }) as PersistenceFsOps["open"]
+    };
+
+    await saveStateAtomic(
+      {
+        schemaVersion: 5,
+        tasks: [
+          { id: "atomic", title: "atomic", status: "open", createdAt: 1, updatedAt: 1, tags: [] }
+        ],
+        tagIndex: {},
+        savedViews: []
+      },
+      filePath,
+      fsOps
+    );
+
+    expect(tempFsyncCalled).toBe(true);
+    expect(openedPaths.some((entry) => entry.includes(`.tmp.${process.pid}`))).toBe(true);
+
+    const raw = await fs.readFile(filePath, "utf8");
+    const parsed = JSON.parse(raw) as { schemaVersion: number; tasks: Array<{ id: string }> };
+    expect(parsed.schemaVersion).toBe(5);
+    expect(parsed.tasks[0]?.id).toBe("atomic");
+
+    const files = await fs.readdir(dir);
+    expect(files.some((name) => name.startsWith("tadoi_data.json.tmp."))).toBe(false);
+  });
+
+  it("attempts temp cleanup on save failure", async () => {
+    const dir = await makeTempDir();
+    const filePath = path.join(dir, "tadoi_data.json");
+    const unlinked: string[] = [];
+
+    const fsOps: PersistenceFsOps = {
+      ...fs,
+      writeFile: (async (targetPath, data, options) => {
+        if (String(targetPath).includes(`.tmp.${process.pid}`)) {
+          throw new Error("disk fail");
+        }
+        return fs.writeFile(
+          targetPath,
+          data as Parameters<typeof fs.writeFile>[1],
+          options as Parameters<typeof fs.writeFile>[2]
+        );
+      }) as PersistenceFsOps["writeFile"],
+      unlink: (async (targetPath) => {
+        unlinked.push(String(targetPath));
+        return fs.unlink(targetPath);
+      }) as PersistenceFsOps["unlink"]
+    };
+
+    await expect(
+      saveStateAtomic(
+        {
+          schemaVersion: 5,
+          tasks: [],
+          tagIndex: {},
+          savedViews: []
+        },
+        filePath,
+        fsOps
+      )
+    ).rejects.toThrow("disk fail");
+
+    expect(unlinked).toHaveLength(1);
+    expect(unlinked[0]?.startsWith(`${filePath}.tmp.${process.pid}`)).toBe(true);
   });
 });
 
