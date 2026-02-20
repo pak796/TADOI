@@ -887,6 +887,60 @@ describe("handleKey", () => {
         { uiState: backupState, backupScreen: "calendar_import_mode" }
       )
     ).toEqual([{ scope: "ui", type: "BACKUP_SELECT_DIGIT", digit: 2 }]);
+    expect(
+      run(
+        { name: "up" },
+        { uiState: backupState, backupScreen: "import_picker" }
+      )
+    ).toEqual([{ scope: "ui", type: "BACKUP_PICKER_MOVE_SELECTION", delta: -1 }]);
+    expect(
+      run(
+        { name: "down" },
+        { uiState: backupState, backupScreen: "import_picker" }
+      )
+    ).toEqual([{ scope: "ui", type: "BACKUP_PICKER_MOVE_SELECTION", delta: 1 }]);
+    expect(
+      run(
+        { name: "pageup" },
+        { uiState: backupState, backupScreen: "import_picker" }
+      )
+    ).toEqual([{ scope: "ui", type: "BACKUP_PICKER_PAGE_SELECTION", delta: -1 }]);
+    expect(
+      run(
+        { name: "pagedown" },
+        { uiState: backupState, backupScreen: "import_picker" }
+      )
+    ).toEqual([{ scope: "ui", type: "BACKUP_PICKER_PAGE_SELECTION", delta: 1 }]);
+    expect(
+      run(
+        { name: "home" },
+        { uiState: backupState, backupScreen: "import_picker" }
+      )
+    ).toEqual([{ scope: "ui", type: "BACKUP_PICKER_JUMP_SELECTION", target: "start" }]);
+    expect(
+      run(
+        { name: "end" },
+        { uiState: backupState, backupScreen: "import_picker" }
+      )
+    ).toEqual([{ scope: "ui", type: "BACKUP_PICKER_JUMP_SELECTION", target: "end" }]);
+    expect(
+      run(
+        { name: "enter" },
+        { uiState: backupState, backupScreen: "import_picker" }
+      )
+    ).toEqual([{ scope: "ui", type: "BACKUP_PICKER_CONFIRM_SELECTION" }]);
+    expect(
+      run(
+        { name: "m", sequence: "m" },
+        { uiState: backupState, backupScreen: "import_picker" }
+      )
+    ).toEqual([{ scope: "ui", type: "BACKUP_PICKER_OPEN_MANUAL_PATH" }]);
+    expect(
+      run(
+        { name: "3", sequence: "3" },
+        { uiState: backupState, backupScreen: "import_picker" }
+      )
+    ).toEqual([]);
   });
 
   it("prevents list-key leakage in add/edit text-input modes", () => {

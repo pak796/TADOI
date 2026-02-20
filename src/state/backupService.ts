@@ -86,6 +86,13 @@ export type BackupImportSummary = {
   };
 };
 
+export type BackupFileInfo = {
+  path: string;
+  filename: string;
+  mtimeMs: number;
+  sizeBytes: number;
+};
+
 export class BackupImportPartialError extends Error {
   readonly summary: BackupImportSummary;
 
@@ -97,6 +104,7 @@ export class BackupImportPartialError extends Error {
 }
 
 export const DEFAULT_MAX_IMPORT_BYTES_JSON = 25 * 1024 * 1024;
+const BACKUP_FILE_NAME_PATTERN = /^tadoi-backup-\d{8}-\d{6}(?:\.\d+)?\.json$/i;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -122,8 +130,60 @@ function formatTimestamp(now: Date): string {
   return `${yyyy}${mm}${dd}-${hh}${mi}${ss}`;
 }
 
-function defaultBackupDir(dataPath: string): string {
+function isRecognizedBackupFilename(filename: string): boolean {
+  return BACKUP_FILE_NAME_PATTERN.test(filename);
+}
+
+export function getDefaultBackupDir(dataPath = resolveDataPath()): string {
   return path.join(path.dirname(dataPath), "backups");
+}
+
+export async function ensureDefaultBackupDirExists(
+  dataPath = resolveDataPath()
+): Promise<string> {
+  const backupDir = getDefaultBackupDir(dataPath);
+  await fs.mkdir(backupDir, { recursive: true });
+  return backupDir;
+}
+
+export async function listBackupFiles(options: {
+  dataPath?: string;
+  dirPath?: string;
+  cwd?: string;
+} = {}): Promise<BackupFileInfo[]> {
+  const cwd = options.cwd ?? process.cwd();
+  const dirPathRaw = options.dirPath?.trim();
+  const backupDir = dirPathRaw
+    ? resolvePathFromCwd(dirPathRaw, cwd)
+    : getDefaultBackupDir(options.dataPath);
+
+  await fs.mkdir(backupDir, { recursive: true });
+  const entries = await fs.readdir(backupDir, { withFileTypes: true });
+  const fileInfos = await Promise.all(
+    entries
+      .filter((entry) => entry.isFile() && isRecognizedBackupFilename(entry.name))
+      .map(async (entry): Promise<BackupFileInfo | undefined> => {
+        const fullPath = path.normalize(path.join(backupDir, entry.name));
+        try {
+          const stat = await fs.stat(fullPath);
+          return {
+            path: fullPath,
+            filename: entry.name,
+            mtimeMs: stat.mtimeMs,
+            sizeBytes: stat.size
+          };
+        } catch {
+          return undefined;
+        }
+      })
+  );
+
+  return fileInfos
+    .filter((entry): entry is BackupFileInfo => entry !== undefined)
+    .sort(
+      (left, right) =>
+        right.mtimeMs - left.mtimeMs || left.filename.localeCompare(right.filename)
+    );
 }
 
 async function pathExists(filePath: string): Promise<boolean> {
@@ -351,7 +411,7 @@ export async function buildTimestampedBackupPath(opts: {
   const outputDirRaw = opts.outputDir?.trim();
   const outputDir = outputDirRaw
     ? resolvePathFromCwd(outputDirRaw, cwd)
-    : defaultBackupDir(dataPath);
+    : getDefaultBackupDir(dataPath);
   const filename =
     opts.filename?.trim() || `tadoi-backup-${formatTimestamp(now)}.json`;
   const parsed = path.parse(filename);

@@ -46,6 +46,8 @@ def normalize_key(raw: str) -> str:
         "page_down": "PageDown",
         "pagedown": "PageDown",
         "next": "PageDown",
+        "home": "home",
+        "end": "end",
     }
     if lower in mapping:
         return mapping[lower]
@@ -92,6 +94,8 @@ def looks_like_key_token(token: str) -> bool:
         "pagedown",
         "prior",
         "next",
+        "home",
+        "end",
     }
     if raw in punctuation_keys:
         return True

@@ -57,6 +57,11 @@ export type KeyRouterAction =
   | { scope: "ui"; type: "BACKUP_SELECT_MENU_OPTION"; index: 0 | 1 | 2 | 3 }
   | { scope: "ui"; type: "BACKUP_SELECT_DIGIT"; digit: number }
   | { scope: "ui"; type: "BACKUP_SET_IMPORT_MODE"; mode: ImportMode }
+  | { scope: "ui"; type: "BACKUP_PICKER_MOVE_SELECTION"; delta: 1 | -1 }
+  | { scope: "ui"; type: "BACKUP_PICKER_PAGE_SELECTION"; delta: 1 | -1 }
+  | { scope: "ui"; type: "BACKUP_PICKER_JUMP_SELECTION"; target: "start" | "end" }
+  | { scope: "ui"; type: "BACKUP_PICKER_CONFIRM_SELECTION" }
+  | { scope: "ui"; type: "BACKUP_PICKER_OPEN_MANUAL_PATH" }
   | { scope: "ui"; type: "MOVE_EDITOR_FOCUS"; direction: 1 | -1 }
   | {
       scope: "ui";
@@ -604,7 +609,7 @@ function resolveBackupCenterModeActions(
   key: KeyInput,
   context: KeyRouterContext
 ): KeyRouterAction[] | null {
-  const { name, sequence } = key;
+  const { name, sequence, ctrl } = key;
   const { uiState, backupScreen } = context;
   if (uiState.mode !== Mode.BACKUP_CENTER) return null;
 
@@ -647,6 +652,36 @@ function resolveBackupCenterModeActions(
     if (sequence === "2" || name === "2") {
       return [{ scope: "ui", type: "BACKUP_SET_IMPORT_MODE", mode: "replace" }];
     }
+  }
+
+  if (backupScreen === "import_picker") {
+    const lowerName = name.toLowerCase();
+    const lowerSequence = sequence.toLowerCase();
+    if (name === "up" || lowerName === "k" || lowerSequence === "k") {
+      return [{ scope: "ui", type: "BACKUP_PICKER_MOVE_SELECTION", delta: -1 }];
+    }
+    if (name === "down" || lowerName === "j" || lowerSequence === "j") {
+      return [{ scope: "ui", type: "BACKUP_PICKER_MOVE_SELECTION", delta: 1 }];
+    }
+    if (isPageUpKey(name, ctrl)) {
+      return [{ scope: "ui", type: "BACKUP_PICKER_PAGE_SELECTION", delta: -1 }];
+    }
+    if (isPageDownKey(name, ctrl)) {
+      return [{ scope: "ui", type: "BACKUP_PICKER_PAGE_SELECTION", delta: 1 }];
+    }
+    if (name === "home") {
+      return [{ scope: "ui", type: "BACKUP_PICKER_JUMP_SELECTION", target: "start" }];
+    }
+    if (name === "end") {
+      return [{ scope: "ui", type: "BACKUP_PICKER_JUMP_SELECTION", target: "end" }];
+    }
+    if (name === "return" || name === "enter") {
+      return [{ scope: "ui", type: "BACKUP_PICKER_CONFIRM_SELECTION" }];
+    }
+    if (lowerName === "m" || lowerSequence === "m") {
+      return [{ scope: "ui", type: "BACKUP_PICKER_OPEN_MANUAL_PATH" }];
+    }
+    return [];
   }
 
   if (Number.isFinite(maybeDigit)) {

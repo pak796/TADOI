@@ -219,7 +219,13 @@ Behavior notes:
 ## Keybindings
 
 Full canonical list: `docs/USAGE.md` (source: `src/app/keyRouter.ts`).
-Compatibility aliases currently routed in key handlers: `C` `L` `O` `T` `r` `u`.
+Canonical router keys (audit-complete):
+`/` `1` `2` `3` `4` `?` `ArrowDown` `ArrowLeft` `ArrowRight` `ArrowUp`
+`B` `C` `Ctrl+D` `Ctrl+L` `Ctrl+S` `Ctrl+U` `D` `E` `Enter` `Esc`
+`G` `L` `O` `PageDown` `PageUp` `S` `Space` `T` `Tab` `[`
+`]` `a` `b` `backspace` `c` `d` `e` `end` `f` `g` `h` `home`
+`i` `j` `k` `l` `m` `n` `o` `p` `q` `r` `s` `t` `u` `v` `x` `y` `z`
+`{` `}`
 
 - LIST mode navigation:
   - `j`/`k` or `up`/`down`: move selection

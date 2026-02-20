@@ -4,7 +4,7 @@ import type { CalendarEventPrivacyMode } from "../calendar/calendarMapper";
 import type { CalendarImportMode } from "../calendar/importMapper";
 import type { CalendarExportRange } from "../calendar/range";
 import { createDataBackup } from "./persistence";
-import { getResolvedDataPath } from "./backupService";
+import { getDefaultBackupDir, getResolvedDataPath } from "./backupService";
 import { exportCalendarIcs, type CalendarExportResult } from "./calendarExportService";
 import {
   importCalendarIcs,
@@ -103,7 +103,7 @@ export async function buildDefaultCalendarExportPath(options: {
   const cwd = options.cwd ?? process.cwd();
   const now = options.now ?? new Date();
   const dataPath = options.dataPath ?? getResolvedDataPath();
-  const backupDir = path.join(path.dirname(dataPath), "backups");
+  const backupDir = getDefaultBackupDir(dataPath);
   const filename = `tadoi-calendar.${formatTimestamp(now)}.ics`;
   const candidate = resolveFromCwd(path.join(backupDir, filename), cwd);
   return buildUniquePath(path.normalize(candidate));
@@ -117,7 +117,7 @@ export async function buildDefaultCalendarImportReportPath(options: {
   const cwd = options.cwd ?? process.cwd();
   const now = options.now ?? new Date();
   const dataPath = options.dataPath ?? getResolvedDataPath();
-  const backupDir = path.join(path.dirname(dataPath), "backups");
+  const backupDir = getDefaultBackupDir(dataPath);
   const filename = `tadoi-calendar-import-report.${formatTimestamp(now)}.json`;
   const candidate = resolveFromCwd(path.join(backupDir, filename), cwd);
   return buildUniquePath(path.normalize(candidate));

@@ -1,7 +1,7 @@
 import type { CalendarEventPrivacyMode } from "../calendar/calendarMapper";
 import type { CalendarImportMode } from "../calendar/importMapper";
 import type { CalendarExportRange } from "../calendar/range";
-import type { BackupImportSummary } from "./backupService";
+import type { BackupFileInfo, BackupImportSummary } from "./backupService";
 import type { CalendarExportResult } from "./calendarExportService";
 import type { CalendarImportSummary } from "./calendarImportService";
 import type { ImportMode } from "./portability";
@@ -10,6 +10,7 @@ export type BackupCenterScreen =
   | "menu"
   | "exporting"
   | "export_done"
+  | "import_picker"
   | "import_path"
   | "import_mode"
   | "import_confirm"
@@ -42,6 +43,8 @@ export type BackupCenterScreen =
 
 type MainMenuIndex = 0 | 1 | 2 | 3;
 type CalendarMenuIndex = 0 | 1 | 2;
+export const BACKUP_IMPORT_PICKER_MAX_VISIBLE_ROWS = 8;
+const BACKUP_IMPORT_PICKER_MIN_VISIBLE_ROWS = 1;
 
 export type BackupCenterState = {
   screen: BackupCenterScreen;
@@ -49,6 +52,12 @@ export type BackupCenterState = {
   calendarMenuIndex: CalendarMenuIndex;
 
   // DATA (JSON portability) flow state.
+  importPickerDirectoryPath: string;
+  importPickerFiles: BackupFileInfo[];
+  importPickerSelectedIndex: number;
+  importPickerScrollOffset: number;
+  importPickerLoading: boolean;
+  importPickerError?: string;
   importPathInput: string;
   importMode: ImportMode;
   replaceConfirmInput: string;
@@ -102,6 +111,24 @@ export type BackupCenterAction =
   | { type: "setCalendarMenuIndex"; index: CalendarMenuIndex }
   | { type: "startExport" }
   | { type: "exportSucceeded"; outputPath: string }
+  | { type: "openImportPicker"; directoryPath: string }
+  | { type: "loadImportPickerFilesRequest"; directoryPath: string }
+  | {
+      type: "loadImportPickerFilesSuccess";
+      directoryPath: string;
+      files: BackupFileInfo[];
+    }
+  | { type: "loadImportPickerFilesFailure"; directoryPath: string; error: string }
+  | { type: "moveImportPickerSelection"; delta: 1 | -1; visibleRows: number }
+  | { type: "pageImportPickerSelection"; delta: 1 | -1; visibleRows: number }
+  | {
+      type: "jumpImportPickerSelection";
+      target: "start" | "end";
+      visibleRows: number;
+    }
+  | { type: "setImportPickerSelection"; index: number; visibleRows: number }
+  | { type: "confirmImportPickerSelection" }
+  | { type: "openImportPathManual" }
   | { type: "openImportPath" }
   | { type: "setImportPath"; value: string }
   | { type: "openImportMode" }
@@ -153,6 +180,11 @@ export const initialBackupCenterState: BackupCenterState = {
   screen: "menu",
   menuIndex: 0,
   calendarMenuIndex: 0,
+  importPickerDirectoryPath: "",
+  importPickerFiles: [],
+  importPickerSelectedIndex: 0,
+  importPickerScrollOffset: 0,
+  importPickerLoading: false,
   importPathInput: "",
   importMode: "merge",
   replaceConfirmInput: "",
@@ -177,6 +209,46 @@ function normalizeOptionalInput(value: string | undefined): string | undefined {
   if (!value) return undefined;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function normalizeImportPickerVisibleRows(visibleRows: number): number {
+  if (!Number.isFinite(visibleRows) || visibleRows <= 0) {
+    return BACKUP_IMPORT_PICKER_MIN_VISIBLE_ROWS;
+  }
+  return Math.max(BACKUP_IMPORT_PICKER_MIN_VISIBLE_ROWS, Math.floor(visibleRows));
+}
+
+function clampImportPickerSelection(index: number, fileCount: number): number {
+  if (fileCount <= 0) return 0;
+  return Math.max(0, Math.min(index, fileCount - 1));
+}
+
+function ensureImportPickerSelectionVisible(
+  files: BackupFileInfo[],
+  selectedIndex: number,
+  scrollOffset: number,
+  visibleRows: number
+): { selectedIndex: number; scrollOffset: number } {
+  const fileCount = files.length;
+  if (fileCount === 0) {
+    return { selectedIndex: 0, scrollOffset: 0 };
+  }
+
+  const rows = normalizeImportPickerVisibleRows(visibleRows);
+  const clampedSelected = clampImportPickerSelection(selectedIndex, fileCount);
+  const maxOffset = Math.max(0, fileCount - rows);
+  let clampedOffset = Math.max(0, Math.min(scrollOffset, maxOffset));
+
+  if (clampedSelected < clampedOffset) {
+    clampedOffset = clampedSelected;
+  } else if (clampedSelected >= clampedOffset + rows) {
+    clampedOffset = clampedSelected - rows + 1;
+  }
+
+  return {
+    selectedIndex: clampedSelected,
+    scrollOffset: Math.max(0, Math.min(clampedOffset, maxOffset))
+  };
 }
 
 function toCalendarImportFingerprint(state: BackupCenterState): string | undefined {
@@ -306,6 +378,152 @@ export function backupCenterReducer(
         ...state,
         screen: "export_done",
         lastExportPath: action.outputPath,
+        errorMessage: undefined,
+        errorDetail: undefined,
+        errorReturnScreen: undefined
+      };
+    case "openImportPicker":
+      return {
+        ...state,
+        screen: "import_picker",
+        importPickerDirectoryPath: action.directoryPath,
+        importPickerFiles: [],
+        importPickerSelectedIndex: 0,
+        importPickerScrollOffset: 0,
+        importPickerLoading: true,
+        importPickerError: undefined,
+        errorMessage: undefined,
+        errorDetail: undefined,
+        errorReturnScreen: undefined
+      };
+    case "loadImportPickerFilesRequest":
+      if (state.screen !== "import_picker") return state;
+      return {
+        ...state,
+        importPickerDirectoryPath: action.directoryPath,
+        importPickerLoading: true,
+        importPickerError: undefined,
+        errorMessage: undefined,
+        errorDetail: undefined,
+        errorReturnScreen: undefined
+      };
+    case "loadImportPickerFilesSuccess":
+      if (state.screen !== "import_picker") return state;
+      return {
+        ...state,
+        importPickerDirectoryPath: action.directoryPath,
+        importPickerFiles: [...action.files],
+        importPickerSelectedIndex: 0,
+        importPickerScrollOffset: 0,
+        importPickerLoading: false,
+        importPickerError: undefined,
+        errorMessage: undefined,
+        errorDetail: undefined,
+        errorReturnScreen: undefined
+      };
+    case "loadImportPickerFilesFailure":
+      if (state.screen !== "import_picker") return state;
+      return {
+        ...state,
+        importPickerDirectoryPath: action.directoryPath,
+        importPickerFiles: [],
+        importPickerSelectedIndex: 0,
+        importPickerScrollOffset: 0,
+        importPickerLoading: false,
+        importPickerError: action.error,
+        errorMessage: undefined,
+        errorDetail: undefined,
+        errorReturnScreen: undefined
+      };
+    case "moveImportPickerSelection": {
+      if (state.screen !== "import_picker") return state;
+      const current = ensureImportPickerSelectionVisible(
+        state.importPickerFiles,
+        state.importPickerSelectedIndex + action.delta,
+        state.importPickerScrollOffset,
+        action.visibleRows
+      );
+      return {
+        ...state,
+        importPickerSelectedIndex: current.selectedIndex,
+        importPickerScrollOffset: current.scrollOffset
+      };
+    }
+    case "pageImportPickerSelection": {
+      if (state.screen !== "import_picker") return state;
+      const rows = normalizeImportPickerVisibleRows(action.visibleRows);
+      const current = ensureImportPickerSelectionVisible(
+        state.importPickerFiles,
+        state.importPickerSelectedIndex + action.delta * rows,
+        state.importPickerScrollOffset,
+        rows
+      );
+      return {
+        ...state,
+        importPickerSelectedIndex: current.selectedIndex,
+        importPickerScrollOffset: current.scrollOffset
+      };
+    }
+    case "jumpImportPickerSelection": {
+      if (state.screen !== "import_picker") return state;
+      const targetIndex =
+        action.target === "start"
+          ? 0
+          : Math.max(0, state.importPickerFiles.length - 1);
+      const current = ensureImportPickerSelectionVisible(
+        state.importPickerFiles,
+        targetIndex,
+        state.importPickerScrollOffset,
+        action.visibleRows
+      );
+      return {
+        ...state,
+        importPickerSelectedIndex: current.selectedIndex,
+        importPickerScrollOffset: current.scrollOffset
+      };
+    }
+    case "setImportPickerSelection": {
+      if (state.screen !== "import_picker") return state;
+      const current = ensureImportPickerSelectionVisible(
+        state.importPickerFiles,
+        action.index,
+        state.importPickerScrollOffset,
+        action.visibleRows
+      );
+      return {
+        ...state,
+        importPickerSelectedIndex: current.selectedIndex,
+        importPickerScrollOffset: current.scrollOffset
+      };
+    }
+    case "confirmImportPickerSelection": {
+      if (state.screen !== "import_picker") return state;
+      const selected =
+        state.importPickerFiles[
+          clampImportPickerSelection(
+            state.importPickerSelectedIndex,
+            state.importPickerFiles.length
+          )
+        ];
+      if (!selected) return state;
+      return {
+        ...state,
+        screen: "import_mode",
+        importPathInput: selected.path,
+        replaceConfirmInput: "",
+        replaceConfirmed: state.importMode === "merge",
+        dryRun: undefined,
+        dryRunInputPath: undefined,
+        committed: undefined,
+        errorMessage: undefined,
+        errorDetail: undefined,
+        errorReturnScreen: undefined
+      };
+    }
+    case "openImportPathManual":
+      return {
+        ...state,
+        screen: "import_path",
         errorMessage: undefined,
         errorDetail: undefined,
         errorReturnScreen: undefined
@@ -698,10 +916,12 @@ export function backupCenterReducer(
             errorDetail: undefined,
             errorReturnScreen: undefined
           };
-        case "import_path":
+        case "import_picker":
           return { ...state, screen: "menu" };
+        case "import_path":
+          return { ...state, screen: "import_picker" };
         case "import_mode":
-          return { ...state, screen: "import_path" };
+          return { ...state, screen: "import_picker" };
         case "import_confirm":
           return {
             ...state,

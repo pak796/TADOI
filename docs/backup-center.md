@@ -30,13 +30,18 @@ Calendar submenu:
 
 ## Import Flow
 
-1. Enter/paste import file path.
-2. Choose mode:
+1. Open `Import data...` to launch the backup picker.
+2. Backup Center scans the default backup directory (`backups/` beside the active data file), auto-creates it if needed, and lists recognized files:
+   - `tadoi-backup-YYYYMMDD-HHMMSS(.N).json`
+   - Sorted newest to oldest by file modified time.
+3. Select a file with keyboard navigation (`↑/↓`, `PgUp/PgDn`, `Home/End`) and press `Enter`.
+   - `m` opens manual path fallback (`import_path`) if needed.
+4. Choose mode:
    - `merge` (default, recommended)
    - `replace` (destructive)
-3. If mode is `replace`, typed confirmation `REPLACE` is required.
-4. Dry-run always executes before commit and displays summary counts.
-5. Commit import writes data and creates a pre-import backup by default.
+5. If mode is `replace`, typed confirmation `REPLACE` is required.
+6. Dry-run always executes before commit and displays summary counts.
+7. Commit import writes data and creates a pre-import backup by default.
 
 ## Calendar Export Flow (.ics)
 

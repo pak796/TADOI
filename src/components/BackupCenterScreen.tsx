@@ -10,8 +10,11 @@ type BackupButtonTone = "primary" | "danger" | "neutral";
 type BackupCenterScreenProps = {
   state: BackupCenterState;
   dataPath: string;
+  importPickerVisibleRows: number;
   savedViewNames: string[];
   onImportPathChange: (value: string) => void;
+  onImportPickerSelectIndex: (index: number) => void;
+  onOpenImportPathFallback: () => void;
   onReplaceConfirmChange: (value: string) => void;
   onCalendarExportPathChange: (value: string) => void;
   onCalendarImportPathChange: (value: string) => void;
@@ -66,6 +69,25 @@ function renderImportStats(
   );
 }
 
+function formatBackupFileTimestamp(mtimeMs: number): string {
+  const date = new Date(mtimeMs);
+  const yyyy = String(date.getFullYear());
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mi = String(date.getMinutes()).padStart(2, "0");
+  const ss = String(date.getSeconds()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
+}
+
+function formatBackupFileSize(sizeBytes: number): string {
+  if (sizeBytes < 1024) return `${String(sizeBytes)} B`;
+  const kib = sizeBytes / 1024;
+  if (kib < 1024) return `${kib.toFixed(1)} KiB`;
+  const mib = kib / 1024;
+  return `${mib.toFixed(1)} MiB`;
+}
+
 function getStepLabel(screen: BackupCenterState["screen"]): string {
   switch (screen) {
     case "menu":
@@ -75,6 +97,7 @@ function getStepLabel(screen: BackupCenterState["screen"]): string {
     case "exporting":
     case "export_done":
       return "DATA / EXPORT";
+    case "import_picker":
     case "import_path":
     case "import_mode":
     case "import_confirm":
@@ -189,8 +212,11 @@ function isScreenForInput(state: BackupCenterState["screen"], kind: string): boo
 export function BackupCenterScreen({
   state,
   dataPath,
+  importPickerVisibleRows,
   savedViewNames,
   onImportPathChange,
+  onImportPickerSelectIndex,
+  onOpenImportPathFallback,
   onReplaceConfirmChange,
   onCalendarExportPathChange,
   onCalendarImportPathChange,
@@ -239,6 +265,21 @@ export function BackupCenterScreen({
     !state.calendarImportDryRun ||
     state.calendarImportDryRunHasErrors ||
     state.calendarImportDryRunFingerprint === undefined;
+  const pickerRows = Math.max(4, Math.min(8, importPickerVisibleRows));
+  const pickerSelectedIndex = Math.max(
+    0,
+    Math.min(state.importPickerSelectedIndex, Math.max(0, state.importPickerFiles.length - 1))
+  );
+  const pickerMaxOffset = Math.max(0, state.importPickerFiles.length - pickerRows);
+  let pickerStart = Math.max(0, Math.min(state.importPickerScrollOffset, pickerMaxOffset));
+  if (pickerSelectedIndex < pickerStart) {
+    pickerStart = pickerSelectedIndex;
+  } else if (pickerSelectedIndex >= pickerStart + pickerRows) {
+    pickerStart = pickerSelectedIndex - pickerRows + 1;
+  }
+  pickerStart = Math.max(0, Math.min(pickerStart, pickerMaxOffset));
+  const pickerEnd = Math.min(state.importPickerFiles.length, pickerStart + pickerRows);
+  const pickerVisibleFiles = state.importPickerFiles.slice(pickerStart, pickerEnd);
 
   let footerActions: BackupFooterAction[] = [];
   switch (state.screen) {
@@ -390,6 +431,22 @@ export function BackupCenterScreen({
         { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
       ];
       break;
+    case "import_picker":
+      footerActions = [
+        {
+          key: "select",
+          label: state.importPickerFiles.length > 0 ? "SELECT" : "SELECT (NONE)",
+          onPress: state.importPickerFiles.length > 0 ? onPrimaryAction : () => {}
+        },
+        {
+          key: "manual-path",
+          label: "MANUAL PATH",
+          onPress: onOpenImportPathFallback,
+          tone: "neutral"
+        },
+        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
+      ];
+      break;
     case "import_path":
     case "calendar_export_intro":
     case "calendar_export_path":
@@ -517,6 +574,71 @@ export function BackupCenterScreen({
           <text style={{ color: theme.text }}>{state.lastExportPath ?? "(unknown)"}</text>
           <text style={{ color: theme.muted, marginTop: 1 }}>
             Enter or Esc: return
+          </text>
+        </box>
+      ) : null}
+
+      {state.screen === "import_picker" ? (
+        <box style={{ flexDirection: "column", marginTop: 1 }}>
+          <text style={{ color: theme.text, fontWeight: "bold" }}>Select backup file</text>
+          <text style={{ color: theme.muted }}>
+            Directory: {state.importPickerDirectoryPath || "(unresolved)"}
+          </text>
+          {state.importPickerLoading ? (
+            <text style={{ color: theme.muted, marginTop: 1 }}>Loading backups...</text>
+          ) : null}
+          {state.importPickerError ? (
+            <text style={{ color: theme.warn, marginTop: 1 }}>
+              Unable to list backups: {state.importPickerError}
+            </text>
+          ) : null}
+          {!state.importPickerLoading && state.importPickerFiles.length === 0 ? (
+            <>
+              <text style={{ color: theme.warn, marginTop: 1 }}>
+                No backups found in {state.importPickerDirectoryPath || "(unresolved)"}.
+              </text>
+              <text style={{ color: theme.muted }}>
+                Create one with Export backup, or place backup files in this directory.
+              </text>
+              <text style={{ color: theme.muted }}>Press m for manual path fallback.</text>
+            </>
+          ) : null}
+          {!state.importPickerLoading && state.importPickerFiles.length > 0 ? (
+            <>
+              <box
+                style={{
+                  flexDirection: "column",
+                  marginTop: 1,
+                  border: true,
+                  borderStyle: "single",
+                  borderColor: theme.outline
+                }}
+              >
+                {pickerVisibleFiles.map((file, visibleIndex) => {
+                  const index = pickerStart + visibleIndex;
+                  const selected = index === pickerSelectedIndex;
+                  return (
+                    <SelectableOptionLine
+                      key={file.path}
+                      label={`${file.filename}  ${formatBackupFileTimestamp(file.mtimeMs)}  ${formatBackupFileSize(file.sizeBytes)}`}
+                      selected={selected}
+                      theme={theme}
+                      onSelect={() => onImportPickerSelectIndex(index)}
+                    />
+                  );
+                })}
+              </box>
+              <text style={{ color: theme.muted, marginTop: 1 }}>
+                Showing {String(pickerStart + 1)}-{String(pickerEnd)} of{" "}
+                {String(state.importPickerFiles.length)} backups
+              </text>
+            </>
+          ) : null}
+          <text style={{ color: theme.muted, marginTop: 1 }}>
+            ↑/↓: move   PgUp/PgDn: page   Home/End: jump
+          </text>
+          <text style={{ color: theme.muted }}>
+            Enter: select   m: manual path   Esc: back
           </text>
         </box>
       ) : null}

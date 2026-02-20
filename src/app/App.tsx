@@ -192,6 +192,7 @@ import {
   type UITaskLinkModalKind
 } from "../ui/state";
 import {
+  BACKUP_IMPORT_PICKER_MAX_VISIBLE_ROWS,
   backupCenterReducer,
   hasMatchingCalendarImportDryRun,
   hasMatchingDryRun,
@@ -210,9 +211,12 @@ import {
 import {
   BackupImportPartialError,
   buildTimestampedBackupPath,
+  ensureDefaultBackupDirExists,
   exportBackup,
+  getDefaultBackupDir,
   getResolvedDataPath,
-  importBackup
+  importBackup,
+  listBackupFiles
 } from "../state/backupService";
 import { NotificationManager } from "../notifications/notificationManager";
 import { InAppModalNotifier } from "../notifications/notifiers/inAppModalNotifier";
@@ -1221,6 +1225,10 @@ export function App({
   const { height: terminalHeight, width: terminalWidth } = useTerminalDimensions();
   const terminalIsSupported = isTerminalSizeSupported(terminalWidth, terminalHeight);
   const terminalSizeWarning = getTerminalSizeWarning(terminalWidth, terminalHeight);
+  const backupImportPickerVisibleRows = Math.max(
+    4,
+    Math.min(BACKUP_IMPORT_PICKER_MAX_VISIBLE_ROWS, terminalHeight - 16)
+  );
   const settingsRef = useRef(settingsState);
   const tasksRef = useRef(state.tasks);
   const notificationManagerRef = useRef<NotificationManager | null>(null);
@@ -2419,7 +2427,9 @@ export function App({
     backupDispatch({ type: "startExport" });
     void (async () => {
       try {
-        const outputPath = await buildTimestampedBackupPath();
+        const dataPath = getResolvedDataPath();
+        await ensureDefaultBackupDirExists(dataPath);
+        const outputPath = await buildTimestampedBackupPath({ dataPath });
         const result = await exportBackup({
           outputPath,
           pretty: true
@@ -2427,6 +2437,30 @@ export function App({
         backupDispatch({ type: "exportSucceeded", outputPath: result.outputPath });
       } catch (error: unknown) {
         openBackupError("Export failed", error, "menu");
+      }
+    })();
+  }
+
+  function openBackupImportPicker() {
+    void (async () => {
+      const dataPath = getResolvedDataPath();
+      const directoryPath = getDefaultBackupDir(dataPath);
+      backupDispatch({ type: "openImportPicker", directoryPath });
+      backupDispatch({ type: "loadImportPickerFilesRequest", directoryPath });
+      try {
+        await ensureDefaultBackupDirExists(dataPath);
+        const files = await listBackupFiles({ dirPath: directoryPath });
+        backupDispatch({
+          type: "loadImportPickerFilesSuccess",
+          directoryPath,
+          files
+        });
+      } catch (error: unknown) {
+        backupDispatch({
+          type: "loadImportPickerFilesFailure",
+          directoryPath,
+          error: normalizeErrorDetail(error)
+        });
       }
     })();
   }
@@ -2687,7 +2721,7 @@ export function App({
         runBackupExportFlow();
         return;
       case 1:
-        backupDispatch({ type: "openImportPath" });
+        openBackupImportPicker();
         return;
       case 2:
         backupDispatch({ type: "showDataPath", path: getResolvedDataPath() });
@@ -2780,6 +2814,9 @@ export function App({
         return;
       case "error":
         backupDispatch({ type: "back" });
+        return;
+      case "import_picker":
+        backupDispatch({ type: "confirmImportPickerSelection" });
         return;
       case "import_path":
         if (!backupState.importPathInput.trim()) {
@@ -3014,6 +3051,33 @@ export function App({
         return;
       case "BACKUP_SET_IMPORT_MODE":
         backupDispatch({ type: "setImportMode", mode: action.mode });
+        return;
+      case "BACKUP_PICKER_MOVE_SELECTION":
+        backupDispatch({
+          type: "moveImportPickerSelection",
+          delta: action.delta,
+          visibleRows: backupImportPickerVisibleRows
+        });
+        return;
+      case "BACKUP_PICKER_PAGE_SELECTION":
+        backupDispatch({
+          type: "pageImportPickerSelection",
+          delta: action.delta,
+          visibleRows: backupImportPickerVisibleRows
+        });
+        return;
+      case "BACKUP_PICKER_JUMP_SELECTION":
+        backupDispatch({
+          type: "jumpImportPickerSelection",
+          target: action.target,
+          visibleRows: backupImportPickerVisibleRows
+        });
+        return;
+      case "BACKUP_PICKER_CONFIRM_SELECTION":
+        handleBackupPrimaryAction();
+        return;
+      case "BACKUP_PICKER_OPEN_MANUAL_PATH":
+        backupDispatch({ type: "openImportPathManual" });
         return;
       case "OPEN_SEARCH":
         uiDispatch({ type: "setMode", mode: Mode.SEARCH });
@@ -3700,7 +3764,7 @@ export function App({
     });
     uiDispatch({ type: "setMode", mode: Mode.BACKUP_CENTER });
     uiDispatch({ type: "setFocus", focus: FocusTarget.BACKUP_CENTER });
-    backupDispatch({ type: "openImportPath" });
+    openBackupImportPicker();
   }
 
   function toggleDashboard() {
@@ -7335,10 +7399,19 @@ export function App({
           <BackupCenterScreen
             state={backupState}
             dataPath={getDataFilePath()}
+            importPickerVisibleRows={backupImportPickerVisibleRows}
             savedViewNames={state.savedViews.map((view) => view.name)}
             onImportPathChange={(value) =>
               backupDispatch({ type: "setImportPath", value })
             }
+            onImportPickerSelectIndex={(index) =>
+              backupDispatch({
+                type: "setImportPickerSelection",
+                index,
+                visibleRows: backupImportPickerVisibleRows
+              })
+            }
+            onOpenImportPathFallback={() => backupDispatch({ type: "openImportPathManual" })}
             onReplaceConfirmChange={(value) =>
               backupDispatch({ type: "setReplaceConfirmInput", value })
             }

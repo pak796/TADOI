@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import {
+  BACKUP_IMPORT_PICKER_MAX_VISIBLE_ROWS,
   backupCenterReducer,
   hasMatchingCalendarImportDryRun,
   hasMatchingDryRun,
@@ -8,7 +9,7 @@ import {
   isReplaceConfirmationValid,
   shouldRequireCalendarImportConfirm
 } from "./backupCenterFlow";
-import type { BackupImportSummary } from "./backupService";
+import type { BackupFileInfo, BackupImportSummary } from "./backupService";
 import { buildCalendarImportFingerprint } from "./backupCenterCalendarController";
 
 function makeSummary(mode: "merge" | "replace"): BackupImportSummary {
@@ -53,7 +54,127 @@ function makeCalendarSummary() {
   };
 }
 
+function makeBackupFile(
+  filename: string,
+  mtimeMs: number,
+  sizeBytes: number
+): BackupFileInfo {
+  return {
+    path: `/tmp/backups/${filename}`,
+    filename,
+    mtimeMs,
+    sizeBytes
+  };
+}
+
 describe("backupCenterFlow", () => {
+  it("loads picker files, keeps selection visible, and confirms selected path", () => {
+    const files = [
+      makeBackupFile("tadoi-backup-20260210-000001.json", 3, 120),
+      makeBackupFile("tadoi-backup-20260209-000001.json", 2, 118),
+      makeBackupFile("tadoi-backup-20260208-000001.json", 1, 110),
+      makeBackupFile("tadoi-backup-20260207-000001.json", 0, 108)
+    ];
+    let state = backupCenterReducer(initialBackupCenterState, {
+      type: "openImportPicker",
+      directoryPath: "/tmp/backups"
+    });
+    expect(state.screen).toBe("import_picker");
+    expect(state.importPickerLoading).toBe(true);
+
+    state = backupCenterReducer(state, {
+      type: "loadImportPickerFilesSuccess",
+      directoryPath: "/tmp/backups",
+      files
+    });
+    expect(state.importPickerFiles).toHaveLength(4);
+    expect(state.importPickerSelectedIndex).toBe(0);
+    expect(state.importPickerScrollOffset).toBe(0);
+    expect(state.importPickerLoading).toBe(false);
+
+    state = backupCenterReducer(state, {
+      type: "moveImportPickerSelection",
+      delta: 1,
+      visibleRows: 2
+    });
+    expect(state.importPickerSelectedIndex).toBe(1);
+    expect(state.importPickerScrollOffset).toBe(0);
+
+    state = backupCenterReducer(state, {
+      type: "moveImportPickerSelection",
+      delta: 1,
+      visibleRows: 2
+    });
+    expect(state.importPickerSelectedIndex).toBe(2);
+    expect(state.importPickerScrollOffset).toBe(1);
+
+    state = backupCenterReducer(state, {
+      type: "pageImportPickerSelection",
+      delta: 1,
+      visibleRows: 2
+    });
+    expect(state.importPickerSelectedIndex).toBe(3);
+    expect(state.importPickerScrollOffset).toBe(2);
+
+    state = backupCenterReducer(state, {
+      type: "confirmImportPickerSelection"
+    });
+    expect(state.screen).toBe("import_mode");
+    expect(state.importPathInput).toBe(files[3]?.path);
+  });
+
+  it("supports picker back-stack and manual path fallback", () => {
+    let state = backupCenterReducer(initialBackupCenterState, {
+      type: "openImportPicker",
+      directoryPath: "/tmp/backups"
+    });
+    state = backupCenterReducer(state, { type: "openImportPathManual" });
+    expect(state.screen).toBe("import_path");
+
+    state = backupCenterReducer(state, { type: "back" });
+    expect(state.screen).toBe("import_picker");
+
+    state = backupCenterReducer(state, {
+      type: "loadImportPickerFilesSuccess",
+      directoryPath: "/tmp/backups",
+      files: [makeBackupFile("tadoi-backup-20260210-000001.json", 1, 100)]
+    });
+    state = backupCenterReducer(state, { type: "confirmImportPickerSelection" });
+    expect(state.screen).toBe("import_mode");
+
+    state = backupCenterReducer(state, { type: "back" });
+    expect(state.screen).toBe("import_picker");
+
+    state = backupCenterReducer(state, { type: "back" });
+    expect(state.screen).toBe("menu");
+  });
+
+  it("clamps picker jumps and ignores selection actions outside picker screen", () => {
+    let state = backupCenterReducer(initialBackupCenterState, {
+      type: "moveImportPickerSelection",
+      delta: 1,
+      visibleRows: BACKUP_IMPORT_PICKER_MAX_VISIBLE_ROWS
+    });
+    expect(state).toEqual(initialBackupCenterState);
+
+    state = backupCenterReducer(initialBackupCenterState, {
+      type: "openImportPicker",
+      directoryPath: "/tmp/backups"
+    });
+    state = backupCenterReducer(state, {
+      type: "loadImportPickerFilesSuccess",
+      directoryPath: "/tmp/backups",
+      files: [makeBackupFile("tadoi-backup-20260210-000001.json", 3, 120)]
+    });
+    state = backupCenterReducer(state, {
+      type: "jumpImportPickerSelection",
+      target: "end",
+      visibleRows: 6
+    });
+    expect(state.importPickerSelectedIndex).toBe(0);
+    expect(state.importPickerScrollOffset).toBe(0);
+  });
+
   it("enforces replace confirmation gate", () => {
     let state = backupCenterReducer(initialBackupCenterState, { type: "openImportPath" });
     state = backupCenterReducer(state, { type: "setImportPath", value: "./incoming.json" });

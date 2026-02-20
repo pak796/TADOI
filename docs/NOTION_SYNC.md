@@ -3,13 +3,14 @@
 Date: 2026-02-20
 Target workspace area: `Patrick's Projects > TADOI`
 Primary documents data source: `collection://3035aa1e-f93f-80a3-ba35-000b3b596866`
-Sync status: `Payload ready (offline apply path)`
+Sync status: `Payload ready + notes/token sync pass completed`
 
 ## 1) Sync Policy
 - Keep Notion guide content aligned to runtime `v0.3.7` and package `0.3.7`.
 - Keep first prominent mention per page as `TADOI™`.
 - Use repository docs as canonical source for technical behavior contracts.
 - Keep TITS coverage aligned to canonical `*TITS*.md` source set.
+- Notes/audit token sync pass completed: `[AUDIT 2026-02-20] Metadata+readback synced for TIT v0.3.7`.
 
 ## 2) Repo -> Notion Page Mapping
 
@@ -39,6 +40,7 @@ Sync status: `Payload ready (offline apply path)`
 - `docs/notion/NOTION_SYNC_PAYLOAD.json`
 - `docs/notion/NOTION_SYNC_RUNBOOK.md`
 - `docs/notion/NOTION_SYNC_INSTRUCTIONS.md`
+- `docs/notion/NOTION_SYNC_VERIFY_2026-02-20.json`
 
 ## 5) Execution Note
 - This pass is payload/runbook only (no direct Notion write).

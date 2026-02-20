@@ -4,7 +4,10 @@ import os from "os";
 import path from "path";
 import {
   buildTimestampedBackupPath,
+  ensureDefaultBackupDirExists,
   exportBackup,
+  getDefaultBackupDir,
+  listBackupFiles,
   importBackup
 } from "./backupService";
 import { resolveSettingsPaths } from "../settings/settings";
@@ -39,6 +42,21 @@ function expectedCustomThemesFor(themeId: ThemeId) {
 }
 
 describe("buildTimestampedBackupPath", () => {
+  it("resolves default backup directory from data path", async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-backup-default-resolve-"));
+    const dataPath = path.join(tempDir, "tadoi_data.json");
+    expect(getDefaultBackupDir(dataPath)).toBe(path.join(tempDir, "backups"));
+  });
+
+  it("ensures default backup directory exists", async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-backup-default-dir-"));
+    const dataPath = path.join(tempDir, "tadoi_data.json");
+    const backupDir = await ensureDefaultBackupDirExists(dataPath);
+    expect(backupDir).toBe(path.join(tempDir, "backups"));
+    const stat = await fs.stat(backupDir);
+    expect(stat.isDirectory()).toBe(true);
+  });
+
   it("uses default backups folder and increments suffix on collisions", async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-backup-path-"));
     const dataPath = path.join(tempDir, "tadoi_data.json");
@@ -59,6 +77,44 @@ describe("buildTimestampedBackupPath", () => {
     expect(second).toBe(
       path.join(tempDir, "backups", "tadoi-backup-20260210-000000.1.json")
     );
+  });
+
+  it("lists recognized backup files newest-first by mtime", async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-backup-list-"));
+    const backupDir = path.join(tempDir, "backups");
+    await fs.mkdir(backupDir, { recursive: true });
+
+    const oldest = path.join(backupDir, "tadoi-backup-20260208-000000.json");
+    const newest = path.join(backupDir, "tadoi-backup-20260210-000000.1.json");
+    const middle = path.join(backupDir, "tadoi-backup-20260209-000000.json");
+    const ignored = path.join(backupDir, "notes.json");
+
+    await fs.writeFile(oldest, "{}", "utf8");
+    await fs.writeFile(newest, "{}", "utf8");
+    await fs.writeFile(middle, "{}", "utf8");
+    await fs.writeFile(ignored, "{}", "utf8");
+    await fs.utimes(oldest, 1, 1);
+    await fs.utimes(middle, 2, 2);
+    await fs.utimes(newest, 3, 3);
+    await fs.utimes(ignored, 4, 4);
+
+    const listed = await listBackupFiles({ dirPath: backupDir });
+    expect(listed.map((file) => file.filename)).toEqual([
+      "tadoi-backup-20260210-000000.1.json",
+      "tadoi-backup-20260209-000000.json",
+      "tadoi-backup-20260208-000000.json"
+    ]);
+    expect(listed.every((file) => file.sizeBytes >= 2)).toBe(true);
+  });
+
+  it("creates missing backup directory and returns empty list", async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-backup-empty-list-"));
+    const missingDir = path.join(tempDir, "missing", "backups");
+
+    const listed = await listBackupFiles({ dirPath: missingDir });
+    expect(listed).toEqual([]);
+    const stat = await fs.stat(missingDir);
+    expect(stat.isDirectory()).toBe(true);
   });
 });
 

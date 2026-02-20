@@ -20,6 +20,10 @@ Mode: offline payload + deterministic apply
    - QA pages include `QA-065`..`QA-072`
    - Spec/tasks pages include TITS M1-M3 narrative
 
+5. Verify notes/audit token and metadata:
+   - Confirm `Notes` includes `[AUDIT 2026-02-20] Metadata+readback synced for TIT v0.3.7` on all mapped pages.
+   - Review `docs/notion/NOTION_SYNC_VERIFY_2026-02-20.json` for title/date/heading/version/notes summary.
+   - Validate `bun run notion:sync:validate` returns PASS for payload.
 ## Fallback (No Notion Write Access)
 - Store payload artifact with daily build artifacts.
 - Attach this runbook in handoff.

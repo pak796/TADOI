@@ -31,8 +31,13 @@ Esc/Enter contracts and modal semantics are enforced across all modes.
 
 ## Keybindings (Canonical)
 
-Key token aliases (as reported by router/terminal): `/` `?` `C` `T` `[` `]` `{` `}` `backspace` `page_up` `page_down` `pageup` `pagedown` `prior` `next` `r` `u`.
-Compatibility aliases currently routed in key handlers: `C` `L` `O` `T` `r` `u`.
+Source-of-truth key tokens (as reported by `src/app/keyRouter.ts`):
+`/` `1` `2` `3` `4` `?` `ArrowDown` `ArrowLeft` `ArrowRight` `ArrowUp`
+`B` `C` `Ctrl+D` `Ctrl+L` `Ctrl+S` `Ctrl+U` `D` `E` `Enter` `Esc`
+`G` `L` `O` `PageDown` `PageUp` `S` `Space` `T` `Tab` `[`
+`]` `a` `b` `backspace` `c` `d` `e` `end` `f` `g` `h` `home`
+`i` `j` `k` `l` `m` `n` `o` `p` `q` `r` `s` `t` `u` `v` `x` `y` `z`
+`{` `}`
 
 
 LIST mode navigation:
@@ -111,6 +116,7 @@ BACKUP_CENTER mode:
 - `1` / `2` / `3` / `4`: choose root menu option
 - Number keys choose on-screen options
 - `j` / `k`: move menu selection
+- Import picker: `ArrowUp` / `ArrowDown` (or `j` / `k`) move, `PageUp` / `PageDown` page, `home` / `end` jump, `m` manual path
 - `Enter`: confirm
 - `Esc`: back/close
 
