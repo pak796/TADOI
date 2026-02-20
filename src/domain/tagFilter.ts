@@ -1,11 +1,15 @@
 import { Filters, TagFilter } from "./models";
+import { isPriorityToken } from "./priorityTags";
 import { formatTagForDisplay, normalizeTag, normalizeTags } from "./tagIndex";
 
 export type TagFilterBucket = "all" | "any" | "none";
 
 export function normalizeTagToken(tag: string): string | undefined {
   const normalized = normalizeTag(tag);
-  return normalized ?? undefined;
+  if (!normalized || isPriorityToken(normalized)) {
+    return undefined;
+  }
+  return normalized;
 }
 
 function normalizeBucket(tags: string[] | undefined): string[] | undefined {
@@ -28,6 +32,25 @@ export function isEmptyTagFilter(tagFilter?: TagFilter): boolean {
   return !normalizeTagFilter(tagFilter);
 }
 
+export function stripPriorityTokensFromTagFilter(tagFilter?: TagFilter): TagFilter | undefined {
+  const normalized = normalizeTagFilter(tagFilter);
+  if (!normalized) return undefined;
+
+  const stripBucket = (bucket: string[] | undefined): string[] | undefined => {
+    if (!bucket) return undefined;
+    const filtered = bucket.filter((tag) => !isPriorityToken(tag));
+    return filtered.length > 0 ? filtered : undefined;
+  };
+
+  const stripped: TagFilter = {
+    all: stripBucket(normalized.all),
+    any: stripBucket(normalized.any),
+    none: stripBucket(normalized.none)
+  };
+
+  return stripped.all || stripped.any || stripped.none ? stripped : undefined;
+}
+
 /*
  * Tag precedence:
  * 1) If filters.tagFilter exists and is non-empty, it defines matching.
@@ -35,7 +58,7 @@ export function isEmptyTagFilter(tagFilter?: TagFilter): boolean {
  * 3) Else there is no tag constraint.
  */
 export function resolveEffectiveTagFilter(filters: Filters): TagFilter | undefined {
-  const normalizedBoolean = normalizeTagFilter(filters.tagFilter);
+  const normalizedBoolean = stripPriorityTokensFromTagFilter(filters.tagFilter);
   if (normalizedBoolean) {
     return normalizedBoolean;
   }
@@ -68,7 +91,7 @@ export function matchesTagFilter(taskTags: string[], filters: Filters): boolean 
 }
 
 export function formatTagFilterBooleanSummary(tagFilter?: TagFilter): string | undefined {
-  const normalized = normalizeTagFilter(tagFilter);
+  const normalized = stripPriorityTokensFromTagFilter(tagFilter);
   if (!normalized) return undefined;
 
   const parts: string[] = [];

@@ -8,7 +8,10 @@ import {
   normalizePriorityFilterValue,
   normalizePriorityTags
 } from "../domain/priorityTags";
-import { normalizeTagFilter } from "../domain/tagFilter";
+import {
+  normalizeTagToken,
+  stripPriorityTokensFromTagFilter
+} from "../domain/tagFilter";
 import type { SavedView, TagIndexEntry, Task } from "../domain/models";
 import { getDefaultSettings, type TadoiSettings } from "../settings/settings";
 import type { LoadedData } from "./persistence";
@@ -143,8 +146,8 @@ function areTagFiltersEquivalent(
   left: SavedView["filters"]["tagFilter"],
   right: SavedView["filters"]["tagFilter"]
 ): boolean {
-  const normalizedLeft = normalizeTagFilter(left);
-  const normalizedRight = normalizeTagFilter(right);
+  const normalizedLeft = stripPriorityTokensFromTagFilter(left);
+  const normalizedRight = stripPriorityTokensFromTagFilter(right);
   return (
     areStringArraysEqual(normalizedLeft?.all ?? [], normalizedRight?.all ?? []) &&
     areStringArraysEqual(normalizedLeft?.any ?? [], normalizedRight?.any ?? []) &&
@@ -153,8 +156,14 @@ function areTagFiltersEquivalent(
 }
 
 function areViewsEquivalent(left: SavedView, right: SavedView): boolean {
-  const leftPriority = normalizePriorityFilterValue(left.filters.priority);
-  const rightPriority = normalizePriorityFilterValue(right.filters.priority);
+  const leftPriority =
+    normalizePriorityFilterValue(left.filters.priority) ??
+    normalizePriorityFilterValue(left.filters.tag);
+  const rightPriority =
+    normalizePriorityFilterValue(right.filters.priority) ??
+    normalizePriorityFilterValue(right.filters.tag);
+  const leftTag = left.filters.tag ? normalizeTagToken(left.filters.tag) : undefined;
+  const rightTag = right.filters.tag ? normalizeTagToken(right.filters.tag) : undefined;
   return (
     left.id === right.id &&
     left.name === right.name &&
@@ -163,7 +172,7 @@ function areViewsEquivalent(left: SavedView, right: SavedView): boolean {
     left.filters.status === right.filters.status &&
     left.filters.due === right.filters.due &&
     leftPriority === rightPriority &&
-    left.filters.tag === right.filters.tag &&
+    leftTag === rightTag &&
     areTagFiltersEquivalent(left.filters.tagFilter, right.filters.tagFilter) &&
     left.filters.searchText === right.filters.searchText
   );

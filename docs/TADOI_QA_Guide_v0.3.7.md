@@ -137,11 +137,11 @@ Smoke pass criteria:
 - [ ] `QA-015` Legacy tag cycle `t`.
   - Preconditions: open tasks include tags.
   - Steps: press `t` repeatedly.
-  - Expected: cycles through open-task tags then clears.
+  - Expected: cycles through open-task non-priority tags then clears (`#pN` tokens are ignored).
 - [ ] `QA-016` Boolean tag panel `p` controls and bucket edits.
   - Preconditions: tagged tasks present.
   - Steps: open panel, use `Tab`, `1/2/3`, `Enter`, `Ctrl+Enter`, `Esc`.
-  - Expected: ALL/ANY/NONE buckets edit and apply correctly.
+  - Expected: ALL/ANY/NONE buckets edit and apply correctly; priority tokens are ignored and must be filtered via `r`.
 - [ ] `QA-017` Boolean precedence over legacy tag.
   - Preconditions: both legacy tag state and boolean buckets available.
   - Steps: apply non-empty boolean filter and compare results.

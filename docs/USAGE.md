@@ -58,7 +58,8 @@ LIST mode actions:
 - `f`: cycle status filter
 - `s`: cycle sort mode
 - `g`: cycle due filter
-- `t` / `T`: cycle tag filter
+- `r`: cycle priority filter
+- `t` / `T`: cycle non-priority tag filter
 - `p`: open boolean tag filter panel
 - `b` / `B`: toggle Dashboard
 
@@ -72,7 +73,7 @@ Details links focus (Tab from list):
 
 DASHBOARD mode:
 - `b` / `B`: return to list
-- `f` / `g` / `t` / `p`: same filter cycling as list
+- `f` / `g` / `r` / `t` / `p`: same filter cycling as list
 - `ArrowUp` / `ArrowDown`: select top-tag rows
 - `Enter`: apply selected dashboard tag
 - `?`: open Help

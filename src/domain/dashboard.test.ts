@@ -130,16 +130,13 @@ describe("computeTopTagsOpen", () => {
     expect(computeTopTagsOpen(tasks, 10)).toEqual([{ tag: "work", count: 2 }]);
   });
 
-  it("does not exclude non-P1..P5 tokens like #p10", () => {
+  it("excludes all priority tokens including #p10", () => {
     const tasks: Task[] = [
       baseTask({ id: "a", status: "open", tags: ["#p10", "work"] }),
       baseTask({ id: "b", status: "open", tags: ["work"] })
     ];
 
-    expect(computeTopTagsOpen(tasks, 10)).toEqual([
-      { tag: "work", count: 2 },
-      { tag: "#p10", count: 1 }
-    ]);
+    expect(computeTopTagsOpen(tasks, 10)).toEqual([{ tag: "work", count: 2 }]);
   });
 
   it("applies limit and returns empty for non-positive limits", () => {

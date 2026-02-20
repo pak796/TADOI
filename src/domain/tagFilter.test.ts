@@ -19,6 +19,8 @@ describe("tagFilter helpers", () => {
   it("normalizes a single token into canonical hashless tag text", () => {
     expect(normalizeTagToken(" #Work ")).toBe("work");
     expect(normalizeTagToken("###home!")).toBe("home");
+    expect(normalizeTagToken("#p2")).toBeUndefined();
+    expect(normalizeTagToken("p10")).toBeUndefined();
     expect(normalizeTagToken("   ")).toBeUndefined();
   });
 
@@ -66,5 +68,20 @@ describe("tagFilter helpers", () => {
     });
     expect(matchesTagFilter(["work"], filters)).toBe(true);
     expect(matchesTagFilter(["home"], filters)).toBe(false);
+  });
+
+  it("ignores legacy priority tokens in filters.tag", () => {
+    const filters = baseFilters({ tag: "#p2" });
+    expect(matchesTagFilter(["home"], filters)).toBe(true);
+    expect(matchesTagFilter(["work"], filters)).toBe(true);
+  });
+
+  it("ignores priority tokens inside boolean tagFilter buckets", () => {
+    const allFilters = baseFilters({ tagFilter: { all: ["work", "#p2"] } });
+    expect(matchesTagFilter(["work"], allFilters)).toBe(true);
+    expect(matchesTagFilter(["home"], allFilters)).toBe(false);
+
+    const noneFilters = baseFilters({ tagFilter: { none: ["#p3"] } });
+    expect(matchesTagFilter(["work", "p3"], noneFilters)).toBe(true);
   });
 });

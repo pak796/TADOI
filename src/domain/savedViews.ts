@@ -1,6 +1,10 @@
 import { Filters, SavedView } from "./models";
 import { normalizePriorityFilterValue } from "./priorityTags";
-import { normalizeTagFilter, normalizeTagToken } from "./tagFilter";
+import {
+  normalizeTagFilter,
+  normalizeTagToken,
+  stripPriorityTokensFromTagFilter
+} from "./tagFilter";
 
 export const MAX_SAVED_VIEWS = 9;
 export const DEFAULT_VIEW_FILTERS: Pick<Filters, "status" | "due"> = {
@@ -39,8 +43,10 @@ function areTagFiltersEqual(left: Filters["tagFilter"], right: Filters["tagFilte
 }
 
 export function snapshotFilters(filters: Filters): Filters {
-  const normalizedTagFilter = normalizeTagFilter(filters.tagFilter);
-  const normalizedPriority = normalizePriorityFilterValue(filters.priority);
+  const normalizedTagFilter = stripPriorityTokensFromTagFilter(filters.tagFilter);
+  const normalizedPriority =
+    normalizePriorityFilterValue(filters.priority) ??
+    normalizePriorityFilterValue(filters.tag);
   const normalizedTag = filters.tag ? normalizeTagToken(filters.tag) : undefined;
 
   if (normalizedTagFilter) {

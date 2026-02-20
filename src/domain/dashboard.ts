@@ -1,6 +1,6 @@
 import { addLocalDaysMs, diffLocalDays, startOfLocalDayMs } from "./dates";
 import { Task } from "./models";
-import { resolveTaskPriorityTag } from "./priorityTags";
+import { isPriorityToken, resolveTaskPriorityTag } from "./priorityTags";
 
 export type DueBuckets8 = [
   number,
@@ -51,7 +51,6 @@ export type CreatedCompleted7d = {
 
 const OVERDUE_AGING_BUCKET_LABELS = ["1d", "2–3d", "4–7d", "8–14d", "15–30d", "30d+"] as const;
 const LAST_7_DAY_OFFSETS = [-6, -5, -4, -3, -2, -1, 0] as const;
-const TOP_TAG_PRIORITY_EXCLUDE_RE = /^#?[pP][1-5]$/;
 const PRIORITY_BUCKET_ORDER = ["P1", "P2", "P3", "P4", "P5"] as const;
 
 function emptyDueBuckets8(): DueBuckets8 {
@@ -123,7 +122,7 @@ export function computeTopTagsOpen(tasks: Task[], limit: number): TopTagCount[] 
   for (const task of tasks) {
     if (task.status !== "open") continue;
     for (const tag of task.tags) {
-      if (TOP_TAG_PRIORITY_EXCLUDE_RE.test(tag.trim())) continue;
+      if (isPriorityToken(tag)) continue;
       counts.set(tag, (counts.get(tag) ?? 0) + 1);
     }
   }

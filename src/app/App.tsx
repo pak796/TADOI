@@ -1677,7 +1677,7 @@ export function App({
     ? normalizeTagPrefix(tagFilterInput)
     : "";
   const tagFilterSuggestions = tagFilterQuery
-    ? rankTags(state.tagIndex, tagFilterQuery)
+    ? rankTags(state.tagIndex, tagFilterQuery).filter((tag) => !isPriorityToken(tag))
     : [];
   const tagFilterInlineSuggestion = tagFilterQuery
     ? getTagCompletion(tagFilterQuery, tagFilterSuggestions)
@@ -6157,6 +6157,7 @@ export function App({
         state.tasks
           .filter((task) => task.status === "open")
           .flatMap((task) => task.tags)
+          .filter((tag) => !isPriorityToken(tag))
       )
     ).sort((left, right) => left.localeCompare(right));
 

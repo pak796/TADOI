@@ -162,6 +162,20 @@ describe("filterTasks priority filter semantics", () => {
       ).map((task) => task.id)
     ).toEqual(["a"]);
   });
+
+  it("keeps priority filtering exclusive to filters.priority", () => {
+    expect(
+      filterTasks(tasks, { status: "all", due: "any", tagFilter: { all: ["#p2"] } }, now).map(
+        (task) => task.id
+      )
+    ).toEqual(["a", "b", "c", "d"]);
+
+    expect(
+      filterTasks(tasks, { status: "all", due: "any", priority: "#p2" }, now).map(
+        (task) => task.id
+      )
+    ).toEqual(["b"]);
+  });
 });
 
 describe("sortTasks with explicit time on same day", () => {

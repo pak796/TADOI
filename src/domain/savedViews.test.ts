@@ -81,6 +81,51 @@ describe("saved views", () => {
     });
   });
 
+  it("converts legacy priority-like tag into priority filter", () => {
+    const converted = snapshotFilters({
+      status: "open",
+      due: "today",
+      tag: "#p10"
+    });
+    expect(converted).toEqual({
+      status: "open",
+      due: "today",
+      priority: "#p10"
+    });
+
+    const explicitPriorityWins = snapshotFilters({
+      status: "open",
+      due: "today",
+      priority: "#p2",
+      tag: "#p10"
+    });
+    expect(explicitPriorityWins).toEqual({
+      status: "open",
+      due: "today",
+      priority: "#p2"
+    });
+  });
+
+  it("strips priority tokens from boolean tagFilter buckets on snapshot", () => {
+    const snapped = snapshotFilters({
+      status: "open",
+      due: "today",
+      tagFilter: {
+        all: ["work", "p2"],
+        any: ["#p1", "home"],
+        none: ["#p10"]
+      }
+    });
+    expect(snapped).toEqual({
+      status: "open",
+      due: "today",
+      tagFilter: {
+        all: ["work"],
+        any: ["home"]
+      }
+    });
+  });
+
   it("creates and deduplicates by name (case-insensitive)", () => {
     const created = saveViewByName([], "Today", BASE_FILTERS, 10);
     expect(created.kind).toBe("created");

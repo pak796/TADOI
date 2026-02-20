@@ -249,6 +249,41 @@ describe("importState", () => {
     expect(result.stats.savedViews.unchanged).toBe(1);
   });
 
+  it("treats legacy priority tokens inside saved-view tagFilter as equivalent", () => {
+    const current = baseState([{ ...BASE_LOCAL_TASK }]);
+    current.savedViews = [
+      {
+        id: "view-legacy-priority-tagfilter",
+        name: "Today",
+        createdAt: 1,
+        updatedAt: 10,
+        filters: {
+          status: "open",
+          due: "today",
+          tagFilter: { all: ["work", "#p2"] }
+        }
+      }
+    ];
+    const incoming = baseState([{ ...BASE_LOCAL_TASK }]);
+    incoming.savedViews = [
+      {
+        id: "view-legacy-priority-tagfilter",
+        name: "Today",
+        createdAt: 1,
+        updatedAt: 10,
+        filters: {
+          status: "open",
+          due: "today",
+          tagFilter: { all: ["work"] }
+        }
+      }
+    ];
+
+    const result = importState(current, incoming, { mode: "merge", now: 1 });
+    expect(result.stats.savedViews.updated).toBe(0);
+    expect(result.stats.savedViews.unchanged).toBe(1);
+  });
+
   it("treats saved-view priority differences as updates", () => {
     const current = baseState([{ ...BASE_LOCAL_TASK }]);
     current.savedViews = [

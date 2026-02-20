@@ -245,7 +245,8 @@ Compatibility aliases currently routed in key handlers: `C` `L` `O` `T` `r` `u`.
   - `f`: cycle status filter
   - `s`: cycle sort mode (`DUE` default keeps open tasks with due dates at the top)
   - `g`: cycle due filter
-  - `t`: cycle tag filter across tags on all active (open) tasks
+  - `r`: cycle priority filter across priorities found on open tasks
+  - `t`: cycle tag filter across non-priority tags on all active (open) tasks
   - `p`: open boolean tag filter panel (`ALL` / `ANY` / `NONE`)
   - Details links focus (`Tab` from task list):
     - `up`/`down` or `j`/`k`: select previous/next link
@@ -257,7 +258,8 @@ Compatibility aliases currently routed in key handlers: `C` `L` `O` `T` `r` `u`.
   - `b` / `B`: return to list mode
   - `f`: cycle status filter (shared with list)
   - `g`: cycle due filter (shared with list)
-  - `t`: cycle tag filter (shared with list)
+  - `r`: cycle priority filter (shared with list)
+  - `t`: cycle non-priority tag filter (shared with list)
   - `p`: open boolean tag filter panel (`ALL` / `ANY` / `NONE`)
   - `up` / `down`: select `TOP TAGS (OPEN)` rows
   - `Enter`: apply selected dashboard tag to active `tag` filter
@@ -336,8 +338,9 @@ Type `#` in the Tags field to get suggestions ranked by usage. Selecting a sugge
 
 ## Tag Filtering Modes
 
-- `t`: cycles the legacy single-tag filter across tags on open tasks, then clears.
-- `p`: opens the boolean tag filter panel with `ALL (AND)`, `ANY (OR)`, and `NONE (NOT)` buckets.
+- `r`: cycles priority filter by priority tokens present on open tasks.
+- `t`: cycles the legacy single-tag filter across non-priority tags on open tasks, then clears.
+- `p`: opens the boolean tag filter panel with `ALL (AND)`, `ANY (OR)`, and `NONE (NOT)` buckets; priority tokens are ignored.
 - Boolean tag precedence: when `tagFilter` is non-empty, it overrides legacy `tag` matching.
 
 ## Recurring Tasks

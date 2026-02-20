@@ -21,11 +21,13 @@ This list reflects current runtime behavior as of **2026-02-12**.
 - Saved views: create/apply/delete filter presets (`Ctrl+S`, `v`, `1..9`).
 
 ## Tag Filtering
-- Legacy single-tag cycle (`t`) over tags on open tasks.
+- Priority cycle (`r`) for priority tokens on open tasks.
+- Legacy single-tag cycle (`t`) over non-priority tags on open tasks.
 - Boolean tag panel (`p`) with three buckets:
   - `ALL (AND)`
   - `ANY (OR)`
   - `NONE (NOT)`
+- Priority tokens are excluded from boolean tag filtering.
 - Matching precedence: non-empty boolean `tagFilter` overrides legacy single `tag`.
 
 ## Left Rail and Branding Surface

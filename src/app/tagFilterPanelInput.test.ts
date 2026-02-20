@@ -66,6 +66,11 @@ describe("tag filter panel input behavior", () => {
     expect(nextDraft).toBeUndefined();
   });
 
+  it("does not add priority tokens to a boolean tag filter bucket", () => {
+    const nextDraft = addTagToTagFilterDraftBucket(undefined, "#p3", "all");
+    expect(nextDraft).toBeUndefined();
+  });
+
   it("maps backspace-on-empty to remove-last-tag action", () => {
     const removeAction = resolveTagFilterPanelHotkeyAction({
       key: { name: "backspace", sequence: "", ctrl: false, shift: false },
