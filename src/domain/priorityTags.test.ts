@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   canonicalPriorityTag,
   formatPriorityForDisplay,
+  formatTagForReadOnlyDisplay,
   isPriorityToken,
   normalizePriorityFilterValue,
   normalizePriorityFromTokens,
@@ -79,5 +80,12 @@ describe("priorityTags", () => {
     expect(formatPriorityForDisplay("#P3")).toBe("P3");
     expect(formatPriorityForDisplay("work")).toBeUndefined();
     expect(formatPriorityForDisplay(undefined)).toBeUndefined();
+  });
+
+  it("formats read-only tag labels with priority-aware display semantics", () => {
+    expect(formatTagForReadOnlyDisplay("#p1")).toBe("P1");
+    expect(formatTagForReadOnlyDisplay("p02")).toBe("P02");
+    expect(formatTagForReadOnlyDisplay("#work")).toBe("#work");
+    expect(formatTagForReadOnlyDisplay("work")).toBe("#work");
   });
 });

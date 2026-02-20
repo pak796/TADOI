@@ -13,8 +13,10 @@ import {
 import { computeDashboardKpis } from "../domain/dashboardKpis";
 import { Filters, Task } from "../domain/models";
 import { formatTagFilterBooleanSummary } from "../domain/tagFilter";
-import { formatTagForDisplay } from "../domain/tagIndex";
-import { formatPriorityForDisplay } from "../domain/priorityTags";
+import {
+  formatPriorityForDisplay,
+  formatTagForReadOnlyDisplay
+} from "../domain/priorityTags";
 
 const DUE_BUCKET_LABELS = ["OVD", "TOD", "+1", "+2", "+3", "+4", "+5", "+6"] as const;
 const KPI_ORDER = ["OVERDUE", "TODAY", "NEXT7", "OPEN", "DONE7D"] as const;
@@ -89,7 +91,7 @@ function getFilterLine(filters: Filters): string {
   const tag = booleanTagSummary
     ? booleanTagSummary
     : filters.tag
-      ? formatTagForDisplay(filters.tag)
+      ? formatTagForReadOnlyDisplay(filters.tag)
       : "(none)";
   const search = filters.searchText?.trim() ? filters.searchText.trim() : "(none)";
   return `STATUS=${status} DUE=${due} PRIORITY=${priority} TAG=${tag} SEARCH=${search}`;
@@ -227,7 +229,7 @@ function buildDueBucketLines(
 }
 
 function formatTagLabel(tag: string, width: number): string {
-  const formatted = formatTagForDisplay(tag);
+  const formatted = formatTagForReadOnlyDisplay(tag);
   if (formatted.length <= width) return formatted;
   if (width <= 3) {
     return ".".repeat(width);

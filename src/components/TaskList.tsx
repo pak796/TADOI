@@ -1,6 +1,5 @@
 import { diffLocalDays, startOfLocalDayMs } from "../domain/dates";
-import { formatTagForDisplay } from "../domain/tagIndex";
-import { formatPriorityForDisplay } from "../domain/priorityTags";
+import { formatTagForReadOnlyDisplay } from "../domain/priorityTags";
 import { VisibleTaskRow } from "../domain/taskRows";
 import { Mode } from "../domain/models";
 import { formatDate, getDueInLabel } from "../state/store";
@@ -286,7 +285,7 @@ function TaskRow({
                     paddingRight: 1
                   }}
                 >
-                  <text>{formatPriorityForDisplay(tag) ?? formatTagForDisplay(tag)}</text>
+                  <text>{formatTagForReadOnlyDisplay(tag)}</text>
                 </box>
               ))
             ) : (

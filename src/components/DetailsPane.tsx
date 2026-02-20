@@ -1,6 +1,6 @@
 import { diffLocalDays, formatLocalTimeHHmm, startOfLocalDayMs } from "../domain/dates";
 import { getRecurrenceSummary } from "../domain/recurrence/draft";
-import { formatTagForDisplay } from "../domain/tagIndex";
+import { formatTagForReadOnlyDisplay } from "../domain/priorityTags";
 import { resolveTaskLinkKind } from "../domain/taskLinks";
 import { VisibleTaskRow } from "../domain/taskRows";
 import { formatDate, getDueLabel } from "../state/store";
@@ -180,7 +180,7 @@ export function DetailsPane({
         <text style={{ color: theme.muted }}>SERIES: {task.seriesId}</text>
       ) : null}
       <box style={{ flexDirection: "column", marginTop: 1 }}>
-        <text style={{ color: theme.muted }}>TAGS</text>
+        <text style={{ color: theme.muted }}>PRIORITY & TAGS</text>
         {task.tags.length ? (
           <box style={{ flexDirection: "row", gap: 1 }}>
             {task.tags.map((tag) => (
@@ -193,7 +193,7 @@ export function DetailsPane({
                   paddingRight: 1
                 }}
               >
-                <text>{formatTagForDisplay(tag)}</text>
+                <text>{formatTagForReadOnlyDisplay(tag)}</text>
               </box>
             ))}
           </box>

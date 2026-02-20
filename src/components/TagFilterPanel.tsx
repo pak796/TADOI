@@ -4,6 +4,7 @@ import type { TagFilter } from "../domain/models";
 import type { TagFilterBucket } from "../domain/tagFilter";
 import { formatTagFilterBooleanSummary } from "../domain/tagFilter";
 import { formatTagForDisplay } from "../domain/tagIndex";
+import { formatTagForReadOnlyDisplay } from "../domain/priorityTags";
 
 type TagFilterPanelProps = {
   draft?: TagFilter;
@@ -127,7 +128,7 @@ export function TagFilterPanel({
                   >
                     <text style={{ color: theme.bg }}>
                       {meta.marker}
-                      {formatTagForDisplay(tag)}
+                      {formatTagForReadOnlyDisplay(tag)}
                     </text>
                   </box>
                 ))

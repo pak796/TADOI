@@ -1,6 +1,6 @@
 import { Filters, TagFilter } from "./models";
-import { isPriorityToken } from "./priorityTags";
-import { formatTagForDisplay, normalizeTag, normalizeTags } from "./tagIndex";
+import { formatTagForReadOnlyDisplay, isPriorityToken } from "./priorityTags";
+import { normalizeTag, normalizeTags } from "./tagIndex";
 
 export type TagFilterBucket = "all" | "any" | "none";
 
@@ -96,13 +96,13 @@ export function formatTagFilterBooleanSummary(tagFilter?: TagFilter): string | u
 
   const parts: string[] = [];
   for (const tag of normalized.all ?? []) {
-    parts.push(`+${formatTagForDisplay(tag)}`);
+    parts.push(`+${formatTagForReadOnlyDisplay(tag)}`);
   }
   for (const tag of normalized.any ?? []) {
-    parts.push(`~${formatTagForDisplay(tag)}`);
+    parts.push(`~${formatTagForReadOnlyDisplay(tag)}`);
   }
   for (const tag of normalized.none ?? []) {
-    parts.push(`-${formatTagForDisplay(tag)}`);
+    parts.push(`-${formatTagForReadOnlyDisplay(tag)}`);
   }
   return parts.length > 0 ? parts.join(" ") : undefined;
 }

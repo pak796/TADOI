@@ -1,4 +1,4 @@
-import { normalizeTag } from "./tagIndex";
+import { formatTagForDisplay, normalizeTag } from "./tagIndex";
 
 const PRIORITY_TOKEN_REGEX = /^#?p(\d+)$/i;
 
@@ -63,4 +63,8 @@ export function formatPriorityForDisplay(raw: string | undefined): string | unde
   const digits = isPriorityToken(normalized)?.digits;
   if (!digits) return undefined;
   return `P${digits}`;
+}
+
+export function formatTagForReadOnlyDisplay(raw: string): string {
+  return formatPriorityForDisplay(raw) ?? formatTagForDisplay(raw);
 }

@@ -3,8 +3,7 @@ import { Filters, FocusTarget, Mode, SortMode } from "../domain/models";
 import { formatDate } from "../state/store";
 import { colorForTag, theme, styles } from "../app/theme";
 import { formatTagFilterBooleanSummary } from "../domain/tagFilter";
-import { formatTagForDisplay } from "../domain/tagIndex";
-import { formatPriorityForDisplay } from "../domain/priorityTags";
+import { formatPriorityForDisplay, formatTagForReadOnlyDisplay } from "../domain/priorityTags";
 import { APP_VERSION } from "../app/version";
 import { getSortModeLabel } from "../domain/query";
 import {
@@ -411,7 +410,7 @@ export function LeftRail({
                 paddingRight: 1
               }}
             >
-              <text style={{ color: theme.bg }}>{formatTagForDisplay(filters.tag)}</text>
+              <text style={{ color: theme.bg }}>{formatTagForReadOnlyDisplay(filters.tag)}</text>
             </box>
           </box>
         ) : (

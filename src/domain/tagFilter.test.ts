@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { type Filters } from "./models";
 import {
+  formatTagFilterBooleanSummary,
   isEmptyTagFilter,
   matchesTagFilter,
   normalizeTagFilter,
@@ -83,5 +84,25 @@ describe("tagFilter helpers", () => {
 
     const noneFilters = baseFilters({ tagFilter: { none: ["#p3"] } });
     expect(matchesTagFilter(["work", "p3"], noneFilters)).toBe(true);
+  });
+
+  it("formats boolean summary with canonical non-priority tags", () => {
+    expect(
+      formatTagFilterBooleanSummary({
+        all: ["work"],
+        any: ["home"],
+        none: ["blocked"]
+      })
+    ).toBe("+#work ~#home -#blocked");
+  });
+
+  it("never includes priority tokens in boolean summary output", () => {
+    expect(
+      formatTagFilterBooleanSummary({
+        all: ["work", "#p2"],
+        any: ["#p3"],
+        none: ["#p4"]
+      })
+    ).toBe("+#work");
   });
 });

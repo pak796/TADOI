@@ -115,6 +115,7 @@ import {
 } from "../domain/tagIndex";
 import {
   formatPriorityForDisplay,
+  formatTagForReadOnlyDisplay,
   isPriorityToken,
   normalizePriorityFilterValue,
   normalizePriorityFromTokens,
@@ -938,7 +939,7 @@ function buildTagTickerSegments(
   let used = 0;
 
   for (const stat of stats) {
-    const displayTag = formatTagForDisplay(stat.tag);
+    const displayTag = formatTagForReadOnlyDisplay(stat.tag);
     const countText = String(stat.total);
     const segmentText = `${countText} ${displayTag}`;
     let segmentLen = segmentText.length + TAG_PILL_PADDING;
@@ -1001,7 +1002,7 @@ function summarizeViewFilters(filters: SavedView["filters"]): string {
   const tagLabel = booleanTagSummary
     ? ` tags=${booleanTagSummary}`
     : filters.tag
-      ? ` tag=#${filters.tag}`
+      ? ` tag=${formatTagForReadOnlyDisplay(filters.tag)}`
       : "";
   return `status=${filters.status} due=${filters.due}${priorityLabel}${tagLabel}${searchLabel}`;
 }
@@ -6026,7 +6027,9 @@ export function App({
         tagFilter: undefined
       }
     });
-    showShortNavigationBanner(`Dashboard tag filter: ${formatTagForDisplay(selected.tag)}`);
+    showShortNavigationBanner(
+      `Dashboard tag filter: ${formatTagForReadOnlyDisplay(selected.tag)}`
+    );
   }
 
   function applyDashboardSelectedTag() {
@@ -6089,7 +6092,7 @@ export function App({
       const nextTagFilter = toggleTagInBucket(tag, "all");
       showShortNavigationBanner(
         nextTagFilter
-          ? `Tag filter (ALL): ${formatTagForDisplay(tag)}`
+          ? `Tag filter (ALL): ${formatTagForReadOnlyDisplay(tag)}`
           : "Boolean tag filter cleared"
       );
       return;
@@ -6106,7 +6109,7 @@ export function App({
     showShortNavigationBanner(
       alreadyActive
         ? "Tag quick filter cleared"
-        : `Tag quick filter: ${formatTagForDisplay(tag)}`
+        : `Tag quick filter: ${formatTagForReadOnlyDisplay(tag)}`
     );
   }
 

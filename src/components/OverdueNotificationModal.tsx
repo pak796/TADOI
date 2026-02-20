@@ -1,7 +1,6 @@
 import { formatLocalTimeHHmm } from "../domain/dates";
 import type { Task } from "../domain/models";
-import { normalizePriorityTags } from "../domain/priorityTags";
-import { formatTagForDisplay } from "../domain/tagIndex";
+import { formatTagForReadOnlyDisplay, normalizePriorityTags } from "../domain/priorityTags";
 import { themeForObject } from "../app/theme";
 import { formatDate } from "../state/store";
 import type { TaskOverdueEvent } from "../notifications/types";
@@ -73,7 +72,7 @@ export function OverdueNotificationModal({
       <text>Due: {dueLabel}</text>
       <text>Status: Overdue by {overdueBy}</text>
       {tags.length > 0 ? (
-        <text>Tags: {tags.map((tag) => formatTagForDisplay(tag)).join(" ")}</text>
+        <text>Tags: {tags.map((tag) => formatTagForReadOnlyDisplay(tag)).join(" ")}</text>
       ) : null}
       <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
         <box
