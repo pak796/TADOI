@@ -1,0 +1,304 @@
+{
+  "automation_id": "daily-documentation-refresh-packaging-daily-build-tadoi",
+  "version_baseline": "v0.3.7",
+  "package_version_baseline": "0.3.7",
+  "audit_token": "[AUDIT 2026-02-20] Metadata+readback synced for TIT v0.3.7",
+  "generated_at_utc": "2026-02-20T03:43:10Z",
+  "sources": {
+    "property_verification": "/tmp/codex_notion_props_verify.txt",
+    "notes_sync": "/tmp/codex_notion_notes_sync.txt"
+  },
+  "summary": {
+    "pages_total": 14,
+    "title_ok": 14,
+    "date_ok": 14,
+    "heading_ok": 14,
+    "version_ok": 14,
+    "notes_ok": 14,
+    "errors": 0
+  },
+  "property_verification": [
+    {
+      "page_id": "3045aa1e-f93f-8191-848a-cbc69ec6e869",
+      "title": "TADOI Installation Guide (All Platforms) v0.3.7",
+      "title_sync": "ok",
+      "title_property": "Name",
+      "date_sync": "ok",
+      "date_property": "Date",
+      "heading_expected": "# TADOI\u2122 Installation Guide (macOS, Windows, Linux)",
+      "heading_actual": "# TADOI\u2122 Installation Guide (macOS, Windows, Linux)",
+      "heading_ok": true,
+      "version_marker_found": true,
+      "error": ""
+    },
+    {
+      "page_id": "3065aa1e-f93f-8188-adb2-c39dc13f90bb",
+      "title": "TADOI Install Guide (Concise) v0.3.7",
+      "title_sync": "ok",
+      "title_property": "Name",
+      "date_sync": "ok",
+      "date_property": "Date",
+      "heading_expected": "# TADOI\u2122 Install Guide",
+      "heading_actual": "# TADOI\u2122 Install Guide",
+      "heading_ok": true,
+      "version_marker_found": true,
+      "error": ""
+    },
+    {
+      "page_id": "3065aa1e-f93f-81b5-a6cb-d4d3e64684c0",
+      "title": "TADOI Usage Guide v0.3.7",
+      "title_sync": "ok",
+      "title_property": "Name",
+      "date_sync": "ok",
+      "date_property": "Date",
+      "heading_expected": "# TADOI\u2122 Usage Guide",
+      "heading_actual": "# TADOI\u2122 Usage Guide",
+      "heading_ok": true,
+      "version_marker_found": true,
+      "error": ""
+    },
+    {
+      "page_id": "3045aa1e-f93f-8103-bda5-f77d2bf55e8e",
+      "title": "TADOI QA Guide (v0.3.7)",
+      "title_sync": "ok",
+      "title_property": "Name",
+      "date_sync": "ok",
+      "date_property": "Date",
+      "heading_expected": "# TADOI\u2122 QA Guide (v0.3.7)",
+      "heading_actual": "# TADOI\u2122 QA Guide (v0.3.7)",
+      "heading_ok": true,
+      "version_marker_found": true,
+      "error": ""
+    },
+    {
+      "page_id": "3065aa1e-f93f-81ec-8bd6-cba6cf3876eb",
+      "title": "TADOI Smoke Test Checklist (v0.3.7)",
+      "title_sync": "ok",
+      "title_property": "Name",
+      "date_sync": "ok",
+      "date_property": "Date",
+      "heading_expected": "# TADOI\u2122 Smoke Test Checklist",
+      "heading_actual": "# TADOI\u2122 Smoke Test Checklist",
+      "heading_ok": true,
+      "version_marker_found": true,
+      "error": ""
+    },
+    {
+      "page_id": "3065aa1e-f93f-8178-af7d-c31a8241854d",
+      "title": "TADOI Black Box Test Matrix (v0.3.7)",
+      "title_sync": "ok",
+      "title_property": "Name",
+      "date_sync": "ok",
+      "date_property": "Date",
+      "heading_expected": "# TADOI\u2122 Black Box Test Matrix",
+      "heading_actual": "# TADOI\u2122 Black Box Test Matrix",
+      "heading_ok": true,
+      "version_marker_found": true,
+      "error": ""
+    },
+    {
+      "page_id": "3065aa1e-f93f-8166-998c-d94e5bc16917",
+      "title": "TADOI Regression Areas (v0.3.7)",
+      "title_sync": "ok",
+      "title_property": "Name",
+      "date_sync": "ok",
+      "date_property": "Date",
+      "heading_expected": "# TADOI\u2122 Regression Areas",
+      "heading_actual": "# TADOI\u2122 Regression Areas",
+      "heading_ok": true,
+      "version_marker_found": true,
+      "error": ""
+    },
+    {
+      "page_id": "3065aa1e-f93f-819b-a606-e8337a7ca1d5",
+      "title": "TADOI Release Checklist (v0.3.7)",
+      "title_sync": "ok",
+      "title_property": "Name",
+      "date_sync": "ok",
+      "date_property": "Date",
+      "heading_expected": "# TADOI\u2122 Release Checklist",
+      "heading_actual": "# TADOI\u2122 Release Checklist",
+      "heading_ok": true,
+      "version_marker_found": true,
+      "error": ""
+    },
+    {
+      "page_id": "3065aa1e-f93f-81ed-9312-f1e427c167da",
+      "title": "TADOI Release Notes",
+      "title_sync": "ok",
+      "title_property": "Name",
+      "date_sync": "ok",
+      "date_property": "Date",
+      "heading_expected": "# TADOI\u2122 Release Notes",
+      "heading_actual": "# TADOI\u2122 Release Notes",
+      "heading_ok": true,
+      "version_marker_found": true,
+      "error": ""
+    },
+    {
+      "page_id": "3065aa1e-f93f-8131-b0ed-c9b0dfd1ad0e",
+      "title": "TADOI Architecture Overview (v0.3.7)",
+      "title_sync": "ok",
+      "title_property": "Name",
+      "date_sync": "ok",
+      "date_property": "Date",
+      "heading_expected": "# TADOI\u2122 Architecture Overview",
+      "heading_actual": "# TADOI\u2122 Architecture Overview",
+      "heading_ok": true,
+      "version_marker_found": true,
+      "error": ""
+    },
+    {
+      "page_id": "3045aa1e-f93f-810c-82a5-c03e17858168",
+      "title": "TADOI User Guide (v0.3.7)",
+      "title_sync": "ok",
+      "title_property": "Name",
+      "date_sync": "ok",
+      "date_property": "Date",
+      "heading_expected": "# TADOI\u2122",
+      "heading_actual": "# TADOI\u2122",
+      "heading_ok": true,
+      "version_marker_found": true,
+      "error": ""
+    },
+    {
+      "page_id": "3045aa1e-f93f-81fd-84cd-c93a6b68b49c",
+      "title": "TADOI App Overview + Feature Catalog (v0.3.7)",
+      "title_sync": "ok",
+      "title_property": "Name",
+      "date_sync": "ok",
+      "date_property": "Date",
+      "heading_expected": "# TADOI\u2122 Feature List (v0.3.7)",
+      "heading_actual": "# TADOI\u2122 Feature List (v0.3.7)",
+      "heading_ok": true,
+      "version_marker_found": true,
+      "error": ""
+    },
+    {
+      "page_id": "3055aa1e-f93f-812d-ad44-f3d94b8a7219",
+      "title": "TADOI Product Spec (v0.3.7)",
+      "title_sync": "ok",
+      "title_property": "Name",
+      "date_sync": "ok",
+      "date_property": "Date",
+      "heading_expected": "# TADOI\u2122 Product Spec (v0.3.7)",
+      "heading_actual": "# TADOI\u2122 Product Spec (v0.3.7)",
+      "heading_ok": true,
+      "version_marker_found": true,
+      "error": ""
+    },
+    {
+      "page_id": "3055aa1e-f93f-8159-b07c-ee692df137eb",
+      "title": "TADOI Task List (v0.3.7)",
+      "title_sync": "ok",
+      "title_property": "Name",
+      "date_sync": "ok",
+      "date_property": "Date",
+      "heading_expected": "# TADOI\u2122 Task List (v0.3.7)",
+      "heading_actual": "# TADOI\u2122 Task List (v0.3.7)",
+      "heading_ok": true,
+      "version_marker_found": true,
+      "error": ""
+    }
+  ],
+  "notes_sync": [
+    {
+      "page_id": "3045aa1e-f93f-8191-848a-cbc69ec6e869",
+      "title": "TADOI Installation Guide (All Platforms) v0.3.7",
+      "notes_sync": "ok",
+      "notes_property": "Notes",
+      "error": ""
+    },
+    {
+      "page_id": "3065aa1e-f93f-8188-adb2-c39dc13f90bb",
+      "title": "TADOI Install Guide (Concise) v0.3.7",
+      "notes_sync": "ok",
+      "notes_property": "Notes",
+      "error": ""
+    },
+    {
+      "page_id": "3065aa1e-f93f-81b5-a6cb-d4d3e64684c0",
+      "title": "TADOI Usage Guide v0.3.7",
+      "notes_sync": "ok",
+      "notes_property": "Notes",
+      "error": ""
+    },
+    {
+      "page_id": "3045aa1e-f93f-8103-bda5-f77d2bf55e8e",
+      "title": "TADOI QA Guide (v0.3.7)",
+      "notes_sync": "ok",
+      "notes_property": "Notes",
+      "error": ""
+    },
+    {
+      "page_id": "3065aa1e-f93f-81ec-8bd6-cba6cf3876eb",
+      "title": "TADOI Smoke Test Checklist (v0.3.7)",
+      "notes_sync": "ok",
+      "notes_property": "Notes",
+      "error": ""
+    },
+    {
+      "page_id": "3065aa1e-f93f-8178-af7d-c31a8241854d",
+      "title": "TADOI Black Box Test Matrix (v0.3.7)",
+      "notes_sync": "ok",
+      "notes_property": "Notes",
+      "error": ""
+    },
+    {
+      "page_id": "3065aa1e-f93f-8166-998c-d94e5bc16917",
+      "title": "TADOI Regression Areas (v0.3.7)",
+      "notes_sync": "ok",
+      "notes_property": "Notes",
+      "error": ""
+    },
+    {
+      "page_id": "3065aa1e-f93f-819b-a606-e8337a7ca1d5",
+      "title": "TADOI Release Checklist (v0.3.7)",
+      "notes_sync": "ok",
+      "notes_property": "Notes",
+      "error": ""
+    },
+    {
+      "page_id": "3065aa1e-f93f-81ed-9312-f1e427c167da",
+      "title": "TADOI Release Notes",
+      "notes_sync": "ok",
+      "notes_property": "Notes",
+      "error": ""
+    },
+    {
+      "page_id": "3065aa1e-f93f-8131-b0ed-c9b0dfd1ad0e",
+      "title": "TADOI Architecture Overview (v0.3.7)",
+      "notes_sync": "ok",
+      "notes_property": "Notes",
+      "error": ""
+    },
+    {
+      "page_id": "3045aa1e-f93f-810c-82a5-c03e17858168",
+      "title": "TADOI User Guide (v0.3.7)",
+      "notes_sync": "ok",
+      "notes_property": "Notes",
+      "error": ""
+    },
+    {
+      "page_id": "3045aa1e-f93f-81fd-84cd-c93a6b68b49c",
+      "title": "TADOI App Overview + Feature Catalog (v0.3.7)",
+      "notes_sync": "ok",
+      "notes_property": "Notes",
+      "error": ""
+    },
+    {
+      "page_id": "3055aa1e-f93f-812d-ad44-f3d94b8a7219",
+      "title": "TADOI Product Spec (v0.3.7)",
+      "notes_sync": "ok",
+      "notes_property": "Notes",
+      "error": ""
+    },
+    {
+      "page_id": "3055aa1e-f93f-8159-b07c-ee692df137eb",
+      "title": "TADOI Task List (v0.3.7)",
+      "notes_sync": "ok",
+      "notes_property": "Notes",
+      "error": ""
+    }
+  ]
+}
