@@ -1,6 +1,6 @@
 # TADOI™ Usage Guide
 
-Verified as of 2026-02-13 (v0.3.6).
+Verified as of 2026-02-20 (v0.3.7).
 Source of truth for key routing: `src/app/keyRouter.ts`.
 
 ## Run
@@ -118,6 +118,42 @@ Overdue modal:
 - `d` / `D`: mark done
 - `g` / `G`: jump to task
 - `Esc`: dismiss
+
+Empty-state NUX modal:
+- `a` / `Enter`: create first task flow
+- `h`: open shortcuts step
+- `s` / `Esc`: dismiss
+- `i`: open recovery import flow (only when recovery import CTA is available)
+
+## TIT Command Layer (M1-M3)
+
+Source-of-truth files:
+- `src/app/App.tsx` (in-app TIT overlay)
+- `src/commands/*` (shared parser/executor)
+- `src/cli/main.ts` (external TIT CLI)
+
+In-app TIT (LIST mode only):
+- Open with `` ` ``
+- `Enter` executes current command
+- `Esc` closes TIT without executing
+- `ArrowUp` / `ArrowDown` navigates command history
+- While TIT is open, normal list/global routing is suppressed
+
+Supported TIT commands:
+- `add <title> [due:YYYY-MM-DD] [at:HH:MM] [#tag ...] [notes:"..."]`
+- `done` / `done @selected` / `done id:<task-id>`
+- `due @selected YYYY-MM-DD [at:HH:MM]`
+- `due id:<task-id> YYYY-MM-DD [at:HH:MM]`
+- `due @selected clear` / `due id:<task-id> clear`
+- `recur <target> clear`
+- `recur <target> every:day|week|month [interval:N] [on:mon,wed|1,15]`
+- `help` / `help add|done|due|recur`
+
+CLI TIT notes:
+- Wrapper form: `tadoi add ...`, `tadoi done id:<task-id>`, `tadoi due id:<task-id> ...`, `tadoi recur id:<task-id> ...`
+- Raw DSL form: `tadoi 'recur id:<task-id> every:week on:mon'`
+- `@selected` is rejected in CLI context (use `id:<task-id>`)
+- Exit codes: `0` success, `2` parse/validation, `3` target resolution, `4` lock present, `5` IO error
 
 ## Recurrence Semantics (Behavioral Contract)
 - Complete occurrence: add `EXDATE` + materialize done history instance.

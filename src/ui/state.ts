@@ -71,6 +71,13 @@ export type UITaskLinkExternalOpenConfirmModal = {
   scheme: string;
 } & UIModalReturnContext;
 
+export type UIEditTargetSwitchModal = {
+  type: "edit_switch_confirm";
+  fromTaskId: string;
+  toTaskId: string;
+  toTaskTitle: string;
+} & UIModalReturnContext;
+
 export type UIEmptyNuxModal = {
   type: "emptyNux";
 };
@@ -89,7 +96,8 @@ export type UIConfirmModal =
   | UIEmptyNuxModal
   | UITaskLinkFormModal
   | UITaskLinkDeleteModal
-  | UITaskLinkExternalOpenConfirmModal;
+  | UITaskLinkExternalOpenConfirmModal
+  | UIEditTargetSwitchModal;
 
 export type UIState = {
   mode: ModeType;

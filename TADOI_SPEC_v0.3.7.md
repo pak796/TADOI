@@ -1,8 +1,8 @@
-# TADOI™ Product Spec (v0.3.6)
+# TADOI™ Product Spec (v0.3.7)
 
-Updated: 2026-02-19
-Runtime baseline: `v0.3.6`
-Package baseline: `0.3.6`
+Updated: 2026-02-20
+Runtime baseline: `v0.3.7`
+Package baseline: `0.3.7`
 Persistence schema baseline: `5`
 
 Stability taxonomy:
@@ -15,7 +15,7 @@ TADOI is a keyboard-first terminal task manager focused on fast personal executi
 
 Core experience:
 - List-first task management with strong keyboard routing and clear mode boundaries.
-- TIT command bar (Milestone 1) for quick add/done/due/help commands in list mode.
+- TIT command layer (Milestones 1-3): in-app command bar, shared command engine, CLI parity, and recurrence command support.
 - Recurrence-aware planning with occurrence-level actions.
 - Unified filtering across list and dashboard analytics surfaces.
 - Local-first persistence with explicit import/export safety controls.
@@ -188,31 +188,38 @@ Import:
   - 5 completions for a tag in the last 7 days
   - 3-day completion streak
 
-### 2.14 TIT Command Bar Contract (Milestone 1)
-- Open key: backtick (`` ` ``) in `LIST` mode.
-- Execute key: `Enter`.
-- Close key: `Esc`.
-- History navigation: `ArrowUp` / `ArrowDown`.
-- While TIT is active, list/global keybinds are suppressed; only TIT controls are handled.
+### 2.14 TIT Command Layer Contract (Milestones 1-3)
+- In-app TIT open key: backtick (`` ` ``) in `LIST` mode.
+- In-app TIT execute key: `Enter`.
+- In-app TIT close key: `Esc`.
+- In-app TIT history navigation: `ArrowUp` / `ArrowDown`.
+- While TIT is active, list/global keybinds are suppressed and TIT captures input.
 - TIT output is single-line and typed:
   - `{ kind: "ok" | "error"; text: string }`
-- Command engine lives in `src/commands/*` and is UI-agnostic.
-- Supported commands:
-  - `add <title> [due:YYYY-MM-DD] [at:HH:MM] [#tag ...] [notes:"..."]`
-  - `done` / `done @selected` / `done id:<task-id>`
-  - `due @selected YYYY-MM-DD [at:HH:MM]`
-  - `due id:<task-id> YYYY-MM-DD [at:HH:MM]`
-  - `due @selected clear`
-  - `help` / `help add|done|due`
-- Validation rules:
-  - `due` date must be a real calendar date.
-  - `at` time must be valid 24-hour local time.
-  - `at` requires `due`.
-- Mutation behavior:
-  - `add` emits `setTasks`, `setTagIndex`, `setSelected`.
-  - `done` forces `status="done"` and emits engagement actions only on `open -> done`.
-  - `due` sets/clears due fields and emits `setTasks`, `setSelected`.
-  - `help` emits no store actions.
+- Command engine is UI-agnostic and lives in `src/commands/*`.
+
+Supported TIT commands:
+- `add <title> [due:YYYY-MM-DD] [at:HH:MM] [#tag ...] [notes:"..."]`
+- `done` / `done @selected` / `done id:<task-id>`
+- `due @selected YYYY-MM-DD [at:HH:MM]`
+- `due id:<task-id> YYYY-MM-DD [at:HH:MM]`
+- `due @selected clear` / `due id:<task-id> clear`
+- `recur <target> clear`
+- `recur <target> every:day|week|month [interval:N] [on:mon,wed|1,15]`
+- `help` / `help add|done|due|recur`
+
+Validation and mutation rules:
+- `due` date must be a real calendar date.
+- `at` time must be valid 24-hour local time.
+- `at` requires `due`.
+- `recur` requires a due date on the target task.
+- `done` remains deterministic (`status="done"`) and uses recurrence completion helper for spawn-on-done behavior.
+
+CLI parity and safety:
+- CLI wrapper and raw DSL forms are both supported (`src/cli/main.ts`).
+- `@selected` is invalid in CLI context; CLI requires `id:<task-id>` for target commands.
+- CLI write commands are lock-gated when TUI lock exists.
+- TIT CLI exit codes: `0` success, `2` parse/validation, `3` target resolution, `4` lock present, `5` IO error.
 
 ## 3) Data Model Contract
 
@@ -256,15 +263,13 @@ Global/overlay:
 
 ## 5) Quality and Validation Baseline
 
-Automated snapshot captured during docs audit:
-- `bun run test`: `555 pass / 0 fail / 555 total`
+Automated snapshot captured during TIT docs pass (2026-02-20):
+- `bun test src/commands/parse.test.ts src/commands/execute.test.ts src/cli/main.test.ts src/app/keyRouter.test.ts src/state/store.test.ts`: `63 pass / 0 fail`
 - `bun run typecheck`: `pass`
-- TIT M1 targeted regression (2026-02-19):
-  - `bun test src/commands/parse.test.ts src/commands/execute.test.ts src/app/keyRouter.test.ts src/state/store.test.ts`: `47 pass / 0 fail`
-  - `bun run typecheck`: `pass`
+- Full-suite validation remains tracked in release run reports under `docs/RELEASE_RUN_REPORT.md`.
 
 Manual coverage baseline:
-- `docs/TADOI_QA_Guide_v0.3.6.md`
+- `docs/TADOI_QA_Guide_v0.3.7.md`
 
 ## 6) Non-goals (Current Baseline)
 - cloud sync or accounts
@@ -276,10 +281,14 @@ Manual coverage baseline:
 ## 7) Related Documents
 - `README.md`
 - `docs/TADOI_Installation_Guide_All_Platforms.md`
-- `docs/TADOI_QA_Guide_v0.3.6.md`
-- `docs/TADOI_Feature_List_v0.3.6.md`
+- `docs/TADOI_QA_Guide_v0.3.7.md`
+- `docs/TADOI_Feature_List_v0.3.7.md`
 - `docs/specs/tit-m1-commandbar.md`
+- `docs/specs/tit-m2-cli.md`
+- `docs/specs/tit-m3-recurrence.md`
 - `tadoi_TIT_milestone1_spec.md`
+- `tit-m2-cli-revised.md`
+- `tit-m3-recurrence.md`
 - `TADOI_Spec_Calendar_Export_ICS_v0.2.md`
 - `TADOI_Spec_Calendar_Import_ICS_RoundTrip_v0.1.md`
 - `TADOI_Task_Links_Attachments_Spec_v0.2.md`

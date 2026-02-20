@@ -1,5 +1,10 @@
-import { useEffect, useMemo, useRef } from "react";
-import type { InputRenderable, KeyEvent, ScrollBoxRenderable } from "@opentui/core";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type {
+  InputRenderable,
+  KeyEvent,
+  ScrollBoxRenderable,
+  TextareaRenderable
+} from "@opentui/core";
 import { EditorDraft, EditorFocus, Mode } from "../domain/models";
 import { WEEKDAY_ORDER } from "../domain/recurrence/draft";
 import { themeForObject } from "../app/theme";
@@ -46,6 +51,7 @@ const REPEAT_MODES = [
   { value: "custom", label: "CUS" }
 ] as const;
 const END_MODES = ["never", "until", "count"] as const;
+const NOTES_VISIBLE_ROWS = 6;
 
 function normalizeRepeatMode(input: string): EditorDraft["repeatMode"] {
   const value = input.trim().toLowerCase();
@@ -114,7 +120,8 @@ export function EditorPane({
       hasTagSuggestion: Boolean(tagInlineSuggestion?.remainder),
       repeatMode: draft.repeatMode,
       repeatEndMode: draft.repeatEndMode,
-      previewRows: previewLineCount
+      previewRows: previewLineCount,
+      notesVisibleRows: NOTES_VISIBLE_ROWS
     }),
     [
       draft.repeatEndMode,
@@ -140,6 +147,8 @@ export function EditorPane({
   const timeInputRef = useRef<InputRenderable | null>(null);
   const repeatModeInputRef = useRef<InputRenderable | null>(null);
   const repeatIntervalInputRef = useRef<InputRenderable | null>(null);
+  const notesTextareaRef = useRef<TextareaRenderable | null>(null);
+  const [notesScrollVersion, setNotesScrollVersion] = useState(0);
   const clampedOffsetRef = useRef(clampedOffset);
   const focusInFooter = focus === "save" || focus === "cancel";
   const footerTopPadding = Math.max(
@@ -188,6 +197,15 @@ export function EditorPane({
     onScrollOffsetChange
   ]);
 
+  useEffect(() => {
+    const textarea = notesTextareaRef.current;
+    if (!textarea) return;
+    if (focus === "notes") return;
+    if (textarea.plainText !== draft.notes) {
+      textarea.setText(draft.notes);
+    }
+  }, [draft.notes, focus]);
+
   function fieldLabelColor(active: boolean): string {
     return active ? theme.muted : theme.outline;
   }
@@ -195,6 +213,30 @@ export function EditorPane({
   function fieldInputColor(active: boolean): string {
     return active ? theme.text : theme.muted;
   }
+
+  function refreshNotesScrollIndicator(): void {
+    setNotesScrollVersion((value) => value + 1);
+  }
+
+  const notesScrollbar = useMemo(() => {
+    const textarea = notesTextareaRef.current;
+    if (!textarea) {
+      return { hasOverflow: false, thumbTop: 0, thumbSize: NOTES_VISIBLE_ROWS };
+    }
+    const lineCount = textarea.lineInfo.lineStarts.length;
+    const maxScroll = Math.max(0, lineCount - NOTES_VISIBLE_ROWS);
+    const scrollY = Math.max(0, Math.min(textarea.scrollY, maxScroll));
+    if (maxScroll === 0) {
+      return { hasOverflow: false, thumbTop: 0, thumbSize: NOTES_VISIBLE_ROWS };
+    }
+    const thumbSize = Math.max(
+      1,
+      Math.min(NOTES_VISIBLE_ROWS, Math.floor((NOTES_VISIBLE_ROWS * NOTES_VISIBLE_ROWS) / lineCount))
+    );
+    const travel = NOTES_VISIBLE_ROWS - thumbSize;
+    const thumbTop = travel > 0 ? Math.round((scrollY / maxScroll) * travel) : 0;
+    return { hasOverflow: true, thumbTop, thumbSize };
+  }, [draft.notes, focus, notesScrollVersion]);
 
   // Clamp behavior: repeat mode stops at OFF/CUS instead of wrapping.
   function handleRepeatCycleFromInputKey(
@@ -537,13 +579,53 @@ export function EditorPane({
 
       <box style={{ flexDirection: "column", marginTop: 1 }}>
         <text style={{ color: theme.muted }}>NOTES</text>
-        <input
-          value={draft.notes}
-          onChange={(value) => onUpdate({ notes: value })}
-          focused={focus === "notes"}
-          placeholder="Optional details"
-          style={{ backgroundColor: theme.bg, color: theme.text, width: "100%" }}
-        />
+        <box style={{ flexDirection: "row", width: "100%", minHeight: NOTES_VISIBLE_ROWS }}>
+          <textarea
+            ref={notesTextareaRef}
+            initialValue={draft.notes}
+            onContentChange={() => {
+              const value = notesTextareaRef.current?.plainText ?? "";
+              if (value !== draft.notes) {
+                onUpdate({ notes: value });
+              }
+              refreshNotesScrollIndicator();
+            }}
+            onKeyDown={() => refreshNotesScrollIndicator()}
+            onMouseScroll={() => refreshNotesScrollIndicator()}
+            focused={focus === "notes"}
+            placeholder="Optional details"
+            wrapMode="word"
+            style={{
+              height: NOTES_VISIBLE_ROWS,
+              minHeight: NOTES_VISIBLE_ROWS,
+              maxHeight: NOTES_VISIBLE_ROWS,
+              backgroundColor: theme.bg,
+              color: theme.text,
+              width: "100%"
+            }}
+          />
+          <box
+            style={{
+              marginLeft: 1,
+              minWidth: 1,
+              width: 1,
+              height: NOTES_VISIBLE_ROWS,
+              flexDirection: "column"
+            }}
+          >
+            {Array.from({ length: NOTES_VISIBLE_ROWS }).map((_, rowIndex) => {
+              const inThumb =
+                notesScrollbar.hasOverflow &&
+                rowIndex >= notesScrollbar.thumbTop &&
+                rowIndex < notesScrollbar.thumbTop + notesScrollbar.thumbSize;
+              return (
+                <text key={`notes-scroll-${rowIndex}`} style={{ color: theme.outline }}>
+                  {notesScrollbar.hasOverflow ? (inThumb ? "█" : "│") : " "}
+                </text>
+              );
+            })}
+          </box>
+        </box>
       </box>
           </box>
         </scrollbox>

@@ -1,4 +1,4 @@
-# TADOI™ Feature List (v0.3.6)
+# TADOI™ Feature List (v0.3.7)
 
 This list reflects current runtime behavior as of **2026-02-12**.
 
@@ -88,5 +88,5 @@ This list reflects current runtime behavior as of **2026-02-12**.
 - Below minimum, app shows blocking guard: `Terminal too small (min 104x24)`.
 
 ## Version Surface
-- App version: `v0.3.6`.
-- Package version: `0.3.6`.
+- App version: `v0.3.7`.
+- Package version: `0.3.7`.

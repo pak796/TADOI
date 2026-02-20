@@ -19,7 +19,7 @@ export const TIT_CLI_EXIT_CODE = {
   IO_ERROR: 5
 } as const;
 
-type TitCommandName = "add" | "done" | "due" | "help";
+type TitCommandName = "add" | "done" | "due" | "recur" | "help";
 
 type TitCliDeps = {
   now: () => number;
@@ -54,7 +54,13 @@ const DEFAULT_DEPS: TitCliDeps = {
 };
 
 function isTitCommandName(value: string): value is TitCommandName {
-  return value === "add" || value === "done" || value === "due" || value === "help";
+  return (
+    value === "add" ||
+    value === "done" ||
+    value === "due" ||
+    value === "recur" ||
+    value === "help"
+  );
 }
 
 function toSingleLine(value: string): string {
@@ -96,13 +102,13 @@ export function resolveTitCliInput(
 
 function commandRequiresInAppSelection(command: Command): boolean {
   return (
-    (command.type === "done" || command.type === "due") &&
+    (command.type === "done" || command.type === "due" || command.type === "recur") &&
     command.target.type === "selected"
   );
 }
 
 function classifyExecutionError(command: Command): number {
-  return command.type === "done" || command.type === "due"
+  return command.type === "done" || command.type === "due" || command.type === "recur"
     ? TIT_CLI_EXIT_CODE.TARGET_RESOLUTION
     : TIT_CLI_EXIT_CODE.PARSE_OR_VALIDATION;
 }

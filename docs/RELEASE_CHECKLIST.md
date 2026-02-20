@@ -1,6 +1,6 @@
 # TADOI™ Release Checklist
 
-Verified as of 2026-02-13 (v0.3.6).
+Verified as of 2026-02-20 (v0.3.7).
 
 This checklist is required before daily build smoke tests and any tagged release.
 
@@ -31,6 +31,7 @@ This checklist is required before daily build smoke tests and any tagged release
 
 ## 6) Smoke Validation
 - [ ] Run `docs/QA/SMOKE_TEST_CHECKLIST.md` on each platform
+- [ ] Run TIT command-layer smoke cases (`QA-065`, `QA-066`, `QA-068`, `QA-071`)
 - [ ] No P0/P1 defects
 
 ## 7) Release Notes

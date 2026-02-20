@@ -15,7 +15,7 @@ import {
   toEditorFocus
 } from "./uiState";
 import { handleKey, type KeyRouterAction } from "./keyRouter";
-import { TaskList } from "../components/TaskList";
+import { TaskList, resolveTaskRowClickIntent } from "../components/TaskList";
 import { DetailsPane } from "../components/DetailsPane";
 import { EditorPane } from "../components/EditorPane";
 import { LeftRail, type LeftRailMenuItem } from "../components/LeftRail";
@@ -55,6 +55,7 @@ import {
 } from "../domain/navigation";
 import { clampScrollOffset, ensureSelectedVisible } from "../domain/scroll";
 import { computeOpenPriorityStats, computeTopTagStats } from "../domain/tagStats";
+import { completeTaskWithRecurrence } from "../domain/recurrence";
 import {
   addTaskLink,
   deleteTaskLink,
@@ -126,6 +127,10 @@ import {
 import { reconcileSelectionById } from "../domain/selection";
 import { buildVisibleTaskRows, type VisibleTaskRow } from "../domain/taskRows";
 import {
+  cloneEditorDraft,
+  isEditorDraftDirty
+} from "../domain/editorDraftDirty";
+import {
   AppState,
   EditorDraft,
   FocusTarget,
@@ -179,6 +184,7 @@ import {
   unwind,
   type UIState,
   type UIDeleteModal,
+  type UIEditTargetSwitchModal,
   type EmptyNuxStep,
   type UITaskLinkFormField,
   type UITaskLinkFormModal,
@@ -235,6 +241,7 @@ import {
 import { copyToClipboard } from "./copyToClipboard";
 import { openTarget } from "./openTarget";
 import { redactPathForDisplay } from "./pathRedaction";
+import { decideEditTargetSwitch } from "./editTargetSwitchFlow";
 
 const TICKER_INTERVAL_MS = 6000;
 const BOTTOM_INFO_VIEW_ORDER = ["summary", "tags", "priorities"] as const;
@@ -1189,6 +1196,11 @@ export function App({
   const [builtInTextDraftObjects, setBuiltInTextDraftObjects] = useState<
     Partial<Record<ThemeObjectId, ThemeTextTokenOverrides>>
   >({});
+  const selectedRowIdRef = useRef<string | undefined>(state.selectedId);
+  const editorDraftRef = useRef<EditorDraft | null>(state.editor);
+  const editorDirtyIntentRef = useRef(false);
+  const editorTargetRowIdRef = useRef<string | undefined>(undefined);
+  const editorBaselineDraftRef = useRef<EditorDraft | null>(null);
   const skipInitialSaveRef = useRef(skipInitialSave);
   const skipSettingsSaveRef = useRef(true);
   const lastSuccessfulSaveAtRef = useRef<number | undefined>(undefined);
@@ -1251,6 +1263,16 @@ export function App({
   useEffect(() => {
     renderer.requestRender();
   }, [renderer, uiState.mode, terminalWidth, terminalHeight]);
+
+  useEffect(() => {
+    editorDraftRef.current = state.editor;
+    if (state.editor) return;
+    resetEditorSessionTracking();
+  }, [state.editor]);
+
+  useEffect(() => {
+    selectedRowIdRef.current = state.selectedId;
+  }, [state.selectedId]);
 
   const now = Date.now();
   const dayKey = startOfLocalDayMs(now);
@@ -1470,6 +1492,13 @@ export function App({
       return findTaskById(row.sourceTaskId);
     }
     return findTaskById(row.id);
+  }
+
+  function resetEditorSessionTracking() {
+    editorDraftRef.current = null;
+    editorDirtyIntentRef.current = false;
+    editorTargetRowIdRef.current = undefined;
+    editorBaselineDraftRef.current = null;
   }
 
   const selectedPersistedTask = resolvePersistedTaskForRow(selectedTask);
@@ -3119,6 +3148,15 @@ export function App({
       case "MODAL_CONFIRM_TASK_LINK_OPEN_EXTERNAL":
         handleOpenExternalTaskLinkFromModal();
         return;
+      case "MODAL_EDIT_SWITCH_SAVE":
+        handleModalSaveAndSwitchEditTarget();
+        return;
+      case "MODAL_EDIT_SWITCH_DISCARD_SWITCH":
+        handleModalDiscardAndSwitchEditTarget();
+        return;
+      case "MODAL_EDIT_SWITCH_DISCARD_CLOSE":
+        handleModalDiscardAndCloseEditor();
+        return;
       case "MODAL_SUBMIT_TASK_LINK_FORM":
         submitTaskLinkFormModal();
         return;
@@ -3266,6 +3304,19 @@ export function App({
 
     const keyName = key.name ?? "";
     const keySequence = key.sequence ?? "";
+    if (
+      uiState.mode === Mode.EDIT &&
+      uiState.focus !== FocusTarget.EDITOR_SAVE &&
+      uiState.focus !== FocusTarget.EDITOR_CANCEL
+    ) {
+      const isUnmodifiedInput = !key.ctrl && !key.meta && !key.option;
+      const isPrintableInput =
+        keySequence.length === 1 && keySequence >= " " && keyName !== "escape";
+      const isDeletionInput = keyName === "backspace" || keyName === "delete";
+      if (isUnmodifiedInput && (isPrintableInput || isDeletionInput)) {
+        editorDirtyIntentRef.current = true;
+      }
+    }
     if (commandActive) {
       if (keyName === "escape") {
         closeCommandBar();
@@ -4481,7 +4532,99 @@ export function App({
     const targetExists = visibleTaskRows.some((task) => task.id === taskId);
     if (!targetExists) return;
     clearPendingGPrefix();
+    // Optimistically mirror selection so rapid double-clicks can observe the first click.
+    selectedRowIdRef.current = taskId;
     dispatch({ type: "setSelected", id: taskId });
+  }
+
+  function getEditSwitchModal(): UIEditTargetSwitchModal | null {
+    const modal = uiState.modal;
+    if (!modal || modal.type !== "edit_switch_confirm") return null;
+    return modal;
+  }
+
+  function requestEditTargetSwitch(toTaskId: string) {
+    if (uiState.mode !== Mode.EDIT) return;
+    const editorDraft = editorDraftRef.current ?? state.editor;
+    if (!editorDraft) return;
+    const targetRow = visibleTaskRows.find((task) => task.id === toTaskId);
+    if (!targetRow) return;
+
+    const decision = decideEditTargetSwitch({
+      fromTaskId: editorTargetRowIdRef.current,
+      toTaskId,
+      isDirty:
+        editorDirtyIntentRef.current ||
+        isEditorDraftDirty(editorDraft, editorBaselineDraftRef.current),
+      hasActiveModal: uiState.modal !== null
+    });
+
+    if (decision.type === "ignore") return;
+    if (decision.type === "switch_now") {
+      openEditForRowId(decision.toTaskId);
+      return;
+    }
+
+    openModalWithContext({
+      type: "edit_switch_confirm",
+      fromTaskId: decision.fromTaskId,
+      toTaskId: decision.toTaskId,
+      toTaskTitle: targetRow.title,
+      previousMode: Mode.EDIT,
+      previousFocus: uiState.focus
+    });
+  }
+
+  function handleModalSaveAndSwitchEditTarget() {
+    const modal = getEditSwitchModal();
+    if (!modal) return;
+    const saveSucceeded = saveEditor({
+      forceMode: Mode.EDIT,
+      closeAfterSave: false
+    });
+    if (!saveSucceeded) return;
+    closeModalWithPreviousContext(modal);
+    openEditForRowId(modal.toTaskId);
+  }
+
+  function handleModalDiscardAndSwitchEditTarget() {
+    const modal = getEditSwitchModal();
+    if (!modal) return;
+    closeModalWithPreviousContext(modal);
+    openEditForRowId(modal.toTaskId);
+  }
+
+  function handleModalDiscardAndCloseEditor() {
+    const modal = getEditSwitchModal();
+    if (!modal) return;
+    closeModalWithPreviousContext(modal);
+    cancelEditor();
+  }
+
+  function handleTaskRowClick(input: { taskId: string; wasSelected: boolean }) {
+    if (uiState.mode === Mode.MODAL_CONFIRM && uiState.modal) return;
+    const targetExists = visibleTaskRows.some((task) => task.id === input.taskId);
+    if (!targetExists) return;
+    const effectiveWasSelected =
+      input.wasSelected || selectedRowIdRef.current === input.taskId;
+
+    if (uiState.mode === Mode.EDIT && effectiveWasSelected) {
+      requestEditTargetSwitch(input.taskId);
+      return;
+    }
+
+    const intent = resolveTaskRowClickIntent({
+      button: 0,
+      wasSelected: effectiveWasSelected,
+      mode: uiState.mode
+    });
+
+    if (intent === "none") return;
+    if (intent === "select") {
+      selectTaskById(input.taskId);
+      return;
+    }
+    openEditForRowId(input.taskId);
   }
 
   function jumpToTop() {
@@ -4741,23 +4884,23 @@ export function App({
     );
   }
 
-  function resolveSelectedOccurrenceContext(): {
+  function resolveOccurrenceContextForRow(row: VisibleTaskRow | undefined): {
     row: VisibleTaskRow;
     seriesTask: Task;
     seriesId: string;
     occurrenceIso: string;
     instanceTask?: Task;
   } | null {
-    if (!selectedTask) return null;
+    if (!row) return null;
     if (
-      selectedTask.rowKind !== "series_occurrence_virtual" &&
-      selectedTask.rowKind !== "series_occurrence_instance"
+      row.rowKind !== "series_occurrence_virtual" &&
+      row.rowKind !== "series_occurrence_instance"
     ) {
       return null;
     }
 
-    const normalizedIso = normalizeOccurrenceIso(selectedTask.occurrenceIso);
-    const seriesId = selectedTask.seriesId;
+    const normalizedIso = normalizeOccurrenceIso(row.occurrenceIso);
+    const seriesId = row.seriesId;
     const seriesTask = findSeriesTaskBySeriesId(seriesId);
 
     if (!normalizedIso || !seriesId || !seriesTask) {
@@ -4765,17 +4908,27 @@ export function App({
     }
 
     const instanceTask =
-      selectedTask.rowKind === "series_occurrence_instance"
-        ? findTaskById(selectedTask.id)
+      row.rowKind === "series_occurrence_instance"
+        ? findTaskById(row.id)
         : findMaterializedInstance(seriesId, normalizedIso);
 
     return {
-      row: selectedTask,
+      row,
       seriesTask,
       seriesId,
       occurrenceIso: normalizedIso,
       instanceTask
     };
+  }
+
+  function resolveSelectedOccurrenceContext(): {
+    row: VisibleTaskRow;
+    seriesTask: Task;
+    seriesId: string;
+    occurrenceIso: string;
+    instanceTask?: Task;
+  } | null {
+    return resolveOccurrenceContextForRow(selectedTask);
   }
 
   /*
@@ -5074,11 +5227,31 @@ export function App({
     if (!persisted) return;
     const nowMs = Date.now();
     const nextStatus = persisted.status === "done" ? "open" : "done";
+
+    if (persisted.status === "open") {
+      const completion = completeTaskWithRecurrence(state.tasks, persisted.id, nowMs);
+      dispatch({
+        type: "setTasks",
+        tasks: completion.tasks
+      });
+      if (completion.spawnedId) {
+        dispatch({ type: "setSelected", id: completion.spawnedId });
+      }
+      emitCompletionForTransition({
+        taskId: persisted.id,
+        previousStatus: persisted.status,
+        nextStatus,
+        tags: persisted.tags,
+        at: nowMs
+      });
+      return;
+    }
+
     const updated: Task = {
       ...persisted,
-      status: nextStatus,
+      status: "open",
       updatedAt: nowMs,
-      closedAt: nextStatus === "done" ? nowMs : undefined
+      closedAt: undefined
     };
     dispatch({
       type: "setTasks",
@@ -5094,48 +5267,61 @@ export function App({
   }
 
   function openAdd() {
+    resetEditorSessionTracking();
     closeViewsOverlay();
     setTimeSuggestion(getSuggestedTime(new Date()));
+    const emptyDraft = createEmptyDraft();
+    editorDraftRef.current = emptyDraft;
+    editorDirtyIntentRef.current = false;
     uiDispatch({ type: "setMode", mode: Mode.ADD });
     uiDispatch({ type: "setFocus", focus: FocusTarget.EDITOR_TITLE });
     uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
     dispatch({
       type: "setEditor",
-      editor: createEmptyDraft()
+      editor: emptyDraft
     });
   }
 
-  function openEditOccurrence() {
-    const context = resolveSelectedOccurrenceContext();
-    if (!context) {
-      showShortNavigationBanner("No recurring occurrence selected");
-      return;
-    }
-
-    const occurrenceDate = parseLocalIsoToDate(context.occurrenceIso);
-    if (!occurrenceDate) {
-      showShortNavigationBanner("Invalid occurrence timestamp");
-      return;
-    }
-
-    const editSource: Task = context.instanceTask
-      ? context.instanceTask
-      : {
-          ...context.seriesTask,
-          id: `occurrence:${context.seriesId}:${context.occurrenceIso}`,
-          dueAt: occurrenceDate.getTime(),
-          recurrence: undefined
-        };
-    const baseDraft = createDraftFromTask(editSource);
-
+  function startEditSession(rowId: string, draft: EditorDraft) {
     closeViewsOverlay();
     setTimeSuggestion(null);
     uiDispatch({ type: "setMode", mode: Mode.EDIT });
     uiDispatch({ type: "setFocus", focus: FocusTarget.EDITOR_TITLE });
     uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
-    dispatch({
-      type: "setEditor",
-      editor: {
+    editorDraftRef.current = draft;
+    editorDirtyIntentRef.current = false;
+    dispatch({ type: "setEditor", editor: draft });
+    editorTargetRowIdRef.current = rowId;
+    editorBaselineDraftRef.current = cloneEditorDraft(draft);
+  }
+
+  function buildEditDraftForRow(row: VisibleTaskRow): EditorDraft | null {
+    if (
+      row.rowKind === "series_occurrence_virtual" ||
+      row.rowKind === "series_occurrence_instance"
+    ) {
+      const context = resolveOccurrenceContextForRow(row);
+      if (!context) {
+        showShortNavigationBanner("No recurring occurrence selected");
+        return null;
+      }
+
+      const occurrenceDate = parseLocalIsoToDate(context.occurrenceIso);
+      if (!occurrenceDate) {
+        showShortNavigationBanner("Invalid occurrence timestamp");
+        return null;
+      }
+
+      const editSource: Task = context.instanceTask
+        ? context.instanceTask
+        : {
+            ...context.seriesTask,
+            id: `occurrence:${context.seriesId}:${context.occurrenceIso}`,
+            dueAt: occurrenceDate.getTime(),
+            recurrence: undefined
+          };
+      const baseDraft = createDraftFromTask(editSource);
+      return {
         ...baseDraft,
         id: context.instanceTask?.id,
         repeatMode: "off",
@@ -5150,8 +5336,28 @@ export function App({
         sourceTaskId: context.seriesTask.id,
         sourceSeriesId: context.seriesId,
         occurrenceIso: context.occurrenceIso
-      }
-    });
+      };
+    }
+
+    const persisted = resolvePersistedTaskForRow(row);
+    if (!persisted) return null;
+    return {
+      ...createDraftFromTask(persisted),
+      editKind: "regular"
+    };
+  }
+
+  function openEditForRow(row: VisibleTaskRow): boolean {
+    const draft = buildEditDraftForRow(row);
+    if (!draft) return false;
+    startEditSession(row.id, draft);
+    return true;
+  }
+
+  function openEditForRowId(rowId: string): boolean {
+    const row = visibleTaskRows.find((task) => task.id === rowId);
+    if (!row) return false;
+    return openEditForRow(row);
   }
 
   function openEditSeries() {
@@ -5170,76 +5376,52 @@ export function App({
       return;
     }
 
-    closeViewsOverlay();
-    setTimeSuggestion(null);
-    uiDispatch({ type: "setMode", mode: Mode.EDIT });
-    uiDispatch({ type: "setFocus", focus: FocusTarget.EDITOR_TITLE });
-    uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
-    dispatch({
-      type: "setEditor",
-      editor: {
-        ...createDraftFromTask(seriesTask),
-        editKind: "series",
-        sourceTaskId: seriesTask.id,
-        sourceSeriesId: seriesTask.recurrence?.series_id
-      }
+    startEditSession(selectedTask.id, {
+      ...createDraftFromTask(seriesTask),
+      editKind: "series",
+      sourceTaskId: seriesTask.id,
+      sourceSeriesId: seriesTask.recurrence?.series_id
     });
   }
 
   function openEdit() {
     if (!selectedTask) return;
-    if (
-      selectedTask.rowKind === "series_occurrence_virtual" ||
-      selectedTask.rowKind === "series_occurrence_instance"
-    ) {
-      openEditOccurrence();
-      return;
-    }
-
-    const persisted = resolvePersistedTaskForRow(selectedTask);
-    if (!persisted) return;
-    closeViewsOverlay();
-    setTimeSuggestion(null);
-    uiDispatch({ type: "setMode", mode: Mode.EDIT });
-    uiDispatch({ type: "setFocus", focus: FocusTarget.EDITOR_TITLE });
-    uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
-    dispatch({
-      type: "setEditor",
-      editor: {
-        ...createDraftFromTask(persisted),
-        editKind: "regular"
-      }
-    });
+    openEditForRow(selectedTask);
   }
 
   function openDuplicate() {
     if (!selectedTask) return;
     const persisted = resolvePersistedTaskForRow(selectedTask);
     if (!persisted) return;
+    resetEditorSessionTracking();
     closeViewsOverlay();
     const baseDraft = createDraftFromTask(persisted);
     const dueText = persisted.status === "done" ? formatDate(now) : baseDraft.dueText;
     const timeText = persisted.status === "done" ? "" : baseDraft.timeText;
     setTimeSuggestion(getSuggestedTime(new Date()));
+    const duplicateDraft: EditorDraft = {
+      ...baseDraft,
+      id: undefined,
+      dueText,
+      timeText,
+      editKind: "regular",
+      sourceTaskId: undefined,
+      sourceSeriesId: undefined,
+      occurrenceIso: undefined
+    };
+    editorDraftRef.current = duplicateDraft;
+    editorDirtyIntentRef.current = false;
     uiDispatch({ type: "setMode", mode: Mode.ADD });
     uiDispatch({ type: "setFocus", focus: FocusTarget.EDITOR_TITLE });
     uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
     dispatch({
       type: "setEditor",
-      editor: {
-        ...baseDraft,
-        id: undefined,
-        dueText,
-        timeText,
-        editKind: "regular",
-        sourceTaskId: undefined,
-        sourceSeriesId: undefined,
-        occurrenceIso: undefined
-      }
+      editor: duplicateDraft
     });
   }
 
   function cancelEditor() {
+    resetEditorSessionTracking();
     clearPendingGPrefix();
     setTimeSuggestion(null);
     uiDispatch({ type: "setMode", mode: Mode.LIST });
@@ -5249,12 +5431,19 @@ export function App({
   }
 
   function updateEditorDraft(patch: Partial<EditorDraft>) {
-    if (!state.editor) return;
-    const previousDraft = state.editor;
+    const previousDraft = editorDraftRef.current ?? state.editor;
+    if (!previousDraft) return;
     const nextDraft: EditorDraft = {
       ...previousDraft,
       ...patch
     };
+    editorDraftRef.current = nextDraft;
+    if (uiState.mode === Mode.EDIT) {
+      editorDirtyIntentRef.current = isEditorDraftDirty(
+        nextDraft,
+        editorBaselineDraftRef.current
+      );
+    }
     const reconciledFocus = resolveEditorFocusAfterDraftChange(
       uiState.focus,
       previousDraft,
@@ -5266,27 +5455,34 @@ export function App({
     dispatch({ type: "updateEditor", patch });
   }
 
-  function saveEditor() {
-    if (!state.editor) return;
-    const draft = state.editor;
+  function saveEditor(options: {
+    forceMode?: typeof Mode.ADD | typeof Mode.EDIT;
+    closeAfterSave?: boolean;
+  } = {}): boolean {
+    const draft = editorDraftRef.current ?? state.editor;
+    if (!draft) return false;
+    const activeMode = options.forceMode ?? uiState.mode;
+    const closeAfterSave = options.closeAfterSave ?? true;
+    if (activeMode !== Mode.ADD && activeMode !== Mode.EDIT) return false;
+
     // Keep recurrence draft values in-memory; persistence is gated by repeatMode in buildRecurrenceFromDraft.
     const title = draft.title.trim();
-    if (!title) return;
+    if (!title) return false;
 
     const nowMs = Date.now();
     const timeText = draft.timeText.trim();
     const timeMinutes = timeText ? parseDueTime(timeText) : undefined;
     if (timeText && timeMinutes === undefined) {
       showShortNavigationBanner("Invalid time format (HH:mm)");
-      return;
+      return false;
     }
 
     const { dueAt, hasExplicitTime } = combineDueDateTime(draft.dueText, timeText);
     const tags = parseTagsInput(draft.tagsText);
-    const notes = draft.notes.trim() || undefined;
+    const notes = draft.notes.length > 0 ? draft.notes : undefined;
     const links = draft.links.map((link) => ({ ...link }));
 
-    if (uiState.mode === Mode.ADD) {
+    if (activeMode === Mode.ADD) {
       const taskId = crypto.randomUUID();
       const recurrenceBuild = buildRecurrenceFromDraft(
         draft,
@@ -5295,7 +5491,7 @@ export function App({
       );
       if (recurrenceBuild.error) {
         showShortNavigationBanner(recurrenceBuild.error);
-        return;
+        return false;
       }
 
       const newTask: Task = {
@@ -5321,14 +5517,16 @@ export function App({
         triggerFirstRecurringTaskCreated(nowMs, recurrenceBuild.recurrence.series_id);
       }
       dispatch({ type: "setSelected", id: newTask.id });
-      uiDispatch({ type: "setMode", mode: Mode.LIST });
-      uiDispatch({ type: "setFocus", focus: FocusTarget.TASK_LIST });
-      uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
-      dispatch({ type: "setEditor", editor: null });
-      return;
+      if (closeAfterSave) {
+        uiDispatch({ type: "setMode", mode: Mode.LIST });
+        uiDispatch({ type: "setFocus", focus: FocusTarget.TASK_LIST });
+        uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
+        dispatch({ type: "setEditor", editor: null });
+      }
+      return true;
     }
 
-    if (uiState.mode === Mode.EDIT) {
+    if (activeMode === Mode.EDIT) {
       if (draft.editKind === "occurrence") {
         const seriesId = draft.sourceSeriesId;
         const occurrenceIso = normalizeOccurrenceIso(draft.occurrenceIso);
@@ -5337,7 +5535,7 @@ export function App({
 
         if (!seriesId || !occurrenceIso || !seriesTask?.recurrence) {
           showShortNavigationBanner("Unable to edit occurrence");
-          return;
+          return false;
         }
 
         let tasksWithSeriesExdate = withSeriesOccurrenceExcluded(
@@ -5384,7 +5582,7 @@ export function App({
           findSeriesTaskBySeriesId(draft.sourceSeriesId);
         if (!seriesTask) {
           showShortNavigationBanner("Unable to edit recurring series");
-          return;
+          return false;
         }
 
         const recurrenceBuild = buildRecurrenceFromDraft(
@@ -5394,7 +5592,7 @@ export function App({
         );
         if (recurrenceBuild.error) {
           showShortNavigationBanner(recurrenceBuild.error);
-          return;
+          return false;
         }
 
         const updatedTasks = state.tasks.map((task) => {
@@ -5418,7 +5616,7 @@ export function App({
         dispatch({ type: "setSelected", id: seriesTask.id });
       } else {
         const targetTask = draft.id ? findTaskById(draft.id) : undefined;
-        if (!targetTask) return;
+        if (!targetTask) return false;
 
         const recurrenceBuild = buildRecurrenceFromDraft(
           draft,
@@ -5427,7 +5625,7 @@ export function App({
         );
         if (recurrenceBuild.error) {
           showShortNavigationBanner(recurrenceBuild.error);
-          return;
+          return false;
         }
 
         const updatedTasks = state.tasks.map((task) => {
@@ -5454,10 +5652,15 @@ export function App({
       }
     }
 
-    uiDispatch({ type: "setMode", mode: Mode.LIST });
-    uiDispatch({ type: "setFocus", focus: FocusTarget.TASK_LIST });
-    uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
-    dispatch({ type: "setEditor", editor: null });
+    if (closeAfterSave) {
+      uiDispatch({ type: "setMode", mode: Mode.LIST });
+      uiDispatch({ type: "setFocus", focus: FocusTarget.TASK_LIST });
+      uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
+      dispatch({ type: "setEditor", editor: null });
+    }
+
+    editorDirtyIntentRef.current = false;
+    return true;
   }
 
   function finishDeleteModalAction(
@@ -6180,7 +6383,7 @@ export function App({
                     pulseOn={pulseOn}
                     fastPulseOn={fastPulseOn}
                     flashMode={settingsState.flashMode}
-                    onSelectTask={selectTaskById}
+                    onTaskRowClick={handleTaskRowClick}
                     scrollOffset={uiState.scrollOffset}
                     visibleRows={visibleRows}
                     visibleLines={visibleLines}
@@ -6851,6 +7054,98 @@ export function App({
                   }}
                 >
                   <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>NO [N]</text>
+                </box>
+              </box>
+            </box>
+          ) : uiState.modal.type === "edit_switch_confirm" ? (
+            <box
+              style={{
+                padding: 2,
+                backgroundColor: theme.panel,
+                border: true,
+                borderStyle: "single",
+                borderColor: theme.outline,
+                minWidth: MODAL_STANDARD_WIDTH,
+                flexDirection: "column",
+                gap: 1
+              }}
+            >
+              <text style={{ color: theme.text, fontWeight: "bold" }}>UNSAVED CHANGES</text>
+              <text style={{ color: theme.muted }}>
+                {`Switch edit target to: ${uiState.modal.toTaskTitle}`}
+              </text>
+              <box style={{ flexDirection: "row", gap: 1 }}>
+                <box
+                  style={{
+                    backgroundColor: theme.panel,
+                    border: true,
+                    borderStyle: "single",
+                    borderColor: theme.outline,
+                    paddingLeft: 2,
+                    paddingRight: 2
+                  }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    handleModalSaveAndSwitchEditTarget();
+                  }}
+                >
+                  <text style={{ color: theme.text, fontWeight: "bold" }}>
+                    [S] Save+Switch
+                  </text>
+                </box>
+                <box
+                  style={{
+                    backgroundColor: theme.panel,
+                    border: true,
+                    borderStyle: "single",
+                    borderColor: theme.outline,
+                    paddingLeft: 2,
+                    paddingRight: 2
+                  }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    handleModalDiscardAndSwitchEditTarget();
+                  }}
+                >
+                  <text style={{ color: theme.text, fontWeight: "bold" }}>
+                    [D] Discard+Switch
+                  </text>
+                </box>
+              </box>
+              <box style={{ flexDirection: "row", gap: 1 }}>
+                <box
+                  style={{
+                    backgroundColor: theme.panel,
+                    border: true,
+                    borderStyle: "single",
+                    borderColor: theme.outline,
+                    paddingLeft: 2,
+                    paddingRight: 2
+                  }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    handleModalDiscardAndCloseEditor();
+                  }}
+                >
+                  <text style={{ color: theme.text, fontWeight: "bold" }}>
+                    [C] Discard+Close
+                  </text>
+                </box>
+                <box
+                  style={{
+                    backgroundColor: theme.panel,
+                    border: true,
+                    borderStyle: "single",
+                    borderColor: theme.outline,
+                    paddingLeft: 2,
+                    paddingRight: 2
+                  }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    applyEscUnwind();
+                  }}
+                >
+                  <text style={{ color: theme.text, fontWeight: "bold" }}>[Esc] Cancel</text>
                 </box>
               </box>
             </box>

@@ -31,14 +31,32 @@ export type DueCommand =
       atTime?: string;
     };
 
-export type HelpTopic = "add" | "done" | "due";
+export type RecurEvery = "day" | "week" | "month";
+
+export type RecurCommand =
+  | {
+      type: "recur";
+      target: CommandTarget;
+      clear: true;
+    }
+  | {
+      type: "recur";
+      target: CommandTarget;
+      clear: false;
+      every: RecurEvery;
+      interval: number;
+      onDays?: Array<"mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun">;
+      onMonthDays?: number[];
+    };
+
+export type HelpTopic = "add" | "done" | "due" | "recur";
 
 export type HelpCommand = {
   type: "help";
   topic?: HelpTopic;
 };
 
-export type Command = AddCommand | DoneCommand | DueCommand | HelpCommand;
+export type Command = AddCommand | DoneCommand | DueCommand | RecurCommand | HelpCommand;
 
 export type CommandOutput = {
   kind: "ok" | "error";

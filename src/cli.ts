@@ -66,6 +66,7 @@ export function printHelp(showLogo: boolean): void {
   console.log("  add             Add task via TIT command engine");
   console.log("  done            Mark task done by id via TIT command engine");
   console.log("  due             Set/clear due by id via TIT command engine");
+  console.log("  recur           Set/clear recurrence by id via TIT command engine");
   console.log("  help            Show TIT command help topics");
   console.log("  export          Export full persisted state (plus settings)");
   console.log("  import          Import state from a JSON export");

@@ -2,9 +2,28 @@ import { diffLocalDays, startOfLocalDayMs } from "../domain/dates";
 import { formatTagForDisplay } from "../domain/tagIndex";
 import { formatPriorityForDisplay } from "../domain/priorityTags";
 import { VisibleTaskRow } from "../domain/taskRows";
+import { Mode } from "../domain/models";
 import { formatDate, getDueInLabel } from "../state/store";
 import { colorForTag, themeForObject } from "../app/theme";
 import type { FlashMode } from "../settings/settings";
+
+export type TaskRowClickInput = {
+  taskId: string;
+  wasSelected: boolean;
+};
+
+export type TaskRowClickIntent = "none" | "select" | "open_edit";
+
+export function resolveTaskRowClickIntent(input: {
+  button: number;
+  wasSelected: boolean;
+  mode: string;
+}): TaskRowClickIntent {
+  if (input.button !== 0) return "none";
+  if (!input.wasSelected) return "select";
+  if (input.mode === Mode.ADD || input.mode === Mode.EDIT) return "none";
+  return "open_edit";
+}
 
 type TaskListProps = {
   tasks: VisibleTaskRow[];
@@ -13,7 +32,7 @@ type TaskListProps = {
   pulseOn: boolean;
   fastPulseOn: boolean;
   flashMode: FlashMode;
-  onSelectTask: (taskId: string) => void;
+  onTaskRowClick: (input: TaskRowClickInput) => void;
   scrollOffset: number;
   visibleRows: number;
   visibleLines: number;
@@ -30,7 +49,7 @@ export function TaskList({
   pulseOn,
   fastPulseOn,
   flashMode,
-  onSelectTask,
+  onTaskRowClick,
   scrollOffset,
   visibleRows,
   visibleLines
@@ -64,7 +83,7 @@ export function TaskList({
               pulseOn={pulseOn}
               fastPulseOn={fastPulseOn}
               flashMode={flashMode}
-              onSelect={onSelectTask}
+              onTaskRowClick={onTaskRowClick}
             />
           ))
         )}
@@ -100,7 +119,7 @@ type TaskRowProps = {
   pulseOn: boolean;
   fastPulseOn: boolean;
   flashMode: FlashMode;
-  onSelect: (taskId: string) => void;
+  onTaskRowClick: (input: TaskRowClickInput) => void;
 };
 
 function TaskRow({
@@ -110,7 +129,7 @@ function TaskRow({
   pulseOn,
   fastPulseOn,
   flashMode,
-  onSelect
+  onTaskRowClick
 }: TaskRowProps) {
   const theme = themeForObject("taskRow");
   const statusIcon = task.status === "done" ? "✓" : task.status === "archived" ? "✱" : "•";
@@ -206,7 +225,7 @@ function TaskRow({
       }}
       onMouseDown={(event) => {
         if (event.button !== 0) return;
-        onSelect(task.id);
+        onTaskRowClick({ taskId: task.id, wasSelected: selected });
       }}
     >
       <box style={{ flexDirection: "row", flexGrow: 1 }}>

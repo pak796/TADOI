@@ -188,6 +188,32 @@ describe("unwind", () => {
     });
   });
 
+  it("returns to previous mode/focus from edit switch modal", () => {
+    const result = unwind({
+      ...initialUIState,
+      mode: Mode.MODAL_CONFIRM,
+      focus: FocusTarget.MODAL,
+      modal: {
+        type: "edit_switch_confirm",
+        fromTaskId: "task-a",
+        toTaskId: "task-b",
+        toTaskTitle: "Task B",
+        previousMode: Mode.EDIT,
+        previousFocus: FocusTarget.EDITOR_NOTES
+      }
+    });
+
+    expect(result).toEqual({
+      state: {
+        ...initialUIState,
+        mode: Mode.EDIT,
+        focus: FocusTarget.EDITOR_NOTES,
+        modal: null
+      },
+      clearEditorDraft: false
+    });
+  });
+
   it("dismisses empty NUX to list/task-list and records dismissal", () => {
     const result = unwind({
       ...initialUIState,

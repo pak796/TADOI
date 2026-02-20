@@ -1,8 +1,8 @@
-# TADOI™ QA Guide (v0.3.6)
+# TADOI™ QA Guide (v0.3.7)
 
-Validation date: **2026-02-13**
-Runtime baseline: **v0.3.6**
-Package baseline: **0.3.6**
+Validation date: **2026-02-20**
+Runtime baseline: **v0.3.7**
+Package baseline: **0.3.7**
 
 ## 1) Purpose and Scope
 
@@ -29,7 +29,7 @@ Note on key casing:
 ## 2) Current Automated Validation Snapshot
 
 Local workspace snapshot (captured for transparency):
-- `bun run test`: **555 pass / 0 fail / 555 total**.
+- `bun test src/commands/parse.test.ts src/commands/execute.test.ts src/cli/main.test.ts src/app/keyRouter.test.ts src/state/store.test.ts`: **63 pass / 0 fail / 63 total**.
 - `bun run typecheck`: **pass**.
 
 Manual QA is still required for cross-platform interaction and rendering coverage.
@@ -58,7 +58,7 @@ Clear or rotate the override file between major suites to avoid cross-suite cont
 ## 5) Expedited Smoke Runbook
 
 Run these first for a fast confidence pass:
-- `QA-001`, `QA-002`, `QA-005`, `QA-008`, `QA-013`, `QA-019`, `QA-023`, `QA-029`, `QA-032`, `QA-036`, `QA-039`, `QA-042`, `QA-052`, `QA-053`.
+- `QA-001`, `QA-002`, `QA-005`, `QA-008`, `QA-013`, `QA-019`, `QA-023`, `QA-029`, `QA-032`, `QA-036`, `QA-039`, `QA-042`, `QA-052`, `QA-053`, `QA-065`, `QA-066`, `QA-068`.
 
 Smoke pass criteria:
 1. All smoke cases pass on all three platforms.
@@ -362,6 +362,41 @@ Smoke pass criteria:
   - Steps: run import with `--report` pointing at a path that cannot be written as a file (for example existing directory path).
   - Expected: import processing succeeds and summary is returned; warning is printed; run is not marked failed solely because report writing failed.
 
+### N) TIT Command Layer (In-App + CLI)
+
+- [ ] `QA-065 [SMOKE]` TIT open/close and routing suppression in LIST mode.
+  - Preconditions: list mode with at least one task.
+  - Steps: press `` ` `` to open TIT, then press `j/k`, `Esc`.
+  - Expected: TIT opens, list selection does not move while TIT is open, `Esc` closes TIT.
+- [ ] `QA-066 [SMOKE]` TIT `add` + validation behavior.
+  - Preconditions: TIT open.
+  - Steps: run `add "TIT smoke task" #qa`; then run `add "X" at:09:00`.
+  - Expected: first command creates task; second returns validation error (`at:` requires `due:`).
+- [ ] `QA-067` TIT `done` deterministic behavior + engagement trigger.
+  - Preconditions: selected open task.
+  - Steps: run `done` twice.
+  - Expected: first run marks task done; second run keeps done state (no toggle back to open).
+- [ ] `QA-068 [SMOKE]` TIT `due` set and clear for selected target.
+  - Preconditions: selected task.
+  - Steps: run `due @selected 2026-03-05 at:09:00`, then `due @selected clear`.
+  - Expected: due timestamp sets then clears with deterministic output lines.
+- [ ] `QA-069` TIT `recur` set/clear and due-anchor enforcement.
+  - Preconditions: selected task with due date, and one without due date.
+  - Steps: run `recur @selected every:week on:mon,wed`; then `recur @selected clear`; on no-due task run `recur @selected every:day`.
+  - Expected: set and clear succeed on due task; no-due task is rejected with explicit error.
+- [ ] `QA-070` CLI TIT command parity and `@selected` rejection.
+  - Preconditions: app closed; known task id available.
+  - Steps: run `bun run start -- help recur`; run wrapper and raw DSL forms for `add|done|due|recur`; run `bun run start -- due @selected clear`.
+  - Expected: wrapper/raw commands behave consistently; `@selected` is rejected in CLI with actionable error.
+- [ ] `QA-071` CLI lock-gate behavior.
+  - Preconditions: app running.
+  - Steps: run `bun run start -- add "lock gate test"` from another terminal.
+  - Expected: command fails with lock-present error and lock exit-code semantics.
+- [ ] `QA-072` Recurrence spawn parity from TIT/CLI done path.
+  - Preconditions: recurring task exists with due date.
+  - Steps: complete once with TIT `done` and once with CLI `done id:<task-id>`.
+  - Expected: each `open -> done` transition materializes next open occurrence once.
+
 ## 7) Automated Coverage Mapping
 
 | Manual area | Primary automated references |
@@ -373,6 +408,7 @@ Smoke pass criteria:
 | Dashboard KPIs and tags | `src/domain/dashboard.test.ts`, `src/domain/dashboardKpis.test.ts`, `src/domain/tagStats.test.ts`, `src/app/dashboardTagFilterContract.test.ts` |
 | Backup/import/export + portability | `src/state/backupCenterFlow.test.ts`, `src/state/backupService.test.ts`, `src/state/portability.test.ts` |
 | Calendar ICS export/import (CLI + Backup Center + services) | `src/cli/calendarCommands.test.ts`, `src/commands/calendarImport.test.ts`, `src/cli.test.ts`, `src/state/backupCenterFlow.test.ts`, `src/state/backupCenterCalendarController.test.ts`, `src/calendar/icsWriter.test.ts`, `src/calendar/icsParser.test.ts`, `src/calendar/importMapper.test.ts`, `src/calendar/calendarMapper.test.ts`, `src/calendar/range.test.ts`, `src/calendar/rrule.test.ts`, `src/state/calendarExportService.test.ts`, `src/state/calendarImportService.test.ts`, `src/state/calendarRoundTrip.test.ts` |
+| TIT command layer (M1-M3) | `src/commands/parse.test.ts`, `src/commands/execute.test.ts`, `src/commands/help.test.ts`, `src/cli/main.test.ts`, `src/app/keyRouter.test.ts`, `src/state/store.test.ts` |
 | Notifications + engagement toasts | `src/notifications/notificationManager.test.ts`, `src/notifications/overdueTaskActions.test.ts`, `src/notifications/notifiers/inAppModalNotifier.test.ts`, `src/notifications/notifiers/terminalBellNotifier.test.ts`, `src/state/store.test.ts` |
 | Settings/theme/custom1 | `src/settings/settings.test.ts`, `src/theme/themes.test.ts`, `src/theme/resolveThemeTokens.test.ts`, `src/theme/custom1ColorUtils.test.ts` |
 | Brand/logo + left rail | `src/brand/brand.test.ts`, `src/components/LeftRail.tsx`, `src/app/keyRouter.test.ts` |
@@ -381,8 +417,8 @@ Smoke pass criteria:
 
 ## 8) Known Issues in Current Workspace
 
-No known automated failures at this snapshot (`2026-02-13`):
-- `bun run test`: 555/555 passing.
+No known automated failures in targeted TIT validation (`2026-02-20`):
+- `bun test src/commands/parse.test.ts src/commands/execute.test.ts src/cli/main.test.ts src/app/keyRouter.test.ts src/state/store.test.ts`: 63/63 passing.
 - `bun run typecheck`: passing.
 
 Residual risk still covered by manual QA:
@@ -414,6 +450,6 @@ Defect report format:
 
 Release candidate is manual-QA ready when:
 1. All smoke cases pass on macOS, Windows, Linux.
-2. Full case set (`QA-001` to `QA-064`) is executed at least once per target platform.
+2. Full case set (`QA-001` to `QA-072`) is executed at least once per target platform.
 3. No open `P0` or `P1` defects remain.
 4. Known automated failures are either resolved or explicitly accepted with owner and follow-up.

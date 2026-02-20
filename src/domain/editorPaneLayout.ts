@@ -4,6 +4,7 @@ export const EDITOR_FOOTER_HEIGHT = 3;
 export const EDITOR_FOOTER_HINT_ROW = 1;
 export const EDITOR_ACTION_ROW = 1;
 const DEFAULT_PREVIEW_ROWS = 3;
+const DEFAULT_NOTES_VISIBLE_ROWS = 6;
 
 export type EditorContentEstimateOptions = {
   hasDueSuggestion?: boolean;
@@ -12,6 +13,7 @@ export type EditorContentEstimateOptions = {
   repeatMode?: EditorDraft["repeatMode"];
   repeatEndMode?: EditorDraft["repeatEndMode"];
   previewRows?: number;
+  notesVisibleRows?: number;
 };
 
 export type EditorRecurrenceVisibility = {
@@ -38,6 +40,7 @@ type NormalizedEstimateOptions = {
   repeatMode: EditorDraft["repeatMode"];
   repeatEndMode: EditorDraft["repeatEndMode"];
   previewRows: number;
+  notesVisibleRows: number;
 };
 
 export function getEditorRecurrenceVisibility(
@@ -102,7 +105,8 @@ function normalizeEstimateOptions(
     hasTagSuggestion: options.hasTagSuggestion === true,
     repeatMode: options.repeatMode ?? "off",
     repeatEndMode: options.repeatEndMode ?? "never",
-    previewRows: Math.max(1, options.previewRows ?? DEFAULT_PREVIEW_ROWS)
+    previewRows: Math.max(1, options.previewRows ?? DEFAULT_PREVIEW_ROWS),
+    notesVisibleRows: Math.max(1, options.notesVisibleRows ?? DEFAULT_NOTES_VISIBLE_ROWS)
   };
 }
 
@@ -240,7 +244,7 @@ function buildEditorLineModel(options: NormalizedEstimateOptions): {
   line += 1; // section margin
   line += 1; // label
   anchors.notes = line; // input line
-  line += 1; // input
+  line += options.notesVisibleRows; // input rows
 
   // Save/cancel are footer controls, not content lines. Anchor to last content row.
   const footerAnchor = Math.max(0, line - 1);

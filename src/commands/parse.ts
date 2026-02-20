@@ -1,6 +1,7 @@
 import type {
   CommandTarget,
   HelpTopic,
+  RecurEvery,
   ParseCommandResult
 } from "./types";
 import { parseStrictLocalDate, parseStrictTime } from "./validate";
@@ -220,13 +221,127 @@ function parseHelpCommand(tokens: string[]): ParseCommandResult {
   }
 
   const topic = tokens[0].toLowerCase() as HelpTopic;
-  if (topic !== "add" && topic !== "done" && topic !== "due") {
-    return error('Error: help topics are "add", "done", or "due"');
+  if (topic !== "add" && topic !== "done" && topic !== "due" && topic !== "recur") {
+    return error('Error: help topics are "add", "done", "due", or "recur"');
   }
 
   return {
     ok: true,
     command: { type: "help", topic }
+  };
+}
+
+const WEEKDAYS = new Set(["mon", "tue", "wed", "thu", "fri", "sat", "sun"]);
+
+function parseRecurCommand(tokens: string[]): ParseCommandResult {
+  if (tokens.length < 2) {
+    return error("Error: recur requires target and rule/clear");
+  }
+
+  const target = parseCommandTarget(tokens[0]);
+  if (!target) {
+    return error('Error: recur target must be "@selected" or "id:<task-id>"');
+  }
+
+  const second = tokens[1];
+  if (second === "clear") {
+    if (tokens.length !== 2) {
+      return error("Error: recur clear takes no extra tokens");
+    }
+    return {
+      ok: true,
+      command: { type: "recur", target, clear: true }
+    };
+  }
+
+  if (!second.startsWith("every:")) {
+    return error('Error: recur requires every:day|week|month');
+  }
+
+  const rawEvery = second.slice(6).trim().toLowerCase();
+  const normalizedEvery =
+    rawEvery === "daily"
+      ? "day"
+      : rawEvery === "weekly"
+        ? "week"
+        : rawEvery === "monthly"
+          ? "month"
+          : rawEvery;
+
+  if (normalizedEvery !== "day" && normalizedEvery !== "week" && normalizedEvery !== "month") {
+    return error(`Error: invalid every value "${rawEvery}"`);
+  }
+  const every = normalizedEvery as RecurEvery;
+  let interval = 1;
+  let onDays: Array<"mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun"> | undefined;
+  let onMonthDays: number[] | undefined;
+
+  for (let i = 2; i < tokens.length; i += 1) {
+    const token = tokens[i];
+    if (token.startsWith("interval:")) {
+      const raw = token.slice(9).trim();
+      if (!/^[0-9]+$/.test(raw)) {
+        return error(`Error: invalid interval "${raw}"`);
+      }
+      const parsedInterval = Number.parseInt(raw, 10);
+      if (!Number.isInteger(parsedInterval) || parsedInterval < 1) {
+        return error(`Error: invalid interval "${raw}"`);
+      }
+      interval = parsedInterval;
+      continue;
+    }
+    if (token.startsWith("on:")) {
+      const raw = token.slice(3).trim();
+      if (!raw) {
+        return error("Error: on: value is required");
+      }
+      const values = raw
+        .split(",")
+        .map((value) => value.trim().toLowerCase())
+        .filter((value) => value.length > 0);
+      if (values.length === 0) {
+        return error("Error: on: value is required");
+      }
+      if (every === "day") {
+        return error("Error: on: is not supported for every:day");
+      }
+      if (every === "week") {
+        if (!values.every((value) => WEEKDAYS.has(value))) {
+          return error(`Error: invalid weekly on value "${raw}"`);
+        }
+        onDays = Array.from(new Set(values)) as Array<
+          "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun"
+        >;
+        continue;
+      }
+      if (!values.every((value) => /^[0-9]+$/.test(value))) {
+        return error(`Error: invalid monthly on value "${raw}"`);
+      }
+      const parsedMonthDays = Array.from(
+        new Set(values.map((value) => Number.parseInt(value, 10)))
+      );
+      if (
+        parsedMonthDays.some((value) => !Number.isInteger(value) || value < 1 || value > 31)
+      ) {
+        return error(`Error: invalid monthly on value "${raw}"`);
+      }
+      onMonthDays = parsedMonthDays.sort((left, right) => left - right);
+      continue;
+    }
+    return error(`Error: unrecognized recur token "${token}"`);
+  }
+
+  return {
+    ok: true,
+    command: {
+      type: "recur",
+      target,
+      clear: false,
+      every,
+      interval,
+      ...(onDays ? { onDays } : {}),
+      ...(onMonthDays ? { onMonthDays } : {})
+    }
   };
 }
 
@@ -288,6 +403,9 @@ export function parseCommand(input: string): ParseCommandResult {
   }
   if (commandName === "help") {
     return parseHelpCommand(args);
+  }
+  if (commandName === "recur") {
+    return parseRecurCommand(args);
   }
   return error(`Error: unknown command "${commandToken}"`);
 }

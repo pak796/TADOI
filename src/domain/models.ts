@@ -16,12 +16,25 @@ export type TaskLink = {
 
 export type RecurrenceFrequency = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
 
+export type RecurrenceWeekday = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+
+export type RecurrenceRule = {
+  freq: "daily" | "weekly" | "monthly";
+  interval: number;
+  byDay?: RecurrenceWeekday[];
+  byMonthDay?: number[];
+  anchorLocal?: {
+    hour: number;
+    minute: number;
+  };
+};
+
 export type TaskRecurrence = {
   dtstart: string; // local floating ISO: YYYY-MM-DDTHH:mm:ss
   rrule: string; // RRULE fragment, e.g. FREQ=WEEKLY;INTERVAL=1;BYDAY=MO,WE
   exdates?: string[]; // local floating ISO timestamps
   series_id: string;
-};
+} & Partial<RecurrenceRule>;
 
 export type TaskInstanceOf = {
   series_id: string;

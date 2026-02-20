@@ -127,9 +127,11 @@
 - `due @selected YYYY-MM-DD [at:HH:MM]`
 - `due id:<uuid> YYYY-MM-DD [at:HH:MM]`
 - `due @selected clear`
+- `due id:<uuid> clear`
 
 **Rules**
-- `clear` removes `dueAt` and is supported for `@selected` in M1.
+- `clear` removes `dueAt`.
+- Current implementation supports both `@selected` and `id:<uuid>` clear forms.
 - `at:` optional and only valid when setting a date.
 
 **Output**
@@ -361,12 +363,13 @@ When a recurring task transitions `open -> done`:
 - `add "X" due:2026-02-29` → error (invalid date; leap-year validation)
 - `add "X" at:09:00` → error (at requires due)
 - `due @selected clear` → ok
+- `due id:<uuid> clear` → ok
 - `due @selected 2026-03-05 at:25:00` → error (invalid time)
 
 ### 10.2 Executor action emission
 - `add` emits: `setTasks`, `setTagIndex`, `setSelected`
 - `done` emits: `setTasks`, `setSelected`, and conditional engagement actions on `open -> done`
-- `due` emits: `setTasks`
+- `due` emits: `setTasks`, `setSelected`
 - `help` emits: none
 
 ### 10.3 UI/key routing regressions

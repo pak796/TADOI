@@ -67,6 +67,13 @@ describe("resolveTitCliInput", () => {
   it("returns null for non-TIT argv", () => {
     expect(resolveTitCliInput(["--version"])).toBeNull();
   });
+
+  it("resolves recur wrapper command", () => {
+    expect(resolveTitCliInput(["recur", "id:task-1", "every:week", "on:mon"])).toEqual({
+      mode: "subcommand",
+      dsl: "recur id:task-1 every:week on:mon"
+    });
+  });
 });
 
 describe("runTitCommandCliWithDeps", () => {
@@ -93,6 +100,19 @@ describe("runTitCommandCliWithDeps", () => {
   it("rejects @selected targets in CLI context", async () => {
     const { deps, errors } = createDeps();
     const result = await runTitCommandCliWithDeps(["done"], deps);
+
+    expect(result).toEqual({
+      handled: true,
+      exitCode: TIT_CLI_EXIT_CODE.PARSE_OR_VALIDATION
+    });
+    expect(errors).toEqual([
+      "Error: @selected is only available in-app. Use id:<uuid>."
+    ]);
+  });
+
+  it("rejects recur @selected target in CLI context", async () => {
+    const { deps, errors } = createDeps();
+    const result = await runTitCommandCliWithDeps(["recur", "@selected", "clear"], deps);
 
     expect(result).toEqual({
       handled: true,
@@ -143,7 +163,7 @@ describe("runTitCommandCliWithDeps", () => {
     const result = await runTitCommandCliWithDeps(["help"], deps);
 
     expect(result).toEqual({ handled: true, exitCode: TIT_CLI_EXIT_CODE.SUCCESS });
-    expect(logs).toEqual(["Commands: add, done, due, help. Try: help add"]);
+    expect(logs).toEqual(["Commands: add, done, due, recur, help. Try: help recur"]);
     expect(saved).toHaveLength(0);
   });
 });

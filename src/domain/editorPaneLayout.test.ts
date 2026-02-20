@@ -31,6 +31,16 @@ describe("editorPaneLayout", () => {
     expect(withHints).toBeGreaterThan(baseline);
   });
 
+  it("uses a six-row notes viewport by default and supports custom notes rows", () => {
+    const defaultLines = estimateEditorContentLines();
+    const oneRowNotes = estimateEditorContentLines({ notesVisibleRows: 1 });
+    const eightRowNotes = estimateEditorContentLines({ notesVisibleRows: 8 });
+
+    expect(defaultLines).toBe(oneRowNotes + 5);
+    expect(eightRowNotes).toBe(oneRowNotes + 7);
+    expect(eightRowNotes).toBeGreaterThan(defaultLines);
+  });
+
   it("hides recurrence rows when repeat mode is off", () => {
     const off = estimateEditorContentLines({ repeatMode: "off" });
     const daily = estimateEditorContentLines({

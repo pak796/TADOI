@@ -1,6 +1,6 @@
 # TADOI™ Install Guide
 
-Verified as of 2026-02-13 (v0.3.6).
+Verified as of 2026-02-20 (v0.3.7).
 
 This is the concise install guide. For deep troubleshooting and platform detail, see `docs/TADOI_Installation_Guide_All_Platforms.md`.
 
@@ -32,6 +32,14 @@ When running `bun run build:daily`, artifacts are staged under:
 The build report is written to:
 - `dist/artifacts/YYYY-MM-DD/BUILD_REPORT.md`
 
+## TIT Quick Validation (v0.3.7)
+Run these right after install:
+1. In app (`bun run dev`): open TIT with `` ` ``, run `help recur`, close with `Esc`.
+2. In app: run `add "TIT install check" #qa`, then `done`.
+3. In app: select a task with due date and run `recur @selected every:week on:mon`.
+4. CLI (app closed): run `bun run start -- recur id:<task-id> clear`.
+5. CLI lock check (app open): run `bun run start -- add "lock check"`; expected lock error.
+
 ## First-Run Sanity Checks
 1. `?` opens Help.
 2. `a` opens Add; `Ctrl+S` saves.
@@ -39,4 +47,4 @@ The build report is written to:
 4. `p` opens the boolean tag filter panel.
 5. `q` quits (LIST mode).
 
-If any step fails, check `docs/TADOI_QA_Guide_v0.3.6.md` or the QA quicklists in `docs/QA/`.
+If any step fails, check `docs/TADOI_QA_Guide_v0.3.7.md` or the QA quicklists in `docs/QA/`.

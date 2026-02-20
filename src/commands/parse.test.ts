@@ -121,9 +121,61 @@ describe("parseCommand", () => {
       ok: true,
       command: { type: "help", topic: "add" }
     });
+    expect(parseCommand("help recur")).toEqual({
+      ok: true,
+      command: { type: "help", topic: "recur" }
+    });
     expect(parseCommand("wat")).toEqual({
       ok: false,
       error: 'Error: unknown command "wat"'
+    });
+  });
+
+  it("parses recur clear and recur rule forms", () => {
+    expect(parseCommand("recur id:abc clear")).toEqual({
+      ok: true,
+      command: {
+        type: "recur",
+        target: { type: "id", id: "abc" },
+        clear: true
+      }
+    });
+    expect(parseCommand("recur @selected every:week interval:2 on:mon,wed")).toEqual({
+      ok: true,
+      command: {
+        type: "recur",
+        target: { type: "selected" },
+        clear: false,
+        every: "week",
+        interval: 2,
+        onDays: ["mon", "wed"]
+      }
+    });
+    expect(parseCommand("recur id:abc every:month on:1,31")).toEqual({
+      ok: true,
+      command: {
+        type: "recur",
+        target: { type: "id", id: "abc" },
+        clear: false,
+        every: "month",
+        interval: 1,
+        onMonthDays: [1, 31]
+      }
+    });
+  });
+
+  it("rejects invalid recur forms", () => {
+    expect(parseCommand("recur @selected every:day on:mon")).toEqual({
+      ok: false,
+      error: "Error: on: is not supported for every:day"
+    });
+    expect(parseCommand("recur id:abc every:week on:mo")).toEqual({
+      ok: false,
+      error: 'Error: invalid weekly on value "mo"'
+    });
+    expect(parseCommand("recur id:abc every:month on:0")).toEqual({
+      ok: false,
+      error: 'Error: invalid monthly on value "0"'
     });
   });
 });

@@ -1,7 +1,7 @@
 # TADOI™ Release Run Report
 
 Date: 2026-02-13
-Version: 0.3.6
+Version: 0.3.7
 
 ## Requested Sweep Status
 - `build:daily + docs drift + keybind audit`: PASS

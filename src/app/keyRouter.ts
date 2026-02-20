@@ -119,6 +119,9 @@ export type KeyRouterAction =
   | { scope: "domain"; type: "MODAL_CONFIRM_DELETE_FUTURE" }
   | { scope: "domain"; type: "MODAL_CONFIRM_TASK_LINK_DELETE" }
   | { scope: "domain"; type: "MODAL_CONFIRM_TASK_LINK_OPEN_EXTERNAL" }
+  | { scope: "domain"; type: "MODAL_EDIT_SWITCH_SAVE" }
+  | { scope: "domain"; type: "MODAL_EDIT_SWITCH_DISCARD_SWITCH" }
+  | { scope: "domain"; type: "MODAL_EDIT_SWITCH_DISCARD_CLOSE" }
   | { scope: "domain"; type: "MODAL_SUBMIT_TASK_LINK_FORM" }
   | { scope: "ui"; type: "MODAL_MOVE_TASK_LINK_FORM_FOCUS"; direction: 1 | -1 }
   | { scope: "ui"; type: "MODAL_CYCLE_TASK_LINK_FORM_TYPE"; direction: 1 | -1 }
@@ -454,6 +457,20 @@ function resolveModalModeActions(
     }
     if (lowerName === "n" || lowerSequence === "n") {
       return [{ scope: "ui", type: "UNWIND" }];
+    }
+    return [];
+  }
+  if (uiState.modal?.type === "edit_switch_confirm") {
+    const lowerName = name.toLowerCase();
+    const lowerSequence = sequence.toLowerCase();
+    if (lowerName === "s" || lowerSequence === "s") {
+      return [{ scope: "domain", type: "MODAL_EDIT_SWITCH_SAVE" }];
+    }
+    if (lowerName === "d" || lowerSequence === "d") {
+      return [{ scope: "domain", type: "MODAL_EDIT_SWITCH_DISCARD_SWITCH" }];
+    }
+    if (lowerName === "c" || lowerSequence === "c") {
+      return [{ scope: "domain", type: "MODAL_EDIT_SWITCH_DISCARD_CLOSE" }];
     }
     return [];
   }

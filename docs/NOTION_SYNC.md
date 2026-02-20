@@ -1,88 +1,48 @@
 # TADOI™ Notion Sync Checklist
 
-Date: 2026-02-13
+Date: 2026-02-20
 Target workspace area: `Patrick's Projects > TADOI`
 Primary documents data source: `collection://3035aa1e-f93f-80a3-ba35-000b3b596866`
-Sync status: `Pending apply in current MCP session`
+Sync status: `Payload ready (offline apply path)`
 
 ## 1) Sync Policy
-- Keep Notion guide content aligned to current runtime (`v0.3.6`) and package (`0.3.6`).
+- Keep Notion guide content aligned to runtime `v0.3.7` and package `0.3.7`.
 - Keep first prominent mention per page as `TADOI™`.
-- Use repository docs as the canonical source for technical behavior contracts.
-- Apply archival path normalization guidance from `docs/ARCHIVAL_PATH_POLICY.md` when syncing archival artifacts.
+- Use repository docs as canonical source for technical behavior contracts.
+- Keep TIT coverage aligned to canonical `*TIT*.md` source set.
 
-## 2) Target Pages for Sync
+## 2) Repo -> Notion Page Mapping
 
-### Installation Guide
-- Page ID: `3045aa1e-f93f-8191-848a-cbc69ec6e869`
-- Title: `TADOI Installation Guide (All Platforms) v0.3.6`
-- Source: `docs/TADOI_Installation_Guide_All_Platforms.md`
+| Repo file | Notion title | Page ID |
+|---|---|---|
+| `docs/TADOI_Installation_Guide_All_Platforms.md` | `TADOI Installation Guide (All Platforms) v0.3.7` | `3045aa1e-f93f-8191-848a-cbc69ec6e869` |
+| `docs/INSTALL.md` | `TADOI Install Guide (Concise) v0.3.7` | `3065aa1e-f93f-8188-adb2-c39dc13f90bb` |
+| `docs/USAGE.md` | `TADOI Usage Guide v0.3.7` | `3065aa1e-f93f-81b5-a6cb-d4d3e64684c0` |
+| `docs/TADOI_QA_Guide_v0.3.7.md` | `TADOI QA Guide (v0.3.7)` | `3045aa1e-f93f-8103-bda5-f77d2bf55e8e` |
+| `docs/QA/SMOKE_TEST_CHECKLIST.md` | `TADOI Smoke Test Checklist (v0.3.7)` | `3065aa1e-f93f-81ec-8bd6-cba6cf3876eb` |
+| `docs/QA/BLACK_BOX_TEST_MATRIX.md` | `TADOI Black Box Test Matrix (v0.3.7)` | `3065aa1e-f93f-8178-af7d-c31a8241854d` |
+| `docs/QA/REGRESSION_AREAS.md` | `TADOI Regression Areas (v0.3.7)` | `3065aa1e-f93f-8166-998c-d94e5bc16917` |
+| `docs/RELEASE_CHECKLIST.md` | `TADOI Release Checklist (v0.3.7)` | `3065aa1e-f93f-819b-a606-e8337a7ca1d5` |
+| `docs/RELEASE_NOTES.md` | `TADOI Release Notes` | `3065aa1e-f93f-81ed-9312-f1e427c167da` |
+| `docs/ARCHITECTURE_OVERVIEW.md` | `TADOI Architecture Overview (v0.3.7)` | `3065aa1e-f93f-8131-b0ed-c9b0dfd1ad0e` |
+| `README.md` | `TADOI User Guide (v0.3.7)` | `3045aa1e-f93f-810c-82a5-c03e17858168` |
+| `docs/TADOI_Feature_List_v0.3.7.md` | `TADOI App Overview + Feature Catalog (v0.3.7)` | `3045aa1e-f93f-81fd-84cd-c93a6b68b49c` |
+| `TADOI_SPEC_v0.3.7.md` | `TADOI Product Spec (v0.3.7)` | `3055aa1e-f93f-812d-ad44-f3d94b8a7219` |
+| `TADOI_TASKS_v0.3.7.md` | `TADOI Task List (v0.3.7)` | `3055aa1e-f93f-8159-b07c-ee692df137eb` |
 
-### QA Guide
-- Page ID: `3045aa1e-f93f-8103-bda5-f77d2bf55e8e`
-- Title: `TADOI QA Guide (v0.3.6)`
-- Source: `docs/TADOI_QA_Guide_v0.3.6.md`
+## 3) TIT Coverage Gates for Sync
+- Notion pages must include TIT M1-M3 contract coverage (`add|done|due|recur|help`).
+- QA pages must include TIT traceable IDs (`QA-065`..`QA-072`).
+- Installation/usage pages must include TIT in-app and CLI quick validation notes.
 
-### User Guide
-- Page ID: `3045aa1e-f93f-810c-82a5-c03e17858168`
-- Title: `TADOI User Guide (v0.3.6)`
-- Source: `README.md`
-
-### App Overview + Feature Catalog
-- Page ID: `3045aa1e-f93f-81fd-84cd-c93a6b68b49c`
-- Title: `TADOI App Overview + Feature Catalog (v0.3.6)`
-- Source: `docs/TADOI_Feature_List_v0.3.6.md`
-
-### Product Spec
-- Page ID: `3055aa1e-f93f-812d-ad44-f3d94b8a7219`
-- Title: `TADOI Product Spec (v0.3.6)`
-- Source: `TADOI_SPEC_v0.3.6.md`
-
-### Task List
-- Page ID: `3055aa1e-f93f-8159-b07c-ee692df137eb`
-- Title: `TADOI Task List (v0.3.6)`
-- Source: `TADOI_TASKS_v0.3.6.md`
-
-
-### New Docs (Needs Page IDs)
-- `docs/INSTALL.md` -> Notion page TBD
-- `docs/USAGE.md` -> Notion page TBD
-- `docs/QA/SMOKE_TEST_CHECKLIST.md` -> Notion page TBD
-- `docs/QA/BLACK_BOX_TEST_MATRIX.md` -> Notion page TBD
-- `docs/QA/REGRESSION_AREAS.md` -> Notion page TBD
-- `docs/RELEASE_CHECKLIST.md` -> Notion page TBD
-- `docs/RELEASE_NOTES.md` -> Notion page TBD
-- `docs/ARCHITECTURE_OVERVIEW.md` -> Notion page TBD
-
-## 3) Target Property Baseline
-For each updated page:
-- `Name`: includes `v0.3.6` where applicable.
-- `date:Date:start`: `2026-02-13`.
-- `Notes`: includes concise provenance to the full documentator sync pass.
-
-## 4) Post-Sync Validation
-- Confirm all pages show `v0.3.6` / `0.3.6` consistently.
-- Confirm persistence schema references are updated to `5` in active spec/feature content.
-- Confirm terminal minimum in all guides is `104x24`.
-- Confirm tag panel key is `p` and search close is `Enter/Esc`.
-- Confirm recurrence delete copy includes `y` and `f` behavior.
-- Confirm calendar docs state:
-  - `calendar:export` is user-facing in CLI
-  - `calendar:import` is user-facing in CLI
-  - in-app Backup Center exposes guided `Import Calendar (.ics)` and `Export Calendar (.ics)` flows
-- Confirm security/privacy docs include:
-  - `security.nonHttpLinkPolicy` behavior (`prompt|block`)
-  - startup path redaction default and verbose override (`TADOI_VERBOSE_PATH_LOGS=1`)
-- Confirm feature and QA pages include task links/attachments plus security-policy coverage.
-- Confirm feature and spec pages include engagement milestone toast behavior.
-- Confirm QA page checklist range is aligned through `QA-064`.
-
-## 5) Sync Artifacts
+## 4) Sync Artifacts
 - `docs/notion/NOTION_SYNC_PAYLOAD.json`
 - `docs/notion/NOTION_SYNC_RUNBOOK.md`
+- `docs/notion/NOTION_SYNC_INSTRUCTIONS.md`
 
-## 6) Execution Note
-- Use `docs/ops/notion_v0.3.6_sync_pack.md` as the authoritative copy payload for MCP page updates.
+## 5) Execution Note
+- This pass is payload/runbook only (no direct Notion write).
+- Use `bun run notion:sync:validate` before applying sync via MCP or n8n.
 
 ## Trademark Notice
 TADOI™ is a trademark of <OWNER>. Other names may be trademarks of their respective owners.

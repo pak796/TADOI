@@ -4,15 +4,15 @@ Terminal Accessible Digital Organization Interface
 
 Keyboard-first TUI todo list with due dates, completion, and tag autocomplete (OpenTUI + React on Bun).
 
-Current version: `v0.3.6` (`package.json`: `0.3.6`).
-Feature list: [`docs/TADOI_Feature_List_v0.3.6.md`](./docs/TADOI_Feature_List_v0.3.6.md)
+Current version: `v0.3.7` (`package.json`: `0.3.7`).
+Feature list: [`docs/TADOI_Feature_List_v0.3.7.md`](./docs/TADOI_Feature_List_v0.3.7.md)
 Install guide: [`docs/INSTALL.md`](./docs/INSTALL.md)
 Usage guide: [`docs/USAGE.md`](./docs/USAGE.md)
-QA guide: [`docs/TADOI_QA_Guide_v0.3.6.md`](./docs/TADOI_QA_Guide_v0.3.6.md)
+QA guide: [`docs/TADOI_QA_Guide_v0.3.7.md`](./docs/TADOI_QA_Guide_v0.3.7.md)
 Smoke checklist: [`docs/QA/SMOKE_TEST_CHECKLIST.md`](./docs/QA/SMOKE_TEST_CHECKLIST.md)
 Release checklist: [`docs/RELEASE_CHECKLIST.md`](./docs/RELEASE_CHECKLIST.md)
-Product spec: [`TADOI_SPEC_v0.3.6.md`](./TADOI_SPEC_v0.3.6.md)
-Task list: [`TADOI_TASKS_v0.3.6.md`](./TADOI_TASKS_v0.3.6.md)
+Product spec: [`TADOI_SPEC_v0.3.7.md`](./TADOI_SPEC_v0.3.7.md)
+Task list: [`TADOI_TASKS_v0.3.7.md`](./TADOI_TASKS_v0.3.7.md)
 Documentation index: [`docs/DOC_INDEX.md`](./docs/DOC_INDEX.md)
 Archival path policy: [`docs/ARCHIVAL_PATH_POLICY.md`](./docs/ARCHIVAL_PATH_POLICY.md)
 
@@ -46,6 +46,37 @@ Version check:
 ```bash
 bun run start -- --version
 ```
+
+## TIT Command Layer (v0.3.7)
+
+TIT (Terminal-in-Terminal) is the shared command language used by both the in-app command bar and the external CLI.
+
+In-app TIT behavior:
+- Open from LIST mode with `` ` ``
+- Execute with `Enter`
+- Close with `Esc`
+- Recall command history with `ArrowUp` / `ArrowDown`
+- While TIT is active, list/global keybinds are intentionally suppressed
+
+Supported commands:
+- `add <title> [due:YYYY-MM-DD] [at:HH:MM] [#tag ...] [notes:"..."]`
+- `done` / `done @selected` / `done id:<task-id>`
+- `due @selected YYYY-MM-DD [at:HH:MM]` / `due id:<task-id> YYYY-MM-DD [at:HH:MM]` / `due <target> clear`
+- `recur <target> clear` / `recur <target> every:day|week|month [interval:N] [on:...]`
+- `help` / `help add|done|due|recur`
+
+CLI parity and safety:
+- CLI accepts wrapper form (`tadoi add ...`) and raw DSL (`tadoi 'add "Task" #tag'`)
+- CLI rejects `@selected` targets and requires `id:<task-id>`
+- CLI write commands are lock-gated while the TUI is running
+
+Canonical TIT spec sources (filename rule `*TIT*.md`):
+- `docs/specs/tit-m1-commandbar.md`
+- `docs/specs/tit-m2-cli.md`
+- `docs/specs/tit-m3-recurrence.md`
+- `tadoi_TIT_milestone1_spec.md`
+- `tit-m2-cli-revised.md`
+- `tit-m3-recurrence.md`
 
 ## Supported Environments
 
@@ -167,7 +198,7 @@ Behavior notes:
 - `calendar:import` exit codes: `0` success, `1` usage/validation/parse errors (including import-domain errors), `2` filesystem errors.
 - Report write failures are non-fatal warnings when import processing succeeds.
 
-## Stability Notes (As of v0.3.6)
+## Stability Notes (As of v0.3.7)
 
 - `Canonical`: filter semantics, routing boundaries, and list/dashboard filtered-data parity.
 - `Current Behavior (May Change)`: dashboard presentation/layout details and theme-onboarding UX flow.
@@ -524,7 +555,7 @@ bun run pack:smoke
 Install from generated tarball (example):
 
 ```bash
-bun add -g ./dist/tarball/tadoi-0.3.6.tgz
+bun add -g ./dist/tarball/tadoi-0.3.7.tgz
 tadoi --help
 ```
 

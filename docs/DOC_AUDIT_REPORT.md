@@ -1,107 +1,78 @@
 # TADOI™ Documentation Audit Report
 
-Date: 2026-02-13  
-Scope: full documentator sync (local markdown + Notion update-pack generation)  
-Baseline: runtime `v0.3.6`, package `0.3.6`
+Date: 2026-02-20
+Scope: TIT documentation pass (offline markdown + Notion payload/runbook regeneration)
+Baseline: runtime `v0.3.7`, package `0.3.7`
 
 ## 1) Summary
 
-This audit re-validated documentation against current code and tests with focus on:
-- calendar export/import behavior accuracy
-- security and privacy behavior accuracy
-- QA/installation/readme contract consistency
+This pass focused on TIT documentation completeness across user-facing, internal, planning, QA, and Notion sync artifacts.
 
 Primary outcomes:
-- Active docs remain on `v0.3.6` / `0.3.6`.
-- Persistence schema references are aligned to `5` for active release docs.
-- Calendar docs now accurately state:
-  - CLI export is available (`calendar:export`)
-  - CLI import is available (`calendar:import`)
-  - in-app Backup Center exposes guided calendar export/import flows
-- Security/privacy docs now include:
-  - `security.nonHttpLinkPolicy` behavior
-  - source-aware link confirmation for calendar-imported links
-  - startup path redaction default + verbose opt-in flag
-- Engagement docs now include non-interactive milestone toast behavior and persisted engagement-state coverage.
-- QA guide snapshot and checklist are aligned to current validation:
-  - `bun run test`: `555 pass / 0 fail / 555 total`
-  - `bun run typecheck`: pass
+- Active docs stayed on `v0.3.7` / `0.3.7` baseline.
+- TIT narrative is now explicit in user docs (`README.md`, `docs/USAGE.md`, `docs/INSTALL.md`).
+- Planning/internal docs now include TIT M1-M3 contract and task ledger coverage.
+- QA artifacts now include explicit TIT smoke, black-box, and regression coverage with traceable IDs.
+- Notion sync artifacts were refreshed to mirror offline docs and keep deterministic page mapping.
+- Doc inventory/ownership artifacts were refreshed to remove stale `v0.3.6` active references.
 
-## 2) Code-Truth Verification Sources
+## 2) Canonical TIT Source Set (filename rule `*TIT*.md`)
 
-Key files used as canonical behavior sources:
-- `src/cli.ts`
-- `src/cli/calendarCommands.ts`
-- `src/commands/calendarExport.ts`
-- `src/state/calendarExportService.ts`
-- `src/state/calendarImportService.ts`
-- `src/calendar/icsParser.ts`
-- `src/calendar/importMapper.ts`
-- `src/domain/models.ts`
-- `src/domain/taskLinks.ts`
-- `src/app/openTarget.ts`
-- `src/tui/runTui.tsx`
-- `src/settings/settings.ts`
+Detected and reconciled sources:
+- `docs/specs/tit-m1-commandbar.md`
+- `docs/specs/tit-m2-cli.md`
+- `docs/specs/tit-m3-recurrence.md`
+- `tadoi_TIT_milestone1_spec.md`
+- `tit-m2-cli-revised.md`
+- `tit-m3-recurrence.md`
 
-## 3) Drift Findings and Resolutions
+Code evidence used for reconciliation:
+- `src/app/App.tsx` (TIT open/close/execute/history routing)
+- `src/commands/parse.ts`
+- `src/commands/execute.ts`
+- `src/commands/help.ts`
+- `src/cli/main.ts`
+- `src/domain/recurrence/index.ts`
+- `src/commands/parse.test.ts`
+- `src/commands/execute.test.ts`
+- `src/cli/main.test.ts`
 
-### Resolved in this pass
-- QA guide calendar section now covers current user-facing in-app flows:
-  - export/import flow navigation
-  - dry-run-before-commit gating
-  - high-impact `IMPORT` confirmation behavior
-  - recurrence error/override summary expectations
-- README calendar section now reflects CLI export plus Backup Center calendar import/export behavior.
-- Feature/spec/task docs now include security policy and privacy controls (`nonHttpLinkPolicy`, redacted startup logs).
-- Calendar and security docs now point to current audit/remediation artifacts under `docs/audits/`.
-- Automated validation snapshot updated from older counts to current `555/555`.
-- Notion update payload is prepared at `docs/ops/notion_v0.3.6_sync_pack.md` for direct MCP page updates in the current session.
+## 3) QA Coverage Changes
 
-### Known intentional boundaries
-- Historical versioned docs may include older snapshots by design and are not treated as active release source-of-truth.
-- Archival path normalization policy: `docs/ARCHIVAL_PATH_POLICY.md`.
+New TIT case set in the QA guide:
+- `QA-065`..`QA-072`
 
-## 4) Files Updated in This Audit Pass
+Smoke runbook now includes:
+- `QA-065`, `QA-066`, `QA-068`
 
-- `README.md`
-- `CHANGELOG.md`
-- `TADOI_SPEC_v0.3.6.md`
-- `TADOI_TASKS_v0.3.6.md`
-- `docs/TADOI_Installation_Guide_All_Platforms.md`
-- `docs/TADOI_Feature_List_v0.3.6.md`
-- `docs/TADOI_QA_Guide_v0.3.6.md`
-- `docs/README.md`
-- `docs/DOC_INDEX.md`
-- `docs/DOC_AUDIT_REPORT.md`
+Cross-doc QA alignment updated in:
+- `docs/QA/SMOKE_TEST_CHECKLIST.md`
+- `docs/QA/BLACK_BOX_TEST_MATRIX.md`
+- `docs/QA/REGRESSION_AREAS.md`
+- `docs/TADOI_QA_Guide_v0.3.7.md`
+
+## 4) Notion Sync Scope and Outputs
+
+Refreshed artifacts:
 - `docs/NOTION_SYNC.md`
-- `docs/ops/notion_v0.3.6_sync_pack.md`
+- `docs/notion/NOTION_SYNC_PAYLOAD.json`
+- `docs/notion/NOTION_SYNC_RUNBOOK.md`
+- `docs/notion/NOTION_SYNC_INSTRUCTIONS.md`
 
-## 5) Validation Commands and Results
+Sync mode for this pass:
+- Offline payload/runbook generation only (no direct Notion write).
 
-- `bun run test` -> `555 pass / 0 fail / 555 total`
-- `bun run typecheck` -> pass
+## 5) Validation Commands for this Pass
 
-## 6) Notion Sync Scope (Documents Database)
+Required checks:
+- `bun run notion:sync:validate`
+- `python3 scripts/keybind-sync-audit.py`
+- scope guard (`docs-only`) and drift scan outputs
 
-Target data source:
-- `collection://3035aa1e-f93f-80a3-ba35-000b3b596866`
+## 6) Known Boundaries
 
-Pages targeted for update:
-- Installation guide: `3045aa1e-f93f-8191-848a-cbc69ec6e869`
-- QA guide: `3045aa1e-f93f-8103-bda5-f77d2bf55e8e`
-- User guide: `3045aa1e-f93f-810c-82a5-c03e17858168`
-- App overview + feature catalog: `3045aa1e-f93f-81fd-84cd-c93a6b68b49c`
-- Product spec: `3055aa1e-f93f-812d-ad44-f3d94b8a7219`
-- Task list: `3055aa1e-f93f-8159-b07c-ee692df137eb`
-
-Execution note:
-- Notion page IDs and source mappings are documented for direct MCP updates in this pass.
-
-## 7) Next Recommended Documentation Work
-
-1. Expose optional top-level `calendar:import` CLI route and command wrapper to complement the existing in-app Backup Center import flow.
-2. Add docs link-check/lint workflow for docs-only changes.
-3. Generate canonical keybinding table directly from router tests to reduce future drift.
+- Historical versioned docs remain available for traceability and may retain historical text intentionally.
+- This pass is documentation-only; runtime/package behavior changes are out of scope.
 
 ## Trademark Notice
 TADOI™ is a trademark of <OWNER>. Other names may be trademarks of their respective owners.

@@ -5,11 +5,15 @@ import type {
   CommandResult,
   CommandTarget,
   DueCommand,
-  ExecContext
+  ExecContext,
+  RecurCommand
 } from "./types";
 import { buildLocalTimestamp, parseStrictLocalDate, parseStrictTime } from "./validate";
 import type { Task } from "../domain/models";
 import { normalizeTag, updateTagIndex } from "../domain/tagIndex";
+import { completeTaskWithRecurrence } from "../domain/recurrence";
+import { formatDateToLocalIso } from "../domain/recurrence/rruleAdapter";
+import { filterTasks } from "../domain/query";
 
 const ALLOWED_ACTION_TYPES = new Set([
   "load",
@@ -55,6 +59,41 @@ function resolveTargetTask(target: CommandTarget, ctx: ExecContext): Task | null
   const selectedId = ctx.selectedTaskId;
   if (!selectedId) return null;
   return ctx.state.tasks.find((task) => task.id === selectedId) ?? null;
+}
+
+function weekdayFromDate(date: Date): "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun" {
+  const weekdays: Array<"sun" | "mon" | "tue" | "wed" | "thu" | "fri" | "sat"> = [
+    "sun",
+    "mon",
+    "tue",
+    "wed",
+    "thu",
+    "fri",
+    "sat"
+  ];
+  return weekdays[date.getDay()] ?? "mon";
+}
+
+function toRRuleLine(command: Exclude<RecurCommand, { clear: true }>): string {
+  const freq =
+    command.every === "day"
+      ? "DAILY"
+      : command.every === "week"
+        ? "WEEKLY"
+        : "MONTHLY";
+  const parts = [`FREQ=${freq}`, `INTERVAL=${Math.max(1, Math.floor(command.interval))}`];
+  if (command.every === "week" && command.onDays && command.onDays.length > 0) {
+    const byDay = command.onDays.map((day) => day.slice(0, 2).toUpperCase()).join(",");
+    parts.push(`BYDAY=${byDay}`);
+  }
+  if (command.every === "month" && command.onMonthDays && command.onMonthDays.length > 0) {
+    parts.push(`BYMONTHDAY=${command.onMonthDays.join(",")}`);
+  }
+  return parts.join(";");
+}
+
+function isTaskVisible(task: Task, ctx: ExecContext): boolean {
+  return filterTasks([task], ctx.state.filters, ctx.now).length > 0;
 }
 
 function buildDueParts(
@@ -139,26 +178,41 @@ function executeDone(target: CommandTarget, ctx: ExecContext): CommandResult {
     return error("Error: done requires an existing selected task or id");
   }
 
-  const nextTask: Task = {
-    ...task,
-    status: "done",
-    updatedAt: ctx.now,
-    closedAt: task.closedAt ?? ctx.now
-  };
-  const tasks = ctx.state.tasks.map((candidate) =>
-    candidate.id === task.id ? nextTask : candidate
-  );
+  const transitionFromOpen = task.status === "open";
+  let tasks: Task[];
+  let spawnedId: string | undefined;
 
+  if (transitionFromOpen) {
+    const completion = completeTaskWithRecurrence(ctx.state.tasks, task.id, ctx.now);
+    tasks = completion.tasks;
+    spawnedId = completion.spawnedId;
+  } else {
+    const nextTask: Task = {
+      ...task,
+      status: "done",
+      updatedAt: ctx.now,
+      closedAt: task.closedAt ?? ctx.now
+    };
+    tasks = ctx.state.tasks.map((candidate) =>
+      candidate.id === task.id ? nextTask : candidate
+    );
+  }
+
+  const spawnedTask = spawnedId
+    ? tasks.find((candidate) => candidate.id === spawnedId)
+    : undefined;
+  const selectedId = spawnedTask && isTaskVisible(spawnedTask, ctx) ? spawnedTask.id : task.id;
   const actions: CommandResult["actions"] = [
     { type: "setTasks", tasks },
-    { type: "setSelected", id: task.id }
+    { type: "setSelected", id: selectedId }
   ];
-  if (task.status === "open") {
+  if (transitionFromOpen) {
+    const completedTask = tasks.find((candidate) => candidate.id === task.id) ?? task;
     actions.push({
       type: "recordCompletion",
       taskId: task.id,
       at: ctx.now,
-      tags: nextTask.tags
+      tags: completedTask.tags
     });
     actions.push({
       type: "evaluateEngagement",
@@ -218,6 +272,81 @@ function executeDue(command: DueCommand, ctx: ExecContext): CommandResult {
   return ok(actions, output);
 }
 
+function executeRecur(command: RecurCommand, ctx: ExecContext): CommandResult {
+  const task = resolveTargetTask(command.target, ctx);
+  if (!task) {
+    return error("Error: recur requires an existing selected task or id");
+  }
+  if (typeof task.dueAt !== "number") {
+    return error("Error: recurrence requires a due date (set due:YYYY-MM-DD [at:HH:MM] first).");
+  }
+
+  let nextTask: Task;
+  let output: string;
+  if (command.clear) {
+    nextTask = {
+      ...task,
+      recurrence: undefined,
+      updatedAt: ctx.now
+    };
+    output = `Recurrence cleared: ${task.title}`;
+  } else {
+    const dueDate = new Date(task.dueAt);
+    const weekday = weekdayFromDate(dueDate);
+    const fallbackMonthDay = dueDate.getDate();
+    const interval = Math.max(1, Math.floor(command.interval));
+    const freq =
+      command.every === "day"
+        ? "daily"
+        : command.every === "week"
+          ? "weekly"
+          : "monthly";
+
+    const recurrence: NonNullable<Task["recurrence"]> = {
+      freq,
+      interval,
+      ...(command.every === "week"
+        ? { byDay: command.onDays && command.onDays.length > 0 ? command.onDays : [weekday] }
+        : {}),
+      ...(command.every === "month"
+        ? {
+            byMonthDay:
+              command.onMonthDays && command.onMonthDays.length > 0
+                ? command.onMonthDays
+                : [fallbackMonthDay]
+          }
+        : {}),
+      anchorLocal: {
+        hour: dueDate.getHours(),
+        minute: dueDate.getMinutes()
+      },
+      dtstart: formatDateToLocalIso(dueDate),
+      rrule: toRRuleLine(command),
+      series_id: task.recurrence?.series_id ?? `series:${task.id}`
+    };
+
+    nextTask = {
+      ...task,
+      recurrence,
+      updatedAt: ctx.now
+    };
+    output = `Recurrence set: ${task.title} -> every ${command.every}`;
+  }
+
+  return ok(
+    [
+      {
+        type: "setTasks",
+        tasks: ctx.state.tasks.map((candidate) =>
+          candidate.id === task.id ? nextTask : candidate
+        )
+      },
+      { type: "setSelected", id: task.id }
+    ],
+    output
+  );
+}
+
 export function executeCommand(command: Command, ctx: ExecContext): CommandResult {
   if (command.type === "add") {
     return executeAdd(command, ctx);
@@ -227,6 +356,9 @@ export function executeCommand(command: Command, ctx: ExecContext): CommandResul
   }
   if (command.type === "due") {
     return executeDue(command, ctx);
+  }
+  if (command.type === "recur") {
+    return executeRecur(command, ctx);
   }
   return ok([], getHelpLine(command.topic));
 }

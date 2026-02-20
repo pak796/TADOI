@@ -210,6 +210,32 @@ describe("handleKey", () => {
     ]);
   });
 
+  it("routes edit-switch modal keys", () => {
+    const modalState = {
+      ...initialUIState,
+      mode: Mode.MODAL_CONFIRM,
+      focus: FocusTarget.MODAL,
+      modal: {
+        type: "edit_switch_confirm" as const,
+        fromTaskId: "task-a",
+        toTaskId: "task-b",
+        toTaskTitle: "Task B",
+        previousMode: Mode.EDIT,
+        previousFocus: FocusTarget.EDITOR_TITLE
+      }
+    };
+    expect(run({ name: "s", sequence: "s" }, { uiState: modalState })).toEqual([
+      { scope: "domain", type: "MODAL_EDIT_SWITCH_SAVE" }
+    ]);
+    expect(run({ name: "d", sequence: "d" }, { uiState: modalState })).toEqual([
+      { scope: "domain", type: "MODAL_EDIT_SWITCH_DISCARD_SWITCH" }
+    ]);
+    expect(run({ name: "c", sequence: "c" }, { uiState: modalState })).toEqual([
+      { scope: "domain", type: "MODAL_EDIT_SWITCH_DISCARD_CLOSE" }
+    ]);
+    expect(run({ name: "enter" }, { uiState: modalState })).toEqual([]);
+  });
+
   it("routes task-link modal confirm keys", () => {
     const deleteModalState = {
       ...initialUIState,
@@ -894,6 +920,21 @@ describe("handleKey", () => {
     ]);
     expect(run({ ctrl: true, name: "d" }, { uiState: addState })).toEqual([
       { scope: "ui", type: "SCROLL_EDITOR_PAGE", direction: 1 }
+    ]);
+
+    const notesState = {
+      ...initialUIState,
+      mode: Mode.EDIT,
+      focus: FocusTarget.EDITOR_NOTES
+    };
+    expect(run({ name: "j", sequence: "j" }, { uiState: notesState })).toEqual([]);
+    expect(run({ name: "down" }, { uiState: notesState })).toEqual([]);
+    expect(run({ name: "b", sequence: "b" }, { uiState: notesState })).toEqual([]);
+    expect(run({ name: "/", sequence: "/" }, { uiState: notesState })).toEqual([]);
+    expect(run({ name: "t", sequence: "t" }, { uiState: notesState })).toEqual([]);
+    expect(run({ name: "enter" }, { uiState: notesState })).toEqual([]);
+    expect(run({ name: "escape" }, { uiState: notesState })).toEqual([
+      { scope: "ui", type: "UNWIND" }
     ]);
   });
 

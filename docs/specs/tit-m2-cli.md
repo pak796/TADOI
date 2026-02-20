@@ -10,11 +10,12 @@
 ## Invocation forms
 - Subcommand wrapper:
   - `tadoi add ...`
-  - `tadoi done ...`
-  - `tadoi due ...`
+  - `tadoi done id:<task-id>`
+  - `tadoi due id:<task-id> ...`
   - `tadoi help ...`
 - Raw DSL passthrough:
   - `tadoi 'add "Task" due:2026-03-05 #tag'`
+  - Raw DSL handling is enabled when the post-binary argv is a single TIT command string.
 
 ## Exit codes
 - `0`: success
@@ -35,6 +36,7 @@
 ## Command rules in CLI
 - `@selected` is rejected in CLI:
   - `Error: @selected is only available in-app. Use id:<uuid>.`
+- This includes implicit selected targets (`tadoi done` without `id:` is rejected with exit code `2`).
 - `due` supports both:
   - `due @selected clear` (in-app behavior unchanged)
   - `due id:<task-id> clear` (M2 parity addition)

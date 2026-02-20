@@ -1,22 +1,18 @@
 # TADOI™ Black Box Test Matrix
 
-Verified as of 2026-02-13 (v0.3.6).
+Verified as of 2026-02-20 (v0.3.7).
 
 Focus: user-visible behavior with no code inspection.
 
-| Area | Scenario | Expected Result |
-|---|---|---|
-| Launch | Start at `>=104x24` | App renders list mode without guard |
-| Layout guard | Resize below minimum | Guard appears and blocks interaction |
-| Add/Edit | Add task and edit fields | Data persists after save |
-| Search | `/` then search | Filtered list; exit via `Enter`/`Esc` |
-| Filters | Cycle status/due/tag filters | List updates; dashboard parity preserved |
-| Dashboard | Toggle dashboard and apply top tag | Tag filter updated; list matches dashboard |
-| Recurrence | Create recurring task, complete/skip/snooze | Occurrence rules applied correctly |
-| Delete modal | Delete occurrence | `y` this, `f` this+future, `n`/`Esc` cancel |
-| Backup Center | Export backup | File created in expected location |
-| Import | Import with dry-run | Dry-run runs first; commit gated |
-| Calendar | Export/Import ICS | Files created; import summary shown |
-| Settings | Toggle theme/flash/notifications | Settings persist across restart |
-| Links | Add link, open, copy, delete | Actions route to correct target |
-| Exit | `q` in LIST | Clean shutdown |
+| ID | Area | Scenario | Expected Result | QA Link |
+|---|---|---|---|---|
+| BB-001 | Launch | Start at `>=104x24` | App renders list mode without guard | `QA-001` |
+| BB-002 | Layout guard | Resize below minimum | Guard appears and blocks interaction | `QA-002` |
+| BB-003 | Search | `/` then search | Filtered list; exit via `Enter`/`Esc` | `QA-013`, `QA-014` |
+| BB-004 | Recurrence | Create recurring task, complete/skip/snooze | Occurrence rules applied correctly | `QA-023`..`QA-028` |
+| BB-005 | Backup/Import | Import with dry-run | Dry-run runs first; commit remains gated | `QA-033`, `QA-034`, `QA-055` |
+| BB-006 | TIT In-App | Open TIT, run `add`, close TIT | TIT routes keys correctly and prints deterministic output | `QA-065`, `QA-066` |
+| BB-007 | TIT Due/Recur | Set/clear due and recurrence in TIT | Due/recur rules apply with validation errors where expected | `QA-068`, `QA-069` |
+| BB-008 | TIT CLI | Run wrapper and raw DSL forms | CLI command parity holds for `add|done|due|recur|help` | `QA-070` |
+| BB-009 | TIT CLI Lock | Run CLI write command while app open | Lock error is surfaced; mutation is blocked | `QA-071` |
+| BB-010 | TIT Recurrence Spawn | Complete recurring task via TIT/CLI | `open -> done` spawns next open occurrence exactly once | `QA-072` |

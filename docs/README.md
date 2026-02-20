@@ -6,13 +6,13 @@ This index links the current user-facing TADOI documentation set.
 - [Installation Guide (All Platforms)](./TADOI_Installation_Guide_All_Platforms.md)
 - [Install (Concise)](./INSTALL.md)
 - [Usage Guide](./USAGE.md)
-- [QA Guide (v0.3.6)](./TADOI_QA_Guide_v0.3.6.md)
+- [QA Guide (v0.3.7)](./TADOI_QA_Guide_v0.3.7.md)
 - [Smoke Test Checklist](./QA/SMOKE_TEST_CHECKLIST.md)
 - [Black Box Test Matrix](./QA/BLACK_BOX_TEST_MATRIX.md)
 - [Regression Areas](./QA/REGRESSION_AREAS.md)
-- [Feature List (v0.3.6)](./TADOI_Feature_List_v0.3.6.md)
-- [Product Spec (v0.3.6)](../TADOI_SPEC_v0.3.6.md)
-- [Task List (v0.3.6)](../TADOI_TASKS_v0.3.6.md)
+- [Feature List (v0.3.7)](./TADOI_Feature_List_v0.3.7.md)
+- [Product Spec (v0.3.7)](../TADOI_SPEC_v0.3.7.md)
+- [Task List (v0.3.7)](../TADOI_TASKS_v0.3.7.md)
 - [Release Checklist](./RELEASE_CHECKLIST.md)
 - [Release Notes](./RELEASE_NOTES.md)
 - [Architecture Overview](./ARCHITECTURE_OVERVIEW.md)
@@ -25,7 +25,7 @@ This index links the current user-facing TADOI documentation set.
 - [Backup Center (In-App)](./backup-center.md)
 - [Recurring Tasks Implementation Plan](./recurring-tasks-implementation-plan.md)
 - [Branding Operations Guide](./ops/branding.md)
-- [Notion Sync Pack (v0.3.6)](./ops/notion_v0.3.6_sync_pack.md)
+- [Notion Sync Pack (v0.3.7)](./ops/notion_v0.3.7_sync_pack.md)
 - [Documentation Index](./DOC_INDEX.md)
 - [Archival Path Policy](./ARCHIVAL_PATH_POLICY.md)
 - [Documentation Audit Report](./DOC_AUDIT_REPORT.md)
@@ -34,8 +34,8 @@ This index links the current user-facing TADOI documentation set.
 - [Security/Privacy Remediation Plan (2026-02-12)](./audits/tadoi-security-privacy-remediation-2026-02-12.md)
 
 ## Release Context
-- Runtime baseline: `v0.3.6`
-- Package baseline: `0.3.6`
+- Runtime baseline: `v0.3.7`
+- Package baseline: `0.3.7`
 
 ## Trademark Notice
 TADOI™ is a trademark of <OWNER>. Other names may be trademarks of their respective owners.

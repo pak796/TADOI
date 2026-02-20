@@ -1,8 +1,8 @@
-# TADOI™ Task List (v0.3.6)
+# TADOI™ Task List (v0.3.7)
 
-Updated: 2026-02-13
-Runtime baseline: `v0.3.6`
-Package baseline: `0.3.6`
+Updated: 2026-02-20
+Runtime baseline: `v0.3.7`
+Package baseline: `0.3.7`
 
 ## Conventions
 - Status labels: `Complete`, `In Progress`, `Pending`, `Blocked`.
@@ -58,12 +58,18 @@ Package baseline: `0.3.6`
 - `TA-059` Engagement milestone toasts implemented for first win, recurring milestones, momentum, and streak notifications. (`Complete`)
 - `TA-060` Persisted engagement state migration landed with schema bump `4 -> 5`. (`Complete`)
 
+### A9) TIT Command Layer
+- `TA-061` TIT M1 command bar overlay landed in LIST mode with history + routing suppression. (`Complete`)
+- `TA-062` TIT M2 external CLI parity landed (`add|done|due|recur|help`) with lock and atomic save policy. (`Complete`)
+- `TA-063` TIT M3 recurrence command landed (`recur`) with deterministic validation and due-anchor rules. (`Complete`)
+- `TA-064` Completion pathway recurrence spawn parity preserved across TIT command execution and list-mode completion flows. (`Complete`)
+
 ## B) Documentation and Release Governance
 
 ### B1) Completed in this docs sync
-- `TD-001` Update active docs to `v0.3.6` baseline alignment. (`Complete`)
-- `TD-002` Create versioned spec artifact: `TADOI_SPEC_v0.3.6.md`. (`Complete`)
-- `TD-003` Create versioned task artifact: `TADOI_TASKS_v0.3.6.md`. (`Complete`)
+- `TD-001` Update active docs to `v0.3.7` baseline alignment. (`Complete`)
+- `TD-002` Create versioned spec artifact: `TADOI_SPEC_v0.3.7.md`. (`Complete`)
+- `TD-003` Create versioned task artifact: `TADOI_TASKS_v0.3.7.md`. (`Complete`)
 - `TD-004` Refresh installation/QA/feature docs for code-truth parity. (`Complete`)
 - `TD-005` Update changelog/docs index references for active artifacts. (`Complete`)
 - `TD-006` Produce docs audit inventory and Notion sync manifest. (`Complete`)
@@ -76,7 +82,7 @@ Package baseline: `0.3.6`
 ## C) QA Execution Matrix (Manual)
 
 Smoke baseline (required all platforms):
-- `QA-001`, `QA-002`, `QA-005`, `QA-008`, `QA-013`, `QA-019`, `QA-023`, `QA-029`, `QA-032`, `QA-036`, `QA-039`, `QA-042`, `QA-052`, `QA-053`
+- `QA-001`, `QA-002`, `QA-005`, `QA-008`, `QA-013`, `QA-019`, `QA-023`, `QA-029`, `QA-032`, `QA-036`, `QA-039`, `QA-042`, `QA-052`, `QA-053`, `QA-065`, `QA-066`, `QA-068`
 
 Extended functional smoke:
 - `QA-047` logo rotation parity
@@ -91,8 +97,11 @@ Extended functional smoke:
 - `QA-058` recurrence override/cancellation summary coverage
 - `QA-059` security policy block mode for risky link opens
 - `QA-060` startup log redaction and verbose override behavior
+- `QA-070` CLI command parity (`add|done|due|recur|help`) and `@selected` rejection
+- `QA-071` CLI lock-gate behavior and exit-code semantics
+- `QA-072` recurrence spawn parity from TIT/CLI completion paths
 
-Reference: `docs/TADOI_QA_Guide_v0.3.6.md`
+Reference: `docs/TADOI_QA_Guide_v0.3.7.md`
 
 ## D) Next Candidate Phase (v0.3.7 Planning)
 
@@ -111,7 +120,7 @@ Reference: `docs/TADOI_QA_Guide_v0.3.6.md`
 ## E) Acceptance Criteria for This Task Sheet
 
 This file is considered current when:
-1. Runtime baseline remains `v0.3.6` / `0.3.6`.
+1. Runtime baseline remains `v0.3.7` / `0.3.7`.
 2. Completed items match current code behavior and keybindings.
 3. QA references map to active QA guide case IDs.
 4. Pending items are actionable and non-duplicative.

@@ -50,7 +50,8 @@ This document is the canonical M1 baseline for follow-up TIT milestone specs.
 `due @selected YYYY-MM-DD [at:HH:MM]`
 `due id:<task-id> YYYY-MM-DD [at:HH:MM]`
 `due @selected clear`
-- `clear` is supported for `@selected` in M1.
+`due id:<task-id> clear`
+- `clear` is supported for both `@selected` and `id:<task-id>` (id-target clear was added in M2 and remains compatible with TIT).
 - Emits actions: `setTasks`, `setSelected`.
 - Output: `Due set: ...` or `Due cleared: ...`.
 
@@ -77,6 +78,7 @@ This document is the canonical M1 baseline for follow-up TIT milestone specs.
 4. `due`:
    - `due @selected 2026-03-05 at:09:00`
    - `due @selected clear`
+   - `due id:<task-id> clear`
 5. `help`:
    - `help`
    - `help add`
