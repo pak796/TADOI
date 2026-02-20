@@ -9,11 +9,11 @@ This is a high-level map for orientation. Source code is the authority.
 - Key routing: `src/app/keyRouter.ts`
 - UI state + mode boundaries: `src/app/uiState.ts`, `src/ui/state.ts`, `src/ui/modeFocus.ts`
 
-## TIT Command Layer (M1-M3)
-- In-app TIT overlay and execution bridge: `src/app/App.tsx`
+## TITS Command Layer (M1-M3)
+- In-app TITS overlay and execution bridge: `src/app/App.tsx`
 - Shared parser/executor/help: `src/commands/parse.ts`, `src/commands/execute.ts`, `src/commands/help.ts`
 - CLI command runtime: `src/cli/main.ts`
-- Recurrence completion helper used by TIT and non-TIT completion paths: `src/domain/recurrence/index.ts`
+- Recurrence completion helper used by TITS and non-TITS completion paths: `src/domain/recurrence/index.ts`
 
 ## Domain Logic
 - Domain rules: `src/domain/*`
@@ -29,7 +29,7 @@ This is a high-level map for orientation. Source code is the authority.
 
 ## CLI + Portability
 - CLI entry: `src/cli.ts`
-- TIT CLI command path: `src/cli/main.ts`
+- TITS CLI command path: `src/cli/main.ts`
 - Calendar commands: `src/cli/calendarCommands.ts`
 - Import/export: `src/commands/import.ts`, `src/commands/export.ts`
 
@@ -40,7 +40,7 @@ This is a high-level map for orientation. Source code is the authority.
 
 ## Tests
 - Key routing and invariants: `src/app/keyRouter.test.ts`, `src/app/keybindingContract.test.ts`
-- TIT command layer: `src/commands/parse.test.ts`, `src/commands/execute.test.ts`, `src/commands/help.test.ts`, `src/cli/main.test.ts`
+- TITS command layer: `src/commands/parse.test.ts`, `src/commands/execute.test.ts`, `src/commands/help.test.ts`, `src/cli/main.test.ts`
 - Domain and state tests: `src/domain/*.test.ts`, `src/state/*.test.ts`
 
 ## Documentation
@@ -48,4 +48,4 @@ This is a high-level map for orientation. Source code is the authority.
 - Task list: `TADOI_TASKS_v0.3.7.md`
 - QA guide: `docs/TADOI_QA_Guide_v0.3.7.md`
 - Usage + install: `docs/USAGE.md`, `docs/INSTALL.md`
-- TIT specs: `docs/specs/tit-m1-commandbar.md`, `docs/specs/tit-m2-cli.md`, `docs/specs/tit-m3-recurrence.md`
+- TITS specs: `docs/specs/tits-m1-commandbar.md`, `docs/specs/tits-m2-cli.md`, `docs/specs/tits-m3-recurrence.md`

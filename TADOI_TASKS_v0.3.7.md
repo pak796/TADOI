@@ -58,11 +58,11 @@ Package baseline: `0.3.7`
 - `TA-059` Engagement milestone toasts implemented for first win, recurring milestones, momentum, and streak notifications. (`Complete`)
 - `TA-060` Persisted engagement state migration landed with schema bump `4 -> 5`. (`Complete`)
 
-### A9) TIT Command Layer
-- `TA-061` TIT M1 command bar overlay landed in LIST mode with history + routing suppression. (`Complete`)
-- `TA-062` TIT M2 external CLI parity landed (`add|done|due|recur|help`) with lock and atomic save policy. (`Complete`)
-- `TA-063` TIT M3 recurrence command landed (`recur`) with deterministic validation and due-anchor rules. (`Complete`)
-- `TA-064` Completion pathway recurrence spawn parity preserved across TIT command execution and list-mode completion flows. (`Complete`)
+### A9) TITS Command Layer
+- `TA-061` TITS M1 command bar overlay landed in LIST mode with history + routing suppression. (`Complete`)
+- `TA-062` TITS M2 external CLI parity landed (`add|done|due|recur|help`) with lock and atomic save policy. (`Complete`)
+- `TA-063` TITS M3 recurrence command landed (`recur`) with deterministic validation and due-anchor rules. (`Complete`)
+- `TA-064` Completion pathway recurrence spawn parity preserved across TITS command execution and list-mode completion flows. (`Complete`)
 
 ## B) Documentation and Release Governance
 
@@ -99,7 +99,7 @@ Extended functional smoke:
 - `QA-060` startup log redaction and verbose override behavior
 - `QA-070` CLI command parity (`add|done|due|recur|help`) and `@selected` rejection
 - `QA-071` CLI lock-gate behavior and exit-code semantics
-- `QA-072` recurrence spawn parity from TIT/CLI completion paths
+- `QA-072` recurrence spawn parity from TITS/CLI completion paths
 
 Reference: `docs/TADOI_QA_Guide_v0.3.7.md`
 

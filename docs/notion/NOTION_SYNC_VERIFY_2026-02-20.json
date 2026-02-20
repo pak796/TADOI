@@ -2,7 +2,7 @@
   "automation_id": "daily-documentation-refresh-packaging-daily-build-tadoi",
   "version_baseline": "v0.3.7",
   "package_version_baseline": "0.3.7",
-  "audit_token": "[AUDIT 2026-02-20] Metadata+readback synced for TIT v0.3.7",
+  "audit_token": "[AUDIT 2026-02-20] Metadata+readback synced for TITS v0.3.7",
   "generated_at_utc": "2026-02-20T03:43:10Z",
   "sources": {
     "property_verification": "/tmp/codex_notion_props_verify.txt",

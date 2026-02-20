@@ -1778,6 +1778,21 @@ export function App({
   const commandOutputLine = commandOutput
     ? truncateToWidth(commandOutput.text.replace(/\s+/g, " ").trim(), Math.max(1, bottomBarWidth - 8))
     : "";
+  const commandOverlayInnerWidth = Math.max(1, bottomBarContentWidth - 4);
+  const commandHeaderLine = fitLineToWidth(
+    "TITS — Terminal in Terminal System  ·  Esc Close  Enter Run  ↑/↓ History",
+    commandOverlayInnerWidth
+  );
+  const commandIdleHintLine = fitLineToWidth(
+    'Try: add "Buy milk" #errands  •  help',
+    commandOverlayInnerWidth
+  );
+  const commandStatusLine = commandOutput
+    ? fitLineToWidth(
+        `${commandOutput.kind === "error" ? "ERR:" : "OK:"} ${commandOutputLine}`,
+        commandOverlayInnerWidth
+      )
+    : commandIdleHintLine;
   const renderStartMs = Date.now();
 
   function formatSaveTimestamp(epochMs: number): string {
@@ -6701,20 +6716,43 @@ export function App({
             borderColor: commandOutput?.kind === "error" ? theme.warn : theme.outline
           }}
         >
-          {commandOutput ? (
-            <text style={{ color: commandOutput.kind === "error" ? theme.warn : theme.ok }}>
-              {commandOutputLine}
+          <box
+            style={{
+              backgroundColor: theme.accentBlue,
+              paddingLeft: 1,
+              paddingRight: 1
+            }}
+          >
+            <text style={{ color: theme.bg, fontWeight: "bold" }}>{commandHeaderLine}</text>
+          </box>
+          <box
+            style={{
+              paddingLeft: 1,
+              paddingRight: 1,
+              marginTop: 1
+            }}
+          >
+            <text style={{ color: commandOutput ? (commandOutput.kind === "error" ? theme.warn : theme.ok) : theme.muted }}>
+              {commandStatusLine}
             </text>
-          ) : null}
-          <box style={{ flexDirection: "row" }}>
-            <text style={{ color: theme.muted, marginRight: 1 }}>:</text>
+          </box>
+          <box
+            style={{
+              flexDirection: "row",
+              backgroundColor: theme.bg,
+              paddingLeft: 1,
+              paddingRight: 1,
+              marginTop: 1
+            }}
+          >
+            <text style={{ color: theme.muted, marginRight: 1, fontWeight: "bold" }}>:</text>
             <input
               value={commandText}
               onInput={setCommandTextValue}
               focused
               placeholder='add "Buy milk" #errands'
               style={{
-                backgroundColor: inputTheme.bg,
+                backgroundColor: theme.bg,
                 color: inputTheme.text,
                 flexGrow: 1
               }}

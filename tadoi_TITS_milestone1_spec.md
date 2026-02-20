@@ -1,6 +1,6 @@
-# TADOI — TIT Command Engine + Command Bar Overlay (Milestone 1)
+# TADOI — TITS Command Engine + Command Bar Overlay (Milestone 1)
 
-**Feature:** TIT (Terminal‑in‑Terminal) Command Bar  
+**Feature:** TITS (Terminal‑in‑Terminal System) Command Bar  
 **Milestone:** 1 (Command engine + in-app command bar)  
 **Date:** 2026-02-19  
 **Spec version:** v0.2 (implemented baseline)
@@ -10,7 +10,7 @@
 ## 1) Goal and scope
 
 ### 1.1 Goals (Milestone 1)
-- Add an **in-app command bar overlay** (“TIT”) that accepts a compact CLI syntax.
+- Add an **in-app command bar overlay** (“TITS”) that accepts a compact CLI syntax.
 - Implement a **shared command engine** (parser + executor) for:
   - `add` — create task
   - `done` — mark task done
@@ -27,7 +27,7 @@
 - No autocompletion (leave an extension point; not required).
 
 ### 1.3 Design principles
-- **Single command language**, multiple front-ends (TIT now, external CLI later).
+- **Single command language**, multiple front-ends (TITS now, external CLI later).
 - **Executor is pure**: `Command + Context -> Action[] + Output`.
 - **Reducer remains the authority** for domain mutations:
   - The command engine emits **existing store actions** where possible.
@@ -39,13 +39,13 @@
 ## 2) Inputs and UX
 
 ### 2.1 Open/close and navigation
-- Open TIT: backtick (`` ` ``) in list mode
+- Open TITS: backtick (`` ` ``) in list mode
 - Execute: `Enter`
 - Close: `Esc`
 - History: `Up` / `Down`
-- While TIT is open:
+- While TITS is open:
   - Suppress list-mode global binds (`j/k/a/e/t/...`)
-  - Suppress editor-mode keybinds if you later allow TIT in editor modes (out of scope for M1; list mode only recommended)
+  - Suppress editor-mode keybinds if you later allow TITS in editor modes (out of scope for M1; list mode only recommended)
 
 ### 2.2 UI placement
 - Render an **absolute overlay** at the bottom of the root `<box>` in `App.tsx`.
@@ -103,12 +103,12 @@
 
 #### B) `done`
 **Form**
-- `done` (defaults to selected task in TIT)
+- `done` (defaults to selected task in TITS)
 - `done @selected`
 - `done id:<uuid>`
 
 **Target resolution**
-- In TIT, `done` implies `@selected`.
+- In TITS, `done` implies `@selected`.
 - If no selected task exists → error.
 
 **Effect**
@@ -173,7 +173,7 @@ Create a new command subsystem:
   - `help`: topic?
 
 **Targets**
-- `@selected` (TIT only; CLI will error if used)
+- `@selected` (TITS only; CLI will error if used)
 - `id:<uuid>`
 - optional title match (M1 optional)
 
@@ -230,7 +230,7 @@ Executor requirements:
 - No actions.
 
 ### 5.3 Command bar UI state (Milestone 1)
-- Keep TIT UI state **local to `App.tsx`** (via `useState`) to avoid expanding the store action union in M1:
+- Keep TITS UI state **local to `App.tsx`** (via `useState`) to avoid expanding the store action union in M1:
   - `commandActive: boolean`
   - `commandText: string`
   - `history: string[]`
@@ -244,13 +244,13 @@ Executor requirements:
 ## 6) App.tsx changes (wiring and routing)
 
 ### 6.1 Key routing priority (implemented)
-Current `useKeyboard` routing for TIT:
+Current `useKeyboard` routing for TITS:
 
 1) if `commandActive`, handle only `Esc` / `Enter` / `Up` / `Down`, then return
-2) in `LIST` mode, open TIT on backtick (`` ` ``) when views/save overlays are closed
+2) in `LIST` mode, open TITS on backtick (`` ` ``) when views/save overlays are closed
 3) otherwise continue existing router/modal/help/search/editor/list handling
 
-### 6.2 Execution pipeline in TIT
+### 6.2 Execution pipeline in TITS
 On `Enter` when command bar is open:
 
 1) read latest input text from the command input value buffer
@@ -383,13 +383,13 @@ When a recurring task transitions `open -> done`:
 - Output line updates correctly after each execution attempt.
 
 ### 10.4 Persistence
-- After `add` from TIT, restart → task is present (existing `saveStateDebounced` path)
+- After `add` from TITS, restart → task is present (existing `saveStateDebounced` path)
 - No command UI state is persisted (persistence payload remains the existing app contract).
 
 ---
 
 ## 11) Acceptance criteria (Milestone 1)
-- TIT overlay can be opened via backtick (`` ` ``), accepts input, and executes:
+- TITS overlay can be opened via backtick (`` ` ``), accepts input, and executes:
   - `add`, `done`, `due`, `help`
 - Each command produces a single-line success/error output.
 - Added/updated tasks persist via current persistence flow.

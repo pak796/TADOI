@@ -362,29 +362,29 @@ Smoke pass criteria:
   - Steps: run import with `--report` pointing at a path that cannot be written as a file (for example existing directory path).
   - Expected: import processing succeeds and summary is returned; warning is printed; run is not marked failed solely because report writing failed.
 
-### N) TIT Command Layer (In-App + CLI)
+### N) TITS Command Layer (In-App + CLI)
 
-- [ ] `QA-065 [SMOKE]` TIT open/close and routing suppression in LIST mode.
+- [ ] `QA-065 [SMOKE]` TITS open/close and routing suppression in LIST mode.
   - Preconditions: list mode with at least one task.
-  - Steps: press `` ` `` to open TIT, then press `j/k`, `Esc`.
-  - Expected: TIT opens, list selection does not move while TIT is open, `Esc` closes TIT.
-- [ ] `QA-066 [SMOKE]` TIT `add` + validation behavior.
-  - Preconditions: TIT open.
-  - Steps: run `add "TIT smoke task" #qa`; then run `add "X" at:09:00`.
+  - Steps: press `` ` `` to open TITS, then press `j/k`, `Esc`.
+  - Expected: TITS opens, list selection does not move while TITS is open, `Esc` closes TITS.
+- [ ] `QA-066 [SMOKE]` TITS `add` + validation behavior.
+  - Preconditions: TITS open.
+  - Steps: run `add "TITS smoke task" #qa`; then run `add "X" at:09:00`.
   - Expected: first command creates task; second returns validation error (`at:` requires `due:`).
-- [ ] `QA-067` TIT `done` deterministic behavior + engagement trigger.
+- [ ] `QA-067` TITS `done` deterministic behavior + engagement trigger.
   - Preconditions: selected open task.
   - Steps: run `done` twice.
   - Expected: first run marks task done; second run keeps done state (no toggle back to open).
-- [ ] `QA-068 [SMOKE]` TIT `due` set and clear for selected target.
+- [ ] `QA-068 [SMOKE]` TITS `due` set and clear for selected target.
   - Preconditions: selected task.
   - Steps: run `due @selected 2026-03-05 at:09:00`, then `due @selected clear`.
   - Expected: due timestamp sets then clears with deterministic output lines.
-- [ ] `QA-069` TIT `recur` set/clear and due-anchor enforcement.
+- [ ] `QA-069` TITS `recur` set/clear and due-anchor enforcement.
   - Preconditions: selected task with due date, and one without due date.
   - Steps: run `recur @selected every:week on:mon,wed`; then `recur @selected clear`; on no-due task run `recur @selected every:day`.
   - Expected: set and clear succeed on due task; no-due task is rejected with explicit error.
-- [ ] `QA-070` CLI TIT command parity and `@selected` rejection.
+- [ ] `QA-070` CLI TITS command parity and `@selected` rejection.
   - Preconditions: app closed; known task id available.
   - Steps: run `bun run start -- help recur`; run wrapper and raw DSL forms for `add|done|due|recur`; run `bun run start -- due @selected clear`.
   - Expected: wrapper/raw commands behave consistently; `@selected` is rejected in CLI with actionable error.
@@ -392,9 +392,9 @@ Smoke pass criteria:
   - Preconditions: app running.
   - Steps: run `bun run start -- add "lock gate test"` from another terminal.
   - Expected: command fails with lock-present error and lock exit-code semantics.
-- [ ] `QA-072` Recurrence spawn parity from TIT/CLI done path.
+- [ ] `QA-072` Recurrence spawn parity from TITS/CLI done path.
   - Preconditions: recurring task exists with due date.
-  - Steps: complete once with TIT `done` and once with CLI `done id:<task-id>`.
+  - Steps: complete once with TITS `done` and once with CLI `done id:<task-id>`.
   - Expected: each `open -> done` transition materializes next open occurrence once.
 
 ## 7) Automated Coverage Mapping
@@ -408,7 +408,7 @@ Smoke pass criteria:
 | Dashboard KPIs and tags | `src/domain/dashboard.test.ts`, `src/domain/dashboardKpis.test.ts`, `src/domain/tagStats.test.ts`, `src/app/dashboardTagFilterContract.test.ts` |
 | Backup/import/export + portability | `src/state/backupCenterFlow.test.ts`, `src/state/backupService.test.ts`, `src/state/portability.test.ts` |
 | Calendar ICS export/import (CLI + Backup Center + services) | `src/cli/calendarCommands.test.ts`, `src/commands/calendarImport.test.ts`, `src/cli.test.ts`, `src/state/backupCenterFlow.test.ts`, `src/state/backupCenterCalendarController.test.ts`, `src/calendar/icsWriter.test.ts`, `src/calendar/icsParser.test.ts`, `src/calendar/importMapper.test.ts`, `src/calendar/calendarMapper.test.ts`, `src/calendar/range.test.ts`, `src/calendar/rrule.test.ts`, `src/state/calendarExportService.test.ts`, `src/state/calendarImportService.test.ts`, `src/state/calendarRoundTrip.test.ts` |
-| TIT command layer (M1-M3) | `src/commands/parse.test.ts`, `src/commands/execute.test.ts`, `src/commands/help.test.ts`, `src/cli/main.test.ts`, `src/app/keyRouter.test.ts`, `src/state/store.test.ts` |
+| TITS command layer (M1-M3) | `src/commands/parse.test.ts`, `src/commands/execute.test.ts`, `src/commands/help.test.ts`, `src/cli/main.test.ts`, `src/app/keyRouter.test.ts`, `src/state/store.test.ts` |
 | Notifications + engagement toasts | `src/notifications/notificationManager.test.ts`, `src/notifications/overdueTaskActions.test.ts`, `src/notifications/notifiers/inAppModalNotifier.test.ts`, `src/notifications/notifiers/terminalBellNotifier.test.ts`, `src/state/store.test.ts` |
 | Settings/theme/custom1 | `src/settings/settings.test.ts`, `src/theme/themes.test.ts`, `src/theme/resolveThemeTokens.test.ts`, `src/theme/custom1ColorUtils.test.ts` |
 | Brand/logo + left rail | `src/brand/brand.test.ts`, `src/components/LeftRail.tsx`, `src/app/keyRouter.test.ts` |
@@ -417,7 +417,7 @@ Smoke pass criteria:
 
 ## 8) Known Issues in Current Workspace
 
-No known automated failures in targeted TIT validation (`2026-02-20`):
+No known automated failures in targeted TITS validation (`2026-02-20`):
 - `bun test src/commands/parse.test.ts src/commands/execute.test.ts src/cli/main.test.ts src/app/keyRouter.test.ts src/state/store.test.ts`: 63/63 passing.
 - `bun run typecheck`: passing.
 

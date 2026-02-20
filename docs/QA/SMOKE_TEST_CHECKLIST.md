@@ -18,12 +18,12 @@ Run on macOS, Windows, Linux.
 - [ ] `QA-032` Backup Center opens from Help and returns via `Esc`
 - [ ] `QA-052` Calendar submenu opens from Backup Center and supports key navigation
 - [ ] `QA-053` Calendar export completes in-app
-- [ ] `QA-065` TIT opens with `` ` ``, suppresses list routing while active, and closes with `Esc`
-- [ ] `QA-066` TIT `add` succeeds and invalid `at:` without `due:` returns validation error
-- [ ] `QA-068` TIT `due` set and clear both succeed for selected task
+- [ ] `QA-065` TITS opens with `` ` ``, suppresses list routing while active, and closes with `Esc`
+- [ ] `QA-066` TITS `add` succeeds and invalid `at:` without `due:` returns validation error
+- [ ] `QA-068` TITS `due` set and clear both succeed for selected task
 - [ ] `QA-071` CLI write command returns lock error while app is running
 
 ## Pass Criteria
 - All checks pass on all three platforms
 - No crash, hang, or stuck modal state
-- TIT in-app + CLI lock semantics match expected results
+- TITS in-app + CLI lock semantics match expected results

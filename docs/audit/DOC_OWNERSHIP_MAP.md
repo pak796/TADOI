@@ -8,10 +8,10 @@ Active baseline: `v0.3.7`
 - `docs/README.md`
 - `docs/DOC_INDEX.md`
 
-## TIT Command Layer
-- `docs/specs/tit-m1-commandbar.md`
-- `docs/specs/tit-m2-cli.md`
-- `docs/specs/tit-m3-recurrence.md`
+## TITS Command Layer
+- `docs/specs/tits-m1-commandbar.md`
+- `docs/specs/tits-m2-cli.md`
+- `docs/specs/tits-m3-recurrence.md`
 - `TADOI_SPEC_v0.3.7.md`
 - `TADOI_TASKS_v0.3.7.md`
 - Source of truth code: `src/app/App.tsx`, `src/commands/*`, `src/cli/main.ts`

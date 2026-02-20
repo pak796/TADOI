@@ -1,10 +1,10 @@
-# TIT Milestone 1: Command Bar + Engine (Implemented Baseline)
+# TITS Milestone 1: Command Bar + Engine (Implemented Baseline)
 
 ## Purpose
-This document is the canonical M1 baseline for follow-up TIT milestone specs.
+This document is the canonical M1 baseline for follow-up TITS milestone specs.
 
 ## Implemented scope
-- In-app TIT command bar overlay in list mode.
+- In-app TITS command bar overlay in list mode.
 - Shared command subsystem in `src/commands/*` with no React/OpenTUI imports.
 - Commands: `add`, `done`, `due`, `help`.
 - Single-line output state:
@@ -15,7 +15,7 @@ This document is the canonical M1 baseline for follow-up TIT milestone specs.
 - Close: `Esc`.
 - Execute: `Enter`.
 - History: `Up` / `Down`.
-- While active, TIT suppresses list/global binds and handles only TIT keys.
+- While active, TITS suppresses list/global binds and handles only TITS keys.
 - Command text is read from the latest input buffer value at execute time (avoids stale first-Enter reads).
 
 ## Command language
@@ -51,7 +51,7 @@ This document is the canonical M1 baseline for follow-up TIT milestone specs.
 `due id:<task-id> YYYY-MM-DD [at:HH:MM]`
 `due @selected clear`
 `due id:<task-id> clear`
-- `clear` is supported for both `@selected` and `id:<task-id>` (id-target clear was added in M2 and remains compatible with TIT).
+- `clear` is supported for both `@selected` and `id:<task-id>` (id-target clear was added in M2 and remains compatible with TITS).
 - Emits actions: `setTasks`, `setSelected`.
 - Output: `Due set: ...` or `Due cleared: ...`.
 
@@ -62,12 +62,12 @@ This document is the canonical M1 baseline for follow-up TIT milestone specs.
 - Output: single-line help text.
 
 ## Persistence and state boundaries
-- TIT UI state stays local to `App.tsx` (`useState` + refs).
-- No TIT UI state is persisted.
+- TITS UI state stays local to `App.tsx` (`useState` + refs).
+- No TITS UI state is persisted.
 - Existing persistence contract is unchanged.
 
 ## QA checklist (M1)
-1. Open TIT with backtick and verify `j/k` do not move selection while open.
+1. Open TITS with backtick and verify `j/k` do not move selection while open.
 2. `add`:
    - `add "Buy milk" #errands`
    - `add Buy milk due:2026-02-28 at:17:30 #errands`
@@ -82,4 +82,4 @@ This document is the canonical M1 baseline for follow-up TIT milestone specs.
 5. `help`:
    - `help`
    - `help add`
-6. Restart app and verify TIT-created tasks persist.
+6. Restart app and verify TITS-created tasks persist.

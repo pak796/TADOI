@@ -1,4 +1,4 @@
-# TIT Milestone 2: External CLI (Implemented Contract)
+# TITS Milestone 2: External CLI (Implemented Contract)
 
 ## Scope
 - Reuse `src/commands/*` parser + executor from M1.
@@ -15,7 +15,7 @@
   - `tadoi help ...`
 - Raw DSL passthrough:
   - `tadoi 'add "Task" due:2026-03-05 #tag'`
-  - Raw DSL handling is enabled when the post-binary argv is a single TIT command string.
+  - Raw DSL handling is enabled when the post-binary argv is a single TITS command string.
 
 ## Exit codes
 - `0`: success

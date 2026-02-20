@@ -9,7 +9,7 @@ Sync status: `Payload ready (offline apply path)`
 - Keep Notion guide content aligned to runtime `v0.3.7` and package `0.3.7`.
 - Keep first prominent mention per page as `TADOI™`.
 - Use repository docs as canonical source for technical behavior contracts.
-- Keep TIT coverage aligned to canonical `*TIT*.md` source set.
+- Keep TITS coverage aligned to canonical `*TITS*.md` source set.
 
 ## 2) Repo -> Notion Page Mapping
 
@@ -30,10 +30,10 @@ Sync status: `Payload ready (offline apply path)`
 | `TADOI_SPEC_v0.3.7.md` | `TADOI Product Spec (v0.3.7)` | `3055aa1e-f93f-812d-ad44-f3d94b8a7219` |
 | `TADOI_TASKS_v0.3.7.md` | `TADOI Task List (v0.3.7)` | `3055aa1e-f93f-8159-b07c-ee692df137eb` |
 
-## 3) TIT Coverage Gates for Sync
-- Notion pages must include TIT M1-M3 contract coverage (`add|done|due|recur|help`).
-- QA pages must include TIT traceable IDs (`QA-065`..`QA-072`).
-- Installation/usage pages must include TIT in-app and CLI quick validation notes.
+## 3) TITS Coverage Gates for Sync
+- Notion pages must include TITS M1-M3 contract coverage (`add|done|due|recur|help`).
+- QA pages must include TITS traceable IDs (`QA-065`..`QA-072`).
+- Installation/usage pages must include TITS in-app and CLI quick validation notes.
 
 ## 4) Sync Artifacts
 - `docs/notion/NOTION_SYNC_PAYLOAD.json`

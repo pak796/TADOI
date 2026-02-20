@@ -1,33 +1,33 @@
 # TADOI™ Documentation Audit Report
 
 Date: 2026-02-20
-Scope: TIT documentation pass (offline markdown + Notion payload/runbook regeneration)
+Scope: TITS documentation pass (offline markdown + Notion payload/runbook regeneration)
 Baseline: runtime `v0.3.7`, package `0.3.7`
 
 ## 1) Summary
 
-This pass focused on TIT documentation completeness across user-facing, internal, planning, QA, and Notion sync artifacts.
+This pass focused on TITS documentation completeness across user-facing, internal, planning, QA, and Notion sync artifacts.
 
 Primary outcomes:
 - Active docs stayed on `v0.3.7` / `0.3.7` baseline.
-- TIT narrative is now explicit in user docs (`README.md`, `docs/USAGE.md`, `docs/INSTALL.md`).
-- Planning/internal docs now include TIT M1-M3 contract and task ledger coverage.
-- QA artifacts now include explicit TIT smoke, black-box, and regression coverage with traceable IDs.
+- TITS narrative is now explicit in user docs (`README.md`, `docs/USAGE.md`, `docs/INSTALL.md`).
+- Planning/internal docs now include TITS M1-M3 contract and task ledger coverage.
+- QA artifacts now include explicit TITS smoke, black-box, and regression coverage with traceable IDs.
 - Notion sync artifacts were refreshed to mirror offline docs and keep deterministic page mapping.
 - Doc inventory/ownership artifacts were refreshed to remove stale `v0.3.6` active references.
 
-## 2) Canonical TIT Source Set (filename rule `*TIT*.md`)
+## 2) Canonical TITS Source Set (filename rule `*TITS*.md`)
 
 Detected and reconciled sources:
-- `docs/specs/tit-m1-commandbar.md`
-- `docs/specs/tit-m2-cli.md`
-- `docs/specs/tit-m3-recurrence.md`
-- `tadoi_TIT_milestone1_spec.md`
-- `tit-m2-cli-revised.md`
-- `tit-m3-recurrence.md`
+- `docs/specs/tits-m1-commandbar.md`
+- `docs/specs/tits-m2-cli.md`
+- `docs/specs/tits-m3-recurrence.md`
+- `tadoi_TITS_milestone1_spec.md`
+- `tits-m2-cli-revised.md`
+- `tits-m3-recurrence.md`
 
 Code evidence used for reconciliation:
-- `src/app/App.tsx` (TIT open/close/execute/history routing)
+- `src/app/App.tsx` (TITS open/close/execute/history routing)
 - `src/commands/parse.ts`
 - `src/commands/execute.ts`
 - `src/commands/help.ts`
@@ -39,7 +39,7 @@ Code evidence used for reconciliation:
 
 ## 3) QA Coverage Changes
 
-New TIT case set in the QA guide:
+New TITS case set in the QA guide:
 - `QA-065`..`QA-072`
 
 Smoke runbook now includes:

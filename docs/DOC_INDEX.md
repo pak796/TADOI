@@ -5,25 +5,25 @@ Active runtime baseline: `v0.3.7`
 Active package baseline: `0.3.7`
 
 ## 1) Start Here
-- `README.md`: product overview, TIT command layer, quickstart, keybindings, packaging, data paths.
+- `README.md`: product overview, TITS command layer, quickstart, keybindings, packaging, data paths.
 - `docs/README.md`: active docs landing page.
 
 ## 2) Active User Guides
-- `docs/INSTALL.md`: concise install guide + TIT quick validation.
-- `docs/USAGE.md`: core flows, keybindings, TIT in-app + CLI command contract.
+- `docs/INSTALL.md`: concise install guide + TITS quick validation.
+- `docs/USAGE.md`: core flows, keybindings, TITS in-app + CLI command contract.
 - `docs/TADOI_Installation_Guide_All_Platforms.md`: binary/source install and troubleshooting.
 - `docs/TADOI_QA_Guide_v0.3.7.md`: full manual QA matrix (`QA-001`..`QA-072`).
-- `docs/QA/SMOKE_TEST_CHECKLIST.md`: daily smoke list with TIT cases.
-- `docs/QA/BLACK_BOX_TEST_MATRIX.md`: black-box scenarios with TIT coverage.
-- `docs/QA/REGRESSION_AREAS.md`: high-risk invariants, including TIT routing + CLI lock safety.
+- `docs/QA/SMOKE_TEST_CHECKLIST.md`: daily smoke list with TITS cases.
+- `docs/QA/BLACK_BOX_TEST_MATRIX.md`: black-box scenarios with TITS coverage.
+- `docs/QA/REGRESSION_AREAS.md`: high-risk invariants, including TITS routing + CLI lock safety.
 - `docs/TADOI_Feature_List_v0.3.7.md`: release-accurate feature catalog.
 
 ## 3) Active Spec and Planning
 - `TADOI_SPEC_v0.3.7.md`: current runtime behavior/spec contract.
 - `TADOI_TASKS_v0.3.7.md`: active implementation and documentation task ledger.
-- `docs/specs/tit-m1-commandbar.md`: TIT M1 command bar baseline.
-- `docs/specs/tit-m2-cli.md`: TIT M2 CLI implemented contract.
-- `docs/specs/tit-m3-recurrence.md`: TIT M3 recurrence contract.
+- `docs/specs/tits-m1-commandbar.md`: TITS M1 command bar baseline.
+- `docs/specs/tits-m2-cli.md`: TITS M2 CLI implemented contract.
+- `docs/specs/tits-m3-recurrence.md`: TITS M3 recurrence contract.
 - `TADOI_Spec_Calendar_Export_ICS_v0.2.md`: ICS export contract.
 - `TADOI_Spec_Calendar_Import_ICS_RoundTrip_v0.1.md`: ICS import contract.
 - `TADOI_Task_Links_Attachments_Spec_v0.2.md`: links/attachments behavior and security rules.

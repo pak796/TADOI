@@ -1,23 +1,23 @@
-# TIT Milestone 3: Recurrence (Scoped Spec)
+# TITS Milestone 3: Recurrence (Scoped Spec)
 
 **Project:** TADOI / TUI_TODO  
 **Milestone:** 3  
 **Date:** 2026-02-19  
 **Status:** Scoped spec (implementation-ready)  
 **Depends on:**  
-- Milestone 1 (TIT command bar + shared engine) — implemented baseline  
+- Milestone 1 (TITS command bar + shared engine) — implemented baseline  
 - Milestone 2 (External CLI + lock + atomic save) — implemented baseline
 
 ---
 
 ## 0) Context and invariants
 
-Milestone 3 extends the **existing shared command engine** (used by both TIT and the external `tadoi` CLI) and preserves these invariants:
+Milestone 3 extends the **existing shared command engine** (used by both TITS and the external `tadoi` CLI) and preserves these invariants:
 
 - Command system lives in `src/commands/*` and is UI-agnostic.
 - Command language: tokens, `#tag`, `key:value` (quoted values), and validation rules remain unchanged.
 - `done` is deterministic (force `status="done"`) and, on `open -> done`, emits engagement actions (`recordCompletion`, `evaluateEngagement`).
-- CLI rejects `@selected` targets; TIT may use `@selected`.
+- CLI rejects `@selected` targets; TITS may use `@selected`.
 - CLI writes are lock-protected and use atomic saves.
 
 ---
@@ -30,7 +30,7 @@ Milestone 3 extends the **existing shared command engine** (used by both TIT and
 - Keep it minimal and local-first (no external scheduling service).
 
 2) **Add a `recur` command** to the shared command engine
-- TIT: `recur @selected ...` and `recur @selected clear`
+- TITS: `recur @selected ...` and `recur @selected clear`
 - CLI: `recur id:<uuid> ...` and `recur id:<uuid> clear`
 
 3) **Implement “on done, spawn next instance”**
@@ -40,7 +40,7 @@ Milestone 3 extends the **existing shared command engine** (used by both TIT and
 - Preserve UX continuity by selecting the spawned instance (when visible).
 - Validate recurrence rules with actionable error messages.
 - Ensure recurrence behavior is consistent across:
-  - TIT `done`
+  - TITS `done`
   - CLI `done`
   - Any other completion pathways that mark tasks done (see §6).
 
@@ -231,7 +231,7 @@ All recurrence calculations are local-time based, anchored to the existing `dueA
 - `src/domain/recurrence.ts`
   - `computeNextDueAt(...)`
   - `completeTaskWithRecurrence(...)`
-- `docs/specs/tit-m3-recurrence.md` (this doc)
+- `docs/specs/tits-m3-recurrence.md` (this doc)
 
 ### Modified files
 - `src/domain/models.ts`
@@ -255,7 +255,7 @@ All recurrence calculations are local-time based, anchored to the existing `dueA
 
 ## 9) QA checklist (Milestone 3)
 
-### 9.1 Command-level QA (TIT)
+### 9.1 Command-level QA (TITS)
 1) Set due and recurrence:
    - `due @selected 2026-03-05 at:09:00`
    - `recur @selected every:week on:mon,wed`
@@ -292,8 +292,8 @@ All recurrence calculations are local-time based, anchored to the existing `dueA
 ## 10) Acceptance criteria (Milestone 3)
 
 - Task model includes `recurrence?: RecurrenceRule` and persists through load/save.
-- `recur` command works in TIT and CLI (targets differ: `@selected` vs `id:`).
+- `recur` command works in TITS and CLI (targets differ: `@selected` vs `id:`).
 - When a recurring task transitions `open -> done`, the next instance is spawned with computed `dueAt`.
-- Behavior is consistent across in-app TIT and external CLI, and any other completion pathway that marks tasks done.
+- Behavior is consistent across in-app TITS and external CLI, and any other completion pathway that marks tasks done.
 - No regressions to existing M1/M2 command behaviors, locking, or persistence.
 

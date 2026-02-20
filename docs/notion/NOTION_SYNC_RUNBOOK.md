@@ -15,10 +15,10 @@ Mode: offline payload + deterministic apply
    - `bun run notion:sync:full:dry`
 3. Apply sync:
    - `bun run notion:sync:full`
-4. Verify TIT coverage on Notion pages:
-   - Usage + install pages include TIT command layer quick checks
+4. Verify TITS coverage on Notion pages:
+   - Usage + install pages include TITS command layer quick checks
    - QA pages include `QA-065`..`QA-072`
-   - Spec/tasks pages include TIT M1-M3 narrative
+   - Spec/tasks pages include TITS M1-M3 narrative
 
 ## Fallback (No Notion Write Access)
 - Store payload artifact with daily build artifacts.

@@ -47,16 +47,16 @@ Version check:
 bun run start -- --version
 ```
 
-## TIT Command Layer (v0.3.7)
+## TITS Command Layer (v0.3.7)
 
-TIT (Terminal-in-Terminal) is the shared command language used by both the in-app command bar and the external CLI.
+TITS (Terminal-in-Terminal System) is the shared command language used by both the in-app command bar and the external CLI.
 
-In-app TIT behavior:
+In-app TITS behavior:
 - Open from LIST mode with `` ` ``
 - Execute with `Enter`
 - Close with `Esc`
 - Recall command history with `ArrowUp` / `ArrowDown`
-- While TIT is active, list/global keybinds are intentionally suppressed
+- While TITS is active, list/global keybinds are intentionally suppressed
 
 Supported commands:
 - `add <title> [due:YYYY-MM-DD] [at:HH:MM] [#tag ...] [notes:"..."]`
@@ -70,13 +70,13 @@ CLI parity and safety:
 - CLI rejects `@selected` targets and requires `id:<task-id>`
 - CLI write commands are lock-gated while the TUI is running
 
-Canonical TIT spec sources (filename rule `*TIT*.md`):
-- `docs/specs/tit-m1-commandbar.md`
-- `docs/specs/tit-m2-cli.md`
-- `docs/specs/tit-m3-recurrence.md`
-- `tadoi_TIT_milestone1_spec.md`
-- `tit-m2-cli-revised.md`
-- `tit-m3-recurrence.md`
+Canonical TITS spec sources (filename rule `*TITS*.md`):
+- `docs/specs/tits-m1-commandbar.md`
+- `docs/specs/tits-m2-cli.md`
+- `docs/specs/tits-m3-recurrence.md`
+- `tadoi_TITS_milestone1_spec.md`
+- `tits-m2-cli-revised.md`
+- `tits-m3-recurrence.md`
 
 ## Supported Environments
 

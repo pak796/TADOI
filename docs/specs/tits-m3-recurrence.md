@@ -1,12 +1,12 @@
-# TIT Milestone 3: Recurrence
+# TITS Milestone 3: Recurrence
 
 ## Scope
-Milestone 3 adds recurrence rules to tasks, a `recur` command in the shared command engine (TIT + CLI), and automatic next-instance spawning on `open -> done` transitions.
+Milestone 3 adds recurrence rules to tasks, a `recur` command in the shared command engine (TITS + CLI), and automatic next-instance spawning on `open -> done` transitions.
 
 ## Command grammar
 - `recur <target> clear`
 - `recur <target> every:day|week|month [interval:N] [on:...]`
-- `<target>`: `@selected` (TIT only) or `id:<task-id>`
+- `<target>`: `@selected` (TITS only) or `id:<task-id>`
 
 `on:` forms:
 - weekly: `on:mon,wed`
@@ -34,10 +34,10 @@ Defaults:
 - Existing lock and atomic-save behavior from M2 remains unchanged.
 
 ## QA checklist
-1. TIT: `due @selected 2026-03-05 at:09:00`
-2. TIT: `recur @selected every:week on:mon,wed`
-3. TIT: `done` => original done + spawned next open instance
-4. TIT: `recur @selected clear`
+1. TITS: `due @selected 2026-03-05 at:09:00`
+2. TITS: `recur @selected every:week on:mon,wed`
+3. TITS: `done` => original done + spawned next open instance
+4. TITS: `recur @selected clear`
 5. CLI (app closed): `tadoi recur id:<uuid> every:week on:mon`
 6. CLI (app closed): `tadoi done id:<uuid>` => spawned next instance persists
 7. Edge checks:

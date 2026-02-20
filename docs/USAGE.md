@@ -125,21 +125,21 @@ Empty-state NUX modal:
 - `s` / `Esc`: dismiss
 - `i`: open recovery import flow (only when recovery import CTA is available)
 
-## TIT Command Layer (M1-M3)
+## TITS Command Layer (M1-M3)
 
 Source-of-truth files:
-- `src/app/App.tsx` (in-app TIT overlay)
+- `src/app/App.tsx` (in-app TITS overlay)
 - `src/commands/*` (shared parser/executor)
-- `src/cli/main.ts` (external TIT CLI)
+- `src/cli/main.ts` (external TITS CLI)
 
-In-app TIT (LIST mode only):
+In-app TITS (LIST mode only):
 - Open with `` ` ``
 - `Enter` executes current command
-- `Esc` closes TIT without executing
+- `Esc` closes TITS without executing
 - `ArrowUp` / `ArrowDown` navigates command history
-- While TIT is open, normal list/global routing is suppressed
+- While TITS is open, normal list/global routing is suppressed
 
-Supported TIT commands:
+Supported TITS commands:
 - `add <title> [due:YYYY-MM-DD] [at:HH:MM] [#tag ...] [notes:"..."]`
 - `done` / `done @selected` / `done id:<task-id>`
 - `due @selected YYYY-MM-DD [at:HH:MM]`
@@ -149,7 +149,7 @@ Supported TIT commands:
 - `recur <target> every:day|week|month [interval:N] [on:mon,wed|1,15]`
 - `help` / `help add|done|due|recur`
 
-CLI TIT notes:
+CLI TITS notes:
 - Wrapper form: `tadoi add ...`, `tadoi done id:<task-id>`, `tadoi due id:<task-id> ...`, `tadoi recur id:<task-id> ...`
 - Raw DSL form: `tadoi 'recur id:<task-id> every:week on:mon'`
 - `@selected` is rejected in CLI context (use `id:<task-id>`)

@@ -36,13 +36,13 @@ Active baseline: `v0.3.7` / `0.3.7`
 - `docs/QA/BLACK_BOX_TEST_MATRIX.md`
 - `docs/QA/REGRESSION_AREAS.md`
 
-## TIT Source Set (`*TIT*.md`)
-- `docs/specs/tit-m1-commandbar.md`
-- `docs/specs/tit-m2-cli.md`
-- `docs/specs/tit-m3-recurrence.md`
-- `tadoi_TIT_milestone1_spec.md`
-- `tit-m2-cli-revised.md`
-- `tit-m3-recurrence.md`
+## TITS Source Set (`*TITS*.md`)
+- `docs/specs/tits-m1-commandbar.md`
+- `docs/specs/tits-m2-cli.md`
+- `docs/specs/tits-m3-recurrence.md`
+- `tadoi_TITS_milestone1_spec.md`
+- `tits-m2-cli-revised.md`
+- `tits-m3-recurrence.md`
 
 ## Notion Sync Artifacts
 - `docs/notion/NOTION_SYNC_PAYLOAD.json`

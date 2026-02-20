@@ -11,7 +11,7 @@ import {
 } from "../state/persistence";
 import { getTadoiLockPath, isTadoiLockPresent } from "../state/lockfile";
 
-export const TIT_CLI_EXIT_CODE = {
+export const TITS_CLI_EXIT_CODE = {
   SUCCESS: 0,
   PARSE_OR_VALIDATION: 2,
   TARGET_RESOLUTION: 3,
@@ -19,9 +19,9 @@ export const TIT_CLI_EXIT_CODE = {
   IO_ERROR: 5
 } as const;
 
-type TitCommandName = "add" | "done" | "due" | "recur" | "help";
+type TitsCommandName = "add" | "done" | "due" | "recur" | "help";
 
-type TitCliDeps = {
+type TitsCliDeps = {
   now: () => number;
   parseCommand: (input: string) => ParseCommandResult;
   executeCommand: (
@@ -37,7 +37,7 @@ type TitCliDeps = {
   error: (line: string) => void;
 };
 
-const DEFAULT_DEPS: TitCliDeps = {
+const DEFAULT_DEPS: TitsCliDeps = {
   now: () => Date.now(),
   parseCommand,
   executeCommand,
@@ -53,7 +53,7 @@ const DEFAULT_DEPS: TitCliDeps = {
   error: (line: string) => console.error(line)
 };
 
-function isTitCommandName(value: string): value is TitCommandName {
+function isTitsCommandName(value: string): value is TitsCommandName {
   return (
     value === "add" ||
     value === "done" ||
@@ -77,13 +77,13 @@ function formatDslToken(token: string): string {
   return token;
 }
 
-export function resolveTitCliInput(
+export function resolveTitsCliInput(
   argv: string[]
 ): { mode: "raw" | "subcommand"; dsl: string } | null {
   if (argv.length === 0) return null;
 
   const first = argv[0]?.trim().toLowerCase() ?? "";
-  if (isTitCommandName(first)) {
+  if (isTitsCommandName(first)) {
     const dsl = [first, ...argv.slice(1).map(formatDslToken)].join(" ").trim();
     return { mode: "subcommand", dsl };
   }
@@ -92,7 +92,7 @@ export function resolveTitCliInput(
     const raw = argv[0]?.trim() ?? "";
     if (!raw) return null;
     const rawFirst = raw.split(/\s+/)[0]?.toLowerCase() ?? "";
-    if (isTitCommandName(rawFirst)) {
+    if (isTitsCommandName(rawFirst)) {
       return { mode: "raw", dsl: raw };
     }
   }
@@ -109,15 +109,15 @@ function commandRequiresInAppSelection(command: Command): boolean {
 
 function classifyExecutionError(command: Command): number {
   return command.type === "done" || command.type === "due" || command.type === "recur"
-    ? TIT_CLI_EXIT_CODE.TARGET_RESOLUTION
-    : TIT_CLI_EXIT_CODE.PARSE_OR_VALIDATION;
+    ? TITS_CLI_EXIT_CODE.TARGET_RESOLUTION
+    : TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION;
 }
 
-export async function runTitCommandCliWithDeps(
+export async function runTitsCommandCliWithDeps(
   argv: string[],
-  deps: TitCliDeps
+  deps: TitsCliDeps
 ): Promise<{ handled: boolean; exitCode?: number }> {
-  const resolved = resolveTitCliInput(argv);
+  const resolved = resolveTitsCliInput(argv);
   if (!resolved) {
     return { handled: false };
   }
@@ -125,13 +125,13 @@ export async function runTitCommandCliWithDeps(
   const parsed = deps.parseCommand(resolved.dsl);
   if (!parsed.ok) {
     deps.error(toSingleLine(parsed.error));
-    return { handled: true, exitCode: TIT_CLI_EXIT_CODE.PARSE_OR_VALIDATION };
+    return { handled: true, exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION };
   }
   const command = parsed.command;
 
   if (commandRequiresInAppSelection(command)) {
     deps.error("Error: @selected is only available in-app. Use id:<uuid>.");
-    return { handled: true, exitCode: TIT_CLI_EXIT_CODE.PARSE_OR_VALIDATION };
+    return { handled: true, exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION };
   }
 
   if (command.type === "help") {
@@ -143,10 +143,10 @@ export async function runTitCommandCliWithDeps(
     });
     if (result.output.kind === "error") {
       deps.error(toSingleLine(result.output.text));
-      return { handled: true, exitCode: TIT_CLI_EXIT_CODE.PARSE_OR_VALIDATION };
+      return { handled: true, exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION };
     }
     deps.log(toSingleLine(result.output.text));
-    return { handled: true, exitCode: TIT_CLI_EXIT_CODE.SUCCESS };
+    return { handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS };
   }
 
   const dataFilePath = deps.getDataFilePath();
@@ -155,7 +155,7 @@ export async function runTitCommandCliWithDeps(
   try {
     if (await deps.isLockPresent(lockPath)) {
       deps.error("Error: TADOI is running (lock present).");
-      return { handled: true, exitCode: TIT_CLI_EXIT_CODE.LOCKED };
+      return { handled: true, exitCode: TITS_CLI_EXIT_CODE.LOCKED };
     }
 
     const loaded = await deps.loadData(dataFilePath);
@@ -189,17 +189,17 @@ export async function runTitCommandCliWithDeps(
     );
 
     deps.log(toSingleLine(result.output.text));
-    return { handled: true, exitCode: TIT_CLI_EXIT_CODE.SUCCESS };
+    return { handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS };
   } catch (error: unknown) {
     deps.error(
       `Error: could not read/write data file (${error instanceof Error ? error.message : String(error)})`
     );
-    return { handled: true, exitCode: TIT_CLI_EXIT_CODE.IO_ERROR };
+    return { handled: true, exitCode: TITS_CLI_EXIT_CODE.IO_ERROR };
   }
 }
 
-export async function runTitCommandCli(
+export async function runTitsCommandCli(
   argv: string[]
 ): Promise<{ handled: boolean; exitCode?: number }> {
-  return runTitCommandCliWithDeps(argv, DEFAULT_DEPS);
+  return runTitsCommandCliWithDeps(argv, DEFAULT_DEPS);
 }

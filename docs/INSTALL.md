@@ -32,10 +32,10 @@ When running `bun run build:daily`, artifacts are staged under:
 The build report is written to:
 - `dist/artifacts/YYYY-MM-DD/BUILD_REPORT.md`
 
-## TIT Quick Validation (v0.3.7)
+## TITS Quick Validation (v0.3.7)
 Run these right after install:
-1. In app (`bun run dev`): open TIT with `` ` ``, run `help recur`, close with `Esc`.
-2. In app: run `add "TIT install check" #qa`, then `done`.
+1. In app (`bun run dev`): open TITS with `` ` ``, run `help recur`, close with `Esc`.
+2. In app: run `add "TITS install check" #qa`, then `done`.
 3. In app: select a task with due date and run `recur @selected every:week on:mon`.
 4. CLI (app closed): run `bun run start -- recur id:<task-id> clear`.
 5. CLI lock check (app open): run `bun run start -- add "lock check"`; expected lock error.

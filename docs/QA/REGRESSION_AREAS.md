@@ -8,13 +8,13 @@ High-severity regression surfaces to re-check after every change.
 - LIST/ADD/EDIT/SEARCH/HELP/BACKUP_CENTER/TAG_FILTER/DASHBOARD/MODAL_CONFIRM boundaries
 - Esc/Enter contracts and modal semantics
 
-## TIT Command Layer (M1-M3)
-- TIT opens only from LIST mode via `` ` `` and closes with `Esc`
-- TIT active state suppresses list/global keybinds until close
-- TIT output is single-line and deterministic (`ok|error`)
+## TITS Command Layer (M1-M3)
+- TITS opens only from LIST mode via `` ` `` and closes with `Esc`
+- TITS active state suppresses list/global keybinds until close
+- TITS output is single-line and deterministic (`ok|error`)
 - CLI rejects `@selected` targets and enforces `id:<task-id>`
 - CLI write commands are blocked by lock-file presence
-- TIT + CLI completion paths preserve recurrence spawn semantics
+- TITS + CLI completion paths preserve recurrence spawn semantics
 - Trace IDs: `QA-065`..`QA-072`
 
 ## Recurrence Semantics

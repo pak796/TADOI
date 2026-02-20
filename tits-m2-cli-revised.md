@@ -1,18 +1,18 @@
-# TIT Milestone 2: External CLI (Revised)
+# TITS Milestone 2: External CLI (Revised)
 
 **Project:** TADOI / TUI_TODO  
 **Milestone:** 2  
 **Date:** 2026-02-19  
 **Status:** Implemented baseline (aligned to shipped M2 behavior)  
-**Depends on:** Milestone 1 (implemented) — TIT command bar + shared command engine
+**Depends on:** Milestone 1 (implemented) — TITS command bar + shared command engine
 
 ---
 
 ## 0) Context: implemented Milestone 1 baseline (anchor)
 
-Milestone 2 is built directly on the already-implemented TIT command system:
+Milestone 2 is built directly on the already-implemented TITS command system:
 
-- In-app TIT command bar overlay in list mode.
+- In-app TITS command bar overlay in list mode.
 - Shared command subsystem in `src/commands/*` with no React/OpenTUI imports.
 - Commands: `add`, `done`, `due`, `help`.
 - Single-line output state: `{ kind: "ok" | "error"; text: string }`.
@@ -33,7 +33,7 @@ Milestone 2 is built directly on the already-implemented TIT command system:
   - `clear` now supported for both `@selected` and `id:<task-id>`.
 
 ### Persistence boundary
-- TIT UI state stays local to `App.tsx` and is not persisted.
+- TITS UI state stays local to `App.tsx` and is not persisted.
 - Existing persistence contract remains unchanged (data file stays schema-compatible).
 
 ---
@@ -93,7 +93,7 @@ Therefore, Milestone 2 must extend command support to allow:
 
 - `due id:<uuid> clear`
 
-This is a minimal extension that keeps the command language coherent across TIT + CLI.
+This is a minimal extension that keeps the command language coherent across TITS + CLI.
 
 > Implementation note: this is best done by extending the existing `due` parser/executor to accept `clear` for any target, not just `@selected`.
 
@@ -121,7 +121,7 @@ Use existing reducer as the single source of truth:
 - Then apply each action from `result.actions` sequentially.
 
 This ensures any future side-effects baked into the reducer (or shared domain logic) are consistent across:
-- TIT (in-app dispatch)
+- TITS (in-app dispatch)
 - CLI (offline apply)
 
 ---
@@ -181,7 +181,7 @@ This ensures any future side-effects baked into the reducer (or shared domain lo
     - `{ mode: "dsl" | "subcommand", input: string, flags }`
 - `src/state/saveStateAtomic.ts` (or extend `src/state/persistence.ts`)
   - atomic write helper used by CLI (and later tooling)
-- `docs/specs/tit-m2-cli.md` (this document, checked in)
+- `docs/specs/tits-m2-cli.md` (this document, checked in)
 
 ### Modified files
 - `src/state/persistence.ts`
@@ -219,12 +219,12 @@ This ensures any future side-effects baked into the reducer (or shared domain lo
 
 ## 9) Milestone 3 hooks (recurrence)
 
-Milestone 2 is intentionally shaped to make Milestone 3 additive and consistent across TIT + CLI.
+Milestone 2 is intentionally shaped to make Milestone 3 additive and consistent across TITS + CLI.
 
 ### 9.1 Milestone 3 deliverables (preview)
 - Add recurrence structure to the task model, e.g. `task.recurrence?: RecurrenceRule`.
 - Add `recur` command to the same command engine:
-  - TIT: `recur @selected every:week on:mon,wed`
+  - TITS: `recur @selected every:week on:mon,wed`
   - CLI: `recur id:<uuid> every:week on:mon,wed`
 - Implement: **“on done, spawn next instance”**
   - When a recurring task transitions `open -> done`, create a new task instance with the next computed `dueAt`.
@@ -245,4 +245,4 @@ Milestone 2 is intentionally shaped to make Milestone 3 additive and consistent 
   - Writes state atomically.
 - CLI mutations appear in the TUI on next launch.
 - CLI supports clearing due dates via `due id:<uuid> clear` (parity adjustment).
-- No changes break the M1 TIT behavior or persistence contract.
+- No changes break the M1 TITS behavior or persistence contract.
