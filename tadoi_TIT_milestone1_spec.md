@@ -3,7 +3,7 @@
 **Feature:** TIT (Terminal‑in‑Terminal) Command Bar  
 **Milestone:** 1 (Command engine + in-app command bar)  
 **Date:** 2026-02-19  
-**Spec version:** v0.1
+**Spec version:** v0.2 (implemented baseline)
 
 ---
 
@@ -13,7 +13,7 @@
 - Add an **in-app command bar overlay** (“TIT”) that accepts a compact CLI syntax.
 - Implement a **shared command engine** (parser + executor) for:
   - `add` — create task
-  - `done` — mark task done (or toggle; see decision)
+  - `done` — mark task done
   - `due` — set/clear due date/time
   - `help` — show help text (no mutation)
 - Display **single-line command output**:
@@ -39,7 +39,7 @@
 ## 2) Inputs and UX
 
 ### 2.1 Open/close and navigation
-- Open TIT: `:` (colon) in list mode
+- Open TIT: backtick (`` ` ``) in list mode
 - Execute: `Enter`
 - Close: `Esc`
 - History: `Up` / `Down`
@@ -50,7 +50,7 @@
 ### 2.2 UI placement
 - Render an **absolute overlay** at the bottom of the root `<box>` in `App.tsx`.
 - Content:
-  - Prompt label `:` or `tadoi>`
+  - Prompt label `:`
   - Input control (`<input focused .../>`)
   - Output line (single line, truncation/ellipsis acceptable)
 
@@ -106,21 +106,19 @@
 - `done` (defaults to selected task in TIT)
 - `done @selected`
 - `done id:<uuid>`
-- *(Optional for M1)* `done "Exact Title"` only if uniquely matched; otherwise error.
 
 **Target resolution**
 - In TIT, `done` implies `@selected`.
 - If no selected task exists → error.
 
 **Effect**
-- Decision (choose one and enforce consistently):
-  1) **Force done**: set `status="done"` always (recommended semantics for a “done” command), OR
-  2) **Toggle**: parity with list-mode `space` behavior.
+- **Force done** in M1: set `status="done"` always and set `updatedAt`/`closedAt`.
+- Emit engagement actions only when transitioning `open -> done`:
+  - `recordCompletion`
+  - `evaluateEngagement`
 
 **Output**
-- `Done: <title>` (force) or `Toggled: <title> -> done/open` (toggle)
-
-> **Engagement hooks (optional):** If your engagement system expects completion events, you may emit `recordCompletion` and `evaluateEngagement` when a task transitions `open -> done`. This is not required if current list-mode toggling does not emit those actions.
+- `Done: <title>`
 
 ---
 
@@ -131,7 +129,7 @@
 - `due @selected clear`
 
 **Rules**
-- `clear` removes `dueAt`.
+- `clear` removes `dueAt` and is supported for `@selected` in M1.
 - `at:` optional and only valid when setting a date.
 
 **Output**
@@ -219,8 +217,9 @@ Executor requirements:
 
 #### `done`
 - `{ type: "setTasks", tasks: Task[] }`
-- *(Optional if desired)* `{ type: "recordCompletion", taskId, at, tags }`
-- *(Optional if desired)* `{ type: "evaluateEngagement", at }`
+- `{ type: "setSelected", id }`
+- `{ type: "recordCompletion", taskId, at, tags }` on `open -> done` only
+- `{ type: "evaluateEngagement", at }` on `open -> done` only
 
 #### `due`
 - `{ type: "setTasks", tasks: Task[] }`
@@ -242,21 +241,18 @@ Executor requirements:
 
 ## 6) App.tsx changes (wiring and routing)
 
-### 6.1 Key routing priority (recommended)
-Update the `useKeyboard` handler order:
+### 6.1 Key routing priority (implemented)
+Current `useKeyboard` routing for TIT:
 
-1) existing `helpOpen` handling  
-2) existing `confirmDelete` handling  
-3) **NEW: if `commandActive`** → route to `handleCommandKey(...)` and return  
-4) existing editor-mode handling  
-5) existing searchActive handling  
-6) list-mode handling, plus:
-   - `:` opens TIT command bar (only when `state.mode === "list"`)
+1) if `commandActive`, handle only `Esc` / `Enter` / `Up` / `Down`, then return
+2) in `LIST` mode, open TIT on backtick (`` ` ``) when views/save overlays are closed
+3) otherwise continue existing router/modal/help/search/editor/list handling
 
 ### 6.2 Execution pipeline in TIT
 On `Enter` when command bar is open:
 
-1) `parseCommand(commandText)`
+1) read latest input text from the command input value buffer
+2) `parseCommand(commandText)`
 2) If parse error:
    - set `output = { kind:"error", text }`
    - keep input intact
@@ -265,7 +261,7 @@ On `Enter` when command bar is open:
      - `now = Date.now()`
      - `state`
      - `visibleTasks = getVisibleTasks(state, now)`
-     - `selectedTaskId = state.selectedId`
+     - `selectedTaskId = state.selectedId ?? visibleTasks[0]?.id`
    - `result = executeCommand(command, ctx)`
    - `result.actions.forEach(dispatch)`
    - set `output = result.output`
@@ -294,7 +290,7 @@ Add a bottom overlay in the root `<box>`:
 ### Modified files
 - `src/app/App.tsx`
   - Add command bar local state (`useState`)
-  - Add key routing: `:` opens, `Esc/Enter/Up/Down` handled while active
+  - Add key routing: backtick opens, `Esc/Enter/Up/Down` handled while active
   - Add overlay rendering at bottom
   - Integrate parse/execute pipeline and dispatch resulting store actions
 
@@ -369,12 +365,12 @@ When a recurring task transitions `open -> done`:
 
 ### 10.2 Executor action emission
 - `add` emits: `setTasks`, `setTagIndex`, `setSelected`
-- `done` emits: `setTasks` (and optional engagement actions if enabled)
+- `done` emits: `setTasks`, `setSelected`, and conditional engagement actions on `open -> done`
 - `due` emits: `setTasks`
 - `help` emits: none
 
 ### 10.3 UI/key routing regressions
-- `:` opens command bar only in list mode
+- backtick (`` ` ``) opens command bar only in list mode
 - While command bar active:
   - `j/k` do not move selection
   - `a/e/d/t` do not trigger actions
@@ -385,12 +381,12 @@ When a recurring task transitions `open -> done`:
 
 ### 10.4 Persistence
 - After `add` from TIT, restart → task is present (existing `saveStateDebounced` path)
-- No command UI state is persisted (data file remains tasks/tagIndex only).
+- No command UI state is persisted (persistence payload remains the existing app contract).
 
 ---
 
 ## 11) Acceptance criteria (Milestone 1)
-- TIT overlay can be opened via `:`, accepts input, and executes:
+- TIT overlay can be opened via backtick (`` ` ``), accepts input, and executes:
   - `add`, `done`, `due`, `help`
 - Each command produces a single-line success/error output.
 - Added/updated tasks persist via current persistence flow.

@@ -1,6 +1,6 @@
 # TADOI™ Product Spec (v0.3.6)
 
-Updated: 2026-02-12
+Updated: 2026-02-19
 Runtime baseline: `v0.3.6`
 Package baseline: `0.3.6`
 Persistence schema baseline: `5`
@@ -15,6 +15,7 @@ TADOI is a keyboard-first terminal task manager focused on fast personal executi
 
 Core experience:
 - List-first task management with strong keyboard routing and clear mode boundaries.
+- TIT command bar (Milestone 1) for quick add/done/due/help commands in list mode.
 - Recurrence-aware planning with occurrence-level actions.
 - Unified filtering across list and dashboard analytics surfaces.
 - Local-first persistence with explicit import/export safety controls.
@@ -41,9 +42,10 @@ Primary modes:
 
 Routing priorities:
 1. modal handling (blocking)
-2. help/back subpage handling
-3. search/editor text contexts
-4. list/dashboard actions
+2. TIT command bar handling when active (list mode only)
+3. help/back subpage handling
+4. search/editor text contexts
+5. list/dashboard actions
 
 ### 2.3 Search Lifecycle
 - `/` opens search.
@@ -186,6 +188,32 @@ Import:
   - 5 completions for a tag in the last 7 days
   - 3-day completion streak
 
+### 2.14 TIT Command Bar Contract (Milestone 1)
+- Open key: backtick (`` ` ``) in `LIST` mode.
+- Execute key: `Enter`.
+- Close key: `Esc`.
+- History navigation: `ArrowUp` / `ArrowDown`.
+- While TIT is active, list/global keybinds are suppressed; only TIT controls are handled.
+- TIT output is single-line and typed:
+  - `{ kind: "ok" | "error"; text: string }`
+- Command engine lives in `src/commands/*` and is UI-agnostic.
+- Supported commands:
+  - `add <title> [due:YYYY-MM-DD] [at:HH:MM] [#tag ...] [notes:"..."]`
+  - `done` / `done @selected` / `done id:<task-id>`
+  - `due @selected YYYY-MM-DD [at:HH:MM]`
+  - `due id:<task-id> YYYY-MM-DD [at:HH:MM]`
+  - `due @selected clear`
+  - `help` / `help add|done|due`
+- Validation rules:
+  - `due` date must be a real calendar date.
+  - `at` time must be valid 24-hour local time.
+  - `at` requires `due`.
+- Mutation behavior:
+  - `add` emits `setTasks`, `setTagIndex`, `setSelected`.
+  - `done` forces `status="done"` and emits engagement actions only on `open -> done`.
+  - `due` sets/clears due fields and emits `setTasks`, `setSelected`.
+  - `help` emits no store actions.
+
 ## 3) Data Model Contract
 
 Domain core (`src/domain/models.ts`):
@@ -214,7 +242,7 @@ Persistence expectations:
 
 List mode:
 - navigation: `j/k`, arrows, `gg`, `G`, `Ctrl+U`, `Ctrl+D`, `PageUp`, `PageDown`, `[`, `]`, `{`, `}`
-- actions: `a`, `e`, `E`, `c`, `Space`, `x`, `z`, `d`, `/`, `f`, `g`, `s`, `t`, `p`, `v`, `Ctrl+S`, `q`
+- actions: `` ` ``, `a`, `e`, `E`, `c`, `Space`, `x`, `z`, `d`, `/`, `f`, `g`, `s`, `t`, `p`, `v`, `Ctrl+S`, `q`
 
 Details links focus:
 - `Tab` / `Shift+Tab` toggles focus between task list and links.
@@ -224,12 +252,16 @@ Global/overlay:
 - help: `?` open, `Esc`/`?` close
 - search close: `Enter`/`Esc`
 - backup center: `1/2/3`, `Enter`, `Esc`
+- TIT command bar: open with `` ` `` in list mode, `Esc` close, `Enter` execute, `ArrowUp/ArrowDown` history
 
 ## 5) Quality and Validation Baseline
 
 Automated snapshot captured during docs audit:
 - `bun run test`: `555 pass / 0 fail / 555 total`
 - `bun run typecheck`: `pass`
+- TIT M1 targeted regression (2026-02-19):
+  - `bun test src/commands/parse.test.ts src/commands/execute.test.ts src/app/keyRouter.test.ts src/state/store.test.ts`: `47 pass / 0 fail`
+  - `bun run typecheck`: `pass`
 
 Manual coverage baseline:
 - `docs/TADOI_QA_Guide_v0.3.6.md`
@@ -246,6 +278,8 @@ Manual coverage baseline:
 - `docs/TADOI_Installation_Guide_All_Platforms.md`
 - `docs/TADOI_QA_Guide_v0.3.6.md`
 - `docs/TADOI_Feature_List_v0.3.6.md`
+- `docs/specs/tit-m1-commandbar.md`
+- `tadoi_TIT_milestone1_spec.md`
 - `TADOI_Spec_Calendar_Export_ICS_v0.2.md`
 - `TADOI_Spec_Calendar_Import_ICS_RoundTrip_v0.1.md`
 - `TADOI_Task_Links_Attachments_Spec_v0.2.md`

@@ -1082,6 +1082,7 @@ type AppProps = {
   initialData?: LoadedData;
   skipInitialSave?: boolean;
   startupBanner?: string;
+  showCorruptionRecoveryImportCta?: boolean;
   initialThemeId?: ThemeId;
   initialLogoMode?: LogoMode;
   initialFlashMode?: FlashMode;
@@ -1108,6 +1109,7 @@ export function App({
   initialData,
   skipInitialSave = false,
   startupBanner,
+  showCorruptionRecoveryImportCta = false,
   initialThemeId = "default",
   initialLogoMode = DEFAULT_LOGO_MODE,
   initialFlashMode = "slow",
@@ -2922,6 +2924,9 @@ export function App({
       case "OPEN_BACKUP_CENTER":
         openBackupCenter();
         return;
+      case "OPEN_BACKUP_CENTER_IMPORT":
+        openBackupImportFromEmptyNux();
+        return;
       case "OPEN_TAG_FILTER_PANEL":
         openTagFilterPanel();
         return;
@@ -3345,6 +3350,7 @@ export function App({
         hasPendingGPrefix: pendingGPrefix,
         viewsOverlayOpen,
         saveViewPromptOpen,
+        allowEmptyNuxRecoveryImport: showCorruptionRecoveryImportCta,
         backupScreen: uiState.mode === Mode.BACKUP_CENTER ? backupState.screen : null,
         helpPage: activeHelpPage
       }
@@ -3613,6 +3619,21 @@ export function App({
     });
     uiDispatch({ type: "setMode", mode: Mode.BACKUP_CENTER });
     uiDispatch({ type: "setFocus", focus: FocusTarget.BACKUP_CENTER });
+  }
+
+  function openBackupImportFromEmptyNux() {
+    clearPendingGPrefix();
+    closeViewsOverlay();
+    uiDispatch(clearEmptyNux());
+    backupDispatch({ type: "reset" });
+    uiDispatch({
+      type: "captureReturnContext",
+      mode: Mode.LIST,
+      focus: FocusTarget.TASK_LIST
+    });
+    uiDispatch({ type: "setMode", mode: Mode.BACKUP_CENTER });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.BACKUP_CENTER });
+    backupDispatch({ type: "openImportPath" });
   }
 
   function toggleDashboard() {
@@ -6839,9 +6860,13 @@ export function App({
               onDismissSession={dismissEmptyNuxModal}
               onClearWalkthrough={clearEmptyNuxWalkthrough}
               onCreateTask={createTaskFromEmptyNuxModal}
+              onOpenBackupImport={openBackupImportFromEmptyNux}
               onShowShortcuts={showEmptyNuxShortcutsModal}
               onBackToWelcome={returnToEmptyNuxWelcomeModal}
               onGoToList={closeCelebrateToList}
+              showImportBackupAction={
+                showCorruptionRecoveryImportCta && activeEmptyNuxStep === "welcome"
+              }
             />
           ) : activeOverdueModal ? (
             <OverdueNotificationModal

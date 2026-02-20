@@ -22,6 +22,7 @@ function run(
     hasPendingGPrefix: false,
     viewsOverlayOpen: false,
     saveViewPromptOpen: false,
+    allowEmptyNuxRecoveryImport: false,
     backupScreen: null,
     ...contextOverrides
   };
@@ -307,6 +308,18 @@ describe("handleKey", () => {
     expect(run({ name: "h", sequence: "h" }, { uiState: welcomeModalState })).toEqual([
       { scope: "ui", type: "OPEN_EMPTY_NUX", step: "shortcuts" }
     ]);
+    expect(
+      run(
+        { name: "i", sequence: "i" },
+        { uiState: welcomeModalState, allowEmptyNuxRecoveryImport: false }
+      )
+    ).toEqual([]);
+    expect(
+      run(
+        { name: "i", sequence: "i" },
+        { uiState: welcomeModalState, allowEmptyNuxRecoveryImport: true }
+      )
+    ).toEqual([{ scope: "ui", type: "OPEN_BACKUP_CENTER_IMPORT" }]);
     expect(run({ name: "s", sequence: "s" }, { uiState: welcomeModalState })).toEqual([
       { scope: "ui", type: "DISMISS_EMPTY_NUX" }
     ]);
@@ -324,6 +337,12 @@ describe("handleKey", () => {
     expect(run({ name: "a", sequence: "a" }, { uiState: shortcutsModalState })).toEqual(
       createFromWelcome
     );
+    expect(
+      run(
+        { name: "i", sequence: "i" },
+        { uiState: shortcutsModalState, allowEmptyNuxRecoveryImport: true }
+      )
+    ).toEqual([]);
 
     const celebrateModalState = {
       ...welcomeModalState,
@@ -339,6 +358,12 @@ describe("handleKey", () => {
     expect(run({ name: "h", sequence: "h" }, { uiState: celebrateModalState })).toEqual([
       { scope: "ui", type: "OPEN_EMPTY_NUX", step: "shortcuts" }
     ]);
+    expect(
+      run(
+        { name: "i", sequence: "i" },
+        { uiState: celebrateModalState, allowEmptyNuxRecoveryImport: true }
+      )
+    ).toEqual([]);
     expect(run({ name: "escape" }, { uiState: celebrateModalState })).toEqual([
       { scope: "ui", type: "CLEAR_EMPTY_NUX" }
     ]);

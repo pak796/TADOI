@@ -44,6 +44,7 @@ function run(
     hasPendingGPrefix: false,
     viewsOverlayOpen: false,
     saveViewPromptOpen: false,
+    allowEmptyNuxRecoveryImport: false,
     backupScreen: null,
     ...contextOverrides
   };

@@ -18,6 +18,7 @@ export type KeyRouterContext = {
   hasPendingGPrefix: boolean;
   viewsOverlayOpen: boolean;
   saveViewPromptOpen: boolean;
+  allowEmptyNuxRecoveryImport: boolean;
   backupScreen: BackupCenterScreen | null;
   helpPage?:
     | "help"
@@ -45,6 +46,7 @@ export type KeyRouterAction =
   | { scope: "ui"; type: "TOGGLE_DASHBOARD" }
   | { scope: "ui"; type: "OPEN_HELP" }
   | { scope: "ui"; type: "OPEN_BACKUP_CENTER" }
+  | { scope: "ui"; type: "OPEN_BACKUP_CENTER_IMPORT" }
   | { scope: "ui"; type: "OPEN_TAG_FILTER_PANEL" }
   | { scope: "ui"; type: "CLOSE_HELP" }
   | { scope: "ui"; type: "OPEN_SEARCH" }
@@ -321,7 +323,7 @@ function resolveModalModeActions(
   context: KeyRouterContext
 ): KeyRouterAction[] | null {
   const { name, sequence, ctrl, shift } = key;
-  const { uiState } = context;
+  const { uiState, allowEmptyNuxRecoveryImport } = context;
   if (uiState.mode !== Mode.MODAL_CONFIRM) return null;
 
   if (uiState.modal?.type === "emptyNux") {
@@ -351,6 +353,12 @@ function resolveModalModeActions(
         lowerSequence === "a"
       ) {
         return createActions;
+      }
+      if (
+        allowEmptyNuxRecoveryImport &&
+        (lowerName === "i" || lowerSequence === "i")
+      ) {
+        return [{ scope: "ui", type: "OPEN_BACKUP_CENTER_IMPORT" }];
       }
       if (lowerName === "h" || lowerSequence === "h") {
         return [{ scope: "ui", type: "OPEN_EMPTY_NUX", step: "shortcuts" }];

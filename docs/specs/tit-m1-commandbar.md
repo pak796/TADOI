@@ -1,48 +1,72 @@
-# TIT Milestone 1: Command Bar + Engine
+# TIT Milestone 1: Command Bar + Engine (Implemented Baseline)
 
-## Scope
-- Add in-app TIT command bar overlay in list mode.
-- Add shared command parser/executor under `src/commands/*`.
+## Purpose
+This document is the canonical M1 baseline for follow-up TIT milestone specs.
+
+## Implemented scope
+- In-app TIT command bar overlay in list mode.
+- Shared command subsystem in `src/commands/*` with no React/OpenTUI imports.
 - Commands: `add`, `done`, `due`, `help`.
-- Single-line output format: `{ kind: "ok" | "error", text: string }`.
+- Single-line output state:
+  - `{ kind: "ok" | "error", text: string }`
 
-## Command Grammar
-- Tokenization splits on whitespace, except inside double quotes.
-- Supported token forms:
+## Command bar behavior
+- Open: backtick (`` ` ``) in list mode.
+- Close: `Esc`.
+- Execute: `Enter`.
+- History: `Up` / `Down`.
+- While active, TIT suppresses list/global binds and handles only TIT keys.
+- Command text is read from the latest input buffer value at execute time (avoids stale first-Enter reads).
+
+## Command language
+- Tokenization: split by whitespace except inside double quotes.
+- Supported token kinds:
   - plain words
   - `#tag`
-  - `key:value` (quoted value supported, e.g. `notes:"hello world"`)
+  - `key:value` (quoted values supported, e.g. `notes:"hello world"`)
 - Validation:
   - `due:YYYY-MM-DD` must be a real calendar date.
-  - `at:HH:MM` must be valid 24h time.
+  - `at:HH:MM` must be valid 24h local time.
   - `at:` requires `due:`.
 
 ### add
 `add <title> [due:YYYY-MM-DD] [at:HH:MM] [#tag ...] [notes:"..."]`
+- If first post-`add` token is option-like (`due:`/`at:`/`notes:`/`#`), title must be quoted.
+- Emits actions: `setTasks`, `setTagIndex`, `setSelected`.
+- Output: `Added task: <title> (id:<id>)`.
 
 ### done
 `done`
 `done @selected`
 `done id:<task-id>`
+- M1 behavior is deterministic: force `status="done"` (not toggle).
+- Emits actions: `setTasks`, `setSelected`.
+- On `open -> done` only, additionally emits:
+  - `recordCompletion`
+  - `evaluateEngagement`
+- Output: `Done: <title>`.
 
 ### due
 `due @selected YYYY-MM-DD [at:HH:MM]`
 `due id:<task-id> YYYY-MM-DD [at:HH:MM]`
 `due @selected clear`
+- `clear` is supported for `@selected` in M1.
+- Emits actions: `setTasks`, `setSelected`.
+- Output: `Due set: ...` or `Due cleared: ...`.
 
 ### help
 `help`
 `help add|done|due`
+- No state mutations.
+- Output: single-line help text.
 
-## Keybinds
-- Backtick (`) opens TIT in list mode.
-- While active, TIT consumes `Esc`, `Enter`, `Up`, `Down` and suppresses list/global binds.
-- `Esc` closes TIT.
-- `Enter` parses + executes command.
-- `Up/Down` browse command history.
+## Persistence and state boundaries
+- TIT UI state stays local to `App.tsx` (`useState` + refs).
+- No TIT UI state is persisted.
+- Existing persistence contract is unchanged.
 
-## QA Checklist
-1. Open TIT with backtick (`) in list mode; verify `j/k` do not move selection while open.
+## QA checklist (M1)
+1. Open TIT with backtick and verify `j/k` do not move selection while open.
 2. `add`:
    - `add "Buy milk" #errands`
    - `add Buy milk due:2026-02-28 at:17:30 #errands`
