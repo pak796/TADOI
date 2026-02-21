@@ -1,5 +1,6 @@
 import { FocusTarget, Mode, isEditorMode, isModalMode, type Mode as ModeType } from "./modeFocus";
 import type { TaskOverdueEvent } from "../notifications/types";
+import type { BackupCenterScreen } from "../state/backupCenterFlow";
 
 type UIModalReturnContext = {
   previousMode: Exclude<ModeType, typeof Mode.MODAL_CONFIRM>;
@@ -78,6 +79,43 @@ export type UIEditTargetSwitchModal = {
   toTaskTitle: string;
 } & UIModalReturnContext;
 
+export type UITaskEditorUnsavedContinuation =
+  | "close_editor"
+  | "open_list"
+  | "open_dashboard"
+  | "open_backup_center"
+  | "open_search"
+  | "open_help"
+  | "open_add"
+  | "open_edit"
+  | "open_tag_filter_panel"
+  | "open_delete_confirm";
+
+export type UIHelpThemeUnsavedContinuation = "close_editor" | "close_help";
+
+export type UIUnsavedChangesModal =
+  | ({
+      type: "unsaved_changes";
+      source: "task_editor";
+      continuation: UITaskEditorUnsavedContinuation;
+    } & UIModalReturnContext)
+  | ({
+      type: "unsaved_changes";
+      source: "help_custom1_editor" | "help_text_tuning_editor";
+      continuation: UIHelpThemeUnsavedContinuation;
+    } & UIModalReturnContext);
+
+export type UIBackupFinalCheckpointModal = {
+  type: "backup_final_checkpoint";
+  checkpoint: "data_import" | "calendar_import";
+  sourceScreen: BackupCenterScreen;
+} & UIModalReturnContext;
+
+export type UIRecurringDeleteFutureCheckpointModal = {
+  type: "recurring_delete_future_checkpoint";
+  deleteModal: UIRecurringOccurrenceDeleteModal;
+} & UIModalReturnContext;
+
 export type UIEmptyNuxModal = {
   type: "emptyNux";
 };
@@ -97,7 +135,10 @@ export type UIConfirmModal =
   | UITaskLinkFormModal
   | UITaskLinkDeleteModal
   | UITaskLinkExternalOpenConfirmModal
-  | UIEditTargetSwitchModal;
+  | UIEditTargetSwitchModal
+  | UIUnsavedChangesModal
+  | UIBackupFinalCheckpointModal
+  | UIRecurringDeleteFutureCheckpointModal;
 
 export type UIState = {
   mode: ModeType;

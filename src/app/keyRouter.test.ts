@@ -174,10 +174,53 @@ describe("handleKey", () => {
       { scope: "domain", type: "MODAL_CONFIRM_DELETE" }
     ]);
     expect(run({ name: "f", sequence: "f" }, { uiState: modalState })).toEqual([
-      { scope: "domain", type: "MODAL_CONFIRM_DELETE_FUTURE" }
+      {
+        scope: "ui",
+        type: "OPEN_RECURRING_DELETE_FUTURE_CHECKPOINT_MODAL",
+        modal: {
+          type: "recurring_delete_future_checkpoint",
+          deleteModal: modalState.modal,
+          previousMode: Mode.LIST,
+          previousFocus: FocusTarget.TASK_LIST
+        }
+      }
     ]);
     expect(run({ name: "n", sequence: "n" }, { uiState: modalState })).toEqual([
       { scope: "ui", type: "UNWIND" }
+    ]);
+  });
+
+  it("routes recurring delete future checkpoint modal keys", () => {
+    const recurringDeleteModal = {
+      type: "delete" as const,
+      target: "recurring_occurrence" as const,
+      seriesTaskId: "series-task-1",
+      seriesId: "series:task-1",
+      occurrenceIso: "2026-02-10T09:00:00",
+      selectedRowId: "series_occurrence:series%3Atask-1:2026-02-10T09%3A00%3A00",
+      taskTitle: "Task",
+      previousMode: Mode.LIST,
+      previousFocus: FocusTarget.TASK_LIST
+    };
+    const modalState = {
+      ...initialUIState,
+      mode: Mode.MODAL_CONFIRM,
+      focus: FocusTarget.MODAL,
+      modal: {
+        type: "recurring_delete_future_checkpoint" as const,
+        deleteModal: recurringDeleteModal,
+        previousMode: Mode.LIST,
+        previousFocus: FocusTarget.TASK_LIST
+      }
+    };
+    expect(run({ name: "y", sequence: "y" }, { uiState: modalState })).toEqual([
+      { scope: "domain", type: "MODAL_CONFIRM_RECURRING_DELETE_FUTURE_CHECKPOINT" }
+    ]);
+    expect(run({ name: "n", sequence: "n" }, { uiState: modalState })).toEqual([
+      { scope: "ui", type: "MODAL_CANCEL_RECURRING_DELETE_FUTURE_CHECKPOINT" }
+    ]);
+    expect(run({ name: "escape" }, { uiState: modalState })).toEqual([
+      { scope: "ui", type: "MODAL_CANCEL_RECURRING_DELETE_FUTURE_CHECKPOINT" }
     ]);
   });
 
@@ -234,6 +277,57 @@ describe("handleKey", () => {
       { scope: "domain", type: "MODAL_EDIT_SWITCH_DISCARD_CLOSE" }
     ]);
     expect(run({ name: "enter" }, { uiState: modalState })).toEqual([]);
+  });
+
+  it("routes unsaved-changes modal keys", () => {
+    const modalState = {
+      ...initialUIState,
+      mode: Mode.MODAL_CONFIRM,
+      focus: FocusTarget.MODAL,
+      modal: {
+        type: "unsaved_changes" as const,
+        source: "task_editor" as const,
+        continuation: "open_dashboard" as const,
+        previousMode: Mode.EDIT,
+        previousFocus: FocusTarget.EDITOR_TITLE
+      }
+    };
+    expect(run({ name: "s", sequence: "s" }, { uiState: modalState })).toEqual([
+      { scope: "domain", type: "MODAL_CONFIRM_UNSAVED_SAVE_CONTINUE" }
+    ]);
+    expect(run({ name: "d", sequence: "d" }, { uiState: modalState })).toEqual([
+      { scope: "domain", type: "MODAL_CONFIRM_UNSAVED_DISCARD_CONTINUE" }
+    ]);
+    expect(run({ name: "c", sequence: "c" }, { uiState: modalState })).toEqual([
+      { scope: "ui", type: "MODAL_CANCEL_UNSAVED_CONTINUE" }
+    ]);
+    expect(run({ name: "escape" }, { uiState: modalState })).toEqual([
+      { scope: "ui", type: "MODAL_CANCEL_UNSAVED_CONTINUE" }
+    ]);
+  });
+
+  it("routes backup final-checkpoint modal keys", () => {
+    const modalState = {
+      ...initialUIState,
+      mode: Mode.MODAL_CONFIRM,
+      focus: FocusTarget.MODAL,
+      modal: {
+        type: "backup_final_checkpoint" as const,
+        checkpoint: "calendar_import" as const,
+        sourceScreen: "calendar_import_confirm" as const,
+        previousMode: Mode.BACKUP_CENTER,
+        previousFocus: FocusTarget.BACKUP_CENTER
+      }
+    };
+    expect(run({ name: "y", sequence: "y" }, { uiState: modalState })).toEqual([
+      { scope: "domain", type: "MODAL_CONFIRM_BACKUP_FINAL_CHECKPOINT" }
+    ]);
+    expect(run({ name: "n", sequence: "n" }, { uiState: modalState })).toEqual([
+      { scope: "ui", type: "MODAL_CANCEL_BACKUP_FINAL_CHECKPOINT" }
+    ]);
+    expect(run({ name: "escape" }, { uiState: modalState })).toEqual([
+      { scope: "ui", type: "MODAL_CANCEL_BACKUP_FINAL_CHECKPOINT" }
+    ]);
   });
 
   it("routes task-link modal confirm keys", () => {

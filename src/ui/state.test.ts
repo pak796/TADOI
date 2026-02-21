@@ -214,6 +214,90 @@ describe("unwind", () => {
     });
   });
 
+  it("returns to previous mode/focus from unsaved-changes modal", () => {
+    const result = unwind({
+      ...initialUIState,
+      mode: Mode.MODAL_CONFIRM,
+      focus: FocusTarget.MODAL,
+      modal: {
+        type: "unsaved_changes",
+        source: "task_editor",
+        continuation: "open_backup_center",
+        previousMode: Mode.EDIT,
+        previousFocus: FocusTarget.EDITOR_TAGS
+      }
+    });
+
+    expect(result).toEqual({
+      state: {
+        ...initialUIState,
+        mode: Mode.EDIT,
+        focus: FocusTarget.EDITOR_TAGS,
+        modal: null
+      },
+      clearEditorDraft: false
+    });
+  });
+
+  it("returns to previous mode/focus from backup final-checkpoint modal", () => {
+    const result = unwind({
+      ...initialUIState,
+      mode: Mode.MODAL_CONFIRM,
+      focus: FocusTarget.MODAL,
+      modal: {
+        type: "backup_final_checkpoint",
+        checkpoint: "calendar_import",
+        sourceScreen: "calendar_import_confirm",
+        previousMode: Mode.BACKUP_CENTER,
+        previousFocus: FocusTarget.BACKUP_CENTER
+      }
+    });
+
+    expect(result).toEqual({
+      state: {
+        ...initialUIState,
+        mode: Mode.BACKUP_CENTER,
+        focus: FocusTarget.BACKUP_CENTER,
+        modal: null
+      },
+      clearEditorDraft: false
+    });
+  });
+
+  it("returns to previous mode/focus from recurring-delete-future checkpoint modal", () => {
+    const result = unwind({
+      ...initialUIState,
+      mode: Mode.MODAL_CONFIRM,
+      focus: FocusTarget.MODAL,
+      modal: {
+        type: "recurring_delete_future_checkpoint",
+        deleteModal: {
+          type: "delete",
+          target: "recurring_occurrence",
+          seriesTaskId: "series-task-1",
+          seriesId: "series:task-1",
+          occurrenceIso: "2026-02-10T09:00:00",
+          selectedRowId: "series_occurrence:series%3Atask-1:2026-02-10T09%3A00%3A00",
+          taskTitle: "Task",
+          previousMode: Mode.LIST,
+          previousFocus: FocusTarget.TASK_LIST
+        },
+        previousMode: Mode.LIST,
+        previousFocus: FocusTarget.TASK_LIST
+      }
+    });
+
+    expect(result).toEqual({
+      state: {
+        ...initialUIState,
+        mode: Mode.LIST,
+        focus: FocusTarget.TASK_LIST,
+        modal: null
+      },
+      clearEditorDraft: false
+    });
+  });
+
   it("dismisses empty NUX to list/task-list and records dismissal", () => {
     const result = unwind({
       ...initialUIState,

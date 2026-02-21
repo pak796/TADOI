@@ -16,6 +16,20 @@ describe("decideEditTargetSwitch", () => {
     });
   });
 
+  it("supports first-click discoverability by switching immediately when clean", () => {
+    expect(
+      decideEditTargetSwitch({
+        fromTaskId: "task-current",
+        toTaskId: "task-clicked",
+        isDirty: false,
+        hasActiveModal: false
+      })
+    ).toEqual({
+      type: "switch_now",
+      toTaskId: "task-clicked"
+    });
+  });
+
   it("returns prompt for dirty draft targeting a different task", () => {
     expect(
       decideEditTargetSwitch({

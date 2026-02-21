@@ -120,6 +120,31 @@ export type KeyRouterAction =
   | { scope: "domain"; type: "OPEN_EDIT_TASK_LINK_MODAL" }
   | { scope: "domain"; type: "OPEN_DELETE_TASK_LINK_MODAL" }
   | { scope: "domain"; type: "OPEN_DELETE_CONFIRM" }
+  | {
+      scope: "ui";
+      type: "OPEN_UNSAVED_CHANGES_MODAL";
+      modal: Extract<NonNullable<UIState["modal"]>, { type: "unsaved_changes" }>;
+    }
+  | { scope: "domain"; type: "MODAL_CONFIRM_UNSAVED_SAVE_CONTINUE" }
+  | { scope: "domain"; type: "MODAL_CONFIRM_UNSAVED_DISCARD_CONTINUE" }
+  | { scope: "ui"; type: "MODAL_CANCEL_UNSAVED_CONTINUE" }
+  | {
+      scope: "ui";
+      type: "OPEN_BACKUP_FINAL_CHECKPOINT_MODAL";
+      modal: Extract<NonNullable<UIState["modal"]>, { type: "backup_final_checkpoint" }>;
+    }
+  | { scope: "domain"; type: "MODAL_CONFIRM_BACKUP_FINAL_CHECKPOINT" }
+  | { scope: "ui"; type: "MODAL_CANCEL_BACKUP_FINAL_CHECKPOINT" }
+  | {
+      scope: "ui";
+      type: "OPEN_RECURRING_DELETE_FUTURE_CHECKPOINT_MODAL";
+      modal: Extract<
+        NonNullable<UIState["modal"]>,
+        { type: "recurring_delete_future_checkpoint" }
+      >;
+    }
+  | { scope: "domain"; type: "MODAL_CONFIRM_RECURRING_DELETE_FUTURE_CHECKPOINT" }
+  | { scope: "ui"; type: "MODAL_CANCEL_RECURRING_DELETE_FUTURE_CHECKPOINT" }
   | { scope: "domain"; type: "MODAL_CONFIRM_DELETE" }
   | { scope: "domain"; type: "MODAL_CONFIRM_DELETE_FUTURE" }
   | { scope: "domain"; type: "MODAL_CONFIRM_TASK_LINK_DELETE" }
@@ -311,6 +336,15 @@ function resolveEscapeActions(
     // Step-specific Escape behavior is handled by resolveModalModeActions.
     return null;
   }
+  if (mode === Mode.MODAL_CONFIRM && uiState.modal?.type === "recurring_delete_future_checkpoint") {
+    return [{ scope: "ui", type: "MODAL_CANCEL_RECURRING_DELETE_FUTURE_CHECKPOINT" }];
+  }
+  if (mode === Mode.MODAL_CONFIRM && uiState.modal?.type === "unsaved_changes") {
+    return [{ scope: "ui", type: "MODAL_CANCEL_UNSAVED_CONTINUE" }];
+  }
+  if (mode === Mode.MODAL_CONFIRM && uiState.modal?.type === "backup_final_checkpoint") {
+    return [{ scope: "ui", type: "MODAL_CANCEL_BACKUP_FINAL_CHECKPOINT" }];
+  }
   if (mode === Mode.BACKUP_CENTER) {
     return [{ scope: "ui", type: "BACKUP_BACK" }];
   }
@@ -423,7 +457,12 @@ function resolveModalModeActions(
       uiState.modal.target === "recurring_occurrence" &&
       (lowerName === "f" || lowerSequence === "f")
     ) {
-      return [{ scope: "domain", type: "MODAL_CONFIRM_DELETE_FUTURE" }];
+      return [{ scope: "ui", type: "OPEN_RECURRING_DELETE_FUTURE_CHECKPOINT_MODAL", modal: {
+        type: "recurring_delete_future_checkpoint",
+        deleteModal: uiState.modal,
+        previousMode: uiState.modal.previousMode,
+        previousFocus: uiState.modal.previousFocus
+      } }];
     }
     if (lowerName === "n" || lowerSequence === "n") {
       return [{ scope: "ui", type: "UNWIND" }];
@@ -476,6 +515,42 @@ function resolveModalModeActions(
     }
     if (lowerName === "c" || lowerSequence === "c") {
       return [{ scope: "domain", type: "MODAL_EDIT_SWITCH_DISCARD_CLOSE" }];
+    }
+    return [];
+  }
+  if (uiState.modal?.type === "recurring_delete_future_checkpoint") {
+    const lowerName = name.toLowerCase();
+    const lowerSequence = sequence.toLowerCase();
+    if (lowerName === "y" || lowerSequence === "y") {
+      return [{ scope: "domain", type: "MODAL_CONFIRM_RECURRING_DELETE_FUTURE_CHECKPOINT" }];
+    }
+    if (lowerName === "n" || lowerSequence === "n") {
+      return [{ scope: "ui", type: "MODAL_CANCEL_RECURRING_DELETE_FUTURE_CHECKPOINT" }];
+    }
+    return [];
+  }
+  if (uiState.modal?.type === "unsaved_changes") {
+    const lowerName = name.toLowerCase();
+    const lowerSequence = sequence.toLowerCase();
+    if (lowerName === "s" || lowerSequence === "s") {
+      return [{ scope: "domain", type: "MODAL_CONFIRM_UNSAVED_SAVE_CONTINUE" }];
+    }
+    if (lowerName === "d" || lowerSequence === "d") {
+      return [{ scope: "domain", type: "MODAL_CONFIRM_UNSAVED_DISCARD_CONTINUE" }];
+    }
+    if (lowerName === "c" || lowerSequence === "c" || lowerName === "n" || lowerSequence === "n") {
+      return [{ scope: "ui", type: "MODAL_CANCEL_UNSAVED_CONTINUE" }];
+    }
+    return [];
+  }
+  if (uiState.modal?.type === "backup_final_checkpoint") {
+    const lowerName = name.toLowerCase();
+    const lowerSequence = sequence.toLowerCase();
+    if (lowerName === "y" || lowerSequence === "y") {
+      return [{ scope: "domain", type: "MODAL_CONFIRM_BACKUP_FINAL_CHECKPOINT" }];
+    }
+    if (lowerName === "n" || lowerSequence === "n") {
+      return [{ scope: "ui", type: "MODAL_CANCEL_BACKUP_FINAL_CHECKPOINT" }];
     }
     return [];
   }
