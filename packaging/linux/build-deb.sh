@@ -49,10 +49,15 @@ cleanup() {
 }
 trap cleanup EXIT
 
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 PKG_DIR="$TMP_DIR/tadoi_${VERSION}_amd64"
 mkdir -p "$PKG_DIR/DEBIAN" "$PKG_DIR/usr/bin"
 
 install -m 755 "$BINARY_PATH" "$PKG_DIR/usr/bin/tadoi"
+bun "$REPO_ROOT/scripts/install-completions.ts" \
+  --layout linux-system \
+  --dest-root "$PKG_DIR" \
+  --strict
 
 cat > "$PKG_DIR/DEBIAN/control" <<CONTROL
 Package: tadoi

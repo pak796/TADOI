@@ -150,7 +150,6 @@ export function resolveDataPath(options: ResolveDataPathOptions = {}): string {
   return pathApi.join(xdgDataHome, BRAND_SLUG, DATA_FILE_NAME);
 }
 
-const DATA_FILE = resolveDataPath();
 const DEFAULT_FS_OPS: PersistenceFsOps = fs;
 export const CURRENT_SCHEMA_VERSION = 6;
 const PRIVATE_DIR_MODE = 0o700;
@@ -169,6 +168,10 @@ function emptyData(): LoadedData {
     savedViews: [],
     engagement: createDefaultEngagementState()
   };
+}
+
+function resolveDefaultDataFilePath(): string {
+  return resolveDataPath();
 }
 
 function isMissingFileError(error: unknown): boolean {
@@ -371,7 +374,7 @@ async function recoverFromCorruption(
 }
 
 export async function safeLoadState(options: SafeLoadOptions = {}): Promise<SafeLoadResult> {
-  const filePath = options.filePath ?? DATA_FILE;
+  const filePath = options.filePath ?? resolveDefaultDataFilePath();
   const fsOps = options.fsOps ?? DEFAULT_FS_OPS;
   const now = options.now ?? new Date();
   let raw = "";
@@ -436,7 +439,7 @@ export async function loadState(): Promise<LoadedData> {
 }
 
 export async function loadStateStrict(options: StrictLoadOptions = {}): Promise<StrictLoadResult> {
-  const filePath = options.filePath ?? DATA_FILE;
+  const filePath = options.filePath ?? resolveDefaultDataFilePath();
   const fsOps = options.fsOps ?? DEFAULT_FS_OPS;
   let raw = "";
 
@@ -501,7 +504,7 @@ export async function writeJsonAtomic(
   payload: unknown,
   options: WriteJsonAtomicOptions = {}
 ): Promise<void> {
-  const filePath = options.filePath ?? DATA_FILE;
+  const filePath = options.filePath ?? resolveDefaultDataFilePath();
   const fsOps = options.fsOps ?? DEFAULT_FS_OPS;
   const pretty = options.pretty !== false;
   const fsyncBeforeRename = options.fsyncBeforeRename === true;
@@ -529,7 +532,7 @@ export async function writeJsonAtomic(
 
 export async function saveStateAtomic(
   data: LoadedData,
-  filePath = DATA_FILE,
+  filePath = resolveDefaultDataFilePath(),
   fsOps: PersistenceFsOps = DEFAULT_FS_OPS,
   options: SaveStateAtomicOptions = {}
 ): Promise<number> {
@@ -649,7 +652,7 @@ export async function createDataBackup(
 
 async function writeState(
   data: LoadedData,
-  filePath = DATA_FILE,
+  filePath = resolveDefaultDataFilePath(),
   fsOps: PersistenceFsOps = DEFAULT_FS_OPS,
   options: SaveStateAtomicOptions = {}
 ): Promise<number> {
@@ -664,7 +667,7 @@ async function writeState(
 export function saveStateDebounced(
   data: LoadedData,
   delay = 350,
-  filePath = DATA_FILE,
+  filePath = resolveDefaultDataFilePath(),
   fsOps: PersistenceFsOps = DEFAULT_FS_OPS,
   onResult?: SaveStateResultCallback,
   options: SaveStateDebouncedOptions = {}
@@ -713,5 +716,5 @@ export function saveStateDebounced(
 }
 
 export function getDataFilePath(): string {
-  return DATA_FILE;
+  return resolveDefaultDataFilePath();
 }

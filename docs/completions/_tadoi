@@ -1,0 +1,99 @@
+#compdef tadoi
+
+local -a root_opts
+root_opts=(
+  '--help[Show help]'
+  '-h[Show help]'
+  '--version[Print version]'
+  '--smoke-tui[Run minimal TUI smoke render and exit]'
+  '--interactive[Force interactive TUI mode]'
+  '--json[Emit machine-readable output for non-interactive commands]'
+  '--quiet[Suppress non-essential non-error output]'
+  '--data-file[Override data file path for this invocation]:path:_files'
+  '--no-logo[Hide ASCII logo in app header]'
+)
+
+local -a commands
+commands=(
+  'add:Add task via TITS command engine'
+  'done:Mark task done by id via TITS command engine'
+  'due:Set or clear due date via TITS command engine'
+  'recur:Set or clear recurrence by id via TITS command engine'
+  'help:Show TITS help topics'
+  'export:Export persisted state and settings'
+  'import:Import persisted state from JSON export'
+  'calendar:export:Export one-way calendar ICS file'
+  'calendar:import:Import one-way calendar ICS file'
+)
+
+if (( CURRENT == 2 )); then
+  _describe 'command' commands
+  _describe 'option' root_opts
+  return 0
+fi
+
+case "${words[2]}" in
+  add|done|due|recur|help)
+    _arguments '*:arg: '
+    ;;
+  export)
+    _arguments \
+      '--help[Show export help]' \
+      '-h[Show export help]' \
+      '--out[Output file path]:path:_files' \
+      '--format[Export format]:format:(json)' \
+      '--pretty[Pretty-print output JSON]' \
+      '--redact[Compatibility alias for --redact-mode=strict]' \
+      '--redact-mode[Redaction profile]:mode:(basic strict)' \
+      '--json[Emit machine-readable output]' \
+      '--quiet[Suppress non-essential output]' \
+      '--data-file[Override data file path]:path:_files'
+    ;;
+  import)
+    _arguments \
+      '--help[Show import help]' \
+      '-h[Show import help]' \
+      '--in[Input file path]:path:_files' \
+      '--mode[Import mode]:mode:(merge replace)' \
+      '--backup[Enable pre-import backup]' \
+      '--no-backup[Disable pre-import backup]' \
+      '--dry-run[Parse and plan without writing]' \
+      '--yes[Confirm replace mode]' \
+      '--pretty[Pretty-print summary output]' \
+      '--json[Emit machine-readable output]' \
+      '--quiet[Suppress non-essential output]' \
+      '--data-file[Override data file path]:path:_files'
+    ;;
+  calendar:export)
+    _arguments \
+      '--help[Show calendar export help]' \
+      '-h[Show calendar export help]' \
+      '--out[Output .ics path]:path:_files' \
+      '--view[Saved view display name]:name:' \
+      '--range[Date range]:range:(next7 month all)' \
+      '--privacy[Export metadata detail]:privacy:(minimal full)' \
+      '--include-details[Compatibility alias for --privacy=full]' \
+      '--json[Emit machine-readable output]' \
+      '--quiet[Suppress non-essential output]' \
+      '--data-file[Override data file path]:path:_files'
+    ;;
+  calendar:import)
+    _arguments \
+      '--help[Show calendar import help]' \
+      '-h[Show calendar import help]' \
+      '--in[Input .ics path]:path:_files' \
+      '--view[Saved view display name]:name:' \
+      '--range[Date range]:range:(next7 month all)' \
+      '--mode[Import mode]:mode:(merge update create)' \
+      '--horizon-days[Recurrence expansion horizon days]:days:' \
+      '--dry-run[Parse and plan without writing]' \
+      '--tag[Tag to add on newly created tasks]:tag:' \
+      '--report[Write JSON import report]:path:_files' \
+      '--json[Emit machine-readable output]' \
+      '--quiet[Suppress non-essential output]' \
+      '--data-file[Override data file path]:path:_files'
+    ;;
+  *)
+    _arguments '*:arg: '
+    ;;
+esac

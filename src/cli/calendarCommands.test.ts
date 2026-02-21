@@ -82,6 +82,16 @@ describe("runCalendarCommand", () => {
     const code = await runCalendarCommand("import", ["--help"]);
     expect(code).toBe(0);
   });
+
+  it("returns parse/validation exit code for calendar export usage errors", async () => {
+    const code = await runCalendarCommand("export", []);
+    expect(code).toBe(2);
+  });
+
+  it("returns parse/validation exit code for calendar import usage errors", async () => {
+    const code = await runCalendarCommand("import", []);
+    expect(code).toBe(2);
+  });
 });
 
 describe("parseCalendarImportArgs", () => {

@@ -54,6 +54,13 @@ export class CalendarImportUsageError extends Error {
   }
 }
 
+export class CalendarImportDomainError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "CalendarImportDomainError";
+  }
+}
+
 export class CalendarImportFilesystemError extends Error {
   constructor(message: string) {
     super(message);
@@ -584,7 +591,7 @@ export async function importCalendarIcs(
     if (options.viewName && options.viewName.trim().length > 0) {
       view = resolveViewByDisplayName(savedViews, options.viewName);
       if (!view) {
-        throw new CalendarImportUsageError(
+        throw new CalendarImportDomainError(
           `Saved view not found: ${options.viewName.trim()}`
         );
       }

@@ -1,6 +1,6 @@
 # TADOI™ Usage Guide
 
-Verified as of 2026-02-20 (v0.3.7).
+Verified as of 2026-02-21 (v0.3.7).
 Source of truth for key routing: `src/app/keyRouter.ts`.
 
 ## Run
@@ -15,6 +15,17 @@ Help and version:
 bun run start -- --help
 bun run start -- --version
 ```
+
+External CLI runtime contract:
+- `tadoi` launches interactive TUI.
+- `tadoi --interactive` forces interactive TUI launch.
+- Unknown top-level tokens fail fast with usage (`exit 2`), no interactive fallback.
+- Global automation flags (non-interactive commands):
+  - `--json`
+  - `--quiet`
+  - `--data-file <path>` (takes precedence over `TADOI_DATA_PATH` for that invocation)
+- `--` delimiter keeps literal dash-prefixed command tokens:
+  - `tadoi add -- --help` creates title `--help`.
 
 ## Core Modes
 - LIST
@@ -159,6 +170,12 @@ Supported TITS commands:
 CLI TITS notes:
 - Wrapper form: `tadoi add ...`, `tadoi done id:<task-id>`, `tadoi due id:<task-id> ...`, `tadoi recur id:<task-id> ...`
 - Raw DSL form: `tadoi 'recur id:<task-id> every:week on:mon'`
+- Wrapper help is non-mutating:
+  - `tadoi add --help`
+  - `tadoi done --help`
+  - `tadoi due --help`
+  - `tadoi recur --help`
+  - `tadoi help --help`
 - `@selected` is rejected in CLI context (use `id:<task-id>`)
 - Exit codes: `0` success, `2` parse/validation, `3` target resolution, `4` lock present, `5` IO error
 

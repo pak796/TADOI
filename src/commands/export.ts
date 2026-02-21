@@ -1,6 +1,10 @@
 import { CLI_NAME } from "../brand/brand";
-import { exportBackup } from "../state/backupService";
+import {
+  BackupExportFilesystemError,
+  exportBackup
+} from "../state/backupService";
 import type { ExportCommandOptions } from "../cli/portabilityCommands";
+import { CLI_EXIT_CODE } from "../cli/exitCodes";
 
 function toErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -21,7 +25,7 @@ export function printExportHelp(): void {
 export async function runExportCommand(parsed: ExportCommandOptions): Promise<number> {
   if (parsed.help) {
     printExportHelp();
-    return 0;
+    return CLI_EXIT_CODE.SUCCESS;
   }
 
   try {
@@ -36,9 +40,13 @@ export async function runExportCommand(parsed: ExportCommandOptions): Promise<nu
     console.log(`[export] wrote: ${result.outputPath}`);
     console.log(`[export] tasks: ${result.taskCount}`);
     console.log(`[export] schemaVersion: ${result.schemaVersion}`);
-    return 0;
+    return CLI_EXIT_CODE.SUCCESS;
   } catch (error: unknown) {
+    if (error instanceof BackupExportFilesystemError) {
+      console.error(`[export] failed: ${toErrorMessage(error)}`);
+      return CLI_EXIT_CODE.IO_ERROR;
+    }
     console.error(`[export] failed: ${toErrorMessage(error)}`);
-    return 1;
+    return CLI_EXIT_CODE.IO_ERROR;
   }
 }

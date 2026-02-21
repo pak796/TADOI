@@ -54,9 +54,14 @@ cleanup() {
 }
 trap cleanup EXIT
 
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 PAYLOAD_ROOT="$TMP_DIR/payload"
 mkdir -p "$PAYLOAD_ROOT/usr/local/bin"
 install -m 755 "$BINARY_PATH" "$PAYLOAD_ROOT/usr/local/bin/tadoi"
+bun "$REPO_ROOT/scripts/install-completions.ts" \
+  --layout macos-system \
+  --dest-root "$PAYLOAD_ROOT" \
+  --strict
 
 COMPONENT_PKG="$TMP_DIR/TADOI-component.pkg"
 FINAL_PKG="$OUT_DIR/TADOI-$VERSION.pkg"

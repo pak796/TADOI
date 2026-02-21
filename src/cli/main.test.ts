@@ -99,6 +99,13 @@ describe("resolveTitsCliInput", () => {
       dsl: "recur id:task-1 every:week on:mon"
     });
   });
+
+  it("supports -- delimiter for literal dash-prefixed add titles", () => {
+    expect(resolveTitsCliInput(["add", "--", "--help"])).toEqual({
+      mode: "subcommand",
+      dsl: "add --help"
+    });
+  });
 });
 
 describe("runTitsCommandCliWithDeps", () => {
@@ -190,6 +197,27 @@ describe("runTitsCommandCliWithDeps", () => {
     expect(result).toEqual({ handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS });
     expect(logs).toEqual(["Commands: add, done, due, recur, help. Try: help recur"]);
     expect(saved).toHaveLength(0);
+  });
+
+  it("treats <command> --help as non-mutating wrapper help", async () => {
+    const { deps, logs, errors, saved } = createDeps({ locked: true });
+    const result = await runTitsCommandCliWithDeps(["add", "--help"], deps);
+
+    expect(result).toEqual({ handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS });
+    expect(errors).toHaveLength(0);
+    expect(saved).toHaveLength(0);
+    expect(logs[0]).toContain("add <title>");
+  });
+
+  it("treats add -- --help as a literal title and persists", async () => {
+    const { deps, logs, errors, saved } = createDeps();
+    const result = await runTitsCommandCliWithDeps(["add", "--", "--help"], deps);
+
+    expect(result).toEqual({ handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS });
+    expect(errors).toHaveLength(0);
+    expect(logs[0]).toContain("Added task: --help");
+    expect(saved).toHaveLength(1);
+    expect(saved[0]?.tasks[0]?.title).toBe("--help");
   });
 
   it("permits only one concurrent writer when lock is already acquired", async () => {

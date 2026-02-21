@@ -1,6 +1,6 @@
 # TADOI™ Install Guide
 
-Verified as of 2026-02-20 (v0.3.7).
+Verified as of 2026-02-21 (v0.3.7).
 
 This is the concise install guide. For deep troubleshooting and platform detail, see `docs/TADOI_Installation_Guide_All_Platforms.md`.
 
@@ -24,6 +24,12 @@ Quick verify:
 bun install
 bun run dev
 ```
+
+Completion install behavior:
+- `bun install` now runs `postinstall` to install shell completions for the current user (`bash`, `zsh`, `fish`) using `scripts/install-completions.ts`.
+- To skip this in automation/CI, set `TADOI_SKIP_COMPLETION_INSTALL=1`.
+- Manual rerun:
+  - `bun run completions:install:user`
 
 ## Daily Build Artifacts
 When running `bun run build:daily`, artifacts are staged under:

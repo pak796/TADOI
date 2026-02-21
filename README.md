@@ -8,6 +8,7 @@ Current version: `v0.3.7` (`package.json`: `0.3.7`).
 Feature list: [`docs/TADOI_Feature_List_v0.3.7.md`](./docs/TADOI_Feature_List_v0.3.7.md)
 Install guide: [`docs/INSTALL.md`](./docs/INSTALL.md)
 Usage guide: [`docs/USAGE.md`](./docs/USAGE.md)
+CLI completions: [`docs/CLI_COMPLETIONS.md`](./docs/CLI_COMPLETIONS.md)
 QA guide: [`docs/TADOI_QA_Guide_v0.3.7.md`](./docs/TADOI_QA_Guide_v0.3.7.md)
 Smoke checklist: [`docs/QA/SMOKE_TEST_CHECKLIST.md`](./docs/QA/SMOKE_TEST_CHECKLIST.md)
 Release checklist: [`docs/RELEASE_CHECKLIST.md`](./docs/RELEASE_CHECKLIST.md)
@@ -21,6 +22,9 @@ Archival path policy: [`docs/ARCHIVAL_PATH_POLICY.md`](./docs/ARCHIVAL_PATH_POLI
 ```bash
 bun install
 ```
+
+`bun install` runs `postinstall` to install user-level CLI completions (`bash`, `zsh`, `fish`).
+Set `TADOI_SKIP_COMPLETION_INSTALL=1` to skip completion install in CI/automation.
 
 ## Dependency Policy
 
@@ -67,8 +71,29 @@ Supported commands:
 
 CLI parity and safety:
 - CLI accepts wrapper form (`tadoi add ...`) and raw DSL (`tadoi 'add "Task" #tag'`)
+- Interactive routing is explicit and deterministic:
+  - `tadoi` or `tadoi --interactive` launches TUI
+  - unknown top-level tokens (example: `tadoi --wat`) fail fast and print usage (no TUI fallback)
+- Wrapper help is non-mutating:
+  - `tadoi add --help`
+  - `tadoi done --help`
+  - `tadoi due --help`
+  - `tadoi recur --help`
+  - `tadoi help --help`
+- Use `--` delimiter to pass literal dash-prefixed tokens:
+  - `tadoi add -- --help` creates a task titled `--help`
+- Scriptability flags (non-interactive commands):
+  - `--json` emits a machine-readable envelope
+  - `--quiet` suppresses non-essential non-error output
+  - `--data-file <path>` overrides data path for a single invocation
 - CLI rejects `@selected` targets and requires `id:<task-id>`
 - CLI write commands are lock-gated while the TUI is running
+- Runtime exit code matrix:
+  - `0` success
+  - `2` usage/parse/validation
+  - `3` target-resolution/domain-state mismatch
+  - `4` lock/concurrency block
+  - `5` IO/filesystem/runtime dependency failure
 
 Canonical TITS spec sources (filename rule `*TITS*.md`):
 - `docs/specs/tits-m1-commandbar.md`
@@ -94,6 +119,7 @@ Minimum supported terminal size:
 
 TADOI saves tasks to `tadoi_data.json` using this path order:
 
+- CLI `--data-file <path>` override (highest precedence, per invocation)
 - `TADOI_DATA_PATH` override (absolute or relative path)
 - Linux: `$XDG_DATA_HOME/tadoi/tadoi_data.json`
 - Linux fallback: `$HOME/.local/share/tadoi/tadoi_data.json`
@@ -196,7 +222,7 @@ Behavior notes:
 - Export now includes round-trip identity headers on VEVENTs: `X-TADOI-TASK-ID`, plus `X-TADOI-SERIES-ID` (series roots) and `X-TADOI-INSTANCE-OF` (instance overrides).
 - Import identity precedence is explicit: `X-TADOI-TASK-ID` > TADOI UID conventions (`tadoi-*`) > stored `external.calendar.uid`.
 - Import safety baseline: max ICS size `10 MiB` by default, bounded recurrence horizon, hard expansion cap, and mandatory dry-run before commit in Backup Center.
-- `calendar:import` exit codes: `0` success, `1` usage/validation/parse errors (including import-domain errors), `2` filesystem errors.
+- `calendar:import` uses the shared runtime exit matrix (`0/2/3/4/5`).
 - Report write failures are non-fatal warnings when import processing succeeds.
 
 ## Stability Notes (As of v0.3.7)

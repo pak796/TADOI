@@ -1,11 +1,14 @@
 import { CLI_NAME } from "../brand/brand";
 import {
+  BackupImportFilesystemError,
+  BackupImportUsageError,
   BackupImportPartialError,
   importBackup,
   type BackupImportSummary
 } from "../state/backupService";
 import { TadoiLockBusyError } from "../state/lockfile";
 import type { ImportCommandOptions } from "../cli/portabilityCommands";
+import { CLI_EXIT_CODE } from "../cli/exitCodes";
 
 function toErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -52,12 +55,12 @@ function printImportSummary(summary: BackupImportSummary, pretty: boolean): void
 export async function runImportCommand(parsed: ImportCommandOptions): Promise<number> {
   if (parsed.help) {
     printImportHelp();
-    return 0;
+    return CLI_EXIT_CODE.SUCCESS;
   }
 
   if (parsed.mode === "replace" && !parsed.yes) {
     console.error("[import] replace mode requires --yes");
-    return 1;
+    return CLI_EXIT_CODE.PARSE_OR_VALIDATION;
   }
 
   try {
@@ -69,19 +72,27 @@ export async function runImportCommand(parsed: ImportCommandOptions): Promise<nu
     });
 
     printImportSummary(summary, parsed.pretty);
-    return 0;
+    return CLI_EXIT_CODE.SUCCESS;
   } catch (error: unknown) {
     if (error instanceof TadoiLockBusyError) {
       console.error("[import] failed: TADOI is running (lock present).");
-      return 1;
+      return CLI_EXIT_CODE.LOCKED;
     }
     if (error instanceof BackupImportPartialError) {
       printImportSummary(error.summary, parsed.pretty);
       console.error(`[import] ${error.message}`);
-      return 1;
+      return CLI_EXIT_CODE.IO_ERROR;
+    }
+    if (error instanceof BackupImportUsageError) {
+      console.error(`[import] failed: ${error.message}`);
+      return CLI_EXIT_CODE.PARSE_OR_VALIDATION;
+    }
+    if (error instanceof BackupImportFilesystemError) {
+      console.error(`[import] failed: ${error.message}`);
+      return CLI_EXIT_CODE.IO_ERROR;
     }
 
     console.error(`[import] failed: ${toErrorMessage(error)}`);
-    return 1;
+    return CLI_EXIT_CODE.IO_ERROR;
   }
 }

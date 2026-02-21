@@ -1,9 +1,9 @@
 # TADOI™ Product Spec (v0.3.7)
 
-Updated: 2026-02-20
+Updated: 2026-02-21
 Runtime baseline: `v0.3.7`
 Package baseline: `0.3.7`
-Persistence schema baseline: `5`
+Persistence schema baseline: `6`
 
 Stability taxonomy:
 - `Canonical`: compatibility contract expected to remain stable across patch/minor updates.
@@ -217,6 +217,20 @@ Validation and mutation rules:
 
 CLI parity and safety:
 - CLI wrapper and raw DSL forms are both supported (`src/cli/main.ts`).
+- Interactive routing is explicit:
+  - `tadoi` and `tadoi --interactive` launch TUI
+  - unknown top-level argv fails fast with usage (`exit 2`) and does not launch TUI
+- Wrapper help is non-mutating:
+  - `tadoi add --help`
+  - `tadoi done --help`
+  - `tadoi due --help`
+  - `tadoi recur --help`
+  - `tadoi help --help`
+- `--` delimiter preserves literal dash-prefixed tokens (`tadoi add -- --help` creates title `--help`).
+- Non-interactive automation flags:
+  - `--json`
+  - `--quiet`
+  - `--data-file <path>` (per invocation, takes precedence over `TADOI_DATA_PATH`)
 - `@selected` is invalid in CLI context; CLI requires `id:<task-id>` for target commands.
 - CLI write commands are lock-gated when TUI lock exists.
 - TITS CLI exit codes: `0` success, `2` parse/validation, `3` target resolution, `4` lock present, `5` IO error.

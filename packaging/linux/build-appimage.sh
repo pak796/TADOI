@@ -50,10 +50,15 @@ cleanup() {
 }
 trap cleanup EXIT
 
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 APP_DIR="$TMP_DIR/TADOI.AppDir"
 mkdir -p "$APP_DIR/usr/bin"
 
 install -m 755 "$BINARY_PATH" "$APP_DIR/usr/bin/tadoi"
+bun "$REPO_ROOT/scripts/install-completions.ts" \
+  --layout linux-system \
+  --dest-root "$APP_DIR" \
+  --strict
 
 cat > "$APP_DIR/tadoi.desktop" <<DESKTOP
 [Desktop Entry]

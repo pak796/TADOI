@@ -52,6 +52,10 @@ Install from artifacts:
   3. Run the included PKG installer.
   4. Open a new terminal session.
   5. Verify in terminal: `tadoi --version`
+  6. Completions installed by PKG:
+     - Bash: `/usr/local/share/bash-completion/completions/tadoi`
+     - Zsh: `/usr/local/share/zsh/site-functions/_tadoi`
+     - Fish: `/usr/local/share/fish/vendor_completions.d/tadoi.fish`
 - Windows:
   1. Run setup EXE.
   2. Accept UAC prompt (admin install).
@@ -61,6 +65,10 @@ Install from artifacts:
   1. Install DEB: `sudo dpkg -i tadoi_<version>_amd64.deb`
   2. Validate binary: `tadoi --version`
   3. Optional AppImage run: `chmod +x tadoi-<version>-x86_64.AppImage && ./tadoi-<version>-x86_64.AppImage --version`
+  4. Completions installed by DEB:
+     - Bash: `/usr/share/bash-completion/completions/tadoi`
+     - Zsh: `/usr/share/zsh/site-functions/_tadoi`
+     - Fish: `/usr/share/fish/vendor_completions.d/tadoi.fish`
 
 Verify manifest-backed artifacts:
 1. Confirm `TADOI-<target>-<version>-manifest.json` is present in your artifact bundle.
@@ -81,6 +89,14 @@ Verify manifest-backed artifacts:
 ### 4.2 Install dependencies
 
 - `bun install`
+
+`bun install` runs a `postinstall` hook that installs user-level shell completions (`bash`, `zsh`, `fish`) using `scripts/install-completions.ts`.
+
+To skip completion install in CI/automation:
+- `TADOI_SKIP_COMPLETION_INSTALL=1 bun install`
+
+Manual rerun:
+- `bun run completions:install:user`
 
 ### 4.3 Run TADOI
 

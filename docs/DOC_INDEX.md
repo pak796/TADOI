@@ -1,6 +1,6 @@
 # TADOI™ Documentation Index
 
-Updated: 2026-02-20
+Updated: 2026-02-21
 Active runtime baseline: `v0.3.7`
 Active package baseline: `0.3.7`
 
@@ -11,6 +11,7 @@ Active package baseline: `0.3.7`
 ## 2) Active User Guides
 - `docs/INSTALL.md`: concise install guide + TITS quick validation.
 - `docs/USAGE.md`: core flows, keybindings, TITS in-app + CLI command contract.
+- `docs/CLI_COMPLETIONS.md`: optional bash/zsh/fish completion install guide.
 - `docs/TADOI_Installation_Guide_All_Platforms.md`: binary/source install and troubleshooting.
 - `docs/TADOI_QA_Guide_v0.3.7.md`: full manual QA matrix (`QA-001`..`QA-072`).
 - `docs/QA/SMOKE_TEST_CHECKLIST.md`: daily smoke list with TITS cases.

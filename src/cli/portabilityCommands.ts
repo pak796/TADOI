@@ -1,6 +1,7 @@
 import type { ImportMode } from "../state/portability";
 import { printExportHelp, runExportCommand } from "../commands/export";
 import { printImportHelp, runImportCommand } from "../commands/import";
+import { CLI_EXIT_CODE } from "./exitCodes";
 
 type ParseResult<T> =
   | { ok: true; value: T }
@@ -266,7 +267,7 @@ export async function runPortabilityCommand(
     if (!parsed.ok) {
       console.error(`[export] ${parsed.error}`);
       printExportHelp();
-      return 1;
+      return CLI_EXIT_CODE.PARSE_OR_VALIDATION;
     }
     return runExportCommand(parsed.value);
   }
@@ -275,7 +276,7 @@ export async function runPortabilityCommand(
   if (!parsed.ok) {
     console.error(`[import] ${parsed.error}`);
     printImportHelp();
-    return 1;
+    return CLI_EXIT_CODE.PARSE_OR_VALIDATION;
   }
   return runImportCommand(parsed.value);
 }

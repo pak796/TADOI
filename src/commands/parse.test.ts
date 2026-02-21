@@ -51,6 +51,17 @@ describe("parseCommand", () => {
     });
   });
 
+  it("accepts dash-prefixed literal add titles", () => {
+    expect(parseCommand("add --help")).toEqual({
+      ok: true,
+      command: {
+        type: "add",
+        title: "--help",
+        tags: []
+      }
+    });
+  });
+
   it("rejects invalid add date/time and at without due", () => {
     expect(parseCommand('add "X" due:2026-02-29')).toEqual({
       ok: false,

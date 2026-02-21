@@ -7,6 +7,11 @@ Scripts in this directory build installable macOS artifacts for the TADOI CLI.
 - `sign-notarize.sh`: optional signing/notarization (skips when env vars are absent)
 - `build-dmg.sh`: creates `TADOI-macOS-<version>.dmg` containing the PKG + README
 
+PKG payload now includes shell completion files via `scripts/install-completions.ts`:
+- Bash: `/usr/local/share/bash-completion/completions/tadoi`
+- Zsh: `/usr/local/share/zsh/site-functions/_tadoi`
+- Fish: `/usr/local/share/fish/vendor_completions.d/tadoi.fish`
+
 Expected install flow:
 1. Open `TADOI-macOS-<version>.dmg`.
 2. Run `TADOI-<version>.pkg`.

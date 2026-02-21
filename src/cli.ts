@@ -19,12 +19,20 @@ type CliOptions = {
   smokeTui: boolean;
 };
 
+type RuntimeCliOptions = {
+  interactive: boolean;
+  json: boolean;
+  quiet: boolean;
+  dataFilePath?: string;
+};
+
 export type CliRoute =
   | { kind: "help"; showLogo: boolean }
   | { kind: "version" }
   | { kind: "smoke_tui" }
   | { kind: "portability"; command: "export" | "import"; args: string[] }
   | { kind: "calendar"; command: "export" | "import"; args: string[] }
+  | { kind: "unknown"; token: string }
   | { kind: "tui"; showLogo: boolean };
 
 export type CliRunDeps = {
@@ -40,11 +48,205 @@ export type CliRunDeps = {
 };
 
 function parseCliOptions(argv: string[]): CliOptions {
-  const showHelp = argv.includes("--help") || argv.includes("-h");
-  const showLogo = !argv.includes("--no-logo");
-  const showVersion = argv.includes("--version");
-  const smokeTui = argv.includes("--smoke-tui");
+  let showHelp = false;
+  let showLogo = true;
+  let showVersion = false;
+  let smokeTui = false;
+
+  for (const arg of argv) {
+    if (arg === "--help" || arg === "-h") {
+      showHelp = true;
+      continue;
+    }
+    if (arg === "--no-logo") {
+      showLogo = false;
+      continue;
+    }
+    if (arg === "--version") {
+      showVersion = true;
+      continue;
+    }
+    if (arg === "--smoke-tui") {
+      smokeTui = true;
+    }
+  }
+
   return { showHelp, showLogo, showVersion, smokeTui };
+}
+
+function isCoreOptionToken(token: string): boolean {
+  return (
+    token === "--help" ||
+    token === "-h" ||
+    token === "--version" ||
+    token === "--smoke-tui" ||
+    token === "--no-logo"
+  );
+}
+
+function parseRuntimeCliOptions(argv: string[]): {
+  ok: true;
+  argv: string[];
+  runtime: RuntimeCliOptions;
+} | {
+  ok: false;
+  error: string;
+} {
+  let interactive = false;
+  let json = false;
+  let quiet = false;
+  let dataFilePath: string | undefined;
+  const nextArgv: string[] = [];
+  let passthrough = false;
+
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (passthrough) {
+      nextArgv.push(arg);
+      continue;
+    }
+
+    if (arg === "--") {
+      passthrough = true;
+      nextArgv.push(arg);
+      continue;
+    }
+    if (arg === "--interactive") {
+      interactive = true;
+      continue;
+    }
+    if (arg === "--json") {
+      json = true;
+      continue;
+    }
+    if (arg === "--quiet") {
+      quiet = true;
+      continue;
+    }
+    if (arg === "--data-file") {
+      const next = argv[i + 1];
+      if (next === undefined || next.length === 0) {
+        return { ok: false, error: "--data-file requires a value" };
+      }
+      dataFilePath = next;
+      i += 1;
+      continue;
+    }
+    if (arg.startsWith("--data-file=")) {
+      const value = arg.slice("--data-file=".length);
+      if (value.length === 0) {
+        return { ok: false, error: "--data-file requires a value" };
+      }
+      dataFilePath = value;
+      continue;
+    }
+
+    nextArgv.push(arg);
+  }
+
+  return {
+    ok: true,
+    argv: nextArgv,
+    runtime: {
+      interactive,
+      json,
+      quiet,
+      ...(dataFilePath ? { dataFilePath } : {})
+    }
+  };
+}
+
+async function withDataFileOverride<T>(
+  dataFilePath: string | undefined,
+  run: () => Promise<T>
+): Promise<T> {
+  if (!dataFilePath) {
+    return run();
+  }
+  const previous = process.env[ENV_VARS.DATA_PATH];
+  process.env[ENV_VARS.DATA_PATH] = dataFilePath;
+  try {
+    return await run();
+  } finally {
+    if (previous === undefined) {
+      delete process.env[ENV_VARS.DATA_PATH];
+    } else {
+      process.env[ENV_VARS.DATA_PATH] = previous;
+    }
+  }
+}
+
+async function withOutputMode<T extends number | undefined>(
+  runtime: RuntimeCliOptions,
+  run: () => Promise<T>
+): Promise<T | number> {
+  if (!runtime.json && !runtime.quiet) {
+    return run();
+  }
+
+  const stdout: string[] = [];
+  const stderr: string[] = [];
+  const originalLog = console.log;
+  const originalError = console.error;
+  const lineify = (values: unknown[]): string => values.map((value) => String(value)).join(" ");
+
+  console.log = (...values: unknown[]) => {
+    if (runtime.json) {
+      stdout.push(lineify(values));
+      return;
+    }
+  };
+  console.error = (...values: unknown[]) => {
+    if (runtime.json) {
+      stderr.push(lineify(values));
+      return;
+    }
+    originalError(...values);
+  };
+
+  let value: T | undefined;
+  let thrown: unknown;
+  try {
+    value = await run();
+  } catch (error: unknown) {
+    thrown = error;
+  } finally {
+    console.log = originalLog;
+    console.error = originalError;
+  }
+
+  if (runtime.json) {
+    const exitCode =
+      thrown !== undefined
+        ? TITS_CLI_EXIT_CODE.IO_ERROR
+        : typeof value === "number"
+          ? value
+          : 0;
+    if (thrown !== undefined) {
+      stderr.push(
+        `Unhandled error: ${thrown instanceof Error ? thrown.message : String(thrown)}`
+      );
+    }
+    originalLog(
+      JSON.stringify(
+        {
+          ok: exitCode === 0,
+          exitCode,
+          stdout,
+          stderr
+        },
+        null,
+        2
+      )
+    );
+    if (thrown !== undefined) {
+      return TITS_CLI_EXIT_CODE.IO_ERROR;
+    }
+  } else if (thrown !== undefined) {
+    throw thrown;
+  }
+
+  return value as T;
 }
 
 export function printHelp(showLogo: boolean): void {
@@ -61,6 +263,10 @@ export function printHelp(showLogo: boolean): void {
   console.log("  -h, --help      Show this help");
   console.log("      --version   Print app version");
   console.log("      --smoke-tui Run minimal TUI smoke render and exit");
+  console.log("      --interactive Force interactive TUI mode");
+  console.log("      --json      Emit machine-readable output for non-interactive commands");
+  console.log("      --quiet     Suppress non-essential non-error output");
+  console.log("      --data-file <path> Override data file path for this invocation");
   console.log("      --no-logo   Hide ASCII logo in app header");
   console.log("");
   console.log("Commands:");
@@ -75,6 +281,7 @@ export function printHelp(showLogo: boolean): void {
   console.log("  calendar:import Import one-way calendar ICS file");
   console.log(`  ${CLI_NAME} 'add \"Task\" due:2026-03-05 #tag'`);
   console.log(`  Run '${CLI_NAME} <command> --help' for command-specific flags`);
+  console.log(`  Use '--' to pass literal tokens (example: ${CLI_NAME} add -- --help)`);
   console.log("");
   console.log("Environment:");
   console.log(`  ${ENV_VARS.DATA_PATH}=<path>   Override data file location`);
@@ -118,17 +325,32 @@ export function resolveCliRoute(argv: string[]): CliRoute {
     };
   }
 
+  if (argv.length === 0) {
+    return { kind: "tui", showLogo: true };
+  }
+
   const cliOptions = parseCliOptions(argv);
-  if (cliOptions.showHelp) {
+  const argsOnlyCoreOptions = argv.every(isCoreOptionToken);
+
+  if (cliOptions.showHelp && argsOnlyCoreOptions) {
     return { kind: "help", showLogo: cliOptions.showLogo };
   }
 
-  if (cliOptions.showVersion) {
+  if (cliOptions.showVersion && argsOnlyCoreOptions) {
     return { kind: "version" };
   }
 
-  if (cliOptions.smokeTui) {
+  if (cliOptions.smokeTui && argsOnlyCoreOptions) {
     return { kind: "smoke_tui" };
+  }
+
+  if (argsOnlyCoreOptions) {
+    return { kind: "tui", showLogo: cliOptions.showLogo };
+  }
+
+  const unknownToken = argv.find((arg) => !isCoreOptionToken(arg));
+  if (unknownToken) {
+    return { kind: "unknown", token: unknownToken };
   }
 
   return { kind: "tui", showLogo: cliOptions.showLogo };
@@ -138,44 +360,68 @@ export async function runCli(
   argv: string[] = process.argv.slice(2),
   deps: CliRunDeps = DEFAULT_DEPS
 ): Promise<number | undefined> {
-  const route = resolveCliRoute(argv);
-
-  if (route.kind === "portability") {
-    return deps.runPortability(route.command, route.args);
-  }
-  if (route.kind === "calendar") {
-    return deps.runCalendar(route.command, route.args);
+  const runtimeParsed = parseRuntimeCliOptions(argv);
+  if (!runtimeParsed.ok) {
+    console.error(`Error: ${runtimeParsed.error}`);
+    console.error(`Run '${CLI_NAME} --help' for usage.`);
+    return TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION;
   }
 
-  const titsResult = await runTitsCommandCli(argv);
-  if (titsResult.handled) {
-    return titsResult.exitCode ?? 0;
-  }
+  const runtimeArgv = runtimeParsed.argv;
+  const runtime = runtimeParsed.runtime;
+  const route = resolveCliRoute(runtimeArgv);
 
-  if (route.kind === "help") {
-    deps.printHelp(route.showLogo);
-    return 0;
-  }
+  return withDataFileOverride(runtime.dataFilePath, () =>
+    withOutputMode(runtime, async () => {
+      if (route.kind === "portability") {
+        return deps.runPortability(route.command, route.args);
+      }
+      if (route.kind === "calendar") {
+        return deps.runCalendar(route.command, route.args);
+      }
 
-  if (route.kind === "version") {
-    deps.printVersion();
-    return 0;
-  }
+      const titsResult = await runTitsCommandCli(runtimeArgv);
+      if (titsResult.handled) {
+        return titsResult.exitCode ?? 0;
+      }
 
-  if (route.kind === "smoke_tui") {
-    return deps.runSmokeTui();
-  }
+      if (route.kind === "help") {
+        deps.printHelp(route.showLogo);
+        return 0;
+      }
 
-  try {
-    await deps.runInteractiveTui({ showLogo: route.showLogo });
-    return undefined;
-  } catch (error: unknown) {
-    if (error instanceof TadoiLockBusyError) {
-      console.error("Error: TADOI is running (lock present).");
-      return TITS_CLI_EXIT_CODE.LOCKED;
-    }
-    throw error;
-  }
+      if (route.kind === "version") {
+        deps.printVersion();
+        return 0;
+      }
+
+      if (route.kind === "smoke_tui") {
+        return deps.runSmokeTui();
+      }
+
+      if (route.kind === "unknown") {
+        console.error(`Error: unknown command or option '${route.token}'.`);
+        console.error(`Run '${CLI_NAME} --help' for usage.`);
+        return TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION;
+      }
+
+      if (runtime.json || runtime.quiet) {
+        console.error("Error: --json and --quiet are only supported for non-interactive commands.");
+        return TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION;
+      }
+
+      try {
+        await deps.runInteractiveTui({ showLogo: route.showLogo });
+        return undefined;
+      } catch (error: unknown) {
+        if (error instanceof TadoiLockBusyError) {
+          console.error("Error: TADOI is running (lock present).");
+          return TITS_CLI_EXIT_CODE.LOCKED;
+        }
+        throw error;
+      }
+    })
+  );
 }
 
 if (import.meta.main) {

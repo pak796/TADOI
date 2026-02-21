@@ -1,10 +1,12 @@
 import { CLI_NAME } from "../brand/brand";
 import type { CalendarExportCommandOptions } from "../cli/calendarCommands";
 import {
+  CalendarExportDomainError,
   CalendarExportFilesystemError,
   CalendarExportUsageError,
   exportCalendarIcs
 } from "../state/calendarExportService";
+import { CLI_EXIT_CODE } from "../cli/exitCodes";
 
 function toErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -42,7 +44,7 @@ export async function runCalendarExportCommand(
 ): Promise<number> {
   if (parsed.help) {
     printCalendarExportHelp();
-    return 0;
+    return CLI_EXIT_CODE.SUCCESS;
   }
 
   try {
@@ -75,17 +77,21 @@ export async function runCalendarExportCommand(
     for (const warning of result.warnings ?? []) {
       console.log(`[calendar:export] warning: ${warning}`);
     }
-    return 0;
+    return CLI_EXIT_CODE.SUCCESS;
   } catch (error: unknown) {
+    if (error instanceof CalendarExportDomainError) {
+      console.error(`[calendar:export] ${toErrorMessage(error)}`);
+      return CLI_EXIT_CODE.TARGET_RESOLUTION;
+    }
     if (error instanceof CalendarExportFilesystemError) {
       console.error(`[calendar:export] failed: ${toErrorMessage(error)}`);
-      return 2;
+      return CLI_EXIT_CODE.IO_ERROR;
     }
     if (error instanceof CalendarExportUsageError) {
       console.error(`[calendar:export] ${toErrorMessage(error)}`);
-      return 1;
+      return CLI_EXIT_CODE.PARSE_OR_VALIDATION;
     }
     console.error(`[calendar:export] failed: ${toErrorMessage(error)}`);
-    return 1;
+    return CLI_EXIT_CODE.IO_ERROR;
   }
 }

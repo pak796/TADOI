@@ -13,7 +13,8 @@ import {
   acquireTadoiLockOrThrow,
   createDefaultLockPayload,
   getTadoiLockPath,
-  removeTadoiLock
+  removeTadoiLock,
+  TadoiLockBusyError
 } from "./lockfile";
 import { migratePersistedStateToCurrent } from "./migrations";
 import { validatePersistedState } from "./validation";
@@ -107,6 +108,27 @@ export class BackupImportPartialError extends Error {
     super(message);
     this.name = "BackupImportPartialError";
     this.summary = summary;
+  }
+}
+
+export class BackupExportFilesystemError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BackupExportFilesystemError";
+  }
+}
+
+export class BackupImportUsageError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BackupImportUsageError";
+  }
+}
+
+export class BackupImportFilesystemError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BackupImportFilesystemError";
   }
 }
 
@@ -364,45 +386,65 @@ async function parseIncomingStateFromFile(
   state: LoadedData;
   settings?: TadoiSettings;
 }> {
-  const stat = await fs.stat(inPath);
+  let stat: Awaited<ReturnType<typeof fs.stat>>;
+  try {
+    stat = await fs.stat(inPath);
+  } catch (error: unknown) {
+    throw new BackupImportFilesystemError(
+      `Failed to access import file at ${inPath}: ${toSingleLineDetail(error)}`
+    );
+  }
   if (stat.size > maxImportBytes) {
-    throw new Error(
+    throw new BackupImportUsageError(
       `Import file exceeds maximum size (${String(stat.size)} bytes > ${String(maxImportBytes)} bytes): ${inPath}`
     );
   }
 
-  const raw = await fs.readFile(inPath, "utf8");
+  let raw = "";
+  try {
+    raw = await fs.readFile(inPath, "utf8");
+  } catch (error: unknown) {
+    throw new BackupImportFilesystemError(
+      `Failed to read import file at ${inPath}: ${toSingleLineDetail(error)}`
+    );
+  }
   let parsed: unknown;
 
   try {
     parsed = JSON.parse(raw);
   } catch (error: unknown) {
-    throw new Error(
+    throw new BackupImportUsageError(
       `Failed to parse import JSON at ${inPath}: ${toSingleLineDetail(error)}`
     );
   }
 
   const incomingSettingsResult = extractIncomingSettings(parsed);
   if (!incomingSettingsResult.ok) {
-    throw new Error(`Invalid import settings payload: ${incomingSettingsResult.error}`);
+    throw new BackupImportUsageError(
+      `Invalid import settings payload: ${incomingSettingsResult.error}`
+    );
   }
 
   const normalizedStateInput = withSchemaVersionZeroIfMissing(parsed);
   const preValidation = validatePersistedState(normalizedStateInput, "minimal");
   if (!preValidation.ok) {
-    throw new Error(`Import minimal validation failed: ${preValidation.errors.join("; ")}`);
+    throw new BackupImportUsageError(
+      `Import minimal validation failed: ${preValidation.errors.join("; ")}`
+    );
   }
 
   let migrated: LoadedData;
   try {
     migrated = migratePersistedStateToCurrent(preValidation.data, CURRENT_SCHEMA_VERSION);
   } catch (error: unknown) {
-    throw new Error(`Import migration failed: ${toSingleLineDetail(error)}`);
+    throw new BackupImportUsageError(`Import migration failed: ${toSingleLineDetail(error)}`);
   }
 
   const postValidation = validatePersistedState(migrated, "strict");
   if (!postValidation.ok) {
-    throw new Error(`Import strict validation failed: ${postValidation.errors.join("; ")}`);
+    throw new BackupImportUsageError(
+      `Import strict validation failed: ${postValidation.errors.join("; ")}`
+    );
   }
 
   return {
@@ -448,51 +490,58 @@ export async function buildTimestampedBackupPath(opts: {
 export async function exportBackup(
   opts: BackupExportOptions = {}
 ): Promise<BackupExportResult> {
-  const cwd = opts.cwd ?? process.cwd();
-  const outputPathRaw = opts.outputPath?.trim();
-  const outputPath = outputPathRaw
-    ? resolvePathFromCwd(outputPathRaw, cwd)
-    : await buildTimestampedBackupPath({
-        outputDir: opts.outputDir,
-        filename: opts.filename,
-        cwd,
-        now: opts.now
-      });
-  const resolvedDataPath = resolveDataPath();
-  const stateResult = await loadStateStrict({ filePath: resolvedDataPath });
-  const settingsResult = await loadSettings();
-
-  const payload: PortableExportPayload = {
-    schemaVersion: stateResult.data.schemaVersion,
-    tasks: stateResult.data.tasks,
-    tagIndex: stateResult.data.tagIndex,
-    savedViews: stateResult.data.savedViews,
-    engagement: stateResult.data.engagement,
-    settings: settingsResult.settings
-  };
-
-  const redactMode = opts.redactMode ?? (opts.redact ? "strict" : undefined);
-  const exportPayload = redactMode ? redactStateForExport(payload, redactMode) : payload;
-  await writeJsonAtomic(exportPayload, {
-    filePath: outputPath,
-    pretty: opts.pretty === true
-  });
-
-  let bytesWritten: number | undefined;
   try {
-    const stat = await fs.stat(outputPath);
-    bytesWritten = stat.size;
-  } catch {
-    bytesWritten = undefined;
-  }
+    const cwd = opts.cwd ?? process.cwd();
+    const outputPathRaw = opts.outputPath?.trim();
+    const outputPath = outputPathRaw
+      ? resolvePathFromCwd(outputPathRaw, cwd)
+      : await buildTimestampedBackupPath({
+          outputDir: opts.outputDir,
+          filename: opts.filename,
+          cwd,
+          now: opts.now
+        });
+    const resolvedDataPath = resolveDataPath();
+    const stateResult = await loadStateStrict({ filePath: resolvedDataPath });
+    const settingsResult = await loadSettings();
 
-  return {
-    outputPath,
-    resolvedDataPath,
-    schemaVersion: exportPayload.schemaVersion,
-    taskCount: exportPayload.tasks.length,
-    bytesWritten
-  };
+    const payload: PortableExportPayload = {
+      schemaVersion: stateResult.data.schemaVersion,
+      tasks: stateResult.data.tasks,
+      tagIndex: stateResult.data.tagIndex,
+      savedViews: stateResult.data.savedViews,
+      engagement: stateResult.data.engagement,
+      settings: settingsResult.settings
+    };
+
+    const redactMode = opts.redactMode ?? (opts.redact ? "strict" : undefined);
+    const exportPayload = redactMode ? redactStateForExport(payload, redactMode) : payload;
+    await writeJsonAtomic(exportPayload, {
+      filePath: outputPath,
+      pretty: opts.pretty === true
+    });
+
+    let bytesWritten: number | undefined;
+    try {
+      const stat = await fs.stat(outputPath);
+      bytesWritten = stat.size;
+    } catch {
+      bytesWritten = undefined;
+    }
+
+    return {
+      outputPath,
+      resolvedDataPath,
+      schemaVersion: exportPayload.schemaVersion,
+      taskCount: exportPayload.tasks.length,
+      bytesWritten
+    };
+  } catch (error: unknown) {
+    if (error instanceof BackupExportFilesystemError) {
+      throw error;
+    }
+    throw new BackupExportFilesystemError(toSingleLineDetail(error));
+  }
 }
 
 export async function importBackup(
@@ -511,8 +560,14 @@ export async function importBackup(
 
   const incoming = await parseIncomingStateFromFile(inPath, maxImportBytes);
   const executeImport = async (): Promise<BackupImportSummary> => {
-    const currentState = await loadStateStrict({ filePath: resolvedDataPath });
-    const currentSettings = await loadSettings();
+    let currentState: Awaited<ReturnType<typeof loadStateStrict>>;
+    let currentSettings: Awaited<ReturnType<typeof loadSettings>>;
+    try {
+      currentState = await loadStateStrict({ filePath: resolvedDataPath });
+      currentSettings = await loadSettings();
+    } catch (error: unknown) {
+      throw new BackupImportFilesystemError(toSingleLineDetail(error));
+    }
 
     const importResult = importState(currentState.data, incoming.state, {
       mode: opts.mode,
@@ -538,25 +593,34 @@ export async function importBackup(
     }
 
     if (backup) {
-      const backupPath = await createDataBackup(resolvedDataPath, {
-        now: new Date()
-      });
+      let backupPath: string | undefined;
+      try {
+        backupPath = await createDataBackup(resolvedDataPath, {
+          now: new Date()
+        });
+      } catch (error: unknown) {
+        throw new BackupImportFilesystemError(toSingleLineDetail(error));
+      }
       if (backupPath) {
         summary.backupPath = backupPath;
       }
     }
 
-    await saveStateAtomic(
-      {
-        ...importResult.nextState,
-        stateRevision: currentState.data.stateRevision
-      },
-      resolvedDataPath,
-      undefined,
-      {
-        expectedStateRevision: currentState.data.stateRevision
-      }
-    );
+    try {
+      await saveStateAtomic(
+        {
+          ...importResult.nextState,
+          stateRevision: currentState.data.stateRevision
+        },
+        resolvedDataPath,
+        undefined,
+        {
+          expectedStateRevision: currentState.data.stateRevision
+        }
+      );
+    } catch (error: unknown) {
+      throw new BackupImportFilesystemError(toSingleLineDetail(error));
+    }
 
     if (!incoming.settings) {
       return summary;
@@ -579,7 +643,31 @@ export async function importBackup(
   };
 
   if (opts.dryRun) {
-    return executeImport();
+    try {
+      return await executeImport();
+    } catch (error: unknown) {
+      if (
+        error instanceof TadoiLockBusyError ||
+        error instanceof BackupImportUsageError ||
+        error instanceof BackupImportFilesystemError ||
+        error instanceof BackupImportPartialError
+      ) {
+        throw error;
+      }
+      throw new BackupImportFilesystemError(toSingleLineDetail(error));
+    }
   }
-  return withDataFileLock(resolvedDataPath, executeImport);
+  try {
+    return await withDataFileLock(resolvedDataPath, executeImport);
+  } catch (error: unknown) {
+    if (
+      error instanceof TadoiLockBusyError ||
+      error instanceof BackupImportUsageError ||
+      error instanceof BackupImportFilesystemError ||
+      error instanceof BackupImportPartialError
+    ) {
+      throw error;
+    }
+    throw new BackupImportFilesystemError(toSingleLineDetail(error));
+  }
 }

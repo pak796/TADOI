@@ -90,6 +90,11 @@ describe("parseImportArgs", () => {
 });
 
 describe("runPortabilityCommand", () => {
+  it("returns parse/validation exit code for export usage errors", async () => {
+    const code = await runPortabilityCommand("export", []);
+    expect(code).toBe(2);
+  });
+
   it("requires --yes for replace mode", async () => {
     const code = await runPortabilityCommand("import", [
       "--in",
@@ -97,7 +102,7 @@ describe("runPortabilityCommand", () => {
       "--mode",
       "replace"
     ]);
-    expect(code).toBe(1);
+    expect(code).toBe(2);
   });
 
   it("imports legacy file without schemaVersion in dry-run mode", async () => {
@@ -248,7 +253,7 @@ describe("runPortabilityCommand", () => {
         "replace",
         "--yes"
       ]);
-      expect(code).toBe(1);
+      expect(code).toBe(4);
     } finally {
       if (originalDataPath === undefined) {
         delete process.env.TADOI_DATA_PATH;

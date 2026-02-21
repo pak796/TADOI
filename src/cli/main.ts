@@ -1,6 +1,11 @@
 import { parseCommand } from "../commands/parse";
 import { executeCommand } from "../commands/execute";
-import type { Command, CommandResult, ParseCommandResult } from "../commands/types";
+import type {
+  Command,
+  CommandResult,
+  HelpTopic,
+  ParseCommandResult
+} from "../commands/types";
 import { getVisibleTasks, initialState, reducer } from "../state/store";
 import {
   CURRENT_SCHEMA_VERSION,
@@ -16,14 +21,9 @@ import {
   tryAcquireTadoiLock,
   type TadoiLockPayload
 } from "../state/lockfile";
+import { CLI_EXIT_CODE } from "./exitCodes";
 
-export const TITS_CLI_EXIT_CODE = {
-  SUCCESS: 0,
-  PARSE_OR_VALIDATION: 2,
-  TARGET_RESOLUTION: 3,
-  LOCKED: 4,
-  IO_ERROR: 5
-} as const;
+export const TITS_CLI_EXIT_CODE = CLI_EXIT_CODE;
 
 type TitsCommandName = "add" | "done" | "due" | "recur" | "help";
 
@@ -93,6 +93,33 @@ function formatDslToken(token: string): string {
   return token;
 }
 
+function isHelpFlag(token: string): boolean {
+  return token === "--help" || token === "-h";
+}
+
+function resolveWrapperHelpCommand(argv: string[]): Command | null {
+  if (argv.length < 2) {
+    return null;
+  }
+  const first = argv[0]?.trim().toLowerCase() ?? "";
+  if (!isTitsCommandName(first)) {
+    return null;
+  }
+  if (!isHelpFlag(argv[1] ?? "") || argv.length !== 2) {
+    return null;
+  }
+
+  if (first === "help") {
+    return { type: "help" };
+  }
+
+  const topic = first as HelpTopic;
+  return {
+    type: "help",
+    topic
+  };
+}
+
 export function resolveTitsCliInput(
   argv: string[]
 ): { mode: "raw" | "subcommand"; dsl: string } | null {
@@ -100,7 +127,13 @@ export function resolveTitsCliInput(
 
   const first = argv[0]?.trim().toLowerCase() ?? "";
   if (isTitsCommandName(first)) {
-    const dsl = [first, ...argv.slice(1).map(formatDslToken)].join(" ").trim();
+    const tail = argv.slice(1);
+    const delimiterIndex = tail.indexOf("--");
+    const normalizedTail =
+      delimiterIndex >= 0
+        ? [...tail.slice(0, delimiterIndex), ...tail.slice(delimiterIndex + 1)]
+        : tail;
+    const dsl = [first, ...normalizedTail.map(formatDslToken)].join(" ").trim();
     return { mode: "subcommand", dsl };
   }
 
@@ -133,6 +166,22 @@ export async function runTitsCommandCliWithDeps(
   argv: string[],
   deps: TitsCliDeps
 ): Promise<{ handled: boolean; exitCode?: number }> {
+  const wrapperHelpCommand = resolveWrapperHelpCommand(argv);
+  if (wrapperHelpCommand) {
+    const result = deps.executeCommand(wrapperHelpCommand, {
+      now: deps.now(),
+      state: initialState,
+      visibleTasks: [],
+      selectedTaskId: undefined
+    });
+    if (result.output.kind === "error") {
+      deps.error(toSingleLine(result.output.text));
+      return { handled: true, exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION };
+    }
+    deps.log(toSingleLine(result.output.text));
+    return { handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS };
+  }
+
   const resolved = resolveTitsCliInput(argv);
   if (!resolved) {
     return { handled: false };

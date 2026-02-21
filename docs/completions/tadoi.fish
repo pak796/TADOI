@@ -1,0 +1,47 @@
+set -l _tadoi_commands add done due recur help export import calendar:export calendar:import
+
+complete -c tadoi -n "not __fish_seen_subcommand_from $_tadoi_commands" -a "$_tadoi_commands"
+complete -c tadoi -n "not __fish_seen_subcommand_from $_tadoi_commands" -l help -s h -d "Show help"
+complete -c tadoi -n "not __fish_seen_subcommand_from $_tadoi_commands" -l version -d "Print app version"
+complete -c tadoi -n "not __fish_seen_subcommand_from $_tadoi_commands" -l smoke-tui -d "Run minimal TUI smoke render and exit"
+complete -c tadoi -n "not __fish_seen_subcommand_from $_tadoi_commands" -l interactive -d "Force interactive TUI mode"
+complete -c tadoi -n "not __fish_seen_subcommand_from $_tadoi_commands" -l json -d "Emit machine-readable output for non-interactive commands"
+complete -c tadoi -n "not __fish_seen_subcommand_from $_tadoi_commands" -l quiet -d "Suppress non-essential non-error output"
+complete -c tadoi -n "not __fish_seen_subcommand_from $_tadoi_commands" -l data-file -r -d "Override data file path for this invocation"
+complete -c tadoi -n "not __fish_seen_subcommand_from $_tadoi_commands" -l no-logo -d "Hide ASCII logo in app header"
+
+complete -c tadoi -n "__fish_seen_subcommand_from add done due recur help" -l help -s h -d "Show command help"
+
+complete -c tadoi -n "__fish_seen_subcommand_from export" -l out -r -d "Output file path"
+complete -c tadoi -n "__fish_seen_subcommand_from export" -l format -r -a "json" -d "Export format"
+complete -c tadoi -n "__fish_seen_subcommand_from export" -l pretty -d "Pretty-print output JSON"
+complete -c tadoi -n "__fish_seen_subcommand_from export" -l redact -d "Compatibility alias for --redact-mode=strict"
+complete -c tadoi -n "__fish_seen_subcommand_from export" -l redact-mode -r -a "basic strict" -d "Redaction profile"
+
+complete -c tadoi -n "__fish_seen_subcommand_from import" -l in -r -d "Input file path"
+complete -c tadoi -n "__fish_seen_subcommand_from import" -l mode -r -a "merge replace" -d "Import mode"
+complete -c tadoi -n "__fish_seen_subcommand_from import" -l backup -d "Enable pre-import backup"
+complete -c tadoi -n "__fish_seen_subcommand_from import" -l no-backup -d "Disable pre-import backup"
+complete -c tadoi -n "__fish_seen_subcommand_from import" -l dry-run -d "Parse and plan without writing"
+complete -c tadoi -n "__fish_seen_subcommand_from import" -l yes -d "Confirm replace mode"
+complete -c tadoi -n "__fish_seen_subcommand_from import" -l pretty -d "Pretty-print summary output"
+
+complete -c tadoi -n "__fish_seen_subcommand_from calendar:export" -l out -r -d "Output .ics path"
+complete -c tadoi -n "__fish_seen_subcommand_from calendar:export" -l view -r -d "Saved view display name"
+complete -c tadoi -n "__fish_seen_subcommand_from calendar:export" -l range -r -a "next7 month all" -d "Date range"
+complete -c tadoi -n "__fish_seen_subcommand_from calendar:export" -l privacy -r -a "minimal full" -d "Export metadata detail"
+complete -c tadoi -n "__fish_seen_subcommand_from calendar:export" -l include-details -d "Compatibility alias for --privacy=full"
+
+complete -c tadoi -n "__fish_seen_subcommand_from calendar:import" -l in -r -d "Input .ics path"
+complete -c tadoi -n "__fish_seen_subcommand_from calendar:import" -l view -r -d "Saved view display name"
+complete -c tadoi -n "__fish_seen_subcommand_from calendar:import" -l range -r -a "next7 month all" -d "Date range"
+complete -c tadoi -n "__fish_seen_subcommand_from calendar:import" -l mode -r -a "merge update create" -d "Import mode"
+complete -c tadoi -n "__fish_seen_subcommand_from calendar:import" -l horizon-days -r -d "Recurrence expansion horizon days"
+complete -c tadoi -n "__fish_seen_subcommand_from calendar:import" -l dry-run -d "Parse and plan without writing"
+complete -c tadoi -n "__fish_seen_subcommand_from calendar:import" -l tag -r -d "Tag for newly created tasks"
+complete -c tadoi -n "__fish_seen_subcommand_from calendar:import" -l report -r -d "Write JSON import report"
+
+complete -c tadoi -n "__fish_seen_subcommand_from export import calendar:export calendar:import" -l json -d "Emit machine-readable output"
+complete -c tadoi -n "__fish_seen_subcommand_from export import calendar:export calendar:import" -l quiet -d "Suppress non-essential output"
+complete -c tadoi -n "__fish_seen_subcommand_from export import calendar:export calendar:import" -l data-file -r -d "Override data file path for this invocation"
+complete -c tadoi -n "__fish_seen_subcommand_from export import calendar:export calendar:import" -l help -s h -d "Show command help"

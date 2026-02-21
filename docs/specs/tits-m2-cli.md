@@ -12,10 +12,22 @@
   - `tadoi add ...`
   - `tadoi done id:<task-id>`
   - `tadoi due id:<task-id> ...`
+  - `tadoi recur id:<task-id> ...`
   - `tadoi help ...`
 - Raw DSL passthrough:
   - `tadoi 'add "Task" due:2026-03-05 #tag'`
   - Raw DSL handling is enabled when the post-binary argv is a single TITS command string.
+- Interactive routing:
+  - `tadoi` -> launch TUI
+  - `tadoi --interactive` -> launch TUI
+  - unknown top-level token/flag -> fail fast with usage (`exit 2`, no TUI fallback)
+- Wrapper help and literal delimiter:
+  - `tadoi add --help` / `done --help` / `due --help` / `recur --help` / `help --help` -> topic help, no mutation
+  - `tadoi add -- --help` -> literal title token `--help`
+- Scriptability flags (non-interactive commands):
+  - `--json` structured output envelope
+  - `--quiet` suppresses non-essential non-error output
+  - `--data-file <path>` per-invocation data-path override (higher precedence than `TADOI_DATA_PATH`)
 
 ## Exit codes
 - `0`: success

@@ -54,7 +54,7 @@ describe("calendarImport command", () => {
         help: false
       })
     );
-    expect(code).toBe(1);
+    expect(code).toBe(2);
   });
 
   it("returns filesystem exit code when state path cannot be read", async () => {
@@ -75,7 +75,42 @@ describe("calendarImport command", () => {
           help: false
         })
       );
-      expect(code).toBe(2);
+      expect(code).toBe(5);
+    } finally {
+      if (previousDataPath === undefined) {
+        delete process.env.TADOI_DATA_PATH;
+      } else {
+        process.env.TADOI_DATA_PATH = previousDataPath;
+      }
+    }
+  });
+
+  it("returns target-resolution exit code for unknown saved view", async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-calendar-import-cmd-view-"));
+    const dataPath = path.join(tempDir, "tadoi_data.json");
+    const inputPath = path.join(tempDir, "incoming.ics");
+    await fs.writeFile(
+      dataPath,
+      JSON.stringify({ schemaVersion: 4, tasks: [], tagIndex: {}, savedViews: [] }, null, 2),
+      "utf8"
+    );
+    await fs.writeFile(inputPath, SIMPLE_ICS, "utf8");
+
+    const previousDataPath = process.env.TADOI_DATA_PATH;
+    process.env.TADOI_DATA_PATH = dataPath;
+    try {
+      const { value: code } = await captureConsole(() =>
+        runCalendarImportCommand({
+          inPath: inputPath,
+          viewName: "Missing",
+          range: "all",
+          mode: "merge",
+          horizonDays: 365,
+          dryRun: true,
+          help: false
+        })
+      );
+      expect(code).toBe(3);
     } finally {
       if (previousDataPath === undefined) {
         delete process.env.TADOI_DATA_PATH;
@@ -173,7 +208,7 @@ describe("calendarImport command", () => {
           help: false
         })
       );
-      expect(code).toBe(1);
+      expect(code).toBe(4);
     } finally {
       if (previousDataPath === undefined) {
         delete process.env.TADOI_DATA_PATH;

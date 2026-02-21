@@ -1,11 +1,13 @@
 import { CLI_NAME } from "../brand/brand";
 import type { CalendarImportCommandOptions } from "../cli/calendarCommands";
 import {
+  CalendarImportDomainError,
   CalendarImportFilesystemError,
   CalendarImportUsageError,
   importCalendarIcs
 } from "../state/calendarImportService";
 import { TadoiLockBusyError } from "../state/lockfile";
+import { CLI_EXIT_CODE } from "../cli/exitCodes";
 
 function toErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -46,7 +48,7 @@ export async function runCalendarImportCommand(
 ): Promise<number> {
   if (parsed.help) {
     printCalendarImportHelp();
-    return 0;
+    return CLI_EXIT_CODE.SUCCESS;
   }
 
   try {
@@ -90,21 +92,25 @@ export async function runCalendarImportCommand(
       console.log(`[calendar:import] warning: ${warning}`);
     }
 
-    return result.hasErrors ? 1 : 0;
+    return result.hasErrors ? CLI_EXIT_CODE.TARGET_RESOLUTION : CLI_EXIT_CODE.SUCCESS;
   } catch (error: unknown) {
     if (error instanceof TadoiLockBusyError) {
       console.error("[calendar:import] failed: TADOI is running (lock present).");
-      return 1;
+      return CLI_EXIT_CODE.LOCKED;
+    }
+    if (error instanceof CalendarImportDomainError) {
+      console.error(`[calendar:import] ${toErrorMessage(error)}`);
+      return CLI_EXIT_CODE.TARGET_RESOLUTION;
     }
     if (error instanceof CalendarImportFilesystemError) {
       console.error(`[calendar:import] failed: ${toErrorMessage(error)}`);
-      return 2;
+      return CLI_EXIT_CODE.IO_ERROR;
     }
     if (error instanceof CalendarImportUsageError) {
       console.error(`[calendar:import] ${toErrorMessage(error)}`);
-      return 1;
+      return CLI_EXIT_CODE.PARSE_OR_VALIDATION;
     }
     console.error(`[calendar:import] failed: ${toErrorMessage(error)}`);
-    return 1;
+    return CLI_EXIT_CODE.IO_ERROR;
   }
 }

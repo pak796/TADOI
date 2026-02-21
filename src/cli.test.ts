@@ -36,6 +36,11 @@ describe("resolveCliRoute", () => {
     const route = resolveCliRoute(["--smoke-tui"]);
     expect(route).toEqual({ kind: "smoke_tui" });
   });
+
+  it("routes unknown top-level tokens to unknown", () => {
+    const route = resolveCliRoute(["--wat"]);
+    expect(route).toEqual({ kind: "unknown", token: "--wat" });
+  });
 });
 
 describe("runCli", () => {
@@ -46,12 +51,14 @@ describe("runCli", () => {
       tui: 0,
       smoke: 0,
       help: 0,
-      version: 0
+      version: 0,
+      seenDataPath: ""
     };
 
     const deps: CliRunDeps = {
       async runPortability() {
         calls.portability += 1;
+        calls.seenDataPath = process.env.TADOI_DATA_PATH ?? "";
         return 0;
       },
       async runCalendar() {
@@ -137,6 +144,47 @@ describe("runCli", () => {
     expect(calls.portability).toBe(0);
     expect(calls.calendar).toBe(0);
   });
+
+  it("fails fast for unknown top-level args instead of launching tui", async () => {
+    const { calls, deps } = createDeps();
+    const code = await runCli(["--wat"], deps);
+    expect(code).toBe(2);
+    expect(calls.tui).toBe(0);
+    expect(calls.portability).toBe(0);
+    expect(calls.calendar).toBe(0);
+  });
+
+  it("supports explicit interactive flag", async () => {
+    const { calls, deps } = createDeps();
+    const code = await runCli(["--interactive"], deps);
+    expect(code).toBeUndefined();
+    expect(calls.tui).toBe(1);
+  });
+
+  it("rejects json mode for interactive route", async () => {
+    const { calls, deps } = createDeps();
+    const code = await runCli(["--json"], deps);
+    expect(code).toBe(2);
+    expect(calls.tui).toBe(0);
+  });
+
+  it("applies --data-file override for the command invocation", async () => {
+    const { calls, deps } = createDeps();
+    const previous = process.env.TADOI_DATA_PATH;
+    process.env.TADOI_DATA_PATH = "/tmp/original-data.json";
+    try {
+      const code = await runCli(["--data-file", "/tmp/override-data.json", "export", "--help"], deps);
+      expect(code).toBe(0);
+      expect(calls.seenDataPath).toBe("/tmp/override-data.json");
+      expect(process.env.TADOI_DATA_PATH).toBe("/tmp/original-data.json");
+    } finally {
+      if (previous === undefined) {
+        delete process.env.TADOI_DATA_PATH;
+      } else {
+        process.env.TADOI_DATA_PATH = previous;
+      }
+    }
+  });
 });
 
 describe("printHelp", () => {
@@ -156,6 +204,10 @@ describe("printHelp", () => {
     expect(output).toContain("TADOI");
     expect(output).toContain("Terminal Accessible Digital Organization Interface");
     expect(output).toContain("Usage: tadoi [options]");
+    expect(output).toContain("--interactive");
+    expect(output).toContain("--json");
+    expect(output).toContain("--quiet");
+    expect(output).toContain("--data-file <path>");
     expect(output).toContain("calendar:export");
     expect(output).toContain("calendar:import");
   });

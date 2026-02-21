@@ -32,6 +32,13 @@ export class CalendarExportUsageError extends Error {
   }
 }
 
+export class CalendarExportDomainError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "CalendarExportDomainError";
+  }
+}
+
 export class CalendarExportFilesystemError extends Error {
   constructor(message: string) {
     super(message);
@@ -230,7 +237,7 @@ export async function exportCalendarIcs(
   if (options.viewName && options.viewName.trim().length > 0) {
     const view = resolveViewByDisplayName(loadedState.data.savedViews, options.viewName);
     if (!view) {
-      throw new CalendarExportUsageError(
+      throw new CalendarExportDomainError(
         `Saved view not found: ${options.viewName.trim()}`
       );
     }
@@ -277,7 +284,7 @@ export async function exportCalendarIcs(
       const hasValidRRule = isValidRRuleFragment(task.recurrence.rrule ?? "");
       if (!hasValidRRule) {
         if (range === "all") {
-          throw new CalendarExportUsageError(
+          throw new CalendarExportDomainError(
             `Recurring task ${task.id} has invalid RRULE (${normalizeRRuleFragment(task.recurrence.rrule ?? "") || "<empty>"}). Use --range next7 or --range month.`
           );
         }

@@ -6,6 +6,7 @@ import {
   printCalendarImportHelp,
   runCalendarImportCommand
 } from "../commands/calendarImport";
+import { CLI_EXIT_CODE } from "./exitCodes";
 import type { CalendarExportRange } from "../calendar/range";
 import type { CalendarEventPrivacyMode } from "../calendar/calendarMapper";
 import type { CalendarImportMode } from "../calendar/importMapper";
@@ -350,7 +351,7 @@ export async function runCalendarCommand(
     if (!parsed.ok) {
       console.error(`[calendar:export] ${parsed.error}`);
       printCalendarExportHelp();
-      return 1;
+      return CLI_EXIT_CODE.PARSE_OR_VALIDATION;
     }
     return runCalendarExportCommand(parsed.value);
   }
@@ -359,7 +360,7 @@ export async function runCalendarCommand(
   if (!parsed.ok) {
     console.error(`[calendar:import] ${parsed.error}`);
     printCalendarImportHelp();
-    return 1;
+    return CLI_EXIT_CODE.PARSE_OR_VALIDATION;
   }
   return runCalendarImportCommand(parsed.value);
 }

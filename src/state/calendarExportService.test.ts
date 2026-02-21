@@ -4,7 +4,7 @@ import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
 import {
-  CalendarExportUsageError,
+  CalendarExportDomainError,
   exportCalendarIcs
 } from "./calendarExportService";
 
@@ -221,7 +221,7 @@ describe("calendarExportService", () => {
       } catch (error: unknown) {
         thrown = error;
       }
-      expect(thrown).toBeInstanceOf(CalendarExportUsageError);
+      expect(thrown).toBeInstanceOf(CalendarExportDomainError);
     });
   });
 
