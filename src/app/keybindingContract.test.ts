@@ -97,4 +97,17 @@ describe("link keybinding contract", () => {
       run({ name: "m", sequence: "m" }, { uiState: backupModeState, backupScreen: "import_picker" })
     ).toEqual([{ scope: "ui", type: "BACKUP_PICKER_OPEN_MANUAL_PATH" }]);
   });
+
+  it("keeps save-conflict retry hint aligned with banner affordance", async () => {
+    const appPath = fileURLToPath(new URL("./App.tsx", import.meta.url).href);
+    const appSource = await fs.readFile(appPath, "utf8");
+
+    expect(appSource).toContain("Save conflict recovery");
+    expect(appSource).toContain(
+      "press R or click the banner to reload and retry."
+    );
+    expect(appSource).toContain("[R] Reload + Retry");
+    expect(appSource).toContain("Press R or click to reload and retry.");
+    expect(appSource).toContain("shouldTriggerSaveConflictRetryFromMouse");
+  });
 });

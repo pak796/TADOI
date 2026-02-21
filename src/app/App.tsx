@@ -94,10 +94,12 @@ import {
   getDataFilePath,
   CURRENT_SCHEMA_VERSION,
   loadStateStrict,
+  saveStateAtomic,
   saveStateDebounced,
   type LoadedData,
   type SaveStateResult
 } from "../state/persistence";
+import { retrySaveAfterConflictReload } from "./saveConflictRetry";
 import {
   formatTagFilterBooleanSummary,
   isEmptyTagFilter,
@@ -252,6 +254,7 @@ import { copyToClipboard } from "./copyToClipboard";
 import { openTarget } from "./openTarget";
 import { redactPathForDisplay } from "./pathRedaction";
 import { decideEditTargetSwitch } from "./editTargetSwitchFlow";
+import { shouldTriggerSaveConflictRetryFromMouse } from "./saveConflictBannerAction";
 
 const TICKER_INTERVAL_MS = 6000;
 const BOTTOM_INFO_VIEW_ORDER = ["summary", "tags", "priorities"] as const;
@@ -510,6 +513,11 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
       {
         title: "CLI export/import commands available",
         description: "Use backup exports for portability and recovery."
+      },
+      {
+        title: "Save conflict recovery",
+        description:
+          "If a save conflict banner appears, press R or click the banner to reload and retry."
       },
       {
         title: "Calendar (ICS) in Backup Center",
@@ -1111,6 +1119,12 @@ type AppProps = {
   showLogo?: boolean;
 };
 
+type SaveConflictBannerState = {
+  filePath: string;
+  expectedStateRevision?: number;
+  actualStateRevision?: number;
+};
+
 function initState(data?: LoadedData): AppState {
   return {
     ...initialState,
@@ -1158,6 +1172,9 @@ export function App({
   const [rotatingThemeIndex, setRotatingThemeIndex] = useState(0);
   const [timeSuggestion, setTimeSuggestion] = useState<SuggestedTime | null>(null);
   const [saveFailureBanner, setSaveFailureBanner] = useState<string | null>(null);
+  const [saveConflictBannerState, setSaveConflictBannerState] =
+    useState<SaveConflictBannerState | null>(null);
+  const [saveConflictRetryPending, setSaveConflictRetryPending] = useState(false);
   const [navigationBanner, setNavigationBanner] = useState<string | null>(null);
   const [startupBannerMessage, setStartupBannerMessage] = useState<string | null>(
     startupBanner ?? null
@@ -1218,6 +1235,13 @@ export function App({
   const skipInitialSaveRef = useRef(skipInitialSave);
   const skipSettingsSaveRef = useRef(true);
   const lastSuccessfulSaveAtRef = useRef<number | undefined>(undefined);
+  const expectedStateRevisionRef = useRef<number>(
+    typeof initialData?.stateRevision === "number" &&
+      Number.isInteger(initialData.stateRevision) &&
+      initialData.stateRevision >= 0
+      ? initialData.stateRevision
+      : 0
+  );
   const gPrefixTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navBannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previousTaskCountRef = useRef(state.tasks.length);
@@ -1827,12 +1851,32 @@ export function App({
   function handleSaveResult(result: SaveStateResult): void {
     if (result.ok) {
       lastSuccessfulSaveAtRef.current = result.savedAt;
+      expectedStateRevisionRef.current = result.stateRevision;
       setSaveFailureBanner(null);
+      setSaveConflictBannerState(null);
+      setSaveConflictRetryPending(false);
       return;
     }
 
     const lastSavedAt = result.lastSuccessfulSaveAt ?? lastSuccessfulSaveAtRef.current;
     const summary = result.error.message || "Unknown persistence error";
+    if (result.isRevisionConflict) {
+      const expected = String(result.expectedStateRevision ?? "unknown");
+      const actual = String(result.actualStateRevision ?? "unknown");
+      const lastSaveText = lastSavedAt
+        ? ` | Last successful save: ${formatSaveTimestamp(lastSavedAt)}`
+        : "";
+      setSaveConflictBannerState({
+        filePath: result.filePath,
+        expectedStateRevision: result.expectedStateRevision,
+        actualStateRevision: result.actualStateRevision
+      });
+      setSaveFailureBanner(
+        `Save blocked by concurrent update (expected revision ${expected}, found ${actual}). Press R or click to reload and retry. | Path: ${result.filePath}${lastSaveText}`
+      );
+      return;
+    }
+    setSaveConflictBannerState(null);
     const lastSaveText = lastSavedAt
       ? ` | Last successful save: ${formatSaveTimestamp(lastSavedAt)}`
       : "";
@@ -2211,7 +2255,8 @@ export function App({
       350,
       undefined,
       undefined,
-      handleSaveResult
+      handleSaveResult,
+      { expectedStateRevision: expectedStateRevisionRef.current }
     );
   }, [state.tasks, state.tagIndex, state.savedViews, state.engagement]);
 
@@ -2429,6 +2474,12 @@ export function App({
   async function refreshRuntimeStateFromDisk() {
     const dataPath = getResolvedDataPath();
     const stateResult = await loadStateStrict({ filePath: dataPath });
+    expectedStateRevisionRef.current =
+      typeof stateResult.data.stateRevision === "number" &&
+      Number.isInteger(stateResult.data.stateRevision) &&
+      stateResult.data.stateRevision >= 0
+        ? stateResult.data.stateRevision
+        : 0;
     dispatch({ type: "load", data: stateResult.data });
     const settingsResult = await loadSettings();
     settingsDispatch({ type: "setTheme", themeId: settingsResult.settings.themeId });
@@ -2452,6 +2503,68 @@ export function App({
       type: "setCustomThemes",
       customThemes: settingsResult.settings.customThemes
     });
+  }
+
+  async function handleRetrySaveAfterConflictReload() {
+    if (saveConflictRetryPending || !saveConflictBannerState) return;
+    setSaveConflictRetryPending(true);
+
+    const stateSnapshot = {
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      tasks: state.tasks,
+      tagIndex: state.tagIndex,
+      savedViews: state.savedViews,
+      engagement: state.engagement
+    };
+    const dataPath = getResolvedDataPath();
+    const lastSavedAt = lastSuccessfulSaveAtRef.current;
+
+    try {
+      const result = await retrySaveAfterConflictReload({
+        snapshot: stateSnapshot,
+        filePath: dataPath,
+        deps: {
+          loadLatest: async (filePath) => {
+            const latest = await loadStateStrict({ filePath });
+            return { stateRevision: latest.data.stateRevision };
+          },
+          saveAtomic: async (data, filePath, options) =>
+            saveStateAtomic(data, filePath, undefined, options)
+        }
+      });
+
+      if (result.ok) {
+        const savedAt = Date.now();
+        lastSuccessfulSaveAtRef.current = savedAt;
+        expectedStateRevisionRef.current = result.stateRevision;
+        setSaveFailureBanner(null);
+        setSaveConflictBannerState(null);
+        showShortNavigationBanner("Save retried after reload.");
+      } else if (result.kind === "conflict") {
+        setSaveConflictBannerState({
+          filePath: dataPath,
+          expectedStateRevision: result.expectedStateRevision,
+          actualStateRevision: result.actualStateRevision
+        });
+        const lastSaveText = lastSavedAt
+          ? ` | Last successful save: ${formatSaveTimestamp(lastSavedAt)}`
+          : "";
+        setSaveFailureBanner(
+          `Save blocked by concurrent update (expected revision ${String(result.expectedStateRevision)}, found ${String(result.actualStateRevision)}). Press R or click to reload and retry. | Path: ${dataPath}${lastSaveText}`
+        );
+      } else {
+        setSaveConflictBannerState(null);
+        const detail = normalizeErrorDetail(result.error);
+        const lastSaveText = lastSavedAt
+          ? ` | Last successful save: ${formatSaveTimestamp(lastSavedAt)}`
+          : "";
+        setSaveFailureBanner(
+          `Save retry failed: ${detail} | Path: ${dataPath}${lastSaveText}`
+        );
+      }
+    } finally {
+      setSaveConflictRetryPending(false);
+    }
   }
 
   function runBackupExportFlow() {
@@ -3452,6 +3565,18 @@ export function App({
         executeCommandBar();
         return;
       }
+      return;
+    }
+
+    if (
+      saveConflictBannerState &&
+      !saveConflictRetryPending &&
+      !key.ctrl &&
+      !key.meta &&
+      !key.option &&
+      keyName === "r"
+    ) {
+      void handleRetrySaveAfterConflictReload();
       return;
     }
 
@@ -6623,8 +6748,18 @@ export function App({
         )}
 
         {activeBanners.map((message, index) => {
-          const isSaveFailure = message.startsWith("Save failed:");
+          const isSaveFailure =
+            message.startsWith("Save failed:") ||
+            message.startsWith("Save blocked by concurrent update") ||
+            message.startsWith("Save retry failed:");
+          const isSaveConflictBanner =
+            saveConflictBannerState !== null &&
+            saveFailureBanner !== null &&
+            message === saveFailureBanner;
           const isNavigationNotice = message.startsWith("No ");
+          const withActionLabel = isSaveConflictBanner
+            ? `${message} ${saveConflictRetryPending ? "[Retrying...]" : "[R] Reload + Retry"}`
+            : message;
           return (
             <box
               key={`${index}:${message}`}
@@ -6638,8 +6773,24 @@ export function App({
                 paddingLeft: 1,
                 paddingRight: 1
               }}
+              onMouseDown={
+                isSaveConflictBanner && !saveConflictRetryPending
+                  ? (event) => {
+                      if (
+                        !shouldTriggerSaveConflictRetryFromMouse({
+                          isSaveConflictBanner,
+                          retryPending: saveConflictRetryPending,
+                          button: event.button
+                        })
+                      ) {
+                        return;
+                      }
+                      void handleRetrySaveAfterConflictReload();
+                    }
+                  : undefined
+              }
             >
-              <text style={{ color: notificationsTheme.bg }}>{message}</text>
+              <text style={{ color: notificationsTheme.bg }}>{withActionLabel}</text>
             </box>
           );
         })}

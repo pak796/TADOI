@@ -81,4 +81,60 @@ expect(run({ name: "T", sequence: "T", ctrl: false, shift: false })).toEqual([])
       rmSync(tempDir, { recursive: true, force: true });
     }
   });
+
+  it("extracts ctrl combos and lowerName/lowerSequence comparisons from router code", () => {
+    const tempDir = createTempDir("tadoi-keybind-audit-router-patterns-");
+    try {
+      write(
+        tempDir,
+        "src/app/keyRouter.ts",
+        `
+export function handleKey(key: { name: string; sequence: string; ctrl: boolean }) {
+  const lowerName = key.name.toLowerCase();
+  const lowerSequence = key.sequence.toLowerCase();
+  if (key.ctrl && key.name === "s") return [{ scope: "ui", type: "OPEN_SAVE_VIEW_PROMPT" }];
+  if (key.ctrl && key.name === "l") return [{ scope: "domain", type: "OPEN_ADD_TASK_LINK_MODAL" }];
+  if (lowerName === "h" || lowerSequence === "h") return [{ scope: "ui", type: "OPEN_HELP" }];
+  if (lowerName === "y" || lowerSequence === "y") return [{ scope: "domain", type: "MODAL_CONFIRM_DELETE" }];
+  return [];
+}
+`
+      );
+      write(tempDir, "README.md", "- keys: \\`Ctrl+S\\` \\`Ctrl+L\\` \\`h\\` \\`y\\`");
+
+      const outJson = path.join(tempDir, "keybind-audit.json");
+      const outMd = path.join(tempDir, "keybind-audit.md");
+      const result = spawnSync(
+        "python3",
+        [
+          SCRIPT_PATH,
+          "--repo-root",
+          tempDir,
+          "--router-path",
+          "src/app/keyRouter.ts",
+          "--docs-glob",
+          "README.md",
+          "--out-json",
+          outJson,
+          "--out-md",
+          outMd
+        ],
+        { encoding: "utf8" }
+      );
+
+      expect(result.status).toBe(0);
+
+      const payload = JSON.parse(readFileSync(outJson, "utf8")) as {
+        canonical_keybinds: string[];
+        missing_in_code: string[];
+      };
+      expect(payload.canonical_keybinds).toContain("Ctrl+S");
+      expect(payload.canonical_keybinds).toContain("Ctrl+L");
+      expect(payload.canonical_keybinds).toContain("h");
+      expect(payload.canonical_keybinds).toContain("y");
+      expect(payload.missing_in_code).toEqual([]);
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
 });

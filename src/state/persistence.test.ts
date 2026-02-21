@@ -8,6 +8,7 @@ import {
   LoadedData,
   loadStateStrict,
   PersistenceFsOps,
+  StateRevisionConflictError,
   nextTimestampedSiblingPath,
   resolveDataPath,
   safeLoadState,
@@ -489,6 +490,42 @@ describe("saveStateAtomic", () => {
     expect(unlinked).toHaveLength(1);
     expect(unlinked[0]?.startsWith(`${filePath}.tmp.${process.pid}`)).toBe(true);
   });
+
+  it("rejects stale expected stateRevision values", async () => {
+    const dir = await makeTempDir();
+    const filePath = path.join(dir, "tadoi_data.json");
+
+    await saveStateAtomic(
+      {
+        schemaVersion: 4,
+        tasks: [{ id: "rev-1", title: "first", status: "open", createdAt: 1, updatedAt: 1, tags: [] }],
+        tagIndex: {},
+        savedViews: []
+      },
+      filePath
+    );
+
+    let conflict: StateRevisionConflictError | undefined;
+    try {
+      await saveStateAtomic(
+        {
+          schemaVersion: 4,
+          tasks: [{ id: "rev-2", title: "second", status: "open", createdAt: 2, updatedAt: 2, tags: [] }],
+          tagIndex: {},
+          savedViews: []
+        },
+        filePath,
+        fs,
+        { expectedStateRevision: 0 }
+      );
+    } catch (error: unknown) {
+      conflict = error as StateRevisionConflictError;
+    }
+
+    expect(conflict).toBeInstanceOf(StateRevisionConflictError);
+    expect(conflict?.expectedRevision).toBe(0);
+    expect(conflict?.actualRevision).toBe(1);
+  });
 });
 
 describe("saveStateDebounced", () => {
@@ -617,5 +654,58 @@ describe("saveStateDebounced", () => {
     await sleep(100);
     expect(errors).toHaveLength(1);
     expect(errors[0].message).toContain("disk full");
+  });
+
+  it("emits conflict metadata when expected stateRevision is stale", async () => {
+    const dir = await makeTempDir();
+    const filePath = path.join(dir, "tadoi_data.json");
+    const results: Array<{
+      ok: boolean;
+      isRevisionConflict?: boolean;
+      expectedStateRevision?: number;
+      actualStateRevision?: number;
+    }> = [];
+
+    await saveStateAtomic(
+      {
+        schemaVersion: 4,
+        tasks: [{ id: "seed", title: "seed", status: "open", createdAt: 1, updatedAt: 1, tags: [] }],
+        tagIndex: {},
+        savedViews: []
+      },
+      filePath
+    );
+
+    saveStateDebounced(
+      {
+        schemaVersion: 4,
+        tasks: [{ id: "stale", title: "stale", status: "open", createdAt: 2, updatedAt: 2, tags: [] }],
+        tagIndex: {},
+        savedViews: []
+      } satisfies LoadedData,
+      25,
+      filePath,
+      fs,
+      (result) => {
+        results.push({
+          ok: result.ok,
+          ...(result.ok
+            ? {}
+            : {
+                isRevisionConflict: result.isRevisionConflict,
+                expectedStateRevision: result.expectedStateRevision,
+                actualStateRevision: result.actualStateRevision
+              })
+        });
+      },
+      { expectedStateRevision: 0 }
+    );
+
+    await sleep(100);
+    expect(results).toHaveLength(1);
+    expect(results[0]?.ok).toBe(false);
+    expect(results[0]?.isRevisionConflict).toBe(true);
+    expect(results[0]?.expectedStateRevision).toBe(0);
+    expect(results[0]?.actualStateRevision).toBe(1);
   });
 });

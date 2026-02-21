@@ -3,6 +3,7 @@ import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
 import { runCalendarImportCommand } from "./calendarImport";
+import { createDefaultLockPayload, getTadoiLockPath, writeTadoiLock } from "../state/lockfile";
 
 const SIMPLE_ICS = [
   "BEGIN:VCALENDAR",
@@ -143,5 +144,46 @@ describe("calendarImport command", () => {
         process.env.HOME = previousHome;
       }
     }
+  });
+
+  it("blocks commit when lock file is present", async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-calendar-import-cmd-lock-"));
+    const dataPath = path.join(tempDir, "tadoi_data.json");
+    const inputPath = path.join(tempDir, "incoming.ics");
+    await fs.writeFile(
+      dataPath,
+      JSON.stringify({ schemaVersion: 4, tasks: [], tagIndex: {}, savedViews: [] }, null, 2),
+      "utf8"
+    );
+    await fs.writeFile(inputPath, SIMPLE_ICS, "utf8");
+
+    const lockPath = getTadoiLockPath(dataPath);
+    await writeTadoiLock(lockPath, createDefaultLockPayload(dataPath));
+
+    const previousDataPath = process.env.TADOI_DATA_PATH;
+    process.env.TADOI_DATA_PATH = dataPath;
+    try {
+      const { value: code } = await captureConsole(() =>
+        runCalendarImportCommand({
+          inPath: inputPath,
+          range: "all",
+          mode: "merge",
+          horizonDays: 365,
+          dryRun: false,
+          help: false
+        })
+      );
+      expect(code).toBe(1);
+    } finally {
+      if (previousDataPath === undefined) {
+        delete process.env.TADOI_DATA_PATH;
+      } else {
+        process.env.TADOI_DATA_PATH = previousDataPath;
+      }
+    }
+
+    const postRaw = await fs.readFile(dataPath, "utf8");
+    const post = JSON.parse(postRaw) as { tasks: unknown[] };
+    expect(post.tasks).toHaveLength(0);
   });
 });

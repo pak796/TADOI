@@ -8,6 +8,7 @@ import {
   parseImportArgs,
   runPortabilityCommand
 } from "./portabilityCommands";
+import { createDefaultLockPayload, getTadoiLockPath, writeTadoiLock } from "../state/lockfile";
 
 describe("parseExportArgs", () => {
   it("requires --out", () => {
@@ -198,5 +199,66 @@ describe("runPortabilityCommand", () => {
     const nextRaw = await fs.readFile(dataPath, "utf8");
     const nextJson = JSON.parse(nextRaw) as { tasks: Array<{ title: string }> };
     expect(nextJson.tasks[0]?.title).toBe("INCOMING");
+  });
+
+  it("blocks import commit when lock file is present", async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-import-locked-"));
+    const dataPath = path.join(tempDir, "tadoi_data.json");
+    const importPath = path.join(tempDir, "incoming.json");
+
+    await fs.writeFile(
+      dataPath,
+      JSON.stringify({ schemaVersion: 4, tasks: [], tagIndex: {}, savedViews: [] }, null, 2),
+      "utf8"
+    );
+    await fs.writeFile(
+      importPath,
+      JSON.stringify(
+        {
+          schemaVersion: 4,
+          tasks: [
+            {
+              id: "incoming-1",
+              title: "INCOMING",
+              status: "open",
+              createdAt: 1,
+              updatedAt: 1,
+              tags: ["incoming"]
+            }
+          ],
+          tagIndex: {},
+          savedViews: []
+        },
+        null,
+        2
+      ),
+      "utf8"
+    );
+
+    const lockPath = getTadoiLockPath(dataPath);
+    await writeTadoiLock(lockPath, createDefaultLockPayload(dataPath));
+
+    const originalDataPath = process.env.TADOI_DATA_PATH;
+    process.env.TADOI_DATA_PATH = dataPath;
+    try {
+      const code = await runPortabilityCommand("import", [
+        "--in",
+        importPath,
+        "--mode",
+        "replace",
+        "--yes"
+      ]);
+      expect(code).toBe(1);
+    } finally {
+      if (originalDataPath === undefined) {
+        delete process.env.TADOI_DATA_PATH;
+      } else {
+        process.env.TADOI_DATA_PATH = originalDataPath;
+      }
+    }
+
+    const postRaw = await fs.readFile(dataPath, "utf8");
+    const post = JSON.parse(postRaw) as { tasks: unknown[] };
+    expect(post.tasks).toHaveLength(0);
   });
 });

@@ -4,6 +4,7 @@ import {
   importBackup,
   type BackupImportSummary
 } from "../state/backupService";
+import { TadoiLockBusyError } from "../state/lockfile";
 import type { ImportCommandOptions } from "../cli/portabilityCommands";
 
 function toErrorMessage(error: unknown): string {
@@ -70,6 +71,10 @@ export async function runImportCommand(parsed: ImportCommandOptions): Promise<nu
     printImportSummary(summary, parsed.pretty);
     return 0;
   } catch (error: unknown) {
+    if (error instanceof TadoiLockBusyError) {
+      console.error("[import] failed: TADOI is running (lock present).");
+      return 1;
+    }
     if (error instanceof BackupImportPartialError) {
       printImportSummary(error.summary, parsed.pretty);
       console.error(`[import] ${error.message}`);

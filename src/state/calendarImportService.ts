@@ -26,9 +26,20 @@ import {
 } from "../calendar/range";
 import { isValidRRuleFragment, normalizeRRuleFragment } from "../calendar/rrule";
 import { loadSettings } from "../settings/settings";
-import { writeJsonAtomic, loadStateStrict, resolveDataPath } from "./persistence";
+import {
+  loadStateStrict,
+  resolveDataPath,
+  saveStateAtomic,
+  StateRevisionConflictError
+} from "./persistence";
 import { recomputeTagIndex } from "./portability";
 import { validatePersistedState } from "./validation";
+import {
+  acquireTadoiLockOrThrow,
+  createDefaultLockPayload,
+  getTadoiLockPath,
+  removeTadoiLock
+} from "./lockfile";
 
 const HARD_MATERIALIZATION_CAP = 2000;
 const MAX_HORIZON_DAYS = 3650;
@@ -537,62 +548,71 @@ export async function importCalendarIcs(
     }
   })();
 
-  let stateResult: Awaited<ReturnType<typeof loadStateStrict>>;
-  try {
-    stateResult = await loadStateStrict({ filePath: resolveDataPath() });
-  } catch (error: unknown) {
-    throw new CalendarImportFilesystemError(toErrorMessage(error));
+  const resolvedDataPath = resolveDataPath();
+  const lockPath = getTadoiLockPath(resolvedDataPath);
+  let lockAcquired = false;
+  if (!dryRun) {
+    await acquireTadoiLockOrThrow(lockPath, createDefaultLockPayload(resolvedDataPath));
+    lockAcquired = true;
   }
 
   try {
-    const settingsResult = await loadSettings();
-    for (const warning of settingsResult.warnings) {
-      warnings.push(`Settings: ${warning}`);
+    let stateResult: Awaited<ReturnType<typeof loadStateStrict>>;
+    try {
+      stateResult = await loadStateStrict({ filePath: resolvedDataPath });
+    } catch (error: unknown) {
+      throw new CalendarImportFilesystemError(toErrorMessage(error));
     }
-  } catch (error: unknown) {
-    warnings.push(`Settings unavailable during import: ${toErrorMessage(error)}`);
-  }
 
-  const tasks = stateResult.data.tasks.map((task) => ({ ...task }));
-  let taskLookup = buildTaskLookup(tasks);
-  const savedViews = stateResult.data.savedViews;
-  const rangeWindow = resolveCalendarRangeWindow(range, nowMs);
-
-  let viewApplied: string | undefined;
-  let visibleSourceIds: Set<string> | undefined;
-  let view: SavedView | undefined;
-  if (options.viewName && options.viewName.trim().length > 0) {
-    view = resolveViewByDisplayName(savedViews, options.viewName);
-    if (!view) {
-      throw new CalendarImportUsageError(
-        `Saved view not found: ${options.viewName.trim()}`
-      );
+    try {
+      const settingsResult = await loadSettings();
+      for (const warning of settingsResult.warnings) {
+        warnings.push(`Settings: ${warning}`);
+      }
+    } catch (error: unknown) {
+      warnings.push(`Settings unavailable during import: ${toErrorMessage(error)}`);
     }
-    viewApplied = view.name;
-    visibleSourceIds = extractVisibleSourceTaskIds(tasks, view, nowMs);
-  }
 
-  const summary: CalendarImportSummary = {
-    eventsParsed: parsed.events.length,
-    matchedByTaskId: 0,
-    matchedByUid: 0,
-    created: 0,
-    updated: 0,
-    merged: 0,
-    skipped: 0,
-    errors: 0,
-    recurringSeriesImported: 0,
-    overridesCreated: 0,
-    overridesUpdated: 0,
-    cancellationsApplied: 0
-  };
+    const tasks = stateResult.data.tasks.map((task) => ({ ...task }));
+    let taskLookup = buildTaskLookup(tasks);
+    const savedViews = stateResult.data.savedViews;
+    const rangeWindow = resolveCalendarRangeWindow(range, nowMs);
 
-  const reportEntries: CalendarImportReportEntry[] = [];
+    let viewApplied: string | undefined;
+    let visibleSourceIds: Set<string> | undefined;
+    let view: SavedView | undefined;
+    if (options.viewName && options.viewName.trim().length > 0) {
+      view = resolveViewByDisplayName(savedViews, options.viewName);
+      if (!view) {
+        throw new CalendarImportUsageError(
+          `Saved view not found: ${options.viewName.trim()}`
+        );
+      }
+      viewApplied = view.name;
+      visibleSourceIds = extractVisibleSourceTaskIds(tasks, view, nowMs);
+    }
 
-  const baseEvents = parsed.events.filter((event) => !event.recurrenceId);
-  const overrideEvents = parsed.events.filter((event) => Boolean(event.recurrenceId));
+    const summary: CalendarImportSummary = {
+      eventsParsed: parsed.events.length,
+      matchedByTaskId: 0,
+      matchedByUid: 0,
+      created: 0,
+      updated: 0,
+      merged: 0,
+      skipped: 0,
+      errors: 0,
+      recurringSeriesImported: 0,
+      overridesCreated: 0,
+      overridesUpdated: 0,
+      cancellationsApplied: 0
+    };
 
-  for (const event of baseEvents) {
+    const reportEntries: CalendarImportReportEntry[] = [];
+
+    const baseEvents = parsed.events.filter((event) => !event.recurrenceId);
+    const overrideEvents = parsed.events.filter((event) => Boolean(event.recurrenceId));
+
+    for (const event of baseEvents) {
     const recurrenceId = event.recurrenceId?.localIso;
 
     if (!event.uid && !event.summary) {
@@ -899,7 +919,7 @@ export async function importCalendarIcs(
     });
   }
 
-  for (const event of overrideEvents) {
+    for (const event of overrideEvents) {
     const occurrenceIso = event.recurrenceId?.localIso;
     if (!occurrenceIso) {
       summary.errors += 1;
@@ -1149,58 +1169,72 @@ export async function importCalendarIcs(
     });
   }
 
-  const report: CalendarImportReport = {
-    generatedAt: importedAtIso,
-    inputPath,
-    range,
-    mode,
-    dryRun,
-    horizonDays,
-    ...(viewApplied ? { viewApplied } : {}),
-    summary,
-    entries: reportEntries,
-    persisted: false
-  };
-
-  if (!dryRun && summary.errors === 0) {
-    const nextState = {
-      ...stateResult.data,
-      tasks,
-      tagIndex: recomputeTagIndex(tasks, nowMs)
+    const report: CalendarImportReport = {
+      generatedAt: importedAtIso,
+      inputPath,
+      range,
+      mode,
+      dryRun,
+      horizonDays,
+      ...(viewApplied ? { viewApplied } : {}),
+      summary,
+      entries: reportEntries,
+      persisted: false
     };
-    if (process.env.NODE_ENV !== "production") {
-      const validation = validatePersistedState(nextState, "strict");
-      if (!validation.ok) {
+
+    if (!dryRun && summary.errors === 0) {
+      const nextState = {
+        ...stateResult.data,
+        tasks,
+        tagIndex: recomputeTagIndex(tasks, nowMs)
+      };
+      if (process.env.NODE_ENV !== "production") {
+        const validation = validatePersistedState(nextState, "strict");
+        if (!validation.ok) {
+          throw new CalendarImportFilesystemError(
+            `Post-import state validation failed: ${validation.errors.join("; ")}`
+          );
+        }
+      }
+      try {
+        await saveStateAtomic(
+          nextState,
+          resolvedDataPath,
+          undefined,
+          {
+            expectedStateRevision: stateResult.data.stateRevision
+          }
+        );
+        report.persisted = true;
+      } catch (error: unknown) {
+        if (error instanceof StateRevisionConflictError) {
+          throw new CalendarImportFilesystemError(
+            `Concurrent state update detected (expected revision ${String(error.expectedRevision)}, found ${String(error.actualRevision)}). Re-run dry-run and commit again.`
+          );
+        }
         throw new CalendarImportFilesystemError(
-          `Post-import state validation failed: ${validation.errors.join("; ")}`
+          `Failed to persist imported state: ${toErrorMessage(error)}`
         );
       }
     }
+
+    let outputReportPath: string | undefined;
     try {
-      await writeJsonAtomic(nextState, {
-        filePath: resolveDataPath(),
-        pretty: true
-      });
-      report.persisted = true;
+      outputReportPath = await maybeWriteReport(options.reportPath, report, cwd);
     } catch (error: unknown) {
-      throw new CalendarImportFilesystemError(
-        `Failed to persist imported state: ${toErrorMessage(error)}`
-      );
+      warnings.push(`Failed to write import report: ${toErrorMessage(error)}`);
+    }
+
+    return {
+      summary,
+      report,
+      ...(outputReportPath ? { outputReportPath } : {}),
+      hasErrors: summary.errors > 0,
+      ...(warnings.length > 0 ? { warnings } : {})
+    };
+  } finally {
+    if (lockAcquired) {
+      await removeTadoiLock(lockPath);
     }
   }
-
-  let outputReportPath: string | undefined;
-  try {
-    outputReportPath = await maybeWriteReport(options.reportPath, report, cwd);
-  } catch (error: unknown) {
-    warnings.push(`Failed to write import report: ${toErrorMessage(error)}`);
-  }
-
-  return {
-    summary,
-    report,
-    ...(outputReportPath ? { outputReportPath } : {}),
-    hasErrors: summary.errors > 0,
-    ...(warnings.length > 0 ? { warnings } : {})
-  };
 }

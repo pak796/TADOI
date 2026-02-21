@@ -5,9 +5,16 @@ import {
   createDataBackup,
   loadStateStrict,
   resolveDataPath,
+  saveStateAtomic,
   writeJsonAtomic,
   type LoadedData
 } from "./persistence";
+import {
+  acquireTadoiLockOrThrow,
+  createDefaultLockPayload,
+  getTadoiLockPath,
+  removeTadoiLock
+} from "./lockfile";
 import { migratePersistedStateToCurrent } from "./migrations";
 import { validatePersistedState } from "./validation";
 import {
@@ -128,6 +135,16 @@ function formatTimestamp(now: Date): string {
   const mi = String(now.getMinutes()).padStart(2, "0");
   const ss = String(now.getSeconds()).padStart(2, "0");
   return `${yyyy}${mm}${dd}-${hh}${mi}${ss}`;
+}
+
+async function withDataFileLock<T>(dataPath: string, task: () => Promise<T>): Promise<T> {
+  const lockPath = getTadoiLockPath(dataPath);
+  await acquireTadoiLockOrThrow(lockPath, createDefaultLockPayload(dataPath));
+  try {
+    return await task();
+  } finally {
+    await removeTadoiLock(lockPath);
+  }
 }
 
 function isRecognizedBackupFilename(filename: string): boolean {
@@ -485,9 +502,6 @@ export async function importBackup(
   const inPath = resolvePathFromCwd(opts.inputPath, cwd);
   const resolvedDataPath = resolveDataPath();
   const backup = opts.backup !== false;
-
-  const currentState = await loadStateStrict({ filePath: resolvedDataPath });
-  const currentSettings = await loadSettings();
   const maxImportBytes =
     typeof opts.maxImportBytesJson === "number" &&
     Number.isFinite(opts.maxImportBytesJson) &&
@@ -496,60 +510,76 @@ export async function importBackup(
       : DEFAULT_MAX_IMPORT_BYTES_JSON;
 
   const incoming = await parseIncomingStateFromFile(inPath, maxImportBytes);
+  const executeImport = async (): Promise<BackupImportSummary> => {
+    const currentState = await loadStateStrict({ filePath: resolvedDataPath });
+    const currentSettings = await loadSettings();
 
-  const importResult = importState(currentState.data, incoming.state, {
-    mode: opts.mode,
-    now: opts.now ?? Date.now()
-  });
+    const importResult = importState(currentState.data, incoming.state, {
+      mode: opts.mode,
+      now: opts.now ?? Date.now()
+    });
 
-  const summary: BackupImportSummary = {
-    mode: opts.mode,
-    dryRun: opts.dryRun,
-    schemaVersion: importResult.stats.schemaVersion,
-    resolvedDataPath,
-    tasks: importResult.stats.tasks,
-    conflictsResolvedByUpdatedAt: importResult.stats.conflictsResolvedByUpdatedAt,
-    savedViews: importResult.stats.savedViews,
-    settings: {
-      includedInImport: Boolean(incoming.settings),
-      applied: false
+    const summary: BackupImportSummary = {
+      mode: opts.mode,
+      dryRun: opts.dryRun,
+      schemaVersion: importResult.stats.schemaVersion,
+      resolvedDataPath,
+      tasks: importResult.stats.tasks,
+      conflictsResolvedByUpdatedAt: importResult.stats.conflictsResolvedByUpdatedAt,
+      savedViews: importResult.stats.savedViews,
+      settings: {
+        includedInImport: Boolean(incoming.settings),
+        applied: false
+      }
+    };
+
+    if (opts.dryRun) {
+      return summary;
+    }
+
+    if (backup) {
+      const backupPath = await createDataBackup(resolvedDataPath, {
+        now: new Date()
+      });
+      if (backupPath) {
+        summary.backupPath = backupPath;
+      }
+    }
+
+    await saveStateAtomic(
+      {
+        ...importResult.nextState,
+        stateRevision: currentState.data.stateRevision
+      },
+      resolvedDataPath,
+      undefined,
+      {
+        expectedStateRevision: currentState.data.stateRevision
+      }
+    );
+
+    if (!incoming.settings) {
+      return summary;
+    }
+
+    try {
+      const settingsWriteResult = await saveSettingsStrict(incoming.settings, {
+        filePath: currentSettings.resolvedPath
+      });
+      summary.settings.applied = true;
+      summary.settings.path = settingsWriteResult.resolvedPath;
+      return summary;
+    } catch (error: unknown) {
+      summary.settings.error = toSingleLineDetail(error);
+      throw new BackupImportPartialError(
+        `Data import succeeded but settings apply failed: ${summary.settings.error}`,
+        summary
+      );
     }
   };
 
   if (opts.dryRun) {
-    return summary;
+    return executeImport();
   }
-
-  if (backup) {
-    const backupPath = await createDataBackup(resolvedDataPath, {
-      now: new Date()
-    });
-    if (backupPath) {
-      summary.backupPath = backupPath;
-    }
-  }
-
-  await writeJsonAtomic(importResult.nextState, {
-    filePath: resolvedDataPath,
-    pretty: true
-  });
-
-  if (!incoming.settings) {
-    return summary;
-  }
-
-  try {
-    const settingsWriteResult = await saveSettingsStrict(incoming.settings, {
-      filePath: currentSettings.resolvedPath
-    });
-    summary.settings.applied = true;
-    summary.settings.path = settingsWriteResult.resolvedPath;
-    return summary;
-  } catch (error: unknown) {
-    summary.settings.error = toSingleLineDetail(error);
-    throw new BackupImportPartialError(
-      `Data import succeeded but settings apply failed: ${summary.settings.error}`,
-      summary
-    );
-  }
+  return withDataFileLock(resolvedDataPath, executeImport);
 }

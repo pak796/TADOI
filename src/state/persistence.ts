@@ -10,6 +10,7 @@ import { BRAND_SLUG, DATA_FILE_NAME, ENV_VARS } from "../brand/brand";
 
 export type LoadedData = {
   schemaVersion: number;
+  stateRevision?: number;
   tasks: Task[];
   tagIndex: Record<string, TagIndexEntry>;
   savedViews: SavedView[];
@@ -60,12 +61,16 @@ export type SaveStateResult =
       filePath: string;
       savedAt: number;
       lastSuccessfulSaveAt: number;
+      stateRevision: number;
     }
   | {
       ok: false;
       filePath: string;
       error: Error;
       lastSuccessfulSaveAt?: number;
+      expectedStateRevision?: number;
+      actualStateRevision?: number;
+      isRevisionConflict?: boolean;
     };
 
 export type SaveStateResultCallback = (result: SaveStateResult) => void;
@@ -91,6 +96,28 @@ export type CreateDataBackupOptions = {
   now?: Date;
   fsOps?: PersistenceFsOps;
 };
+
+export type SaveStateAtomicOptions = {
+  expectedStateRevision?: number;
+};
+
+export type SaveStateDebouncedOptions = SaveStateAtomicOptions;
+
+export class StateRevisionConflictError extends Error {
+  readonly filePath: string;
+  readonly expectedRevision: number;
+  readonly actualRevision: number;
+
+  constructor(filePath: string, expectedRevision: number, actualRevision: number) {
+    super(
+      `State revision conflict at ${filePath}: expected ${String(expectedRevision)} but found ${String(actualRevision)}`
+    );
+    this.name = "StateRevisionConflictError";
+    this.filePath = filePath;
+    this.expectedRevision = expectedRevision;
+    this.actualRevision = actualRevision;
+  }
+}
 
 function pathApiForPlatform(platform: NodeJS.Platform): PathApi {
   return platform === "win32" ? path.win32 : path.posix;
@@ -125,7 +152,7 @@ export function resolveDataPath(options: ResolveDataPathOptions = {}): string {
 
 const DATA_FILE = resolveDataPath();
 const DEFAULT_FS_OPS: PersistenceFsOps = fs;
-export const CURRENT_SCHEMA_VERSION = 5;
+export const CURRENT_SCHEMA_VERSION = 6;
 const PRIVATE_DIR_MODE = 0o700;
 const PRIVATE_FILE_MODE = 0o600;
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -136,6 +163,7 @@ const atomicWriteQueueByPath = new Map<string, Promise<void>>();
 function emptyData(): LoadedData {
   return {
     schemaVersion: CURRENT_SCHEMA_VERSION,
+    stateRevision: 0,
     tasks: [],
     tagIndex: {},
     savedViews: [],
@@ -157,6 +185,18 @@ function formatReadErrorForBanner(error: unknown): string {
     return error.message;
   }
   return "unknown read error";
+}
+
+function normalizeStateRevision(value: unknown): number {
+  if (
+    typeof value === "number" &&
+    Number.isFinite(value) &&
+    Number.isInteger(value) &&
+    value >= 0
+  ) {
+    return value;
+  }
+  return 0;
 }
 
 function formatBackupTimestamp(now: Date): string {
@@ -490,15 +530,31 @@ export async function writeJsonAtomic(
 export async function saveStateAtomic(
   data: LoadedData,
   filePath = DATA_FILE,
-  fsOps: PersistenceFsOps = DEFAULT_FS_OPS
-): Promise<void> {
+  fsOps: PersistenceFsOps = DEFAULT_FS_OPS,
+  options: SaveStateAtomicOptions = {}
+): Promise<number> {
+  let nextStateRevision = 0;
   await runWithAtomicWriteLock(filePath, async () => {
+    const currentState = await loadStateStrict({ filePath, fsOps });
+    const actualRevision = normalizeStateRevision(currentState.data.stateRevision);
+    if (
+      typeof options.expectedStateRevision === "number" &&
+      options.expectedStateRevision !== actualRevision
+    ) {
+      throw new StateRevisionConflictError(
+        filePath,
+        options.expectedStateRevision,
+        actualRevision
+      );
+    }
+    nextStateRevision = actualRevision + 1;
     const dirPath = path.dirname(filePath);
     await fsOps.mkdir(dirPath, { recursive: true, mode: PRIVATE_DIR_MODE });
     const tmpFile = await nextPidTempFilePath(filePath, fsOps);
     const payload = {
       ...data,
-      schemaVersion: data.schemaVersion ?? CURRENT_SCHEMA_VERSION
+      schemaVersion: data.schemaVersion ?? CURRENT_SCHEMA_VERSION,
+      stateRevision: nextStateRevision
     };
     const content = JSON.stringify(payload, null, 2);
     let renamed = false;
@@ -541,6 +597,7 @@ export async function saveStateAtomic(
       throw error;
     }
   });
+  return nextStateRevision;
 }
 
 export async function nextTimestampedSiblingPath(
@@ -593,11 +650,14 @@ export async function createDataBackup(
 async function writeState(
   data: LoadedData,
   filePath = DATA_FILE,
-  fsOps: PersistenceFsOps = DEFAULT_FS_OPS
-): Promise<void> {
-  await writeJsonAtomic(
+  fsOps: PersistenceFsOps = DEFAULT_FS_OPS,
+  options: SaveStateAtomicOptions = {}
+): Promise<number> {
+  return saveStateAtomic(
     { ...data, schemaVersion: data.schemaVersion ?? CURRENT_SCHEMA_VERSION },
-    { filePath, fsOps, pretty: true }
+    filePath,
+    fsOps,
+    options
   );
 }
 
@@ -606,7 +666,8 @@ export function saveStateDebounced(
   delay = 350,
   filePath = DATA_FILE,
   fsOps: PersistenceFsOps = DEFAULT_FS_OPS,
-  onResult?: SaveStateResultCallback
+  onResult?: SaveStateResultCallback,
+  options: SaveStateDebouncedOptions = {}
 ): void {
   if (saveTimer) {
     clearTimeout(saveTimer);
@@ -614,23 +675,35 @@ export function saveStateDebounced(
   saveTimer = setTimeout(() => {
     void (async () => {
       try {
-        await writeState(data, filePath, fsOps);
+        const stateRevision = await writeState(data, filePath, fsOps, {
+          expectedStateRevision: options.expectedStateRevision
+        });
         const savedAt = Date.now();
         lastSuccessfulSaveAt = savedAt;
         onResult?.({
           ok: true,
           filePath,
           savedAt,
-          lastSuccessfulSaveAt: savedAt
+          lastSuccessfulSaveAt: savedAt,
+          stateRevision
         });
       } catch (error: unknown) {
         const normalizedError =
           error instanceof Error ? error : new Error(String(error));
+        const conflictFields =
+          error instanceof StateRevisionConflictError
+            ? {
+                expectedStateRevision: error.expectedRevision,
+                actualStateRevision: error.actualRevision,
+                isRevisionConflict: true
+              }
+            : {};
         onResult?.({
           ok: false,
           filePath,
           error: normalizedError,
-          lastSuccessfulSaveAt
+          lastSuccessfulSaveAt,
+          ...conflictFields
         });
       } finally {
         saveTimer = null;

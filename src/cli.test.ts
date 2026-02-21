@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { printHelp, resolveCliRoute, runCli, type CliRunDeps } from "./cli";
+import { TadoiLockBusyError } from "./state/lockfile";
 
 describe("resolveCliRoute", () => {
   it("routes portability commands before global flags", () => {
@@ -122,6 +123,19 @@ describe("runCli", () => {
     expect(calls.smoke).toBe(1);
     expect(calls.tui).toBe(0);
     expect(calls.portability).toBe(0);
+  });
+
+  it("maps tui lock conflicts to locked exit code", async () => {
+    const { calls, deps } = createDeps();
+    deps.runInteractiveTui = async () => {
+      throw new TadoiLockBusyError("/tmp/tadoi.lock");
+    };
+
+    const code = await runCli([], deps);
+    expect(code).toBe(4);
+    expect(calls.tui).toBe(0);
+    expect(calls.portability).toBe(0);
+    expect(calls.calendar).toBe(0);
   });
 });
 

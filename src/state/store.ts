@@ -96,7 +96,8 @@ export function applyArchiveAging(
 export function archiveOldDoneTasks(tasks: Task[], now: number): Task[] {
   return applyArchiveAging(
     {
-      schemaVersion: 5,
+      schemaVersion: 6,
+      stateRevision: 0,
       tasks,
       tagIndex: {},
       savedViews: [],

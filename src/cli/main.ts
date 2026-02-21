@@ -27,6 +27,10 @@ export const TITS_CLI_EXIT_CODE = {
 
 type TitsCommandName = "add" | "done" | "due" | "recur" | "help";
 
+type SaveDataOptions = {
+  expectedStateRevision?: number;
+};
+
 type TitsCliDeps = {
   now: () => number;
   parseCommand: (input: string) => ParseCommandResult;
@@ -40,7 +44,7 @@ type TitsCliDeps = {
   acquireLock: (lockPath: string, payload: TadoiLockPayload) => Promise<boolean>;
   releaseLock: (lockPath: string) => Promise<void>;
   loadData: (filePath: string) => Promise<LoadedData>;
-  saveData: (data: LoadedData, filePath: string) => Promise<void>;
+  saveData: (data: LoadedData, filePath: string, options?: SaveDataOptions) => Promise<void>;
   log: (line: string) => void;
   error: (line: string) => void;
 };
@@ -58,7 +62,9 @@ const DEFAULT_DEPS: TitsCliDeps = {
     const result = await safeLoadState({ filePath });
     return result.data;
   },
-  saveData: saveStateAtomic,
+  saveData: async (data: LoadedData, filePath: string, options?: SaveDataOptions) => {
+    await saveStateAtomic(data, filePath, undefined, options);
+  },
   log: (line: string) => console.log(line),
   error: (line: string) => console.error(line)
 };
@@ -171,6 +177,12 @@ export async function runTitsCommandCliWithDeps(
     }
 
     const loaded = await deps.loadData(dataFilePath);
+    const expectedStateRevision =
+      typeof loaded.stateRevision === "number" &&
+      Number.isInteger(loaded.stateRevision) &&
+      loaded.stateRevision >= 0
+        ? loaded.stateRevision
+        : 0;
     let state = reducer(initialState, { type: "load", data: loaded });
     const now = deps.now();
     const result = deps.executeCommand(command, {
@@ -197,7 +209,8 @@ export async function runTitsCommandCliWithDeps(
         savedViews: state.savedViews,
         engagement: state.engagement
       },
-      dataFilePath
+      dataFilePath,
+      { expectedStateRevision }
     );
 
     deps.log(toSingleLine(result.output.text));

@@ -9,11 +9,11 @@ import { normalizeTagIndex, normalizeTags } from "../domain/tagIndex";
 import { loadSettings } from "../settings/settings";
 import { CURRENT_SCHEMA_VERSION, safeLoadState } from "../state/persistence";
 import {
+  acquireTadoiLockOrThrow,
   createDefaultLockPayload,
   getTadoiLockPath,
   removeTadoiLock,
-  removeTadoiLockSync,
-  writeTadoiLock
+  removeTadoiLockSync
 } from "../state/lockfile";
 import { applyArchiveAging } from "../state/store";
 import { APP_NAME, PRODUCT_NAME_TM } from "../brand/brand";
@@ -36,9 +36,10 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
   const loadResult = await safeLoadState();
   const lockPath = getTadoiLockPath(loadResult.resolvedPath);
   const redactedLockPath = redactStartupPath(lockPath);
+  let lockAcquired = false;
   let lockCleanedUp = false;
   const cleanupLock = async (sync: boolean): Promise<void> => {
-    if (lockCleanedUp) return;
+    if (lockCleanedUp || !lockAcquired) return;
     lockCleanedUp = true;
     process.off("exit", onProcessExit);
     try {
@@ -67,16 +68,18 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
   };
 
   try {
-    await writeTadoiLock(
+    await acquireTadoiLockOrThrow(
       lockPath,
       createDefaultLockPayload(loadResult.resolvedPath)
     );
+    lockAcquired = true;
   } catch (error: unknown) {
-    console.warn(
-      `[${APP_NAME}] failed to create lock file (${redactedLockPath}): ${
-        error instanceof Error ? error.message : String(error)
-      }`
-    );
+    if (error instanceof Error) {
+      console.warn(`[${APP_NAME}] ${error.message} (${redactedLockPath})`);
+    } else {
+      console.warn(`[${APP_NAME}] failed to acquire lock (${redactedLockPath}): ${String(error)}`);
+    }
+    throw error;
   }
 
   const loaded = loadResult.data;

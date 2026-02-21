@@ -13,6 +13,16 @@ export type TadoiLockPayload = {
   dataFile?: string;
 };
 
+export class TadoiLockBusyError extends Error {
+  readonly lockPath: string;
+
+  constructor(lockPath: string) {
+    super(`TADOI is running (lock present): ${lockPath}`);
+    this.name = "TadoiLockBusyError";
+    this.lockPath = lockPath;
+  }
+}
+
 function isMissingFileError(error: unknown): boolean {
   return (
     typeof error === "object" &&
@@ -82,6 +92,16 @@ export async function tryAcquireTadoiLock(
   }
 
   return true;
+}
+
+export async function acquireTadoiLockOrThrow(
+  lockPath: string,
+  payload: TadoiLockPayload
+): Promise<void> {
+  const acquired = await tryAcquireTadoiLock(lockPath, payload);
+  if (!acquired) {
+    throw new TadoiLockBusyError(lockPath);
+  }
 }
 
 export async function removeTadoiLock(lockPath: string): Promise<void> {

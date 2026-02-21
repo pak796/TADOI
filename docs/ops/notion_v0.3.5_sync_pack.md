@@ -144,7 +144,7 @@ Use this source file:
 ## Validation Checklist After Notion Paste
 - Confirm each page title and date property shows `2026-02-13`.
 - Confirm all runtime/package references show `v0.3.5` / `0.3.5`.
-- Confirm tag panel key is `p` (not `Shift+T`).
+- Confirm tag panel key is `p` (not Shift+T).
 - Confirm QA page includes `QA-047` through `QA-064`.
 - Confirm docs clearly state: export/import CLI commands are available and Backup Center import/export flows are available.
 - Confirm Product Spec and Task List pages exist at `v0.3.5`.

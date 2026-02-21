@@ -16,8 +16,21 @@ const migrations: Record<number, MigrationFn> = {
   1: migrateV1ToV2,
   2: migrateV2ToV3,
   3: migrateV3ToV4,
-  4: migrateV4ToV5
+  4: migrateV4ToV5,
+  5: migrateV5ToV6
 };
+
+function normalizeStateRevision(value: unknown): number {
+  if (
+    typeof value === "number" &&
+    Number.isFinite(value) &&
+    Number.isInteger(value) &&
+    value >= 0
+  ) {
+    return value;
+  }
+  return 0;
+}
 
 function migrateV0ToV1(state: LoadedData): LoadedData {
   return {
@@ -167,6 +180,18 @@ function migrateV3ToV4(state: LoadedData): LoadedData {
 function migrateV4ToV5(state: LoadedData): LoadedData {
   return {
     schemaVersion: 5,
+    stateRevision: normalizeStateRevision(state.stateRevision),
+    tasks: state.tasks,
+    tagIndex: normalizeTagIndex(state.tagIndex ?? {}),
+    savedViews: Array.isArray(state.savedViews) ? state.savedViews : [],
+    engagement: normalizeEngagementState(state.engagement)
+  };
+}
+
+function migrateV5ToV6(state: LoadedData): LoadedData {
+  return {
+    schemaVersion: 6,
+    stateRevision: normalizeStateRevision(state.stateRevision),
     tasks: state.tasks,
     tagIndex: normalizeTagIndex(state.tagIndex ?? {}),
     savedViews: Array.isArray(state.savedViews) ? state.savedViews : [],
@@ -186,6 +211,7 @@ export function migratePersistedStateToCurrent(
 
   let next: LoadedData = {
     ...input,
+    stateRevision: normalizeStateRevision(input.stateRevision),
     tasks: Array.isArray(input.tasks) ? input.tasks : [],
     tagIndex: input.tagIndex ?? {},
     savedViews: Array.isArray(input.savedViews) ? input.savedViews : [],

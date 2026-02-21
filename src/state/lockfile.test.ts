@@ -3,11 +3,13 @@ import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
 import {
+  acquireTadoiLockOrThrow,
   createDefaultLockPayload,
   getTadoiLockPath,
   isTadoiLockPresent,
   removeTadoiLock,
   removeTadoiLockSync,
+  TadoiLockBusyError,
   tryAcquireTadoiLock,
   writeTadoiLock
 } from "./lockfile";
@@ -56,6 +58,15 @@ describe("lockfile helpers", () => {
 
     const secondAcquire = await tryAcquireTadoiLock(lockPath, createDefaultLockPayload());
     expect(secondAcquire).toBe(false);
+  });
+
+  it("throws lock-busy error when acquire helper cannot acquire lock", async () => {
+    const dir = await makeTempDir();
+    const lockPath = path.join(dir, "busy.lock");
+    await writeTadoiLock(lockPath, createDefaultLockPayload());
+    await expect(
+      acquireTadoiLockOrThrow(lockPath, createDefaultLockPayload())
+    ).rejects.toBeInstanceOf(TadoiLockBusyError);
   });
 
   it("removes lock file asynchronously and synchronously", async () => {

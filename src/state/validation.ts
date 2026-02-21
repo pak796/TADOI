@@ -68,6 +68,11 @@ export function validatePersistedState(
     errors.push("schemaVersion must be a number");
   }
 
+  const stateRevision = input.stateRevision;
+  if (stateRevision !== undefined && !isFiniteNumber(stateRevision)) {
+    errors.push("stateRevision must be a number when present");
+  }
+
   const tasks = input.tasks;
   if (!Array.isArray(tasks)) {
     errors.push("tasks must be an array");
@@ -94,6 +99,13 @@ export function validatePersistedState(
 
   const normalized: LoadedData = {
     schemaVersion: schemaVersion as number,
+    stateRevision:
+      typeof stateRevision === "number" &&
+      Number.isFinite(stateRevision) &&
+      Number.isInteger(stateRevision) &&
+      stateRevision >= 0
+        ? stateRevision
+        : 0,
     tasks: tasks as LoadedData["tasks"],
     tagIndex: (tagIndex as LoadedData["tagIndex"]) ?? {},
     savedViews: Array.isArray(savedViews) ? (savedViews as LoadedData["savedViews"]) : [],
@@ -382,6 +394,16 @@ export function validatePersistedState(
     typeof schemaVersion === "number" && Number.isFinite(schemaVersion) ? schemaVersion : 0;
   const engagementRecord =
     engagement !== undefined && isRecord(engagement) ? engagement : undefined;
+
+  if (inputSchemaVersion >= 6) {
+    if (
+      !isFiniteNumber(stateRevision) ||
+      !Number.isInteger(stateRevision) ||
+      stateRevision < 0
+    ) {
+      errors.push("stateRevision must be a non-negative integer for schemaVersion >= 6");
+    }
+  }
 
   if (inputSchemaVersion >= 5 && engagementRecord === undefined) {
     errors.push("engagement must be present for schemaVersion >= 5");

@@ -5,6 +5,7 @@ import {
   CalendarImportUsageError,
   importCalendarIcs
 } from "../state/calendarImportService";
+import { TadoiLockBusyError } from "../state/lockfile";
 
 function toErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -91,6 +92,10 @@ export async function runCalendarImportCommand(
 
     return result.hasErrors ? 1 : 0;
   } catch (error: unknown) {
+    if (error instanceof TadoiLockBusyError) {
+      console.error("[calendar:import] failed: TADOI is running (lock present).");
+      return 1;
+    }
     if (error instanceof CalendarImportFilesystemError) {
       console.error(`[calendar:import] failed: ${toErrorMessage(error)}`);
       return 2;

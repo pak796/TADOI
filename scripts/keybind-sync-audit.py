@@ -124,10 +124,11 @@ def extract_code_bindings(path: Path) -> dict[str, list[str]]:
     text = path.read_text(encoding="utf-8", errors="ignore")
     evidence: dict[str, list[str]] = {}
 
+    key_vars = r"(?:name|sequence|lowerName|lowerSequence)"
     patterns = [
-        r"(?:name|sequence)\s*===\s*\"([^\"]+)\"",
-        r"(?:name|sequence)\s*:\s*\"([^\"]+)\"",
-        r"\b(?:name|sequence)\s*:\s*'([^']+)'",
+        rf"{key_vars}\s*===\s*\"([^\"]+)\"",
+        rf"{key_vars}\s*:\s*\"([^\"]+)\"",
+        rf"\b{key_vars}\s*:\s*'([^']+)'",
     ]
 
     for pattern in patterns:
@@ -136,10 +137,19 @@ def extract_code_bindings(path: Path) -> dict[str, list[str]]:
             line = text.count("\n", 0, match.start()) + 1
             evidence.setdefault(token, []).append(f"{path}:{line}")
 
-    for match in re.finditer(r"ctrl\s*:\s*true[^\n\r\}]*name\s*:\s*\"([a-zA-Z0-9])\"", text):
-        token = f"Ctrl+{match.group(1).upper()}"
-        line = text.count("\n", 0, match.start()) + 1
-        evidence.setdefault(token, []).append(f"{path}:{line}")
+    ctrl_patterns = [
+        rf"ctrl\s*:\s*true[^\n\r\}}]*{key_vars}\s*:\s*\"([a-zA-Z0-9])\"",
+        rf"ctrl\s*:\s*true[^\n\r\}}]*{key_vars}\s*:\s*'([a-zA-Z0-9])'",
+        rf"(?<!\!)(?:key\.)?ctrl\s*&&\s*(?:key\.)?{key_vars}\s*===\s*\"([a-zA-Z0-9])\"",
+        rf"(?<!\!)(?:key\.)?ctrl\s*&&\s*(?:key\.)?{key_vars}\s*===\s*'([a-zA-Z0-9])'",
+        rf"(?:key\.)?{key_vars}\s*===\s*\"([a-zA-Z0-9])\"\s*&&\s*(?:key\.)?ctrl",
+        rf"(?:key\.)?{key_vars}\s*===\s*'([a-zA-Z0-9])'\s*&&\s*(?:key\.)?ctrl",
+    ]
+    for pattern in ctrl_patterns:
+        for match in re.finditer(pattern, text):
+            token = f"Ctrl+{match.group(1).upper()}"
+            line = text.count("\n", 0, match.start()) + 1
+            evidence.setdefault(token, []).append(f"{path}:{line}")
 
     return evidence
 
@@ -251,6 +261,9 @@ def main() -> int:
     args = parse_args()
     repo = Path(args.repo_root).resolve()
     router = (repo / args.router_path).resolve()
+    out_json = Path(args.out_json)
+    out_md = Path(args.out_md)
+    out_md_abs = out_md.resolve()
 
     if not router.exists():
         raise SystemExit(f"Router path not found: {router}")
@@ -264,7 +277,9 @@ def main() -> int:
             if key in code_evidence:
                 code_evidence[key].extend(values)
 
-    doc_files = gather_docs(repo, args.docs_glob)
+    doc_files = [
+        doc for doc in gather_docs(repo, args.docs_glob) if doc.resolve() != out_md_abs
+    ]
     doc_evidence: dict[str, list[str]] = {}
     for doc in doc_files:
         extracted = extract_doc_bindings(doc)
@@ -296,8 +311,6 @@ def main() -> int:
         },
     }
 
-    out_json = Path(args.out_json)
-    out_md = Path(args.out_md)
     out_json.parent.mkdir(parents=True, exist_ok=True)
     out_md.parent.mkdir(parents=True, exist_ok=True)
     out_json.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")

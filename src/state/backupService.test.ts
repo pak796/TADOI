@@ -153,7 +153,7 @@ describe("backupService import/export", () => {
         path.join(outputDir, "tadoi-backup-20260210-000000.json")
       );
       expect(result.taskCount).toBe(1);
-      expect(result.schemaVersion).toBe(5);
+      expect(result.schemaVersion).toBe(6);
       expect(result.bytesWritten).toBeGreaterThan(0);
     } finally {
       if (originalDataPath === undefined) {

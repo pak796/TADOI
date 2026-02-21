@@ -56,6 +56,85 @@ describe("validatePersistedState", () => {
     expect(result.ok).toBe(true);
   });
 
+  it("requires non-negative integer stateRevision for schema v6", () => {
+    const missingRevision = validatePersistedState(
+      {
+        ...BASE_STATE,
+        schemaVersion: 6,
+        engagement: {
+          completionLog: [],
+          achievements: {},
+          streak: {
+            currentDays: 0,
+            bestDays: 0,
+            lastCompletionDayKey: null
+          }
+        }
+      },
+      "strict"
+    );
+    expect(missingRevision.ok).toBe(false);
+
+    const fractionalRevision = validatePersistedState(
+      {
+        ...BASE_STATE,
+        schemaVersion: 6,
+        stateRevision: 1.5,
+        engagement: {
+          completionLog: [],
+          achievements: {},
+          streak: {
+            currentDays: 0,
+            bestDays: 0,
+            lastCompletionDayKey: null
+          }
+        }
+      },
+      "strict"
+    );
+    expect(fractionalRevision.ok).toBe(false);
+
+    const negativeRevision = validatePersistedState(
+      {
+        ...BASE_STATE,
+        schemaVersion: 6,
+        stateRevision: -1,
+        engagement: {
+          completionLog: [],
+          achievements: {},
+          streak: {
+            currentDays: 0,
+            bestDays: 0,
+            lastCompletionDayKey: null
+          }
+        }
+      },
+      "strict"
+    );
+    expect(negativeRevision.ok).toBe(false);
+  });
+
+  it("accepts schema v6 with valid stateRevision and engagement", () => {
+    const result = validatePersistedState(
+      {
+        ...BASE_STATE,
+        schemaVersion: 6,
+        stateRevision: 3,
+        engagement: {
+          completionLog: [],
+          achievements: {},
+          streak: {
+            currentDays: 0,
+            bestDays: 0,
+            lastCompletionDayKey: null
+          }
+        }
+      },
+      "strict"
+    );
+    expect(result.ok).toBe(true);
+  });
+
   it("rejects missing schemaVersion", () => {
     const result = validatePersistedState(
       { ...BASE_STATE, schemaVersion: undefined },

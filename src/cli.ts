@@ -8,8 +8,9 @@ import {
 import { APP_VERSION } from "./app/version";
 import { runPortabilityCommand } from "./cli/portabilityCommands";
 import { runCalendarCommand } from "./cli/calendarCommands";
-import { runTitsCommandCli } from "./cli/main";
+import { runTitsCommandCli, TITS_CLI_EXIT_CODE } from "./cli/main";
 import { runTui, runTuiSmoke, type RunTuiOptions } from "./tui/runTui";
+import { TadoiLockBusyError } from "./state/lockfile";
 
 type CliOptions = {
   showLogo: boolean;
@@ -165,8 +166,16 @@ export async function runCli(
     return deps.runSmokeTui();
   }
 
-  await deps.runInteractiveTui({ showLogo: route.showLogo });
-  return undefined;
+  try {
+    await deps.runInteractiveTui({ showLogo: route.showLogo });
+    return undefined;
+  } catch (error: unknown) {
+    if (error instanceof TadoiLockBusyError) {
+      console.error("Error: TADOI is running (lock present).");
+      return TITS_CLI_EXIT_CODE.LOCKED;
+    }
+    throw error;
+  }
 }
 
 if (import.meta.main) {
