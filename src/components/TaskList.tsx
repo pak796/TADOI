@@ -174,13 +174,36 @@ function TaskRow({
       : isDueLater
         ? theme.dueLater
         : theme.text;
+  const rowBackground = isDone
+    ? theme.ok
+    : task.status === "archived"
+      ? "transparent"
+      : selected && isOverdue
+        ? theme.warn
+      : selected && (isDueToday || isDueSoon)
+          ? theme.dueSoon
+      : selected && isDueLater
+            ? theme.dueLater
+            : selected
+              ? theme.selectionBg
+              : "transparent";
+  const selectedForeground = selected
+    ? rowBackground === theme.selectionBg
+      ? theme.selectionText
+      : theme.bg
+    : theme.text;
+  const selectedSecondaryForeground = selected
+    ? rowBackground === theme.selectionBg
+      ? theme.selectionText
+      : theme.bg
+    : theme.muted;
   const statusColor =
     isDone
       ? theme.bg
       : task.status === "archived"
         ? theme.muted
         : selected
-          ? theme.bg
+          ? selectedForeground
           : baseOpenColor;
   const titleColor =
     isDone
@@ -188,21 +211,8 @@ function TaskRow({
       : task.status === "archived"
         ? theme.muted
         : selected
-          ? theme.bg
+          ? selectedForeground
           : baseOpenColor;
-  const rowBackground = isDone
-    ? theme.ok
-    : task.status === "archived"
-      ? "transparent"
-      : selected && isOverdue
-        ? theme.warn
-        : selected && (isDueToday || isDueSoon)
-          ? theme.dueSoon
-          : selected && isDueLater
-            ? theme.dueLater
-            : selected
-              ? theme.accentBlue
-              : "transparent";
 
   const dueTodayPulseOn = flashMode !== "static" && pulseOn;
   const dueHighlightBackground = isOverdue
@@ -213,6 +223,7 @@ function TaskRow({
         : theme.dueSoon
     : "transparent";
   const dueHighlightText = isOverdue ? theme.bg : baseOpenColor;
+  const dueInLabelColor = selected ? selectedForeground : baseOpenColor;
 
   return (
     <box
@@ -220,7 +231,7 @@ function TaskRow({
         paddingLeft: 1,
         paddingRight: 1,
         backgroundColor: rowBackground,
-        color: selected ? theme.bg : theme.text
+        color: selectedForeground
       }}
       onMouseDown={(event) => {
         if (event.button !== 0) return;
@@ -229,7 +240,7 @@ function TaskRow({
     >
       <box style={{ flexDirection: "row", flexGrow: 1 }}>
         <box style={{ width: 2, justifyContent: "center" }}>
-          <text style={{ color: selected ? theme.bg : theme.muted }}>
+          <text style={{ color: selectedSecondaryForeground }}>
             {selected ? "▶" : " "}
           </text>
         </box>
@@ -241,7 +252,7 @@ function TaskRow({
           <box style={{ flexDirection: "row", justifyContent: "space-between" }}>
             <box style={{ flexDirection: "row", gap: 1 }}>
               {recurringIndicator ? (
-                <text style={{ color: selected ? theme.bg : theme.muted }}>
+                <text style={{ color: selectedSecondaryForeground }}>
                   {recurringIndicator}
                 </text>
               ) : null}
@@ -254,7 +265,7 @@ function TaskRow({
               )}
             </box>
             {closedText ? (
-              <text style={{ color: isDone ? theme.bg : selected ? theme.bg : theme.ok }}>
+              <text style={{ color: isDone ? theme.bg : selected ? selectedForeground : theme.ok }}>
                 DONE {closedText}
               </text>
             ) : isOverdue && dueInLabel ? (
@@ -269,7 +280,7 @@ function TaskRow({
                   </text>
                 </box>
               ) : (
-                <text style={{ color: selected ? theme.bg : baseOpenColor }}>{dueInLabel}</text>
+                <text style={{ color: dueInLabelColor }}>{dueInLabel}</text>
               )
             ) : null}
           </box>
@@ -280,7 +291,7 @@ function TaskRow({
                   key={tag}
                   style={{
                     backgroundColor: colorForTag(tag),
-                    color: theme.bg,
+                    color: selectedForeground,
                     paddingLeft: 1,
                     paddingRight: 1
                   }}

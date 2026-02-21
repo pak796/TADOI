@@ -62,4 +62,39 @@ describe("link keybinding contract", () => {
       { scope: "domain", type: "OPEN_DELETE_TASK_LINK_MODAL" }
     ]);
   });
+
+  it("keeps legacy tag-cycle docs aligned with lowercase-only router behavior", async () => {
+    const usagePath = fileURLToPath(new URL("../../docs/USAGE.md", import.meta.url).href);
+    const usageSource = await fs.readFile(usagePath, "utf8");
+    expect(usageSource).toContain("- `t`: cycle non-priority tag filter");
+    expect(usageSource).not.toContain("`t` / `T`");
+
+    expect(run({ name: "t", sequence: "t" })).toEqual([
+      { scope: "domain", type: "TOGGLE_TAG_FILTER" }
+    ]);
+    expect(run({ name: "T", sequence: "T" })).toEqual([]);
+  });
+
+  it("keeps backup center key snapshot aligned with routed keyspace", async () => {
+    const specPath = fileURLToPath(new URL("../../TADOI_SPEC_v0.3.7.md", import.meta.url).href);
+    const specSource = await fs.readFile(specPath, "utf8");
+    expect(specSource).toContain("- backup center menu: `1/2/3/4`, `Enter`, `Esc`");
+    expect(specSource).toContain(
+      "- backup center import picker: `j/k`, `ArrowUp`/`ArrowDown`, `PageUp`/`PageDown`, `home/end`, `m`, `Enter`, `Esc`"
+    );
+
+    const backupModeState = { ...initialUIState, mode: Mode.BACKUP_CENTER };
+    expect(run({ name: "4", sequence: "4" }, { uiState: backupModeState, backupScreen: "menu" })).toEqual([
+      { scope: "ui", type: "BACKUP_SELECT_MENU_OPTION", index: 3 }
+    ]);
+    expect(
+      run({ name: "home", sequence: "" }, { uiState: backupModeState, backupScreen: "import_picker" })
+    ).toEqual([{ scope: "ui", type: "BACKUP_PICKER_JUMP_SELECTION", target: "start" }]);
+    expect(
+      run({ name: "end", sequence: "" }, { uiState: backupModeState, backupScreen: "import_picker" })
+    ).toEqual([{ scope: "ui", type: "BACKUP_PICKER_JUMP_SELECTION", target: "end" }]);
+    expect(
+      run({ name: "m", sequence: "m" }, { uiState: backupModeState, backupScreen: "import_picker" })
+    ).toEqual([{ scope: "ui", type: "BACKUP_PICKER_OPEN_MANUAL_PATH" }]);
+  });
 });

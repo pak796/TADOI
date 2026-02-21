@@ -222,7 +222,7 @@ Full canonical list: `docs/USAGE.md` (source: `src/app/keyRouter.ts`).
 Canonical router keys (audit-complete):
 `/` `1` `2` `3` `4` `?` `ArrowDown` `ArrowLeft` `ArrowRight` `ArrowUp`
 `B` `C` `Ctrl+D` `Ctrl+L` `Ctrl+S` `Ctrl+U` `D` `E` `Enter` `Esc`
-`G` `L` `O` `PageDown` `PageUp` `S` `Space` `T` `Tab` `[`
+`G` `L` `O` `PageDown` `PageUp` `S` `Space` `Tab` `[`
 `]` `a` `b` `backspace` `c` `d` `e` `end` `f` `g` `h` `home`
 `i` `j` `k` `l` `m` `n` `o` `p` `q` `r` `s` `t` `u` `v` `x` `y` `z`
 `{` `}`
@@ -325,7 +325,7 @@ Canonical router keys (audit-complete):
   - `g` / `G`: jump to the task in list mode
   - `Esc`: dismiss current modal
 - Quit:
-  - `q` in LIST mode (graceful terminal teardown)
+  - `q` in LIST or DASHBOARD mode (graceful terminal teardown)
 
 ## Mouse Interactions
 
@@ -383,10 +383,9 @@ Flash mode values:
 
 Theme IDs:
 - `default`, `retro`, `highContrast`, `neonHacker`, `lightSlate`, `paperWhite`, `midnightBlack`
-- `jester`, `sonora`, `tigers`, `tech`
-- `deuteranopia`, `protanopia`, `tritanopia`
-- `blueAngels`, `southwest`, `rams`
-- `rotating` (auto-cycles concrete themes)
+- `jester`, `sonora`, `tigers`, `tech`, `deuteranopia`, `protanopia`, `tritanopia`
+- `blueAngels`, `southwest`, `rams`, `trooper`, `twilight`, `msdos`, `niners`, `mcrn`
+- `zeke`, `gundam`, `custom1`, `rotating` (auto-cycles concrete themes)
 
 Notification defaults:
 - `notifications.enabled`: `true`

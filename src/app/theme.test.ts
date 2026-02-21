@@ -111,6 +111,15 @@ describe("app theme runtime mapping", () => {
     expect(themeForObject("dashboard").text).toBe("#AABBCC");
   });
 
+  it("maps warning and danger runtime roles to distinct token channels", () => {
+    const settings = makeSettingsWithObjectOverrides();
+    applyThemeWithSettings("custom1", settings);
+
+    expect(themeForObject("appChrome").warn).toBe("#DDAA00");
+    expect(themeForObject("appChrome").danger).toBe("#DD3344");
+    expect(themeForObject("appChrome").dueSoon).toBe("#DDAA00");
+  });
+
   it("keeps all runtime theme fields as non-empty hex colors", () => {
     const settings = makeSettingsWithObjectOverrides();
     applyThemeWithSettings("custom1", settings);

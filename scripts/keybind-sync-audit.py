@@ -144,6 +144,37 @@ def extract_code_bindings(path: Path) -> dict[str, list[str]]:
     return evidence
 
 
+def extract_action_bearing_test_bindings(path: Path) -> dict[str, list[str]]:
+    text = path.read_text(encoding="utf-8", errors="ignore")
+    evidence: dict[str, list[str]] = {}
+
+    action_assert_pattern = re.compile(
+        r"expect\(\s*run\((?P<input>\{.*?\})(?:\s*,\s*\{.*?\})?\s*\)\s*\)\s*\.toEqual\(\s*\[(?P<actions>.*?)\]\s*\)",
+        re.DOTALL,
+    )
+
+    for match in action_assert_pattern.finditer(text):
+        actions = match.group("actions")
+        if "type" not in actions:
+            continue
+        input_object = match.group("input")
+        line = text.count("\n", 0, match.start()) + 1
+
+        for token_match in re.finditer(r"(?:name|sequence)\s*:\s*\"([^\"]+)\"", input_object):
+            token = normalize_key(token_match.group(1))
+            evidence.setdefault(token, []).append(f"{path}:{line}")
+        for token_match in re.finditer(r"(?:name|sequence)\s*:\s*'([^']+)'", input_object):
+            token = normalize_key(token_match.group(1))
+            evidence.setdefault(token, []).append(f"{path}:{line}")
+
+        if re.search(r"ctrl\s*:\s*true", input_object):
+            for ctrl_match in re.finditer(r"name\s*:\s*[\"']([a-zA-Z0-9])[\"']", input_object):
+                token = f"Ctrl+{ctrl_match.group(1).upper()}"
+                evidence.setdefault(token, []).append(f"{path}:{line}")
+
+    return evidence
+
+
 def extract_doc_bindings(path: Path) -> dict[str, list[str]]:
     text = path.read_text(encoding="utf-8", errors="ignore")
     evidence: dict[str, list[str]] = {}
@@ -224,12 +255,14 @@ def main() -> int:
     if not router.exists():
         raise SystemExit(f"Router path not found: {router}")
 
-    code_evidence = extract_code_bindings(router)
+    router_evidence = extract_code_bindings(router)
+    code_evidence = {key: list(values) for key, values in router_evidence.items()}
     sibling_test = router.with_name(router.stem + ".test" + router.suffix)
     if sibling_test.exists():
-        test_evidence = extract_code_bindings(sibling_test)
+        test_evidence = extract_action_bearing_test_bindings(sibling_test)
         for key, values in test_evidence.items():
-            code_evidence.setdefault(key, []).extend(values)
+            if key in code_evidence:
+                code_evidence[key].extend(values)
 
     doc_files = gather_docs(repo, args.docs_glob)
     doc_evidence: dict[str, list[str]] = {}
@@ -238,22 +271,22 @@ def main() -> int:
         for key, values in extracted.items():
             doc_evidence.setdefault(key, []).extend(values)
 
-    code_keys = set(code_evidence.keys())
+    canonical_code_keys = set(router_evidence.keys())
     doc_keys = set(doc_evidence.keys())
 
-    missing_in_docs = sorted(code_keys - doc_keys)
-    missing_in_code = sorted((doc_keys - code_keys) - NOISE_DOC_ONLY_KEYS)
+    missing_in_docs = sorted(canonical_code_keys - doc_keys)
+    missing_in_code = sorted((doc_keys - canonical_code_keys) - NOISE_DOC_ONLY_KEYS)
 
     semantic_mismatch: list[str] = []
-    lowered = {k.lower() for k in code_keys}
+    lowered = {k.lower() for k in canonical_code_keys}
     for docs_key in sorted(doc_keys):
         if docs_key.startswith("Ctrl+"):
             plain = docs_key.split("+", 1)[1].lower()
-            if plain in lowered and docs_key not in code_keys:
+            if plain in lowered and docs_key not in canonical_code_keys:
                 semantic_mismatch.append(f"Docs specify `{docs_key}` but code evidence only shows unmodified `{plain}`.")
 
     payload = {
-        "canonical_keybinds": sorted(code_keys),
+        "canonical_keybinds": sorted(canonical_code_keys),
         "missing_in_docs": missing_in_docs,
         "missing_in_code": missing_in_code,
         "semantic_mismatch": semantic_mismatch,

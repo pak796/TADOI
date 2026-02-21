@@ -35,6 +35,7 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
   applyThemeWithSettings(settingsResult.settings.themeId, settingsResult.settings);
   const loadResult = await safeLoadState();
   const lockPath = getTadoiLockPath(loadResult.resolvedPath);
+  const redactedLockPath = redactStartupPath(lockPath);
   let lockCleanedUp = false;
   const cleanupLock = async (sync: boolean): Promise<void> => {
     if (lockCleanedUp) return;
@@ -48,7 +49,7 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
       }
     } catch (error: unknown) {
       console.warn(
-        `[${APP_NAME}] failed to remove lock file (${lockPath}): ${
+        `[${APP_NAME}] failed to remove lock file (${redactedLockPath}): ${
           error instanceof Error ? error.message : String(error)
         }`
       );
@@ -72,7 +73,7 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
     );
   } catch (error: unknown) {
     console.warn(
-      `[${APP_NAME}] failed to create lock file (${lockPath}): ${
+      `[${APP_NAME}] failed to create lock file (${redactedLockPath}): ${
         error instanceof Error ? error.message : String(error)
       }`
     );

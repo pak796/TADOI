@@ -150,6 +150,11 @@ import {
   type ThemeTokens
 } from "../theme/themes";
 import {
+  formatContrastIssueForBanner,
+  validateBuiltInTextContrast,
+  validateCustomThemeContrast
+} from "../theme/contrastValidation";
+import {
   applySavedView,
   DEFAULT_VIEW_FILTERS,
   isSavedViewActive,
@@ -258,6 +263,7 @@ const FIRST_RECURRING_TASK_TOAST_MS = 10_000;
 const FIRST_RECURRING_REPEAT_DONE_TOAST_MS = 10_000;
 const ROTATING_THEME_INTERVAL_MS = 15000;
 const G_PREFIX_TIMEOUT_MS = 280;
+const CORRUPTION_STARTUP_BANNER_AUTO_DISMISS_MS = 60_000;
 const NAV_BANNER_TIMEOUT_MS = 1800;
 const VIEW_NAME_MAX_LENGTH = 40;
 const DASHBOARD_TOP_TAG_MIN = 5;
@@ -1153,6 +1159,9 @@ export function App({
   const [timeSuggestion, setTimeSuggestion] = useState<SuggestedTime | null>(null);
   const [saveFailureBanner, setSaveFailureBanner] = useState<string | null>(null);
   const [navigationBanner, setNavigationBanner] = useState<string | null>(null);
+  const [startupBannerMessage, setStartupBannerMessage] = useState<string | null>(
+    startupBanner ?? null
+  );
   const [pendingGPrefix, setPendingGPrefix] = useState(false);
   const [viewsOverlayOpen, setViewsOverlayOpen] = useState(false);
   const [selectedViewIndex, setSelectedViewIndex] = useState(0);
@@ -1518,7 +1527,7 @@ export function App({
   const listHeaderHeight = 2;
   const topBarHeight = 4;
   const bottomBarHeight = 3;
-  const activeBanners = [startupBanner, saveFailureBanner, navigationBanner].filter(
+  const activeBanners = [startupBannerMessage, saveFailureBanner, navigationBanner].filter(
     (value): value is string => Boolean(value)
   );
   const bannerHeight = activeBanners.length;
@@ -1886,6 +1895,20 @@ export function App({
   }, []);
 
   useEffect(() => {
+    setStartupBannerMessage(startupBanner ?? null);
+  }, [startupBanner]);
+
+  useEffect(() => {
+    if (!showCorruptionRecoveryImportCta || !startupBannerMessage) {
+      return;
+    }
+    const timeoutId = setTimeout(() => {
+      setStartupBannerMessage(null);
+    }, CORRUPTION_STARTUP_BANNER_AUTO_DISMISS_MS);
+    return () => clearTimeout(timeoutId);
+  }, [showCorruptionRecoveryImportCta, startupBannerMessage]);
+
+  useEffect(() => {
     const id = setInterval(() => {
       evaluateNotificationsRef.current(Date.now());
     }, NOTIFICATION_EVALUATION_INTERVAL_MS);
@@ -1941,6 +1964,13 @@ export function App({
   useEffect(() => {
     const previousTaskCount = previousTaskCountRef.current;
     const nextTaskCount = state.tasks.length;
+    if (
+      nextTaskCount > previousTaskCount &&
+      showCorruptionRecoveryImportCta &&
+      startupBannerMessage
+    ) {
+      setStartupBannerMessage(null);
+    }
     const transitionedFromEmptyToNonEmpty = previousTaskCount === 0 && nextTaskCount > 0;
 
     if (
@@ -1967,7 +1997,9 @@ export function App({
     state.selectedId,
     uiState.emptyNux?.step,
     uiState.emptyNux?.startedFromNux,
-    isNuxIdle
+    isNuxIdle,
+    showCorruptionRecoveryImportCta,
+    startupBannerMessage
   ]);
 
   useEffect(() => {
@@ -2518,9 +2550,15 @@ export function App({
           backup: true
         });
         backupDispatch({ type: "importSucceeded", summary });
+        if (showCorruptionRecoveryImportCta && startupBannerMessage) {
+          setStartupBannerMessage(null);
+        }
         await refreshRuntimeStateFromDisk();
       } catch (error: unknown) {
         if (error instanceof BackupImportPartialError) {
+          if (showCorruptionRecoveryImportCta && startupBannerMessage) {
+            setStartupBannerMessage(null);
+          }
           try {
             await refreshRuntimeStateFromDisk();
           } catch {
@@ -3586,6 +3624,24 @@ export function App({
 
   function saveCustom1Editor() {
     const objects = sanitizeDraftObjects(custom1DraftObjects);
+    const contrastResult = validateCustomThemeContrast({
+      global: custom1DraftGlobal,
+      objects,
+      baselineGlobal: persistedCustom1.global,
+      baselineObjects: persistedCustom1.objects
+    });
+    if (!contrastResult.ok) {
+      const firstIssue = contrastResult.issues[0];
+      if (firstIssue) {
+        showShortNavigationBanner(
+          `Theme save blocked: ${formatContrastIssueForBanner(firstIssue)}`
+        );
+      } else {
+        showShortNavigationBanner("Theme save blocked by contrast gate");
+      }
+      return;
+    }
+
     settingsDispatch({
       type: "setCustomThemes",
       customThemes: {
@@ -3629,6 +3685,25 @@ export function App({
   function saveBuiltInTextEditor() {
     const sanitizedGlobal = sanitizeThemeTextTokenOverrides(builtInTextDraftGlobal);
     const sanitizedObjects = sanitizeThemeTextObjectOverrides(builtInTextDraftObjects);
+    const contrastResult = validateBuiltInTextContrast({
+      themeId: helpTextTuningThemeId,
+      global: sanitizedGlobal,
+      objects: sanitizedObjects,
+      baselineGlobal: persistedBuiltInTextConfig.global,
+      baselineObjects: persistedBuiltInTextConfig.objects
+    });
+    if (!contrastResult.ok) {
+      const firstIssue = contrastResult.issues[0];
+      if (firstIssue) {
+        showShortNavigationBanner(
+          `Text tuning blocked: ${formatContrastIssueForBanner(firstIssue)}`
+        );
+      } else {
+        showShortNavigationBanner("Text tuning blocked by contrast gate");
+      }
+      return;
+    }
+
     const existingTextByTheme = {
       ...(settingsState.customThemes?.textByTheme ?? {})
     };

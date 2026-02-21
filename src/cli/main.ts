@@ -9,7 +9,13 @@ import {
   saveStateAtomic,
   type LoadedData
 } from "../state/persistence";
-import { getTadoiLockPath, isTadoiLockPresent } from "../state/lockfile";
+import {
+  createDefaultLockPayload,
+  getTadoiLockPath,
+  removeTadoiLock,
+  tryAcquireTadoiLock,
+  type TadoiLockPayload
+} from "../state/lockfile";
 
 export const TITS_CLI_EXIT_CODE = {
   SUCCESS: 0,
@@ -30,7 +36,9 @@ type TitsCliDeps = {
   ) => CommandResult;
   getDataFilePath: () => string;
   getLockPath: (dataFilePath: string) => string;
-  isLockPresent: (lockPath: string) => Promise<boolean>;
+  createLockPayload: (dataFilePath: string) => TadoiLockPayload;
+  acquireLock: (lockPath: string, payload: TadoiLockPayload) => Promise<boolean>;
+  releaseLock: (lockPath: string) => Promise<void>;
   loadData: (filePath: string) => Promise<LoadedData>;
   saveData: (data: LoadedData, filePath: string) => Promise<void>;
   log: (line: string) => void;
@@ -43,7 +51,9 @@ const DEFAULT_DEPS: TitsCliDeps = {
   executeCommand,
   getDataFilePath,
   getLockPath: getTadoiLockPath,
-  isLockPresent: isTadoiLockPresent,
+  createLockPayload: createDefaultLockPayload,
+  acquireLock: tryAcquireTadoiLock,
+  releaseLock: removeTadoiLock,
   loadData: async (filePath: string) => {
     const result = await safeLoadState({ filePath });
     return result.data;
@@ -151,9 +161,11 @@ export async function runTitsCommandCliWithDeps(
 
   const dataFilePath = deps.getDataFilePath();
   const lockPath = deps.getLockPath(dataFilePath);
+  let lockAcquired = false;
 
   try {
-    if (await deps.isLockPresent(lockPath)) {
+    lockAcquired = await deps.acquireLock(lockPath, deps.createLockPayload(dataFilePath));
+    if (!lockAcquired) {
       deps.error("Error: TADOI is running (lock present).");
       return { handled: true, exitCode: TITS_CLI_EXIT_CODE.LOCKED };
     }
@@ -195,6 +207,16 @@ export async function runTitsCommandCliWithDeps(
       `Error: could not read/write data file (${error instanceof Error ? error.message : String(error)})`
     );
     return { handled: true, exitCode: TITS_CLI_EXIT_CODE.IO_ERROR };
+  } finally {
+    if (lockAcquired) {
+      try {
+        await deps.releaseLock(lockPath);
+      } catch (error: unknown) {
+        deps.error(
+          `Warning: could not release lock file (${error instanceof Error ? error.message : String(error)})`
+        );
+      }
+    }
   }
 }
 

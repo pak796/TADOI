@@ -6,6 +6,7 @@ import type {
 } from "./calendarMapper";
 
 const PROD_ID = "-//TADOI//Calendar Export//EN";
+const CONTROL_CHARS_RE = /[\u0000-\u001F\u007F]/;
 
 type ZonedDateParts = {
   year: number;
@@ -271,6 +272,14 @@ export function foldIcsLine(line: string): string {
   return chunks.join("\r\n ");
 }
 
+function sanitizeIcsUrl(value: string): string | undefined {
+  const trimmed = value.trim();
+  if (!trimmed || CONTROL_CHARS_RE.test(trimmed)) {
+    return undefined;
+  }
+  return trimmed;
+}
+
 function renderEventLines(event: CalendarVEvent): string[] {
   const lines = [
     "BEGIN:VEVENT",
@@ -309,7 +318,10 @@ function renderEventLines(event: CalendarVEvent): string[] {
     lines.push(`CATEGORIES:${event.categories.map((value) => escapeIcsText(value)).join(",")}`);
   }
   if (event.url) {
-    lines.push(`URL:${event.url}`);
+    const sanitizedUrl = sanitizeIcsUrl(event.url);
+    if (sanitizedUrl) {
+      lines.push(`URL:${sanitizedUrl}`);
+    }
   }
   lines.push(`TRANSP:${event.transp}`);
   if (event.relatedTo) {

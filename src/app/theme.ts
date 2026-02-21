@@ -1,5 +1,9 @@
 import { THEMES, ThemeId, ThemeTokens, resolveThemeTokens } from "../theme/themes";
 import {
+  runtimeThemeFromContract,
+  type RuntimeThemeAlias
+} from "../theme/semanticTokenContract";
+import {
   BuiltInThemeTextOverrides,
   CustomThemeConfig,
   THEME_OBJECT_IDS,
@@ -7,52 +11,12 @@ import {
   TadoiSettings
 } from "../settings/settings";
 
-export type RuntimeTheme = {
-  bg: string;
-  panel: string;
-  accentOrange: string;
-  accentPurple: string;
-  accentBlue: string;
-  accent: string;
-  accent2: string;
-  ok: string;
-  warn: string;
-  danger: string;
-  dueSoon: string;
-  dueLater: string;
-  text: string;
-  muted: string;
-  mutedText: string;
-  outline: string;
-  border: string;
-  selectionBg: string;
-  selectionText: string;
-};
+export type RuntimeTheme = Record<RuntimeThemeAlias, string>;
 
 const HEX_COLOR_RE = /^#[0-9A-F]{6}$/i;
 
 function runtimeThemeFromTokens(tokens: ThemeTokens): RuntimeTheme {
-  return {
-    bg: tokens.bg,
-    panel: tokens.panel,
-    accentOrange: tokens.accent,
-    accentPurple: tokens.selectionBg,
-    accentBlue: tokens.accent2,
-    accent: tokens.accent,
-    accent2: tokens.accent2,
-    ok: tokens.ok,
-    warn: tokens.danger,
-    danger: tokens.danger,
-    dueSoon: tokens.warn,
-    dueLater: tokens.accent2,
-    text: tokens.text,
-    muted: tokens.mutedText,
-    mutedText: tokens.mutedText,
-    outline: tokens.border,
-    border: tokens.border,
-    selectionBg: tokens.selectionBg,
-    selectionText: tokens.selectionText
-  };
+  return runtimeThemeFromContract(tokens);
 }
 
 function createRuntimeThemeByObject(): Record<ThemeObjectId, RuntimeTheme> {

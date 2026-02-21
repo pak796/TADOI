@@ -20,6 +20,7 @@ export type ValidationResult =
 const VALID_STATUS = new Set<TaskStatus>(["open", "done", "archived"]);
 const VALID_TASK_LINK_KINDS = new Set<TaskLinkKind>(["url", "path"]);
 const VALID_TASK_LINK_SOURCES = new Set<TaskLinkSource>(["manual", "calendar_import"]);
+const ASCII_CONTROL_CHARS_RE = /[\u0000-\u001F\u007F]/;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -31,6 +32,10 @@ function isFiniteNumber(value: unknown): value is number {
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function hasAsciiControlChars(value: string): boolean {
+  return ASCII_CONTROL_CHARS_RE.test(value);
 }
 
 function areStringArraysEqual(left: string[], right: string[]): boolean {
@@ -217,6 +222,10 @@ export function validatePersistedState(
           }
           if (!isNonEmptyString(link.target)) {
             errors.push(`task.links[].target must be a non-empty string (${String(task.id)})`);
+          } else if (hasAsciiControlChars(link.target)) {
+            errors.push(
+              `task.links[].target must not contain ASCII control characters (${String(task.id)})`
+            );
           }
           if (link.label !== undefined && typeof link.label !== "string") {
             errors.push(`task.links[].label must be a string when present (${String(task.id)})`);

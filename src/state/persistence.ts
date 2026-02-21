@@ -126,6 +126,8 @@ export function resolveDataPath(options: ResolveDataPathOptions = {}): string {
 const DATA_FILE = resolveDataPath();
 const DEFAULT_FS_OPS: PersistenceFsOps = fs;
 export const CURRENT_SCHEMA_VERSION = 5;
+const PRIVATE_DIR_MODE = 0o700;
+const PRIVATE_FILE_MODE = 0o600;
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 let lastSuccessfulSaveAt: number | undefined;
 const corruptionRecoveryByPath = new Map<string, string | undefined>();
@@ -464,12 +466,15 @@ export async function writeJsonAtomic(
   const pretty = options.pretty !== false;
   const fsyncBeforeRename = options.fsyncBeforeRename === true;
   await runWithAtomicWriteLock(filePath, async () => {
-    await fsOps.mkdir(path.dirname(filePath), { recursive: true });
+    await fsOps.mkdir(path.dirname(filePath), { recursive: true, mode: PRIVATE_DIR_MODE });
     const tmpFile = await nextAtomicTempFilePath(filePath, fsOps);
     const content = pretty
       ? JSON.stringify(payload, null, 2)
       : JSON.stringify(payload);
-    await fsOps.writeFile(tmpFile, content, "utf8");
+    await fsOps.writeFile(tmpFile, content, {
+      encoding: "utf8",
+      mode: PRIVATE_FILE_MODE
+    });
     if (fsyncBeforeRename) {
       const handle = await fsOps.open(tmpFile, "r");
       try {
@@ -489,7 +494,7 @@ export async function saveStateAtomic(
 ): Promise<void> {
   await runWithAtomicWriteLock(filePath, async () => {
     const dirPath = path.dirname(filePath);
-    await fsOps.mkdir(dirPath, { recursive: true });
+    await fsOps.mkdir(dirPath, { recursive: true, mode: PRIVATE_DIR_MODE });
     const tmpFile = await nextPidTempFilePath(filePath, fsOps);
     const payload = {
       ...data,
@@ -499,7 +504,10 @@ export async function saveStateAtomic(
     let renamed = false;
 
     try {
-      await fsOps.writeFile(tmpFile, content, "utf8");
+      await fsOps.writeFile(tmpFile, content, {
+        encoding: "utf8",
+        mode: PRIVATE_FILE_MODE
+      });
       const tmpHandle = await fsOps.open(tmpFile, "r");
       try {
         await tmpHandle.sync();

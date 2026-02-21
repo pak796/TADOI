@@ -34,7 +34,7 @@ Esc/Enter contracts and modal semantics are enforced across all modes.
 Source-of-truth key tokens (as reported by `src/app/keyRouter.ts`):
 `/` `1` `2` `3` `4` `?` `ArrowDown` `ArrowLeft` `ArrowRight` `ArrowUp`
 `B` `C` `Ctrl+D` `Ctrl+L` `Ctrl+S` `Ctrl+U` `D` `E` `Enter` `Esc`
-`G` `L` `O` `PageDown` `PageUp` `S` `Space` `T` `Tab` `[`
+`G` `L` `O` `PageDown` `PageUp` `S` `Space` `Tab` `[`
 `]` `a` `b` `backspace` `c` `d` `e` `end` `f` `g` `h` `home`
 `i` `j` `k` `l` `m` `n` `o` `p` `q` `r` `s` `t` `u` `v` `x` `y` `z`
 `{` `}`
@@ -64,7 +64,7 @@ LIST mode actions:
 - `s`: cycle sort mode
 - `g`: cycle due filter
 - `r`: cycle priority filter
-- `t` / `T`: cycle non-priority tag filter
+- `t`: cycle non-priority tag filter
 - `p`: open boolean tag filter panel
 - `b` / `B`: toggle Dashboard
 

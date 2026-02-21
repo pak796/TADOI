@@ -71,6 +71,12 @@ async function writeInvalidSettings(tempDir: string): Promise<void> {
   await fs.writeFile(settingsPath, "{invalid-json", "utf8");
 }
 
+async function expectUnixPrivateFileMode(filePath: string): Promise<void> {
+  if (process.platform === "win32") return;
+  const stat = await fs.stat(filePath);
+  expect(stat.mode & 0o077).toBe(0);
+}
+
 describe("calendarExportService", () => {
   it("writes deterministic ICS output for a mixed fixture dataset", async () => {
     const payload: {
@@ -169,6 +175,7 @@ describe("calendarExportService", () => {
       const expected = await fs.readFile(fixturePath, "utf8");
       const actual = await fs.readFile(result.outputPath, "utf8");
       expect(actual).toBe(expected);
+      await expectUnixPrivateFileMode(result.outputPath);
     });
   });
 

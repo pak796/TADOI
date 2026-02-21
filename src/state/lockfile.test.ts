@@ -8,6 +8,7 @@ import {
   isTadoiLockPresent,
   removeTadoiLock,
   removeTadoiLockSync,
+  tryAcquireTadoiLock,
   writeTadoiLock
 } from "./lockfile";
 
@@ -39,6 +40,22 @@ describe("lockfile helpers", () => {
     expect(parsed.startedAt).toBe(payload.startedAt);
     expect(parsed.version).toBe(payload.version);
     expect(parsed.dataFile).toBe(payload.dataFile);
+
+    if (process.platform !== "win32") {
+      const stat = await fs.stat(lockPath);
+      expect(stat.mode & 0o077).toBe(0);
+    }
+  });
+
+  it("acquires lock atomically in exclusive mode", async () => {
+    const dir = await makeTempDir();
+    const lockPath = path.join(dir, "exclusive.lock");
+
+    const acquired = await tryAcquireTadoiLock(lockPath, createDefaultLockPayload());
+    expect(acquired).toBe(true);
+
+    const secondAcquire = await tryAcquireTadoiLock(lockPath, createDefaultLockPayload());
+    expect(secondAcquire).toBe(false);
   });
 
   it("removes lock file asynchronously and synchronously", async () => {

@@ -87,6 +87,12 @@ async function makeTempDir(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), "tadoi-settings-test-"));
 }
 
+async function expectUnixPrivateFileMode(filePath: string): Promise<void> {
+  if (process.platform === "win32") return;
+  const stat = await fs.stat(filePath);
+  expect(stat.mode & 0o077).toBe(0);
+}
+
 beforeEach(() => {
   resetSettingsStateForTests();
 });
@@ -592,6 +598,7 @@ describe("saveSettingsStrict", () => {
     expect(result.resolvedPath).toBe(primary);
     expect(result.usedFallback).toBe(false);
     const raw = await fs.readFile(primary, "utf8");
+    await expectUnixPrivateFileMode(primary);
     expect(JSON.parse(raw)).toEqual({
       themeId: "retro",
       logoMode: "default",
@@ -634,6 +641,7 @@ describe("saveSettingsStrict", () => {
     expect(result.resolvedPath).toBe(fallback);
     expect(result.usedFallback).toBe(true);
     const raw = await fs.readFile(fallback, "utf8");
+    await expectUnixPrivateFileMode(fallback);
     expect(JSON.parse(raw)).toEqual({
       themeId: "highContrast",
       logoMode: "default",

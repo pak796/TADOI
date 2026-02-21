@@ -85,6 +85,16 @@ function formatPreviewValue(iso: string): string {
   return iso.replace("T", " ");
 }
 
+export function shouldHandlePrimaryMouseDown(button: number): boolean {
+  return button === 0;
+}
+
+export function runPrimaryMouseDownAction(button: number, action: () => void): boolean {
+  if (!shouldHandlePrimaryMouseDown(button)) return false;
+  action();
+  return true;
+}
+
 export function EditorPane({
   mode,
   draft,
@@ -393,7 +403,11 @@ export function EditorPane({
                   borderStyle: "single",
                   borderColor: selected ? theme.accentBlue : theme.outline
                 }}
-                onMouseDown={() => onUpdate({ repeatMode: repeatMode.value })}
+                onMouseDown={(event) =>
+                  runPrimaryMouseDownAction(event.button, () =>
+                    onUpdate({ repeatMode: repeatMode.value })
+                  )
+                }
               >
                 <text style={{ color: selected ? theme.bg : theme.text }}>
                   {repeatMode.label}
@@ -504,7 +518,9 @@ export function EditorPane({
                     borderStyle: "single",
                     borderColor: selected ? theme.accentBlue : theme.outline
                   }}
-                  onMouseDown={() => onUpdate({ repeatEndMode })}
+                  onMouseDown={(event) =>
+                    runPrimaryMouseDownAction(event.button, () => onUpdate({ repeatEndMode }))
+                  }
                 >
                   <text style={{ color: selected ? theme.bg : theme.text }}>
                     {repeatEndMode.toUpperCase()}
@@ -646,7 +662,9 @@ export function EditorPane({
             backgroundColor: focus === "save" ? theme.ok : theme.accentBlue,
             color: theme.bg
           }}
-          onMouseDown={onSave}
+          onMouseDown={(event) => {
+            runPrimaryMouseDownAction(event.button, onSave);
+          }}
         >
           <text>SAVE</text>
         </box>
@@ -657,7 +675,9 @@ export function EditorPane({
             backgroundColor: focus === "cancel" ? theme.warn : theme.accentOrange,
             color: theme.bg
           }}
-          onMouseDown={onCancel}
+          onMouseDown={(event) => {
+            runPrimaryMouseDownAction(event.button, onCancel);
+          }}
         >
           <text>CANCEL</text>
         </box>

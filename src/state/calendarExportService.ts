@@ -22,6 +22,9 @@ import { isValidRRuleFragment, normalizeRRuleFragment } from "../calendar/rrule"
 import { loadSettings } from "../settings/settings";
 import { loadStateStrict, resolveDataPath } from "./persistence";
 
+const PRIVATE_DIR_MODE = 0o700;
+const PRIVATE_FILE_MODE = 0o600;
+
 export class CalendarExportUsageError extends Error {
   constructor(message: string) {
     super(message);
@@ -339,8 +342,11 @@ export async function exportCalendarIcs(
   });
 
   try {
-    await fs.mkdir(path.dirname(outputPath), { recursive: true });
-    await fs.writeFile(outputPath, rendered, "utf8");
+    await fs.mkdir(path.dirname(outputPath), { recursive: true, mode: PRIVATE_DIR_MODE });
+    await fs.writeFile(outputPath, rendered, {
+      encoding: "utf8",
+      mode: PRIVATE_FILE_MODE
+    });
   } catch (error: unknown) {
     throw new CalendarExportFilesystemError(
       `Failed to write ICS file at ${outputPath}: ${toErrorMessage(error)}`

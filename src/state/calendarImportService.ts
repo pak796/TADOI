@@ -33,6 +33,8 @@ import { validatePersistedState } from "./validation";
 const HARD_MATERIALIZATION_CAP = 2000;
 const MAX_HORIZON_DAYS = 3650;
 export const DEFAULT_MAX_IMPORT_BYTES_ICS = 10 * 1024 * 1024;
+const PRIVATE_DIR_MODE = 0o700;
+const PRIVATE_FILE_MODE = 0o600;
 
 export class CalendarImportUsageError extends Error {
   constructor(message: string) {
@@ -450,8 +452,11 @@ async function maybeWriteReport(
   const resolved = path.isAbsolute(reportPath)
     ? path.normalize(reportPath)
     : path.resolve(cwd, reportPath);
-  await fs.mkdir(path.dirname(resolved), { recursive: true });
-  await fs.writeFile(resolved, JSON.stringify(report, null, 2), "utf8");
+  await fs.mkdir(path.dirname(resolved), { recursive: true, mode: PRIVATE_DIR_MODE });
+  await fs.writeFile(resolved, JSON.stringify(report, null, 2), {
+    encoding: "utf8",
+    mode: PRIVATE_FILE_MODE
+  });
   return resolved;
 }
 

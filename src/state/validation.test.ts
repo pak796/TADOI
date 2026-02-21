@@ -231,6 +231,54 @@ describe("validatePersistedState", () => {
       "strict"
     );
     expect(invalidSource.ok).toBe(false);
+
+    const controlCharsInV4 = validatePersistedState(
+      {
+        ...BASE_STATE,
+        tasks: [
+          {
+            ...BASE_STATE.tasks[0],
+            links: [
+              {
+                id: "link-4",
+                target: "https://example.com/path\nATTENDEE:mailto:test@example.com"
+              }
+            ]
+          }
+        ]
+      },
+      "strict"
+    );
+    expect(controlCharsInV4.ok).toBe(false);
+
+    const controlCharsInV5 = validatePersistedState(
+      {
+        ...BASE_STATE,
+        schemaVersion: 5,
+        engagement: {
+          completionLog: [],
+          achievements: {},
+          streak: {
+            currentDays: 0,
+            bestDays: 0,
+            lastCompletionDayKey: null
+          }
+        },
+        tasks: [
+          {
+            ...BASE_STATE.tasks[0],
+            links: [
+              {
+                id: "link-5",
+                target: "https://example.com/path\nATTENDEE:mailto:test@example.com"
+              }
+            ]
+          }
+        ]
+      },
+      "strict"
+    );
+    expect(controlCharsInV5.ok).toBe(false);
   });
 
   it("tolerates unknown extra fields", () => {

@@ -24,6 +24,12 @@ async function makeTempDir(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), "tadoi-persist-test-"));
 }
 
+async function expectUnixPrivateFileMode(filePath: string): Promise<void> {
+  if (process.platform === "win32") return;
+  const stat = await fs.stat(filePath);
+  expect(stat.mode & 0o077).toBe(0);
+}
+
 async function loadFixture(name: string): Promise<string> {
   const fixturePath = fileURLToPath(new URL(`./__fixtures__/${name}`, import.meta.url).href);
   return fs.readFile(fixturePath, "utf8");
@@ -360,6 +366,7 @@ describe("writeJsonAtomic", () => {
     expect(new Set(tempWrites).size).toBe(tempWrites.length);
     const parsed = JSON.parse(await fs.readFile(filePath, "utf8")) as { marker: string };
     expect(["one", "two"]).toContain(parsed.marker);
+    await expectUnixPrivateFileMode(filePath);
   });
 
   it("fsyncs before rename when requested", async () => {
@@ -437,6 +444,7 @@ describe("saveStateAtomic", () => {
     const parsed = JSON.parse(raw) as { schemaVersion: number; tasks: Array<{ id: string }> };
     expect(parsed.schemaVersion).toBe(5);
     expect(parsed.tasks[0]?.id).toBe("atomic");
+    await expectUnixPrivateFileMode(filePath);
 
     const files = await fs.readdir(dir);
     expect(files.some((name) => name.startsWith("tadoi_data.json.tmp."))).toBe(false);

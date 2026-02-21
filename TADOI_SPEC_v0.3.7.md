@@ -258,7 +258,8 @@ Details links focus:
 Global/overlay:
 - help: `?` open, `Esc`/`?` close
 - search close: `Enter`/`Esc`
-- backup center: `1/2/3`, `Enter`, `Esc`
+- backup center menu: `1/2/3/4`, `Enter`, `Esc`
+- backup center import picker: `j/k`, `ArrowUp`/`ArrowDown`, `PageUp`/`PageDown`, `home/end`, `m`, `Enter`, `Esc`
 - TITS command bar: open with `` ` `` in list mode, `Esc` close, `Enter` execute, `ArrowUp/ArrowDown` history
 
 ## 5) Quality and Validation Baseline

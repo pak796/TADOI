@@ -82,13 +82,19 @@ Guard rails:
 4. Object-override merge behavior remains unchanged (`src/theme/themes.ts:435-441`).
 5. Persisted values remain normalized hex colors (`src/settings/settings.ts`, token normalizers).
 
-## 6) Known Gap to Track During Implementation
+## 6) Runtime Alias Contract (Current)
 
-`RuntimeTheme.warn` currently maps to `tokens.danger` (`src/app/theme.ts:44-45`) while `dueSoon` maps to `tokens.warn` (`src/app/theme.ts:46`).
+Runtime aliases are now explicitly contract-mapped in `src/theme/semanticTokenContract.ts`.
 
-Action:
-- Treat this as an explicit compatibility behavior in current cycle.
-- Add a focused test before any future remapping to avoid unintended UI color regressions.
+Current semantic mapping:
+- `warn -> warn`
+- `danger -> danger`
+- `dueSoon -> warn` (intentional compatibility alias for due-attention rendering)
+- `dueLater -> accent2` (intentional compatibility alias for later-due rendering)
+
+Validation:
+- Contract mapping tests: `src/theme/semanticTokenContract.test.ts`
+- Runtime compatibility test: `src/app/theme.test.ts`
 
 ## 7) Validation Checklist (Phase 1/2)
 

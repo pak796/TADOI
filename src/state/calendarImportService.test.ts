@@ -94,6 +94,12 @@ async function writeInvalidSettings(tempDir: string): Promise<void> {
   await fs.writeFile(settingsPath, "{invalid-json", "utf8");
 }
 
+async function expectUnixPrivateFileMode(filePath: string): Promise<void> {
+  if (process.platform === "win32") return;
+  const stat = await fs.stat(filePath);
+  expect(stat.mode & 0o077).toBe(0);
+}
+
 async function withTempImportEnv<T>(
   setup: { statePayload: unknown; inputIcs: string },
   run: (context: { tempDir: string; dataPath: string; inputPath: string }) => Promise<T>
@@ -212,6 +218,7 @@ describe("calendarImportService import flow", () => {
         const report = JSON.parse(reportRaw) as { dryRun: boolean; persisted: boolean };
         expect(report.dryRun).toBe(true);
         expect(report.persisted).toBe(false);
+        await expectUnixPrivateFileMode(reportPath);
       }
     );
   });

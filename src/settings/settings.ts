@@ -150,6 +150,8 @@ const DEFAULT_SETTINGS: TadoiSettings = {
 
 const DEFAULT_DEBOUNCE_MS = 150;
 const DEFAULT_FS_OPS: SettingsFsOps = fs;
+const PRIVATE_DIR_MODE = 0o700;
+const PRIVATE_FILE_MODE = 0o600;
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 let lastResolvedPath: string | null = null;
@@ -431,8 +433,11 @@ async function writeSettings(
   filePath: string,
   fsOps: SettingsFsOps
 ): Promise<void> {
-  await fsOps.mkdir(path.dirname(filePath), { recursive: true });
-  await fsOps.writeFile(filePath, JSON.stringify(settings, null, 2), "utf8");
+  await fsOps.mkdir(path.dirname(filePath), { recursive: true, mode: PRIVATE_DIR_MODE });
+  await fsOps.writeFile(filePath, JSON.stringify(settings, null, 2), {
+    encoding: "utf8",
+    mode: PRIVATE_FILE_MODE
+  });
 }
 
 export async function loadSettings(

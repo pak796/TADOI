@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { createDefaultEngagementState } from "../domain/engagement";
 import type { LoadedData } from "../state/persistence";
+import type { TadoiLockPayload } from "../state/lockfile";
 import { executeCommand } from "../commands/execute";
 import { parseCommand } from "../commands/parse";
 import {
@@ -24,11 +25,13 @@ function createDeps(options: {
   loadedData?: LoadedData;
   locked?: boolean;
   saveError?: Error;
+  releaseError?: Error;
 } = {}) {
   const logs: string[] = [];
   const errors: string[] = [];
   const saved: LoadedData[] = [];
   let loadedData = options.loadedData ?? createLoadedData();
+  let lockAcquired = false;
 
   const deps = {
     now: () => new Date(2026, 1, 20, 12, 0).getTime(),
@@ -36,7 +39,28 @@ function createDeps(options: {
     executeCommand,
     getDataFilePath: () => "/tmp/tadoi_data.json",
     getLockPath: () => "/tmp/tadoi.lock",
-    isLockPresent: async () => options.locked ?? false,
+    createLockPayload: (dataFilePath: string): TadoiLockPayload => ({
+      pid: 1,
+      startedAt: "2026-02-20T12:00:00.000Z",
+      version: "test",
+      dataFile: dataFilePath
+    }),
+    acquireLock: async () => {
+      if (options.locked) {
+        return false;
+      }
+      if (lockAcquired) {
+        return false;
+      }
+      lockAcquired = true;
+      return true;
+    },
+    releaseLock: async () => {
+      if (options.releaseError) {
+        throw options.releaseError;
+      }
+      lockAcquired = false;
+    },
     loadData: async () => loadedData,
     saveData: async (data: LoadedData) => {
       if (options.saveError) {
@@ -165,5 +189,60 @@ describe("runTitsCommandCliWithDeps", () => {
     expect(result).toEqual({ handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS });
     expect(logs).toEqual(["Commands: add, done, due, recur, help. Try: help recur"]);
     expect(saved).toHaveLength(0);
+  });
+
+  it("permits only one concurrent writer when lock is already acquired", async () => {
+    let lockHeld = false;
+    let allowFirstSave = false;
+    let resolveFirstAcquired: () => void = () => {};
+    const firstAcquired = new Promise<void>((resolve) => {
+      resolveFirstAcquired = resolve;
+    });
+
+    const makeDeps = () => {
+      const base = createDeps({ loadedData: createLoadedData() });
+      return {
+        ...base,
+        deps: {
+          ...base.deps,
+          createLockPayload: (): TadoiLockPayload => ({
+            pid: 99,
+            startedAt: "2026-02-20T12:00:00.000Z",
+            version: "test"
+          }),
+          acquireLock: async () => {
+            if (lockHeld) return false;
+            lockHeld = true;
+            resolveFirstAcquired();
+            return true;
+          },
+          releaseLock: async () => {
+            lockHeld = false;
+          },
+          saveData: async (data: LoadedData) => {
+            while (!allowFirstSave) {
+              await new Promise((resolve) => setTimeout(resolve, 1));
+            }
+            base.saved.push(data);
+          }
+        }
+      };
+    };
+
+    const first = makeDeps();
+    const second = makeDeps();
+
+    const firstRun = runTitsCommandCliWithDeps(["add", "First"], first.deps);
+    await firstAcquired;
+
+    const secondRun = await runTitsCommandCliWithDeps(["add", "Second"], second.deps);
+    expect(secondRun).toEqual({ handled: true, exitCode: TITS_CLI_EXIT_CODE.LOCKED });
+    expect(second.errors).toEqual(["Error: TADOI is running (lock present)."]);
+    expect(second.saved).toHaveLength(0);
+
+    allowFirstSave = true;
+    const firstResult = await firstRun;
+    expect(firstResult).toEqual({ handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS });
+    expect(first.saved).toHaveLength(1);
   });
 });
