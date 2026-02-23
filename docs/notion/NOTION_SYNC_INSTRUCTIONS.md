@@ -1,8 +1,8 @@
 # Notion Sync Instructions
 
-Verified as of 2026-02-20.
+Verified as of 2026-02-21.
 
-This repo treats local docs as canonical source. Sync Notion pages from current Markdown via payload.
+This repo treats local docs as canonical source. Stage Notion updates from current Markdown via payload, then apply only when explicitly requested.
 
 ## Inputs
 - `docs/notion/NOTION_SYNC_CONFIG.template.json`

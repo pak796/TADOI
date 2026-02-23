@@ -255,7 +255,7 @@ Domain core (`src/domain/models.ts`):
 Persistence expectations:
 - local JSON storage
 - schema migrations applied at load
-- current schema version `5`
+- current schema version `6`
 - corrupt payload recovery creates `.corrupt.<timestamp>` backup file
 - engagement state is persisted and migrated with the rest of app state
 

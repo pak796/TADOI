@@ -1,6 +1,6 @@
 # TADOI™ Feature List (v0.3.7)
 
-This list reflects current runtime behavior as of **2026-02-12**.
+This list reflects current runtime behavior as of **2026-02-21**.
 
 ## Core Workflow
 - Create, edit, duplicate, complete/reopen, and delete tasks.
@@ -51,7 +51,7 @@ This list reflects current runtime behavior as of **2026-02-12**.
 - Compact fallback rendering on narrow widths.
 
 ## Data Safety and Portability
-- JSON persistence with schema migration and strict validation (current schema `5`).
+- JSON persistence with schema migration and strict validation (current schema 6).
 - Corrupt file recovery with timestamped `.corrupt.*` backups.
 - Save-failure banner with retry on next domain mutation.
 - In-app Backup Center for export/import with dry-run and replace confirmation gate.

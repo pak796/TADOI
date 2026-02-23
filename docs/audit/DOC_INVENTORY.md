@@ -1,6 +1,6 @@
 # TADOI Documentation Inventory
 
-Date: 2026-02-20
+Date: 2026-02-21
 Active baseline: `v0.3.7` / `0.3.7`
 
 ## Active Root Docs

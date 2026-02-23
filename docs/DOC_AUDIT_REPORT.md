@@ -1,20 +1,19 @@
 # TADOI™ Documentation Audit Report
 
-Date: 2026-02-20
-Scope: TITS documentation pass (offline markdown + Notion payload/runbook regeneration)
-Baseline: runtime `v0.3.7`, package `0.3.7`
+Date: 2026-02-21
+Scope: full docs consistency audit + offline Notion staging refresh
+Baseline: runtime `v0.3.7`, package `0.3.7`, persistence schema 6
 
 ## 1) Summary
 
-This pass focused on TITS documentation completeness across user-facing, internal, planning, QA, and Notion sync artifacts.
+This pass reconciled active documentation with current implementation and refreshed local Notion staging artifacts (payload/runbook/instructions only).
 
 Primary outcomes:
-- Active docs stayed on `v0.3.7` / `0.3.7` baseline.
-- TITS narrative is now explicit in user docs (`README.md`, `docs/USAGE.md`, `docs/INSTALL.md`).
-- Planning/internal docs now include TITS M1-M3 contract and task ledger coverage.
-- QA artifacts now include explicit TITS smoke, black-box, and regression coverage with traceable IDs.
-- Notion sync artifacts were refreshed to mirror offline docs and keep deterministic page mapping.
-- Doc inventory/ownership artifacts were refreshed to remove stale `v0.3.6` active references.
+- Corrected stale schema references (5 -> 6) in active feature/spec docs.
+- Corrected stale runtime path references (`src/domain/recurrence/index.ts` -> `src/domain/recurrence.ts`).
+- Corrected calendar import CLI exit-code contract in QA documentation.
+- Re-ran keybind audit and aligned docs wording to canonical runtime key tokens.
+- Refreshed Notion sync docs/payload for staged apply (no remote Notion writes).
 
 ## 2) Canonical TITS Source Set (filename rule `*TITS*.md`)
 
@@ -32,24 +31,23 @@ Code evidence used for reconciliation:
 - `src/commands/execute.ts`
 - `src/commands/help.ts`
 - `src/cli/main.ts`
-- `src/domain/recurrence/index.ts`
+- `src/domain/recurrence.ts`
 - `src/commands/parse.test.ts`
 - `src/commands/execute.test.ts`
 - `src/cli/main.test.ts`
 
-## 3) QA Coverage Changes
+## 3) High-Value Drift Fixed
 
-New TITS case set in the QA guide:
-- `QA-065`..`QA-072`
-
-Smoke runbook now includes:
-- `QA-065`, `QA-066`, `QA-068`
-
-Cross-doc QA alignment updated in:
-- `docs/QA/SMOKE_TEST_CHECKLIST.md`
-- `docs/QA/BLACK_BOX_TEST_MATRIX.md`
-- `docs/QA/REGRESSION_AREAS.md`
-- `docs/TADOI_QA_Guide_v0.3.7.md`
+- Schema drift:
+  - `docs/TADOI_Feature_List_v0.3.7.md` now references schema 6.
+  - `TADOI_SPEC_v0.3.7.md` internal persistence section now references schema 6.
+  - `TADOI_TASKS_v0.3.7.md` now records both schema migrations 4 -> 5 and 5 -> 6.
+- Keybind wording drift:
+  - `README.md` now documents save-conflict retry key as `r` (canonical runtime token).
+- QA contract drift:
+  - `docs/TADOI_QA_Guide_v0.3.7.md` `QA-062` now matches `0/2/3/4/5` CLI exit semantics.
+- Architecture/test-path drift:
+  - `docs/ARCHITECTURE_OVERVIEW.md` updated to current recurrence helper path and existing command-test files.
 
 ## 4) Notion Sync Scope and Outputs
 
@@ -58,21 +56,28 @@ Refreshed artifacts:
 - `docs/notion/NOTION_SYNC_PAYLOAD.json`
 - `docs/notion/NOTION_SYNC_RUNBOOK.md`
 - `docs/notion/NOTION_SYNC_INSTRUCTIONS.md`
+- `docs/ops/notion_v0.3.7_sync_pack.md`
 
 Sync mode for this pass:
-- Offline payload/runbook generation only (no direct Notion write).
+- Local staging only (offline payload/runbook/instruction refresh).
+- No Notion API write/apply executed.
 
 ## 5) Validation Commands for this Pass
 
-Required checks:
+- `bun run contract:dtf:check`
+- `bun run keybind:audit`
 - `bun run notion:sync:validate`
-- `python3 scripts/keybind-sync-audit.py`
-- scope guard (`docs-only`) and drift scan outputs
+- `bun run start -- --help`
+- `bun run start -- export --help`
+- `bun run start -- import --help`
+- `bun run start -- calendar:export --help`
+- `bun run start -- calendar:import --help`
+- `python3 /Users/patrickkazar/.codex/skills/safe-scope-enforcer/scripts/scope_enforcer.py --repo-root . --scope-profile docs-only`
 
 ## 6) Known Boundaries
 
-- Historical versioned docs remain available for traceability and may retain historical text intentionally.
-- This pass is documentation-only; runtime/package behavior changes are out of scope.
+- Historical versioned docs remain intentionally retained for traceability and may describe prior baselines.
+- This pass is documentation-only; no runtime/source behavior was changed.
 
 ## Trademark Notice
 TADOI™ is a trademark of <OWNER>. Other names may be trademarks of their respective owners.

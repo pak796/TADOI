@@ -1,6 +1,6 @@
 # TADOI™ Architecture Overview
 
-Verified as of 2026-02-20 (v0.3.7).
+Verified as of 2026-02-21 (v0.3.7).
 
 This is a high-level map for orientation. Source code is the authority.
 
@@ -13,7 +13,7 @@ This is a high-level map for orientation. Source code is the authority.
 - In-app TITS overlay and execution bridge: `src/app/App.tsx`
 - Shared parser/executor/help: `src/commands/parse.ts`, `src/commands/execute.ts`, `src/commands/help.ts`
 - CLI command runtime: `src/cli/main.ts`
-- Recurrence completion helper used by TITS and non-TITS completion paths: `src/domain/recurrence/index.ts`
+- Recurrence completion helper used by TITS and non-TITS completion paths: `src/domain/recurrence.ts`
 
 ## Domain Logic
 - Domain rules: `src/domain/*`
@@ -40,7 +40,7 @@ This is a high-level map for orientation. Source code is the authority.
 
 ## Tests
 - Key routing and invariants: `src/app/keyRouter.test.ts`, `src/app/keybindingContract.test.ts`
-- TITS command layer: `src/commands/parse.test.ts`, `src/commands/execute.test.ts`, `src/commands/help.test.ts`, `src/cli/main.test.ts`
+- TITS command layer: `src/commands/parse.test.ts`, `src/commands/execute.test.ts`, `src/commands/calendarImport.test.ts`, `src/commands/calendarExport.test.ts`, `src/cli/main.test.ts`
 - Domain and state tests: `src/domain/*.test.ts`, `src/state/*.test.ts`
 
 ## Documentation

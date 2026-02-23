@@ -1,150 +1,50 @@
 # TADOI™ Notion Sync Pack (v0.3.7)
 
-Date: `2026-02-13`
+Date: `2026-02-21`
 
 ## Status
-This pack is the canonical payload for direct MCP updates to the listed Notion pages.
+This pack stages Notion updates from repository markdown and is intended for deferred apply.
 
 Target database: `collection://3035aa1e-f93f-80a3-ba35-000b3b596866`  
 Parent project: `Patrick's Projects > TADOI`
 
-## Page 1: Installation Guide
-Page ID: `3045aa1e-f93f-8191-848a-cbc69ec6e869`
+## Scope
+- Canonical source: repository markdown files mapped in `docs/notion/NOTION_SYNC_PAYLOAD.json`.
+- Sync mode for this pass: local payload refresh only (no remote Notion write).
+- Baseline enforced by this pack:
+  - runtime `v0.3.7`
+  - package `0.3.7`
+  - persistence schema 6
 
-Property updates:
-- `Name`: `TADOI Installation Guide (All Platforms) v0.3.7`
-- `date:Date:start`: `2026-02-13`
-- `Notes`: `Synced to runtime/package v0.3.7. QA reference updated to v0.3.7 guide and keybinding behavior aligned.`
+## Mapped Pages (Staged)
 
-Replace the top context block with:
-```md
-# TADOI™ Installation Guide (macOS, Windows, Linux)
+| Notion page | Page ID | Source file |
+|---|---|---|
+| TADOI Installation Guide (All Platforms) v0.3.7 | `3045aa1e-f93f-8191-848a-cbc69ec6e869` | `docs/TADOI_Installation_Guide_All_Platforms.md` |
+| TADOI Install Guide (Concise) v0.3.7 | `3065aa1e-f93f-8188-adb2-c39dc13f90bb` | `docs/INSTALL.md` |
+| TADOI Usage Guide v0.3.7 | `3065aa1e-f93f-81b5-a6cb-d4d3e64684c0` | `docs/USAGE.md` |
+| TADOI QA Guide (v0.3.7) | `3045aa1e-f93f-8103-bda5-f77d2bf55e8e` | `docs/TADOI_QA_Guide_v0.3.7.md` |
+| TADOI Smoke Test Checklist (v0.3.7) | `3065aa1e-f93f-81ec-8bd6-cba6cf3876eb` | `docs/QA/SMOKE_TEST_CHECKLIST.md` |
+| TADOI Black Box Test Matrix (v0.3.7) | `3065aa1e-f93f-8178-af7d-c31a8241854d` | `docs/QA/BLACK_BOX_TEST_MATRIX.md` |
+| TADOI Regression Areas (v0.3.7) | `3065aa1e-f93f-8166-998c-d94e5bc16917` | `docs/QA/REGRESSION_AREAS.md` |
+| TADOI Release Checklist (v0.3.7) | `3065aa1e-f93f-819b-a606-e8337a7ca1d5` | `docs/RELEASE_CHECKLIST.md` |
+| TADOI Release Notes | `3065aa1e-f93f-81ed-9312-f1e427c167da` | `docs/RELEASE_NOTES.md` |
+| TADOI Architecture Overview (v0.3.7) | `3065aa1e-f93f-8131-b0ed-c9b0dfd1ad0e` | `docs/ARCHITECTURE_OVERVIEW.md` |
+| TADOI User Guide (v0.3.7) | `3045aa1e-f93f-810c-82a5-c03e17858168` | `README.md` |
+| TADOI App Overview + Feature Catalog (v0.3.7) | `3045aa1e-f93f-81fd-84cd-c93a6b68b49c` | `docs/TADOI_Feature_List_v0.3.7.md` |
+| TADOI Product Spec (v0.3.7) | `3055aa1e-f93f-812d-ad44-f3d94b8a7219` | `TADOI_SPEC_v0.3.7.md` |
+| TADOI Task List (v0.3.7) | `3055aa1e-f93f-8159-b07c-ee692df137eb` | `TADOI_TASKS_v0.3.7.md` |
 
-This guide covers binary and source installs on macOS, Windows, and Linux.
-Runtime baseline: **v0.3.7**.
-Manual QA reference: `docs/TADOI_QA_Guide_v0.3.7.md`.
-```
+## Current Pass Notes
+- Docs audit resolved active drift in:
+  - schema references (5 -> 6)
+  - recurrence helper path references
+  - calendar import exit-code contract wording
+  - keybind wording normalization (`r` retry token in docs)
+- Staged audit token: `[AUDIT 2026-02-21] Docs audit + payload refresh staged for deferred apply`
 
-## Page 2: QA Guide
-Page ID: `3045aa1e-f93f-8103-bda5-f77d2bf55e8e`
-
-Property updates:
-- `Name`: `TADOI QA Guide (v0.3.7)`
-- `date:Date:start`: `2026-02-13`
-- `Notes`: `Synced to v0.3.7 runtime and latest automated snapshot (555/555 pass, typecheck pass). Calendar docs aligned to CLI and Backup Center import/export flows.`
-
-Replace the release baseline section with:
-```md
-# TADOI™ QA Guide (v0.3.7)
-
-Validation date: **2026-02-13**
-Runtime baseline: **v0.3.7**
-Package baseline: **0.3.7**
-```
-
-Replace the automated snapshot section with:
-```md
-## Current Automated Validation Snapshot
-
-- `bun run test`: **555 pass / 0 fail / 555 total**
-- `bun run typecheck`: **pass**
-```
-
-Ensure these checklist cases are present:
-```md
-- [ ] QA-047 Logo mode cycles through all variants, including blocks.
-- [ ] QA-048 Tag panel open behavior parity from list, dashboard, and left rail.
-- [ ] QA-049 Task link create/edit/delete flow from details pane.
-- [ ] QA-050 Task link open/copy behavior for URL and local path targets.
-- [ ] QA-051 External scheme confirmation modal for non-allowlisted URL scheme.
-- [ ] QA-052 Calendar export writes valid .ics output.
-- [ ] QA-053 In-app calendar export writes .ics with selected range/view/privacy.
-- [ ] QA-054 Calendar export privacy behavior (`minimal` vs `full`) is correct.
-- [ ] QA-055 Calendar import enforces mandatory dry-run-before-commit.
-- [ ] QA-056 Import mode pass-through and high-impact `IMPORT` confirmation.
-- [ ] QA-057 RRULE/recurrence import errors block commit with clear guidance.
-- [ ] QA-058 RECURRENCE-ID override/cancellation summaries are surfaced.
-- [ ] QA-059 Security policy block mode for risky links.
-- [ ] QA-060 Startup path redaction/verbose override behavior.
-- [ ] QA-061 `calendar:export` + `calendar:import --dry-run` baseline.
-- [ ] QA-062 `calendar:import` exit-code semantics.
-- [ ] QA-063 Round-trip identity precedence sanity.
-- [ ] QA-064 Non-fatal report warning behavior.
-```
-
-## Page 3: User Guide
-Page ID: `3045aa1e-f93f-810c-82a5-c03e17858168`
-
-Property updates:
-- `Name`: `TADOI User Guide (v0.3.7)`
-- `date:Date:start`: `2026-02-13`
-- `Notes`: `Updated for v0.3.7 behavior: tag panel key standardization, left-rail menu/hints, and logo mode expansion.`
-
-Add/update this release delta block near the top:
-```md
-## v0.3.7 Behavior Updates
-
-- Tag panel open key is `p` in list and dashboard.
-- Left rail includes `TAG PANEL (P)` in menu and hints.
-- Logo mode includes `alternate_blocks32` and rotate mode now includes all concrete variants.
-- Active docs baseline is now `v0.3.7` (`package.json` `0.3.7`).
-```
-
-## Page 4: App Overview + Feature Catalog
-Page ID: `3045aa1e-f93f-81fd-84cd-c93a6b68b49c`
-
-Property updates:
-- `Name`: `TADOI App Overview + Feature Catalog (v0.3.7)`
-- `date:Date:start`: `2026-02-13`
-- `Notes`: `Feature catalog synced to v0.3.7 and validated against key router, left rail, brand, and settings surfaces.`
-
-Replace/update feature bullets with:
-```md
-## Feature Highlights (v0.3.7)
-
-- Keyboard-first task workflow with list, dashboard, add/edit, search, and help modes.
-- Tag filtering supports legacy single-tag cycle (`t`) and boolean panel (`p`) with `ALL/ANY/NONE`.
-- Search opens with `/` and closes with `Enter` or `Esc`.
-- Left rail includes clickable `TAG PANEL (P)` and mode-aware focus surfaces.
-- Logo modes: `default`, `alternate32`, `alternate_slash32`, `alternate_blocks32`, `rotating`.
-- Minimum terminal size contract: `104x24`.
-- Persistence schema baseline: `5` (engagement state included).
-- Recurrence-aware list/dashboard behavior with occurrence actions (`Space`, `x`, `z`, `e`, `E`, `d` with `y/f/n`).
-- In-app Backup Center and portability flows with dry-run and replace confirmation.
-- Task links and attachments workflow (add/edit/open/copy/delete + external scheme confirmation).
-- Bottom-bar engagement toasts for milestone completions (non-interactive, queued, auto-dismissed).
-- Calendar export CLI supports privacy modes (`minimal` default, `full` optional).
-- In-app Backup Center exposes guided calendar import/export flows.
-- CLI and in-app import flows are available (`calendar:import` and Backup Center import).
-- Security/privacy controls include `security.nonHttpLinkPolicy` and startup path redaction defaults.
-```
-
-## Page 5: Product Spec (v0.3.7)
-Page ID: `3055aa1e-f93f-812d-ad44-f3d94b8a7219`
-
-Property updates:
-- `Name`: `TADOI Product Spec (v0.3.7)`
-- `date:Date:start`: `2026-02-13`
-- `Notes`: `Created from code-truth audit and linked to active runtime contracts.`
-
-Use this source file:
-`TADOI_SPEC_v0.3.7.md`
-
-## Page 6: Task List (v0.3.7)
-Page ID: `3055aa1e-f93f-8159-b07c-ee692df137eb`
-
-Property updates:
-- `Name`: `TADOI Task List (v0.3.7)`
-- `date:Date:start`: `2026-02-13`
-- `Notes`: `Created from code-truth audit with completed scope and pending follow-up items.`
-
-Use this source file:
-`TADOI_TASKS_v0.3.7.md`
-
-## Validation Checklist After Notion Paste
-- Confirm each page title and date property shows `2026-02-13`.
-- Confirm all runtime/package references show `v0.3.7` / `0.3.7`.
-- Confirm tag panel key is `p` (not Shift+T).
-- Confirm QA page includes `QA-047` through `QA-064`.
-- Confirm docs clearly state: export/import CLI commands are available and Backup Center import/export flows are available.
-- Confirm Product Spec and Task List pages exist at `v0.3.7`.
+## Validation Checklist
+- `bun run notion:sync:validate` returns PASS.
+- `docs/notion/NOTION_SYNC_PAYLOAD.json` markdown matches current source files.
+- QA page staged content includes TITS trace set `QA-065`..`QA-072`.
+- No remote Notion write is performed until explicitly requested.

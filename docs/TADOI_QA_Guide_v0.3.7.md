@@ -1,6 +1,6 @@
 # TADOI™ QA Guide (v0.3.7)
 
-Validation date: **2026-02-20**
+Validation date: **2026-02-21**
 Runtime baseline: **v0.3.7**
 Package baseline: **0.3.7**
 
@@ -351,8 +351,8 @@ Smoke pass criteria:
   - Expected: export writes `.ics`; import dry-run prints parsed/match/create/update counters and exits `0`.
 - [ ] `QA-062` `calendar:import` exit-code semantics.
   - Preconditions: shell access.
-  - Steps: run `calendar:import` with missing `--in`, then with invalid RRULE fixture, then with unreadable data-path scenario.
-  - Expected: missing/validation/import-domain errors return `1`; filesystem errors return `2`; successful runs return `0`.
+  - Steps: run `calendar:import` with missing `--in`, then with invalid RRULE fixture, then with lock-present and unreadable-path scenarios.
+  - Expected: parse/usage errors return `2`; import-domain/validation errors return `3`; lock conflicts return `4`; filesystem errors return `5`; successful runs return `0`.
 - [ ] `QA-063` Round-trip identity precedence sanity.
   - Preconditions: exported TADOI ICS file.
   - Steps: modify a VEVENT `UID` but keep `X-TADOI-TASK-ID`, then import.

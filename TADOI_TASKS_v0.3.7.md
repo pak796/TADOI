@@ -56,7 +56,7 @@ Package baseline: `0.3.7`
 
 ### A8) Engagement and Schema
 - `TA-059` Engagement milestone toasts implemented for first win, recurring milestones, momentum, and streak notifications. (`Complete`)
-- `TA-060` Persisted engagement state migration landed with schema bump `4 -> 5`. (`Complete`)
+- `TA-060` Persisted engagement/concurrency migrations landed with schema bumps `4 -> 5` (engagement) and `5 -> 6` (`stateRevision` hardening). (`Complete`)
 
 ### A9) TITS Command Layer
 - `TA-061` TITS M1 command bar overlay landed in LIST mode with history + routing suppression. (`Complete`)

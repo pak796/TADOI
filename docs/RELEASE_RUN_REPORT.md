@@ -1,29 +1,33 @@
 # TADOI™ Release Run Report
 
-Date: 2026-02-13
+Date: 2026-02-21
 Version: 0.3.7
 
 ## Requested Sweep Status
-- `build:daily + docs drift + keybind audit`: PASS
-
-## Daily Build Gate
-- `bun run build:daily`: PASS
-  - Output: report written at `dist/artifacts/2026-02-13/BUILD_REPORT.md`
-  - Host artifacts: macOS raw binary + PKG + DMG
-  - Non-host artifacts: Windows/Linux plan files emitted (cross-build not executed on macOS host)
+- `docs audit + docs drift + keybind audit + notion payload validate`: PASS
 
 ## Docs Drift Gate
 - `bun run contract:dtf:check`: PASS
-  - Output: `OK: 7 DTF IDs ... are covered by named test cases`
+  - Output: `OK: 7 DTF IDs from DASHBOARD_SPEC_MVP.md, TADOI_SPEC_v0.3.7.md are covered by named test cases in 86 test files.`
 
 ## Keybind Gate
 - `bun run keybind:audit`: PASS
-  - Output: `canonical=58 missing_in_docs=0 missing_in_code=0`
+  - Output: `canonical=60 missing_in_docs=0 missing_in_code=0`
 
-## Blocked Scope (if requiring native 3-platform binaries in one run)
-- BLOCKED on host constraints:
-  - Windows and Linux binary/installer outputs are scaffold plans on macOS host.
-  - Required for full-native 3-platform binary readiness: run the same command on Windows and Linux CI runners.
+## Notion Payload Gate
+- `bun run notion:sync:validate`: PASS
+  - Output: `[sync] validation OK: items=14`
+
+## CLI Contract Spot-Checks
+- `bun run start -- --help`: PASS
+- `bun run start -- export --help`: PASS
+- `bun run start -- import --help`: PASS
+- `bun run start -- calendar:export --help`: PASS
+- `bun run start -- calendar:import --help`: PASS
+
+## Scope Guard
+- `safe-scope-enforcer (docs-only)`: PASS
 
 ## Notes
-- Signing/notarization skipped (env vars not set), expected for baseline daily smoke builds.
+- This report captures documentation/runbook staging verification only.
+- No release build, installer generation, or Notion remote apply was executed in this pass.
