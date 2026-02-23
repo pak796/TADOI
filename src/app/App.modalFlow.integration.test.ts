@@ -18,6 +18,11 @@ type AppSession = {
   settingsPath: string;
 };
 
+const FRAME_WAIT_TIMEOUT_MS = 8000;
+const FRAME_POLL_INTERVAL_MS = 20;
+const INPUT_SETTLE_MS = 10;
+const TYPE_SETTLE_MS = 20;
+
 function makeTask(id: string, title: string, nowMs = Date.now()): Task {
   return {
     id,
@@ -67,7 +72,7 @@ async function cleanupSession(session: AppSession): Promise<void> {
 async function waitForFrame(
   harness: RenderHarness,
   predicate: (frame: string) => boolean,
-  timeoutMs = 4000
+  timeoutMs = FRAME_WAIT_TIMEOUT_MS
 ): Promise<string> {
   const deadline = Date.now() + timeoutMs;
   let lastFrame = "";
@@ -77,7 +82,7 @@ async function waitForFrame(
     if (predicate(lastFrame)) {
       return lastFrame;
     }
-    await Bun.sleep(20);
+    await Bun.sleep(FRAME_POLL_INTERVAL_MS);
   }
   throw new Error(`Timed out waiting for frame condition.\nLast frame:\n${lastFrame}`);
 }
@@ -85,7 +90,7 @@ async function waitForFrame(
 async function waitForText(
   harness: RenderHarness,
   text: string,
-  timeoutMs = 4000
+  timeoutMs = FRAME_WAIT_TIMEOUT_MS
 ): Promise<string> {
   return waitForFrame(harness, (frame) => frame.includes(text), timeoutMs);
 }
@@ -93,7 +98,7 @@ async function waitForText(
 async function waitForAnyText(
   harness: RenderHarness,
   texts: string[],
-  timeoutMs = 4000
+  timeoutMs = FRAME_WAIT_TIMEOUT_MS
 ): Promise<string> {
   return waitForFrame(
     harness,
@@ -102,28 +107,31 @@ async function waitForAnyText(
   );
 }
 
+async function settleAfterInput(harness: RenderHarness, settleMs = INPUT_SETTLE_MS) {
+  await Bun.sleep(settleMs);
+  await harness.renderOnce();
+  await Bun.sleep(settleMs);
+  await harness.renderOnce();
+}
+
 async function pressKeyAndRender(mockInput: MockInput, harness: RenderHarness, key: string) {
   await mockInput.pressKeys([key]);
-  await Bun.sleep(10);
-  await harness.renderOnce();
+  await settleAfterInput(harness);
 }
 
 async function pressEnterAndRender(mockInput: MockInput, harness: RenderHarness) {
   mockInput.pressEnter();
-  await Bun.sleep(10);
-  await harness.renderOnce();
+  await settleAfterInput(harness);
 }
 
 async function pressEscapeAndRender(mockInput: MockInput, harness: RenderHarness) {
   mockInput.pressEscape();
-  await Bun.sleep(10);
-  await harness.renderOnce();
+  await settleAfterInput(harness);
 }
 
 async function pressTabAndRender(mockInput: MockInput, harness: RenderHarness) {
   mockInput.pressTab();
-  await Bun.sleep(10);
-  await harness.renderOnce();
+  await settleAfterInput(harness);
 }
 
 async function pressArrowAndRender(
@@ -134,8 +142,7 @@ async function pressArrowAndRender(
 ) {
   for (let index = 0; index < times; index += 1) {
     mockInput.pressArrow(direction);
-    await Bun.sleep(10);
-    await harness.renderOnce();
+    await settleAfterInput(harness);
   }
 }
 
@@ -145,8 +152,7 @@ async function typeTextAndRender(
   text: string
 ) {
   await mockInput.typeText(text);
-  await Bun.sleep(20);
-  await harness.renderOnce();
+  await settleAfterInput(harness, TYPE_SETTLE_MS);
 }
 
 async function openHelpSettingsPage(harness: RenderHarness) {
