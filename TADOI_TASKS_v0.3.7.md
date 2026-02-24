@@ -1,6 +1,6 @@
 # TADOI™ Task List (v0.3.7)
 
-Updated: 2026-02-20
+Updated: 2026-02-24
 Runtime baseline: `v0.3.7`
 Package baseline: `0.3.7`
 
@@ -75,9 +75,12 @@ Package baseline: `0.3.7`
 - `TD-006` Produce docs audit inventory and Notion sync manifest. (`Complete`)
 
 ### B2) Pending documentation follow-ups
-- `TD-020` Archive/mark deprecated historical docs in a single index to reduce confusion. (`Pending`)
-- `TD-021` Add docs lint/link-check CI gate for docs-only PRs. (`Pending`)
-- `TD-022` Publish a canonical keybinding table doc generated from key router tests. (`Pending`)
+- `TD-020` Archive/mark deprecated historical docs in a single index to reduce confusion. (`Complete`)  
+  - Delivered `docs/HISTORICAL_DOCS_INDEX.md` and linked it from `docs/DOC_INDEX.md` + `docs/README.md`.
+- `TD-021` Add docs lint/link-check CI gate for docs-only PRs. (`Complete`)  
+  - Added `scripts/docs-lint.ts` and workflow `.github/workflows/docs-lint.yml`.
+- `TD-022` Publish a canonical keybinding table doc generated from key router tests. (`Complete`)  
+  - Added generated doc `docs/KEYBINDS_CANONICAL.md` via `keybind:canonical:update` (`keybind:audit` + `scripts/generate-keybind-doc.ts`).
 
 ## C) QA Execution Matrix (Manual)
 

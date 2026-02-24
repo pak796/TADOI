@@ -69,7 +69,7 @@ function renderImportStats(
   );
 }
 
-function formatBackupFileTimestamp(mtimeMs: number): string {
+export function formatBackupFileTimestamp(mtimeMs: number): string {
   const date = new Date(mtimeMs);
   const yyyy = String(date.getFullYear());
   const mm = String(date.getMonth() + 1).padStart(2, "0");
@@ -80,7 +80,7 @@ function formatBackupFileTimestamp(mtimeMs: number): string {
   return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
 }
 
-function formatBackupFileSize(sizeBytes: number): string {
+export function formatBackupFileSize(sizeBytes: number): string {
   if (sizeBytes < 1024) return `${String(sizeBytes)} B`;
   const kib = sizeBytes / 1024;
   if (kib < 1024) return `${kib.toFixed(1)} KiB`;
@@ -88,7 +88,7 @@ function formatBackupFileSize(sizeBytes: number): string {
   return `${mib.toFixed(1)} MiB`;
 }
 
-function getStepLabel(screen: BackupCenterState["screen"]): string {
+export function getStepLabel(screen: BackupCenterState["screen"]): string {
   switch (screen) {
     case "menu":
       return "MENU";
@@ -198,7 +198,7 @@ function SelectableOptionLine({
   );
 }
 
-function isScreenForInput(state: BackupCenterState["screen"], kind: string): boolean {
+export function isScreenForInput(state: BackupCenterState["screen"], kind: string): boolean {
   if (kind === "data-import-path") return state === "import_path";
   if (kind === "data-replace-confirm") return state === "import_confirm";
   if (kind === "calendar-export-path") return state === "calendar_export_path";
@@ -207,6 +207,39 @@ function isScreenForInput(state: BackupCenterState["screen"], kind: string): boo
   if (kind === "calendar-import-tag") return state === "calendar_import_tag";
   if (kind === "calendar-import-confirm") return state === "calendar_import_confirm";
   return false;
+}
+
+export type ImportPickerWindow = {
+  selectedIndex: number;
+  start: number;
+  end: number;
+};
+
+export function resolveImportPickerWindow(options: {
+  fileCount: number;
+  selectedIndex: number;
+  scrollOffset: number;
+  visibleRows: number;
+}): ImportPickerWindow {
+  const pickerRows = Math.max(4, Math.min(8, options.visibleRows));
+  const pickerSelectedIndex = Math.max(
+    0,
+    Math.min(options.selectedIndex, Math.max(0, options.fileCount - 1))
+  );
+  const pickerMaxOffset = Math.max(0, options.fileCount - pickerRows);
+  let pickerStart = Math.max(0, Math.min(options.scrollOffset, pickerMaxOffset));
+  if (pickerSelectedIndex < pickerStart) {
+    pickerStart = pickerSelectedIndex;
+  } else if (pickerSelectedIndex >= pickerStart + pickerRows) {
+    pickerStart = pickerSelectedIndex - pickerRows + 1;
+  }
+  pickerStart = Math.max(0, Math.min(pickerStart, pickerMaxOffset));
+  const pickerEnd = Math.min(options.fileCount, pickerStart + pickerRows);
+  return {
+    selectedIndex: pickerSelectedIndex,
+    start: pickerStart,
+    end: pickerEnd
+  };
 }
 
 export function BackupCenterScreen({
@@ -265,21 +298,13 @@ export function BackupCenterScreen({
     !state.calendarImportDryRun ||
     state.calendarImportDryRunHasErrors ||
     state.calendarImportDryRunFingerprint === undefined;
-  const pickerRows = Math.max(4, Math.min(8, importPickerVisibleRows));
-  const pickerSelectedIndex = Math.max(
-    0,
-    Math.min(state.importPickerSelectedIndex, Math.max(0, state.importPickerFiles.length - 1))
-  );
-  const pickerMaxOffset = Math.max(0, state.importPickerFiles.length - pickerRows);
-  let pickerStart = Math.max(0, Math.min(state.importPickerScrollOffset, pickerMaxOffset));
-  if (pickerSelectedIndex < pickerStart) {
-    pickerStart = pickerSelectedIndex;
-  } else if (pickerSelectedIndex >= pickerStart + pickerRows) {
-    pickerStart = pickerSelectedIndex - pickerRows + 1;
-  }
-  pickerStart = Math.max(0, Math.min(pickerStart, pickerMaxOffset));
-  const pickerEnd = Math.min(state.importPickerFiles.length, pickerStart + pickerRows);
-  const pickerVisibleFiles = state.importPickerFiles.slice(pickerStart, pickerEnd);
+  const pickerWindow = resolveImportPickerWindow({
+    fileCount: state.importPickerFiles.length,
+    selectedIndex: state.importPickerSelectedIndex,
+    scrollOffset: state.importPickerScrollOffset,
+    visibleRows: importPickerVisibleRows
+  });
+  const pickerVisibleFiles = state.importPickerFiles.slice(pickerWindow.start, pickerWindow.end);
 
   let footerActions: BackupFooterAction[] = [];
   switch (state.screen) {
@@ -615,8 +640,8 @@ export function BackupCenterScreen({
                 }}
               >
                 {pickerVisibleFiles.map((file, visibleIndex) => {
-                  const index = pickerStart + visibleIndex;
-                  const selected = index === pickerSelectedIndex;
+                  const index = pickerWindow.start + visibleIndex;
+                  const selected = index === pickerWindow.selectedIndex;
                   return (
                     <SelectableOptionLine
                       key={file.path}
@@ -629,7 +654,7 @@ export function BackupCenterScreen({
                 })}
               </box>
               <text style={{ color: theme.muted, marginTop: 1 }}>
-                Showing {String(pickerStart + 1)}-{String(pickerEnd)} of{" "}
+                Showing {String(pickerWindow.start + 1)}-{String(pickerWindow.end)} of{" "}
                 {String(state.importPickerFiles.length)} backups
               </text>
             </>
@@ -649,6 +674,10 @@ export function BackupCenterScreen({
           <input
             value={state.importPathInput}
             onChange={onImportPathChange}
+            onSubmit={(value) => {
+              onImportPathChange(value);
+              onPrimaryAction();
+            }}
             focused={isScreenForInput(state.screen, "data-import-path")}
             placeholder="/absolute/or/relative/path/to/export.json"
             style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
@@ -692,6 +721,10 @@ export function BackupCenterScreen({
           <input
             value={state.replaceConfirmInput}
             onChange={onReplaceConfirmChange}
+            onSubmit={(value) => {
+              onReplaceConfirmChange(value);
+              onPrimaryAction();
+            }}
             focused={isScreenForInput(state.screen, "data-replace-confirm")}
             placeholder="REPLACE"
             style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
@@ -854,6 +887,10 @@ export function BackupCenterScreen({
           <input
             value={state.calendarExportPathInput}
             onChange={onCalendarExportPathChange}
+            onSubmit={(value) => {
+              onCalendarExportPathChange(value);
+              onPrimaryAction();
+            }}
             focused={isScreenForInput(state.screen, "calendar-export-path")}
             placeholder="Defaults to backups/tadoi-calendar.YYYYMMDD-HHMMSS.ics"
             style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
@@ -941,6 +978,10 @@ export function BackupCenterScreen({
           <input
             value={state.calendarImportPathInput}
             onChange={onCalendarImportPathChange}
+            onSubmit={(value) => {
+              onCalendarImportPathChange(value);
+              onPrimaryAction();
+            }}
             focused={isScreenForInput(state.screen, "calendar-import-path")}
             placeholder="/absolute/or/relative/path/to/file.ics"
             style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
@@ -1037,6 +1078,10 @@ export function BackupCenterScreen({
           <input
             value={state.calendarImportHorizonInput}
             onChange={onCalendarImportHorizonChange}
+            onSubmit={(value) => {
+              onCalendarImportHorizonChange(value);
+              onPrimaryAction();
+            }}
             focused={isScreenForInput(state.screen, "calendar-import-horizon")}
             placeholder="365"
             style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
@@ -1056,6 +1101,10 @@ export function BackupCenterScreen({
           <input
             value={state.calendarImportTagInput}
             onChange={onCalendarImportTagChange}
+            onSubmit={(value) => {
+              onCalendarImportTagChange(value);
+              onPrimaryAction();
+            }}
             focused={isScreenForInput(state.screen, "calendar-import-tag")}
             placeholder="(optional)"
             style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
@@ -1145,6 +1194,10 @@ export function BackupCenterScreen({
           <input
             value={state.calendarImportConfirmInput}
             onChange={onCalendarImportConfirmChange}
+            onSubmit={(value) => {
+              onCalendarImportConfirmChange(value);
+              onPrimaryAction();
+            }}
             focused={isScreenForInput(state.screen, "calendar-import-confirm")}
             placeholder="IMPORT"
             style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}

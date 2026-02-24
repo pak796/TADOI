@@ -16,6 +16,7 @@ This index links the current user-facing TADOI documentation set.
 - [Release Checklist](./RELEASE_CHECKLIST.md)
 - [Release Notes](./RELEASE_NOTES.md)
 - [Architecture Overview](./ARCHITECTURE_OVERVIEW.md)
+- [Canonical Keybindings (Generated)](./KEYBINDS_CANONICAL.md)
 - [Calendar Export Spec (v0.2)](../TADOI_Spec_Calendar_Export_ICS_v0.2.md)
 - [Calendar Import Spec (v0.1)](../TADOI_Spec_Calendar_Import_ICS_RoundTrip_v0.1.md)
 - [Task Links and Attachments Spec (v0.2)](../TADOI_Task_Links_Attachments_Spec_v0.2.md)
@@ -30,6 +31,7 @@ This index links the current user-facing TADOI documentation set.
 - [Archival Path Policy](./ARCHIVAL_PATH_POLICY.md)
 - [Documentation Audit Report](./DOC_AUDIT_REPORT.md)
 - [Notion Sync Checklist](./NOTION_SYNC.md)
+- [Historical Docs Index](./HISTORICAL_DOCS_INDEX.md)
 - [Security/Privacy Audit (2026-02-12)](./audits/tadoi-security-privacy-audit-2026-02-12.md)
 - [Security/Privacy Remediation Plan (2026-02-12)](./audits/tadoi-security-privacy-remediation-2026-02-12.md)
 

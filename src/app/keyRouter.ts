@@ -759,6 +759,24 @@ function resolveBackupCenterModeActions(
     return [];
   }
 
+  const inputSubmitScreens = new Set([
+    "import_path",
+    "import_confirm",
+    "calendar_export_path",
+    "calendar_import_path",
+    "calendar_import_horizon",
+    "calendar_import_tag",
+    "calendar_import_confirm"
+  ]);
+  if (
+    (name === "return" || name === "enter") &&
+    backupScreen &&
+    inputSubmitScreens.has(backupScreen)
+  ) {
+    // Input screens handle Enter via onSubmit to avoid stale-state races.
+    return [];
+  }
+
   if (Number.isFinite(maybeDigit)) {
     return [{ scope: "ui", type: "BACKUP_SELECT_DIGIT", digit: maybeDigit }];
   }

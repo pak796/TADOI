@@ -15,13 +15,13 @@ type OverdueNotificationModalProps = {
   onDismiss: () => void;
 };
 
-function formatDueDateTimeLabel(dueAtIso: string): string {
+export function formatDueDateTimeLabel(dueAtIso: string): string {
   const dueAtMs = Date.parse(dueAtIso);
   if (!Number.isFinite(dueAtMs)) return dueAtIso;
   return `${formatDate(dueAtMs)} ${formatLocalTimeHHmm(dueAtMs)}`;
 }
 
-function formatOverdueBy(nowMs: number, dueAtIso: string): string {
+export function formatOverdueBy(nowMs: number, dueAtIso: string): string {
   const dueAtMs = Date.parse(dueAtIso);
   if (!Number.isFinite(dueAtMs)) return "unknown";
   const overdueMs = Math.max(0, nowMs - dueAtMs);

@@ -22,7 +22,7 @@ import { LeftRail, type LeftRailMenuItem } from "../components/LeftRail";
 import { DashboardPane } from "../components/DashboardPane";
 import { TagFilterPanel } from "../components/TagFilterPanel";
 import { BackupCenterScreen } from "../components/BackupCenterScreen";
-import { EmptyNuxModal } from "../components/EmptyNuxModal";
+import { AppModalLayer } from "../components/AppModalLayer";
 import {
   Custom1ThemeEditor,
   type Custom1ThemeEditorHandle
@@ -31,7 +31,6 @@ import {
   BuiltInThemeTextEditor,
   type BuiltInThemeTextEditorHandle
 } from "../components/BuiltInThemeTextEditor";
-import { OverdueNotificationModal } from "../components/OverdueNotificationModal";
 import { diffLocalDays, startOfLocalDayMs } from "../domain/dates";
 import { computeTopTagsOpen } from "../domain/dashboard";
 import {
@@ -208,10 +207,8 @@ import {
   backupCenterReducer,
   hasMatchingCalendarImportDryRun,
   hasMatchingDryRun,
-  isCalendarImportConfirmValid,
   initialBackupCenterState,
   isReplaceConfirmationValid,
-  shouldRequireCalendarImportConfirm,
   type BackupCenterScreen as BackupCenterFlowScreen
 } from "../state/backupCenterFlow";
 import {
@@ -260,6 +257,24 @@ import { openTarget } from "./openTarget";
 import { redactPathForDisplay } from "./pathRedaction";
 import { decideEditTargetSwitch } from "./editTargetSwitchFlow";
 import { shouldTriggerSaveConflictRetryFromMouse } from "./saveConflictBannerAction";
+import {
+  parseCalendarImportHorizonOrThrow,
+  resolveCalendarViewSelectionDigit,
+  shouldRequireBackupReplaceConfirmation
+} from "./backupCalendarOrchestration";
+import {
+  buildPriorityTickerSegments,
+  buildTagTickerSegments,
+  fitLineToWidth,
+  pickHelpCloseButtonLabel,
+  truncateToWidth
+} from "./renderingComposition";
+import { describeTaskEditorContinuation, resolveTaskEditorContinuationForLeftRail } from "./routingContinuations";
+import {
+  getTerminalBellCooldownMs,
+  isInAppOverdueEnabled,
+  isTerminalBellOverdueEnabled
+} from "./notificationRuntime";
 
 const TICKER_INTERVAL_MS = 6000;
 const BOTTOM_INFO_VIEW_ORDER = ["summary", "tags", "priorities"] as const;
@@ -590,26 +605,6 @@ function createDefaultHelpExpandedState(): boolean[] {
 function clampToBounds(value: number, min: number, max: number): number {
   if (max <= min) return max;
   return Math.max(min, Math.min(value, max));
-}
-
-function truncateToWidth(value: string, maxWidth: number): string {
-  if (maxWidth <= 0) return "";
-  if (value.length <= maxWidth) return value;
-  if (maxWidth <= 3) return value.slice(0, maxWidth);
-  return `${value.slice(0, maxWidth - 3)}...`;
-}
-
-function fitLineToWidth(value: string, width: number): string {
-  const truncated = truncateToWidth(value, width);
-  if (truncated.length >= width) return truncated;
-  return truncated.padEnd(width, " ");
-}
-
-function pickHelpCloseButtonLabel(maxWidth: number): string {
-  if (maxWidth >= "[Esc] Close".length + 2) return "[Esc] Close";
-  if (maxWidth >= "Close".length + 2) return "Close";
-  if (maxWidth >= "X".length + 2) return "X";
-  return "";
 }
 
 function normalizeHelpReturnContext(
@@ -946,78 +941,6 @@ type PriorityTickerSegment = {
   total: number;
 };
 
-const TAG_PILL_PADDING = 2;
-
-function truncateTagDisplay(value: string, maxLen: number): string {
-  if (value.length <= maxLen) return value;
-  if (maxLen <= 1) return "#";
-  if (maxLen === 2) return "#~";
-  return `${value.slice(0, maxLen - 1)}~`;
-}
-
-function buildTagTickerSegments(
-  stats: ReturnType<typeof computeTopTagStats>,
-  maxWidth: number
-): TagTickerSegment[] {
-  const separator = "  ";
-  const segments: TagTickerSegment[] = [];
-  let used = 0;
-
-  for (const stat of stats) {
-    const displayTag = formatTagForReadOnlyDisplay(stat.tag);
-    const countText = String(stat.total);
-    const segmentText = `${countText} ${displayTag}`;
-    let segmentLen = segmentText.length + TAG_PILL_PADDING;
-    const extra = segments.length ? separator.length : 0;
-
-    if (used + extra + segmentLen <= maxWidth) {
-      segments.push({ ...stat, displayTag });
-      used += extra + segmentLen;
-      continue;
-    }
-
-    const available = maxWidth - used - extra;
-    if (available <= 0) break;
-    const nonTagLen = countText.length + TAG_PILL_PADDING;
-    const maxTagLen = available - nonTagLen;
-    if (maxTagLen <= 1) break;
-
-    const truncatedTag = truncateTagDisplay(displayTag, maxTagLen);
-    const truncatedText = `${countText} ${truncatedTag}`;
-    segmentLen = truncatedText.length + TAG_PILL_PADDING;
-    if (used + extra + segmentLen <= maxWidth) {
-      segments.push({ ...stat, displayTag: truncatedTag });
-    }
-    break;
-  }
-
-  return segments;
-}
-
-function buildPriorityTickerSegments(
-  stats: ReturnType<typeof computeOpenPriorityStats>,
-  maxWidth: number
-): PriorityTickerSegment[] {
-  const separator = "  ";
-  const segments: PriorityTickerSegment[] = [];
-  let used = 0;
-
-  for (const stat of stats) {
-    const segmentText = `${stat.total} ${stat.displayPriority}`;
-    const segmentLen = segmentText.length + TAG_PILL_PADDING;
-    const extra = segments.length ? separator.length : 0;
-
-    if (used + extra + segmentLen > maxWidth) {
-      break;
-    }
-
-    segments.push({ ...stat });
-    used += extra + segmentLen;
-  }
-
-  return segments;
-}
-
 function summarizeViewFilters(filters: SavedView["filters"]): string {
   const search = filters.searchText?.trim();
   const searchLabel = search ? ` search=${search}` : "";
@@ -1122,34 +1045,6 @@ function stableSerialize(value: unknown): string {
   return JSON.stringify(normalize(value));
 }
 
-function describeTaskEditorContinuation(
-  continuation: UITaskEditorUnsavedContinuation
-): string {
-  switch (continuation) {
-    case "close_editor":
-    case "open_list":
-      return "return to list";
-    case "open_dashboard":
-      return "open dashboard";
-    case "open_backup_center":
-      return "open Backup Center";
-    case "open_search":
-      return "open search";
-    case "open_help":
-      return "open help";
-    case "open_add":
-      return "open Add";
-    case "open_edit":
-      return "open Edit";
-    case "open_tag_filter_panel":
-      return "open tag panel";
-    case "open_delete_confirm":
-      return "open delete confirmation";
-    default:
-      return "continue";
-  }
-}
-
 function describeUnsavedSource(source: UIUnsavedChangesModal["source"]): string {
   switch (source) {
     case "task_editor":
@@ -1234,6 +1129,14 @@ export function App({
     backupCenterReducer,
     initialBackupCenterState
   );
+  const calendarImportPathInputRef = useRef(backupState.calendarImportPathInput);
+  calendarImportPathInputRef.current = backupState.calendarImportPathInput;
+  const calendarImportRangeRef = useRef(backupState.calendarImportRange);
+  calendarImportRangeRef.current = backupState.calendarImportRange;
+  const calendarImportModeRef = useRef(backupState.calendarImportMode);
+  calendarImportModeRef.current = backupState.calendarImportMode;
+  const calendarImportConfirmInputRef = useRef(backupState.calendarImportConfirmInput);
+  calendarImportConfirmInputRef.current = backupState.calendarImportConfirmInput;
   const [pulseOn, setPulseOn] = useState(false);
   const [fastPulseOn, setFastPulseOn] = useState(false);
   const [bottomInfoView, setBottomInfoView] = useState<BottomInfoView>("summary");
@@ -1345,17 +1248,11 @@ export function App({
       enqueueEvent: (event: TaskOverdueEvent) => {
         uiDispatch({ type: "enqueueNotificationModal", event });
       },
-      isEnabled: () => {
-        const notifications = settingsRef.current.notifications;
-        return notifications.enabled && notifications.inAppOverdueBanner;
-      }
+      isEnabled: () => isInAppOverdueEnabled(settingsRef.current.notifications)
     });
     modalBellNotifierRef.current = new TerminalBellNotifier({
-      isEnabled: () => {
-        const notifications = settingsRef.current.notifications;
-        return notifications.enabled && notifications.terminalBellOnOverdue;
-      },
-      getCooldownMs: () => settingsRef.current.notifications.bellCooldownMs
+      isEnabled: () => isTerminalBellOverdueEnabled(settingsRef.current.notifications),
+      getCooldownMs: () => getTerminalBellCooldownMs(settingsRef.current.notifications)
     });
     const osNotifier = new OSNotifier();
     notificationManagerRef.current = new NotificationManager([
@@ -2583,33 +2480,6 @@ export function App({
     return true;
   }
 
-  function resolveTaskEditorContinuationForLeftRail(
-    item: LeftRailMenuItem
-  ): UITaskEditorUnsavedContinuation | null {
-    switch (item) {
-      case "LIST":
-        return "open_list";
-      case "DASHBOARD":
-        return "open_dashboard";
-      case "BACKUP":
-        return "open_backup_center";
-      case "ADD":
-        return "open_add";
-      case "EDIT":
-        return "open_edit";
-      case "SEARCH":
-        return "open_search";
-      case "TAG_PANEL":
-        return "open_tag_filter_panel";
-      case "HELP":
-        return "open_help";
-      case "DELETE":
-        return "open_delete_confirm";
-      default:
-        return null;
-    }
-  }
-
   function runTaskEditorContinuation(continuation: UITaskEditorUnsavedContinuation): void {
     switch (continuation) {
       case "close_editor":
@@ -3002,7 +2872,13 @@ export function App({
       return;
     }
 
-    if (mode === "replace" && !replaceConfirmed) {
+    if (
+      shouldRequireBackupReplaceConfirmation({
+        ...backupState,
+        importMode: mode,
+        replaceConfirmed
+      })
+    ) {
       backupDispatch({ type: "openImportConfirm" });
       return;
     }
@@ -3026,7 +2902,7 @@ export function App({
       openBackupError("Dry-run summary is required before commit.");
       return;
     }
-    if (backupState.importMode === "replace" && !backupState.replaceConfirmed) {
+    if (shouldRequireBackupReplaceConfirmation(backupState)) {
       backupDispatch({ type: "openImportConfirm" });
       return;
     }
@@ -3061,22 +2937,6 @@ export function App({
     })();
   }
 
-  function resolveCalendarViewSelectionDigit(digit: number): string | undefined | null {
-    if (digit <= 0) return null;
-    if (digit === 1) return undefined;
-    const view = state.savedViews[digit - 2];
-    return view ? view.name : null;
-  }
-
-  function parseCalendarImportHorizonOrThrow(): number {
-    const raw = backupState.calendarImportHorizonInput.trim();
-    const parsed = Number.parseInt(raw, 10);
-    if (!Number.isInteger(parsed) || parsed <= 0 || parsed > 3650) {
-      throw new Error("Horizon days must be a positive integer <= 3650.");
-    }
-    return parsed;
-  }
-
   function runCalendarExportFromBackupCenter() {
     if (backupState.screen === "calendar_exporting") return;
     backupDispatch({ type: "startCalendarExport" });
@@ -3100,7 +2960,11 @@ export function App({
   }
 
   function runCalendarImportDryRunFromBackupCenter() {
-    const inputPath = backupState.calendarImportPathInput.trim();
+    const inputPath = (
+      calendarImportPathInputRef.current || backupState.calendarImportPathInput
+    ).trim();
+    const range = calendarImportRangeRef.current;
+    const mode = calendarImportModeRef.current;
     if (!inputPath) {
       openBackupError("Calendar import path is required.", undefined, "calendar_import_path");
       return;
@@ -3108,7 +2972,7 @@ export function App({
 
     let horizonDays = 0;
     try {
-      horizonDays = parseCalendarImportHorizonOrThrow();
+      horizonDays = parseCalendarImportHorizonOrThrow(backupState.calendarImportHorizonInput);
     } catch (error: unknown) {
       openBackupError(
         "Invalid horizon days.",
@@ -3124,9 +2988,9 @@ export function App({
         const reportPath = await buildDefaultCalendarImportReportPath({});
         const dryRun = await runCalendarImportDryRunFlow({
           inputPath,
-          range: backupState.calendarImportRange,
+          range,
           viewName: backupState.calendarImportViewName,
-          mode: backupState.calendarImportMode,
+          mode,
           horizonDays,
           importTag: backupState.calendarImportTagInput,
           reportPath
@@ -3147,6 +3011,10 @@ export function App({
   }
 
   function runCalendarImportCommitFromBackupCenter() {
+    const range = calendarImportRangeRef.current;
+    const mode = calendarImportModeRef.current;
+    const hasValidImportConfirmToken =
+      calendarImportConfirmInputRef.current.trim() === "IMPORT";
     if (!hasMatchingCalendarImportDryRun(backupState)) {
       openBackupError(
         "A matching dry-run is required before commit.",
@@ -3164,8 +3032,8 @@ export function App({
       return;
     }
     if (
-      shouldRequireCalendarImportConfirm(backupState) &&
-      !isCalendarImportConfirmValid(backupState)
+      (mode === "update" || range === "all") &&
+      !hasValidImportConfirmToken
     ) {
       backupDispatch({ type: "setScreen", screen: "calendar_import_confirm" });
       return;
@@ -3173,7 +3041,7 @@ export function App({
 
     let horizonDays = 0;
     try {
-      horizonDays = parseCalendarImportHorizonOrThrow();
+      horizonDays = parseCalendarImportHorizonOrThrow(backupState.calendarImportHorizonInput);
     } catch (error: unknown) {
       openBackupError(
         "Invalid horizon days.",
@@ -3191,9 +3059,9 @@ export function App({
           (await buildDefaultCalendarImportReportPath({}));
         const commitResult = await runCalendarImportCommitFlow({
           inputPath: backupState.calendarImportPathInput.trim(),
-          range: backupState.calendarImportRange,
+          range,
           viewName: backupState.calendarImportViewName,
-          mode: backupState.calendarImportMode,
+          mode,
           horizonDays,
           importTag: backupState.calendarImportTagInput,
           reportPath
@@ -3228,9 +3096,12 @@ export function App({
         return;
       case 1:
         backupDispatch({ type: "setCalendarImportPath", value: "" });
+        calendarImportPathInputRef.current = "";
         backupDispatch({ type: "setCalendarImportRange", range: "next7" });
+        calendarImportRangeRef.current = "next7";
         backupDispatch({ type: "setCalendarImportViewName", viewName: undefined });
         backupDispatch({ type: "setCalendarImportMode", mode: "merge" });
+        calendarImportModeRef.current = "merge";
         backupDispatch({ type: "setCalendarImportHorizonInput", value: "365" });
         backupDispatch({ type: "setCalendarImportTagInput", value: "" });
         backupDispatch({ type: "setCalendarImportConfirmInput", value: "" });
@@ -3278,7 +3149,7 @@ export function App({
         if (digit === 3) backupDispatch({ type: "setCalendarExportRange", range: "all" });
         return;
       case "calendar_export_view": {
-        const selected = resolveCalendarViewSelectionDigit(digit);
+        const selected = resolveCalendarViewSelectionDigit(digit, state.savedViews);
         if (selected !== null) {
           backupDispatch({ type: "setCalendarExportViewName", viewName: selected });
         }
@@ -3289,21 +3160,39 @@ export function App({
         if (digit === 2) backupDispatch({ type: "setCalendarExportPrivacy", privacy: "full" });
         return;
       case "calendar_import_range":
-        if (digit === 1) backupDispatch({ type: "setCalendarImportRange", range: "next7" });
-        if (digit === 2) backupDispatch({ type: "setCalendarImportRange", range: "month" });
-        if (digit === 3) backupDispatch({ type: "setCalendarImportRange", range: "all" });
+        if (digit === 1) {
+          calendarImportRangeRef.current = "next7";
+          backupDispatch({ type: "setCalendarImportRange", range: "next7" });
+        }
+        if (digit === 2) {
+          calendarImportRangeRef.current = "month";
+          backupDispatch({ type: "setCalendarImportRange", range: "month" });
+        }
+        if (digit === 3) {
+          calendarImportRangeRef.current = "all";
+          backupDispatch({ type: "setCalendarImportRange", range: "all" });
+        }
         return;
       case "calendar_import_view": {
-        const selected = resolveCalendarViewSelectionDigit(digit);
+        const selected = resolveCalendarViewSelectionDigit(digit, state.savedViews);
         if (selected !== null) {
           backupDispatch({ type: "setCalendarImportViewName", viewName: selected });
         }
         return;
       }
       case "calendar_import_mode":
-        if (digit === 1) backupDispatch({ type: "setCalendarImportMode", mode: "merge" });
-        if (digit === 2) backupDispatch({ type: "setCalendarImportMode", mode: "update" });
-        if (digit === 3) backupDispatch({ type: "setCalendarImportMode", mode: "create" });
+        if (digit === 1) {
+          calendarImportModeRef.current = "merge";
+          backupDispatch({ type: "setCalendarImportMode", mode: "merge" });
+        }
+        if (digit === 2) {
+          calendarImportModeRef.current = "update";
+          backupDispatch({ type: "setCalendarImportMode", mode: "update" });
+        }
+        if (digit === 3) {
+          calendarImportModeRef.current = "create";
+          backupDispatch({ type: "setCalendarImportMode", mode: "create" });
+        }
         return;
       default:
         return;
@@ -3400,7 +3289,7 @@ export function App({
         backupDispatch({ type: "setScreen", screen: "calendar_import_path" });
         return;
       case "calendar_import_path":
-        if (!backupState.calendarImportPathInput.trim()) {
+        if (!calendarImportPathInputRef.current.trim()) {
           openBackupError(
             "Calendar import path is required.",
             undefined,
@@ -3421,7 +3310,7 @@ export function App({
         return;
       case "calendar_import_horizon":
         try {
-          parseCalendarImportHorizonOrThrow();
+          parseCalendarImportHorizonOrThrow(backupState.calendarImportHorizonInput);
         } catch (error: unknown) {
           openBackupError("Invalid horizon days.", error, "calendar_import_horizon");
           return;
@@ -3438,9 +3327,12 @@ export function App({
         ) {
           return;
         }
+        const shouldRequireConfirm =
+          calendarImportModeRef.current === "update" ||
+          calendarImportRangeRef.current === "all";
         if (
-          shouldRequireCalendarImportConfirm(backupState) &&
-          !isCalendarImportConfirmValid(backupState)
+          shouldRequireConfirm &&
+          calendarImportConfirmInputRef.current.trim() !== "IMPORT"
         ) {
           backupDispatch({ type: "setScreen", screen: "calendar_import_confirm" });
           return;
@@ -3448,7 +3340,7 @@ export function App({
         openBackupFinalCheckpoint("calendar_import", "calendar_import_dryrun");
         return;
       case "calendar_import_confirm":
-        if (!isCalendarImportConfirmValid(backupState)) {
+        if (calendarImportConfirmInputRef.current.trim() !== "IMPORT") {
           openBackupError(
             "Type IMPORT to confirm this high-impact import.",
             undefined,
@@ -7522,638 +7414,50 @@ export function App({
         </box>
       ) : null}
 
-      {uiState.mode === Mode.MODAL_CONFIRM && uiState.modal ? (
-        <box
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            justifyContent: "center",
-            alignItems: "center"
-          }}
-        >
-          {uiState.modal.type === "delete" ? (
-            uiState.modal.target === "regular_task" ? (
-              <box
-                style={{
-                  padding: 2,
-                  backgroundColor: modalTheme.warn,
-                  color: modalTheme.bg,
-                  minWidth: MODAL_STANDARD_WIDTH
-                }}
-              >
-                <text>DELETE SELECTED TASK? [Y/N]</text>
-                <text>{uiState.modal.taskTitle}</text>
-                <text>ID: {uiState.modal.taskId.slice(0, 8)}</text>
-                <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
-                  <box
-                    style={{
-                      backgroundColor: modalTheme.bg,
-                      paddingLeft: 2,
-                      paddingRight: 2
-                    }}
-                    onMouseDown={(event) => {
-                      if (event.button !== 0) return;
-                      confirmDeleteSelectedFromModal();
-                    }}
-                  >
-                    <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>YES [Y]</text>
-                  </box>
-                  <box
-                    style={{
-                      backgroundColor: modalTheme.bg,
-                      paddingLeft: 2,
-                      paddingRight: 2
-                    }}
-                    onMouseDown={(event) => {
-                      if (event.button !== 0) return;
-                      cancelDeleteSelectedFromModal();
-                    }}
-                  >
-                    <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>NO [N]</text>
-                  </box>
-                </box>
-              </box>
-            ) : (
-              <box
-                style={{
-                  padding: 2,
-                  backgroundColor: modalTheme.warn,
-                  color: modalTheme.bg,
-                  minWidth: MODAL_STANDARD_WIDTH
-                }}
-              >
-                <text>DELETE RECURRING OCCURRENCE? [Y/F/N]</text>
-                <text>{uiState.modal.taskTitle}</text>
-                <text>OCCURRENCE: {uiState.modal.occurrenceIso.slice(0, 16)}</text>
-                <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
-                  <box
-                    style={{
-                      backgroundColor: modalTheme.bg,
-                      paddingLeft: 2,
-                      paddingRight: 2
-                    }}
-                    onMouseDown={(event) => {
-                      if (event.button !== 0) return;
-                      confirmDeleteSelectedFromModal();
-                    }}
-                  >
-                    <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>
-                      THIS EVENT [Y]
-                    </text>
-                  </box>
-                  <box
-                    style={{
-                      backgroundColor: modalTheme.bg,
-                      paddingLeft: 2,
-                      paddingRight: 2
-                    }}
-                    onMouseDown={(event) => {
-                      if (event.button !== 0) return;
-                      confirmDeleteSelectedAndFutureFromModal();
-                    }}
-                  >
-                    <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>
-                      THIS + FUTURE [F]
-                    </text>
-                  </box>
-                  <box
-                    style={{
-                      backgroundColor: modalTheme.bg,
-                      paddingLeft: 2,
-                      paddingRight: 2
-                    }}
-                    onMouseDown={(event) => {
-                      if (event.button !== 0) return;
-                      cancelDeleteSelectedFromModal();
-                    }}
-                  >
-                    <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>
-                      CANCEL [N]
-                    </text>
-                  </box>
-                </box>
-              </box>
-            )
-          ) : uiState.modal.type === "recurring_delete_future_checkpoint" ? (
-            <box
-              style={{
-                padding: 2,
-                backgroundColor: modalTheme.warn,
-                color: modalTheme.bg,
-                minWidth: MODAL_STANDARD_WIDTH
-              }}
-            >
-              <text>DELETE THIS + FUTURE OCCURRENCES? [Y/N]</text>
-              <text>{uiState.modal.deleteModal.taskTitle}</text>
-              <text>OCCURRENCE: {uiState.modal.deleteModal.occurrenceIso.slice(0, 16)}</text>
-              <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
-                <box
-                  style={{
-                    backgroundColor: modalTheme.bg,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    handleRecurringDeleteFutureCheckpointConfirm();
-                  }}
-                >
-                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>YES [Y]</text>
-                </box>
-                <box
-                  style={{
-                    backgroundColor: modalTheme.bg,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    cancelRecurringDeleteFutureCheckpoint();
-                  }}
-                >
-                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>NO [N/ESC]</text>
-                </box>
-              </box>
-            </box>
-          ) : uiState.modal.type === "unsaved_changes" ? (
-            <box
-              style={{
-                padding: 2,
-                backgroundColor: theme.panel,
-                border: true,
-                borderStyle: "single",
-                borderColor: theme.outline,
-                minWidth: MODAL_STANDARD_WIDTH,
-                flexDirection: "column",
-                gap: 1
-              }}
-            >
-              <text style={{ color: theme.text, fontWeight: "bold" }}>UNSAVED CHANGES</text>
-              <text style={{ color: theme.muted }}>{describeUnsavedSource(uiState.modal.source)}</text>
-              <text style={{ color: theme.muted }}>
-                {uiState.modal.source === "task_editor"
-                  ? `Continue action: ${describeTaskEditorContinuation(uiState.modal.continuation)}.`
-                  : uiState.modal.continuation === "close_help"
-                    ? "Continue action: close help."
-                    : "Continue action: leave theme editor."}
-              </text>
-              <box style={{ flexDirection: "row", gap: 1 }}>
-                <box
-                  style={{
-                    backgroundColor: theme.panel,
-                    border: true,
-                    borderStyle: "single",
-                    borderColor: theme.outline,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    handleUnsavedChangesSaveAndContinue();
-                  }}
-                >
-                  <text style={{ color: theme.text, fontWeight: "bold" }}>
-                    [S] Save+Continue
-                  </text>
-                </box>
-                <box
-                  style={{
-                    backgroundColor: theme.panel,
-                    border: true,
-                    borderStyle: "single",
-                    borderColor: theme.outline,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    handleUnsavedChangesDiscardAndContinue();
-                  }}
-                >
-                  <text style={{ color: theme.text, fontWeight: "bold" }}>
-                    [D] Discard+Continue
-                  </text>
-                </box>
-              </box>
-              <box style={{ flexDirection: "row", gap: 1 }}>
-                <box
-                  style={{
-                    backgroundColor: theme.panel,
-                    border: true,
-                    borderStyle: "single",
-                    borderColor: theme.outline,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    cancelUnsavedChangesContinue();
-                  }}
-                >
-                  <text style={{ color: theme.text, fontWeight: "bold" }}>[C/Esc] Cancel</text>
-                </box>
-              </box>
-            </box>
-          ) : uiState.modal.type === "backup_final_checkpoint" ? (
-            <box
-              style={{
-                padding: 2,
-                backgroundColor: theme.panel,
-                border: true,
-                borderStyle: "single",
-                borderColor: theme.outline,
-                minWidth: MODAL_STANDARD_WIDTH,
-                flexDirection: "column",
-                gap: 1
-              }}
-            >
-              <text style={{ color: theme.text, fontWeight: "bold" }}>FINAL IMPORT CHECKPOINT</text>
-              <text style={{ color: theme.muted }}>
-                {uiState.modal.checkpoint === "data_import"
-                  ? "Commit backup data import now?"
-                  : "Commit calendar import now?"}
-              </text>
-              <text style={{ color: theme.muted }}>
-                This writes changes and cannot be undone from this screen.
-              </text>
-              <box style={{ flexDirection: "row", gap: 1 }}>
-                <box
-                  style={{
-                    backgroundColor: theme.panel,
-                    border: true,
-                    borderStyle: "single",
-                    borderColor: theme.outline,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    handleBackupFinalCheckpointConfirm();
-                  }}
-                >
-                  <text style={{ color: theme.text, fontWeight: "bold" }}>COMMIT [Y]</text>
-                </box>
-                <box
-                  style={{
-                    backgroundColor: theme.panel,
-                    border: true,
-                    borderStyle: "single",
-                    borderColor: theme.outline,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    cancelBackupFinalCheckpoint();
-                  }}
-                >
-                  <text style={{ color: theme.text, fontWeight: "bold" }}>CANCEL [N/ESC]</text>
-                </box>
-              </box>
-            </box>
-          ) : uiState.modal.type === "task_link_form" ? (
-            <box
-              style={{
-                padding: 2,
-                backgroundColor: theme.panel,
-                border: true,
-                borderStyle: "single",
-                borderColor: theme.outline,
-                width: MODAL_STANDARD_WIDTH,
-                flexDirection: "column",
-                gap: 1
-              }}
-            >
-              <text style={{ color: theme.text, fontWeight: "bold" }}>
-                {uiState.modal.mode === "add"
-                  ? "ADD LINK / ATTACHMENT"
-                  : "EDIT LINK / ATTACHMENT"}
-              </text>
-              <text style={{ color: theme.muted }}>
-                [TAB] NEXT  [UP/DOWN] MOVE  [LEFT/RIGHT] TYPE  [ENTER/CTRL+S] SAVE  [ESC] CANCEL
-              </text>
-              <box
-                style={{ flexDirection: "column" }}
-                onMouseDown={(event) => {
-                  if (event.button !== 0) return;
-                  patchTaskLinkFormModal({ activeField: "label" });
-                }}
-              >
-                <text style={{ color: theme.muted }}>LABEL (OPTIONAL)</text>
-                <input
-                  value={uiState.modal.labelValue}
-                  onChange={(value) =>
-                    patchTaskLinkFormModal({
-                      labelValue: value,
-                      error: undefined
-                    })
-                  }
-                  focused={uiState.modal.activeField === "label"}
-                  placeholder="e.g. Design doc"
-                  style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
-                />
-              </box>
-              <box
-                style={{ flexDirection: "column" }}
-                onMouseDown={(event) => {
-                  if (event.button !== 0) return;
-                  patchTaskLinkFormModal({ activeField: "target" });
-                }}
-              >
-                <text style={{ color: theme.muted }}>TARGET *</text>
-                <input
-                  value={uiState.modal.targetValue}
-                  onChange={(value) =>
-                    patchTaskLinkFormModal({
-                      targetValue: value,
-                      error: undefined
-                    })
-                  }
-                  focused={uiState.modal.activeField === "target"}
-                  placeholder="https://... or /path/to/file"
-                  style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
-                />
-              </box>
-              <box style={{ flexDirection: "column" }}>
-                <text style={{ color: theme.muted }}>
-                  TYPE ({uiState.modal.activeField === "type" ? "ACTIVE" : "AUTO/URL/PATH"})
-                </text>
-                <box style={{ flexDirection: "row", gap: 1 }}>
-                  {TASK_LINK_FORM_KIND_ORDER.map((kind) => {
-                    const selected = uiState.modal.kindValue === kind;
-                    return (
-                      <box
-                        key={kind}
-                        style={{
-                          paddingLeft: 2,
-                          paddingRight: 2,
-                          backgroundColor: selected ? theme.accentBlue : theme.panel,
-                          border: true,
-                          borderStyle: "single",
-                          borderColor:
-                            uiState.modal.activeField === "type"
-                              ? theme.accentBlue
-                              : theme.outline
-                        }}
-                        onMouseDown={(event) => {
-                          if (event.button !== 0) return;
-                          patchTaskLinkFormModal({
-                            kindValue: kind,
-                            activeField: "type",
-                            error: undefined
-                          });
-                        }}
-                      >
-                        <text style={{ color: selected ? theme.bg : theme.text }}>
-                          {kind.toUpperCase()}
-                        </text>
-                      </box>
-                    );
-                  })}
-                </box>
-              </box>
-              {uiState.modal.error ? (
-                <text style={{ color: theme.warn }}>{uiState.modal.error}</text>
-              ) : null}
-              <box style={{ flexDirection: "row", gap: 1 }}>
-                <box
-                  style={{
-                    backgroundColor:
-                      uiState.modal.activeField === "save" ? theme.accentBlue : theme.panel,
-                    border: true,
-                    borderStyle: "single",
-                    borderColor: theme.outline,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    submitTaskLinkFormModal();
-                  }}
-                >
-                  <text
-                    style={{
-                      color: uiState.modal.activeField === "save" ? theme.bg : theme.text,
-                      fontWeight: "bold"
-                    }}
-                  >
-                    SAVE [ENTER/CTRL+S]
-                  </text>
-                </box>
-                <box
-                  style={{
-                    backgroundColor:
-                      uiState.modal.activeField === "cancel" ? theme.accentBlue : theme.panel,
-                    border: true,
-                    borderStyle: "single",
-                    borderColor: theme.outline,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    applyEscUnwind();
-                  }}
-                >
-                  <text
-                    style={{
-                      color: uiState.modal.activeField === "cancel" ? theme.bg : theme.text,
-                      fontWeight: "bold"
-                    }}
-                  >
-                    CANCEL [ESC]
-                  </text>
-                </box>
-              </box>
-            </box>
-          ) : uiState.modal.type === "task_link_delete" ? (
-            <box
-              style={{
-                padding: 2,
-                backgroundColor: modalTheme.warn,
-                color: modalTheme.bg,
-                minWidth: MODAL_STANDARD_WIDTH
-              }}
-            >
-              <text>REMOVE LINK? [Y/N]</text>
-              <text>{formatLinkSnippet(uiState.modal.label, uiState.modal.target)}</text>
-              <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
-                <box
-                  style={{ backgroundColor: modalTheme.bg, paddingLeft: 2, paddingRight: 2 }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    handleDeleteTaskLinkFromModal();
-                  }}
-                >
-                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>YES [Y]</text>
-                </box>
-                <box
-                  style={{ backgroundColor: modalTheme.bg, paddingLeft: 2, paddingRight: 2 }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    applyEscUnwind();
-                  }}
-                >
-                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>NO [N]</text>
-                </box>
-              </box>
-            </box>
-          ) : uiState.modal.type === "task_link_open_external" ? (
-            <box
-              style={{
-                padding: 2,
-                backgroundColor: modalTheme.warn,
-                color: modalTheme.bg,
-                minWidth: MODAL_STANDARD_WIDTH
-              }}
-            >
-              <text>{`OPEN EXTERNAL SCHEME \"${uiState.modal.scheme}\"? [Y/N]`}</text>
-              <text>{formatLinkSnippet(undefined, uiState.modal.target)}</text>
-              <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
-                <box
-                  style={{ backgroundColor: modalTheme.bg, paddingLeft: 2, paddingRight: 2 }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    handleOpenExternalTaskLinkFromModal();
-                  }}
-                >
-                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>YES [Y]</text>
-                </box>
-                <box
-                  style={{ backgroundColor: modalTheme.bg, paddingLeft: 2, paddingRight: 2 }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    applyEscUnwind();
-                  }}
-                >
-                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>NO [N]</text>
-                </box>
-              </box>
-            </box>
-          ) : uiState.modal.type === "edit_switch_confirm" ? (
-            <box
-              style={{
-                padding: 2,
-                backgroundColor: theme.panel,
-                border: true,
-                borderStyle: "single",
-                borderColor: theme.outline,
-                minWidth: MODAL_STANDARD_WIDTH,
-                flexDirection: "column",
-                gap: 1
-              }}
-            >
-              <text style={{ color: theme.text, fontWeight: "bold" }}>UNSAVED CHANGES</text>
-              <text style={{ color: theme.muted }}>
-                {`Switch edit target to: ${uiState.modal.toTaskTitle}`}
-              </text>
-              <box style={{ flexDirection: "row", gap: 1 }}>
-                <box
-                  style={{
-                    backgroundColor: theme.panel,
-                    border: true,
-                    borderStyle: "single",
-                    borderColor: theme.outline,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    handleModalSaveAndSwitchEditTarget();
-                  }}
-                >
-                  <text style={{ color: theme.text, fontWeight: "bold" }}>
-                    [S] Save+Switch
-                  </text>
-                </box>
-                <box
-                  style={{
-                    backgroundColor: theme.panel,
-                    border: true,
-                    borderStyle: "single",
-                    borderColor: theme.outline,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    handleModalDiscardAndSwitchEditTarget();
-                  }}
-                >
-                  <text style={{ color: theme.text, fontWeight: "bold" }}>
-                    [D] Discard+Switch
-                  </text>
-                </box>
-              </box>
-              <box style={{ flexDirection: "row", gap: 1 }}>
-                <box
-                  style={{
-                    backgroundColor: theme.panel,
-                    border: true,
-                    borderStyle: "single",
-                    borderColor: theme.outline,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    handleModalDiscardAndCloseEditor();
-                  }}
-                >
-                  <text style={{ color: theme.text, fontWeight: "bold" }}>
-                    [C] Discard+Close
-                  </text>
-                </box>
-                <box
-                  style={{
-                    backgroundColor: theme.panel,
-                    border: true,
-                    borderStyle: "single",
-                    borderColor: theme.outline,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    applyEscUnwind();
-                  }}
-                >
-                  <text style={{ color: theme.text, fontWeight: "bold" }}>[Esc] Cancel</text>
-                </box>
-              </box>
-            </box>
-          ) : uiState.modal.type === "emptyNux" ? (
-            <EmptyNuxModal
-              step={activeEmptyNuxStep}
-              onDismissSession={dismissEmptyNuxModal}
-              onClearWalkthrough={clearEmptyNuxWalkthrough}
-              onCreateTask={createTaskFromEmptyNuxModal}
-              onOpenBackupImport={openBackupImportFromEmptyNux}
-              onShowShortcuts={showEmptyNuxShortcutsModal}
-              onBackToWelcome={returnToEmptyNuxWelcomeModal}
-              onGoToList={closeCelebrateToList}
-              showImportBackupAction={
-                showCorruptionRecoveryImportCta && activeEmptyNuxStep === "welcome"
-              }
-            />
-          ) : activeOverdueModal ? (
-            <OverdueNotificationModal
-              event={activeOverdueModal.event}
-              task={activeOverdueTask}
-              nowMs={now}
-              onSnooze={handleOverdueModalSnooze}
-              onDone={handleOverdueModalDone}
-              onGoToTask={handleOverdueModalGoToTask}
-              onDismiss={() => {
-                applyEscUnwind();
-              }}
-            />
-          ) : null}
-        </box>
-      ) : null}
+      <AppModalLayer
+        uiState={uiState}
+        theme={theme}
+        modalTheme={modalTheme}
+        inputTheme={inputTheme}
+        MODAL_STANDARD_WIDTH={MODAL_STANDARD_WIDTH}
+        activeEmptyNuxStep={activeEmptyNuxStep}
+        showCorruptionRecoveryImportCta={showCorruptionRecoveryImportCta}
+        activeOverdueModal={activeOverdueModal}
+        activeOverdueTask={activeOverdueTask}
+        now={now}
+        TASK_LINK_FORM_KIND_ORDER={TASK_LINK_FORM_KIND_ORDER}
+        describeUnsavedSource={describeUnsavedSource}
+        describeTaskEditorContinuation={describeTaskEditorContinuation}
+        formatLinkSnippet={formatLinkSnippet}
+        confirmDeleteSelectedFromModal={confirmDeleteSelectedFromModal}
+        confirmDeleteSelectedAndFutureFromModal={confirmDeleteSelectedAndFutureFromModal}
+        cancelDeleteSelectedFromModal={cancelDeleteSelectedFromModal}
+        handleRecurringDeleteFutureCheckpointConfirm={handleRecurringDeleteFutureCheckpointConfirm}
+        cancelRecurringDeleteFutureCheckpoint={cancelRecurringDeleteFutureCheckpoint}
+        handleUnsavedChangesSaveAndContinue={handleUnsavedChangesSaveAndContinue}
+        handleUnsavedChangesDiscardAndContinue={handleUnsavedChangesDiscardAndContinue}
+        cancelUnsavedChangesContinue={cancelUnsavedChangesContinue}
+        handleBackupFinalCheckpointConfirm={handleBackupFinalCheckpointConfirm}
+        cancelBackupFinalCheckpoint={cancelBackupFinalCheckpoint}
+        patchTaskLinkFormModal={patchTaskLinkFormModal}
+        submitTaskLinkFormModal={submitTaskLinkFormModal}
+        applyEscUnwind={applyEscUnwind}
+        handleDeleteTaskLinkFromModal={handleDeleteTaskLinkFromModal}
+        handleOpenExternalTaskLinkFromModal={handleOpenExternalTaskLinkFromModal}
+        handleModalSaveAndSwitchEditTarget={handleModalSaveAndSwitchEditTarget}
+        handleModalDiscardAndSwitchEditTarget={handleModalDiscardAndSwitchEditTarget}
+        handleModalDiscardAndCloseEditor={handleModalDiscardAndCloseEditor}
+        dismissEmptyNuxModal={dismissEmptyNuxModal}
+        clearEmptyNuxWalkthrough={clearEmptyNuxWalkthrough}
+        createTaskFromEmptyNuxModal={createTaskFromEmptyNuxModal}
+        openBackupImportFromEmptyNux={openBackupImportFromEmptyNux}
+        showEmptyNuxShortcutsModal={showEmptyNuxShortcutsModal}
+        returnToEmptyNuxWelcomeModal={returnToEmptyNuxWelcomeModal}
+        closeCelebrateToList={closeCelebrateToList}
+        handleOverdueModalSnooze={handleOverdueModalSnooze}
+        handleOverdueModalDone={handleOverdueModalDone}
+        handleOverdueModalGoToTask={handleOverdueModalGoToTask}
+      />
 
       {viewsOverlayOpen ? (
         <box
@@ -8289,7 +7593,10 @@ export function App({
               backupDispatch({ type: "setCalendarExportPath", value })
             }
             onCalendarImportPathChange={(value) =>
-              backupDispatch({ type: "setCalendarImportPath", value })
+              {
+                calendarImportPathInputRef.current = value;
+                backupDispatch({ type: "setCalendarImportPath", value });
+              }
             }
             onCalendarImportHorizonChange={(value) =>
               backupDispatch({ type: "setCalendarImportHorizonInput", value })
@@ -8298,7 +7605,10 @@ export function App({
               backupDispatch({ type: "setCalendarImportTagInput", value })
             }
             onCalendarImportConfirmChange={(value) =>
-              backupDispatch({ type: "setCalendarImportConfirmInput", value })
+              {
+                calendarImportConfirmInputRef.current = value;
+                backupDispatch({ type: "setCalendarImportConfirmInput", value });
+              }
             }
             onPrimaryAction={handleBackupPrimaryAction}
             onBackAction={handleBackupBackAction}
@@ -8317,13 +7627,19 @@ export function App({
               backupDispatch({ type: "setCalendarExportPrivacy", privacy })
             }
             onCalendarImportRangeSelect={(range) =>
-              backupDispatch({ type: "setCalendarImportRange", range })
+              {
+                calendarImportRangeRef.current = range;
+                backupDispatch({ type: "setCalendarImportRange", range });
+              }
             }
             onCalendarImportViewSelect={(viewName) =>
               backupDispatch({ type: "setCalendarImportViewName", viewName })
             }
             onCalendarImportModeSelect={(mode) =>
-              backupDispatch({ type: "setCalendarImportMode", mode })
+              {
+                calendarImportModeRef.current = mode;
+                backupDispatch({ type: "setCalendarImportMode", mode });
+              }
             }
           />
         </box>

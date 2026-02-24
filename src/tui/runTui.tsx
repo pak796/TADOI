@@ -7,7 +7,11 @@ import { startOfLocalDayMs } from "../domain/dates";
 import { normalizeEngagementState } from "../domain/engagement";
 import { normalizeTagIndex, normalizeTags } from "../domain/tagIndex";
 import { loadSettings } from "../settings/settings";
-import { CURRENT_SCHEMA_VERSION, safeLoadState } from "../state/persistence";
+import {
+  CURRENT_SCHEMA_VERSION,
+  safeLoadState,
+  type LoadedData
+} from "../state/persistence";
 import {
   acquireTadoiLockOrThrow,
   createDefaultLockPayload,
@@ -22,11 +26,89 @@ export type RunTuiOptions = {
   showLogo: boolean;
 };
 
+export type StartupNormalizationResult = {
+  normalizedLoaded: LoadedData;
+  tasksChanged: boolean;
+  tagIndexChanged: boolean;
+};
+
 export function redactStartupPath(
   pathValue: string,
   options: { homeDir?: string; env?: NodeJS.ProcessEnv } = {}
 ): string {
   return redactPathForDisplay(pathValue, options);
+}
+
+export function normalizeLoadedDataForStartup(
+  loaded: LoadedData
+): StartupNormalizationResult {
+  let tasksChanged = false;
+  const normalizedTasks = loaded.tasks.map((task) => {
+    const nextTags = normalizeTags(task.tags ?? []);
+    const hasExplicitTime =
+      typeof task.hasExplicitTime === "boolean" ? task.hasExplicitTime : false;
+    const normalizedDueAt =
+      task.dueAt !== undefined && !hasExplicitTime
+        ? startOfLocalDayMs(task.dueAt)
+        : task.dueAt;
+    if (!tasksChanged) {
+      const currentTags = task.tags ?? [];
+      if (currentTags.length !== nextTags.length) {
+        tasksChanged = true;
+      } else {
+        for (let i = 0; i < currentTags.length; i += 1) {
+          if (currentTags[i] !== nextTags[i]) {
+            tasksChanged = true;
+            break;
+          }
+        }
+      }
+      if (task.hasExplicitTime !== hasExplicitTime) {
+        tasksChanged = true;
+      }
+      if (task.dueAt !== normalizedDueAt) {
+        tasksChanged = true;
+      }
+    }
+    return {
+      ...task,
+      tags: nextTags,
+      hasExplicitTime,
+      dueAt: normalizedDueAt
+    };
+  });
+
+  const normalizedTagIndex = normalizeTagIndex(loaded.tagIndex ?? {});
+  const tagIndexChanged =
+    JSON.stringify(normalizedTagIndex) !== JSON.stringify(loaded.tagIndex ?? {});
+
+  return {
+    normalizedLoaded: {
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      tasks: normalizedTasks,
+      tagIndex: normalizedTagIndex,
+      savedViews: Array.isArray(loaded.savedViews) ? loaded.savedViews : [],
+      engagement: normalizeEngagementState(loaded.engagement)
+    },
+    tasksChanged,
+    tagIndexChanged
+  };
+}
+
+export function shouldPersistInitialRuntimeState(options: {
+  tasksChanged: boolean;
+  tagIndexChanged: boolean;
+  archiveChanged: boolean;
+  didMigrate: boolean;
+  shouldPersistRecoveredState: boolean;
+}): boolean {
+  return (
+    options.tasksChanged ||
+    options.tagIndexChanged ||
+    options.archiveChanged ||
+    options.didMigrate ||
+    options.shouldPersistRecoveredState
+  );
 }
 
 export async function runTui(options: RunTuiOptions): Promise<void> {
@@ -99,64 +181,21 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
     console.warn(`[${APP_NAME}] ${loadResult.bannerMessage}`);
   }
 
-  let tasksChanged = false;
-  const normalizedTasks = loaded.tasks.map((task) => {
-    const nextTags = normalizeTags(task.tags ?? []);
-    const hasExplicitTime =
-      typeof task.hasExplicitTime === "boolean" ? task.hasExplicitTime : false;
-    const normalizedDueAt =
-      task.dueAt !== undefined && !hasExplicitTime
-        ? startOfLocalDayMs(task.dueAt)
-        : task.dueAt;
-    if (!tasksChanged) {
-      const currentTags = task.tags ?? [];
-      if (currentTags.length !== nextTags.length) {
-        tasksChanged = true;
-      } else {
-        for (let i = 0; i < currentTags.length; i += 1) {
-          if (currentTags[i] !== nextTags[i]) {
-            tasksChanged = true;
-            break;
-          }
-        }
-      }
-      if (task.hasExplicitTime !== hasExplicitTime) {
-        tasksChanged = true;
-      }
-      if (task.dueAt !== normalizedDueAt) {
-        tasksChanged = true;
-      }
-    }
-    return {
-      ...task,
-      tags: nextTags,
-      hasExplicitTime,
-      dueAt: normalizedDueAt
-    };
-  });
-
-  const normalizedTagIndex = normalizeTagIndex(loaded.tagIndex ?? {});
-  const tagIndexChanged =
-    JSON.stringify(normalizedTagIndex) !== JSON.stringify(loaded.tagIndex ?? {});
-  const normalizedLoaded = {
-    schemaVersion: CURRENT_SCHEMA_VERSION,
-    tasks: normalizedTasks,
-    tagIndex: normalizedTagIndex,
-    savedViews: Array.isArray(loaded.savedViews) ? loaded.savedViews : [],
-    engagement: normalizeEngagementState(loaded.engagement)
-  };
+  const { normalizedLoaded, tasksChanged, tagIndexChanged } =
+    normalizeLoadedDataForStartup(loaded);
 
   const now = Date.now();
   const { data: agedData, changed: archiveChanged } = applyArchiveAging(
     normalizedLoaded,
     now
   );
-  const shouldSaveInitial =
-    tasksChanged ||
-    tagIndexChanged ||
-    archiveChanged ||
-    loadResult.didMigrate ||
-    loadResult.shouldPersistRecoveredState;
+  const shouldSaveInitial = shouldPersistInitialRuntimeState({
+    tasksChanged,
+    tagIndexChanged,
+    archiveChanged,
+    didMigrate: loadResult.didMigrate,
+    shouldPersistRecoveredState: loadResult.shouldPersistRecoveredState
+  });
   const showCorruptionRecoveryImportCta = loadResult.shouldPersistRecoveredState;
 
   createRoot(renderer).render(

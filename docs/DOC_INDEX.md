@@ -1,6 +1,6 @@
 # TADOI™ Documentation Index
 
-Updated: 2026-02-21
+Updated: 2026-02-24
 Active runtime baseline: `v0.3.7`
 Active package baseline: `0.3.7`
 
@@ -37,14 +37,17 @@ Active package baseline: `0.3.7`
 
 ## 5) Operations and Governance
 - `docs/DOC_AUDIT_REPORT.md`: latest docs/code drift audit report.
+- `docs/KEYBINDS_CANONICAL.md`: canonical key table generated from key router + key router tests.
 - `docs/NOTION_SYNC.md`: Notion mapping and sync checklist.
 - `docs/notion/NOTION_SYNC_PAYLOAD.json`: deterministic Notion payload artifact.
 - `docs/notion/NOTION_SYNC_RUNBOOK.md`: deterministic sync runbook.
 - `docs/ARCHIVAL_PATH_POLICY.md`: archival path normalization policy and scope.
+- `docs/HISTORICAL_DOCS_INDEX.md`: single index for deprecated/historical docs.
 - `docs/ops/branding.md`: branding + external GitHub/Notion guidance.
 
 ## 6) Historical Versioned Docs
 - Historical release artifacts (`v0.2.x`, `v0.3.0`, `v0.3.1`, `v0.3.4`, `v0.3.5`) are retained for traceability.
+- Use `docs/HISTORICAL_DOCS_INDEX.md` as the single lookup entry.
 - Active release documentation should prefer the `v0.3.7` files listed above.
 
 ## Trademark Notice

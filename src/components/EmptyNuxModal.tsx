@@ -13,6 +13,21 @@ type EmptyNuxModalProps = {
   showImportBackupAction?: boolean;
 };
 
+export type EmptyNuxModalMeta = {
+  title: string;
+  closeAction: "dismiss_session" | "clear_walkthrough";
+};
+
+export function resolveEmptyNuxModalMeta(step: EmptyNuxStep): EmptyNuxModalMeta {
+  if (step === "shortcuts") {
+    return { title: "TADOI Shortcuts", closeAction: "clear_walkthrough" };
+  }
+  if (step === "celebrate") {
+    return { title: "First Task Created", closeAction: "clear_walkthrough" };
+  }
+  return { title: "Welcome to TADOI", closeAction: "dismiss_session" };
+}
+
 function ActionButton(props: {
   label: string;
   primary?: boolean;
@@ -56,14 +71,9 @@ export function EmptyNuxModal({
 }: EmptyNuxModalProps) {
   const theme = themeForObject("modal");
   const modalWidth = 64;
-
-  const title =
-    step === "shortcuts"
-      ? "TADOI Shortcuts"
-      : step === "celebrate"
-        ? "First Task Created"
-        : "Welcome to TADOI";
-  const closeAction = step === "welcome" ? onDismissSession : onClearWalkthrough;
+  const meta = resolveEmptyNuxModalMeta(step);
+  const closeAction =
+    meta.closeAction === "dismiss_session" ? onDismissSession : onClearWalkthrough;
 
   return (
     <box
@@ -79,7 +89,7 @@ export function EmptyNuxModal({
       }}
     >
       <box style={{ flexDirection: "row", justifyContent: "space-between" }}>
-        <text style={{ fontWeight: "bold" }}>{title}</text>
+        <text style={{ fontWeight: "bold" }}>{meta.title}</text>
         <box
           style={{ backgroundColor: theme.bg, paddingLeft: 1, paddingRight: 1 }}
           onMouseDown={(mouseEvent) => {

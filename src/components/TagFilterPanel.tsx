@@ -33,8 +33,17 @@ const BUCKET_META: Array<{
 ];
 const MAX_TAG_CHIPS_PER_BUCKET = 24;
 
-function getBucketTags(draft: TagFilter | undefined, bucket: TagFilterBucket): string[] {
+export function getBucketTags(draft: TagFilter | undefined, bucket: TagFilterBucket): string[] {
   return draft?.[bucket] ?? [];
+}
+
+export function splitBucketTags(
+  tags: string[],
+  maxVisible: number = MAX_TAG_CHIPS_PER_BUCKET
+): { visibleTags: string[]; hiddenTagCount: number } {
+  const visibleTags = tags.slice(0, maxVisible);
+  const hiddenTagCount = Math.max(0, tags.length - visibleTags.length);
+  return { visibleTags, hiddenTagCount };
 }
 
 export function TagFilterPanel({
@@ -85,8 +94,7 @@ export function TagFilterPanel({
       {BUCKET_META.map((meta) => {
         const isActive = activeBucket === meta.bucket;
         const tags = getBucketTags(draft, meta.bucket);
-        const visibleTags = tags.slice(0, MAX_TAG_CHIPS_PER_BUCKET);
-        const hiddenTagCount = Math.max(0, tags.length - visibleTags.length);
+        const { visibleTags, hiddenTagCount } = splitBucketTags(tags);
         return (
           <box key={meta.bucket} style={{ flexDirection: "column", marginTop: 1 }}>
             <box

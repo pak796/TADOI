@@ -45,6 +45,10 @@ jobs:
         if: matrix.target != 'windows'
         run: bun run test:coverage
 
+      - name: App shell coverage floor
+        if: matrix.target != 'windows'
+        run: bun run coverage:app-shell:check
+
       - name: Typecheck
         run: bun run typecheck
 

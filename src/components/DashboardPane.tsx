@@ -57,19 +57,19 @@ type DashboardPaneProps = {
   onTopTagClick?: (index: number) => void;
 };
 
-type DashboardLayout = {
+export type DashboardLayout = {
   stacked: boolean;
   chartPanelWidth: number;
   rightPanelWidth: number;
 };
 
-type PanelRowLayout = {
+export type PanelRowLayout = {
   stacked: boolean;
   leftPanelWidth: number;
   rightPanelWidth: number;
 };
 
-type TopTagRow = {
+export type TopTagRow = {
   tag: string;
   label: string;
   labelPad: number;
@@ -77,7 +77,7 @@ type TopTagRow = {
   countText: string;
 };
 
-type KpiItem = {
+export type KpiItem = {
   label: (typeof KPI_ORDER)[number];
   shortLabel: string;
   value: number;
@@ -97,7 +97,7 @@ function getFilterLine(filters: Filters): string {
   return `STATUS=${status} DUE=${due} PRIORITY=${priority} TAG=${tag} SEARCH=${search}`;
 }
 
-function truncateLine(value: string, width: number): string {
+export function truncateLine(value: string, width: number): string {
   const safeWidth = Math.max(4, width);
   if (value.length <= safeWidth) return value;
   if (safeWidth <= 3) return ".".repeat(safeWidth);
@@ -109,7 +109,7 @@ function formatSigned(value: number): string {
   return String(value);
 }
 
-function renderBlockBar(value: number, max: number, width: number): string {
+export function renderBlockBar(value: number, max: number, width: number): string {
   if (width <= 0) return "";
   if (max <= 0 || value <= 0) return " ".repeat(width);
 
@@ -130,7 +130,7 @@ function renderBlockBar(value: number, max: number, width: number): string {
   return `${"█".repeat(fullBlocks)}${partialChar}${" ".repeat(spaces)}`;
 }
 
-function resolveDashboardLayout(width: number): DashboardLayout {
+export function resolveDashboardLayout(width: number): DashboardLayout {
   const usableWidth = Math.max(20, width - 6);
   const minSplitWidth = MIN_DUE_BUCKET_CHART_WIDTH + MIN_RIGHT_PANEL_WIDTH + DASHBOARD_GUTTER;
 
@@ -171,7 +171,7 @@ function resolveDashboardLayout(width: number): DashboardLayout {
   };
 }
 
-function resolveBottomRowLayout(width: number): PanelRowLayout {
+export function resolveBottomRowLayout(width: number): PanelRowLayout {
   const usableWidth = Math.max(20, width);
   const splitWidth = usableWidth - DASHBOARD_GUTTER;
 
@@ -201,7 +201,7 @@ function resolveBottomRowLayout(width: number): PanelRowLayout {
   };
 }
 
-function buildDueBucketLines(
+export function buildDueBucketLines(
   dueBuckets: number[],
   maxBucket: number,
   chartPanelWidth: number
@@ -237,7 +237,7 @@ function formatTagLabel(tag: string, width: number): string {
   return `${formatted.slice(0, width - 3)}...`;
 }
 
-function buildTopTagRows(topTags: TopTagCount[], panelWidth: number): TopTagRow[] {
+export function buildTopTagRows(topTags: TopTagCount[], panelWidth: number): TopTagRow[] {
   const innerWidth = Math.max(10, panelWidth - PANEL_HORIZONTAL_OVERHEAD);
   const maxCount = Math.max(0, ...topTags.map((entry) => entry.count));
   const countWidth = Math.max(2, String(maxCount).length);
@@ -333,7 +333,7 @@ function renderMarkerRow(
     .join("");
 }
 
-function buildThroughputLines(data: CreatedCompleted7d, panelWidth: number): string[] {
+export function buildThroughputLines(data: CreatedCompleted7d, panelWidth: number): string[] {
   const innerWidth = Math.max(10, panelWidth - PANEL_HORIZONTAL_OVERHEAD);
   const createdMarkers = data.created.map((value) => value > 0);
   const completedMarkers = data.completed.map((value) => value > 0);
@@ -364,7 +364,7 @@ function buildThroughputLines(data: CreatedCompleted7d, panelWidth: number): str
   ];
 }
 
-function gateThroughputByStatus(
+export function gateThroughputByStatus(
   throughput: CreatedCompleted7d,
   status: Filters["status"]
 ): CreatedCompleted7d {
@@ -429,7 +429,7 @@ function getKpiColor(label: KpiItem["label"]): string {
   return label === "DONE7D" ? theme.ok : theme.accentBlue;
 }
 
-function buildKpiCompactLine(items: KpiItem[], width: number): string {
+export function buildKpiCompactLine(items: KpiItem[], width: number): string {
   const parts = items.map((item) => `${item.shortLabel}:${item.value}`);
   const compact = parts.join("  ");
   return truncateLine(compact, Math.max(10, width));
