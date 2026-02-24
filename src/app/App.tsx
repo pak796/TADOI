@@ -191,8 +191,13 @@ import {
   uiReducer,
   unwind,
   type UIState,
+  type UIBackupFinalCheckpointModal,
   type UIDeleteModal,
   type UIEditTargetSwitchModal,
+  type UIHelpThemeUnsavedContinuation,
+  type UIRecurringDeleteFutureCheckpointModal,
+  type UITaskEditorUnsavedContinuation,
+  type UIUnsavedChangesModal,
   type EmptyNuxStep,
   type UITaskLinkFormField,
   type UITaskLinkFormModal,
@@ -356,6 +361,8 @@ type HelpNavItem = {
   title: string;
   description: string;
 };
+
+type HelpThemeEditorSource = "help_custom1_editor" | "help_text_tuning_editor";
 
 const HELP_SETTINGS_NAV_ITEMS: HelpNavItem[] = [
   {
@@ -1093,6 +1100,67 @@ function formatLinkSnippet(label: string | undefined, target: string): string {
   const value = label?.trim().length ? label.trim() : target;
   if (value.length <= 48) return value;
   return `${value.slice(0, 47)}…`;
+}
+
+function stableSerialize(value: unknown): string {
+  const normalize = (input: unknown): unknown => {
+    if (Array.isArray(input)) {
+      return input.map((item) => normalize(item));
+    }
+    if (input && typeof input === "object") {
+      const sortedEntries = Object.entries(input as Record<string, unknown>).sort(([a], [b]) =>
+        a.localeCompare(b)
+      );
+      const next: Record<string, unknown> = {};
+      for (const [key, entryValue] of sortedEntries) {
+        next[key] = normalize(entryValue);
+      }
+      return next;
+    }
+    return input;
+  };
+  return JSON.stringify(normalize(value));
+}
+
+function describeTaskEditorContinuation(
+  continuation: UITaskEditorUnsavedContinuation
+): string {
+  switch (continuation) {
+    case "close_editor":
+    case "open_list":
+      return "return to list";
+    case "open_dashboard":
+      return "open dashboard";
+    case "open_backup_center":
+      return "open Backup Center";
+    case "open_search":
+      return "open search";
+    case "open_help":
+      return "open help";
+    case "open_add":
+      return "open Add";
+    case "open_edit":
+      return "open Edit";
+    case "open_tag_filter_panel":
+      return "open tag panel";
+    case "open_delete_confirm":
+      return "open delete confirmation";
+    default:
+      return "continue";
+  }
+}
+
+function describeUnsavedSource(source: UIUnsavedChangesModal["source"]): string {
+  switch (source) {
+    case "task_editor":
+      return "Task editor changes are unsaved.";
+    case "help_custom1_editor":
+      return "Custom1 theme changes are unsaved.";
+    case "help_text_tuning_editor":
+      return "Built-in text tuning changes are unsaved.";
+    default:
+      return "Unsaved changes detected.";
+  }
 }
 
 function isBlockingOverlayOpen(uiState: UIState): boolean {
@@ -2408,7 +2476,12 @@ export function App({
     helpTextTuningThemeId
   ]);
 
-  function applyEscUnwind(): boolean {
+  function applyEscUnwind(options: { bypassUnsavedGuard?: boolean } = {}): boolean {
+    if (!options.bypassUnsavedGuard && isEditorMode(uiState.mode)) {
+      if (requestTaskEditorUnsavedGuard("close_editor")) {
+        return true;
+      }
+    }
     if (uiState.mode === Mode.HELP) {
       closeHelp();
       return true;
@@ -2429,6 +2502,311 @@ export function App({
         : next.state
     });
     return true;
+  }
+
+  function isTaskEditorDirty(): boolean {
+    if (!isEditorMode(uiState.mode)) return false;
+    const draft = editorDraftRef.current ?? state.editor;
+    if (!draft) return false;
+    if (uiState.mode === Mode.EDIT) {
+      return (
+        editorDirtyIntentRef.current ||
+        isEditorDraftDirty(draft, editorBaselineDraftRef.current)
+      );
+    }
+    return editorDirtyIntentRef.current || isEditorDraftDirty(draft, createEmptyDraft());
+  }
+
+  function isCustom1EditorDirty(): boolean {
+    const persistedObjects = sanitizeDraftObjects(persistedCustom1.objects ?? {}) ?? {};
+    const draftObjects = sanitizeDraftObjects(custom1DraftObjects) ?? {};
+    return (
+      stableSerialize(persistedCustom1.global) !== stableSerialize(custom1DraftGlobal) ||
+      stableSerialize(persistedObjects) !== stableSerialize(draftObjects)
+    );
+  }
+
+  function isBuiltInTextEditorDirty(): boolean {
+    const persistedGlobal = sanitizeThemeTextTokenOverrides(persistedBuiltInTextConfig.global);
+    const persistedObjects = sanitizeThemeTextObjectOverrides(persistedBuiltInTextConfig.objects);
+    const draftGlobal = sanitizeThemeTextTokenOverrides(builtInTextDraftGlobal);
+    const draftObjects = sanitizeThemeTextObjectOverrides(builtInTextDraftObjects);
+    return (
+      stableSerialize(persistedGlobal ?? {}) !== stableSerialize(draftGlobal ?? {}) ||
+      stableSerialize(persistedObjects ?? {}) !== stableSerialize(draftObjects ?? {})
+    );
+  }
+
+  function requestTaskEditorUnsavedGuard(
+    continuation: UITaskEditorUnsavedContinuation
+  ): boolean {
+    if (!isEditorMode(uiState.mode) || !isTaskEditorDirty()) {
+      return false;
+    }
+    runRoutedAction({
+      scope: "ui",
+      type: "OPEN_UNSAVED_CHANGES_MODAL",
+      modal: {
+        type: "unsaved_changes",
+        source: "task_editor",
+        continuation,
+        previousMode: uiState.mode,
+        previousFocus: uiState.focus
+      }
+    });
+    return true;
+  }
+
+  function requestHelpThemeEditorUnsavedGuard(
+    source: HelpThemeEditorSource,
+    continuation: UIHelpThemeUnsavedContinuation
+  ): boolean {
+    if (uiState.mode !== Mode.HELP) return false;
+    const matchesSource =
+      (source === "help_custom1_editor" && activeHelpPage === "custom1Edit") ||
+      (source === "help_text_tuning_editor" && activeHelpPage === "textTuningEdit");
+    if (!matchesSource) return false;
+    const dirty =
+      source === "help_custom1_editor" ? isCustom1EditorDirty() : isBuiltInTextEditorDirty();
+    if (!dirty) return false;
+    runRoutedAction({
+      scope: "ui",
+      type: "OPEN_UNSAVED_CHANGES_MODAL",
+      modal: {
+        type: "unsaved_changes",
+        source,
+        continuation,
+        previousMode: Mode.HELP,
+        previousFocus: uiState.focus
+      }
+    });
+    return true;
+  }
+
+  function resolveTaskEditorContinuationForLeftRail(
+    item: LeftRailMenuItem
+  ): UITaskEditorUnsavedContinuation | null {
+    switch (item) {
+      case "LIST":
+        return "open_list";
+      case "DASHBOARD":
+        return "open_dashboard";
+      case "BACKUP":
+        return "open_backup_center";
+      case "ADD":
+        return "open_add";
+      case "EDIT":
+        return "open_edit";
+      case "SEARCH":
+        return "open_search";
+      case "TAG_PANEL":
+        return "open_tag_filter_panel";
+      case "HELP":
+        return "open_help";
+      case "DELETE":
+        return "open_delete_confirm";
+      default:
+        return null;
+    }
+  }
+
+  function runTaskEditorContinuation(continuation: UITaskEditorUnsavedContinuation): void {
+    switch (continuation) {
+      case "close_editor":
+      case "open_list":
+        openListMode({ bypassUnsavedGuard: true });
+        return;
+      case "open_dashboard":
+        openDashboardMode({ bypassUnsavedGuard: true });
+        return;
+      case "open_backup_center":
+        openBackupCenter({ bypassUnsavedGuard: true });
+        return;
+      case "open_search":
+        openSearchMode({ bypassUnsavedGuard: true });
+        return;
+      case "open_help":
+        openListMode({ bypassUnsavedGuard: true });
+        openHelp({ bypassUnsavedGuard: true });
+        return;
+      case "open_add":
+        openAdd({ bypassUnsavedGuard: true });
+        return;
+      case "open_edit":
+        openEdit({ bypassUnsavedGuard: true });
+        return;
+      case "open_tag_filter_panel":
+        openListMode({ bypassUnsavedGuard: true });
+        openTagFilterPanel();
+        return;
+      case "open_delete_confirm":
+        openListMode({ bypassUnsavedGuard: true });
+        openDeleteConfirm();
+        return;
+      default:
+        return;
+    }
+  }
+
+  function runHelpThemeEditorContinuation(
+    source: HelpThemeEditorSource,
+    continuation: UIHelpThemeUnsavedContinuation
+  ): void {
+    if (continuation === "close_help") {
+      closeHelp({ bypassUnsavedGuard: true });
+      return;
+    }
+    if (source === "help_custom1_editor") {
+      closeCustom1EditorCancel();
+      return;
+    }
+    closeBuiltInTextEditorCancel();
+  }
+
+  function getUnsavedChangesModal(): UIUnsavedChangesModal | null {
+    const modal = uiState.modal;
+    if (!modal || modal.type !== "unsaved_changes") return null;
+    return modal;
+  }
+
+  function getBackupFinalCheckpointModal(): UIBackupFinalCheckpointModal | null {
+    const modal = uiState.modal;
+    if (!modal || modal.type !== "backup_final_checkpoint") return null;
+    return modal;
+  }
+
+  function getRecurringDeleteFutureCheckpointModal(): UIRecurringDeleteFutureCheckpointModal | null {
+    const modal = uiState.modal;
+    if (!modal || modal.type !== "recurring_delete_future_checkpoint") return null;
+    return modal;
+  }
+
+  function openUnsavedChangesModal(modal: UIUnsavedChangesModal): void {
+    openModalWithContext(modal);
+  }
+
+  function openBackupFinalCheckpointModal(modal: UIBackupFinalCheckpointModal): void {
+    openModalWithContext(modal);
+  }
+
+  function openRecurringDeleteFutureCheckpointModal(
+    modal: UIRecurringDeleteFutureCheckpointModal
+  ): void {
+    openModalWithContext(modal);
+  }
+
+  function openBackupFinalCheckpoint(
+    checkpoint: UIBackupFinalCheckpointModal["checkpoint"],
+    sourceScreen: BackupCenterFlowScreen
+  ): void {
+    runRoutedAction({
+      scope: "ui",
+      type: "OPEN_BACKUP_FINAL_CHECKPOINT_MODAL",
+      modal: {
+        type: "backup_final_checkpoint",
+        checkpoint,
+        sourceScreen,
+        previousMode: Mode.BACKUP_CENTER,
+        previousFocus: FocusTarget.BACKUP_CENTER
+      }
+    });
+  }
+
+  function handleUnsavedChangesSaveAndContinue(): void {
+    const modal = getUnsavedChangesModal();
+    if (!modal) return;
+
+    let saveSucceeded = false;
+    if (modal.source === "task_editor") {
+      const forcedMode = modal.previousMode === Mode.EDIT ? Mode.EDIT : Mode.ADD;
+      saveSucceeded = saveEditor({ forceMode: forcedMode, closeAfterSave: false });
+    } else if (modal.source === "help_custom1_editor") {
+      saveSucceeded = saveCustom1Editor();
+    } else {
+      saveSucceeded = saveBuiltInTextEditor();
+    }
+
+    if (!saveSucceeded) {
+      return;
+    }
+
+    closeModalWithPreviousContext(modal);
+    if (modal.source === "task_editor") {
+      runTaskEditorContinuation(modal.continuation);
+      return;
+    }
+    runHelpThemeEditorContinuation(modal.source, modal.continuation);
+  }
+
+  function handleUnsavedChangesDiscardAndContinue(): void {
+    const modal = getUnsavedChangesModal();
+    if (!modal) return;
+    closeModalWithPreviousContext(modal);
+    if (modal.source === "task_editor") {
+      runTaskEditorContinuation(modal.continuation);
+      return;
+    }
+    runHelpThemeEditorContinuation(modal.source, modal.continuation);
+  }
+
+  function cancelUnsavedChangesContinue(): void {
+    const modal = getUnsavedChangesModal();
+    if (!modal) return;
+    closeModalWithPreviousContext(modal);
+  }
+
+  function handleBackupFinalCheckpointConfirm(): void {
+    const modal = getBackupFinalCheckpointModal();
+    if (!modal) return;
+    closeModalWithPreviousContext(modal);
+    if (modal.checkpoint === "data_import") {
+      runBackupImportCommitFlow();
+      return;
+    }
+    runCalendarImportCommitFromBackupCenter();
+  }
+
+  function cancelBackupFinalCheckpoint(): void {
+    const modal = getBackupFinalCheckpointModal();
+    if (!modal) return;
+    closeModalWithPreviousContext(modal);
+  }
+
+  function handleRecurringDeleteFutureCheckpointConfirm(): void {
+    const modal = getRecurringDeleteFutureCheckpointModal();
+    if (!modal) return;
+    const deleteModal = modal.deleteModal;
+    const nowMs = Date.now();
+    const nextTasks = deleteRecurringOccurrenceAndFuture(state.tasks, {
+      seriesTaskId: deleteModal.seriesTaskId,
+      seriesId: deleteModal.seriesId,
+      occurrenceIso: deleteModal.occurrenceIso,
+      nowMs
+    });
+    finishDeleteModalAction(deleteModal, deleteModal.selectedRowId, nextTasks);
+  }
+
+  function cancelRecurringDeleteFutureCheckpoint(): void {
+    const modal = getRecurringDeleteFutureCheckpointModal();
+    if (!modal) return;
+    openModalWithContext(modal.deleteModal);
+  }
+
+  function requestRecurringDeleteFutureCheckpointFromDeleteModal(): void {
+    const modal = uiState.modal;
+    if (!modal || modal.type !== "delete" || modal.target !== "recurring_occurrence") {
+      return;
+    }
+    runRoutedAction({
+      scope: "ui",
+      type: "OPEN_RECURRING_DELETE_FUTURE_CHECKPOINT_MODAL",
+      modal: {
+        type: "recurring_delete_future_checkpoint",
+        deleteModal: modal,
+        previousMode: modal.previousMode,
+        previousFocus: modal.previousFocus
+      }
+    });
   }
 
   function openBackupError(
@@ -2990,7 +3368,15 @@ export function App({
         });
         return;
       case "import_dryrun":
-        runBackupImportCommitFlow();
+        if (!hasMatchingDryRun(backupState)) {
+          openBackupError("Dry-run summary is required before commit.");
+          return;
+        }
+        if (backupState.importMode === "replace" && !backupState.replaceConfirmed) {
+          backupDispatch({ type: "openImportConfirm" });
+          return;
+        }
+        openBackupFinalCheckpoint("data_import", "import_dryrun");
         return;
       case "calendar_export_intro":
         backupDispatch({ type: "setScreen", screen: "calendar_export_range" });
@@ -3059,7 +3445,7 @@ export function App({
           backupDispatch({ type: "setScreen", screen: "calendar_import_confirm" });
           return;
         }
-        runCalendarImportCommitFromBackupCenter();
+        openBackupFinalCheckpoint("calendar_import", "calendar_import_dryrun");
         return;
       case "calendar_import_confirm":
         if (!isCalendarImportConfirmValid(backupState)) {
@@ -3070,7 +3456,7 @@ export function App({
           );
           return;
         }
-        runCalendarImportCommitFromBackupCenter();
+        openBackupFinalCheckpoint("calendar_import", "calendar_import_confirm");
         return;
       case "exporting":
       case "importing":
@@ -3231,8 +3617,7 @@ export function App({
         backupDispatch({ type: "openImportPathManual" });
         return;
       case "OPEN_SEARCH":
-        uiDispatch({ type: "setMode", mode: Mode.SEARCH });
-        uiDispatch({ type: "setFocus", focus: FocusTarget.SEARCH_INPUT });
+        openSearchMode();
         return;
       case "CLOSE_SEARCH":
         closeSearch();
@@ -3366,6 +3751,36 @@ export function App({
         return;
       case "OPEN_DELETE_CONFIRM":
         openDeleteConfirm();
+        return;
+      case "OPEN_UNSAVED_CHANGES_MODAL":
+        openUnsavedChangesModal(action.modal);
+        return;
+      case "MODAL_CONFIRM_UNSAVED_SAVE_CONTINUE":
+        handleUnsavedChangesSaveAndContinue();
+        return;
+      case "MODAL_CONFIRM_UNSAVED_DISCARD_CONTINUE":
+        handleUnsavedChangesDiscardAndContinue();
+        return;
+      case "MODAL_CANCEL_UNSAVED_CONTINUE":
+        cancelUnsavedChangesContinue();
+        return;
+      case "OPEN_BACKUP_FINAL_CHECKPOINT_MODAL":
+        openBackupFinalCheckpointModal(action.modal);
+        return;
+      case "MODAL_CONFIRM_BACKUP_FINAL_CHECKPOINT":
+        handleBackupFinalCheckpointConfirm();
+        return;
+      case "MODAL_CANCEL_BACKUP_FINAL_CHECKPOINT":
+        cancelBackupFinalCheckpoint();
+        return;
+      case "OPEN_RECURRING_DELETE_FUTURE_CHECKPOINT_MODAL":
+        openRecurringDeleteFutureCheckpointModal(action.modal);
+        return;
+      case "MODAL_CONFIRM_RECURRING_DELETE_FUTURE_CHECKPOINT":
+        handleRecurringDeleteFutureCheckpointConfirm();
+        return;
+      case "MODAL_CANCEL_RECURRING_DELETE_FUTURE_CHECKPOINT":
+        cancelRecurringDeleteFutureCheckpoint();
         return;
       case "MODAL_CONFIRM_DELETE":
         handleDeleteSelected();
@@ -3661,7 +4076,10 @@ export function App({
     }
   });
 
-  function openHelp() {
+  function openHelp(options: { bypassUnsavedGuard?: boolean } = {}) {
+    if (!options.bypassUnsavedGuard && requestTaskEditorUnsavedGuard("open_help")) {
+      return;
+    }
     clearPendingGPrefix();
     setHelpExpandedBySection(createDefaultHelpExpandedState());
     helpFocusedSectionRef.current = 0;
@@ -3747,7 +4165,7 @@ export function App({
     );
   }
 
-  function saveCustom1Editor() {
+  function saveCustom1Editor(): boolean {
     const objects = sanitizeDraftObjects(custom1DraftObjects);
     const contrastResult = validateCustomThemeContrast({
       global: custom1DraftGlobal,
@@ -3764,7 +4182,7 @@ export function App({
       } else {
         showShortNavigationBanner("Theme save blocked by contrast gate");
       }
-      return;
+      return false;
     }
 
     settingsDispatch({
@@ -3783,6 +4201,7 @@ export function App({
       prev[prev.length - 1] === "custom1Edit" ? prev.slice(0, -1) : prev
     );
     showShortNavigationBanner("Custom1 theme saved");
+    return true;
   }
 
   function openBuiltInTextEditor() {
@@ -3807,7 +4226,7 @@ export function App({
     );
   }
 
-  function saveBuiltInTextEditor() {
+  function saveBuiltInTextEditor(): boolean {
     const sanitizedGlobal = sanitizeThemeTextTokenOverrides(builtInTextDraftGlobal);
     const sanitizedObjects = sanitizeThemeTextObjectOverrides(builtInTextDraftObjects);
     const contrastResult = validateBuiltInTextContrast({
@@ -3826,7 +4245,7 @@ export function App({
       } else {
         showShortNavigationBanner("Text tuning blocked by contrast gate");
       }
-      return;
+      return false;
     }
 
     const existingTextByTheme = {
@@ -3870,6 +4289,7 @@ export function App({
       prev[prev.length - 1] === "textTuningEdit" ? prev.slice(0, -1) : prev
     );
     showShortNavigationBanner(`${formatThemeIdLabel(helpTextTuningThemeId)} text colors saved`);
+    return true;
   }
 
   function cycleLogoModeSetting(direction: 1 | -1, commit: boolean) {
@@ -3931,7 +4351,10 @@ export function App({
     showShortNavigationBanner(`Terminal bell: ${nextEnabled ? "on" : "off"}`);
   }
 
-  function openBackupCenter() {
+  function openBackupCenter(options: { bypassUnsavedGuard?: boolean } = {}) {
+    if (!options.bypassUnsavedGuard && requestTaskEditorUnsavedGuard("open_backup_center")) {
+      return;
+    }
     clearPendingGPrefix();
     closeViewsOverlay();
     if (uiState.modal) {
@@ -3988,7 +4411,21 @@ export function App({
     uiDispatch({ type: "setFocus", focus: FocusTarget.DASHBOARD });
   }
 
-  function closeHelp() {
+  function closeHelp(options: { bypassUnsavedGuard?: boolean } = {}) {
+    if (
+      !options.bypassUnsavedGuard &&
+      helpNavStack[helpNavStack.length - 1] === "custom1Edit" &&
+      requestHelpThemeEditorUnsavedGuard("help_custom1_editor", "close_help")
+    ) {
+      return;
+    }
+    if (
+      !options.bypassUnsavedGuard &&
+      helpNavStack[helpNavStack.length - 1] === "textTuningEdit" &&
+      requestHelpThemeEditorUnsavedGuard("help_text_tuning_editor", "close_help")
+    ) {
+      return;
+    }
     if (helpNavStack[helpNavStack.length - 1] === "custom1Edit") {
       closeCustom1EditorCancel();
     }
@@ -4199,10 +4636,16 @@ export function App({
 
   function handleHelpNavBack() {
     if (activeHelpPage === "custom1Edit") {
+      if (requestHelpThemeEditorUnsavedGuard("help_custom1_editor", "close_editor")) {
+        return;
+      }
       closeCustom1EditorCancel();
       return;
     }
     if (activeHelpPage === "textTuningEdit") {
+      if (requestHelpThemeEditorUnsavedGuard("help_text_tuning_editor", "close_editor")) {
+        return;
+      }
       closeBuiltInTextEditorCancel();
       return;
     }
@@ -4212,7 +4655,10 @@ export function App({
     popHelpPage();
   }
 
-  function openListMode() {
+  function openListMode(options: { bypassUnsavedGuard?: boolean } = {}) {
+    if (!options.bypassUnsavedGuard && requestTaskEditorUnsavedGuard("open_list")) {
+      return;
+    }
     clearPendingGPrefix();
     closeViewsOverlay();
     if (uiState.modal) {
@@ -4227,8 +4673,11 @@ export function App({
     uiDispatch({ type: "setFocus", focus: FocusTarget.TASK_LIST });
   }
 
-  function openDashboardMode() {
+  function openDashboardMode(options: { bypassUnsavedGuard?: boolean } = {}) {
     if (uiState.mode === Mode.DASHBOARD) return;
+    if (!options.bypassUnsavedGuard && requestTaskEditorUnsavedGuard("open_dashboard")) {
+      return;
+    }
     clearPendingGPrefix();
     closeViewsOverlay();
     if (uiState.modal) {
@@ -4244,7 +4693,10 @@ export function App({
     uiDispatch({ type: "setFocus", focus: FocusTarget.DASHBOARD });
   }
 
-  function openSearchMode() {
+  function openSearchMode(options: { bypassUnsavedGuard?: boolean } = {}) {
+    if (!options.bypassUnsavedGuard && requestTaskEditorUnsavedGuard("open_search")) {
+      return;
+    }
     clearPendingGPrefix();
     closeViewsOverlay();
     if (uiState.modal) {
@@ -4395,6 +4847,12 @@ export function App({
   }
 
   function handleLeftRailMenuSelect(item: LeftRailMenuItem) {
+    if (isEditorMode(uiState.mode)) {
+      const continuation = resolveTaskEditorContinuationForLeftRail(item);
+      if (continuation && requestTaskEditorUnsavedGuard(continuation)) {
+        return;
+      }
+    }
     switch (item) {
       case "LIST":
         openListMode();
@@ -4415,6 +4873,9 @@ export function App({
         openSearchMode();
         return;
       case "TAG_PANEL":
+        if (isEditorMode(uiState.mode)) {
+          openListMode({ bypassUnsavedGuard: true });
+        }
         openTagFilterPanel();
         return;
       case "HELP":
@@ -4888,7 +5349,7 @@ export function App({
     const effectiveWasSelected =
       input.wasSelected || selectedRowIdRef.current === input.taskId;
 
-    if (uiState.mode === Mode.EDIT && effectiveWasSelected) {
+    if (uiState.mode === Mode.EDIT) {
       requestEditTargetSwitch(input.taskId);
       return;
     }
@@ -5546,7 +6007,10 @@ export function App({
     });
   }
 
-  function openAdd() {
+  function openAdd(options: { bypassUnsavedGuard?: boolean } = {}) {
+    if (!options.bypassUnsavedGuard && requestTaskEditorUnsavedGuard("open_add")) {
+      return;
+    }
     resetEditorSessionTracking();
     closeViewsOverlay();
     setTimeSuggestion(getSuggestedTime(new Date()));
@@ -5664,7 +6128,10 @@ export function App({
     });
   }
 
-  function openEdit() {
+  function openEdit(options: { bypassUnsavedGuard?: boolean } = {}) {
+    if (!options.bypassUnsavedGuard && requestTaskEditorUnsavedGuard("open_edit")) {
+      return;
+    }
     if (!selectedTask) return;
     openEditForRow(selectedTask);
   }
@@ -5997,7 +6464,7 @@ export function App({
   }
 
   function confirmDeleteSelectedAndFutureFromModal() {
-    handleDeleteSelectedAndFuture();
+    requestRecurringDeleteFutureCheckpointFromDeleteModal();
   }
 
   function cancelDeleteSelectedFromModal() {
@@ -7170,6 +7637,183 @@ export function App({
                 </box>
               </box>
             )
+          ) : uiState.modal.type === "recurring_delete_future_checkpoint" ? (
+            <box
+              style={{
+                padding: 2,
+                backgroundColor: modalTheme.warn,
+                color: modalTheme.bg,
+                minWidth: MODAL_STANDARD_WIDTH
+              }}
+            >
+              <text>DELETE THIS + FUTURE OCCURRENCES? [Y/N]</text>
+              <text>{uiState.modal.deleteModal.taskTitle}</text>
+              <text>OCCURRENCE: {uiState.modal.deleteModal.occurrenceIso.slice(0, 16)}</text>
+              <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
+                <box
+                  style={{
+                    backgroundColor: modalTheme.bg,
+                    paddingLeft: 2,
+                    paddingRight: 2
+                  }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    handleRecurringDeleteFutureCheckpointConfirm();
+                  }}
+                >
+                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>YES [Y]</text>
+                </box>
+                <box
+                  style={{
+                    backgroundColor: modalTheme.bg,
+                    paddingLeft: 2,
+                    paddingRight: 2
+                  }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    cancelRecurringDeleteFutureCheckpoint();
+                  }}
+                >
+                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>NO [N/ESC]</text>
+                </box>
+              </box>
+            </box>
+          ) : uiState.modal.type === "unsaved_changes" ? (
+            <box
+              style={{
+                padding: 2,
+                backgroundColor: theme.panel,
+                border: true,
+                borderStyle: "single",
+                borderColor: theme.outline,
+                minWidth: MODAL_STANDARD_WIDTH,
+                flexDirection: "column",
+                gap: 1
+              }}
+            >
+              <text style={{ color: theme.text, fontWeight: "bold" }}>UNSAVED CHANGES</text>
+              <text style={{ color: theme.muted }}>{describeUnsavedSource(uiState.modal.source)}</text>
+              <text style={{ color: theme.muted }}>
+                {uiState.modal.source === "task_editor"
+                  ? `Continue action: ${describeTaskEditorContinuation(uiState.modal.continuation)}.`
+                  : uiState.modal.continuation === "close_help"
+                    ? "Continue action: close help."
+                    : "Continue action: leave theme editor."}
+              </text>
+              <box style={{ flexDirection: "row", gap: 1 }}>
+                <box
+                  style={{
+                    backgroundColor: theme.panel,
+                    border: true,
+                    borderStyle: "single",
+                    borderColor: theme.outline,
+                    paddingLeft: 2,
+                    paddingRight: 2
+                  }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    handleUnsavedChangesSaveAndContinue();
+                  }}
+                >
+                  <text style={{ color: theme.text, fontWeight: "bold" }}>
+                    [S] Save+Continue
+                  </text>
+                </box>
+                <box
+                  style={{
+                    backgroundColor: theme.panel,
+                    border: true,
+                    borderStyle: "single",
+                    borderColor: theme.outline,
+                    paddingLeft: 2,
+                    paddingRight: 2
+                  }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    handleUnsavedChangesDiscardAndContinue();
+                  }}
+                >
+                  <text style={{ color: theme.text, fontWeight: "bold" }}>
+                    [D] Discard+Continue
+                  </text>
+                </box>
+              </box>
+              <box style={{ flexDirection: "row", gap: 1 }}>
+                <box
+                  style={{
+                    backgroundColor: theme.panel,
+                    border: true,
+                    borderStyle: "single",
+                    borderColor: theme.outline,
+                    paddingLeft: 2,
+                    paddingRight: 2
+                  }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    cancelUnsavedChangesContinue();
+                  }}
+                >
+                  <text style={{ color: theme.text, fontWeight: "bold" }}>[C/Esc] Cancel</text>
+                </box>
+              </box>
+            </box>
+          ) : uiState.modal.type === "backup_final_checkpoint" ? (
+            <box
+              style={{
+                padding: 2,
+                backgroundColor: theme.panel,
+                border: true,
+                borderStyle: "single",
+                borderColor: theme.outline,
+                minWidth: MODAL_STANDARD_WIDTH,
+                flexDirection: "column",
+                gap: 1
+              }}
+            >
+              <text style={{ color: theme.text, fontWeight: "bold" }}>FINAL IMPORT CHECKPOINT</text>
+              <text style={{ color: theme.muted }}>
+                {uiState.modal.checkpoint === "data_import"
+                  ? "Commit backup data import now?"
+                  : "Commit calendar import now?"}
+              </text>
+              <text style={{ color: theme.muted }}>
+                This writes changes and cannot be undone from this screen.
+              </text>
+              <box style={{ flexDirection: "row", gap: 1 }}>
+                <box
+                  style={{
+                    backgroundColor: theme.panel,
+                    border: true,
+                    borderStyle: "single",
+                    borderColor: theme.outline,
+                    paddingLeft: 2,
+                    paddingRight: 2
+                  }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    handleBackupFinalCheckpointConfirm();
+                  }}
+                >
+                  <text style={{ color: theme.text, fontWeight: "bold" }}>COMMIT [Y]</text>
+                </box>
+                <box
+                  style={{
+                    backgroundColor: theme.panel,
+                    border: true,
+                    borderStyle: "single",
+                    borderColor: theme.outline,
+                    paddingLeft: 2,
+                    paddingRight: 2
+                  }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    cancelBackupFinalCheckpoint();
+                  }}
+                >
+                  <text style={{ color: theme.text, fontWeight: "bold" }}>CANCEL [N/ESC]</text>
+                </box>
+              </box>
+            </box>
           ) : uiState.modal.type === "task_link_form" ? (
             <box
               style={{
@@ -7760,7 +8404,14 @@ export function App({
                   onChangeGlobal={setCustom1DraftGlobal}
                   onChangeObjects={setCustom1DraftObjects}
                   onSave={saveCustom1Editor}
-                  onCancel={closeCustom1EditorCancel}
+                  onCancel={() => {
+                    if (
+                      requestHelpThemeEditorUnsavedGuard("help_custom1_editor", "close_editor")
+                    ) {
+                      return;
+                    }
+                    closeCustom1EditorCancel();
+                  }}
                 />
               ) : activeHelpPage === "textTuningEdit" ? (
                 <BuiltInThemeTextEditor
@@ -7772,7 +8423,17 @@ export function App({
                   onChangeGlobal={setBuiltInTextDraftGlobal}
                   onChangeObjects={setBuiltInTextDraftObjects}
                   onSave={saveBuiltInTextEditor}
-                  onCancel={closeBuiltInTextEditorCancel}
+                  onCancel={() => {
+                    if (
+                      requestHelpThemeEditorUnsavedGuard(
+                        "help_text_tuning_editor",
+                        "close_editor"
+                      )
+                    ) {
+                      return;
+                    }
+                    closeBuiltInTextEditorCancel();
+                  }}
                 />
               ) : activeHelpPage === "help" ? (
                 <box
