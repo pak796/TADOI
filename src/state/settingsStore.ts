@@ -1,7 +1,13 @@
 import { ThemeId, cycleTheme } from "../theme/themes";
 import {
+  CRT_FX_LITE_COLOR_ORDER,
+  CRT_FX_LITE_PRESET_ORDER,
+  type CrtFxLiteColor,
+  type CrtFxLitePreset,
   cycleLogoMode,
   CustomThemes,
+  DEFAULT_CRT_FX_LITE_COLOR,
+  DEFAULT_CRT_FX_LITE_PRESET,
   FlashMode,
   LogoMode,
   SecuritySettings,
@@ -13,6 +19,9 @@ export type SettingsState = {
   themeId: ThemeId;
   logoMode: LogoMode;
   flashMode: FlashMode;
+  crtFxLite: boolean;
+  crtFxColor: CrtFxLiteColor;
+  crtFxPreset: CrtFxLitePreset;
   notifications: NotificationSettings;
   security: SecuritySettings;
   customThemes?: CustomThemes;
@@ -25,6 +34,12 @@ export type SettingsAction =
   | { type: "cycleLogoMode"; direction?: 1 | -1 }
   | { type: "setFlashMode"; flashMode: FlashMode }
   | { type: "toggleFlashMode" }
+  | { type: "setCrtFxLite"; crtFxLite: boolean }
+  | { type: "toggleCrtFxLite" }
+  | { type: "setCrtFxColor"; crtFxColor: CrtFxLiteColor }
+  | { type: "cycleCrtFxColor"; direction?: 1 | -1 }
+  | { type: "setCrtFxPreset"; crtFxPreset: CrtFxLitePreset }
+  | { type: "cycleCrtFxPreset"; direction?: 1 | -1 }
   | { type: "setNotifications"; notifications: NotificationSettings }
   | { type: "setSecurity"; security: SecuritySettings }
   | { type: "setCustomThemes"; customThemes?: CustomThemes }
@@ -36,6 +51,9 @@ export const initialSettingsState: SettingsState = {
   themeId: "default",
   logoMode: getDefaultSettings().logoMode,
   flashMode: "slow",
+  crtFxLite: getDefaultSettings().crtFxLite === true,
+  crtFxColor: getDefaultSettings().crtFxColor ?? DEFAULT_CRT_FX_LITE_COLOR,
+  crtFxPreset: getDefaultSettings().crtFxPreset ?? DEFAULT_CRT_FX_LITE_PRESET,
   notifications: {
     enabled: true,
     inAppOverdueBanner: true,
@@ -66,6 +84,32 @@ export function settingsReducer(
       return { ...state, flashMode: action.flashMode };
     case "toggleFlashMode":
       return { ...state, flashMode: state.flashMode === "slow" ? "static" : "slow" };
+    case "setCrtFxLite":
+      return { ...state, crtFxLite: action.crtFxLite };
+    case "toggleCrtFxLite":
+      return { ...state, crtFxLite: !state.crtFxLite };
+    case "setCrtFxColor":
+      return { ...state, crtFxColor: action.crtFxColor };
+    case "cycleCrtFxColor": {
+      const index = CRT_FX_LITE_COLOR_ORDER.indexOf(state.crtFxColor);
+      const safeIndex = index >= 0 ? index : 0;
+      const direction = action.direction ?? 1;
+      const nextIndex =
+        (safeIndex + direction + CRT_FX_LITE_COLOR_ORDER.length) %
+        CRT_FX_LITE_COLOR_ORDER.length;
+      return { ...state, crtFxColor: CRT_FX_LITE_COLOR_ORDER[nextIndex] };
+    }
+    case "setCrtFxPreset":
+      return { ...state, crtFxPreset: action.crtFxPreset };
+    case "cycleCrtFxPreset": {
+      const index = CRT_FX_LITE_PRESET_ORDER.indexOf(state.crtFxPreset);
+      const safeIndex = index >= 0 ? index : 0;
+      const direction = action.direction ?? 1;
+      const nextIndex =
+        (safeIndex + direction + CRT_FX_LITE_PRESET_ORDER.length) %
+        CRT_FX_LITE_PRESET_ORDER.length;
+      return { ...state, crtFxPreset: CRT_FX_LITE_PRESET_ORDER[nextIndex] };
+    }
     case "setNotifications":
       return { ...state, notifications: action.notifications };
     case "setSecurity":

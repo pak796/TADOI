@@ -18,7 +18,7 @@ In scope:
 - Recurrence creation, occurrence actions, and delete variants.
 - Calendar ICS export/import CLI workflows plus in-app Backup Center calendar import/export flows.
 - Backup/import/export safety flows.
-- Theme/settings persistence, including `custom1` behavior.
+- Theme/settings persistence, including `custom1` and CRT FX behavior.
 - Notification modal behavior and bell cooldown.
 - Data safety and corruption recovery.
 
@@ -245,21 +245,21 @@ Smoke pass criteria:
   - Preconditions: overdue event generation available.
   - Steps: toggle bell setting and trigger repeated overdue events.
   - Expected: bell follows enable state and cooldown policy.
-- [ ] `QA-039 [SMOKE]` Help toggles persist across restart.
+- [ ] `QA-039 [SMOKE]` Help settings page actions persist across restart.
   - Preconditions: app running.
-  - Steps: toggle `h`, `m`, `n`, `o`, `l`; restart app.
-  - Expected: setting values persist after restart.
+  - Steps: open Help -> `Settings & Themes`; toggle `Flash Mode`, `CRT FX Lite`, and `Notifications`, cycle `CRT FX Profile`, then toggle `Overdue Popup` and `Terminal Bell`; restart app.
+  - Expected: settings values persist after restart and appear in Help status lines.
 
-### J) Theme and Custom Theme Behavior
+### J) Theme, CRT FX, and Custom Theme Behavior
 
-- [ ] `QA-040` Theme rotation includes `custom1` without token regressions.
+- [ ] `QA-040` Theme rotation includes `crtGreen`, `crtAmber`, and `custom1` without token regressions.
   - Preconditions: app running.
   - Steps: cycle themes through full order.
-  - Expected: `custom1` appears in rotation and renders readable tokens.
-- [ ] `QA-041` Custom1 palette/object overrides persist correctly.
+  - Expected: `crtGreen`, `crtAmber`, and `custom1` appear in rotation and render readable tokens.
+- [ ] `QA-041` Custom1 + CRT FX settings persist and normalize correctly.
   - Preconditions: settings paths writable.
-  - Steps: set global/object custom1 values and restart.
-  - Expected: customized values normalize and persist.
+  - Steps: set global/object custom1 values, enable CRT FX Lite, cycle CRT FX Profile away from default, restart, then inspect resolved settings behavior.
+  - Expected: custom1 overrides persist; `crtFxLite` persists when enabled; non-default CRT color/preset persist and defaults are omitted.
 
 ### K) Data Safety, Recovery, and Mouse UX
 
@@ -410,7 +410,7 @@ Smoke pass criteria:
 | Calendar ICS export/import (CLI + Backup Center + services) | `src/cli/calendarCommands.test.ts`, `src/commands/calendarImport.test.ts`, `src/cli.test.ts`, `src/state/backupCenterFlow.test.ts`, `src/state/backupCenterCalendarController.test.ts`, `src/calendar/icsWriter.test.ts`, `src/calendar/icsParser.test.ts`, `src/calendar/importMapper.test.ts`, `src/calendar/calendarMapper.test.ts`, `src/calendar/range.test.ts`, `src/calendar/rrule.test.ts`, `src/state/calendarExportService.test.ts`, `src/state/calendarImportService.test.ts`, `src/state/calendarRoundTrip.test.ts` |
 | TITS command layer (M1-M3) | `src/commands/parse.test.ts`, `src/commands/execute.test.ts`, `src/commands/help.test.ts`, `src/cli/main.test.ts`, `src/app/keyRouter.test.ts`, `src/state/store.test.ts` |
 | Notifications + engagement toasts | `src/notifications/notificationManager.test.ts`, `src/notifications/overdueTaskActions.test.ts`, `src/notifications/notifiers/inAppModalNotifier.test.ts`, `src/notifications/notifiers/terminalBellNotifier.test.ts`, `src/state/store.test.ts` |
-| Settings/theme/custom1 | `src/settings/settings.test.ts`, `src/theme/themes.test.ts`, `src/theme/resolveThemeTokens.test.ts`, `src/theme/custom1ColorUtils.test.ts` |
+| Settings/theme/custom1/CRT FX | `src/settings/settings.test.ts`, `src/theme/themes.test.ts`, `src/theme/resolveThemeTokens.test.ts`, `src/theme/custom1ColorUtils.test.ts`, `src/components/CrtFxLite.test.ts` |
 | Brand/logo + left rail | `src/brand/brand.test.ts`, `src/components/LeftRail.tsx`, `src/app/keyRouter.test.ts` |
 | Task links/attachments | `src/domain/taskLinks.test.ts`, `src/app/keyRouter.test.ts`, `src/ui/state.test.ts` |
 | Persistence and recovery | `src/state/persistence.test.ts`, `src/state/validation.test.ts` |

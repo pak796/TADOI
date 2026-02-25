@@ -3,7 +3,7 @@
 This guide covers binary and source installs on macOS, Windows, and Linux.
 Runtime baseline: **v0.3.7**.
 Manual QA reference: `docs/TADOI_QA_Guide_v0.3.7.md`.
-Concise install: `docs/INSTALL.md`.
+Concise install: see the short install guide in the docs index.
 
 ## 1) What You Need
 
@@ -39,7 +39,7 @@ Expected release artifacts:
 - Per-target checksum file: `SHA256SUMS-<target>.txt`
 
 GitHub download paths:
-- Release assets for version tags (`v*`) via `.github/workflows/release.yml`
+- Release assets for version tags (`v*`) via the GitHub Actions release workflow
 - Per-commit macOS artifacts via `.github/workflows/package-macos.yml`:
   1. Push branch to GitHub.
   2. Trigger **Package macOS Installer** in Actions (or push to `main`).
@@ -115,12 +115,10 @@ Check these basics:
 1. Press `a` to open add mode.
 2. Type a task title and press `Ctrl+S` to save.
 3. Press `?` to open Help.
-4. While Help is open, test quick toggles (lowercase is canonical):
-   - `h` theme cycle
-   - `m` flash mode
-   - `n` notifications master
-   - `o` overdue popup
-   - `l` terminal bell
+4. In Help, open `Settings & Themes` and validate settings actions:
+   - On `Theme`: press `Enter` (or `ArrowRight`) to open theme settings, then cycle once and return.
+   - On `Logo`: press `Enter` to cycle once.
+   - On `Flash Mode`, `CRT FX Lite`, `CRT FX Profile`, `Notifications`, `Overdue Popup`, and `Terminal Bell`: press `Enter` once on each row and confirm the on-screen status line changes.
 5. Press `/`, type a search term, then press `Enter` (or `Esc`) to close Search.
 6. Press `p` to open the boolean tag filter panel, then press `Esc` to close.
 7. Press `q` to quit.
@@ -227,7 +225,7 @@ Installer manifest gate:
 ### Install fails on `bun install`
 
 - Retry only if needed:
-  - `bun install --force`
+  - re-run dependency install after clearing local package cache if required
 - Confirm network/proxy access to package registries.
 
 ### App starts but layout is blocked

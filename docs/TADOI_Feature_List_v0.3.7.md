@@ -1,6 +1,6 @@
 # TADOI™ Feature List (v0.3.7)
 
-This list reflects current runtime behavior as of **2026-02-21**.
+This list reflects current runtime behavior as of **2026-02-25**.
 
 ## Core Workflow
 - Create, edit, duplicate, complete/reopen, and delete tasks.
@@ -81,7 +81,11 @@ This list reflects current runtime behavior as of **2026-02-21**.
 - Overdue modal queue with actions: snooze, done, go-to, dismiss.
 - Optional terminal bell with cooldown.
 - Non-interactive engagement toast milestones in the bottom bar (queued, priority-ordered, auto-dismissed).
-- Persisted settings for theme, flash mode, and notification toggles.
+- Theme registry includes `crtGreen` and `crtAmber` in addition to existing palettes and `rotating` mode.
+- Help Settings page includes: `Theme`, `Logo`, `Flash Mode`, `CRT FX Lite`, `CRT FX Profile`, `Notifications`, `Overdue Popup`, `Terminal Bell`.
+- CRT FX Lite applies profile-based tint/flicker treatment to primary panel surfaces (left rail, task list panel, details panel).
+- Persisted settings include theme/logo/flash/CRT FX/notification/security values.
+- `crtFxLite` persists only when enabled; default CRT profile (`green` + `normal`) is omitted from `settings.json`.
 - Persisted engagement state and unlock tracking for milestone toasts.
 
 ## Platform and Runtime Contracts

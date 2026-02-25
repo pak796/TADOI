@@ -6,12 +6,12 @@ Keyboard-first TUI todo list with due dates, completion, and tag autocomplete (O
 
 Current version: `v0.3.7` (`package.json`: `0.3.7`).
 Feature list: [`docs/TADOI_Feature_List_v0.3.7.md`](./docs/TADOI_Feature_List_v0.3.7.md)
-Install guide: [`docs/INSTALL.md`](./docs/INSTALL.md)
+Install guide: see the concise installation document in the docs index.
 Usage guide: [`docs/USAGE.md`](./docs/USAGE.md)
 CLI completions: [`docs/CLI_COMPLETIONS.md`](./docs/CLI_COMPLETIONS.md)
 QA guide: [`docs/TADOI_QA_Guide_v0.3.7.md`](./docs/TADOI_QA_Guide_v0.3.7.md)
 Smoke checklist: [`docs/QA/SMOKE_TEST_CHECKLIST.md`](./docs/QA/SMOKE_TEST_CHECKLIST.md)
-Release checklist: [`docs/RELEASE_CHECKLIST.md`](./docs/RELEASE_CHECKLIST.md)
+Release checklist: see the release section in the docs index.
 Product spec: [`TADOI_SPEC_v0.3.7.md`](./TADOI_SPEC_v0.3.7.md)
 Task list: [`TADOI_TASKS_v0.3.7.md`](./TADOI_TASKS_v0.3.7.md)
 Documentation index: [`docs/DOC_INDEX.md`](./docs/DOC_INDEX.md)
@@ -29,7 +29,7 @@ Set `TADOI_SKIP_COMPLETION_INSTALL=1` to skip completion install in CI/automatio
 ## Dependency Policy
 
 - Direct runtime dependencies are pinned to explicit versions in `package.json` (no `latest` specifiers).
-- Lockfile determinism is required in CI: `bun install --frozen-lockfile`.
+- Lockfile determinism is required in CI during dependency install.
 - Security gate: run `bun audit` on every remediation/release PR; fail on unresolved advisories unless explicitly risk-accepted with owner and expiry.
 - Transitive advisory control uses `overrides` where safe; current policy forces `diff@8.0.3`.
 
@@ -400,9 +400,19 @@ Type `#` in the Tags field to get suggestions ranked by usage. Selecting a sugge
 
 ## Settings File
 
-Theme, logo, flash, notification, and security preferences are persisted in `settings.json`:
+Theme, logo, flash, CRT FX, notification, and security preferences are persisted in `settings.json`:
 - Primary: `~/.config/tadoi/settings.json`
 - Fallback: `~/.tadoi/settings.json`
+
+Help Settings pages expose:
+- `Theme`
+- `Logo`
+- `Flash Mode`
+- `CRT FX Lite`
+- `CRT FX Profile`
+- `Notifications`
+- `Overdue Popup`
+- `Terminal Bell`
 
 Flash mode values:
 - `slow`: due-today and overdue indicators pulse (default)
@@ -412,7 +422,7 @@ Theme IDs:
 - `default`, `retro`, `highContrast`, `neonHacker`, `lightSlate`, `paperWhite`, `midnightBlack`
 - `jester`, `sonora`, `tigers`, `tech`, `deuteranopia`, `protanopia`, `tritanopia`
 - `blueAngels`, `southwest`, `rams`, `trooper`, `twilight`, `msdos`, `niners`, `mcrn`
-- `zeke`, `gundam`, `custom1`, `rotating` (auto-cycles concrete themes)
+- `zeke`, `gundam`, `crtGreen`, `crtAmber`, `custom1`, `rotating` (auto-cycles concrete themes)
 
 Notification defaults:
 - `notifications.enabled`: `true`
@@ -420,6 +430,18 @@ Notification defaults:
 - `notifications.terminalBellOnOverdue`: `false`
 - `notifications.bannerDurationMs`: `5000` (retained compatibility field; currently not used by modal UX)
 - `notifications.bellCooldownMs`: `2000`
+
+CRT FX defaults and persistence:
+- `crtFxLite`: `false` by default; only persisted when enabled (`true`)
+- `crtFxColor`: `green|amber`; default `green` (default omitted from file)
+- `crtFxPreset`: `subtle|normal|strong`; default `normal` (default omitted from file)
+- `CRT FX Profile` cycles six combinations in order:
+  - `Green Subtle`
+  - `Green Regular`
+  - `Green Strong`
+  - `Amber Subtle`
+  - `Amber Regular`
+  - `Amber Strong`
 
 Security defaults:
 - `security.nonHttpLinkPolicy`: `prompt`
@@ -436,6 +458,9 @@ Example:
 {
   "themeId": "default",
   "flashMode": "slow",
+  "crtFxLite": true,
+  "crtFxColor": "amber",
+  "crtFxPreset": "strong",
   "notifications": {
     "enabled": true,
     "inAppOverdueBanner": true,
@@ -568,7 +593,7 @@ Use `.github/workflows/package-macos.yml` to build and download macOS install ar
 3. Download artifact `tadoi-macos-<commit-sha>` from the workflow run.
 4. Install on another Mac using `TADOI-macOS-<version>.dmg` (contains `TADOI-<version>.pkg`).
 
-Tagged releases still publish cross-platform assets through `.github/workflows/release.yml`.
+Tagged releases still publish cross-platform assets through the GitHub Actions release workflow.
 
 ### Beta installer troubleshooting (quick)
 

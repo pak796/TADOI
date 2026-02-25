@@ -1,6 +1,6 @@
 # TADOI™ Product Spec (v0.3.7)
 
-Updated: 2026-02-21
+Updated: 2026-02-25
 Runtime baseline: `v0.3.7`
 Package baseline: `0.3.7`
 Persistence schema baseline: `6`
@@ -177,7 +177,27 @@ Import:
   - `alternate_blocks32`
   - `rotate`
 
-### 2.13 Engagement Toast Contract
+### 2.13 Theme and Settings Contract
+- Theme IDs include:
+  - `default`, `retro`, `highContrast`, `neonHacker`, `lightSlate`, `paperWhite`, `midnightBlack`
+  - `jester`, `sonora`, `tigers`, `tech`, `deuteranopia`, `protanopia`, `tritanopia`
+  - `blueAngels`, `southwest`, `rams`, `trooper`, `twilight`, `msdos`, `niners`, `mcrn`
+  - `zeke`, `gundam`, `crtGreen`, `crtAmber`, `custom1`, `rotating`
+- Theme rotation and rotating-mode order include both CRT themes (`crtGreen`, `crtAmber`).
+- Help root is read-only for direct settings hotkeys; settings changes are applied through the Help `Settings & Themes` page flow.
+- Settings page rows include:
+  - `Theme`, `Logo`, `Flash Mode`, `CRT FX Lite`, `CRT FX Profile`, `Notifications`, `Overdue Popup`, `Terminal Bell`
+- CRT FX runtime contract:
+  - `CRT FX Lite` toggles effect on/off.
+  - `CRT FX Profile` cycles color+strength pairs in this order:
+    - `Green Subtle`, `Green Regular`, `Green Strong`, `Amber Subtle`, `Amber Regular`, `Amber Strong`
+  - Effect applies tint/flicker treatment to primary panel surfaces (left rail, task list panel, details panel).
+- Settings persistence normalization:
+  - `crtFxLite` persists only when enabled (`true`).
+  - `crtFxColor` and `crtFxPreset` persist only when non-default.
+  - default profile is `green + normal`.
+
+### 2.14 Engagement Toast Contract
 - Bottom-bar engagement toasts are non-interactive and auto-dismiss.
 - Toast queue is bounded and priority-ordered; blocking overlays suppress rendering while preserving queue state.
 - Current milestone set includes:
@@ -188,7 +208,7 @@ Import:
   - 5 completions for a tag in the last 7 days
   - 3-day completion streak
 
-### 2.14 TITS Command Layer Contract (Milestones 1-3)
+### 2.15 TITS Command Layer Contract (Milestones 1-3)
 - In-app TITS open key: backtick (`` ` ``) in `LIST` mode.
 - In-app TITS execute key: `Enter`.
 - In-app TITS close key: `Esc`.
@@ -281,7 +301,7 @@ Global/overlay:
 Automated snapshot captured during TITS docs pass (2026-02-20):
 - `bun test src/commands/parse.test.ts src/commands/execute.test.ts src/cli/main.test.ts src/app/keyRouter.test.ts src/state/store.test.ts`: `63 pass / 0 fail`
 - `bun run typecheck`: `pass`
-- Full-suite validation remains tracked in release run reports under `docs/RELEASE_RUN_REPORT.md`.
+- Full-suite validation remains tracked in the release run report documents.
 
 Manual coverage baseline:
 - `docs/TADOI_QA_Guide_v0.3.7.md`
@@ -295,7 +315,7 @@ Manual coverage baseline:
 
 ## 7) Related Documents
 - `README.md`
-- `docs/TADOI_Installation_Guide_All_Platforms.md`
+- Platform installation guide (all platforms)
 - `docs/TADOI_QA_Guide_v0.3.7.md`
 - `docs/TADOI_Feature_List_v0.3.7.md`
 - `docs/specs/tits-m1-commandbar.md`

@@ -1,6 +1,6 @@
 # TADOI™ Task List (v0.3.7)
 
-Updated: 2026-02-24
+Updated: 2026-02-25
 Runtime baseline: `v0.3.7`
 Package baseline: `0.3.7`
 
@@ -63,6 +63,11 @@ Package baseline: `0.3.7`
 - `TA-062` TITS M2 external CLI parity landed (`add|done|due|recur|help`) with lock and atomic save policy. (`Complete`)
 - `TA-063` TITS M3 recurrence command landed (`recur`) with deterministic validation and due-anchor rules. (`Complete`)
 - `TA-064` Completion pathway recurrence spawn parity preserved across TITS command execution and list-mode completion flows. (`Complete`)
+
+### A10) Theme + CRT FX Surface
+- `TA-065` Theme registry expanded with `crtGreen` and `crtAmber`; rotating theme order includes both CRT palettes. (`Complete`)
+- `TA-066` Help settings navigation includes `CRT FX Lite` and `CRT FX Profile` controls alongside existing settings rows. (`Complete`)
+- `TA-067` CRT FX Lite panel tint/flicker pipeline landed for left rail, task list, and details panel surfaces with profile-driven cadence. (`Complete`)
 
 ## B) Documentation and Release Governance
 

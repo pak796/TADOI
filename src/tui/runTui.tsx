@@ -6,7 +6,11 @@ import { applyThemeWithSettings } from "../app/theme";
 import { startOfLocalDayMs } from "../domain/dates";
 import { normalizeEngagementState } from "../domain/engagement";
 import { normalizeTagIndex, normalizeTags } from "../domain/tagIndex";
-import { loadSettings } from "../settings/settings";
+import {
+  DEFAULT_CRT_FX_LITE_COLOR,
+  DEFAULT_CRT_FX_LITE_PRESET,
+  loadSettings
+} from "../settings/settings";
 import {
   CURRENT_SCHEMA_VERSION,
   safeLoadState,
@@ -205,6 +209,9 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
       initialThemeId={settingsResult.settings.themeId}
       initialLogoMode={settingsResult.settings.logoMode}
       initialFlashMode={settingsResult.settings.flashMode}
+      initialCrtFxLite={settingsResult.settings.crtFxLite === true}
+      initialCrtFxColor={settingsResult.settings.crtFxColor ?? DEFAULT_CRT_FX_LITE_COLOR}
+      initialCrtFxPreset={settingsResult.settings.crtFxPreset ?? DEFAULT_CRT_FX_LITE_PRESET}
       initialNotificationSettings={settingsResult.settings.notifications}
       initialSecuritySettings={settingsResult.settings.security}
       initialCustomThemes={settingsResult.settings.customThemes}

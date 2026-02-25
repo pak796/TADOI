@@ -23,6 +23,7 @@ import { DashboardPane } from "../components/DashboardPane";
 import { TagFilterPanel } from "../components/TagFilterPanel";
 import { BackupCenterScreen } from "../components/BackupCenterScreen";
 import { AppModalLayer } from "../components/AppModalLayer";
+import { resolveCrtFxColor } from "../components/CrtFxLite";
 import {
   Custom1ThemeEditor,
   type Custom1ThemeEditorHandle
@@ -163,6 +164,12 @@ import {
   deleteViewAtIndex
 } from "../domain/savedViews";
 import {
+  cycleCrtFxLiteProfile,
+  formatCrtFxLiteProfileLabel,
+  type CrtFxLiteColor,
+  type CrtFxLitePreset,
+  DEFAULT_CRT_FX_LITE_COLOR,
+  DEFAULT_CRT_FX_LITE_PRESET,
   cycleLogoMode,
   getDefaultSettings,
   loadSettings,
@@ -297,6 +304,16 @@ const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings =
 const DEFAULT_SECURITY_SETTINGS: SecuritySettings = getDefaultSettings().security;
 const DEFAULT_LOGO_MODE: LogoMode = getDefaultSettings().logoMode;
 const DEFAULT_CUSTOM_THEMES: CustomThemes | undefined = getDefaultSettings().customThemes;
+const DEFAULT_CRT_FX_LITE = getDefaultSettings().crtFxLite === true;
+const DEFAULT_CRT_FX_COLOR =
+  getDefaultSettings().crtFxColor ?? DEFAULT_CRT_FX_LITE_COLOR;
+const DEFAULT_CRT_FX_PRESET =
+  getDefaultSettings().crtFxPreset ?? DEFAULT_CRT_FX_LITE_PRESET;
+const CRT_FX_TICK_INTERVAL_BY_PRESET: Record<CrtFxLitePreset, number> = {
+  subtle: 220,
+  normal: 160,
+  strong: 120
+};
 const TASK_LINK_FORM_FIELD_ORDER: UITaskLinkFormField[] = [
   "label",
   "target",
@@ -378,6 +395,14 @@ const HELP_SETTINGS_NAV_ITEMS: HelpNavItem[] = [
   {
     title: "Flash Mode",
     description: "Switch between static and pulse urgency cues."
+  },
+  {
+    title: "CRT FX Lite",
+    description: "Enable or disable CRT visual treatment."
+  },
+  {
+    title: "CRT FX Profile",
+    description: "Cycle Green/Amber with Subtle/Regular/Strong intensity."
   },
   {
     title: "Notifications",
@@ -581,8 +606,29 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
 const HELP_SETTINGS_NAV_SECTION_INDEX = HELP_MENU_SECTIONS.findIndex(
   (section) => section.title === "Settings & Themes"
 );
+const HELP_SETTINGS_THEME_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
+  (item) => item.title === "Theme"
+);
 const HELP_SETTINGS_LOGO_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
   (item) => item.title === "Logo"
+);
+const HELP_SETTINGS_FLASH_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
+  (item) => item.title === "Flash Mode"
+);
+const HELP_SETTINGS_CRT_FX_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
+  (item) => item.title === "CRT FX Lite"
+);
+const HELP_SETTINGS_CRT_FX_PROFILE_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
+  (item) => item.title === "CRT FX Profile"
+);
+const HELP_SETTINGS_NOTIFICATIONS_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
+  (item) => item.title === "Notifications"
+);
+const HELP_SETTINGS_OVERDUE_POPUP_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
+  (item) => item.title === "Overdue Popup"
+);
+const HELP_SETTINGS_TERMINAL_BELL_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
+  (item) => item.title === "Terminal Bell"
 );
 
 function createDefaultHelpExpandedState(): boolean[] {
@@ -1062,6 +1108,9 @@ type AppProps = {
   initialThemeId?: ThemeId;
   initialLogoMode?: LogoMode;
   initialFlashMode?: FlashMode;
+  initialCrtFxLite?: boolean;
+  initialCrtFxColor?: CrtFxLiteColor;
+  initialCrtFxPreset?: CrtFxLitePreset;
   initialNotificationSettings?: NotificationSettings;
   initialSecuritySettings?: SecuritySettings;
   initialCustomThemes?: CustomThemes;
@@ -1095,6 +1144,9 @@ export function App({
   initialThemeId = "default",
   initialLogoMode = DEFAULT_LOGO_MODE,
   initialFlashMode = "slow",
+  initialCrtFxLite = DEFAULT_CRT_FX_LITE,
+  initialCrtFxColor = DEFAULT_CRT_FX_COLOR,
+  initialCrtFxPreset = DEFAULT_CRT_FX_PRESET,
   initialNotificationSettings = DEFAULT_NOTIFICATION_SETTINGS,
   initialSecuritySettings = DEFAULT_SECURITY_SETTINGS,
   initialCustomThemes = DEFAULT_CUSTOM_THEMES,
@@ -1107,6 +1159,9 @@ export function App({
     themeId: initialThemeId,
     logoMode: initialLogoMode,
     flashMode: initialFlashMode,
+    crtFxLite: initialCrtFxLite,
+    crtFxColor: initialCrtFxColor,
+    crtFxPreset: initialCrtFxPreset,
     notifications: initialNotificationSettings,
     security: initialSecuritySettings,
     customThemes: initialCustomThemes
@@ -1124,6 +1179,7 @@ export function App({
   calendarImportModeRef.current = backupState.calendarImportMode;
   const calendarImportConfirmInputRef = useRef(backupState.calendarImportConfirmInput);
   calendarImportConfirmInputRef.current = backupState.calendarImportConfirmInput;
+  const [crtFxTick, setCrtFxTick] = useState(0);
   const [pulseOn, setPulseOn] = useState(false);
   const [fastPulseOn, setFastPulseOn] = useState(false);
   const [bottomInfoView, setBottomInfoView] = useState<BottomInfoView>("summary");
@@ -1681,6 +1737,57 @@ export function App({
     selectedThemeMode === "rotating"
       ? ROTATING_THEME_ORDER[rotatingThemeIndex % ROTATING_THEME_ORDER.length]
       : selectedThemeMode;
+  const crtFxPreset: CrtFxLitePreset = settingsState.crtFxPreset;
+  const crtFxTickIntervalMs = CRT_FX_TICK_INTERVAL_BY_PRESET[crtFxPreset];
+  const isCrtFxLiteActive = settingsState.crtFxLite;
+  const railPanelBackgroundColor = resolveCrtFxColor({
+    baseColor: theme.accentPurple,
+    enabled: isCrtFxLiteActive,
+    preset: crtFxPreset,
+    color: settingsState.crtFxColor,
+    tick: crtFxTick,
+    role: "accent"
+  });
+  const railPanelBorderColor = resolveCrtFxColor({
+    baseColor: theme.outline,
+    enabled: isCrtFxLiteActive,
+    preset: crtFxPreset,
+    color: settingsState.crtFxColor,
+    tick: crtFxTick,
+    role: "border"
+  });
+  const taskListPanelBackgroundColor = resolveCrtFxColor({
+    baseColor: taskListTheme.panel,
+    enabled: isCrtFxLiteActive,
+    preset: crtFxPreset,
+    color: settingsState.crtFxColor,
+    tick: crtFxTick,
+    role: "panel"
+  });
+  const taskListPanelBorderColor = resolveCrtFxColor({
+    baseColor: taskListTheme.outline,
+    enabled: isCrtFxLiteActive,
+    preset: crtFxPreset,
+    color: settingsState.crtFxColor,
+    tick: crtFxTick,
+    role: "border"
+  });
+  const detailsPanelBackgroundColor = resolveCrtFxColor({
+    baseColor: theme.panel,
+    enabled: isCrtFxLiteActive,
+    preset: crtFxPreset,
+    color: settingsState.crtFxColor,
+    tick: crtFxTick,
+    role: "panel"
+  });
+  const detailsPanelBorderColor = resolveCrtFxColor({
+    baseColor: theme.outline,
+    enabled: isCrtFxLiteActive,
+    preset: crtFxPreset,
+    color: settingsState.crtFxColor,
+    tick: crtFxTick,
+    role: "border"
+  });
   const helpThemeStatusLineRaw = helpPreviewThemeMode
     ? `Theme mode: ${formatThemeDisplayName(settingsState.themeId)} (preview: ${formatThemeDisplayName(helpPreviewThemeMode)})`
     : settingsState.themeId === "rotating"
@@ -1701,6 +1808,19 @@ export function App({
   );
   const helpFlashStatusLine = fitLineToWidth(
     `    Flash mode: ${settingsState.flashMode}`,
+    helpContentLineWidth
+  );
+  const helpCrtFxLiteState = settingsState.crtFxLite ? "on" : "off";
+  const helpCrtFxLiteStatusLine = fitLineToWidth(
+    `    CRT FX Lite: ${helpCrtFxLiteState}`,
+    helpContentLineWidth
+  );
+  const helpCrtFxProfileLabel = formatCrtFxLiteProfileLabel(
+    settingsState.crtFxColor,
+    settingsState.crtFxPreset
+  );
+  const helpCrtFxProfileStatusLine = fitLineToWidth(
+    `    CRT FX Profile: ${helpCrtFxProfileLabel}`,
     helpContentLineWidth
   );
   const helpNotificationsEnabledStatusLine = fitLineToWidth(
@@ -1877,6 +1997,17 @@ export function App({
     }, FAST_PULSE_INTERVAL_MS);
     return () => clearInterval(id);
   }, [isStaticFlashMode]);
+
+  useEffect(() => {
+    if (!isCrtFxLiteActive) {
+      setCrtFxTick(0);
+      return;
+    }
+    const id = setInterval(() => {
+      setCrtFxTick((previous) => (previous + 1) % 10_000);
+    }, crtFxTickIntervalMs);
+    return () => clearInterval(id);
+  }, [crtFxTickIntervalMs, isCrtFxLiteActive]);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -2174,6 +2305,9 @@ export function App({
         themeId: settingsState.themeId,
         logoMode: settingsState.logoMode,
         flashMode: settingsState.flashMode,
+        crtFxLite: settingsState.crtFxLite,
+        crtFxColor: settingsState.crtFxColor,
+        crtFxPreset: settingsState.crtFxPreset,
         notifications: settingsState.notifications,
         security: settingsState.security,
         customThemes: settingsState.customThemes
@@ -2183,6 +2317,9 @@ export function App({
     );
   }, [
     settingsPath,
+    settingsState.crtFxLite,
+    settingsState.crtFxColor,
+    settingsState.crtFxPreset,
     settingsState.customThemes,
     settingsState.flashMode,
     settingsState.logoMode,
@@ -2581,6 +2718,18 @@ export function App({
     settingsDispatch({
       type: "setFlashMode",
       flashMode: settingsResult.settings.flashMode
+    });
+    settingsDispatch({
+      type: "setCrtFxLite",
+      crtFxLite: settingsResult.settings.crtFxLite === true
+    });
+    settingsDispatch({
+      type: "setCrtFxColor",
+      crtFxColor: settingsResult.settings.crtFxColor ?? DEFAULT_CRT_FX_COLOR
+    });
+    settingsDispatch({
+      type: "setCrtFxPreset",
+      crtFxPreset: settingsResult.settings.crtFxPreset ?? DEFAULT_CRT_FX_PRESET
     });
     settingsDispatch({
       type: "setNotifications",
@@ -3769,6 +3918,24 @@ export function App({
     );
   }
 
+  function switchCrtFxLiteSetting() {
+    const nextEnabled = !settingsState.crtFxLite;
+    settingsDispatch({ type: "toggleCrtFxLite" });
+    showShortNavigationBanner(`CRT FX Lite: ${nextEnabled ? "on" : "off"}`);
+  }
+
+  function cycleCrtFxProfileSetting() {
+    const nextProfile = cycleCrtFxLiteProfile({
+      color: settingsState.crtFxColor,
+      preset: settingsState.crtFxPreset
+    });
+    settingsDispatch({ type: "setCrtFxColor", crtFxColor: nextProfile.color });
+    settingsDispatch({ type: "setCrtFxPreset", crtFxPreset: nextProfile.preset });
+    showShortNavigationBanner(
+      `CRT FX Profile: ${formatCrtFxLiteProfileLabel(nextProfile.color, nextProfile.preset)}`
+    );
+  }
+
   function switchNotificationsEnabledSetting() {
     const nextEnabled = !settingsState.notifications.enabled;
     settingsDispatch({ type: "toggleNotificationsEnabled" });
@@ -4030,17 +4197,23 @@ export function App({
 
   function handleHelpNavForward(targetIndex = clampedHelpNavSelectionIndex) {
     if (activeHelpPage === "settings") {
-      if (targetIndex === 0) {
+      if (targetIndex === HELP_SETTINGS_THEME_NAV_INDEX) {
         cancelLogoModeSetting();
         pushHelpPage("theme");
       }
       if (targetIndex === HELP_SETTINGS_LOGO_NAV_INDEX) {
         cycleLogoModeSetting(1, true);
       }
-      if (targetIndex === 2) switchFlashModeSetting();
-      if (targetIndex === 3) switchNotificationsEnabledSetting();
-      if (targetIndex === 4) switchInAppOverduePopupSetting();
-      if (targetIndex === 5) switchTerminalBellSetting();
+      if (targetIndex === HELP_SETTINGS_FLASH_NAV_INDEX) switchFlashModeSetting();
+      if (targetIndex === HELP_SETTINGS_CRT_FX_NAV_INDEX) switchCrtFxLiteSetting();
+      if (targetIndex === HELP_SETTINGS_CRT_FX_PROFILE_NAV_INDEX) cycleCrtFxProfileSetting();
+      if (targetIndex === HELP_SETTINGS_NOTIFICATIONS_NAV_INDEX) {
+        switchNotificationsEnabledSetting();
+      }
+      if (targetIndex === HELP_SETTINGS_OVERDUE_POPUP_NAV_INDEX) {
+        switchInAppOverduePopupSetting();
+      }
+      if (targetIndex === HELP_SETTINGS_TERMINAL_BELL_NAV_INDEX) switchTerminalBellSetting();
       return;
     }
     if (activeHelpPage === "theme") {
@@ -5982,11 +6155,11 @@ export function App({
       <box
         style={{
           width: layout.railWidth,
-          backgroundColor: theme.accentPurple,
+          backgroundColor: railPanelBackgroundColor,
           padding: 1,
           border: true,
           borderStyle: "single",
-          borderColor: theme.outline
+          borderColor: railPanelBorderColor
         }}
       >
         <LeftRail
@@ -6106,10 +6279,10 @@ export function App({
                 style={{
                   flexGrow: 1,
                   padding: 1,
-                  backgroundColor: taskListTheme.panel,
+                  backgroundColor: taskListPanelBackgroundColor,
                   border: true,
                   borderStyle: "single",
-                  borderColor: taskListTheme.outline
+                  borderColor: taskListPanelBorderColor
                 }}
               >
                 <box style={{ flexDirection: "column", flexGrow: 1 }}>
@@ -6169,10 +6342,10 @@ export function App({
                 style={{
                   flexGrow: 1,
                   padding: 1,
-                  backgroundColor: theme.panel,
+                  backgroundColor: detailsPanelBackgroundColor,
                   border: true,
                   borderStyle: "single",
-                  borderColor: theme.outline
+                  borderColor: detailsPanelBorderColor
                 }}
               >
                 {isEditorMode(uiState.mode) && state.editor ? (
@@ -7007,6 +7180,12 @@ export function App({
                         <text style={{ color: helpTheme.muted }}>{helpThemeStatusLine.trim()}</text>
                         <text style={{ color: helpTheme.muted }}>{helpLogoStatusLine.trim()}</text>
                         <text style={{ color: helpTheme.muted }}>{helpFlashStatusLine.trim()}</text>
+                        <text style={{ color: helpTheme.muted }}>
+                          {helpCrtFxLiteStatusLine.trim()}
+                        </text>
+                        <text style={{ color: helpTheme.muted }}>
+                          {helpCrtFxProfileStatusLine.trim()}
+                        </text>
                         <text style={{ color: helpTheme.muted }}>
                           {helpNotificationsEnabledStatusLine.trim()}
                         </text>

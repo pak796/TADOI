@@ -60,7 +60,9 @@ describe("theme registry", () => {
     expect(cycleTheme("niners")).toBe("mcrn");
     expect(cycleTheme("mcrn")).toBe("zeke");
     expect(cycleTheme("zeke")).toBe("gundam");
-    expect(cycleTheme("gundam")).toBe("custom1");
+    expect(cycleTheme("gundam")).toBe("crtGreen");
+    expect(cycleTheme("crtGreen")).toBe("crtAmber");
+    expect(cycleTheme("crtAmber")).toBe("custom1");
     expect(cycleTheme("custom1")).toBe("rotating");
     expect(cycleTheme("rotating")).toBe("default");
   });
@@ -91,6 +93,8 @@ describe("theme registry", () => {
       "mcrn",
       "zeke",
       "gundam",
+      "crtGreen",
+      "crtAmber",
       "custom1",
       "rotating"
     ]);
@@ -121,7 +125,9 @@ describe("theme registry", () => {
       "niners",
       "mcrn",
       "zeke",
-      "gundam"
+      "gundam",
+      "crtGreen",
+      "crtAmber"
     ]);
   });
 
@@ -496,6 +502,40 @@ describe("theme registry", () => {
     });
   });
 
+  it("defines crtGreen palette tokens", () => {
+    expect(THEMES.crtGreen).toMatchObject({
+      bg: "#060B08",
+      panel: "#0B130F",
+      text: "#A8F5C2",
+      mutedText: "#6EA485",
+      border: "#2A4A3A",
+      accent: "#4EE39B",
+      accent2: "#49B7A0",
+      ok: "#52D884",
+      warn: "#E5C453",
+      danger: "#E26B5B",
+      selectionBg: "#1A3A2D",
+      selectionText: "#CFFFE2"
+    });
+  });
+
+  it("defines crtAmber palette tokens", () => {
+    expect(THEMES.crtAmber).toMatchObject({
+      bg: "#0C0906",
+      panel: "#15100A",
+      text: "#F9D8A7",
+      mutedText: "#B08C5D",
+      border: "#5A3B1D",
+      accent: "#F2A64A",
+      accent2: "#C9853A",
+      ok: "#74C26B",
+      warn: "#F2C14E",
+      danger: "#E26B5B",
+      selectionBg: "#4A2D12",
+      selectionText: "#FFEBCB"
+    });
+  });
+
   it("keeps niners/mcrn/zeke/gundam text and selection contrast readable", () => {
     for (const themeId of ["niners", "mcrn", "zeke", "gundam"] as const) {
       const tokens = THEMES[themeId];
@@ -508,9 +548,27 @@ describe("theme registry", () => {
     }
   });
 
+  it("keeps crtGreen text and selection contrast readable", () => {
+    const tokens = THEMES.crtGreen;
+    expect(tokens.text).not.toBe(tokens.bg);
+    expect(tokens.selectionText).not.toBe(tokens.selectionBg);
+    expect(contrastRatio(tokens.text, tokens.bg)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(tokens.selectionText, tokens.selectionBg)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("keeps crtAmber text and selection contrast readable", () => {
+    const tokens = THEMES.crtAmber;
+    expect(tokens.text).not.toBe(tokens.bg);
+    expect(tokens.selectionText).not.toBe(tokens.selectionBg);
+    expect(contrastRatio(tokens.text, tokens.bg)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(tokens.selectionText, tokens.selectionBg)).toBeGreaterThanOrEqual(4.5);
+  });
+
   it("formats special display names for selected themes", () => {
     expect(formatThemeDisplayName("mcrn")).toBe("MCRN");
     expect(formatThemeDisplayName("gundam")).toBe("GUNDAM");
     expect(formatThemeDisplayName("msdos")).toBe("MS-DOS");
+    expect(formatThemeDisplayName("crtGreen")).toBe("CRT Green");
+    expect(formatThemeDisplayName("crtAmber")).toBe("CRT Amber");
   });
 });

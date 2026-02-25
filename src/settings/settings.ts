@@ -70,6 +70,9 @@ export type TadoiSettings = {
   themeId: ThemeId;
   logoMode: LogoMode;
   flashMode: FlashMode;
+  crtFxLite?: boolean;
+  crtFxColor?: CrtFxLiteColor;
+  crtFxPreset?: CrtFxLitePreset;
   notifications: NotificationSettings;
   security: SecuritySettings;
   customThemes?: CustomThemes;
@@ -77,11 +80,114 @@ export type TadoiSettings = {
 
 export type FlashMode = "slow" | "static";
 export type LogoMode = LogoVariantId | "rotate";
+export type CrtFxLiteColor = "green" | "amber";
+export type CrtFxLitePreset = "subtle" | "normal" | "strong";
+export type CrtFxLiteProfile = {
+  color: CrtFxLiteColor;
+  preset: CrtFxLitePreset;
+};
+
+export const DEFAULT_CRT_FX_LITE_COLOR: CrtFxLiteColor = "green";
+export const DEFAULT_CRT_FX_LITE_PRESET: CrtFxLitePreset = "normal";
+export const CRT_FX_LITE_COLOR_ORDER: CrtFxLiteColor[] = [
+  "green",
+  "amber"
+];
+export const CRT_FX_LITE_PRESET_ORDER: CrtFxLitePreset[] = [
+  "subtle",
+  "normal",
+  "strong"
+];
+export const CRT_FX_LITE_PROFILE_ORDER: CrtFxLiteProfile[] = [
+  { color: "green", preset: "subtle" },
+  { color: "green", preset: "normal" },
+  { color: "green", preset: "strong" },
+  { color: "amber", preset: "subtle" },
+  { color: "amber", preset: "normal" },
+  { color: "amber", preset: "strong" }
+];
 
 export const LOGO_MODE_ORDER: LogoMode[] = [
   ...ROTATING_LOGO_ORDER,
   "rotate"
 ];
+
+export function isCrtFxLitePreset(value: unknown): value is CrtFxLitePreset {
+  return (
+    value === "subtle" ||
+    value === "normal" ||
+    value === "strong"
+  );
+}
+
+export function isCrtFxLiteColor(value: unknown): value is CrtFxLiteColor {
+  return value === "green" || value === "amber";
+}
+
+export function cycleCrtFxLiteColor(
+  current: CrtFxLiteColor,
+  direction: 1 | -1 = 1
+): CrtFxLiteColor {
+  const index = CRT_FX_LITE_COLOR_ORDER.indexOf(current);
+  const safeIndex = index >= 0 ? index : 0;
+  const nextIndex =
+    (safeIndex + direction + CRT_FX_LITE_COLOR_ORDER.length) %
+    CRT_FX_LITE_COLOR_ORDER.length;
+  return CRT_FX_LITE_COLOR_ORDER[nextIndex];
+}
+
+export function cycleCrtFxLitePreset(
+  current: CrtFxLitePreset,
+  direction: 1 | -1 = 1
+): CrtFxLitePreset {
+  const index = CRT_FX_LITE_PRESET_ORDER.indexOf(current);
+  const safeIndex = index >= 0 ? index : 0;
+  const nextIndex =
+    (safeIndex + direction + CRT_FX_LITE_PRESET_ORDER.length) %
+    CRT_FX_LITE_PRESET_ORDER.length;
+  return CRT_FX_LITE_PRESET_ORDER[nextIndex];
+}
+
+export function formatCrtFxLitePresetLabel(preset: CrtFxLitePreset): string {
+  if (preset === "normal") {
+    return "Regular";
+  }
+  return `${preset.charAt(0).toUpperCase()}${preset.slice(1)}`;
+}
+
+export function formatCrtFxLiteColorLabel(color: CrtFxLiteColor): string {
+  return color === "amber" ? "Amber" : "Green";
+}
+
+export function formatCrtFxLiteProfileLabel(
+  color: CrtFxLiteColor,
+  preset: CrtFxLitePreset
+): string {
+  return `${formatCrtFxLiteColorLabel(color)} ${formatCrtFxLitePresetLabel(preset)}`;
+}
+
+export function cycleCrtFxLiteProfile(
+  current: CrtFxLiteProfile,
+  direction: 1 | -1 = 1
+): CrtFxLiteProfile {
+  const index = CRT_FX_LITE_PROFILE_ORDER.findIndex(
+    (profile) => profile.color === current.color && profile.preset === current.preset
+  );
+  const defaultIndex = CRT_FX_LITE_PROFILE_ORDER.findIndex(
+    (profile) =>
+      profile.color === DEFAULT_CRT_FX_LITE_COLOR &&
+      profile.preset === DEFAULT_CRT_FX_LITE_PRESET
+  );
+  const safeIndex = index >= 0 ? index : Math.max(0, defaultIndex);
+  const nextIndex =
+    (safeIndex + direction + CRT_FX_LITE_PROFILE_ORDER.length) %
+    CRT_FX_LITE_PROFILE_ORDER.length;
+  const nextProfile = CRT_FX_LITE_PROFILE_ORDER[nextIndex];
+  return {
+    color: nextProfile.color,
+    preset: nextProfile.preset
+  };
+}
 
 export type NotificationSettings = {
   enabled: boolean;
@@ -374,6 +480,18 @@ function normalizeSecurity(input: unknown): SecuritySettings {
   };
 }
 
+function normalizeCrtFxLite(value: unknown): boolean | undefined {
+  return value === true ? true : undefined;
+}
+
+function normalizeCrtFxColor(value: unknown): CrtFxLiteColor | undefined {
+  return isCrtFxLiteColor(value) ? value : undefined;
+}
+
+function normalizeCrtFxPreset(value: unknown): CrtFxLitePreset | undefined {
+  return isCrtFxLitePreset(value) ? value : undefined;
+}
+
 function normalizeSettings(input: unknown): TadoiSettings {
   if (!isRecord(input)) {
     return getDefaultSettings();
@@ -381,10 +499,16 @@ function normalizeSettings(input: unknown): TadoiSettings {
   const maybeThemeId = input.themeId;
   const maybeLogoMode = input.logoMode;
   const maybeFlashMode = input.flashMode;
+  const maybeCrtFxLite = input.crtFxLite;
+  const maybeCrtFxColor = input.crtFxColor;
+  const maybeCrtFxPreset = input.crtFxPreset;
   const maybeNotifications = input.notifications;
   const maybeSecurity = input.security;
   const themeId = isThemeId(maybeThemeId) ? maybeThemeId : DEFAULT_SETTINGS.themeId;
-  return {
+  const crtFxLite = normalizeCrtFxLite(maybeCrtFxLite);
+  const crtFxColor = normalizeCrtFxColor(maybeCrtFxColor);
+  const crtFxPreset = normalizeCrtFxPreset(maybeCrtFxPreset);
+  const normalized: TadoiSettings = {
     themeId,
     logoMode: isLogoMode(maybeLogoMode) ? maybeLogoMode : DEFAULT_SETTINGS.logoMode,
     flashMode: isFlashMode(maybeFlashMode) ? maybeFlashMode : DEFAULT_SETTINGS.flashMode,
@@ -392,6 +516,16 @@ function normalizeSettings(input: unknown): TadoiSettings {
     security: normalizeSecurity(maybeSecurity),
     customThemes: normalizeCustomThemes(input.customThemes, themeId)
   };
+  if (crtFxLite === true) {
+    normalized.crtFxLite = true;
+  }
+  if (crtFxColor && crtFxColor !== DEFAULT_CRT_FX_LITE_COLOR) {
+    normalized.crtFxColor = crtFxColor;
+  }
+  if (crtFxPreset && crtFxPreset !== DEFAULT_CRT_FX_LITE_PRESET) {
+    normalized.crtFxPreset = crtFxPreset;
+  }
+  return normalized;
 }
 
 async function readSettingsFile(

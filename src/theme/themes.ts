@@ -30,6 +30,8 @@ export type ThemeId =
   | "mcrn"
   | "zeke"
   | "gundam"
+  | "crtGreen"
+  | "crtAmber"
   | "custom1"
   | "rotating";
 
@@ -388,6 +390,34 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     selectionBg: "#f9d648",
     selectionText: "#0b1e3a"
   },
+  crtGreen: {
+    bg: "#060B08",
+    panel: "#0B130F",
+    text: "#A8F5C2",
+    mutedText: "#6EA485",
+    border: "#2A4A3A",
+    accent: "#4EE39B",
+    accent2: "#49B7A0",
+    ok: "#52D884",
+    warn: "#E5C453",
+    danger: "#E26B5B",
+    selectionBg: "#1A3A2D",
+    selectionText: "#CFFFE2"
+  },
+  crtAmber: {
+    bg: "#0C0906",
+    panel: "#15100A",
+    text: "#F9D8A7",
+    mutedText: "#B08C5D",
+    border: "#5A3B1D",
+    accent: "#F2A64A",
+    accent2: "#C9853A",
+    ok: "#74C26B",
+    warn: "#F2C14E",
+    danger: "#E26B5B",
+    selectionBg: "#4A2D12",
+    selectionText: "#FFEBCB"
+  },
   custom1: {
     bg: "#0b0f14",
     panel: "#1a202c",
@@ -445,6 +475,8 @@ export const THEME_ORDER: ThemeId[] = [
   "mcrn",
   "zeke",
   "gundam",
+  "crtGreen",
+  "crtAmber",
   "custom1",
   "rotating"
 ];
@@ -473,7 +505,9 @@ export const ROTATING_THEME_ORDER: RotatingThemeId[] = [
   "niners",
   "mcrn",
   "zeke",
-  "gundam"
+  "gundam",
+  "crtGreen",
+  "crtAmber"
 ];
 
 export function cycleTheme(current: ThemeId): ThemeId {
@@ -486,6 +520,8 @@ export function formatThemeDisplayName(themeId: ThemeId | RotatingThemeId): stri
   if (themeId === "msdos") return "MS-DOS";
   if (themeId === "mcrn") return "MCRN";
   if (themeId === "gundam") return "GUNDAM";
+  if (themeId === "crtGreen") return "CRT Green";
+  if (themeId === "crtAmber") return "CRT Amber";
   const spaced = themeId
     .replace(/([a-z])([A-Z])/g, "$1 $2")
     .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
@@ -569,6 +605,8 @@ export function isThemeId(value: unknown): value is ThemeId {
       value === "mcrn" ||
       value === "zeke" ||
       value === "gundam" ||
+      value === "crtGreen" ||
+      value === "crtAmber" ||
       value === "custom1" ||
       value === "rotating")
   );

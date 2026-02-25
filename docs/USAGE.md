@@ -1,6 +1,6 @@
 # TADOI™ Usage Guide
 
-Verified as of 2026-02-21 (v0.3.7).
+Verified as of 2026-02-25 (v0.3.7).
 Source of truth for key routing: `src/app/keyRouter.ts`.
 
 ## Run
@@ -119,6 +119,9 @@ HELP mode:
 - `ArrowLeft` / `ArrowRight`: collapse/expand section
 - `Enter` / `Space`: toggle section
 - `Enter` / `ArrowRight` on Settings: open settings pages
+- Help root is read-only for direct settings hotkeys (`h` / `m` / `n` / `o` / `l` do not toggle settings in HELP mode)
+- Settings page entries:
+  - `Theme`, `Logo`, `Flash Mode`, `CRT FX Lite`, `CRT FX Profile`, `Notifications`, `Overdue Popup`, `Terminal Bell`
 - In settings pages: `ArrowUp` / `ArrowDown` move, `Enter` / `ArrowRight` apply/select, `ArrowLeft` / `backspace` / `Esc` back
 - `Ctrl+U` / `Ctrl+D` / `page_up` / `page_down`: page help content
 - `Esc` or `?`: close Help

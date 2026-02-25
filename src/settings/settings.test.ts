@@ -3,7 +3,9 @@ import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
 import {
+  cycleCrtFxLiteProfile,
   cycleLogoMode,
+  formatCrtFxLiteProfileLabel,
   getDefaultSettings,
   isLogoMode,
   loadSettings,
@@ -83,6 +85,29 @@ async function readFileEventually(filePath: string, timeoutMs = 2000): Promise<s
   throw new Error(`Timed out waiting for file write: ${filePath}`);
 }
 
+async function readJsonEventually(
+  filePath: string,
+  predicate: (value: unknown) => boolean,
+  timeoutMs = 2000
+): Promise<unknown> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() <= deadline) {
+    try {
+      const raw = await fs.readFile(filePath, "utf8");
+      const parsed = JSON.parse(raw) as unknown;
+      if (predicate(parsed)) {
+        return parsed;
+      }
+    } catch (error: unknown) {
+      if (!isMissingFileError(error)) {
+        throw error;
+      }
+    }
+    await sleep(25);
+  }
+  throw new Error(`Timed out waiting for matching JSON content: ${filePath}`);
+}
+
 async function makeTempDir(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), "tadoi-settings-test-"));
 }
@@ -111,6 +136,9 @@ describe("loadSettings", () => {
     expect(result.settings.security).toEqual(DEFAULT_SECURITY);
     expect(result.settings.customThemes).toEqual(expectedCustomThemesFor("default"));
     expect(result.settings.customThemes?.textByTheme).toBeUndefined();
+    expect(result.settings.crtFxLite).toBeUndefined();
+    expect(result.settings.crtFxColor).toBeUndefined();
+    expect(result.settings.crtFxPreset).toBeUndefined();
     expect(result.resolvedPath).toBe(
       path.posix.join(homeDir, ".config", "tadoi", "settings.json")
     );
@@ -136,6 +164,9 @@ describe("loadSettings", () => {
     expect(result.settings.themeId).toBe("retro");
     expect(result.settings.logoMode).toBe(DEFAULT_LOGO_MODE);
     expect(result.settings.flashMode).toBe("static");
+    expect(result.settings.crtFxLite).toBeUndefined();
+    expect(result.settings.crtFxColor).toBeUndefined();
+    expect(result.settings.crtFxPreset).toBeUndefined();
     expect(result.settings.notifications).toEqual(DEFAULT_NOTIFICATIONS);
     expect(result.settings.customThemes).toEqual(expectedCustomThemesFor("retro"));
     expect(result.resolvedPath).toBe(primary);
@@ -225,6 +256,96 @@ describe("loadSettings", () => {
       security: DEFAULT_SECURITY,
       customThemes: expectedCustomThemesFor("retro")
     });
+  });
+
+  it("normalizes crtFxLite to true only when explicitly true", async () => {
+    const homeDir = await makeTempDir();
+    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    await fs.mkdir(path.dirname(primary), { recursive: true });
+
+    await fs.writeFile(
+      primary,
+      JSON.stringify({ themeId: "retro", flashMode: "slow", crtFxLite: true }),
+      "utf8"
+    );
+    const enabled = await loadSettings({ homeDir, platform: "linux" });
+    expect(enabled.settings.crtFxLite).toBe(true);
+
+    await fs.writeFile(
+      primary,
+      JSON.stringify({ themeId: "retro", flashMode: "slow", crtFxLite: false }),
+      "utf8"
+    );
+    const disabled = await loadSettings({ homeDir, platform: "linux" });
+    expect(disabled.settings.crtFxLite).toBeUndefined();
+
+    await fs.writeFile(
+      primary,
+      JSON.stringify({ themeId: "retro", flashMode: "slow", crtFxLite: "yes" }),
+      "utf8"
+    );
+    const invalid = await loadSettings({ homeDir, platform: "linux" });
+    expect(invalid.settings.crtFxLite).toBeUndefined();
+  });
+
+  it("normalizes crtFxPreset to supported values and omits default preset", async () => {
+    const homeDir = await makeTempDir();
+    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    await fs.mkdir(path.dirname(primary), { recursive: true });
+
+    await fs.writeFile(
+      primary,
+      JSON.stringify({ themeId: "retro", flashMode: "slow", crtFxPreset: "strong" }),
+      "utf8"
+    );
+    const strong = await loadSettings({ homeDir, platform: "linux" });
+    expect(strong.settings.crtFxPreset).toBe("strong");
+
+    await fs.writeFile(
+      primary,
+      JSON.stringify({ themeId: "retro", flashMode: "slow", crtFxPreset: "normal" }),
+      "utf8"
+    );
+    const normal = await loadSettings({ homeDir, platform: "linux" });
+    expect(normal.settings.crtFxPreset).toBeUndefined();
+
+    await fs.writeFile(
+      primary,
+      JSON.stringify({ themeId: "retro", flashMode: "slow", crtFxPreset: "loud" }),
+      "utf8"
+    );
+    const invalid = await loadSettings({ homeDir, platform: "linux" });
+    expect(invalid.settings.crtFxPreset).toBeUndefined();
+  });
+
+  it("normalizes crtFxColor to supported values and omits default color", async () => {
+    const homeDir = await makeTempDir();
+    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    await fs.mkdir(path.dirname(primary), { recursive: true });
+
+    await fs.writeFile(
+      primary,
+      JSON.stringify({ themeId: "retro", flashMode: "slow", crtFxColor: "amber" }),
+      "utf8"
+    );
+    const amber = await loadSettings({ homeDir, platform: "linux" });
+    expect(amber.settings.crtFxColor).toBe("amber");
+
+    await fs.writeFile(
+      primary,
+      JSON.stringify({ themeId: "retro", flashMode: "slow", crtFxColor: "green" }),
+      "utf8"
+    );
+    const green = await loadSettings({ homeDir, platform: "linux" });
+    expect(green.settings.crtFxColor).toBeUndefined();
+
+    await fs.writeFile(
+      primary,
+      JSON.stringify({ themeId: "retro", flashMode: "slow", crtFxColor: "blue" }),
+      "utf8"
+    );
+    const invalid = await loadSettings({ homeDir, platform: "linux" });
+    expect(invalid.settings.crtFxColor).toBeUndefined();
   });
 
   it("defaults logo mode when missing or invalid", async () => {
@@ -537,6 +658,192 @@ describe("saveSettingsDebounced", () => {
     });
   });
 
+  it("persists crtFxLite only when enabled", async () => {
+    const homeDir = await makeTempDir();
+    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
+
+    saveSettingsDebounced(
+      {
+        themeId: "retro",
+        logoMode: "default",
+        flashMode: "slow",
+        crtFxLite: true,
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY
+      },
+      20,
+      { filePath: primary, homeDir, platform: "linux" }
+    );
+
+    const enabledJson = await readJsonEventually(primary, (value) => {
+      if (typeof value !== "object" || value === null) {
+        return false;
+      }
+      return (value as { crtFxLite?: unknown }).crtFxLite === true;
+    });
+    expect(enabledJson).toEqual({
+      themeId: "retro",
+      logoMode: "default",
+      flashMode: "slow",
+      crtFxLite: true,
+      notifications: DEFAULT_NOTIFICATIONS,
+      security: DEFAULT_SECURITY,
+      customThemes: expectedCustomThemesFor("retro")
+    });
+
+    saveSettingsDebounced(
+      {
+        themeId: "retro",
+        logoMode: "default",
+        flashMode: "slow",
+        crtFxLite: false,
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY
+      },
+      20,
+      { filePath: primary, homeDir, platform: "linux" }
+    );
+
+    const disabledJson = await readJsonEventually(primary, (value) => {
+      if (typeof value !== "object" || value === null) {
+        return false;
+      }
+      return !Object.prototype.hasOwnProperty.call(value, "crtFxLite");
+    });
+    expect(disabledJson).toEqual({
+      themeId: "retro",
+      logoMode: "default",
+      flashMode: "slow",
+      notifications: DEFAULT_NOTIFICATIONS,
+      security: DEFAULT_SECURITY,
+      customThemes: expectedCustomThemesFor("retro")
+    });
+  });
+
+  it("persists crtFxPreset only when non-default", async () => {
+    const homeDir = await makeTempDir();
+    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
+
+    saveSettingsDebounced(
+      {
+        themeId: "retro",
+        logoMode: "default",
+        flashMode: "slow",
+        crtFxPreset: "strong",
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY
+      },
+      20,
+      { filePath: primary, homeDir, platform: "linux" }
+    );
+
+    const strongJson = await readJsonEventually(primary, (value) => {
+      if (typeof value !== "object" || value === null) {
+        return false;
+      }
+      return (value as { crtFxPreset?: unknown }).crtFxPreset === "strong";
+    });
+    expect(strongJson).toEqual({
+      themeId: "retro",
+      logoMode: "default",
+      flashMode: "slow",
+      crtFxPreset: "strong",
+      notifications: DEFAULT_NOTIFICATIONS,
+      security: DEFAULT_SECURITY,
+      customThemes: expectedCustomThemesFor("retro")
+    });
+
+    saveSettingsDebounced(
+      {
+        themeId: "retro",
+        logoMode: "default",
+        flashMode: "slow",
+        crtFxPreset: "normal",
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY
+      },
+      20,
+      { filePath: primary, homeDir, platform: "linux" }
+    );
+
+    const normalJson = await readJsonEventually(primary, (value) => {
+      if (typeof value !== "object" || value === null) {
+        return false;
+      }
+      return !Object.prototype.hasOwnProperty.call(value, "crtFxPreset");
+    });
+    expect(normalJson).toEqual({
+      themeId: "retro",
+      logoMode: "default",
+      flashMode: "slow",
+      notifications: DEFAULT_NOTIFICATIONS,
+      security: DEFAULT_SECURITY,
+      customThemes: expectedCustomThemesFor("retro")
+    });
+  });
+
+  it("persists crtFxColor only when non-default", async () => {
+    const homeDir = await makeTempDir();
+    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
+
+    saveSettingsDebounced(
+      {
+        themeId: "retro",
+        logoMode: "default",
+        flashMode: "slow",
+        crtFxColor: "amber",
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY
+      },
+      20,
+      { filePath: primary, homeDir, platform: "linux" }
+    );
+
+    const amberJson = await readJsonEventually(primary, (value) => {
+      if (typeof value !== "object" || value === null) {
+        return false;
+      }
+      return (value as { crtFxColor?: unknown }).crtFxColor === "amber";
+    });
+    expect(amberJson).toEqual({
+      themeId: "retro",
+      logoMode: "default",
+      flashMode: "slow",
+      crtFxColor: "amber",
+      notifications: DEFAULT_NOTIFICATIONS,
+      security: DEFAULT_SECURITY,
+      customThemes: expectedCustomThemesFor("retro")
+    });
+
+    saveSettingsDebounced(
+      {
+        themeId: "retro",
+        logoMode: "default",
+        flashMode: "slow",
+        crtFxColor: "green",
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY
+      },
+      20,
+      { filePath: primary, homeDir, platform: "linux" }
+    );
+
+    const greenJson = await readJsonEventually(primary, (value) => {
+      if (typeof value !== "object" || value === null) {
+        return false;
+      }
+      return !Object.prototype.hasOwnProperty.call(value, "crtFxColor");
+    });
+    expect(greenJson).toEqual({
+      themeId: "retro",
+      logoMode: "default",
+      flashMode: "slow",
+      notifications: DEFAULT_NOTIFICATIONS,
+      security: DEFAULT_SECURITY,
+      customThemes: expectedCustomThemesFor("retro")
+    });
+  });
+
   it("falls back to ~/.tadoi/settings.json when primary write fails", async () => {
     const homeDir = await makeTempDir();
     const { primary, fallback } = resolveSettingsPaths({ homeDir, platform: "linux" });
@@ -674,5 +981,25 @@ describe("logo mode helpers", () => {
     expect(cycleLogoMode(LOGO_MODE_ORDER[0], -1)).toBe(
       LOGO_MODE_ORDER[LOGO_MODE_ORDER.length - 1]
     );
+  });
+});
+
+describe("CRT FX profile helpers", () => {
+  it("formats combined profile labels for settings display", () => {
+    expect(formatCrtFxLiteProfileLabel("green", "subtle")).toBe("Green Subtle");
+    expect(formatCrtFxLiteProfileLabel("green", "normal")).toBe("Green Regular");
+    expect(formatCrtFxLiteProfileLabel("amber", "strong")).toBe("Amber Strong");
+  });
+
+  it("cycles through combined color and strength profiles", () => {
+    let current = { color: "green", preset: "subtle" } as const;
+    current = cycleCrtFxLiteProfile(current, 1);
+    expect(current).toEqual({ color: "green", preset: "normal" });
+    current = cycleCrtFxLiteProfile(current, 1);
+    expect(current).toEqual({ color: "green", preset: "strong" });
+    current = cycleCrtFxLiteProfile(current, 1);
+    expect(current).toEqual({ color: "amber", preset: "subtle" });
+    current = cycleCrtFxLiteProfile(current, -1);
+    expect(current).toEqual({ color: "green", preset: "strong" });
   });
 });
