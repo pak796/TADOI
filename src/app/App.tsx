@@ -15,7 +15,7 @@ import {
   toEditorFocus
 } from "./uiState";
 import { handleKey, type KeyRouterAction } from "./keyRouter";
-import { TaskList, resolveTaskRowClickIntent } from "../components/TaskList";
+import { TaskList } from "../components/TaskList";
 import { DetailsPane } from "../components/DetailsPane";
 import { EditorPane } from "../components/EditorPane";
 import { LeftRail, type LeftRailMenuItem } from "../components/LeftRail";
@@ -34,7 +34,6 @@ import {
 import { diffLocalDays, startOfLocalDayMs } from "../domain/dates";
 import { computeTopTagsOpen } from "../domain/dashboard";
 import {
-  buildRecurrenceFromDraft,
   buildRecurrencePreviewFromDraft
 } from "../domain/recurrence/draft";
 import { getEditorViewportHeights } from "../domain/editorPaneLayout";
@@ -192,7 +191,6 @@ import {
   type UIState,
   type UIBackupFinalCheckpointModal,
   type UIDeleteModal,
-  type UIEditTargetSwitchModal,
   type UIHelpThemeUnsavedContinuation,
   type UIRecurringDeleteFutureCheckpointModal,
   type UITaskEditorUnsavedContinuation,
@@ -212,12 +210,6 @@ import {
   type BackupCenterScreen as BackupCenterFlowScreen
 } from "../state/backupCenterFlow";
 import {
-  buildDefaultCalendarImportReportPath,
-  runCalendarExportFlow,
-  runCalendarImportCommitFlow,
-  runCalendarImportDryRunFlow
-} from "../state/backupCenterCalendarController";
-import {
   BackupImportPartialError,
   buildTimestampedBackupPath,
   ensureDefaultBackupDirExists,
@@ -231,11 +223,6 @@ import { NotificationManager } from "../notifications/notificationManager";
 import { InAppModalNotifier } from "../notifications/notifiers/inAppModalNotifier";
 import { OSNotifier } from "../notifications/notifiers/osNotifier";
 import { TerminalBellNotifier } from "../notifications/notifiers/terminalBellNotifier";
-import {
-  applyOverdueMarkDone,
-  applyOverdueSnooze,
-  resolveGoToTaskTarget
-} from "../notifications/overdueTaskActions";
 import type { TaskOverdueEvent } from "../notifications/types";
 import { APP_VERSION } from "./version";
 import {
@@ -260,8 +247,6 @@ import { useModalOrchestration } from "./modalOrchestration";
 import { useCalendarFlow } from "./calendarFlow";
 import { shouldTriggerSaveConflictRetryFromMouse } from "./saveConflictBannerAction";
 import {
-  parseCalendarImportHorizonOrThrow,
-  resolveCalendarViewSelectionDigit,
   shouldRequireBackupReplaceConfirmation
 } from "./backupCalendarOrchestration";
 import {
@@ -2511,24 +2496,6 @@ export function App({
     closeBuiltInTextEditorCancel();
   }
 
-  function getUnsavedChangesModal(): UIUnsavedChangesModal | null {
-    const modal = uiState.modal;
-    if (!modal || modal.type !== "unsaved_changes") return null;
-    return modal;
-  }
-
-  function getBackupFinalCheckpointModal(): UIBackupFinalCheckpointModal | null {
-    const modal = uiState.modal;
-    if (!modal || modal.type !== "backup_final_checkpoint") return null;
-    return modal;
-  }
-
-  function getRecurringDeleteFutureCheckpointModal(): UIRecurringDeleteFutureCheckpointModal | null {
-    const modal = uiState.modal;
-    if (!modal || modal.type !== "recurring_delete_future_checkpoint") return null;
-    return modal;
-  }
-
   function openUnsavedChangesModal(modal: UIUnsavedChangesModal): void {
     modalFlow.openUnsavedChangesModal(modal);
   }
@@ -2593,33 +2560,6 @@ export function App({
       detail: error ? normalizeErrorDetail(error) : undefined,
       returnScreen
     });
-  }
-
-  function resolveConfiguredCalendarTimeZone(settings: unknown): string | undefined {
-    if (typeof settings !== "object" || settings === null) return undefined;
-    const record = settings as Record<string, unknown>;
-    const timeZone = record.timeZone ?? record.timezone;
-    if (typeof timeZone !== "string") return undefined;
-    const trimmed = timeZone.trim();
-    return trimmed.length > 0 ? trimmed : undefined;
-  }
-
-  async function refreshCalendarTimeZoneHint() {
-    try {
-      const settingsResult = await loadSettings();
-      const fromSettings = resolveConfiguredCalendarTimeZone(settingsResult.settings);
-      const fromSystem = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      backupDispatch({
-        type: "setCalendarTimeZoneHint",
-        value: fromSettings ?? fromSystem ?? undefined
-      });
-    } catch {
-      const fromSystem = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      backupDispatch({
-        type: "setCalendarTimeZoneHint",
-        value: fromSystem ?? undefined
-      });
-    }
   }
 
   async function refreshRuntimeStateFromDisk() {
@@ -5637,12 +5577,6 @@ export function App({
 
   function createTaskFromEmptyNuxModal() {
     modalFlow.createTaskFromEmptyNuxModal();
-  }
-
-  function getActiveOverdueModalEvent(): TaskOverdueEvent | null {
-    if (uiState.mode !== Mode.MODAL_CONFIRM) return null;
-    if (!uiState.modal || uiState.modal.type !== "overdue") return null;
-    return uiState.modal.event;
   }
 
   function handleOverdueModalSnooze() {
