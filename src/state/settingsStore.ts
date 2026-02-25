@@ -4,10 +4,13 @@ import {
   CRT_FX_LITE_PRESET_ORDER,
   type CrtFxLiteColor,
   type CrtFxLitePreset,
+  RETRO_FX_MODE_ORDER,
+  type RetroFxMode,
   cycleLogoMode,
   CustomThemes,
   DEFAULT_CRT_FX_LITE_COLOR,
   DEFAULT_CRT_FX_LITE_PRESET,
+  DEFAULT_RETRO_FX_MODE,
   FlashMode,
   LogoMode,
   SecuritySettings,
@@ -22,6 +25,7 @@ export type SettingsState = {
   crtFxLite: boolean;
   crtFxColor: CrtFxLiteColor;
   crtFxPreset: CrtFxLitePreset;
+  retroFxMode: RetroFxMode;
   notifications: NotificationSettings;
   security: SecuritySettings;
   customThemes?: CustomThemes;
@@ -40,6 +44,8 @@ export type SettingsAction =
   | { type: "cycleCrtFxColor"; direction?: 1 | -1 }
   | { type: "setCrtFxPreset"; crtFxPreset: CrtFxLitePreset }
   | { type: "cycleCrtFxPreset"; direction?: 1 | -1 }
+  | { type: "setRetroFxMode"; retroFxMode: RetroFxMode }
+  | { type: "cycleRetroFxMode"; direction?: 1 | -1 }
   | { type: "setNotifications"; notifications: NotificationSettings }
   | { type: "setSecurity"; security: SecuritySettings }
   | { type: "setCustomThemes"; customThemes?: CustomThemes }
@@ -54,6 +60,7 @@ export const initialSettingsState: SettingsState = {
   crtFxLite: getDefaultSettings().crtFxLite === true,
   crtFxColor: getDefaultSettings().crtFxColor ?? DEFAULT_CRT_FX_LITE_COLOR,
   crtFxPreset: getDefaultSettings().crtFxPreset ?? DEFAULT_CRT_FX_LITE_PRESET,
+  retroFxMode: getDefaultSettings().retroFxMode ?? DEFAULT_RETRO_FX_MODE,
   notifications: {
     enabled: true,
     inAppOverdueBanner: true,
@@ -109,6 +116,17 @@ export function settingsReducer(
         (safeIndex + direction + CRT_FX_LITE_PRESET_ORDER.length) %
         CRT_FX_LITE_PRESET_ORDER.length;
       return { ...state, crtFxPreset: CRT_FX_LITE_PRESET_ORDER[nextIndex] };
+    }
+    case "setRetroFxMode":
+      return { ...state, retroFxMode: action.retroFxMode };
+    case "cycleRetroFxMode": {
+      const index = RETRO_FX_MODE_ORDER.indexOf(state.retroFxMode);
+      const safeIndex = index >= 0 ? index : 0;
+      const direction = action.direction ?? 1;
+      const nextIndex =
+        (safeIndex + direction + RETRO_FX_MODE_ORDER.length) %
+        RETRO_FX_MODE_ORDER.length;
+      return { ...state, retroFxMode: RETRO_FX_MODE_ORDER[nextIndex] };
     }
     case "setNotifications":
       return { ...state, notifications: action.notifications };

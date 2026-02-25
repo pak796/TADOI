@@ -9,6 +9,7 @@ import { App } from "./App";
 import type { Task } from "../domain/models";
 import { createDefaultEngagementState } from "../domain/engagement";
 import type { LoadedData } from "../state/persistence";
+import type { RetroFxMode } from "../settings/settings";
 
 type RenderHarness = Awaited<ReturnType<typeof testRender>>;
 
@@ -21,6 +22,9 @@ type AppSession = {
 type SessionOptions = {
   initialData?: LoadedData;
   showCorruptionRecoveryImportCta?: boolean;
+  initialRetroFxMode?: RetroFxMode;
+  width?: number;
+  height?: number;
 };
 
 type BackupRuntimeFixture = {
@@ -76,11 +80,12 @@ async function createSession(options: SessionOptions = {}): Promise<AppSession> 
       showCorruptionRecoveryImportCta: options.showCorruptionRecoveryImportCta,
       skipInitialSave: true,
       settingsPath,
+      initialRetroFxMode: options.initialRetroFxMode,
       showLogo: false
     }),
     {
-      width: 150,
-      height: 44
+      width: options.width ?? 150,
+      height: options.height ?? 44
     }
   );
   await harness.renderOnce();
@@ -128,6 +133,20 @@ async function waitForAnyText(
     (frame) => texts.some((text) => frame.includes(text)),
     timeoutMs
   );
+}
+
+async function expectTextAbsentForDuration(
+  harness: RenderHarness,
+  text: string,
+  durationMs = 900
+): Promise<void> {
+  const deadline = Date.now() + durationMs;
+  while (Date.now() <= deadline) {
+    await harness.renderOnce();
+    const frame = harness.captureCharFrame();
+    expect(frame).not.toContain(text);
+    await Bun.sleep(30);
+  }
 }
 
 async function pressKeyAndRender(mockInput: MockInput, harness: RenderHarness, key: string) {
@@ -267,6 +286,13 @@ async function openHelpSettingsPage(harness: RenderHarness) {
   await pressArrowAndRender(mockInput, harness, "down", 5);
   await pressArrowAndRender(mockInput, harness, "right");
   await waitForText(harness, "Theme mode and custom palette settings.");
+}
+
+async function cycleRetroFxModeSettingFromHelp(harness: RenderHarness) {
+  const { mockInput } = harness;
+  await openHelpSettingsPage(harness);
+  await pressArrowAndRender(mockInput, harness, "down", 5);
+  await pressEnterAndRender(mockInput, harness);
 }
 
 async function openCustom1Editor(harness: RenderHarness) {
@@ -538,6 +564,23 @@ describe("App modal flow integration", () => {
     }
   });
 
+  it("moves help settings selection with ArrowDown", async () => {
+    const session = await createSession();
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      await openHelpSettingsPage(harness);
+      await waitForText(harness, "Theme mode: Default");
+      await pressArrowAndRender(mockInput, harness, "down", 5);
+
+      const frame = await waitForText(harness, "▶ Retro FX Mode: Off");
+      expect(frame).toContain("CRT FX Profile");
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
   it("backup final checkpoint modal cancel returns to import dry-run screen", async () => {
     const session = await createSession();
     const { harness } = session;
@@ -676,6 +719,42 @@ describe("App modal flow integration", () => {
         );
         expect(frame).not.toContain("FINAL IMPORT CHECKPOINT");
       });
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
+  it("keeps boot overlay disabled while Retro FX settings still update", async () => {
+    const session = await createSession({ initialRetroFxMode: "classic" });
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      await expectTextAbsentForDuration(harness, "TADOI BOOT ROM // CASSETTE LINK", 1200);
+
+      await openHelpSettingsPage(harness);
+      let frame = await waitForText(harness, "Retro FX Mode: Classic");
+      expect(frame).toContain("CRT FX Profile");
+
+      await pressArrowAndRender(mockInput, harness, "down", 5);
+      await pressEnterAndRender(mockInput, harness);
+      frame = await waitForText(harness, "Retro FX Mode: Broadcast");
+      expect(frame).toContain("Notifications");
+      await expectTextAbsentForDuration(harness, "TADOI BOOT ROM // CASSETTE LINK", 1200);
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
+  it("does not replay boot overlay on retro FX mode changes", async () => {
+    const session = await createSession({ initialRetroFxMode: "classic" });
+    const { harness } = session;
+
+    try {
+      await expectTextAbsentForDuration(harness, "TADOI BOOT ROM // CASSETTE LINK", 1200);
+      await cycleRetroFxModeSettingFromHelp(harness);
+      await waitForText(harness, "Retro FX Mode: Broadcast");
+      await expectTextAbsentForDuration(harness, "TADOI BOOT ROM // CASSETTE LINK", 1100);
     } finally {
       await cleanupSession(session);
     }

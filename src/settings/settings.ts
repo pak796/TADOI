@@ -73,6 +73,7 @@ export type TadoiSettings = {
   crtFxLite?: boolean;
   crtFxColor?: CrtFxLiteColor;
   crtFxPreset?: CrtFxLitePreset;
+  retroFxMode?: RetroFxMode;
   notifications: NotificationSettings;
   security: SecuritySettings;
   customThemes?: CustomThemes;
@@ -82,6 +83,7 @@ export type FlashMode = "slow" | "static";
 export type LogoMode = LogoVariantId | "rotate";
 export type CrtFxLiteColor = "green" | "amber";
 export type CrtFxLitePreset = "subtle" | "normal" | "strong";
+export type RetroFxMode = "off" | "classic" | "broadcast";
 export type CrtFxLiteProfile = {
   color: CrtFxLiteColor;
   preset: CrtFxLitePreset;
@@ -89,6 +91,7 @@ export type CrtFxLiteProfile = {
 
 export const DEFAULT_CRT_FX_LITE_COLOR: CrtFxLiteColor = "green";
 export const DEFAULT_CRT_FX_LITE_PRESET: CrtFxLitePreset = "normal";
+export const DEFAULT_RETRO_FX_MODE: RetroFxMode = "off";
 export const CRT_FX_LITE_COLOR_ORDER: CrtFxLiteColor[] = [
   "green",
   "amber"
@@ -97,6 +100,11 @@ export const CRT_FX_LITE_PRESET_ORDER: CrtFxLitePreset[] = [
   "subtle",
   "normal",
   "strong"
+];
+export const RETRO_FX_MODE_ORDER: RetroFxMode[] = [
+  "off",
+  "classic",
+  "broadcast"
 ];
 export const CRT_FX_LITE_PROFILE_ORDER: CrtFxLiteProfile[] = [
   { color: "green", preset: "subtle" },
@@ -124,6 +132,10 @@ export function isCrtFxLiteColor(value: unknown): value is CrtFxLiteColor {
   return value === "green" || value === "amber";
 }
 
+export function isRetroFxMode(value: unknown): value is RetroFxMode {
+  return value === "off" || value === "classic" || value === "broadcast";
+}
+
 export function cycleCrtFxLiteColor(
   current: CrtFxLiteColor,
   direction: 1 | -1 = 1
@@ -148,6 +160,18 @@ export function cycleCrtFxLitePreset(
   return CRT_FX_LITE_PRESET_ORDER[nextIndex];
 }
 
+export function cycleRetroFxMode(
+  current: RetroFxMode,
+  direction: 1 | -1 = 1
+): RetroFxMode {
+  const index = RETRO_FX_MODE_ORDER.indexOf(current);
+  const safeIndex = index >= 0 ? index : 0;
+  const nextIndex =
+    (safeIndex + direction + RETRO_FX_MODE_ORDER.length) %
+    RETRO_FX_MODE_ORDER.length;
+  return RETRO_FX_MODE_ORDER[nextIndex];
+}
+
 export function formatCrtFxLitePresetLabel(preset: CrtFxLitePreset): string {
   if (preset === "normal") {
     return "Regular";
@@ -157,6 +181,12 @@ export function formatCrtFxLitePresetLabel(preset: CrtFxLitePreset): string {
 
 export function formatCrtFxLiteColorLabel(color: CrtFxLiteColor): string {
   return color === "amber" ? "Amber" : "Green";
+}
+
+export function formatRetroFxModeLabel(mode: RetroFxMode): string {
+  if (mode === "classic") return "Classic";
+  if (mode === "broadcast") return "Broadcast";
+  return "Off";
 }
 
 export function formatCrtFxLiteProfileLabel(
@@ -492,6 +522,10 @@ function normalizeCrtFxPreset(value: unknown): CrtFxLitePreset | undefined {
   return isCrtFxLitePreset(value) ? value : undefined;
 }
 
+function normalizeRetroFxMode(value: unknown): RetroFxMode | undefined {
+  return isRetroFxMode(value) ? value : undefined;
+}
+
 function normalizeSettings(input: unknown): TadoiSettings {
   if (!isRecord(input)) {
     return getDefaultSettings();
@@ -502,12 +536,14 @@ function normalizeSettings(input: unknown): TadoiSettings {
   const maybeCrtFxLite = input.crtFxLite;
   const maybeCrtFxColor = input.crtFxColor;
   const maybeCrtFxPreset = input.crtFxPreset;
+  const maybeRetroFxMode = input.retroFxMode;
   const maybeNotifications = input.notifications;
   const maybeSecurity = input.security;
   const themeId = isThemeId(maybeThemeId) ? maybeThemeId : DEFAULT_SETTINGS.themeId;
   const crtFxLite = normalizeCrtFxLite(maybeCrtFxLite);
   const crtFxColor = normalizeCrtFxColor(maybeCrtFxColor);
   const crtFxPreset = normalizeCrtFxPreset(maybeCrtFxPreset);
+  const retroFxMode = normalizeRetroFxMode(maybeRetroFxMode);
   const normalized: TadoiSettings = {
     themeId,
     logoMode: isLogoMode(maybeLogoMode) ? maybeLogoMode : DEFAULT_SETTINGS.logoMode,
@@ -524,6 +560,9 @@ function normalizeSettings(input: unknown): TadoiSettings {
   }
   if (crtFxPreset && crtFxPreset !== DEFAULT_CRT_FX_LITE_PRESET) {
     normalized.crtFxPreset = crtFxPreset;
+  }
+  if (retroFxMode && retroFxMode !== DEFAULT_RETRO_FX_MODE) {
+    normalized.retroFxMode = retroFxMode;
   }
   return normalized;
 }

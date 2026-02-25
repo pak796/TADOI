@@ -4,8 +4,10 @@ import os from "os";
 import path from "path";
 import {
   cycleCrtFxLiteProfile,
+  cycleRetroFxMode,
   cycleLogoMode,
   formatCrtFxLiteProfileLabel,
+  formatRetroFxModeLabel,
   getDefaultSettings,
   isLogoMode,
   loadSettings,
@@ -346,6 +348,36 @@ describe("loadSettings", () => {
     );
     const invalid = await loadSettings({ homeDir, platform: "linux" });
     expect(invalid.settings.crtFxColor).toBeUndefined();
+  });
+
+  it("normalizes retroFxMode to supported values and omits default mode", async () => {
+    const homeDir = await makeTempDir();
+    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    await fs.mkdir(path.dirname(primary), { recursive: true });
+
+    await fs.writeFile(
+      primary,
+      JSON.stringify({ themeId: "retro", flashMode: "slow", retroFxMode: "broadcast" }),
+      "utf8"
+    );
+    const broadcast = await loadSettings({ homeDir, platform: "linux" });
+    expect(broadcast.settings.retroFxMode).toBe("broadcast");
+
+    await fs.writeFile(
+      primary,
+      JSON.stringify({ themeId: "retro", flashMode: "slow", retroFxMode: "off" }),
+      "utf8"
+    );
+    const off = await loadSettings({ homeDir, platform: "linux" });
+    expect(off.settings.retroFxMode).toBeUndefined();
+
+    await fs.writeFile(
+      primary,
+      JSON.stringify({ themeId: "retro", flashMode: "slow", retroFxMode: "extreme" }),
+      "utf8"
+    );
+    const invalid = await loadSettings({ homeDir, platform: "linux" });
+    expect(invalid.settings.retroFxMode).toBeUndefined();
   });
 
   it("defaults logo mode when missing or invalid", async () => {
@@ -844,6 +876,68 @@ describe("saveSettingsDebounced", () => {
     });
   });
 
+  it("persists retroFxMode only when non-default", async () => {
+    const homeDir = await makeTempDir();
+    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
+
+    saveSettingsDebounced(
+      {
+        themeId: "retro",
+        logoMode: "default",
+        flashMode: "slow",
+        retroFxMode: "broadcast",
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY
+      },
+      20,
+      { filePath: primary, homeDir, platform: "linux" }
+    );
+
+    const broadcastJson = await readJsonEventually(primary, (value) => {
+      if (typeof value !== "object" || value === null) {
+        return false;
+      }
+      return (value as { retroFxMode?: unknown }).retroFxMode === "broadcast";
+    });
+    expect(broadcastJson).toEqual({
+      themeId: "retro",
+      logoMode: "default",
+      flashMode: "slow",
+      retroFxMode: "broadcast",
+      notifications: DEFAULT_NOTIFICATIONS,
+      security: DEFAULT_SECURITY,
+      customThemes: expectedCustomThemesFor("retro")
+    });
+
+    saveSettingsDebounced(
+      {
+        themeId: "retro",
+        logoMode: "default",
+        flashMode: "slow",
+        retroFxMode: "off",
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY
+      },
+      20,
+      { filePath: primary, homeDir, platform: "linux" }
+    );
+
+    const offJson = await readJsonEventually(primary, (value) => {
+      if (typeof value !== "object" || value === null) {
+        return false;
+      }
+      return !Object.prototype.hasOwnProperty.call(value, "retroFxMode");
+    });
+    expect(offJson).toEqual({
+      themeId: "retro",
+      logoMode: "default",
+      flashMode: "slow",
+      notifications: DEFAULT_NOTIFICATIONS,
+      security: DEFAULT_SECURITY,
+      customThemes: expectedCustomThemesFor("retro")
+    });
+  });
+
   it("falls back to ~/.tadoi/settings.json when primary write fails", async () => {
     const homeDir = await makeTempDir();
     const { primary, fallback } = resolveSettingsPaths({ homeDir, platform: "linux" });
@@ -1001,5 +1095,25 @@ describe("CRT FX profile helpers", () => {
     expect(current).toEqual({ color: "amber", preset: "subtle" });
     current = cycleCrtFxLiteProfile(current, -1);
     expect(current).toEqual({ color: "green", preset: "strong" });
+  });
+});
+
+describe("retro FX mode helpers", () => {
+  it("formats retro FX mode labels", () => {
+    expect(formatRetroFxModeLabel("off")).toBe("Off");
+    expect(formatRetroFxModeLabel("classic")).toBe("Classic");
+    expect(formatRetroFxModeLabel("broadcast")).toBe("Broadcast");
+  });
+
+  it("cycles through retro FX modes", () => {
+    let current = "off" as const;
+    current = cycleRetroFxMode(current, 1);
+    expect(current).toBe("classic");
+    current = cycleRetroFxMode(current, 1);
+    expect(current).toBe("broadcast");
+    current = cycleRetroFxMode(current, 1);
+    expect(current).toBe("off");
+    current = cycleRetroFxMode(current, -1);
+    expect(current).toBe("broadcast");
   });
 });

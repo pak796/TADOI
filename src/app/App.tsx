@@ -23,7 +23,7 @@ import { DashboardPane } from "../components/DashboardPane";
 import { TagFilterPanel } from "../components/TagFilterPanel";
 import { BackupCenterScreen } from "../components/BackupCenterScreen";
 import { AppModalLayer } from "../components/AppModalLayer";
-import { resolveCrtFxColor } from "../components/CrtFxLite";
+import { resolveCrtFxColor, resolveRetroSweepBorderColor } from "../components/CrtFxLite";
 import {
   Custom1ThemeEditor,
   type Custom1ThemeEditorHandle
@@ -166,10 +166,14 @@ import {
 import {
   cycleCrtFxLiteProfile,
   formatCrtFxLiteProfileLabel,
+  cycleRetroFxMode,
+  formatRetroFxModeLabel,
   type CrtFxLiteColor,
   type CrtFxLitePreset,
+  type RetroFxMode,
   DEFAULT_CRT_FX_LITE_COLOR,
   DEFAULT_CRT_FX_LITE_PRESET,
+  DEFAULT_RETRO_FX_MODE,
   cycleLogoMode,
   getDefaultSettings,
   loadSettings,
@@ -299,6 +303,8 @@ const HELP_DIVIDER_ROWS = 1;
 const HELP_FOOTER_ROWS = 2;
 const HELP_PANEL_CHROME_ROWS = HELP_HEADER_ROWS + HELP_DIVIDER_ROWS + HELP_FOOTER_ROWS;
 const HELP_SECTION_SCROLL_PADDING = 1;
+const HELP_NAV_ITEM_ROW_COUNT = 2;
+const HELP_SETTINGS_STATUS_ROW_COUNT = 9;
 const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings =
   getDefaultSettings().notifications;
 const DEFAULT_SECURITY_SETTINGS: SecuritySettings = getDefaultSettings().security;
@@ -309,10 +315,16 @@ const DEFAULT_CRT_FX_COLOR =
   getDefaultSettings().crtFxColor ?? DEFAULT_CRT_FX_LITE_COLOR;
 const DEFAULT_CRT_FX_PRESET =
   getDefaultSettings().crtFxPreset ?? DEFAULT_CRT_FX_LITE_PRESET;
+const DEFAULT_RETRO_FX =
+  getDefaultSettings().retroFxMode ?? DEFAULT_RETRO_FX_MODE;
 const CRT_FX_TICK_INTERVAL_BY_PRESET: Record<CrtFxLitePreset, number> = {
   subtle: 220,
   normal: 160,
   strong: 120
+};
+const RETRO_FX_TICK_INTERVAL_BY_MODE: Record<Exclude<RetroFxMode, "off">, number> = {
+  classic: 220,
+  broadcast: 120
 };
 const TASK_LINK_FORM_FIELD_ORDER: UITaskLinkFormField[] = [
   "label",
@@ -403,6 +415,10 @@ const HELP_SETTINGS_NAV_ITEMS: HelpNavItem[] = [
   {
     title: "CRT FX Profile",
     description: "Cycle Green/Amber with Subtle/Regular/Strong intensity."
+  },
+  {
+    title: "Retro FX Mode",
+    description: "Set vibe pack mode: Off, Classic, or Broadcast."
   },
   {
     title: "Notifications",
@@ -621,6 +637,9 @@ const HELP_SETTINGS_CRT_FX_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
 const HELP_SETTINGS_CRT_FX_PROFILE_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
   (item) => item.title === "CRT FX Profile"
 );
+const HELP_SETTINGS_RETRO_FX_MODE_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
+  (item) => item.title === "Retro FX Mode"
+);
 const HELP_SETTINGS_NOTIFICATIONS_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
   (item) => item.title === "Notifications"
 );
@@ -767,6 +786,19 @@ function ensureHelpSectionVisible(params: {
   }
 
   return clampScrollOffset(nextOffset, safeVisibleRows, itemCount);
+}
+
+function getHelpNavStatusRowCount(page: HelpPage): number {
+  return page === "settings" ? HELP_SETTINGS_STATUS_ROW_COUNT : 0;
+}
+
+function getHelpNavLineCount(page: HelpPage, navItemCount: number): number {
+  const clampedCount = Math.max(0, navItemCount);
+  return getHelpNavStatusRowCount(page) + clampedCount * HELP_NAV_ITEM_ROW_COUNT;
+}
+
+function getHelpNavSelectionAnchorRow(page: HelpPage, selectionIndex: number): number {
+  return getHelpNavStatusRowCount(page) + Math.max(0, selectionIndex) * HELP_NAV_ITEM_ROW_COUNT;
 }
 
 function computeHelpScrollbarThumb(params: {
@@ -1111,6 +1143,7 @@ type AppProps = {
   initialCrtFxLite?: boolean;
   initialCrtFxColor?: CrtFxLiteColor;
   initialCrtFxPreset?: CrtFxLitePreset;
+  initialRetroFxMode?: RetroFxMode;
   initialNotificationSettings?: NotificationSettings;
   initialSecuritySettings?: SecuritySettings;
   initialCustomThemes?: CustomThemes;
@@ -1147,6 +1180,7 @@ export function App({
   initialCrtFxLite = DEFAULT_CRT_FX_LITE,
   initialCrtFxColor = DEFAULT_CRT_FX_COLOR,
   initialCrtFxPreset = DEFAULT_CRT_FX_PRESET,
+  initialRetroFxMode = DEFAULT_RETRO_FX,
   initialNotificationSettings = DEFAULT_NOTIFICATION_SETTINGS,
   initialSecuritySettings = DEFAULT_SECURITY_SETTINGS,
   initialCustomThemes = DEFAULT_CUSTOM_THEMES,
@@ -1162,6 +1196,7 @@ export function App({
     crtFxLite: initialCrtFxLite,
     crtFxColor: initialCrtFxColor,
     crtFxPreset: initialCrtFxPreset,
+    retroFxMode: initialRetroFxMode,
     notifications: initialNotificationSettings,
     security: initialSecuritySettings,
     customThemes: initialCustomThemes
@@ -1180,6 +1215,7 @@ export function App({
   const calendarImportConfirmInputRef = useRef(backupState.calendarImportConfirmInput);
   calendarImportConfirmInputRef.current = backupState.calendarImportConfirmInput;
   const [crtFxTick, setCrtFxTick] = useState(0);
+  const [retroFxTick, setRetroFxTick] = useState(0);
   const [pulseOn, setPulseOn] = useState(false);
   const [fastPulseOn, setFastPulseOn] = useState(false);
   const [bottomInfoView, setBottomInfoView] = useState<BottomInfoView>("summary");
@@ -1216,6 +1252,7 @@ export function App({
   );
   const [helpFocusedSectionIndex, setHelpFocusedSectionIndex] = useState(0);
   const [helpScrollOffset, setHelpScrollOffset] = useState(0);
+  const [helpNavScrollOffset, setHelpNavScrollOffset] = useState(0);
   const [helpNavStack, setHelpNavStack] = useState<HelpPage[]>(["help"]);
   const [helpNavSelection, setHelpNavSelection] = useState<HelpNavSelectionByPage>({
     settings: 0,
@@ -1411,12 +1448,13 @@ export function App({
     helpNavItems.length === 0
       ? 0
       : Math.max(0, Math.min(helpNavSelectionIndex, helpNavItems.length - 1));
+  const helpNavLineCount = getHelpNavLineCount(activeHelpPage, helpNavItems.length);
   const helpBodyLineCount =
     activeHelpPage === "help"
       ? helpRows.length
       : activeHelpPage === "custom1Edit" || activeHelpPage === "textTuningEdit"
         ? 22
-        : Math.max(4, helpNavItems.length * 2 + 2);
+        : Math.max(4, helpNavLineCount);
   const helpPanelMaxWidth = Math.max(20, terminalWidth - HELP_PANEL_HORIZONTAL_MARGIN * 2);
   const helpPanelWidthMin = Math.min(HELP_PANEL_MIN_WIDTH, helpPanelMaxWidth);
   const helpPanelWidthMax = Math.min(HELP_PANEL_MAX_WIDTH, helpPanelMaxWidth);
@@ -1453,6 +1491,11 @@ export function App({
     helpContentVisibleRows,
     helpRows.length
   );
+  const clampedHelpNavScrollOffset = clampScrollOffset(
+    helpNavScrollOffset,
+    helpContentVisibleRows,
+    helpNavLineCount
+  );
   const helpVisibleRows =
     activeHelpPage === "help"
       ? helpRows.slice(
@@ -1466,6 +1509,25 @@ export function App({
           scrollOffset: clampedHelpScrollOffset,
           visibleRows: helpContentVisibleRows,
           itemCount: helpRows.length
+        })
+      : null;
+  const helpNavVisibleRowCount =
+    activeHelpPage === "help" ||
+    activeHelpPage === "custom1Edit" ||
+    activeHelpPage === "textTuningEdit"
+      ? 0
+      : Math.max(
+          0,
+          Math.min(helpContentVisibleRows, helpNavLineCount - clampedHelpNavScrollOffset)
+        );
+  const helpNavScrollbarThumb =
+    activeHelpPage !== "help" &&
+    activeHelpPage !== "custom1Edit" &&
+    activeHelpPage !== "textTuningEdit"
+      ? computeHelpScrollbarThumb({
+          scrollOffset: clampedHelpNavScrollOffset,
+          visibleRows: helpContentVisibleRows,
+          itemCount: helpNavLineCount
         })
       : null;
   const helpFooterHintsRaw =
@@ -1555,10 +1617,15 @@ export function App({
   const selectedTaskLinks = selectedPersistedTask?.links ?? [];
   const selectedTaskLinkIdsKey = selectedTaskLinks.map((link) => link.id).join("|");
   const selectedTaskLink = selectedTaskLinks.find((link) => link.id === selectedLinkId);
+  const retroFxMode = settingsState.retroFxMode;
+  const isRetroFxActive = retroFxMode !== "off";
+  const bottomBarHeight = 3;
+  const retroFxTickIntervalMs = isRetroFxActive
+    ? RETRO_FX_TICK_INTERVAL_BY_MODE[retroFxMode]
+    : 0;
 
   const listHeaderHeight = 2;
   const topBarHeight = 4;
-  const bottomBarHeight = 3;
   const activeBanners = [startupBannerMessage, saveFailureBanner, navigationBanner].filter(
     (value): value is string => Boolean(value)
   );
@@ -1740,22 +1807,29 @@ export function App({
   const crtFxPreset: CrtFxLitePreset = settingsState.crtFxPreset;
   const crtFxTickIntervalMs = CRT_FX_TICK_INTERVAL_BY_PRESET[crtFxPreset];
   const isCrtFxLiteActive = settingsState.crtFxLite;
-  const railPanelBackgroundColor = resolveCrtFxColor({
-    baseColor: theme.accentPurple,
+  const headerBackgroundColor = resolveCrtFxColor({
+    baseColor: isDashboardMode ? theme.accentBlue : selectedHeaderBackground,
     enabled: isCrtFxLiteActive,
     preset: crtFxPreset,
     color: settingsState.crtFxColor,
     tick: crtFxTick,
     role: "accent"
   });
-  const railPanelBorderColor = resolveCrtFxColor({
-    baseColor: theme.outline,
-    enabled: isCrtFxLiteActive,
-    preset: crtFxPreset,
-    color: settingsState.crtFxColor,
-    tick: crtFxTick,
-    role: "border"
+  const headerBorderColor = resolveRetroSweepBorderColor({
+    baseColor: resolveCrtFxColor({
+      baseColor: theme.outline,
+      enabled: isCrtFxLiteActive,
+      preset: crtFxPreset,
+      color: settingsState.crtFxColor,
+      tick: crtFxTick,
+      role: "border"
+    }),
+    mode: retroFxMode,
+    tick: retroFxTick,
+    phase: 2
   });
+  const railPanelBackgroundColor = theme.accentPurple;
+  const railPanelBorderColor = theme.outline;
   const taskListPanelBackgroundColor = resolveCrtFxColor({
     baseColor: taskListTheme.panel,
     enabled: isCrtFxLiteActive,
@@ -1764,13 +1838,18 @@ export function App({
     tick: crtFxTick,
     role: "panel"
   });
-  const taskListPanelBorderColor = resolveCrtFxColor({
-    baseColor: taskListTheme.outline,
-    enabled: isCrtFxLiteActive,
-    preset: crtFxPreset,
-    color: settingsState.crtFxColor,
-    tick: crtFxTick,
-    role: "border"
+  const taskListPanelBorderColor = resolveRetroSweepBorderColor({
+    baseColor: resolveCrtFxColor({
+      baseColor: taskListTheme.outline,
+      enabled: isCrtFxLiteActive,
+      preset: crtFxPreset,
+      color: settingsState.crtFxColor,
+      tick: crtFxTick,
+      role: "border"
+    }),
+    mode: retroFxMode,
+    tick: retroFxTick,
+    phase: 4
   });
   const detailsPanelBackgroundColor = resolveCrtFxColor({
     baseColor: theme.panel,
@@ -1780,13 +1859,60 @@ export function App({
     tick: crtFxTick,
     role: "panel"
   });
-  const detailsPanelBorderColor = resolveCrtFxColor({
-    baseColor: theme.outline,
+  const detailsPanelBorderColor = resolveRetroSweepBorderColor({
+    baseColor: resolveCrtFxColor({
+      baseColor: theme.outline,
+      enabled: isCrtFxLiteActive,
+      preset: crtFxPreset,
+      color: settingsState.crtFxColor,
+      tick: crtFxTick,
+      role: "border"
+    }),
+    mode: retroFxMode,
+    tick: retroFxTick,
+    phase: 6
+  });
+  const dashboardPanelBackgroundColor = resolveCrtFxColor({
+    baseColor: dashboardTheme.panel,
     enabled: isCrtFxLiteActive,
     preset: crtFxPreset,
     color: settingsState.crtFxColor,
     tick: crtFxTick,
-    role: "border"
+    role: "panel"
+  });
+  const dashboardPanelBorderColor = resolveRetroSweepBorderColor({
+    baseColor: resolveCrtFxColor({
+      baseColor: dashboardTheme.outline,
+      enabled: isCrtFxLiteActive,
+      preset: crtFxPreset,
+      color: settingsState.crtFxColor,
+      tick: crtFxTick,
+      role: "border"
+    }),
+    mode: retroFxMode,
+    tick: retroFxTick,
+    phase: 8
+  });
+  const bottomBarBackgroundColor = resolveCrtFxColor({
+    baseColor: theme.panel,
+    enabled: isCrtFxLiteActive,
+    preset: crtFxPreset,
+    color: settingsState.crtFxColor,
+    tick: crtFxTick,
+    role: "panel"
+  });
+  const bottomBarBorderColor = resolveRetroSweepBorderColor({
+    baseColor: resolveCrtFxColor({
+      baseColor: theme.outline,
+      enabled: isCrtFxLiteActive,
+      preset: crtFxPreset,
+      color: settingsState.crtFxColor,
+      tick: crtFxTick,
+      role: "border"
+    }),
+    mode: retroFxMode,
+    tick: retroFxTick,
+    phase: 10
   });
   const helpThemeStatusLineRaw = helpPreviewThemeMode
     ? `Theme mode: ${formatThemeDisplayName(settingsState.themeId)} (preview: ${formatThemeDisplayName(helpPreviewThemeMode)})`
@@ -1823,6 +1949,10 @@ export function App({
     `    CRT FX Profile: ${helpCrtFxProfileLabel}`,
     helpContentLineWidth
   );
+  const helpRetroFxModeStatusLine = fitLineToWidth(
+    `    Retro FX Mode: ${formatRetroFxModeLabel(settingsState.retroFxMode)}`,
+    helpContentLineWidth
+  );
   const helpNotificationsEnabledStatusLine = fitLineToWidth(
     `    Notifications: ${settingsState.notifications.enabled ? "on" : "off"}`,
     helpContentLineWidth
@@ -1835,6 +1965,31 @@ export function App({
     `    Terminal bell: ${settingsState.notifications.terminalBellOnOverdue ? "on" : "off"}`,
     helpContentLineWidth
   );
+  const helpSettingsStatusLines = [
+    helpThemeStatusLine.trim(),
+    helpLogoStatusLine.trim(),
+    helpFlashStatusLine.trim(),
+    helpCrtFxLiteStatusLine.trim(),
+    helpCrtFxProfileStatusLine.trim(),
+    helpRetroFxModeStatusLine.trim(),
+    helpNotificationsEnabledStatusLine.trim(),
+    helpInAppBannerStatusLine.trim(),
+    helpTerminalBellStatusLine.trim()
+  ];
+  const helpNavStatusLineCount =
+    activeHelpPage === "settings" ? helpSettingsStatusLines.length : 0;
+  function resolveHelpNavItemTitle(item: HelpNavItem, index: number): string {
+    if (activeHelpPage === "theme" && index === 0) {
+      return helpThemeStatusLineRaw;
+    }
+    if (activeHelpPage === "settings" && index === HELP_SETTINGS_LOGO_NAV_INDEX) {
+      return `Logo: ${formatLogoModeLabel(effectiveLogoModeForHelp)}`;
+    }
+    if (activeHelpPage === "settings" && index === HELP_SETTINGS_RETRO_FX_MODE_NAV_INDEX) {
+      return `Retro FX Mode: ${formatRetroFxModeLabel(settingsState.retroFxMode)}`;
+    }
+    return item.title;
+  }
   const dueSuggestion =
     uiState.focus === FocusTarget.EDITOR_DUE_DATE && state.editor
       ? getDueSuggestion(state.editor.dueText, now)
@@ -2008,6 +2163,17 @@ export function App({
     }, crtFxTickIntervalMs);
     return () => clearInterval(id);
   }, [crtFxTickIntervalMs, isCrtFxLiteActive]);
+
+  useEffect(() => {
+    if (!isRetroFxActive) {
+      setRetroFxTick(0);
+      return;
+    }
+    const id = setInterval(() => {
+      setRetroFxTick((previous) => (previous + 1) % 10_000);
+    }, retroFxTickIntervalMs);
+    return () => clearInterval(id);
+  }, [isRetroFxActive, retroFxTickIntervalMs]);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -2308,6 +2474,7 @@ export function App({
         crtFxLite: settingsState.crtFxLite,
         crtFxColor: settingsState.crtFxColor,
         crtFxPreset: settingsState.crtFxPreset,
+        retroFxMode: settingsState.retroFxMode,
         notifications: settingsState.notifications,
         security: settingsState.security,
         customThemes: settingsState.customThemes
@@ -2320,6 +2487,7 @@ export function App({
     settingsState.crtFxLite,
     settingsState.crtFxColor,
     settingsState.crtFxPreset,
+    settingsState.retroFxMode,
     settingsState.customThemes,
     settingsState.flashMode,
     settingsState.logoMode,
@@ -2433,6 +2601,20 @@ export function App({
     return clamped;
   }
 
+  function getCurrentHelpNavScrollTop(): number {
+    return clampScrollOffset(
+      helpNavScrollOffset,
+      helpContentVisibleRows,
+      helpNavLineCount
+    );
+  }
+
+  function scrollHelpNavTo(offset: number): number {
+    const clamped = clampScrollOffset(offset, helpContentVisibleRows, helpNavLineCount);
+    setHelpNavScrollOffset((prev) => (prev === clamped ? prev : clamped));
+    return clamped;
+  }
+
   function ensureHelpSectionVisibleNow(sectionIndex: number): number {
     const clampedSectionIndex = Math.max(
       0,
@@ -2468,6 +2650,46 @@ export function App({
     helpSections,
     helpContentVisibleRows,
     helpExpandedBySection,
+    helpPanelWidth,
+    helpPanelHeight,
+    helpPanelInnerWidth,
+    helpPanelInnerHeight
+  ]);
+
+  useLayoutEffect(() => {
+    if (uiState.mode !== Mode.HELP) return;
+    if (
+      activeHelpPage === "help" ||
+      activeHelpPage === "custom1Edit" ||
+      activeHelpPage === "textTuningEdit"
+    ) {
+      return;
+    }
+
+    if (helpNavLineCount <= 0) return;
+
+    const currentOffset = getCurrentHelpNavScrollTop();
+
+    const nextOffset = ensureSelectedVisible({
+      selectedIndex: getHelpNavSelectionAnchorRow(
+        activeHelpPage,
+        clampedHelpNavSelectionIndex
+      ),
+      scrollOffset: currentOffset,
+      visibleRows: helpContentVisibleRows,
+      itemCount: helpNavLineCount
+    });
+
+    if (nextOffset !== currentOffset) {
+      scrollHelpNavTo(nextOffset);
+    }
+  }, [
+    uiState.mode,
+    activeHelpPage,
+    clampedHelpNavSelectionIndex,
+    helpNavScrollOffset,
+    helpContentVisibleRows,
+    helpNavLineCount,
     helpPanelWidth,
     helpPanelHeight,
     helpPanelInnerWidth,
@@ -2730,6 +2952,10 @@ export function App({
     settingsDispatch({
       type: "setCrtFxPreset",
       crtFxPreset: settingsResult.settings.crtFxPreset ?? DEFAULT_CRT_FX_PRESET
+    });
+    settingsDispatch({
+      type: "setRetroFxMode",
+      retroFxMode: settingsResult.settings.retroFxMode ?? DEFAULT_RETRO_FX
     });
     settingsDispatch({
       type: "setNotifications",
@@ -3671,6 +3897,7 @@ export function App({
     setHelpFocusedSectionIndex(0);
     helpScrollTopRef.current = 0;
     setHelpScrollOffset(0);
+    setHelpNavScrollOffset(0);
     setHelpNavStack(["help"]);
     setHelpNavSelection({
       settings: 0,
@@ -3704,12 +3931,14 @@ export function App({
     });
     helpScrollTopRef.current = 0;
     setHelpScrollOffset(0);
+    setHelpNavScrollOffset(0);
   }
 
   function popHelpPage() {
     setHelpNavStack((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
     helpScrollTopRef.current = 0;
     setHelpScrollOffset(0);
+    setHelpNavScrollOffset(0);
   }
 
   function sanitizeDraftObjects(
@@ -3934,6 +4163,12 @@ export function App({
     showShortNavigationBanner(
       `CRT FX Profile: ${formatCrtFxLiteProfileLabel(nextProfile.color, nextProfile.preset)}`
     );
+  }
+
+  function cycleRetroFxModeSetting() {
+    const nextMode = cycleRetroFxMode(settingsState.retroFxMode);
+    settingsDispatch({ type: "setRetroFxMode", retroFxMode: nextMode });
+    showShortNavigationBanner(`Retro FX Mode: ${formatRetroFxModeLabel(nextMode)}`);
   }
 
   function switchNotificationsEnabledSetting() {
@@ -4207,6 +4442,7 @@ export function App({
       if (targetIndex === HELP_SETTINGS_FLASH_NAV_INDEX) switchFlashModeSetting();
       if (targetIndex === HELP_SETTINGS_CRT_FX_NAV_INDEX) switchCrtFxLiteSetting();
       if (targetIndex === HELP_SETTINGS_CRT_FX_PROFILE_NAV_INDEX) cycleCrtFxProfileSetting();
+      if (targetIndex === HELP_SETTINGS_RETRO_FX_MODE_NAV_INDEX) cycleRetroFxModeSetting();
       if (targetIndex === HELP_SETTINGS_NOTIFICATIONS_NAV_INDEX) {
         switchNotificationsEnabledSetting();
       }
@@ -6167,8 +6403,8 @@ export function App({
           focus={uiState.focus}
           filters={state.filters}
           sortMode={state.sortMode}
-          fastPulseOn={fastPulseOn}
-          flashMode={settingsState.flashMode}
+          fastPulseOn={false}
+          flashMode="static"
           logoMode={settingsState.logoMode}
           onMenuSelect={handleLeftRailMenuSelect}
           terminalWidth={terminalWidth}
@@ -6181,13 +6417,13 @@ export function App({
         <box
           style={{
             height: 4,
-            backgroundColor: isDashboardMode ? theme.accentBlue : selectedHeaderBackground,
+            backgroundColor: headerBackgroundColor,
             justifyContent: "center",
             alignItems: "center",
             flexDirection: "column",
             border: true,
             borderStyle: "single",
-            borderColor: theme.outline
+            borderColor: headerBorderColor
           }}
         >
           <box style={{ width: "100%", justifyContent: "center", alignItems: "center" }}>
@@ -6231,7 +6467,7 @@ export function App({
           >
             <box
               style={{
-                backgroundColor: dashboardTheme.panel,
+                backgroundColor: dashboardPanelBackgroundColor,
                 paddingLeft: 3,
                 paddingTop: 1
               }}
@@ -6239,15 +6475,15 @@ export function App({
               <text style={{ color: dashboardTheme.muted }}>DASHBOARD</text>
             </box>
             <box
-              style={{
-                flexGrow: 1,
-                padding: 1,
-                backgroundColor: dashboardTheme.panel,
-                border: true,
-                borderStyle: "single",
-                borderColor: dashboardTheme.outline
-              }}
-            >
+                style={{
+                  flexGrow: 1,
+                  padding: 1,
+                  backgroundColor: dashboardPanelBackgroundColor,
+                  border: true,
+                  borderStyle: "single",
+                  borderColor: dashboardPanelBorderColor
+                }}
+              >
               <DashboardPane
                 tasks={visibleTaskRows}
                 filters={state.filters}
@@ -6436,179 +6672,181 @@ export function App({
 
         <box
           style={{
-            height: 3,
-            backgroundColor: theme.panel,
+            height: bottomBarHeight,
+            backgroundColor: bottomBarBackgroundColor,
             border: true,
             borderStyle: "single",
-            borderColor: theme.outline,
+            borderColor: bottomBarBorderColor,
             justifyContent: "center",
             alignItems: "center"
           }}
         >
-          {bottomInfoView === "tags" ? (
-            <box style={{ flexDirection: "row", gap: 0 }}>
-              {tagTickerSegments.length === 0 ? (
-                <text style={{ color: theme.muted }}>NO TAGS</text>
-              ) : (
-                tagTickerSegments.map((segment, index) => (
-                  <box key={segment.tag} style={{ flexDirection: "row", gap: 0 }}>
-                    {index > 0 ? (
-                      <text style={{ color: theme.muted }}>  </text>
-                    ) : null}
-                    <box
-                      style={{
-                        backgroundColor: colorForTag(segment.tag),
-                        paddingLeft: 1,
-                        paddingRight: 1
-                      }}
-                      onMouseDown={(event) => {
-                        if (event.button !== 0) return;
-                        toggleBottomTagQuickFilter(segment.tag);
-                      }}
-                    >
-                      <text
+          <box style={{ flexDirection: "column", alignItems: "center", gap: 0 }}>
+            {bottomInfoView === "tags" ? (
+              <box style={{ flexDirection: "row", gap: 0 }}>
+                {tagTickerSegments.length === 0 ? (
+                  <text style={{ color: theme.muted }}>NO TAGS</text>
+                ) : (
+                  tagTickerSegments.map((segment, index) => (
+                    <box key={segment.tag} style={{ flexDirection: "row", gap: 0 }}>
+                      {index > 0 ? (
+                        <text style={{ color: theme.muted }}>  </text>
+                      ) : null}
+                      <box
                         style={{
-                          color: isBottomTagQuickFilterActive(segment.tag)
-                            ? theme.text
-                            : theme.bg,
-                          fontWeight: isBottomTagQuickFilterActive(segment.tag)
-                            ? "bold"
-                            : "normal"
+                          backgroundColor: colorForTag(segment.tag),
+                          paddingLeft: 1,
+                          paddingRight: 1
+                        }}
+                        onMouseDown={(event) => {
+                          if (event.button !== 0) return;
+                          toggleBottomTagQuickFilter(segment.tag);
                         }}
                       >
-                        {segment.total} {segment.displayTag}
-                      </text>
+                        <text
+                          style={{
+                            color: isBottomTagQuickFilterActive(segment.tag)
+                              ? theme.text
+                              : theme.bg,
+                            fontWeight: isBottomTagQuickFilterActive(segment.tag)
+                              ? "bold"
+                              : "normal"
+                          }}
+                        >
+                          {segment.total} {segment.displayTag}
+                        </text>
+                      </box>
                     </box>
-                  </box>
-                ))
-              )}
-            </box>
-          ) : bottomInfoView === "priorities" ? (
-            <box style={{ flexDirection: "row", gap: 0 }}>
-              {priorityTickerSegments.length === 0 ? (
-                <text style={{ color: theme.muted }}>
-                  {priorityTickerNeedsWiderLayout
-                    ? "WIDEN TO VIEW PRIORITIES"
-                    : "NO OPEN PRIORITIES"}
-                </text>
-              ) : (
-                priorityTickerSegments.map((segment, index) => (
-                  <box key={segment.priorityTag} style={{ flexDirection: "row", gap: 0 }}>
-                    {index > 0 ? (
-                      <text style={{ color: theme.muted }}>  </text>
-                    ) : null}
-                    <box
-                      style={{
-                        backgroundColor: colorForTag(segment.priorityTag),
-                        paddingLeft: 1,
-                        paddingRight: 1
-                      }}
-                      onMouseDown={(event) => {
-                        if (event.button !== 0) return;
-                        toggleBottomPriorityQuickFilter(segment.priorityTag);
-                      }}
-                    >
-                      <text
+                  ))
+                )}
+              </box>
+            ) : bottomInfoView === "priorities" ? (
+              <box style={{ flexDirection: "row", gap: 0 }}>
+                {priorityTickerSegments.length === 0 ? (
+                  <text style={{ color: theme.muted }}>
+                    {priorityTickerNeedsWiderLayout
+                      ? "WIDEN TO VIEW PRIORITIES"
+                      : "NO OPEN PRIORITIES"}
+                  </text>
+                ) : (
+                  priorityTickerSegments.map((segment, index) => (
+                    <box key={segment.priorityTag} style={{ flexDirection: "row", gap: 0 }}>
+                      {index > 0 ? (
+                        <text style={{ color: theme.muted }}>  </text>
+                      ) : null}
+                      <box
                         style={{
-                          color: isBottomPriorityQuickFilterActive(segment.priorityTag)
-                            ? theme.text
-                            : theme.bg,
-                          fontWeight: isBottomPriorityQuickFilterActive(segment.priorityTag)
-                            ? "bold"
-                            : "normal"
+                          backgroundColor: colorForTag(segment.priorityTag),
+                          paddingLeft: 1,
+                          paddingRight: 1
+                        }}
+                        onMouseDown={(event) => {
+                          if (event.button !== 0) return;
+                          toggleBottomPriorityQuickFilter(segment.priorityTag);
                         }}
                       >
-                        {segment.total} {segment.displayPriority}
-                      </text>
+                        <text
+                          style={{
+                            color: isBottomPriorityQuickFilterActive(segment.priorityTag)
+                              ? theme.text
+                              : theme.bg,
+                            fontWeight: isBottomPriorityQuickFilterActive(segment.priorityTag)
+                              ? "bold"
+                              : "normal"
+                          }}
+                        >
+                          {segment.total} {segment.displayPriority}
+                        </text>
+                      </box>
                     </box>
-                  </box>
-                ))
-              )}
-            </box>
-          ) : (
-            <box style={{ flexDirection: "row", gap: 2 }}>
-              <box
-                style={{
-                  backgroundColor: theme.warn,
-                  paddingLeft: 1,
-                  paddingRight: 1
-                }}
-                onMouseDown={(event) => {
-                  if (event.button !== 0) return;
-                  toggleBottomDueQuickFilter("overdue");
-                }}
-              >
-                <text
+                  ))
+                )}
+              </box>
+            ) : (
+              <box style={{ flexDirection: "row", gap: 2 }}>
+                <box
                   style={{
-                    color: overdueQuickFilterActive ? theme.text : theme.bg,
-                    fontWeight: overdueQuickFilterActive ? "bold" : "normal"
+                    backgroundColor: theme.warn,
+                    paddingLeft: 1,
+                    paddingRight: 1
+                  }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    toggleBottomDueQuickFilter("overdue");
                   }}
                 >
-                  {summary.overdue} OVERDUE
-                </text>
-              </box>
-              <box
-                style={{
-                  backgroundColor: theme.dueSoon,
-                  paddingLeft: 1,
-                  paddingRight: 1
-                }}
-                onMouseDown={(event) => {
-                  if (event.button !== 0) return;
-                  toggleBottomDueQuickFilter("today");
-                }}
-              >
-                <text
+                  <text
+                    style={{
+                      color: overdueQuickFilterActive ? theme.text : theme.bg,
+                      fontWeight: overdueQuickFilterActive ? "bold" : "normal"
+                    }}
+                  >
+                    {summary.overdue} OVERDUE
+                  </text>
+                </box>
+                <box
                   style={{
-                    color: todayQuickFilterActive ? theme.text : theme.bg,
-                    fontWeight: todayQuickFilterActive ? "bold" : "normal"
+                    backgroundColor: theme.dueSoon,
+                    paddingLeft: 1,
+                    paddingRight: 1
+                  }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    toggleBottomDueQuickFilter("today");
                   }}
                 >
-                  {summary.today} DUE TODAY
-                </text>
-              </box>
-              <box
-                style={{
-                  backgroundColor: theme.dueLater,
-                  paddingLeft: 1,
-                  paddingRight: 1
-                }}
-                onMouseDown={(event) => {
-                  if (event.button !== 0) return;
-                  toggleBottomDueQuickFilter("next7");
-                }}
-              >
-                <text
+                  <text
+                    style={{
+                      color: todayQuickFilterActive ? theme.text : theme.bg,
+                      fontWeight: todayQuickFilterActive ? "bold" : "normal"
+                    }}
+                  >
+                    {summary.today} DUE TODAY
+                  </text>
+                </box>
+                <box
                   style={{
-                    color: next7QuickFilterActive ? theme.text : theme.bg,
-                    fontWeight: next7QuickFilterActive ? "bold" : "normal"
+                    backgroundColor: theme.dueLater,
+                    paddingLeft: 1,
+                    paddingRight: 1
+                  }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    toggleBottomDueQuickFilter("next7");
                   }}
                 >
-                  {summary.next7} DUE THIS WEEK
-                </text>
-              </box>
-              <box
-                style={{
-                  backgroundColor: theme.ok,
-                  paddingLeft: 1,
-                  paddingRight: 1
-                }}
-                onMouseDown={(event) => {
-                  if (event.button !== 0) return;
-                  toggleBottomCompletedQuickFilter();
-                }}
-              >
-                <text
+                  <text
+                    style={{
+                      color: next7QuickFilterActive ? theme.text : theme.bg,
+                      fontWeight: next7QuickFilterActive ? "bold" : "normal"
+                    }}
+                  >
+                    {summary.next7} DUE THIS WEEK
+                  </text>
+                </box>
+                <box
                   style={{
-                    color: doneQuickFilterActive ? theme.text : theme.bg,
-                    fontWeight: doneQuickFilterActive ? "bold" : "normal"
+                    backgroundColor: theme.ok,
+                    paddingLeft: 1,
+                    paddingRight: 1
+                  }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    toggleBottomCompletedQuickFilter();
                   }}
                 >
-                  {summary.completed7} COMPLETED THIS WEEK
-                </text>
+                  <text
+                    style={{
+                      color: doneQuickFilterActive ? theme.text : theme.bg,
+                      fontWeight: doneQuickFilterActive ? "bold" : "normal"
+                    }}
+                  >
+                    {summary.completed7} COMPLETED THIS WEEK
+                  </text>
+                </box>
               </box>
-            </box>
-          )}
+            )}
+          </box>
         </box>
       </box>
 
@@ -7163,62 +7401,80 @@ export function App({
                   </box>
                 </box>
               ) : (
-                <scrollbox
-                  scrollY
+                <box
                   style={{
                     height: "100%",
                     minHeight: 0,
-                    rootOptions: { backgroundColor: helpTheme.panel },
-                    wrapperOptions: { backgroundColor: helpTheme.panel },
-                    viewportOptions: { backgroundColor: helpTheme.panel },
-                    contentOptions: { backgroundColor: helpTheme.panel }
+                    maxHeight: "100%",
+                    flexDirection: "column",
+                    overflow: "hidden"
+                  }}
+                  onMouseScroll={(event) => {
+                    const direction = event.scroll?.direction;
+                    if (direction === "up") {
+                      scrollHelpNavTo(clampedHelpNavScrollOffset - 1);
+                    } else if (direction === "down") {
+                      scrollHelpNavTo(clampedHelpNavScrollOffset + 1);
+                    }
                   }}
                 >
-                  <box style={{ flexDirection: "column", paddingRight: helpHasOverflow ? 1 : 0 }}>
-                    {activeHelpPage === "settings" ? (
-                      <>
-                        <text style={{ color: helpTheme.muted }}>{helpThemeStatusLine.trim()}</text>
-                        <text style={{ color: helpTheme.muted }}>{helpLogoStatusLine.trim()}</text>
-                        <text style={{ color: helpTheme.muted }}>{helpFlashStatusLine.trim()}</text>
-                        <text style={{ color: helpTheme.muted }}>
-                          {helpCrtFxLiteStatusLine.trim()}
-                        </text>
-                        <text style={{ color: helpTheme.muted }}>
-                          {helpCrtFxProfileStatusLine.trim()}
-                        </text>
-                        <text style={{ color: helpTheme.muted }}>
-                          {helpNotificationsEnabledStatusLine.trim()}
-                        </text>
-                        <text style={{ color: helpTheme.muted }}>
-                          {helpInAppBannerStatusLine.trim()}
-                        </text>
-                        <text style={{ color: helpTheme.muted }}>
-                          {helpTerminalBellStatusLine.trim()}
-                        </text>
-                      </>
-                    ) : null}
-                    {helpNavItems.map((item, index) => {
-                      const focused = index === clampedHelpNavSelectionIndex;
-                      const itemTitle =
-                        activeHelpPage === "theme" && index === 0
-                          ? helpThemeStatusLineRaw
-                          : activeHelpPage === "settings" &&
-                              index === HELP_SETTINGS_LOGO_NAV_INDEX
-                            ? `Logo: ${formatLogoModeLabel(effectiveLogoModeForHelp)}`
-                          : item.title;
-                      return (
-                        <box key={`${activeHelpPage}-${item.title}`}>
+                  <box style={{ flexDirection: "column" }}>
+                    {Array.from({ length: helpNavVisibleRowCount }, (_, visibleRowIndex) => {
+                      const rowIndex = clampedHelpNavScrollOffset + visibleRowIndex;
+                      const scrollbarIsThumb =
+                        helpNavScrollbarThumb !== null &&
+                        visibleRowIndex >= helpNavScrollbarThumb.startRow &&
+                        visibleRowIndex <= helpNavScrollbarThumb.endRow;
+                      const scrollbarGlyph =
+                        helpHasOverflow && scrollbarIsThumb ? "█" : helpHasOverflow ? "│" : "";
+
+                      if (rowIndex < helpNavStatusLineCount) {
+                        const statusLine = helpSettingsStatusLines[rowIndex] ?? "";
+                        return (
                           <box
+                            key={`help-nav-status-${rowIndex}`}
+                            style={{ flexDirection: "row", width: "100%" }}
+                          >
+                            <text style={{ color: helpTheme.muted }}>
+                              {fitLineToWidth(statusLine, helpContentLineWidth)}
+                            </text>
+                            {helpHasOverflow ? (
+                              <text
+                                style={{
+                                  color: scrollbarIsThumb
+                                    ? helpTheme.accentBlue
+                                    : helpTheme.outline
+                                }}
+                              >
+                                {scrollbarGlyph}
+                              </text>
+                            ) : null}
+                          </box>
+                        );
+                      }
+
+                      const navRowIndex = rowIndex - helpNavStatusLineCount;
+                      const itemIndex = Math.floor(navRowIndex / HELP_NAV_ITEM_ROW_COUNT);
+                      const item = helpNavItems[itemIndex];
+                      if (!item) return null;
+
+                      if (navRowIndex % HELP_NAV_ITEM_ROW_COUNT === 0) {
+                        const focused = itemIndex === clampedHelpNavSelectionIndex;
+                        const itemTitle = resolveHelpNavItemTitle(item, itemIndex);
+                        return (
+                          <box
+                            key={`help-nav-title-${itemIndex}`}
                             style={{
                               flexDirection: "row",
+                              width: "100%",
                               backgroundColor: focused ? helpTheme.accentBlue : "transparent",
                               paddingLeft: 1,
                               paddingRight: 1
                             }}
                             onMouseDown={(event) => {
                               if (event.button !== 0) return;
-                              setHelpNavSelectionForActivePage(index);
-                              handleHelpNavForward(index);
+                              setHelpNavSelectionForActivePage(itemIndex);
+                              handleHelpNavForward(itemIndex);
                             }}
                           >
                             <text
@@ -7232,15 +7488,49 @@ export function App({
                                 helpContentLineWidth
                               )}
                             </text>
+                            {helpHasOverflow ? (
+                              <text
+                                style={{
+                                  color: scrollbarIsThumb
+                                    ? focused
+                                      ? helpTheme.bg
+                                      : helpTheme.accentBlue
+                                    : focused
+                                      ? helpTheme.bg
+                                      : helpTheme.outline
+                                }}
+                              >
+                                {scrollbarGlyph}
+                              </text>
+                            ) : null}
                           </box>
+                        );
+                      }
+
+                      return (
+                        <box
+                          key={`help-nav-description-${itemIndex}`}
+                          style={{ flexDirection: "row", width: "100%" }}
+                        >
                           <text style={{ color: helpTheme.muted }}>
                             {fitLineToWidth(`    ${item.description}`, helpContentLineWidth)}
                           </text>
+                          {helpHasOverflow ? (
+                            <text
+                              style={{
+                                color: scrollbarIsThumb
+                                  ? helpTheme.accentBlue
+                                  : helpTheme.outline
+                              }}
+                            >
+                              {scrollbarGlyph}
+                            </text>
+                          ) : null}
                         </box>
                       );
                     })}
                   </box>
-                </scrollbox>
+                </box>
               )}
             </box>
             {/*

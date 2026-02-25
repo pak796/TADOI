@@ -9,6 +9,7 @@ import { normalizeTagIndex, normalizeTags } from "../domain/tagIndex";
 import {
   DEFAULT_CRT_FX_LITE_COLOR,
   DEFAULT_CRT_FX_LITE_PRESET,
+  DEFAULT_RETRO_FX_MODE,
   loadSettings
 } from "../settings/settings";
 import {
@@ -212,6 +213,7 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
       initialCrtFxLite={settingsResult.settings.crtFxLite === true}
       initialCrtFxColor={settingsResult.settings.crtFxColor ?? DEFAULT_CRT_FX_LITE_COLOR}
       initialCrtFxPreset={settingsResult.settings.crtFxPreset ?? DEFAULT_CRT_FX_LITE_PRESET}
+      initialRetroFxMode={settingsResult.settings.retroFxMode ?? DEFAULT_RETRO_FX_MODE}
       initialNotificationSettings={settingsResult.settings.notifications}
       initialSecuritySettings={settingsResult.settings.security}
       initialCustomThemes={settingsResult.settings.customThemes}

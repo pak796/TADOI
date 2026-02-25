@@ -1,6 +1,7 @@
 import type {
   CrtFxLiteColor,
-  CrtFxLitePreset
+  CrtFxLitePreset,
+  RetroFxMode
 } from "../settings/settings";
 
 type CrtFxLiteProps = {
@@ -18,6 +19,12 @@ type CrtFxPresetConfig = {
   tintStrengthByRole: Record<CrtFxColorRole, number>;
   flickerDelta: number;
   flickerEveryTicks: number;
+};
+
+type RetroFxSweepConfig = {
+  cycleLength: number;
+  highlightDelta: number;
+  ambientDelta: number;
 };
 
 const CRT_TINT_COLORS: Record<CrtFxLiteColor, string> = {
@@ -58,6 +65,19 @@ const CRT_FX_PRESETS: Record<CrtFxLitePreset, CrtFxPresetConfig> = {
   }
 };
 
+const RETRO_FX_SWEEP_CONFIG: Record<Exclude<RetroFxMode, "off">, RetroFxSweepConfig> = {
+  classic: {
+    cycleLength: 16,
+    highlightDelta: 14,
+    ambientDelta: 0
+  },
+  broadcast: {
+    cycleLength: 10,
+    highlightDelta: 22,
+    ambientDelta: 2
+  }
+};
+
 function clampColorChannel(value: number): number {
   return Math.max(0, Math.min(255, Math.round(value)));
 }
@@ -84,7 +104,7 @@ function toHexColor(rgb: { r: number; g: number; b: number }): string {
 
 function adjustHexColor(hex: string, delta: number): string {
   const parsed = parseHexColor(hex);
-  if (!parsed) return "#000000";
+  if (!parsed) return hex;
   return toHexColor({
     r: parsed.r + delta,
     g: parsed.g + delta,
@@ -95,7 +115,7 @@ function adjustHexColor(hex: string, delta: number): string {
 function blendHexColors(baseHex: string, tintHex: string, tintStrength: number): string {
   const base = parseHexColor(baseHex);
   const tint = parseHexColor(tintHex);
-  if (!base || !tint) return "#000000";
+  if (!base || !tint) return baseHex;
   const weight = Math.max(0, Math.min(1, tintStrength));
   return toHexColor({
     r: base.r * (1 - weight) + tint.r * weight,
@@ -119,6 +139,31 @@ export function resolveCrtFxColor(params: {
   const tinted = blendHexColors(params.baseColor, tintHex, config.tintStrengthByRole[role]);
   const flickerFrame = params.tick % config.flickerEveryTicks === 0;
   return adjustHexColor(tinted, flickerFrame ? config.flickerDelta : 0);
+}
+
+export function resolveRetroSweepBorderColor(params: {
+  baseColor: string;
+  mode: RetroFxMode;
+  tick: number;
+  phase?: number;
+}): string {
+  if (params.mode === "off") return params.baseColor;
+  const config = RETRO_FX_SWEEP_CONFIG[params.mode];
+  const phase = params.phase ?? 0;
+  const frame = (params.tick + phase) % config.cycleLength;
+  if (frame === 0) {
+    return adjustHexColor(params.baseColor, config.highlightDelta);
+  }
+  if (frame === 1) {
+    return adjustHexColor(params.baseColor, Math.round(config.highlightDelta * 0.6));
+  }
+  if (frame === 2) {
+    return adjustHexColor(params.baseColor, Math.round(config.highlightDelta * 0.3));
+  }
+  if (config.ambientDelta !== 0) {
+    return adjustHexColor(params.baseColor, config.ambientDelta);
+  }
+  return params.baseColor;
 }
 
 export function CrtFxLite({
