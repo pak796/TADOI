@@ -33,6 +33,7 @@ type EditorPaneProps = {
   focus: EditorFocus;
   availableHeightLines: number;
   scrollOffset: number;
+  titleInlineSuggestion?: { full: string; remainder: string } | null;
   tagInlineSuggestion?: { full: string; remainder: string } | null;
   dueSuggestionHint?: string | null;
   timeSuggestionHint?: string | null;
@@ -101,6 +102,7 @@ export function EditorPane({
   focus,
   availableHeightLines,
   scrollOffset,
+  titleInlineSuggestion,
   tagInlineSuggestion,
   dueSuggestionHint,
   timeSuggestionHint,
@@ -125,6 +127,7 @@ export function EditorPane({
   const previewLineCount = Math.max(1, previewRows.length);
   const estimateOptions = useMemo(
     () => ({
+      hasTitleSuggestion: Boolean(titleInlineSuggestion?.remainder),
       hasDueSuggestion: Boolean(dueSuggestionHint),
       hasTimeSuggestion: Boolean(timeSuggestionHint),
       hasTagSuggestion: Boolean(tagInlineSuggestion?.remainder),
@@ -136,6 +139,7 @@ export function EditorPane({
     [
       draft.repeatEndMode,
       draft.repeatMode,
+      titleInlineSuggestion?.remainder,
       dueSuggestionHint,
       timeSuggestionHint,
       tagInlineSuggestion?.remainder,
@@ -170,6 +174,12 @@ export function EditorPane({
   const footerHintText = showOverflowIndicator
     ? `TAB: NEXT FIELD · CTRL+S: SAVE · ESC: CANCEL · PgUp/PgDn: Scroll${linksHint}`
     : `TAB: NEXT FIELD · CTRL+S: SAVE · ESC: CANCEL${linksHint}`;
+  const titleSuggestionPrefix = titleInlineSuggestion
+    ? titleInlineSuggestion.full.slice(
+        0,
+        titleInlineSuggestion.full.length - titleInlineSuggestion.remainder.length
+      )
+    : "";
 
   useEffect(() => {
     if (clampedOffset !== scrollOffset) {
@@ -337,6 +347,14 @@ export function EditorPane({
           placeholder={`Ship ${APP_NAME} app update`}
           style={{ backgroundColor: theme.bg, color: theme.text, width: "100%" }}
         />
+        {titleInlineSuggestion?.remainder ? (
+          <box style={{ flexDirection: "row", gap: 0, marginTop: 1 }}>
+            <text style={{ color: theme.muted }}>→ </text>
+            <text style={{ color: theme.text }}>{titleSuggestionPrefix}</text>
+            <text style={{ color: theme.muted }}>{titleInlineSuggestion.remainder}</text>
+            <text style={{ color: theme.muted }}> (press →)</text>
+          </box>
+        ) : null}
       </box>
 
       <box style={{ flexDirection: "column", marginTop: 1 }}>

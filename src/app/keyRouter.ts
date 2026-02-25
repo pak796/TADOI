@@ -12,6 +12,7 @@ export type KeyInput = {
 
 export type KeyRouterContext = {
   uiState: UIState;
+  hasTitleInlineSuggestion?: boolean;
   hasTagInlineSuggestion: boolean;
   hasDueSuggestion: boolean;
   timeAutocompleteStep: "hour" | "minute" | "none" | "invalid";
@@ -62,6 +63,7 @@ export type KeyRouterAction =
   | { scope: "ui"; type: "BACKUP_PICKER_JUMP_SELECTION"; target: "start" | "end" }
   | { scope: "ui"; type: "BACKUP_PICKER_CONFIRM_SELECTION" }
   | { scope: "ui"; type: "BACKUP_PICKER_OPEN_MANUAL_PATH" }
+  | { scope: "ui"; type: "BACKUP_SCROLL_BODY"; delta: number }
   | { scope: "ui"; type: "MOVE_EDITOR_FOCUS"; direction: 1 | -1 }
   | {
       scope: "ui";
@@ -165,6 +167,7 @@ export type KeyRouterAction =
   | { scope: "domain"; type: "TOGGLE_TAG_FILTER" }
   | { scope: "domain"; type: "APPLY_DASHBOARD_SELECTED_TAG" }
   | { scope: "domain"; type: "SAVE_EDITOR" }
+  | { scope: "domain"; type: "ACCEPT_TITLE_INLINE" }
   | { scope: "domain"; type: "APPLY_TIME_AUTOCOMPLETE" }
   | { scope: "domain"; type: "ACCEPT_DUE_SUGGESTION" }
   | { scope: "domain"; type: "ACCEPT_TAG_INLINE" };
@@ -768,6 +771,31 @@ function resolveBackupCenterModeActions(
     "calendar_import_tag",
     "calendar_import_confirm"
   ]);
+
+  const supportsBodyScrollKeys =
+    backupScreen !== null &&
+    backupScreen !== "menu" &&
+    backupScreen !== "calendar_menu" &&
+    backupScreen !== "import_mode" &&
+    backupScreen !== "import_picker" &&
+    !inputSubmitScreens.has(backupScreen);
+  if (supportsBodyScrollKeys) {
+    const lowerName = name.toLowerCase();
+    const lowerSequence = sequence.toLowerCase();
+    if (name === "up" || lowerName === "k" || lowerSequence === "k") {
+      return [{ scope: "ui", type: "BACKUP_SCROLL_BODY", delta: -1 }];
+    }
+    if (name === "down" || lowerName === "j" || lowerSequence === "j") {
+      return [{ scope: "ui", type: "BACKUP_SCROLL_BODY", delta: 1 }];
+    }
+    if (isPageUpKey(name, ctrl)) {
+      return [{ scope: "ui", type: "BACKUP_SCROLL_BODY", delta: -8 }];
+    }
+    if (isPageDownKey(name, ctrl)) {
+      return [{ scope: "ui", type: "BACKUP_SCROLL_BODY", delta: 8 }];
+    }
+  }
+
   if (
     (name === "return" || name === "enter") &&
     backupScreen &&
@@ -838,8 +866,13 @@ function resolveEditorModeActions(
   context: KeyRouterContext
 ): KeyRouterAction[] | null {
   const { name, ctrl, shift } = key;
-  const { uiState, hasTagInlineSuggestion, hasDueSuggestion, timeAutocompleteStep } =
-    context;
+  const {
+    uiState,
+    hasTitleInlineSuggestion = false,
+    hasTagInlineSuggestion,
+    hasDueSuggestion,
+    timeAutocompleteStep
+  } = context;
   const { mode, focus } = uiState;
   if (mode !== Mode.ADD && mode !== Mode.EDIT) return null;
 
@@ -858,6 +891,9 @@ function resolveEditorModeActions(
   }
   if (name === "tab") {
     const actions: KeyRouterAction[] = [];
+    if (focus === FocusTarget.EDITOR_TITLE && hasTitleInlineSuggestion) {
+      actions.push({ scope: "domain", type: "ACCEPT_TITLE_INLINE" });
+    }
     if (focus === FocusTarget.EDITOR_TAGS && hasTagInlineSuggestion) {
       actions.push({ scope: "domain", type: "ACCEPT_TAG_INLINE" });
     }
@@ -869,8 +905,10 @@ function resolveEditorModeActions(
     return actions;
   }
   if (name === "right") {
+    if (focus === FocusTarget.EDITOR_TITLE && hasTitleInlineSuggestion) {
+      return [{ scope: "domain", type: "ACCEPT_TITLE_INLINE" }];
+    }
     if (
-      mode === Mode.ADD &&
       focus === FocusTarget.EDITOR_DUE_TIME &&
       (timeAutocompleteStep === "hour" || timeAutocompleteStep === "minute")
     ) {

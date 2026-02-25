@@ -4,6 +4,7 @@ import {
   formatBackupFileTimestamp,
   getStepLabel,
   isScreenForInput,
+  resolveBackupWheelDelta,
   resolveImportPickerWindow
 } from "./BackupCenterScreen";
 
@@ -47,5 +48,13 @@ describe("BackupCenterScreen helpers", () => {
       visibleRows: 8
     });
     expect(shortWindow).toEqual({ selectedIndex: 1, start: 0, end: 2 });
+  });
+
+  it("maps backup wheel directions to vertical deltas", () => {
+    expect(resolveBackupWheelDelta("up")).toBe(-1);
+    expect(resolveBackupWheelDelta("down")).toBe(1);
+    expect(resolveBackupWheelDelta("left")).toBe(0);
+    expect(resolveBackupWheelDelta("right")).toBe(0);
+    expect(resolveBackupWheelDelta(undefined)).toBe(0);
   });
 });

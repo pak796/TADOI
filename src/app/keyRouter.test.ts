@@ -16,6 +16,7 @@ function run(
   };
   const context: KeyRouterContext = {
     uiState: initialUIState,
+    hasTitleInlineSuggestion: false,
     hasTagInlineSuggestion: false,
     hasDueSuggestion: false,
     timeAutocompleteStep: "none",
@@ -971,10 +972,28 @@ describe("handleKey", () => {
     ).toEqual([{ scope: "ui", type: "BACKUP_PRIMARY" }]);
     expect(
       run(
+        { name: "pagedown" },
+        { uiState: backupState, backupScreen: "import_dryrun" }
+      )
+    ).toEqual([{ scope: "ui", type: "BACKUP_SCROLL_BODY", delta: 8 }]);
+    expect(
+      run(
+        { ctrl: true, name: "u" },
+        { uiState: backupState, backupScreen: "calendar_import_dryrun" }
+      )
+    ).toEqual([{ scope: "ui", type: "BACKUP_SCROLL_BODY", delta: -8 }]);
+    expect(
+      run(
         { name: "3", sequence: "3" },
         { uiState: backupState, backupScreen: "import_path" }
       )
     ).toEqual([{ scope: "ui", type: "BACKUP_SELECT_DIGIT", digit: 3 }]);
+    expect(
+      run(
+        { name: "down" },
+        { uiState: backupState, backupScreen: "import_path" }
+      )
+    ).toEqual([]);
     expect(
       run(
         { name: "2", sequence: "2" },
@@ -1087,6 +1106,27 @@ describe("handleKey", () => {
   });
 
   it("returns focused editor actions for tab/right/enter", () => {
+    const titleState = {
+      ...initialUIState,
+      mode: Mode.EDIT,
+      focus: FocusTarget.EDITOR_TITLE
+    };
+    expect(
+      run(
+        { name: "tab" },
+        { uiState: titleState, hasTitleInlineSuggestion: true }
+      )
+    ).toEqual([
+      { scope: "domain", type: "ACCEPT_TITLE_INLINE" },
+      { scope: "ui", type: "MOVE_EDITOR_FOCUS", direction: 1 }
+    ]);
+    expect(
+      run(
+        { name: "right" },
+        { uiState: titleState, hasTitleInlineSuggestion: true }
+      )
+    ).toEqual([{ scope: "domain", type: "ACCEPT_TITLE_INLINE" }]);
+
     const tagsState = {
       ...initialUIState,
       mode: Mode.EDIT,
@@ -1113,6 +1153,18 @@ describe("handleKey", () => {
         { uiState: tagsState, hasTagInlineSuggestion: true }
       )
     ).toEqual([{ scope: "domain", type: "ACCEPT_TAG_INLINE" }]);
+
+    const timeEditState = {
+      ...initialUIState,
+      mode: Mode.EDIT,
+      focus: FocusTarget.EDITOR_DUE_TIME
+    };
+    expect(
+      run(
+        { name: "right" },
+        { uiState: timeEditState, timeAutocompleteStep: "hour" }
+      )
+    ).toEqual([{ scope: "domain", type: "APPLY_TIME_AUTOCOMPLETE" }]);
   });
 
   it("keeps link hotkeys scoped to list/details focus and blocks leakage elsewhere", () => {

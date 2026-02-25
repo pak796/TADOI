@@ -240,7 +240,7 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
 
   function startEditSession(rowId: string, draft: EditorDraft) {
     deps.closeViewsOverlay();
-    deps.setTimeSuggestion(null);
+    deps.setTimeSuggestion(getSuggestedTime(new Date()));
     deps.uiDispatch({ type: "setMode", mode: Mode.EDIT });
     deps.uiDispatch({ type: "setFocus", focus: FocusTarget.EDITOR_TITLE });
     deps.uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });

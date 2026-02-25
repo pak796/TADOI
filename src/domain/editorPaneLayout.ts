@@ -7,6 +7,7 @@ const DEFAULT_PREVIEW_ROWS = 3;
 const DEFAULT_NOTES_VISIBLE_ROWS = 6;
 
 export type EditorContentEstimateOptions = {
+  hasTitleSuggestion?: boolean;
   hasDueSuggestion?: boolean;
   hasTimeSuggestion?: boolean;
   hasTagSuggestion?: boolean;
@@ -34,6 +35,7 @@ export type EditorViewportHeights = {
 };
 
 type NormalizedEstimateOptions = {
+  hasTitleSuggestion: boolean;
   hasDueSuggestion: boolean;
   hasTimeSuggestion: boolean;
   hasTagSuggestion: boolean;
@@ -100,6 +102,7 @@ function normalizeEstimateOptions(
   options: EditorContentEstimateOptions = {}
 ): NormalizedEstimateOptions {
   return {
+    hasTitleSuggestion: options.hasTitleSuggestion === true,
     hasDueSuggestion: options.hasDueSuggestion === true,
     hasTimeSuggestion: options.hasTimeSuggestion === true,
     hasTagSuggestion: options.hasTagSuggestion === true,
@@ -121,6 +124,7 @@ function buildEditorLineModel(options: NormalizedEstimateOptions): {
   line += 1; // label
   anchors.title = line; // input line
   line += 1; // input
+  if (options.hasTitleSuggestion) line += 1;
 
   // DATE
   line += 1; // section margin

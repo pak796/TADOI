@@ -1,4 +1,4 @@
-import { TagIndexEntry } from "./models";
+import { TagIndexEntry, Task } from "./models";
 
 export const MAX_TAG_LENGTH = 24;
 
@@ -126,4 +126,50 @@ export function rankTags(
       return a.tagName.localeCompare(b.tagName);
     })
     .map((entry) => entry.tagName);
+}
+
+export function mergeTagIndexWithTaskHistory(
+  tagIndex: Record<string, TagIndexEntry>,
+  tasks: Array<Pick<Task, "tags" | "createdAt" | "updatedAt">>
+): Record<string, TagIndexEntry> {
+  const merged: Record<string, TagIndexEntry> = {};
+
+  const mergeEntry = (
+    tagName: string,
+    usageCount: number,
+    lastUsedAt: number
+  ) => {
+    const existing = merged[tagName];
+    if (!existing) {
+      merged[tagName] = {
+        tagName,
+        usageCount,
+        lastUsedAt
+      };
+      return;
+    }
+
+    merged[tagName] = {
+      tagName,
+      usageCount: existing.usageCount + usageCount,
+      lastUsedAt: Math.max(existing.lastUsedAt, lastUsedAt)
+    };
+  };
+
+  for (const entry of Object.values(tagIndex)) {
+    const normalized = normalizeTag(entry.tagName);
+    if (!normalized) continue;
+    mergeEntry(normalized, Math.max(0, entry.usageCount), entry.lastUsedAt);
+  }
+
+  for (const task of tasks) {
+    const stamp = Math.max(task.updatedAt, task.createdAt);
+    for (const rawTag of task.tags) {
+      const normalized = normalizeTag(rawTag);
+      if (!normalized) continue;
+      mergeEntry(normalized, 1, stamp);
+    }
+  }
+
+  return merged;
 }

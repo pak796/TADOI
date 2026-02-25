@@ -32,6 +32,7 @@ type TaskListProps = {
   fastPulseOn: boolean;
   flashMode: FlashMode;
   onTaskRowClick: (input: TaskRowClickInput) => void;
+  onWheelScroll?: (delta: 1 | -1) => void;
   scrollOffset: number;
   visibleRows: number;
   visibleLines: number;
@@ -39,6 +40,24 @@ type TaskListProps = {
 
 export function shouldShowScrollbar(taskCount: number, visibleRows: number): boolean {
   return taskCount > visibleRows;
+}
+
+export function resolveTaskListWheelDelta(
+  direction: "up" | "down" | "left" | "right" | undefined
+): 1 | -1 | 0 {
+  if (direction === "up") return -1;
+  if (direction === "down") return 1;
+  return 0;
+}
+
+export function resolveTaskListWheelSelectionIndex(input: {
+  currentIndex: number;
+  delta: 1 | -1;
+  itemCount: number;
+}): number {
+  if (input.itemCount <= 0) return 0;
+  const safeIndex = Math.max(0, Math.min(input.currentIndex, input.itemCount - 1));
+  return Math.max(0, Math.min(safeIndex + input.delta, input.itemCount - 1));
 }
 
 export function TaskList({
@@ -49,6 +68,7 @@ export function TaskList({
   fastPulseOn,
   flashMode,
   onTaskRowClick,
+  onWheelScroll,
   scrollOffset,
   visibleRows,
   visibleLines
@@ -68,7 +88,15 @@ export function TaskList({
     ? Math.round((clampedOffset / Math.max(1, tasks.length - visibleRows)) * maxThumbTop)
     : 0;
   return (
-    <box style={{ flexGrow: 1, flexDirection: "row" }}>
+    <box
+      style={{ flexGrow: 1, flexDirection: "row" }}
+      onMouseScroll={(event) => {
+        if (!onWheelScroll) return;
+        const delta = resolveTaskListWheelDelta(event.scroll?.direction);
+        if (delta === 0) return;
+        onWheelScroll(delta);
+      }}
+    >
       <box style={{ flexGrow: 1, paddingLeft: 1, paddingRight: 1 }}>
         {tasks.length === 0 ? (
           <text style={{ color: theme.muted }}>No tasks yet.</text>

@@ -99,13 +99,47 @@ def looks_like_key_token(token: str) -> bool:
     }
     if raw in punctuation_keys:
         return True
-    if len(raw) == 1 and re.match(r"[a-z0-9]", low):
+    if len(raw) == 1 and re.match(r"[a-z]", low):
+        return True
+    if len(raw) == 1 and re.match(r"[0-9]", low):
         return True
     if re.match(r"^(ctrl|cmd|alt|shift)\+[a-z0-9]$", low):
         return True
     if low in named_keys:
         return True
     return False
+
+
+def should_keep_numeric_doc_token(part: str, raw: str, line_text: str) -> bool:
+    if not re.fullmatch(r"\d", part):
+        return True
+
+    lower_line = line_text.lower()
+    key_context_words = (
+        "key",
+        "keys",
+        "hotkey",
+        "shortcut",
+        "press",
+        "select",
+        "menu",
+        "option",
+        "arrow",
+        "enter",
+        "esc",
+    )
+    has_key_context = any(word in lower_line for word in key_context_words)
+
+    if re.search(r"\bv\d+(?:\.\d+)+\b", lower_line):
+        return False
+    if ("schema" in lower_line or "version" in lower_line) and not has_key_context:
+        return False
+
+    raw_lower = raw.lower()
+    if "/" in raw or " or " in raw_lower or "|" in raw:
+        return True
+
+    return has_key_context
 
 
 def gather_docs(repo_root: Path, patterns: list[str]) -> list[Path]:
@@ -201,6 +235,11 @@ def extract_doc_bindings(path: Path) -> dict[str, list[str]]:
         candidates.append((match.group(1), match.start()))
 
     for raw, start in candidates:
+        line_start = text.rfind("\n", 0, start) + 1
+        line_end = text.find("\n", start)
+        if line_end == -1:
+            line_end = len(text)
+        line_text = text[line_start:line_end]
         token = raw.strip("` .")
         if token in {"/", "?", "[", "]", "{", "}"}:
             parts = [token]
@@ -209,6 +248,8 @@ def extract_doc_bindings(path: Path) -> dict[str, list[str]]:
         for part in parts:
             part = part.strip("` .")
             if not part or not looks_like_key_token(part):
+                continue
+            if not should_keep_numeric_doc_token(part, raw, line_text):
                 continue
             token = normalize_key(part)
             line = text.count("\n", 0, start) + 1

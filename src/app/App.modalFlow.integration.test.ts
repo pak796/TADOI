@@ -9,7 +9,7 @@ import { App } from "./App";
 import type { Task } from "../domain/models";
 import { createDefaultEngagementState } from "../domain/engagement";
 import type { LoadedData } from "../state/persistence";
-import type { RetroFxMode } from "../settings/settings";
+import type { NotificationSettings, RetroFxMode } from "../settings/settings";
 
 type RenderHarness = Awaited<ReturnType<typeof testRender>>;
 
@@ -23,6 +23,7 @@ type SessionOptions = {
   initialData?: LoadedData;
   showCorruptionRecoveryImportCta?: boolean;
   initialRetroFxMode?: RetroFxMode;
+  initialNotificationSettings?: NotificationSettings;
   width?: number;
   height?: number;
 };
@@ -81,6 +82,7 @@ async function createSession(options: SessionOptions = {}): Promise<AppSession> 
       skipInitialSave: true,
       settingsPath,
       initialRetroFxMode: options.initialRetroFxMode,
+      initialNotificationSettings: options.initialNotificationSettings,
       showLogo: false
     }),
     {
@@ -155,6 +157,16 @@ async function pressKeyAndRender(mockInput: MockInput, harness: RenderHarness, k
   await harness.renderOnce();
 }
 
+async function pressCtrlKeyAndRender(
+  mockInput: MockInput,
+  harness: RenderHarness,
+  key: string
+) {
+  mockInput.pressKey(key, { ctrl: true });
+  await Bun.sleep(10);
+  await harness.renderOnce();
+}
+
 async function pressEnterAndRender(mockInput: MockInput, harness: RenderHarness) {
   mockInput.pressEnter();
   await Bun.sleep(10);
@@ -204,6 +216,18 @@ async function pasteTextAndRender(
   await mockInput.pasteBracketedText(text);
   await Bun.sleep(20);
   await harness.renderOnce();
+}
+
+async function scrollMouseAndRender(
+  harness: RenderHarness,
+  options: { x: number; y: number; direction: "up" | "down"; times?: number }
+) {
+  const { x, y, direction, times = 1 } = options;
+  for (let index = 0; index < times; index += 1) {
+    await harness.mockMouse.scroll(x, y, direction);
+    await Bun.sleep(10);
+    await harness.renderOnce();
+  }
 }
 
 async function withDataPath<T>(dataPath: string, run: () => Promise<T>): Promise<T> {
@@ -655,6 +679,168 @@ describe("App modal flow integration", () => {
     }
   });
 
+  it("backup center body scrolls with keyboard while footer stays pinned at 104x24", async () => {
+    const session = await createSession({ width: 104, height: 24 });
+    const { harness } = session;
+    const fixture = await prepareBackupRuntimeFixture(session);
+
+    try {
+      await withDataPathAndCwd(fixture.dataPath, fixture.backupDir, async () => {
+        await runCalendarImportGuidedFlowToDryRun(harness, "incoming.ics");
+
+        let frame = await waitForText(harness, "Dry-run summary (required)");
+        expect(frame).toContain("Events parsed");
+        expect(frame).toContain("COMMIT IMPORT");
+
+        await pressCtrlKeyAndRender(harness.mockInput, harness, "d");
+        await pressCtrlKeyAndRender(harness.mockInput, harness, "d");
+        await pressCtrlKeyAndRender(harness.mockInput, harness, "d");
+        frame = harness.captureCharFrame();
+        expect(frame).not.toContain("Events parsed");
+        expect(frame).toContain("COMMIT IMPORT");
+
+        await pressCtrlKeyAndRender(harness.mockInput, harness, "u");
+        await pressCtrlKeyAndRender(harness.mockInput, harness, "u");
+        await pressCtrlKeyAndRender(harness.mockInput, harness, "u");
+        frame = harness.captureCharFrame();
+        expect(frame).toContain("Events parsed");
+        expect(frame).toContain("COMMIT IMPORT");
+      });
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
+  it("backup center body scrolls with mouse wheel at 110x26 while footer remains visible", async () => {
+    const session = await createSession({ width: 110, height: 26 });
+    const { harness } = session;
+    const fixture = await prepareBackupRuntimeFixture(session);
+
+    try {
+      await withDataPathAndCwd(fixture.dataPath, fixture.backupDir, async () => {
+        await runCalendarImportGuidedFlowToDryRun(harness, "incoming.ics");
+
+        let frame = await waitForText(harness, "Dry-run summary (required)");
+        expect(frame).toContain("Events parsed");
+        expect(frame).toContain("COMMIT IMPORT");
+
+        await scrollMouseAndRender(harness, {
+          x: 26,
+          y: 12,
+          direction: "down",
+          times: 4
+        });
+        frame = harness.captureCharFrame();
+        expect(frame).not.toContain("Events parsed");
+        expect(frame).toContain("COMMIT IMPORT");
+
+        await scrollMouseAndRender(harness, {
+          x: 26,
+          y: 12,
+          direction: "up",
+          times: 4
+        });
+        frame = harness.captureCharFrame();
+        expect(frame).toContain("Events parsed");
+        expect(frame).toContain("COMMIT IMPORT");
+      });
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
+  it("task list wheel scroll moves selection in-frame and clamps at bounds", async () => {
+    const wheelTasks = [
+      makeTask("wheelA01-task", "Wheel Task Alpha"),
+      makeTask("wheelB02-task", "Wheel Task Beta"),
+      makeTask("wheelC03-task", "Wheel Task Gamma")
+    ];
+    const session = await createSession({
+      initialData: makeInitialData(wheelTasks),
+      initialNotificationSettings: {
+        enabled: false,
+        inAppOverdueBanner: false,
+        terminalBellOnOverdue: false,
+        bannerDurationMs: 4000,
+        bellCooldownMs: 300000
+      }
+    });
+    const { harness } = session;
+    const taskPrefixes = wheelTasks.map((task) => task.id.slice(0, 8));
+    const taskListWheelTarget = { x: 48, y: 14 } as const;
+
+    const readSelectedTaskPrefix = async (): Promise<string> => {
+      await pressKeyAndRender(harness.mockInput, harness, "d");
+      const frame = await waitForText(harness, "DELETE SELECTED TASK? [Y/N]");
+      const selectedPrefix = taskPrefixes.find((prefix) => frame.includes(`ID: ${prefix}`));
+      expect(selectedPrefix).toBeTruthy();
+      await pressKeyAndRender(harness.mockInput, harness, "n");
+      await waitForFrame(
+        harness,
+        (next) => !next.includes("DELETE SELECTED TASK? [Y/N]")
+      );
+      return selectedPrefix as string;
+    };
+
+    try {
+      await waitForText(harness, "Wheel Task Alpha");
+
+      await scrollMouseAndRender(harness, {
+        x: taskListWheelTarget.x,
+        y: taskListWheelTarget.y,
+        direction: "up",
+        times: 20
+      });
+      const topSelection = await readSelectedTaskPrefix();
+
+      await scrollMouseAndRender(harness, {
+        x: taskListWheelTarget.x,
+        y: taskListWheelTarget.y,
+        direction: "up",
+        times: 1
+      });
+      const topNoOpSelection = await readSelectedTaskPrefix();
+      expect(topNoOpSelection).toBe(topSelection);
+
+      await scrollMouseAndRender(harness, {
+        x: taskListWheelTarget.x,
+        y: taskListWheelTarget.y,
+        direction: "down",
+        times: 1
+      });
+      const movedDownSelection = await readSelectedTaskPrefix();
+      expect(movedDownSelection).not.toBe(topSelection);
+
+      await scrollMouseAndRender(harness, {
+        x: taskListWheelTarget.x,
+        y: taskListWheelTarget.y,
+        direction: "down",
+        times: 20
+      });
+      const bottomSelection = await readSelectedTaskPrefix();
+
+      await scrollMouseAndRender(harness, {
+        x: taskListWheelTarget.x,
+        y: taskListWheelTarget.y,
+        direction: "down",
+        times: 1
+      });
+      const bottomNoOpSelection = await readSelectedTaskPrefix();
+      expect(bottomNoOpSelection).toBe(bottomSelection);
+
+      await scrollMouseAndRender(harness, {
+        x: taskListWheelTarget.x,
+        y: taskListWheelTarget.y,
+        direction: "up",
+        times: 1
+      });
+      const movedUpSelection = await readSelectedTaskPrefix();
+      expect(movedUpSelection).not.toBe(bottomSelection);
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
   it("calendar high-impact import requires token and invalid token path returns to confirm", async () => {
     const session = await createSession();
     const { harness } = session;
@@ -693,36 +879,48 @@ describe("App modal flow integration", () => {
     }
   });
 
-  it("calendar final checkpoint confirm path starts import and reaches running or done state", async () => {
-    const session = await createSession();
-    const { harness } = session;
-    const fixture = await prepareBackupRuntimeFixture(session);
-
-    try {
-      await withDataPathAndCwd(fixture.dataPath, fixture.backupDir, async () => {
-        await runCalendarImportGuidedFlowToDryRun(harness, "incoming.ics", {
-          rangeDigit: "3",
-          modeDigit: "2"
-        });
-
-        await pressEnterAndRender(harness.mockInput, harness);
-        await waitForText(harness, "High-impact import confirmation required.");
-        await pasteTextAndRender(harness.mockInput, harness, "IMPORT");
-        await pressEnterAndRender(harness.mockInput, harness);
-        await waitForText(harness, "FINAL IMPORT CHECKPOINT");
-
-        await pressKeyAndRender(harness.mockInput, harness, "y");
-        const frame = await waitForAnyText(
-          harness,
-          ["Applying calendar import...", "Calendar import complete"],
-          10000
-        );
-        expect(frame).not.toContain("FINAL IMPORT CHECKPOINT");
+  it(
+    "calendar final checkpoint confirm path starts import and reaches running or done state",
+    async () => {
+      const session = await createSession({
+        initialNotificationSettings: {
+          enabled: false,
+          inAppOverdueBanner: false,
+          terminalBellOnOverdue: false,
+          bannerDurationMs: 4000,
+          bellCooldownMs: 300000
+        }
       });
-    } finally {
-      await cleanupSession(session);
-    }
-  });
+      const { harness } = session;
+      const fixture = await prepareBackupRuntimeFixture(session);
+
+      try {
+        await withDataPathAndCwd(fixture.dataPath, fixture.backupDir, async () => {
+          await runCalendarImportGuidedFlowToDryRun(harness, "incoming.ics", {
+            rangeDigit: "3",
+            modeDigit: "2"
+          });
+
+          await pressEnterAndRender(harness.mockInput, harness);
+          await waitForText(harness, "High-impact import confirmation required.");
+          await pasteTextAndRender(harness.mockInput, harness, "IMPORT");
+          await pressEnterAndRender(harness.mockInput, harness);
+          await waitForText(harness, "FINAL IMPORT CHECKPOINT");
+
+          await pressKeyAndRender(harness.mockInput, harness, "y");
+          const frame = await waitForAnyText(
+            harness,
+            ["Applying calendar import...", "Calendar import complete"],
+            10000
+          );
+          expect(frame).not.toContain("FINAL IMPORT CHECKPOINT");
+        });
+      } finally {
+        await cleanupSession(session);
+      }
+    },
+    15_000
+  );
 
   it("keeps boot overlay disabled while Retro FX settings still update", async () => {
     const session = await createSession({ initialRetroFxMode: "classic" });

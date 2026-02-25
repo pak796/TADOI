@@ -137,4 +137,114 @@ export function handleKey(key: { name: string; sequence: string; ctrl: boolean }
       rmSync(tempDir, { recursive: true, force: true });
     }
   });
+
+  it("ignores numeric version tokens in docs while keeping non-version keys", () => {
+    const tempDir = createTempDir("tadoi-keybind-audit-version-numeric-");
+    try {
+      write(
+        tempDir,
+        "src/app/keyRouter.ts",
+        `
+export function handleKey(input: { name: string; sequence: string }) {
+  if (input.name === "u" || input.sequence === "u") {
+    return [{ scope: "ui", type: "OPEN_BACKUP_CENTER" }];
+  }
+  return [];
+}
+`
+      );
+      write(
+        tempDir,
+        "README.md",
+        [
+          "- Schema version: `6`",
+          "- App release: `v0.3.8`",
+          "- Open backup center: `u`"
+        ].join("\n")
+      );
+
+      const outJson = path.join(tempDir, "keybind-audit.json");
+      const outMd = path.join(tempDir, "keybind-audit.md");
+      const result = spawnSync(
+        "python3",
+        [
+          SCRIPT_PATH,
+          "--repo-root",
+          tempDir,
+          "--router-path",
+          "src/app/keyRouter.ts",
+          "--docs-glob",
+          "README.md",
+          "--out-json",
+          outJson,
+          "--out-md",
+          outMd
+        ],
+        { encoding: "utf8" }
+      );
+
+      expect(result.status).toBe(0);
+
+      const payload = JSON.parse(readFileSync(outJson, "utf8")) as {
+        missing_in_code: string[];
+        evidence: { docs: Record<string, string[]> };
+      };
+      expect(payload.missing_in_code).not.toContain("6");
+      expect(Object.keys(payload.evidence.docs)).not.toContain("6");
+      expect(payload.missing_in_code).toEqual([]);
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps numeric shortcut tokens from key-context docs", () => {
+    const tempDir = createTempDir("tadoi-keybind-audit-numeric-keys-");
+    try {
+      write(
+        tempDir,
+        "src/app/keyRouter.ts",
+        `
+export function handleKey(input: { name: string; sequence: string }) {
+  if (input.name === "1" || input.sequence === "1") {
+    return [{ scope: "ui", type: "BACKUP_SELECT_MENU_OPTION" }];
+  }
+  return [];
+}
+`
+      );
+      write(tempDir, "README.md", "- backup menu keys: `1/2/3`");
+
+      const outJson = path.join(tempDir, "keybind-audit.json");
+      const outMd = path.join(tempDir, "keybind-audit.md");
+      const result = spawnSync(
+        "python3",
+        [
+          SCRIPT_PATH,
+          "--repo-root",
+          tempDir,
+          "--router-path",
+          "src/app/keyRouter.ts",
+          "--docs-glob",
+          "README.md",
+          "--out-json",
+          outJson,
+          "--out-md",
+          outMd
+        ],
+        { encoding: "utf8" }
+      );
+
+      expect(result.status).toBe(0);
+
+      const payload = JSON.parse(readFileSync(outJson, "utf8")) as {
+        canonical_keybinds: string[];
+        missing_in_code: string[];
+      };
+      expect(payload.canonical_keybinds).toContain("1");
+      expect(payload.missing_in_code).toContain("2");
+      expect(payload.missing_in_code).toContain("3");
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
 });

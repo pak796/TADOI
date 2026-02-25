@@ -15,7 +15,10 @@ import {
   toEditorFocus
 } from "./uiState";
 import { handleKey, type KeyRouterAction } from "./keyRouter";
-import { TaskList } from "../components/TaskList";
+import {
+  resolveTaskListWheelSelectionIndex,
+  TaskList
+} from "../components/TaskList";
 import { DetailsPane } from "../components/DetailsPane";
 import { EditorPane } from "../components/EditorPane";
 import { LeftRail, type LeftRailMenuItem } from "../components/LeftRail";
@@ -78,6 +81,11 @@ import {
   type SuggestedTime
 } from "../domain/timeAutocomplete";
 import {
+  getTitleCompletion,
+  getTitleQuery,
+  rankTaskTitles
+} from "../domain/titleAutocomplete";
+import {
   applyArchiveAging,
   combineDueDateTime,
   createDraftFromTask,
@@ -110,6 +118,7 @@ import {
 import {
   formatTagForDisplay,
   getTagCompletion,
+  mergeTagIndexWithTaskHistory,
   normalizeTagPrefix,
   rankTags,
   updateTagIndex
@@ -1157,6 +1166,11 @@ type SaveConflictBannerState = {
   actualStateRevision?: number;
 };
 
+type BackupBodyScrollRequest = {
+  token: number;
+  delta: number;
+};
+
 function initState(data?: LoadedData): AppState {
   return {
     ...initialState,
@@ -1206,6 +1220,11 @@ export function App({
     backupCenterReducer,
     initialBackupCenterState
   );
+  const [backupBodyScrollRequest, setBackupBodyScrollRequest] =
+    useState<BackupBodyScrollRequest>({
+      token: 0,
+      delta: 0
+    });
   const calendarImportPathInputRef = useRef(backupState.calendarImportPathInput);
   calendarImportPathInputRef.current = backupState.calendarImportPathInput;
   const calendarImportRangeRef = useRef(backupState.calendarImportRange);
@@ -1785,8 +1804,17 @@ export function App({
   const doneQuickFilterActive =
     state.filters.status === "done" && state.filters.due === "any";
 
+  const titleQuery = state.editor ? getTitleQuery(state.editor.title) : null;
+  const titleSuggestions = titleQuery ? rankTaskTitles(state.tasks, titleQuery) : [];
+  const titleInlineSuggestion = titleQuery
+    ? getTitleCompletion(titleQuery, titleSuggestions)
+    : null;
+  const predictiveTagIndex = React.useMemo(
+    () => mergeTagIndexWithTaskHistory(state.tagIndex, state.tasks),
+    [state.tagIndex, state.tasks]
+  );
   const tagQuery = state.editor ? getTagQuery(state.editor.tagsText) : null;
-  const tagSuggestions = tagQuery ? rankTags(state.tagIndex, tagQuery) : [];
+  const tagSuggestions = tagQuery ? rankTags(predictiveTagIndex, tagQuery) : [];
   const tagInlineSuggestion = tagQuery
     ? getTagCompletion(tagQuery, tagSuggestions)
     : null;
@@ -1794,7 +1822,7 @@ export function App({
     ? normalizeTagPrefix(tagFilterInput)
     : "";
   const tagFilterSuggestions = tagFilterQuery
-    ? rankTags(state.tagIndex, tagFilterQuery).filter((tag) => !isPriorityToken(tag))
+    ? rankTags(predictiveTagIndex, tagFilterQuery).filter((tag) => !isPriorityToken(tag))
     : [];
   const tagFilterInlineSuggestion = tagFilterQuery
     ? getTagCompletion(tagFilterQuery, tagFilterSuggestions)
@@ -1997,7 +2025,7 @@ export function App({
   const dueSuggestionHint = dueSuggestion ? `→ ${dueSuggestion} (press →)` : null;
 
   const timeAutocompleteStep =
-    uiState.mode === Mode.ADD &&
+    isEditorMode(uiState.mode) &&
     uiState.focus === FocusTarget.EDITOR_DUE_TIME &&
     state.editor &&
     timeSuggestion
@@ -3207,6 +3235,14 @@ export function App({
     calendarFlow.handleCalendarDigitSelection(digit);
   }
 
+  function requestBackupBodyScroll(delta: number) {
+    if (!Number.isFinite(delta) || delta === 0) return;
+    setBackupBodyScrollRequest((prev) => ({
+      token: prev.token + 1,
+      delta
+    }));
+  }
+
   function handleBackupBackAction() {
     if (backupState.screen === "menu") {
       const { mode: returnMode, focus: returnFocus } = normalizeHelpReturnContext(
@@ -3426,6 +3462,9 @@ export function App({
         return;
       case "BACKUP_PICKER_OPEN_MANUAL_PATH":
         backupDispatch({ type: "openImportPathManual" });
+        return;
+      case "BACKUP_SCROLL_BODY":
+        requestBackupBodyScroll(action.delta);
         return;
       case "OPEN_SEARCH":
         openSearchMode();
@@ -3653,9 +3692,17 @@ export function App({
       case "SAVE_EDITOR":
         saveEditor();
         return;
+      case "ACCEPT_TITLE_INLINE":
+        if (titleInlineSuggestion) {
+          dispatch({
+            type: "updateEditor",
+            patch: { title: titleInlineSuggestion.full }
+          });
+        }
+        return;
       case "APPLY_TIME_AUTOCOMPLETE":
         if (
-          uiState.mode === Mode.ADD &&
+          isEditorMode(uiState.mode) &&
           uiState.focus === FocusTarget.EDITOR_DUE_TIME &&
           state.editor &&
           timeSuggestion
@@ -3864,6 +3911,7 @@ export function App({
       },
       {
         uiState,
+        hasTitleInlineSuggestion: Boolean(titleInlineSuggestion),
         hasTagInlineSuggestion: Boolean(tagInlineSuggestion),
         hasDueSuggestion: Boolean(dueSuggestion),
         timeAutocompleteStep,
@@ -5112,6 +5160,24 @@ export function App({
     if (visibleTaskRows.length === 0) return;
     const nextIndex = Math.max(0, Math.min(index, visibleTaskRows.length - 1));
     dispatch({ type: "setSelected", id: visibleTaskRows[nextIndex].id });
+  }
+
+  function moveSelectionClamped(delta: number) {
+    if (visibleTaskRows.length === 0 || delta === 0) return;
+    const currentIndex = visibleTaskRows.findIndex((task) => task.id === state.selectedId);
+    const safeIndex = currentIndex === -1 ? 0 : currentIndex;
+    const nextIndex = resolveTaskListWheelSelectionIndex({
+      currentIndex: safeIndex,
+      delta: delta > 0 ? 1 : -1,
+      itemCount: visibleTaskRows.length
+    });
+    if (nextIndex === safeIndex) return;
+    setSelectedByIndex(nextIndex);
+  }
+
+  function handleTaskListWheelScroll(delta: 1 | -1) {
+    if (uiState.mode !== Mode.LIST && uiState.mode !== Mode.SEARCH) return;
+    moveSelectionClamped(delta);
   }
 
   function selectTaskById(taskId: string) {
@@ -6542,6 +6608,7 @@ export function App({
                     fastPulseOn={fastPulseOn}
                     flashMode={settingsState.flashMode}
                     onTaskRowClick={handleTaskRowClick}
+                    onWheelScroll={handleTaskListWheelScroll}
                     scrollOffset={uiState.scrollOffset}
                     visibleRows={visibleRows}
                     visibleLines={visibleLines}
@@ -6591,6 +6658,9 @@ export function App({
                     focus={toEditorFocus(uiState.focus)}
                     availableHeightLines={editorPaneHeightLines}
                     scrollOffset={uiState.editorScrollOffset}
+                    titleInlineSuggestion={
+                      uiState.focus === FocusTarget.EDITOR_TITLE ? titleInlineSuggestion : null
+                    }
                     tagInlineSuggestion={
                       uiState.focus === FocusTarget.EDITOR_TAGS ? tagInlineSuggestion : null
                     }
@@ -7092,6 +7162,7 @@ export function App({
             state={backupState}
             dataPath={getDataFilePath()}
             importPickerVisibleRows={backupImportPickerVisibleRows}
+            bodyScrollRequest={backupBodyScrollRequest}
             savedViewNames={state.savedViews.map((view) => view.name)}
             onImportPathChange={(value) =>
               backupDispatch({ type: "setImportPath", value })
@@ -7104,6 +7175,13 @@ export function App({
               })
             }
             onOpenImportPathFallback={() => backupDispatch({ type: "openImportPathManual" })}
+            onImportPickerWheelScroll={(delta) =>
+              backupDispatch({
+                type: "moveImportPickerSelection",
+                delta,
+                visibleRows: backupImportPickerVisibleRows
+              })
+            }
             onReplaceConfirmChange={(value) =>
               backupDispatch({ type: "setReplaceConfirmInput", value })
             }

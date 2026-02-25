@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
+import type { ScrollBoxRenderable } from "@opentui/core";
 import type { CalendarEventPrivacyMode } from "../calendar/calendarMapper";
 import type { CalendarImportMode } from "../calendar/importMapper";
 import type { CalendarExportRange } from "../calendar/range";
@@ -11,9 +12,11 @@ type BackupCenterScreenProps = {
   state: BackupCenterState;
   dataPath: string;
   importPickerVisibleRows: number;
+  bodyScrollRequest: { token: number; delta: number };
   savedViewNames: string[];
   onImportPathChange: (value: string) => void;
   onImportPickerSelectIndex: (index: number) => void;
+  onImportPickerWheelScroll: (delta: 1 | -1) => void;
   onOpenImportPathFallback: () => void;
   onReplaceConfirmChange: (value: string) => void;
   onCalendarExportPathChange: (value: string) => void;
@@ -242,13 +245,23 @@ export function resolveImportPickerWindow(options: {
   };
 }
 
+export function resolveBackupWheelDelta(
+  direction: "up" | "down" | "left" | "right" | undefined
+): 1 | -1 | 0 {
+  if (direction === "up") return -1;
+  if (direction === "down") return 1;
+  return 0;
+}
+
 export function BackupCenterScreen({
   state,
   dataPath,
   importPickerVisibleRows,
+  bodyScrollRequest,
   savedViewNames,
   onImportPathChange,
   onImportPickerSelectIndex,
+  onImportPickerWheelScroll,
   onOpenImportPathFallback,
   onReplaceConfirmChange,
   onCalendarExportPathChange,
@@ -305,6 +318,16 @@ export function BackupCenterScreen({
     visibleRows: importPickerVisibleRows
   });
   const pickerVisibleFiles = state.importPickerFiles.slice(pickerWindow.start, pickerWindow.end);
+  const bodyScrollboxRef = useRef<ScrollBoxRenderable | null>(null);
+
+  useEffect(() => {
+    bodyScrollboxRef.current?.scrollTo({ x: 0, y: 0 });
+  }, [state.screen]);
+
+  useEffect(() => {
+    if (bodyScrollRequest.delta === 0) return;
+    bodyScrollboxRef.current?.scrollBy({ x: 0, y: bodyScrollRequest.delta });
+  }, [bodyScrollRequest.token, bodyScrollRequest.delta]);
 
   let footerActions: BackupFooterAction[] = [];
   switch (state.screen) {
@@ -526,12 +549,15 @@ export function BackupCenterScreen({
       style={{
         width: 98,
         maxWidth: "100%",
+        height: "100%",
+        maxHeight: "100%",
         flexDirection: "column",
         backgroundColor: theme.panel,
         border: true,
         borderStyle: "single",
         borderColor: theme.outline,
-        padding: 1
+        padding: 1,
+        overflow: "hidden"
       }}
     >
       <text style={{ color: theme.text, fontWeight: "bold" }}>Backup Center</text>
@@ -541,6 +567,8 @@ export function BackupCenterScreen({
         <text style={{ color: theme.muted }}>DATA MODE: {modeLabel}</text>
       </box>
 
+      <box style={{ flexDirection: "column", flexGrow: 1, marginTop: 1, overflow: "hidden" }}>
+        <scrollbox ref={bodyScrollboxRef} scrollY style={{ flexGrow: 1, paddingRight: 1 }}>
       {state.screen === "menu" ? (
         <box style={{ flexDirection: "column", marginTop: 1 }}>
           {rootMenuOptions.map((option) => {
@@ -604,7 +632,17 @@ export function BackupCenterScreen({
       ) : null}
 
       {state.screen === "import_picker" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
+        <box
+          style={{ flexDirection: "column", marginTop: 1 }}
+          onMouseScroll={(event) => {
+            const delta = resolveBackupWheelDelta(event.scroll?.direction);
+            if (delta === 0 || state.importPickerFiles.length === 0) return;
+            if (typeof event.stopPropagation === "function") {
+              event.stopPropagation();
+            }
+            onImportPickerWheelScroll(delta);
+          }}
+        >
           <text style={{ color: theme.text, fontWeight: "bold" }}>Select backup file</text>
           <text style={{ color: theme.muted }}>
             Directory: {state.importPickerDirectoryPath || "(unresolved)"}
@@ -1273,6 +1311,8 @@ export function BackupCenterScreen({
           <text style={{ color: theme.muted, marginTop: 1 }}>Enter or Esc: back</text>
         </box>
       ) : null}
+        </scrollbox>
+      </box>
 
       {footerActions.length > 0 ? (
         <box style={{ flexDirection: "row", gap: 1, marginTop: 1, flexWrap: "wrap" }}>

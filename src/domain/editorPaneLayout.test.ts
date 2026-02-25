@@ -24,6 +24,7 @@ describe("editorPaneLayout", () => {
   it("estimates larger content when optional hint rows are visible", () => {
     const baseline = estimateEditorContentLines();
     const withHints = estimateEditorContentLines({
+      hasTitleSuggestion: true,
       hasDueSuggestion: true,
       hasTimeSuggestion: true,
       hasTagSuggestion: true

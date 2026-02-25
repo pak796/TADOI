@@ -1,6 +1,11 @@
 import { describe, expect, it } from "bun:test";
 import { Mode } from "../domain/models";
-import { resolveTaskRowClickIntent, shouldShowScrollbar } from "./TaskList";
+import {
+  resolveTaskListWheelDelta,
+  resolveTaskListWheelSelectionIndex,
+  resolveTaskRowClickIntent,
+  shouldShowScrollbar
+} from "./TaskList";
 
 describe("task list scrollbar visibility", () => {
   it("hides scrollbar when no tasks are present", () => {
@@ -76,5 +81,49 @@ describe("task row click intent", () => {
         mode: Mode.LIST
       })
     ).toBe("none");
+  });
+});
+
+describe("task list wheel direction mapping", () => {
+  it("maps wheel up/down to deterministic list deltas", () => {
+    expect(resolveTaskListWheelDelta("up")).toBe(-1);
+    expect(resolveTaskListWheelDelta("down")).toBe(1);
+  });
+
+  it("returns no-op for non-vertical wheel directions", () => {
+    expect(resolveTaskListWheelDelta("left")).toBe(0);
+    expect(resolveTaskListWheelDelta("right")).toBe(0);
+    expect(resolveTaskListWheelDelta(undefined)).toBe(0);
+  });
+
+  it("clamps wheel selection movement at bounds and no-ops at edges", () => {
+    expect(
+      resolveTaskListWheelSelectionIndex({
+        currentIndex: 0,
+        delta: -1,
+        itemCount: 3
+      })
+    ).toBe(0);
+    expect(
+      resolveTaskListWheelSelectionIndex({
+        currentIndex: 2,
+        delta: 1,
+        itemCount: 3
+      })
+    ).toBe(2);
+    expect(
+      resolveTaskListWheelSelectionIndex({
+        currentIndex: 1,
+        delta: 1,
+        itemCount: 3
+      })
+    ).toBe(2);
+    expect(
+      resolveTaskListWheelSelectionIndex({
+        currentIndex: 1,
+        delta: -1,
+        itemCount: 3
+      })
+    ).toBe(0);
   });
 });

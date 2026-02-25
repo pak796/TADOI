@@ -175,6 +175,53 @@ describe("backupCenterFlow", () => {
     expect(state.importPickerScrollOffset).toBe(0);
   });
 
+  it("clamps picker movement at bounds and no-ops when already at edge", () => {
+    const files = [
+      makeBackupFile("tadoi-backup-20260210-000001.json", 3, 120),
+      makeBackupFile("tadoi-backup-20260209-000001.json", 2, 118),
+      makeBackupFile("tadoi-backup-20260208-000001.json", 1, 110)
+    ];
+
+    let state = backupCenterReducer(initialBackupCenterState, {
+      type: "openImportPicker",
+      directoryPath: "/tmp/backups"
+    });
+    state = backupCenterReducer(state, {
+      type: "loadImportPickerFilesSuccess",
+      directoryPath: "/tmp/backups",
+      files
+    });
+
+    const topNoOp = backupCenterReducer(state, {
+      type: "moveImportPickerSelection",
+      delta: -1,
+      visibleRows: 2
+    });
+    expect(topNoOp.importPickerSelectedIndex).toBe(0);
+    expect(topNoOp.importPickerScrollOffset).toBe(0);
+
+    state = backupCenterReducer(topNoOp, {
+      type: "moveImportPickerSelection",
+      delta: 1,
+      visibleRows: 2
+    });
+    state = backupCenterReducer(state, {
+      type: "moveImportPickerSelection",
+      delta: 1,
+      visibleRows: 2
+    });
+    expect(state.importPickerSelectedIndex).toBe(2);
+    expect(state.importPickerScrollOffset).toBe(1);
+
+    const bottomNoOp = backupCenterReducer(state, {
+      type: "moveImportPickerSelection",
+      delta: 1,
+      visibleRows: 2
+    });
+    expect(bottomNoOp.importPickerSelectedIndex).toBe(2);
+    expect(bottomNoOp.importPickerScrollOffset).toBe(1);
+  });
+
   it("enforces replace confirmation gate", () => {
     let state = backupCenterReducer(initialBackupCenterState, { type: "openImportPath" });
     state = backupCenterReducer(state, { type: "setImportPath", value: "./incoming.json" });
