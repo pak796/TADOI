@@ -256,6 +256,7 @@ import { copyToClipboard } from "./copyToClipboard";
 import { openTarget } from "./openTarget";
 import { redactPathForDisplay } from "./pathRedaction";
 import { useEditorFlow } from "./editorFlow";
+import { useModalOrchestration } from "./modalOrchestration";
 import { shouldTriggerSaveConflictRetryFromMouse } from "./saveConflictBannerAction";
 import {
   parseCalendarImportHorizonOrThrow,
@@ -2374,31 +2375,7 @@ export function App({
   ]);
 
   function applyEscUnwind(options: { bypassUnsavedGuard?: boolean } = {}): boolean {
-    if (!options.bypassUnsavedGuard && isEditorMode(uiState.mode)) {
-      if (requestTaskEditorUnsavedGuard("close_editor")) {
-        return true;
-      }
-    }
-    if (uiState.mode === Mode.HELP) {
-      closeHelp();
-      return true;
-    }
-    const next = unwind(uiState);
-    if (!next) return false;
-    if (uiState.mode === Mode.BACKUP_CENTER) {
-      backupDispatch({ type: "reset" });
-    }
-    if (next.clearEditorDraft) {
-      setTimeSuggestion(null);
-      dispatch({ type: "setEditor", editor: null });
-    }
-    uiDispatch({
-      type: "replace",
-      state: next.clearEditorDraft
-        ? { ...next.state, editorScrollOffset: 0 }
-        : next.state
-    });
-    return true;
+    return modalFlow.applyEscUnwind(options);
   }
 
   function isTaskEditorDirty(): boolean {
@@ -2552,131 +2529,56 @@ export function App({
   }
 
   function openUnsavedChangesModal(modal: UIUnsavedChangesModal): void {
-    openModalWithContext(modal);
+    modalFlow.openUnsavedChangesModal(modal);
   }
 
   function openBackupFinalCheckpointModal(modal: UIBackupFinalCheckpointModal): void {
-    openModalWithContext(modal);
+    modalFlow.openBackupFinalCheckpointModal(modal);
   }
 
   function openRecurringDeleteFutureCheckpointModal(
     modal: UIRecurringDeleteFutureCheckpointModal
   ): void {
-    openModalWithContext(modal);
+    modalFlow.openRecurringDeleteFutureCheckpointModal(modal);
   }
 
   function openBackupFinalCheckpoint(
     checkpoint: UIBackupFinalCheckpointModal["checkpoint"],
     sourceScreen: BackupCenterFlowScreen
   ): void {
-    runRoutedAction({
-      scope: "ui",
-      type: "OPEN_BACKUP_FINAL_CHECKPOINT_MODAL",
-      modal: {
-        type: "backup_final_checkpoint",
-        checkpoint,
-        sourceScreen,
-        previousMode: Mode.BACKUP_CENTER,
-        previousFocus: FocusTarget.BACKUP_CENTER
-      }
-    });
+    modalFlow.openBackupFinalCheckpoint(checkpoint, sourceScreen);
   }
 
   function handleUnsavedChangesSaveAndContinue(): void {
-    const modal = getUnsavedChangesModal();
-    if (!modal) return;
-
-    let saveSucceeded = false;
-    if (modal.source === "task_editor") {
-      const forcedMode = modal.previousMode === Mode.EDIT ? Mode.EDIT : Mode.ADD;
-      saveSucceeded = saveEditor({ forceMode: forcedMode, closeAfterSave: false });
-    } else if (modal.source === "help_custom1_editor") {
-      saveSucceeded = saveCustom1Editor();
-    } else {
-      saveSucceeded = saveBuiltInTextEditor();
-    }
-
-    if (!saveSucceeded) {
-      return;
-    }
-
-    closeModalWithPreviousContext(modal);
-    if (modal.source === "task_editor") {
-      runTaskEditorContinuation(modal.continuation);
-      return;
-    }
-    runHelpThemeEditorContinuation(modal.source, modal.continuation);
+    modalFlow.handleUnsavedChangesSaveAndContinue();
   }
 
   function handleUnsavedChangesDiscardAndContinue(): void {
-    const modal = getUnsavedChangesModal();
-    if (!modal) return;
-    closeModalWithPreviousContext(modal);
-    if (modal.source === "task_editor") {
-      runTaskEditorContinuation(modal.continuation);
-      return;
-    }
-    runHelpThemeEditorContinuation(modal.source, modal.continuation);
+    modalFlow.handleUnsavedChangesDiscardAndContinue();
   }
 
   function cancelUnsavedChangesContinue(): void {
-    const modal = getUnsavedChangesModal();
-    if (!modal) return;
-    closeModalWithPreviousContext(modal);
+    modalFlow.cancelUnsavedChangesContinue();
   }
 
   function handleBackupFinalCheckpointConfirm(): void {
-    const modal = getBackupFinalCheckpointModal();
-    if (!modal) return;
-    closeModalWithPreviousContext(modal);
-    if (modal.checkpoint === "data_import") {
-      runBackupImportCommitFlow();
-      return;
-    }
-    runCalendarImportCommitFromBackupCenter();
+    modalFlow.handleBackupFinalCheckpointConfirm();
   }
 
   function cancelBackupFinalCheckpoint(): void {
-    const modal = getBackupFinalCheckpointModal();
-    if (!modal) return;
-    closeModalWithPreviousContext(modal);
+    modalFlow.cancelBackupFinalCheckpoint();
   }
 
   function handleRecurringDeleteFutureCheckpointConfirm(): void {
-    const modal = getRecurringDeleteFutureCheckpointModal();
-    if (!modal) return;
-    const deleteModal = modal.deleteModal;
-    const nowMs = Date.now();
-    const nextTasks = deleteRecurringOccurrenceAndFuture(state.tasks, {
-      seriesTaskId: deleteModal.seriesTaskId,
-      seriesId: deleteModal.seriesId,
-      occurrenceIso: deleteModal.occurrenceIso,
-      nowMs
-    });
-    finishDeleteModalAction(deleteModal, deleteModal.selectedRowId, nextTasks);
+    modalFlow.handleRecurringDeleteFutureCheckpointConfirm();
   }
 
   function cancelRecurringDeleteFutureCheckpoint(): void {
-    const modal = getRecurringDeleteFutureCheckpointModal();
-    if (!modal) return;
-    openModalWithContext(modal.deleteModal);
+    modalFlow.cancelRecurringDeleteFutureCheckpoint();
   }
 
   function requestRecurringDeleteFutureCheckpointFromDeleteModal(): void {
-    const modal = uiState.modal;
-    if (!modal || modal.type !== "delete" || modal.target !== "recurring_occurrence") {
-      return;
-    }
-    runRoutedAction({
-      scope: "ui",
-      type: "OPEN_RECURRING_DELETE_FUTURE_CHECKPOINT_MODAL",
-      modal: {
-        type: "recurring_delete_future_checkpoint",
-        deleteModal: modal,
-        previousMode: modal.previousMode,
-        previousFocus: modal.previousFocus
-      }
-    });
+    modalFlow.requestRecurringDeleteFutureCheckpointFromDeleteModal();
   }
 
   function openBackupError(
@@ -5909,6 +5811,35 @@ export function App({
     return editorFlow.saveEditor(options);
   }
 
+  const modalFlow = useModalOrchestration({
+    uiState,
+    state,
+    dispatch,
+    uiDispatch,
+    backupDispatch,
+    setTimeSuggestion,
+    requestTaskEditorUnsavedGuard,
+    closeHelp,
+    runTaskEditorContinuation,
+    runHelpThemeEditorContinuation,
+    saveEditor,
+    saveCustom1Editor,
+    saveBuiltInTextEditor,
+    openModalWithContext,
+    closeModalWithPreviousContext,
+    finishDeleteModalAction,
+    handleDeleteSelected,
+    runBackupImportCommitFlow,
+    runCalendarImportCommitFromBackupCenter,
+    runRoutedAction,
+    openAdd,
+    clearPendingGPrefix,
+    closeViewsOverlay,
+    openListMode,
+    showShortNavigationBanner,
+    emitCompletionFromDiff
+  });
+
   function finishDeleteModalAction(
     modal: UIDeleteModal,
     deletedRowId: string,
@@ -5959,15 +5890,15 @@ export function App({
   }
 
   function confirmDeleteSelectedFromModal() {
-    handleDeleteSelected();
+    modalFlow.confirmDeleteSelectedFromModal();
   }
 
   function confirmDeleteSelectedAndFutureFromModal() {
-    requestRecurringDeleteFutureCheckpointFromDeleteModal();
+    modalFlow.confirmDeleteSelectedAndFutureFromModal();
   }
 
   function cancelDeleteSelectedFromModal() {
-    applyEscUnwind();
+    modalFlow.cancelDeleteSelectedFromModal();
   }
 
   function openEmptyNuxModal(options?: {
@@ -5975,53 +5906,35 @@ export function App({
     startedFromNux?: boolean;
     createdTaskId?: string;
   }) {
-    if (uiState.modal && uiState.modal.type !== "emptyNux") return;
-    uiDispatch(openEmptyNux(options));
-    uiDispatch({ type: "setMode", mode: Mode.MODAL_CONFIRM });
-    uiDispatch({ type: "setFocus", focus: FocusTarget.MODAL });
+    modalFlow.openEmptyNuxModal(options);
   }
 
   function startEmptyNuxAddFlow() {
-    uiDispatch(
-      openEmptyNux({
-        step: "adding",
-        startedFromNux: true
-      })
-    );
-    uiDispatch({ type: "setModal", modal: null });
-    openAdd();
+    modalFlow.startEmptyNuxAddFlow();
   }
 
   function dismissEmptyNuxModal() {
-    uiDispatch(dismissEmptyNux());
+    modalFlow.dismissEmptyNuxModal();
   }
 
   function showEmptyNuxShortcutsModal() {
-    openEmptyNuxModal({ step: "shortcuts" });
+    modalFlow.showEmptyNuxShortcutsModal();
   }
 
   function returnToEmptyNuxWelcomeModal() {
-    openEmptyNuxModal({ step: "welcome" });
+    modalFlow.returnToEmptyNuxWelcomeModal();
   }
 
   function clearEmptyNuxWalkthrough() {
-    uiDispatch(clearEmptyNux());
+    modalFlow.clearEmptyNuxWalkthrough();
   }
 
   function closeCelebrateToList() {
-    const createdTaskId = uiState.emptyNux?.createdTaskId;
-    uiDispatch(clearEmptyNux());
-    clearPendingGPrefix();
-    closeViewsOverlay();
-    uiDispatch({ type: "setMode", mode: Mode.LIST });
-    uiDispatch({ type: "setFocus", focus: FocusTarget.TASK_LIST });
-    if (createdTaskId) {
-      dispatch({ type: "setSelected", id: createdTaskId });
-    }
+    modalFlow.closeCelebrateToList();
   }
 
   function createTaskFromEmptyNuxModal() {
-    startEmptyNuxAddFlow();
+    modalFlow.createTaskFromEmptyNuxModal();
   }
 
   function getActiveOverdueModalEvent(): TaskOverdueEvent | null {
@@ -6031,64 +5944,15 @@ export function App({
   }
 
   function handleOverdueModalSnooze() {
-    const event = getActiveOverdueModalEvent();
-    if (!event) return;
-    const updatedTasks = applyOverdueSnooze(state.tasks, event, Date.now(), 10);
-    dispatch({ type: "setTasks", tasks: updatedTasks });
-    applyEscUnwind();
+    modalFlow.handleOverdueModalSnooze();
   }
 
   function handleOverdueModalDone() {
-    const event = getActiveOverdueModalEvent();
-    if (!event) return;
-    const nowMs = Date.now();
-    const updatedTasks = applyOverdueMarkDone(state.tasks, event, nowMs);
-    dispatch({ type: "setTasks", tasks: updatedTasks });
-    emitCompletionFromDiff(state.tasks, updatedTasks, nowMs);
-    applyEscUnwind();
+    modalFlow.handleOverdueModalDone();
   }
 
   function handleOverdueModalGoToTask() {
-    const event = getActiveOverdueModalEvent();
-    if (!event) return;
-
-    openListMode();
-    dispatch({
-      type: "setFilters",
-      filters: {
-        status: "all",
-        due: "any",
-        priority: undefined,
-        tag: undefined,
-        tagFilter: undefined,
-        searchText: undefined
-      }
-    });
-
-    const goToTarget = resolveGoToTaskTarget(state.tasks, event);
-    const revealRows = buildVisibleTaskRows(
-      state.tasks,
-      {
-        status: "all",
-        due: "any",
-        priority: undefined,
-        tag: undefined,
-        tagFilter: undefined,
-        searchText: undefined
-      },
-      state.sortMode,
-      Date.now()
-    );
-    const selectedRow =
-      revealRows.find((row) => row.id === goToTarget.preferredTaskId) ??
-      (goToTarget.fallbackSourceTaskId
-        ? revealRows.find((row) => row.sourceTaskId === goToTarget.fallbackSourceTaskId)
-        : undefined) ??
-      revealRows[0];
-    if (selectedRow) {
-      dispatch({ type: "setSelected", id: selectedRow.id });
-    }
-    showShortNavigationBanner(`Jumped to overdue task: ${event.title}`);
+    modalFlow.handleOverdueModalGoToTask();
   }
 
   function setTagFilter(next?: TagFilter) {
