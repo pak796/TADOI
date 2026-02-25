@@ -1,9 +1,14 @@
 # TADOI™ Product Spec (v0.3.4)
 
-Updated: 2026-02-12
+Updated: 2026-02-25
 Runtime baseline: `v0.3.4`
 Package baseline: `0.3.4`
 Persistence schema baseline: `4`
+
+Historical status:
+- This document is retained as a v0.3.4 historical snapshot and is not the active source of truth.
+- Current source-of-truth spec: `TADOI_SPEC_v0.3.7.md` (runtime `v0.3.7`, package `0.3.7`, schema `6`).
+- For active install/usage/release docs, use `docs/DOC_INDEX.md`.
 
 Stability taxonomy:
 - `Canonical`: compatibility contract expected to remain stable across patch/minor updates.
@@ -213,7 +218,9 @@ Manual coverage baseline:
 
 ## 7) Related Documents
 - `README.md`
-- `docs/TADOI_Installation_Guide_All_Platforms.md`
+- `TADOI_SPEC_v0.3.7.md` (active spec)
+- `TADOI_TASKS_v0.3.7.md` (active task list)
+- Active installation guide (all platforms)
 - `docs/TADOI_QA_Guide_v0.3.4.md`
 - `docs/TADOI_Feature_List_v0.3.4.md`
 - `TADOI_Spec_Calendar_Export_ICS_v0.2.md`
