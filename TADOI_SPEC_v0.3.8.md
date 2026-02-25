@@ -1,14 +1,9 @@
-# TADOI™ Product Spec (v0.3.5)
+# TADOI™ Product Spec (v0.3.8)
 
 Updated: 2026-02-25
-Runtime baseline: `v0.3.5`
-Package baseline: `0.3.5`
-Persistence schema baseline: `5`
-
-Historical status:
-- This document is retained as a v0.3.5 historical snapshot and is not the active source of truth.
-- Current source-of-truth spec: `TADOI_SPEC_v0.3.8.md` (runtime `v0.3.8`, package `0.3.8`, schema `6`).
-- For active install/usage/release docs, use `docs/DOC_INDEX.md`.
+Runtime baseline: `v0.3.8`
+Package baseline: `0.3.8`
+Persistence schema baseline: `6`
 
 Stability taxonomy:
 - `Canonical`: compatibility contract expected to remain stable across patch/minor updates.
@@ -20,6 +15,7 @@ TADOI is a keyboard-first terminal task manager focused on fast personal executi
 
 Core experience:
 - List-first task management with strong keyboard routing and clear mode boundaries.
+- TITS command layer (Milestones 1-3): in-app command bar, shared command engine, CLI parity, and recurrence command support.
 - Recurrence-aware planning with occurrence-level actions.
 - Unified filtering across list and dashboard analytics surfaces.
 - Local-first persistence with explicit import/export safety controls.
@@ -46,9 +42,10 @@ Primary modes:
 
 Routing priorities:
 1. modal handling (blocking)
-2. help/back subpage handling
-3. search/editor text contexts
-4. list/dashboard actions
+2. TITS command bar handling when active (list mode only)
+3. help/back subpage handling
+4. search/editor text contexts
+5. list/dashboard actions
 
 ### 2.3 Search Lifecycle
 - `/` opens search.
@@ -180,7 +177,27 @@ Import:
   - `alternate_blocks32`
   - `rotate`
 
-### 2.13 Engagement Toast Contract
+### 2.13 Theme and Settings Contract
+- Theme IDs include:
+  - `default`, `retro`, `highContrast`, `neonHacker`, `lightSlate`, `paperWhite`, `midnightBlack`
+  - `jester`, `sonora`, `tigers`, `tech`, `deuteranopia`, `protanopia`, `tritanopia`
+  - `blueAngels`, `southwest`, `rams`, `trooper`, `twilight`, `msdos`, `niners`, `mcrn`
+  - `zeke`, `gundam`, `crtGreen`, `crtAmber`, `custom1`, `rotating`
+- Theme rotation and rotating-mode order include both CRT themes (`crtGreen`, `crtAmber`).
+- Help root is read-only for direct settings hotkeys; settings changes are applied through the Help `Settings & Themes` page flow.
+- Settings page rows include:
+  - `Theme`, `Logo`, `Flash Mode`, `CRT FX Lite`, `CRT FX Profile`, `Notifications`, `Overdue Popup`, `Terminal Bell`
+- CRT FX runtime contract:
+  - `CRT FX Lite` toggles effect on/off.
+  - `CRT FX Profile` cycles color+strength pairs in this order:
+    - `Green Subtle`, `Green Regular`, `Green Strong`, `Amber Subtle`, `Amber Regular`, `Amber Strong`
+  - Effect applies tint/flicker treatment to primary panel surfaces (left rail, task list panel, details panel).
+- Settings persistence normalization:
+  - `crtFxLite` persists only when enabled (`true`).
+  - `crtFxColor` and `crtFxPreset` persist only when non-default.
+  - default profile is `green + normal`.
+
+### 2.14 Engagement Toast Contract
 - Bottom-bar engagement toasts are non-interactive and auto-dismiss.
 - Toast queue is bounded and priority-ordered; blocking overlays suppress rendering while preserving queue state.
 - Current milestone set includes:
@@ -190,6 +207,53 @@ Import:
   - 3 completed today
   - 5 completions for a tag in the last 7 days
   - 3-day completion streak
+
+### 2.15 TITS Command Layer Contract (Milestones 1-3)
+- In-app TITS open key: backtick (`` ` ``) in `LIST` mode.
+- In-app TITS execute key: `Enter`.
+- In-app TITS close key: `Esc`.
+- In-app TITS history navigation: `ArrowUp` / `ArrowDown`.
+- While TITS is active, list/global keybinds are suppressed and TITS captures input.
+- TITS output is single-line and typed:
+  - `{ kind: "ok" | "error"; text: string }`
+- Command engine is UI-agnostic and lives in `src/commands/*`.
+
+Supported TITS commands:
+- `add <title> [due:YYYY-MM-DD] [at:HH:MM] [#tag ...] [notes:"..."]`
+- `done` / `done @selected` / `done id:<task-id>`
+- `due @selected YYYY-MM-DD [at:HH:MM]`
+- `due id:<task-id> YYYY-MM-DD [at:HH:MM]`
+- `due @selected clear` / `due id:<task-id> clear`
+- `recur <target> clear`
+- `recur <target> every:day|week|month [interval:N] [on:mon,wed|1,15]`
+- `help` / `help add|done|due|recur`
+
+Validation and mutation rules:
+- `due` date must be a real calendar date.
+- `at` time must be valid 24-hour local time.
+- `at` requires `due`.
+- `recur` requires a due date on the target task.
+- `done` remains deterministic (`status="done"`) and uses recurrence completion helper for spawn-on-done behavior.
+
+CLI parity and safety:
+- CLI wrapper and raw DSL forms are both supported (`src/cli/main.ts`).
+- Interactive routing is explicit:
+  - `tadoi` and `tadoi --interactive` launch TUI
+  - unknown top-level argv fails fast with usage (`exit 2`) and does not launch TUI
+- Wrapper help is non-mutating:
+  - `tadoi add --help`
+  - `tadoi done --help`
+  - `tadoi due --help`
+  - `tadoi recur --help`
+  - `tadoi help --help`
+- `--` delimiter preserves literal dash-prefixed tokens (`tadoi add -- --help` creates title `--help`).
+- Non-interactive automation flags:
+  - `--json`
+  - `--quiet`
+  - `--data-file <path>` (per invocation, takes precedence over `TADOI_DATA_PATH`)
+- `@selected` is invalid in CLI context; CLI requires `id:<task-id>` for target commands.
+- CLI write commands are lock-gated when TUI lock exists.
+- TITS CLI exit codes: `0` success, `2` parse/validation, `3` target resolution, `4` lock present, `5` IO error.
 
 ## 3) Data Model Contract
 
@@ -211,7 +275,7 @@ Domain core (`src/domain/models.ts`):
 Persistence expectations:
 - local JSON storage
 - schema migrations applied at load
-- current schema version `5`
+- current schema version `6`
 - corrupt payload recovery creates `.corrupt.<timestamp>` backup file
 - engagement state is persisted and migrated with the rest of app state
 
@@ -219,7 +283,7 @@ Persistence expectations:
 
 List mode:
 - navigation: `j/k`, arrows, `gg`, `G`, `Ctrl+U`, `Ctrl+D`, `PageUp`, `PageDown`, `[`, `]`, `{`, `}`
-- actions: `a`, `e`, `E`, `c`, `Space`, `x`, `z`, `d`, `/`, `f`, `g`, `s`, `t`, `p`, `v`, `Ctrl+S`, `q`
+- actions: `` ` ``, `a`, `e`, `E`, `c`, `Space`, `x`, `z`, `d`, `/`, `f`, `g`, `s`, `t`, `p`, `v`, `Ctrl+S`, `q`
 
 Details links focus:
 - `Tab` / `Shift+Tab` toggles focus between task list and links.
@@ -228,16 +292,19 @@ Details links focus:
 Global/overlay:
 - help: `?` open, `Esc`/`?` close
 - search close: `Enter`/`Esc`
-- backup center: `1/2/3`, `Enter`, `Esc`
+- backup center menu: `1/2/3/4`, `Enter`, `Esc`
+- backup center import picker: `j/k`, `ArrowUp`/`ArrowDown`, `PageUp`/`PageDown`, `home/end`, `m`, `Enter`, `Esc`
+- TITS command bar: open with `` ` `` in list mode, `Esc` close, `Enter` execute, `ArrowUp/ArrowDown` history
 
 ## 5) Quality and Validation Baseline
 
-Automated snapshot captured during docs audit:
-- `bun run test`: `555 pass / 0 fail / 555 total`
+Automated snapshot captured during TITS docs pass (2026-02-20):
+- `bun test src/commands/parse.test.ts src/commands/execute.test.ts src/cli/main.test.ts src/app/keyRouter.test.ts src/state/store.test.ts`: `63 pass / 0 fail`
 - `bun run typecheck`: `pass`
+- Full-suite validation remains tracked in the release run report documents.
 
 Manual coverage baseline:
-- `docs/TADOI_QA_Guide_v0.3.5.md`
+- `docs/TADOI_QA_Guide_v0.3.8.md`
 
 ## 6) Non-goals (Current Baseline)
 - cloud sync or accounts
@@ -248,11 +315,15 @@ Manual coverage baseline:
 
 ## 7) Related Documents
 - `README.md`
-- `TADOI_SPEC_v0.3.8.md` (active spec)
-- `TADOI_TASKS_v0.3.8.md` (active task list)
-- Active installation guide (all platforms)
-- `docs/TADOI_QA_Guide_v0.3.5.md`
-- `docs/TADOI_Feature_List_v0.3.5.md`
+- Platform installation guide (all platforms)
+- `docs/TADOI_QA_Guide_v0.3.8.md`
+- `docs/TADOI_Feature_List_v0.3.8.md`
+- `docs/specs/tits-m1-commandbar.md`
+- `docs/specs/tits-m2-cli.md`
+- `docs/specs/tits-m3-recurrence.md`
+- `tadoi_TITS_milestone1_spec.md`
+- `tits-m2-cli-revised.md`
+- `tits-m3-recurrence.md`
 - `TADOI_Spec_Calendar_Export_ICS_v0.2.md`
 - `TADOI_Spec_Calendar_Import_ICS_RoundTrip_v0.1.md`
 - `TADOI_Task_Links_Attachments_Spec_v0.2.md`

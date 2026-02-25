@@ -1,4 +1,4 @@
-# Theme Mapping Matrix (As of v0.3.7)
+# Theme Mapping Matrix (As of v0.3.8)
 
 Stability: `Current Behavior (May Change)` for Simple UX labels, `Canonical` for internal token schema.
 

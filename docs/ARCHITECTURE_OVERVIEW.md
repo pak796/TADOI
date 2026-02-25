@@ -1,6 +1,6 @@
 # TADOI™ Architecture Overview
 
-Verified as of 2026-02-25 (v0.3.7).
+Verified as of 2026-02-25 (v0.3.8).
 
 This is a high-level map for orientation. Source code is the authority.
 
@@ -60,9 +60,9 @@ This is a high-level map for orientation. Source code is the authority.
 - Domain and state tests: `src/domain/*.test.ts`, `src/state/*.test.ts`
 
 ## Documentation
-- Product spec: `TADOI_SPEC_v0.3.7.md`
-- Task list: `TADOI_TASKS_v0.3.7.md`
-- QA guide: `docs/TADOI_QA_Guide_v0.3.7.md`
+- Product spec: `TADOI_SPEC_v0.3.8.md`
+- Task list: `TADOI_TASKS_v0.3.8.md`
+- QA guide: `docs/TADOI_QA_Guide_v0.3.8.md`
 - Usage + install: `docs/USAGE.md`, concise install guide
 - TITS specs: `docs/specs/tits-m1-commandbar.md`, `docs/specs/tits-m2-cli.md`, `docs/specs/tits-m3-recurrence.md`
 - App refactor map: `docs/app-flow-module-map.md`

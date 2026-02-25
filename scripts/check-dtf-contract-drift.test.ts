@@ -44,8 +44,8 @@ describe("x", () => {
   });
 
   it("resolves current spec path from README inline code link", () => {
-    const readme = "Current behavior is documented in `TADOI_SPEC_v0.3.7.md`.";
-    expect(extractCurrentSpecPathFromReadme(readme)).toBe("TADOI_SPEC_v0.3.7.md");
+    const readme = "Current behavior is documented in `TADOI_SPEC_v0.3.8.md`.";
+    expect(extractCurrentSpecPathFromReadme(readme)).toBe("TADOI_SPEC_v0.3.8.md");
   });
 
   it("computes missing IDs from contract vs coverage", () => {

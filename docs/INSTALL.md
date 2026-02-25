@@ -1,6 +1,6 @@
 # TADOI™ Install Guide
 
-Verified as of 2026-02-21 (v0.3.7).
+Verified as of 2026-02-25 (v0.3.8).
 
 This is the concise install guide. For deep troubleshooting and platform detail, see the all-platform installation guide.
 
@@ -38,7 +38,7 @@ When running `bun run build:daily`, artifacts are staged under:
 The build report is written to:
 - `dist/artifacts/YYYY-MM-DD/BUILD_REPORT.md`
 
-## TITS Quick Validation (v0.3.7)
+## TITS Quick Validation (v0.3.8)
 Run these right after install:
 1. In app (`bun run dev`): open TITS with `` ` ``, run `help recur`, close with `Esc`.
 2. In app: run `add "TITS install check" #qa`, then `done`.
@@ -53,4 +53,4 @@ Run these right after install:
 4. `p` opens the boolean tag filter panel.
 5. `q` quits (LIST mode).
 
-If any step fails, check `docs/TADOI_QA_Guide_v0.3.7.md` or the QA quicklists in `docs/QA/`.
+If any step fails, check `docs/TADOI_QA_Guide_v0.3.8.md` or the QA quicklists in `docs/QA/`.

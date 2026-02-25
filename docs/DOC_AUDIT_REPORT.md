@@ -2,7 +2,7 @@
 
 Date: 2026-02-25
 Scope: full docs consistency sweep for latest refactors + theme/settings changes
-Baseline: runtime `v0.3.7`, package `0.3.7`, persistence schema 6
+Baseline: runtime `v0.3.8`, package `0.3.8`, persistence schema 6
 
 ## 1) Summary
 
@@ -40,9 +40,9 @@ Code evidence used for reconciliation:
 - Theme/settings contract drift:
   - `README.md`, `docs/USAGE.md`, and the platform installation guide now match Help settings navigation and CRT FX behavior.
 - Feature/spec/task drift:
-  - `docs/TADOI_Feature_List_v0.3.7.md`, `TADOI_SPEC_v0.3.7.md`, and `TADOI_TASKS_v0.3.7.md` now reflect CRT themes, CRT FX settings, and current settings persistence semantics.
+  - `docs/TADOI_Feature_List_v0.3.8.md`, `TADOI_SPEC_v0.3.8.md`, and `TADOI_TASKS_v0.3.8.md` now reflect CRT themes, CRT FX settings, and current settings persistence semantics.
 - QA drift:
-  - `docs/TADOI_QA_Guide_v0.3.7.md` now validates CRT FX persistence/normalization and updated theme rotation expectations.
+  - `docs/TADOI_QA_Guide_v0.3.8.md` now validates CRT FX persistence/normalization and updated theme rotation expectations.
 - Refactor documentation drift:
   - `docs/ARCHITECTURE_OVERVIEW.md` and `docs/app-flow-module-map.md` now match current module ownership and latest refactor commit boundaries.
 
