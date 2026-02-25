@@ -255,7 +255,7 @@ import {
 import { copyToClipboard } from "./copyToClipboard";
 import { openTarget } from "./openTarget";
 import { redactPathForDisplay } from "./pathRedaction";
-import { decideEditTargetSwitch } from "./editTargetSwitchFlow";
+import { useEditorFlow } from "./editorFlow";
 import { shouldTriggerSaveConflictRetryFromMouse } from "./saveConflictBannerAction";
 import {
   parseCalendarImportHorizonOrThrow,
@@ -5170,94 +5170,57 @@ export function App({
     dispatch({ type: "setSelected", id: taskId });
   }
 
-  function getEditSwitchModal(): UIEditTargetSwitchModal | null {
-    const modal = uiState.modal;
-    if (!modal || modal.type !== "edit_switch_confirm") return null;
-    return modal;
-  }
+  const editorFlow = useEditorFlow({
+    uiState,
+    state,
+    selectedTask,
+    visibleTaskRows,
+    now,
+    selectedRowIdRef,
+    editorDraftRef,
+    editorDirtyIntentRef,
+    editorTargetRowIdRef,
+    editorBaselineDraftRef,
+    dispatch,
+    uiDispatch,
+    setTimeSuggestion,
+    closeViewsOverlay,
+    clearPendingGPrefix,
+    requestTaskEditorUnsavedGuard,
+    resetEditorSessionTracking,
+    openModalWithContext,
+    closeModalWithPreviousContext,
+    showShortNavigationBanner,
+    resolveOccurrenceContextForRow,
+    resolvePersistedTaskForRow,
+    findSeriesTaskBySeriesId,
+    findTaskById,
+    normalizeOccurrenceIso,
+    withSeriesOccurrenceExcluded,
+    removeMaterializedOccurrenceInstance,
+    parseTagsInput,
+    triggerFirstRecurringTaskCreated,
+    selectTaskById
+  });
 
   function requestEditTargetSwitch(toTaskId: string) {
-    if (uiState.mode !== Mode.EDIT) return;
-    const editorDraft = editorDraftRef.current ?? state.editor;
-    if (!editorDraft) return;
-    const targetRow = visibleTaskRows.find((task) => task.id === toTaskId);
-    if (!targetRow) return;
-
-    const decision = decideEditTargetSwitch({
-      fromTaskId: editorTargetRowIdRef.current,
-      toTaskId,
-      isDirty:
-        editorDirtyIntentRef.current ||
-        isEditorDraftDirty(editorDraft, editorBaselineDraftRef.current),
-      hasActiveModal: uiState.modal !== null
-    });
-
-    if (decision.type === "ignore") return;
-    if (decision.type === "switch_now") {
-      openEditForRowId(decision.toTaskId);
-      return;
-    }
-
-    openModalWithContext({
-      type: "edit_switch_confirm",
-      fromTaskId: decision.fromTaskId,
-      toTaskId: decision.toTaskId,
-      toTaskTitle: targetRow.title,
-      previousMode: Mode.EDIT,
-      previousFocus: uiState.focus
-    });
+    editorFlow.requestEditTargetSwitch(toTaskId);
   }
 
   function handleModalSaveAndSwitchEditTarget() {
-    const modal = getEditSwitchModal();
-    if (!modal) return;
-    const saveSucceeded = saveEditor({
-      forceMode: Mode.EDIT,
-      closeAfterSave: false
-    });
-    if (!saveSucceeded) return;
-    closeModalWithPreviousContext(modal);
-    openEditForRowId(modal.toTaskId);
+    editorFlow.handleModalSaveAndSwitchEditTarget();
   }
 
   function handleModalDiscardAndSwitchEditTarget() {
-    const modal = getEditSwitchModal();
-    if (!modal) return;
-    closeModalWithPreviousContext(modal);
-    openEditForRowId(modal.toTaskId);
+    editorFlow.handleModalDiscardAndSwitchEditTarget();
   }
 
   function handleModalDiscardAndCloseEditor() {
-    const modal = getEditSwitchModal();
-    if (!modal) return;
-    closeModalWithPreviousContext(modal);
-    cancelEditor();
+    editorFlow.handleModalDiscardAndCloseEditor();
   }
 
   function handleTaskRowClick(input: { taskId: string; wasSelected: boolean }) {
-    if (uiState.mode === Mode.MODAL_CONFIRM && uiState.modal) return;
-    const targetExists = visibleTaskRows.some((task) => task.id === input.taskId);
-    if (!targetExists) return;
-    const effectiveWasSelected =
-      input.wasSelected || selectedRowIdRef.current === input.taskId;
-
-    if (uiState.mode === Mode.EDIT) {
-      requestEditTargetSwitch(input.taskId);
-      return;
-    }
-
-    const intent = resolveTaskRowClickIntent({
-      button: 0,
-      wasSelected: effectiveWasSelected,
-      mode: uiState.mode
-    });
-
-    if (intent === "none") return;
-    if (intent === "select") {
-      selectTaskById(input.taskId);
-      return;
-    }
-    openEditForRowId(input.taskId);
+    editorFlow.handleTaskRowClick(input);
   }
 
   function jumpToTop() {
@@ -5900,406 +5863,50 @@ export function App({
   }
 
   function openAdd(options: { bypassUnsavedGuard?: boolean } = {}) {
-    if (!options.bypassUnsavedGuard && requestTaskEditorUnsavedGuard("open_add")) {
-      return;
-    }
-    resetEditorSessionTracking();
-    closeViewsOverlay();
-    setTimeSuggestion(getSuggestedTime(new Date()));
-    const emptyDraft = createEmptyDraft();
-    editorDraftRef.current = emptyDraft;
-    editorDirtyIntentRef.current = false;
-    uiDispatch({ type: "setMode", mode: Mode.ADD });
-    uiDispatch({ type: "setFocus", focus: FocusTarget.EDITOR_TITLE });
-    uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
-    dispatch({
-      type: "setEditor",
-      editor: emptyDraft
-    });
+    editorFlow.openAdd(options);
   }
 
   function startEditSession(rowId: string, draft: EditorDraft) {
-    closeViewsOverlay();
-    setTimeSuggestion(null);
-    uiDispatch({ type: "setMode", mode: Mode.EDIT });
-    uiDispatch({ type: "setFocus", focus: FocusTarget.EDITOR_TITLE });
-    uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
-    editorDraftRef.current = draft;
-    editorDirtyIntentRef.current = false;
-    dispatch({ type: "setEditor", editor: draft });
-    editorTargetRowIdRef.current = rowId;
-    editorBaselineDraftRef.current = cloneEditorDraft(draft);
+    editorFlow.startEditSession(rowId, draft);
   }
 
   function buildEditDraftForRow(row: VisibleTaskRow): EditorDraft | null {
-    if (
-      row.rowKind === "series_occurrence_virtual" ||
-      row.rowKind === "series_occurrence_instance"
-    ) {
-      const context = resolveOccurrenceContextForRow(row);
-      if (!context) {
-        showShortNavigationBanner("No recurring occurrence selected");
-        return null;
-      }
-
-      const occurrenceDate = parseLocalIsoToDate(context.occurrenceIso);
-      if (!occurrenceDate) {
-        showShortNavigationBanner("Invalid occurrence timestamp");
-        return null;
-      }
-
-      const editSource: Task = context.instanceTask
-        ? context.instanceTask
-        : {
-            ...context.seriesTask,
-            id: `occurrence:${context.seriesId}:${context.occurrenceIso}`,
-            dueAt: occurrenceDate.getTime(),
-            recurrence: undefined
-          };
-      const baseDraft = createDraftFromTask(editSource);
-      return {
-        ...baseDraft,
-        id: context.instanceTask?.id,
-        repeatMode: "off",
-        repeatIntervalText: "1",
-        repeatWeekdays: [],
-        repeatMonthdayText: "",
-        repeatEndMode: "never",
-        repeatUntilText: "",
-        repeatCountText: "",
-        repeatCustomRRuleText: "",
-        editKind: "occurrence",
-        sourceTaskId: context.seriesTask.id,
-        sourceSeriesId: context.seriesId,
-        occurrenceIso: context.occurrenceIso
-      };
-    }
-
-    const persisted = resolvePersistedTaskForRow(row);
-    if (!persisted) return null;
-    return {
-      ...createDraftFromTask(persisted),
-      editKind: "regular"
-    };
+    return editorFlow.buildEditDraftForRow(row);
   }
 
   function openEditForRow(row: VisibleTaskRow): boolean {
-    const draft = buildEditDraftForRow(row);
-    if (!draft) return false;
-    startEditSession(row.id, draft);
-    return true;
+    return editorFlow.openEditForRow(row);
   }
 
   function openEditForRowId(rowId: string): boolean {
-    const row = visibleTaskRows.find((task) => task.id === rowId);
-    if (!row) return false;
-    return openEditForRow(row);
+    return editorFlow.openEditForRowId(rowId);
   }
 
   function openEditSeries() {
-    if (!selectedTask) return;
-
-    const seriesTask =
-      selectedTask.rowKind === "series_occurrence_virtual" ||
-      selectedTask.rowKind === "series_occurrence_instance"
-        ? findSeriesTaskBySeriesId(selectedTask.seriesId)
-        : selectedTask.recurrence
-          ? resolvePersistedTaskForRow(selectedTask)
-          : undefined;
-
-    if (!seriesTask) {
-      showShortNavigationBanner("No recurring series selected");
-      return;
-    }
-
-    startEditSession(selectedTask.id, {
-      ...createDraftFromTask(seriesTask),
-      editKind: "series",
-      sourceTaskId: seriesTask.id,
-      sourceSeriesId: seriesTask.recurrence?.series_id
-    });
+    editorFlow.openEditSeries();
   }
 
   function openEdit(options: { bypassUnsavedGuard?: boolean } = {}) {
-    if (!options.bypassUnsavedGuard && requestTaskEditorUnsavedGuard("open_edit")) {
-      return;
-    }
-    if (!selectedTask) return;
-    openEditForRow(selectedTask);
+    editorFlow.openEdit(options);
   }
 
   function openDuplicate() {
-    if (!selectedTask) return;
-    const persisted = resolvePersistedTaskForRow(selectedTask);
-    if (!persisted) return;
-    resetEditorSessionTracking();
-    closeViewsOverlay();
-    const baseDraft = createDraftFromTask(persisted);
-    const dueText = persisted.status === "done" ? formatDate(now) : baseDraft.dueText;
-    const timeText = persisted.status === "done" ? "" : baseDraft.timeText;
-    setTimeSuggestion(getSuggestedTime(new Date()));
-    const duplicateDraft: EditorDraft = {
-      ...baseDraft,
-      id: undefined,
-      dueText,
-      timeText,
-      editKind: "regular",
-      sourceTaskId: undefined,
-      sourceSeriesId: undefined,
-      occurrenceIso: undefined
-    };
-    editorDraftRef.current = duplicateDraft;
-    editorDirtyIntentRef.current = false;
-    uiDispatch({ type: "setMode", mode: Mode.ADD });
-    uiDispatch({ type: "setFocus", focus: FocusTarget.EDITOR_TITLE });
-    uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
-    dispatch({
-      type: "setEditor",
-      editor: duplicateDraft
-    });
+    editorFlow.openDuplicate();
   }
 
   function cancelEditor() {
-    resetEditorSessionTracking();
-    clearPendingGPrefix();
-    setTimeSuggestion(null);
-    uiDispatch({ type: "setMode", mode: Mode.LIST });
-    uiDispatch({ type: "setFocus", focus: FocusTarget.TASK_LIST });
-    uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
-    dispatch({ type: "setEditor", editor: null });
+    editorFlow.cancelEditor();
   }
 
   function updateEditorDraft(patch: Partial<EditorDraft>) {
-    const previousDraft = editorDraftRef.current ?? state.editor;
-    if (!previousDraft) return;
-    const nextDraft: EditorDraft = {
-      ...previousDraft,
-      ...patch
-    };
-    editorDraftRef.current = nextDraft;
-    if (uiState.mode === Mode.EDIT) {
-      editorDirtyIntentRef.current = isEditorDraftDirty(
-        nextDraft,
-        editorBaselineDraftRef.current
-      );
-    }
-    const reconciledFocus = resolveEditorFocusAfterDraftChange(
-      uiState.focus,
-      previousDraft,
-      nextDraft
-    );
-    if (reconciledFocus !== uiState.focus) {
-      uiDispatch({ type: "setFocus", focus: reconciledFocus });
-    }
-    dispatch({ type: "updateEditor", patch });
+    editorFlow.updateEditorDraft(patch);
   }
 
   function saveEditor(options: {
     forceMode?: typeof Mode.ADD | typeof Mode.EDIT;
     closeAfterSave?: boolean;
   } = {}): boolean {
-    const draft = editorDraftRef.current ?? state.editor;
-    if (!draft) return false;
-    const activeMode = options.forceMode ?? uiState.mode;
-    const closeAfterSave = options.closeAfterSave ?? true;
-    if (activeMode !== Mode.ADD && activeMode !== Mode.EDIT) return false;
-
-    // Keep recurrence draft values in-memory; persistence is gated by repeatMode in buildRecurrenceFromDraft.
-    const title = draft.title.trim();
-    if (!title) return false;
-
-    const nowMs = Date.now();
-    const timeText = draft.timeText.trim();
-    const timeMinutes = timeText ? parseDueTime(timeText) : undefined;
-    if (timeText && timeMinutes === undefined) {
-      showShortNavigationBanner("Invalid time format (HH:mm)");
-      return false;
-    }
-
-    const { dueAt, hasExplicitTime } = combineDueDateTime(draft.dueText, timeText);
-    const tags = parseTagsInput(draft.tagsText);
-    const notes = draft.notes.length > 0 ? draft.notes : undefined;
-    const links = draft.links.map((link) => ({ ...link }));
-
-    if (activeMode === Mode.ADD) {
-      const taskId = crypto.randomUUID();
-      const recurrenceBuild = buildRecurrenceFromDraft(
-        draft,
-        dueAt,
-        `series:${taskId}`
-      );
-      if (recurrenceBuild.error) {
-        showShortNavigationBanner(recurrenceBuild.error);
-        return false;
-      }
-
-      const newTask: Task = {
-        id: taskId,
-        title,
-        status: "open",
-        createdAt: nowMs,
-        updatedAt: nowMs,
-        dueAt,
-        hasExplicitTime,
-        notes,
-        tags,
-        ...(links.length > 0 ? { links } : {}),
-        ...(recurrenceBuild.recurrence ? { recurrence: recurrenceBuild.recurrence } : {})
-      };
-
-      dispatch({ type: "setTasks", tasks: [...state.tasks, newTask] });
-      dispatch({
-        type: "setTagIndex",
-        tagIndex: updateTagIndex(state.tagIndex, tags, nowMs)
-      });
-      if (recurrenceBuild.recurrence) {
-        triggerFirstRecurringTaskCreated(nowMs, recurrenceBuild.recurrence.series_id);
-      }
-      dispatch({ type: "setSelected", id: newTask.id });
-      if (closeAfterSave) {
-        uiDispatch({ type: "setMode", mode: Mode.LIST });
-        uiDispatch({ type: "setFocus", focus: FocusTarget.TASK_LIST });
-        uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
-        dispatch({ type: "setEditor", editor: null });
-      }
-      return true;
-    }
-
-    if (activeMode === Mode.EDIT) {
-      if (draft.editKind === "occurrence") {
-        const seriesId = draft.sourceSeriesId;
-        const occurrenceIso = normalizeOccurrenceIso(draft.occurrenceIso);
-        const seriesTask =
-          findTaskById(draft.sourceTaskId) ?? findSeriesTaskBySeriesId(seriesId);
-
-        if (!seriesId || !occurrenceIso || !seriesTask?.recurrence) {
-          showShortNavigationBanner("Unable to edit occurrence");
-          return false;
-        }
-
-        let tasksWithSeriesExdate = withSeriesOccurrenceExcluded(
-          state.tasks,
-          seriesTask.id,
-          occurrenceIso,
-          nowMs
-        );
-        const withoutPreviousInstance = removeMaterializedOccurrenceInstance(
-          tasksWithSeriesExdate,
-          seriesId,
-          occurrenceIso
-        );
-
-        const instanceId = draft.id ?? crypto.randomUUID();
-        const existingInstance = draft.id ? findTaskById(draft.id) : undefined;
-        const instance: Task = {
-          id: instanceId,
-          title,
-          status: existingInstance?.status ?? "open",
-          createdAt: existingInstance?.createdAt ?? nowMs,
-          updatedAt: nowMs,
-          dueAt,
-          hasExplicitTime,
-          closedAt: existingInstance?.status === "done" ? existingInstance.closedAt : undefined,
-          notes,
-          tags,
-          instance_of: {
-            series_id: seriesId,
-            occurrence: occurrenceIso
-          }
-        };
-
-        tasksWithSeriesExdate = [...withoutPreviousInstance, instance];
-        dispatch({ type: "setTasks", tasks: tasksWithSeriesExdate });
-        dispatch({
-          type: "setTagIndex",
-          tagIndex: updateTagIndex(state.tagIndex, tags, nowMs)
-        });
-        dispatch({ type: "setSelected", id: instanceId });
-      } else if (draft.editKind === "series") {
-        const seriesTask =
-          findTaskById(draft.sourceTaskId ?? draft.id) ??
-          findSeriesTaskBySeriesId(draft.sourceSeriesId);
-        if (!seriesTask) {
-          showShortNavigationBanner("Unable to edit recurring series");
-          return false;
-        }
-
-        const recurrenceBuild = buildRecurrenceFromDraft(
-          draft,
-          dueAt,
-          seriesTask.recurrence?.series_id ?? draft.sourceSeriesId ?? `series:${seriesTask.id}`
-        );
-        if (recurrenceBuild.error) {
-          showShortNavigationBanner(recurrenceBuild.error);
-          return false;
-        }
-
-        const updatedTasks = state.tasks.map((task) => {
-          if (task.id !== seriesTask.id) return task;
-          return {
-            ...task,
-            title,
-            dueAt,
-            hasExplicitTime,
-            notes,
-            tags,
-            updatedAt: nowMs,
-            recurrence: recurrenceBuild.recurrence
-          };
-        });
-        dispatch({ type: "setTasks", tasks: updatedTasks });
-        dispatch({
-          type: "setTagIndex",
-          tagIndex: updateTagIndex(state.tagIndex, tags, nowMs)
-        });
-        dispatch({ type: "setSelected", id: seriesTask.id });
-      } else {
-        const targetTask = draft.id ? findTaskById(draft.id) : undefined;
-        if (!targetTask) return false;
-
-        const recurrenceBuild = buildRecurrenceFromDraft(
-          draft,
-          dueAt,
-          targetTask.recurrence?.series_id ?? `series:${targetTask.id}`
-        );
-        if (recurrenceBuild.error) {
-          showShortNavigationBanner(recurrenceBuild.error);
-          return false;
-        }
-
-        const updatedTasks = state.tasks.map((task) => {
-          if (task.id !== targetTask.id) return task;
-          return {
-            ...task,
-            title,
-            dueAt,
-            hasExplicitTime,
-            notes,
-            tags,
-            updatedAt: nowMs,
-            recurrence: recurrenceBuild.recurrence
-          };
-        });
-        dispatch({ type: "setTasks", tasks: updatedTasks });
-        dispatch({
-          type: "setTagIndex",
-          tagIndex: updateTagIndex(state.tagIndex, tags, nowMs)
-        });
-        if (!targetTask.recurrence && recurrenceBuild.recurrence) {
-          triggerFirstRecurringTaskCreated(nowMs, recurrenceBuild.recurrence.series_id);
-        }
-      }
-    }
-
-    if (closeAfterSave) {
-      uiDispatch({ type: "setMode", mode: Mode.LIST });
-      uiDispatch({ type: "setFocus", focus: FocusTarget.TASK_LIST });
-      uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
-      dispatch({ type: "setEditor", editor: null });
-    }
-
-    editorDirtyIntentRef.current = false;
-    return true;
+    return editorFlow.saveEditor(options);
   }
 
   function finishDeleteModalAction(
