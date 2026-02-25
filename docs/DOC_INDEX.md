@@ -9,10 +9,10 @@ Active package baseline: `0.3.7`
 - `docs/README.md`: active docs landing page.
 
 ## 2) Active User Guides
-- `docs/INSTALL.md`: concise install guide + TITS quick validation.
+- Install guide (concise): quick install and TITS quick validation.
 - `docs/USAGE.md`: core flows, keybindings, TITS in-app + CLI command contract.
 - `docs/CLI_COMPLETIONS.md`: optional bash/zsh/fish completion install guide.
-- `docs/TADOI_Installation_Guide_All_Platforms.md`: binary/source install and troubleshooting.
+- Install guide (all platforms): binary/source install and troubleshooting.
 - `docs/TADOI_QA_Guide_v0.3.7.md`: full manual QA matrix (`QA-001`..`QA-072`).
 - `docs/QA/SMOKE_TEST_CHECKLIST.md`: daily smoke list with TITS cases.
 - `docs/QA/BLACK_BOX_TEST_MATRIX.md`: black-box scenarios with TITS coverage.
@@ -30,8 +30,8 @@ Active package baseline: `0.3.7`
 - `TADOI_Task_Links_Attachments_Spec_v0.2.md`: links/attachments behavior and security rules.
 
 ## 4) Release + Packaging
-- `docs/RELEASE_CHECKLIST.md`: release readiness gate.
-- `docs/RELEASE_NOTES.md`: release notes template (root changelog is canonical).
+- Release checklist: release readiness gate.
+- Release notes template: root changelog is canonical.
 - `CHANGELOG.md`: release history.
 - `packaging/*`: platform packaging scripts.
 

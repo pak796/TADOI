@@ -35,7 +35,7 @@ This checklist is required before daily build smoke tests and any tagged release
 - [ ] No P0/P1 defects
 
 ## 7) Release Notes
-- [ ] Update `CHANGELOG.md` (root) or `docs/RELEASE_NOTES.md`
+- [ ] Update `CHANGELOG.md` (root) or the release notes document
 - [ ] Record any behavior changes to mode boundaries or recurrence
 
 ## 8) Notion Staging (Offline)

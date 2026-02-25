@@ -2,7 +2,7 @@
 
 Verified as of 2026-02-21 (v0.3.7).
 
-This is the concise install guide. For deep troubleshooting and platform detail, see `docs/TADOI_Installation_Guide_All_Platforms.md`.
+This is the concise install guide. For deep troubleshooting and platform detail, see the all-platform installation guide.
 
 ## Prerequisites
 - Bun `>=1.3.9`
