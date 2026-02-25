@@ -1,6 +1,6 @@
 # TADOI™ QA Guide (v0.3.7)
 
-Validation date: **2026-02-21**
+Validation date: **2026-02-25**
 Runtime baseline: **v0.3.7**
 Package baseline: **0.3.7**
 
@@ -29,8 +29,8 @@ Note on key casing:
 ## 2) Current Automated Validation Snapshot
 
 Local workspace snapshot (captured for transparency):
-- `bun test src/commands/parse.test.ts src/commands/execute.test.ts src/cli/main.test.ts src/app/keyRouter.test.ts src/state/store.test.ts`: **63 pass / 0 fail / 63 total**.
-- `bun run typecheck`: **pass**.
+- `bun run test`: **770 pass / 0 fail / 770 total** (ran across **103 files**).
+- `bun run typecheck`: **pass** (`tsc --noEmit -p tsconfig.typecheck.json`).
 
 Manual QA is still required for cross-platform interaction and rendering coverage.
 
