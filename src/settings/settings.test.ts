@@ -32,6 +32,17 @@ const DEFAULT_SECURITY = {
 } as const;
 const DEFAULT_LOGO_MODE = getDefaultSettings().logoMode;
 const DEFAULT_CUSTOM_THEMES = getDefaultSettings().customThemes;
+const DEFAULT_HINT_DISPLAY_MODE = getDefaultSettings().hintDisplayMode ?? "bottom";
+const DEFAULT_SHOW_PREFIX_HINT_POPUP =
+  getDefaultSettings().showPrefixHintPopup ?? true;
+
+function withHintDefaults<T extends Record<string, unknown>>(settings: T) {
+  return {
+    hintDisplayMode: DEFAULT_HINT_DISPLAY_MODE,
+    showPrefixHintPopup: DEFAULT_SHOW_PREFIX_HINT_POPUP,
+    ...settings
+  };
+}
 
 function normalizeTokens(tokens: ThemeTokens): ThemeTokens {
   return {
@@ -138,6 +149,8 @@ describe("loadSettings", () => {
     expect(result.settings.security).toEqual(DEFAULT_SECURITY);
     expect(result.settings.customThemes).toEqual(expectedCustomThemesFor("default"));
     expect(result.settings.customThemes?.textByTheme).toBeUndefined();
+    expect(result.settings.hintDisplayMode).toBe(DEFAULT_HINT_DISPLAY_MODE);
+    expect(result.settings.showPrefixHintPopup).toBe(DEFAULT_SHOW_PREFIX_HINT_POPUP);
     expect(result.settings.crtFxLite).toBeUndefined();
     expect(result.settings.crtFxColor).toBeUndefined();
     expect(result.settings.crtFxPreset).toBeUndefined();
@@ -235,14 +248,14 @@ describe("loadSettings", () => {
     await fs.mkdir(path.dirname(primary), { recursive: true });
     await fs.writeFile(primary, JSON.stringify({ themeId: "retro" }), "utf8");
     const missing = await loadSettings({ homeDir, platform: "linux" });
-    expect(missing.settings).toEqual({
+    expect(missing.settings).toEqual(withHintDefaults({
       themeId: "retro",
       logoMode: DEFAULT_LOGO_MODE,
       flashMode: "slow",
       notifications: DEFAULT_NOTIFICATIONS,
       security: DEFAULT_SECURITY,
       customThemes: expectedCustomThemesFor("retro")
-    });
+    }));
 
     await fs.writeFile(
       primary,
@@ -250,14 +263,14 @@ describe("loadSettings", () => {
       "utf8"
     );
     const invalid = await loadSettings({ homeDir, platform: "linux" });
-    expect(invalid.settings).toEqual({
+    expect(invalid.settings).toEqual(withHintDefaults({
       themeId: "retro",
       logoMode: DEFAULT_LOGO_MODE,
       flashMode: "slow",
       notifications: DEFAULT_NOTIFICATIONS,
       security: DEFAULT_SECURITY,
       customThemes: expectedCustomThemesFor("retro")
-    });
+    }));
   });
 
   it("normalizes crtFxLite to true only when explicitly true", async () => {
@@ -442,14 +455,14 @@ describe("loadSettings", () => {
     );
 
     const result = await loadSettings({ homeDir, platform: "linux" });
-    expect(result.settings).toEqual({
+    expect(result.settings).toEqual(withHintDefaults({
       themeId: "retro",
       logoMode: DEFAULT_LOGO_MODE,
       flashMode: "static",
       notifications: DEFAULT_NOTIFICATIONS,
       security: DEFAULT_SECURITY,
       customThemes: expectedCustomThemesFor("retro")
-    });
+    }));
   });
 
   it("normalizes notification durations to positive integers", async () => {
@@ -538,6 +551,49 @@ describe("loadSettings", () => {
         help_close: ["Esc"]
       }
     });
+  });
+
+  it("defaults hint display mode and prefix popup when fields are missing", async () => {
+    const homeDir = await makeTempDir();
+    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    await fs.mkdir(path.dirname(primary), { recursive: true });
+    await fs.writeFile(primary, JSON.stringify({ themeId: "retro" }), "utf8");
+
+    const result = await loadSettings({ homeDir, platform: "linux" });
+    expect(result.settings.hintDisplayMode).toBe(DEFAULT_HINT_DISPLAY_MODE);
+    expect(result.settings.showPrefixHintPopup).toBe(DEFAULT_SHOW_PREFIX_HINT_POPUP);
+  });
+
+  it("normalizes hint display mode and prefix popup values", async () => {
+    const homeDir = await makeTempDir();
+    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    await fs.mkdir(path.dirname(primary), { recursive: true });
+    await fs.writeFile(
+      primary,
+      JSON.stringify({
+        themeId: "retro",
+        hintDisplayMode: "left_rail",
+        showPrefixHintPopup: false
+      }),
+      "utf8"
+    );
+
+    const valid = await loadSettings({ homeDir, platform: "linux" });
+    expect(valid.settings.hintDisplayMode).toBe("left_rail");
+    expect(valid.settings.showPrefixHintPopup).toBe(false);
+
+    await fs.writeFile(
+      primary,
+      JSON.stringify({
+        themeId: "retro",
+        hintDisplayMode: "invalid-mode",
+        showPrefixHintPopup: "no"
+      }),
+      "utf8"
+    );
+    const invalid = await loadSettings({ homeDir, platform: "linux" });
+    expect(invalid.settings.hintDisplayMode).toBe(DEFAULT_HINT_DISPLAY_MODE);
+    expect(invalid.settings.showPrefixHintPopup).toBe(DEFAULT_SHOW_PREFIX_HINT_POPUP);
   });
 
   it("seeds custom1 global palette from active non-rotating theme when missing", async () => {
@@ -675,14 +731,14 @@ describe("saveSettingsDebounced", () => {
     );
 
     const raw = await readFileEventually(primary);
-    expect(JSON.parse(raw)).toEqual({
+    expect(JSON.parse(raw)).toEqual(withHintDefaults({
       themeId: "highContrast",
       logoMode: "default",
       flashMode: "static",
       notifications: DEFAULT_NOTIFICATIONS,
       security: DEFAULT_SECURITY,
       customThemes: expectedCustomThemesFor("highContrast")
-    });
+    }));
   });
 
   it("persists normalized keymap aliases when provided", async () => {
@@ -706,7 +762,7 @@ describe("saveSettingsDebounced", () => {
     );
 
     const raw = await readFileEventually(primary);
-    expect(JSON.parse(raw)).toEqual({
+    expect(JSON.parse(raw)).toEqual(withHintDefaults({
       themeId: "retro",
       logoMode: "default",
       flashMode: "slow",
@@ -718,7 +774,7 @@ describe("saveSettingsDebounced", () => {
           list_open_search: ["Ctrl+F", "/"]
         }
       }
-    });
+    }));
   });
 
   it("coalesces rapid updates and persists only the latest value", async () => {
@@ -748,14 +804,14 @@ describe("saveSettingsDebounced", () => {
     );
 
     const raw = await readFileEventually(primary);
-    expect(JSON.parse(raw)).toEqual({
+    expect(JSON.parse(raw)).toEqual(withHintDefaults({
       themeId: "neonHacker",
       logoMode: "default",
       flashMode: "static",
       notifications: DEFAULT_NOTIFICATIONS,
       security: DEFAULT_SECURITY,
       customThemes: expectedCustomThemesFor("neonHacker")
-    });
+    }));
   });
 
   it("persists crtFxLite only when enabled", async () => {
@@ -781,7 +837,7 @@ describe("saveSettingsDebounced", () => {
       }
       return (value as { crtFxLite?: unknown }).crtFxLite === true;
     });
-    expect(enabledJson).toEqual({
+    expect(enabledJson).toEqual(withHintDefaults({
       themeId: "retro",
       logoMode: "default",
       flashMode: "slow",
@@ -789,7 +845,7 @@ describe("saveSettingsDebounced", () => {
       notifications: DEFAULT_NOTIFICATIONS,
       security: DEFAULT_SECURITY,
       customThemes: expectedCustomThemesFor("retro")
-    });
+    }));
 
     saveSettingsDebounced(
       {
@@ -810,14 +866,14 @@ describe("saveSettingsDebounced", () => {
       }
       return !Object.prototype.hasOwnProperty.call(value, "crtFxLite");
     });
-    expect(disabledJson).toEqual({
+    expect(disabledJson).toEqual(withHintDefaults({
       themeId: "retro",
       logoMode: "default",
       flashMode: "slow",
       notifications: DEFAULT_NOTIFICATIONS,
       security: DEFAULT_SECURITY,
       customThemes: expectedCustomThemesFor("retro")
-    });
+    }));
   });
 
   it("persists crtFxPreset only when non-default", async () => {
@@ -843,7 +899,7 @@ describe("saveSettingsDebounced", () => {
       }
       return (value as { crtFxPreset?: unknown }).crtFxPreset === "strong";
     });
-    expect(strongJson).toEqual({
+    expect(strongJson).toEqual(withHintDefaults({
       themeId: "retro",
       logoMode: "default",
       flashMode: "slow",
@@ -851,7 +907,7 @@ describe("saveSettingsDebounced", () => {
       notifications: DEFAULT_NOTIFICATIONS,
       security: DEFAULT_SECURITY,
       customThemes: expectedCustomThemesFor("retro")
-    });
+    }));
 
     saveSettingsDebounced(
       {
@@ -872,14 +928,14 @@ describe("saveSettingsDebounced", () => {
       }
       return !Object.prototype.hasOwnProperty.call(value, "crtFxPreset");
     });
-    expect(normalJson).toEqual({
+    expect(normalJson).toEqual(withHintDefaults({
       themeId: "retro",
       logoMode: "default",
       flashMode: "slow",
       notifications: DEFAULT_NOTIFICATIONS,
       security: DEFAULT_SECURITY,
       customThemes: expectedCustomThemesFor("retro")
-    });
+    }));
   });
 
   it("persists crtFxColor only when non-default", async () => {
@@ -905,7 +961,7 @@ describe("saveSettingsDebounced", () => {
       }
       return (value as { crtFxColor?: unknown }).crtFxColor === "amber";
     });
-    expect(amberJson).toEqual({
+    expect(amberJson).toEqual(withHintDefaults({
       themeId: "retro",
       logoMode: "default",
       flashMode: "slow",
@@ -913,7 +969,7 @@ describe("saveSettingsDebounced", () => {
       notifications: DEFAULT_NOTIFICATIONS,
       security: DEFAULT_SECURITY,
       customThemes: expectedCustomThemesFor("retro")
-    });
+    }));
 
     saveSettingsDebounced(
       {
@@ -934,14 +990,14 @@ describe("saveSettingsDebounced", () => {
       }
       return !Object.prototype.hasOwnProperty.call(value, "crtFxColor");
     });
-    expect(greenJson).toEqual({
+    expect(greenJson).toEqual(withHintDefaults({
       themeId: "retro",
       logoMode: "default",
       flashMode: "slow",
       notifications: DEFAULT_NOTIFICATIONS,
       security: DEFAULT_SECURITY,
       customThemes: expectedCustomThemesFor("retro")
-    });
+    }));
   });
 
   it("persists retroFxMode only when non-default", async () => {
@@ -967,7 +1023,7 @@ describe("saveSettingsDebounced", () => {
       }
       return (value as { retroFxMode?: unknown }).retroFxMode === "broadcast";
     });
-    expect(broadcastJson).toEqual({
+    expect(broadcastJson).toEqual(withHintDefaults({
       themeId: "retro",
       logoMode: "default",
       flashMode: "slow",
@@ -975,7 +1031,7 @@ describe("saveSettingsDebounced", () => {
       notifications: DEFAULT_NOTIFICATIONS,
       security: DEFAULT_SECURITY,
       customThemes: expectedCustomThemesFor("retro")
-    });
+    }));
 
     saveSettingsDebounced(
       {
@@ -996,14 +1052,14 @@ describe("saveSettingsDebounced", () => {
       }
       return !Object.prototype.hasOwnProperty.call(value, "retroFxMode");
     });
-    expect(offJson).toEqual({
+    expect(offJson).toEqual(withHintDefaults({
       themeId: "retro",
       logoMode: "default",
       flashMode: "slow",
       notifications: DEFAULT_NOTIFICATIONS,
       security: DEFAULT_SECURITY,
       customThemes: expectedCustomThemesFor("retro")
-    });
+    }));
   });
 
   it("falls back to ~/.tadoi/settings.json when primary write fails", async () => {
@@ -1037,14 +1093,14 @@ describe("saveSettingsDebounced", () => {
     );
 
     const fallbackRaw = await readFileEventually(fallback);
-    expect(JSON.parse(fallbackRaw)).toEqual({
+    expect(JSON.parse(fallbackRaw)).toEqual(withHintDefaults({
       themeId: "retro",
       logoMode: "default",
       flashMode: "static",
       notifications: DEFAULT_NOTIFICATIONS,
       security: DEFAULT_SECURITY,
       customThemes: expectedCustomThemesFor("retro")
-    });
+    }));
   });
 });
 
@@ -1068,14 +1124,36 @@ describe("saveSettingsStrict", () => {
     expect(result.usedFallback).toBe(false);
     const raw = await fs.readFile(primary, "utf8");
     await expectUnixPrivateFileMode(primary);
-    expect(JSON.parse(raw)).toEqual({
+    expect(JSON.parse(raw)).toEqual(withHintDefaults({
       themeId: "retro",
       logoMode: "default",
       flashMode: "slow",
       notifications: DEFAULT_NOTIFICATIONS,
       security: DEFAULT_SECURITY,
       customThemes: expectedCustomThemesFor("retro")
-    });
+    }));
+  });
+
+  it("round-trips hint display mode and prefix popup settings", async () => {
+    const homeDir = await makeTempDir();
+    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
+
+    await saveSettingsStrict(
+      {
+        themeId: "retro",
+        logoMode: "default",
+        flashMode: "slow",
+        hintDisplayMode: "none",
+        showPrefixHintPopup: false,
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY
+      },
+      { filePath: primary, homeDir, platform: "linux" }
+    );
+
+    const result = await loadSettings({ homeDir, platform: "linux" });
+    expect(result.settings.hintDisplayMode).toBe("none");
+    expect(result.settings.showPrefixHintPopup).toBe(false);
   });
 
   it("falls back from primary to fallback path when primary write fails", async () => {
@@ -1111,14 +1189,14 @@ describe("saveSettingsStrict", () => {
     expect(result.usedFallback).toBe(true);
     const raw = await fs.readFile(fallback, "utf8");
     await expectUnixPrivateFileMode(fallback);
-    expect(JSON.parse(raw)).toEqual({
+    expect(JSON.parse(raw)).toEqual(withHintDefaults({
       themeId: "highContrast",
       logoMode: "default",
       flashMode: "static",
       notifications: DEFAULT_NOTIFICATIONS,
       security: DEFAULT_SECURITY,
       customThemes: expectedCustomThemesFor("highContrast")
-    });
+    }));
   });
 });
 

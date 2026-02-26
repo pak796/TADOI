@@ -198,6 +198,7 @@ import {
   type CustomThemeConfig,
   type CustomThemes,
   type FlashMode,
+  type HintDisplayMode,
   type LogoMode,
   type SecuritySettings,
   type NotificationSettings,
@@ -330,13 +331,17 @@ const HELP_FOOTER_ROWS = 2;
 const HELP_PANEL_CHROME_ROWS = HELP_HEADER_ROWS + HELP_DIVIDER_ROWS + HELP_FOOTER_ROWS;
 const HELP_SECTION_SCROLL_PADDING = 1;
 const HELP_NAV_ITEM_ROW_COUNT = 2;
-const HELP_SETTINGS_STATUS_ROW_COUNT = 9;
+const HELP_SETTINGS_STATUS_ROW_COUNT = 11;
 const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings =
   getDefaultSettings().notifications;
 const DEFAULT_SECURITY_SETTINGS: SecuritySettings = getDefaultSettings().security;
 const DEFAULT_LOGO_MODE: LogoMode = getDefaultSettings().logoMode;
 const DEFAULT_CUSTOM_THEMES: CustomThemes | undefined = getDefaultSettings().customThemes;
 const DEFAULT_KEYMAP_ALIASES = getDefaultSettings().keymapAliases;
+const DEFAULT_HINT_DISPLAY_MODE: HintDisplayMode =
+  getDefaultSettings().hintDisplayMode ?? "bottom";
+const DEFAULT_SHOW_PREFIX_HINT_POPUP =
+  getDefaultSettings().showPrefixHintPopup ?? true;
 const DEFAULT_CRT_FX_LITE = getDefaultSettings().crtFxLite === true;
 const DEFAULT_CRT_FX_COLOR =
   getDefaultSettings().crtFxColor ?? DEFAULT_CRT_FX_LITE_COLOR;
@@ -432,6 +437,14 @@ const HELP_SETTINGS_NAV_ITEMS: HelpNavItem[] = [
   {
     title: "Keymap Aliases",
     description: "Configure alias presets for list, dashboard, backup, and help actions."
+  },
+  {
+    title: "Navigation Hints",
+    description: "Set hints surface: bottom only, left rail only, both, or none."
+  },
+  {
+    title: "Prefix Popup",
+    description: "Toggle the transient g-prefix popup."
   },
   {
     title: "Logo",
@@ -561,6 +574,20 @@ const KEYMAP_ALIAS_PRESETS_BY_CONTEXT: Record<KeymapAliasPresetContext, KeymapAl
     help_close: ["q"]
   }
 };
+
+function formatHintDisplayModeLabel(mode: HintDisplayMode): string {
+  if (mode === "left_rail") return "Left rail only";
+  if (mode === "both") return "Both";
+  if (mode === "none") return "None";
+  return "Bottom only";
+}
+
+function formatHintDisplayModeStatusLabel(mode: HintDisplayMode): string {
+  if (mode === "left_rail") return "left rail only";
+  if (mode === "both") return "both";
+  if (mode === "none") return "none";
+  return "bottom only";
+}
 
 /*
  * Help menu structure:
@@ -717,6 +744,12 @@ const HELP_SETTINGS_THEME_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
 );
 const HELP_SETTINGS_KEYMAP_ALIASES_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
   (item) => item.title === "Keymap Aliases"
+);
+const HELP_SETTINGS_NAVIGATION_HINTS_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
+  (item) => item.title === "Navigation Hints"
+);
+const HELP_SETTINGS_PREFIX_POPUP_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
+  (item) => item.title === "Prefix Popup"
 );
 const HELP_SETTINGS_LOGO_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
   (item) => item.title === "Logo"
@@ -1423,6 +1456,8 @@ export function App({
     themeId: initialThemeId,
     logoMode: initialLogoMode,
     flashMode: initialFlashMode,
+    hintDisplayMode: DEFAULT_HINT_DISPLAY_MODE,
+    showPrefixHintPopup: DEFAULT_SHOW_PREFIX_HINT_POPUP,
     crtFxLite: initialCrtFxLite,
     crtFxColor: initialCrtFxColor,
     crtFxPreset: initialCrtFxPreset,
@@ -2273,6 +2308,14 @@ export function App({
     `    ${helpLogoStatusLineRaw}`,
     helpContentLineWidth
   );
+  const helpNavigationHintsStatusLine = fitLineToWidth(
+    `    Navigation hints: ${formatHintDisplayModeStatusLabel(settingsState.hintDisplayMode)}`,
+    helpContentLineWidth
+  );
+  const helpPrefixPopupStatusLine = fitLineToWidth(
+    `    Prefix popup: ${settingsState.showPrefixHintPopup ? "on" : "off"}`,
+    helpContentLineWidth
+  );
   const helpFlashStatusLine = fitLineToWidth(
     `    Flash mode: ${settingsState.flashMode}`,
     helpContentLineWidth
@@ -2308,6 +2351,8 @@ export function App({
   );
   const helpSettingsStatusLines = [
     helpThemeStatusLine.trim(),
+    helpNavigationHintsStatusLine.trim(),
+    helpPrefixPopupStatusLine.trim(),
     helpLogoStatusLine.trim(),
     helpFlashStatusLine.trim(),
     helpCrtFxLiteStatusLine.trim(),
@@ -2331,6 +2376,12 @@ export function App({
     }
     if (activeHelpPage === "settings" && index === HELP_SETTINGS_LOGO_NAV_INDEX) {
       return `Logo: ${formatLogoModeLabel(effectiveLogoModeForHelp)}`;
+    }
+    if (activeHelpPage === "settings" && index === HELP_SETTINGS_NAVIGATION_HINTS_NAV_INDEX) {
+      return `Navigation Hints: ${formatHintDisplayModeLabel(settingsState.hintDisplayMode)}`;
+    }
+    if (activeHelpPage === "settings" && index === HELP_SETTINGS_PREFIX_POPUP_NAV_INDEX) {
+      return `Prefix Popup: ${settingsState.showPrefixHintPopup ? "on" : "off"}`;
     }
     if (activeHelpPage === "settings" && index === HELP_SETTINGS_RETRO_FX_MODE_NAV_INDEX) {
       return `Retro FX Mode: ${formatRetroFxModeLabel(settingsState.retroFxMode)}`;
@@ -2399,10 +2450,20 @@ export function App({
     !commandActive && !blockingOverlayOpen && state.engagementToastActive
       ? state.engagementToastActive
       : null;
+  const showLeftRailHints =
+    settingsState.hintDisplayMode === "left_rail" ||
+    settingsState.hintDisplayMode === "both";
+  const showBottomHintSurface =
+    settingsState.hintDisplayMode === "bottom" ||
+    settingsState.hintDisplayMode === "both";
   const suppressWhichKeyHints =
     commandActive || viewsOverlayOpen || saveViewPromptOpen || activeEngagementToast !== null;
-  const showWhichKeyHintBar = !suppressWhichKeyHints && whichKeyHintItems.length > 0;
+  const showWhichKeyHintBar =
+    showBottomHintSurface &&
+    !suppressWhichKeyHints &&
+    whichKeyHintItems.length > 0;
   const showWhichKeyPrefixPopup =
+    settingsState.showPrefixHintPopup &&
     !suppressWhichKeyHints &&
     whichKeyPrefixPopup !== null &&
     uiState.mode === Mode.LIST &&
@@ -2849,6 +2910,8 @@ export function App({
         themeId: settingsState.themeId,
         logoMode: settingsState.logoMode,
         flashMode: settingsState.flashMode,
+        hintDisplayMode: settingsState.hintDisplayMode,
+        showPrefixHintPopup: settingsState.showPrefixHintPopup,
         crtFxLite: settingsState.crtFxLite,
         crtFxColor: settingsState.crtFxColor,
         crtFxPreset: settingsState.crtFxPreset,
@@ -2869,10 +2932,12 @@ export function App({
     settingsState.retroFxMode,
     settingsState.customThemes,
     settingsState.flashMode,
+    settingsState.hintDisplayMode,
     settingsState.keymapAliases,
     settingsState.logoMode,
     settingsState.notifications,
     settingsState.security,
+    settingsState.showPrefixHintPopup,
     settingsState.themeId
   ]);
 
@@ -3373,6 +3438,16 @@ export function App({
     settingsDispatch({
       type: "setFlashMode",
       flashMode: settingsResult.settings.flashMode
+    });
+    settingsDispatch({
+      type: "setHintDisplayMode",
+      hintDisplayMode:
+        settingsResult.settings.hintDisplayMode ?? DEFAULT_HINT_DISPLAY_MODE
+    });
+    settingsDispatch({
+      type: "setShowPrefixHintPopup",
+      showPrefixHintPopup:
+        settingsResult.settings.showPrefixHintPopup ?? DEFAULT_SHOW_PREFIX_HINT_POPUP
     });
     settingsDispatch({
       type: "setCrtFxLite",
@@ -4613,6 +4688,30 @@ export function App({
     settingsDispatch({ type: "cycleTheme" });
   }
 
+  function cycleHintDisplayModeSetting() {
+    const nextMode: HintDisplayMode =
+      settingsState.hintDisplayMode === "bottom"
+        ? "left_rail"
+        : settingsState.hintDisplayMode === "left_rail"
+          ? "both"
+          : settingsState.hintDisplayMode === "both"
+            ? "none"
+            : "bottom";
+    settingsDispatch({ type: "setHintDisplayMode", hintDisplayMode: nextMode });
+    showShortNavigationBanner(
+      `Navigation hints: ${formatHintDisplayModeStatusLabel(nextMode)}`
+    );
+  }
+
+  function switchPrefixPopupSetting() {
+    const nextEnabled = !settingsState.showPrefixHintPopup;
+    settingsDispatch({
+      type: "setShowPrefixHintPopup",
+      showPrefixHintPopup: nextEnabled
+    });
+    showShortNavigationBanner(`Prefix popup: ${nextEnabled ? "on" : "off"}`);
+  }
+
   function switchFlashModeSetting() {
     const nextMode: FlashMode = settingsState.flashMode === "slow" ? "static" : "slow";
     settingsDispatch({ type: "toggleFlashMode" });
@@ -4957,6 +5056,12 @@ export function App({
       }
       if (targetIndex === HELP_SETTINGS_KEYMAP_ALIASES_NAV_INDEX) {
         pushHelpPage("keymapAliases");
+      }
+      if (targetIndex === HELP_SETTINGS_NAVIGATION_HINTS_NAV_INDEX) {
+        cycleHintDisplayModeSetting();
+      }
+      if (targetIndex === HELP_SETTINGS_PREFIX_POPUP_NAV_INDEX) {
+        switchPrefixPopupSetting();
       }
       if (targetIndex === HELP_SETTINGS_LOGO_NAV_INDEX) {
         cycleLogoModeSetting(1, true);
@@ -7248,6 +7353,7 @@ export function App({
           onMenuSelect={handleLeftRailMenuSelect}
           terminalWidth={terminalWidth}
           hintLines={leftRailHintLines}
+          showHints={showLeftRailHints}
           showLogo={showLogo}
           activeThemeId={settingsState.themeId === "rotating" ? activeThemeId : undefined}
         />

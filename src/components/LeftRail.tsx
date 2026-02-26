@@ -40,6 +40,7 @@ type LeftRailProps = {
   onMenuSelect?: (item: LeftRailMenuItem) => void;
   terminalWidth: number;
   hintLines?: readonly string[];
+  showHints?: boolean;
   showLogo?: boolean;
   activeThemeId?: ThemeId;
 };
@@ -210,6 +211,7 @@ export function LeftRail({
   onMenuSelect,
   terminalWidth,
   hintLines,
+  showHints = true,
   showLogo = true,
   activeThemeId
 }: LeftRailProps) {
@@ -425,14 +427,16 @@ export function LeftRail({
         <text style={{ color: theme.text }}>SORT (S): {sortLabel}</text>
       </box>
 
-      <box style={{ marginTop: 1, flexDirection: "column", gap: 0 }}>
-        <text style={styles.muted}>HINTS</text>
-        {renderedHintLines.map((line) => (
-          <box key={line} style={{ flexDirection: "row" }}>
-            <text style={{ color: theme.text }}>{formatHintLine(line)}</text>
-          </box>
-        ))}
-      </box>
+      {showHints ? (
+        <box style={{ marginTop: 1, flexDirection: "column", gap: 0 }}>
+          <text style={styles.muted}>HINTS</text>
+          {renderedHintLines.map((line) => (
+            <box key={line} style={{ flexDirection: "row" }}>
+              <text style={{ color: theme.text }}>{formatHintLine(line)}</text>
+            </box>
+          ))}
+        </box>
+      ) : null}
       </box>
 
       {activeThemeLabel ? (

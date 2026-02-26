@@ -53,9 +53,11 @@ Source-of-truth key tokens (as reported by `src/app/keyRouter.ts`):
 
 Discoverability and prefix behavior:
 - Context hints are shared from a single model:
-  - left rail `HINTS` block is mode-aware (list/dashboard/backup/help)
-  - footer `KEYS` hint bar updates by active mode when no command/views/save-name overlay is active
+  - `Navigation Hints` setting controls surfaces: `bottom only` (default), `left rail only`, `both`, `none`
+  - left rail `HINTS` block is mode-aware (list/dashboard/backup/help) when enabled
+  - footer `KEYS` hint bar updates by active mode when enabled and no command/views/save-name overlay is active
 - Pending `g` prefix shows a transient popup:
+  - popup visibility is controlled by `Prefix Popup` setting (default: `on`)
   - `g` then `g` jumps to top
   - `g` then `G` jumps to bottom
   - `g` then any non-prefix key clears prefix and routes only that key (no extra due-cycle side effect)
@@ -138,7 +140,7 @@ HELP mode:
 - `Enter` / `ArrowRight` on Settings: open settings pages
 - Help root is read-only for direct settings hotkeys (`h` / `m` / `n` / `o` / `l` do not toggle settings in HELP mode)
 - Settings page entries:
-  - `Theme`, `Logo`, `Flash Mode`, `CRT FX Lite`, `CRT FX Profile`, `Notifications`, `Overdue Popup`, `Terminal Bell`
+  - `Theme`, `Navigation Hints`, `Prefix Popup`, `Logo`, `Flash Mode`, `CRT FX Lite`, `CRT FX Profile`, `Notifications`, `Overdue Popup`, `Terminal Bell`
   - `Keymap Aliases` page toggles bounded presets for `list`, `dashboard`, `backup`, and `help` alias contexts
 - In settings pages: `ArrowUp` / `ArrowDown` move, `Enter` / `ArrowRight` apply/select, `ArrowLeft` / `backspace` / `Esc` back
 - `Ctrl+U` / `Ctrl+D` / `page_up` / `page_down`: page help content

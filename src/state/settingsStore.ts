@@ -4,6 +4,8 @@ import {
   CRT_FX_LITE_PRESET_ORDER,
   type CrtFxLiteColor,
   type CrtFxLitePreset,
+  type HintDisplayMode,
+  HINT_DISPLAY_MODE_ORDER,
   RETRO_FX_MODE_ORDER,
   type RetroFxMode,
   cycleLogoMode,
@@ -23,6 +25,8 @@ export type SettingsState = {
   themeId: ThemeId;
   logoMode: LogoMode;
   flashMode: FlashMode;
+  hintDisplayMode: HintDisplayMode;
+  showPrefixHintPopup: boolean;
   crtFxLite: boolean;
   crtFxColor: CrtFxLiteColor;
   crtFxPreset: CrtFxLitePreset;
@@ -40,6 +44,10 @@ export type SettingsAction =
   | { type: "cycleLogoMode"; direction?: 1 | -1 }
   | { type: "setFlashMode"; flashMode: FlashMode }
   | { type: "toggleFlashMode" }
+  | { type: "setHintDisplayMode"; hintDisplayMode: HintDisplayMode }
+  | { type: "cycleHintDisplayMode"; direction?: 1 | -1 }
+  | { type: "setShowPrefixHintPopup"; showPrefixHintPopup: boolean }
+  | { type: "toggleShowPrefixHintPopup" }
   | { type: "setCrtFxLite"; crtFxLite: boolean }
   | { type: "toggleCrtFxLite" }
   | { type: "setCrtFxColor"; crtFxColor: CrtFxLiteColor }
@@ -60,6 +68,8 @@ export const initialSettingsState: SettingsState = {
   themeId: "default",
   logoMode: getDefaultSettings().logoMode,
   flashMode: "slow",
+  hintDisplayMode: getDefaultSettings().hintDisplayMode ?? "bottom",
+  showPrefixHintPopup: getDefaultSettings().showPrefixHintPopup ?? true,
   crtFxLite: getDefaultSettings().crtFxLite === true,
   crtFxColor: getDefaultSettings().crtFxColor ?? DEFAULT_CRT_FX_LITE_COLOR,
   crtFxPreset: getDefaultSettings().crtFxPreset ?? DEFAULT_CRT_FX_LITE_PRESET,
@@ -95,6 +105,21 @@ export function settingsReducer(
       return { ...state, flashMode: action.flashMode };
     case "toggleFlashMode":
       return { ...state, flashMode: state.flashMode === "slow" ? "static" : "slow" };
+    case "setHintDisplayMode":
+      return { ...state, hintDisplayMode: action.hintDisplayMode };
+    case "cycleHintDisplayMode": {
+      const index = HINT_DISPLAY_MODE_ORDER.indexOf(state.hintDisplayMode);
+      const safeIndex = index >= 0 ? index : 0;
+      const direction = action.direction ?? 1;
+      const nextIndex =
+        (safeIndex + direction + HINT_DISPLAY_MODE_ORDER.length) %
+        HINT_DISPLAY_MODE_ORDER.length;
+      return { ...state, hintDisplayMode: HINT_DISPLAY_MODE_ORDER[nextIndex] };
+    }
+    case "setShowPrefixHintPopup":
+      return { ...state, showPrefixHintPopup: action.showPrefixHintPopup };
+    case "toggleShowPrefixHintPopup":
+      return { ...state, showPrefixHintPopup: !state.showPrefixHintPopup };
     case "setCrtFxLite":
       return { ...state, crtFxLite: action.crtFxLite };
     case "toggleCrtFxLite":

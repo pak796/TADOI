@@ -180,7 +180,7 @@ Import:
 
 ### 2.12 Branding / Left Rail Contract
 - Left rail includes `TAG PANEL (P)` menu row.
-- Hint strip includes `p: TAG PANEL`.
+- Left-rail hint strip is mode-aware when `hintDisplayMode` is `left_rail` or `both`.
 - Logo modes include:
   - `default`
   - `alternate32`
@@ -197,13 +197,15 @@ Import:
 - Theme rotation and rotating-mode order include both CRT themes (`crtGreen`, `crtAmber`).
 - Help root is read-only for direct settings hotkeys; settings changes are applied through the Help `Settings & Themes` page flow.
 - Settings page rows include:
-  - `Theme`, `Logo`, `Flash Mode`, `CRT FX Lite`, `CRT FX Profile`, `Notifications`, `Overdue Popup`, `Terminal Bell`
+  - `Theme`, `Navigation Hints`, `Prefix Popup`, `Logo`, `Flash Mode`, `CRT FX Lite`, `CRT FX Profile`, `Notifications`, `Overdue Popup`, `Terminal Bell`
 - CRT FX runtime contract:
   - `CRT FX Lite` toggles effect on/off.
   - `CRT FX Profile` cycles color+strength pairs in this order:
     - `Green Subtle`, `Green Regular`, `Green Strong`, `Amber Subtle`, `Amber Regular`, `Amber Strong`
   - Effect applies tint/flicker treatment to primary panel surfaces (left rail, task list panel, details panel).
 - Settings persistence normalization:
+  - `hintDisplayMode` normalizes to `bottom|left_rail|both|none`; missing/invalid defaults to `bottom`.
+  - `showPrefixHintPopup` normalizes to boolean; missing/invalid defaults to `true`.
   - `crtFxLite` persists only when enabled (`true`).
   - `crtFxColor` and `crtFxPreset` persist only when non-default.
   - default profile is `green + normal`.
@@ -320,8 +322,12 @@ Global/overlay:
 - TITS command bar: open with `` ` `` in list mode, `Esc` close, `Enter` execute, `ArrowUp/ArrowDown` history
 
 Hinting + alias layer:
-- Context hints come from a shared model (left rail mode-aware hints + footer `KEYS` bar where space/overlay precedence allows).
-- Pending prefix hint popup is rendered for `g` jump family.
+- Context hints come from a shared model; display surface is settings-driven:
+  - `hintDisplayMode=bottom`: footer `KEYS` bar only
+  - `hintDisplayMode=left_rail`: left-rail hints only
+  - `hintDisplayMode=both`: both surfaces
+  - `hintDisplayMode=none`: no persistent hints
+- Pending prefix hint popup for `g` jump family is controlled independently by `showPrefixHintPopup`.
 - Optional settings field `keymapAliases` supports action aliases for contexts `list`, `dashboard`, `backup`, `help`.
 - Help Settings exposes a `Keymap Aliases` page to toggle bounded context presets and reset overrides.
 - P1 alias token scope: single-key and `Ctrl+<key>` tokens; conflicts are deterministic first-wins with warning output.

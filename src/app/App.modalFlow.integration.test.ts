@@ -422,11 +422,63 @@ async function openHelpSettingsPage(harness: RenderHarness) {
   await waitForText(harness, "Theme mode and custom palette settings.");
 }
 
+async function focusHelpSettingsItem(
+  harness: RenderHarness,
+  selectedItemPrefix: string,
+  maxSteps = 16
+): Promise<string> {
+  const { mockInput } = harness;
+  for (let step = 0; step < maxSteps; step += 1) {
+    await harness.renderOnce();
+    const frame = harness.captureCharFrame();
+    if (frame.includes(selectedItemPrefix)) {
+      return frame;
+    }
+    await pressArrowAndRender(mockInput, harness, "down");
+  }
+  throw new Error(`Unable to focus settings item: ${selectedItemPrefix}`);
+}
+
 async function cycleRetroFxModeSettingFromHelp(harness: RenderHarness) {
   const { mockInput } = harness;
   await openHelpSettingsPage(harness);
-  await pressArrowAndRender(mockInput, harness, "down", 6);
+  await focusHelpSettingsItem(harness, "▶ Retro FX Mode:");
   await pressEnterAndRender(mockInput, harness);
+}
+
+async function selectNavigationHintsMode(
+  harness: RenderHarness,
+  label: "Bottom only" | "Left rail only" | "Both" | "None"
+): Promise<void> {
+  const { mockInput } = harness;
+  await focusHelpSettingsItem(harness, "▶ Navigation Hints:");
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    await harness.renderOnce();
+    const frame = harness.captureCharFrame();
+    if (frame.includes(`▶ Navigation Hints: ${label}`)) {
+      return;
+    }
+    await pressEnterAndRender(mockInput, harness);
+  }
+  throw new Error(`Unable to set Navigation Hints mode to ${label}`);
+}
+
+async function setPrefixPopupEnabled(
+  harness: RenderHarness,
+  enabled: boolean
+): Promise<void> {
+  const { mockInput } = harness;
+  await focusHelpSettingsItem(harness, "▶ Prefix Popup:");
+  const targetLabel = enabled ? "on" : "off";
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    await harness.renderOnce();
+    const frame = harness.captureCharFrame();
+    if (frame.includes(`▶ Prefix Popup: ${targetLabel}`)) {
+      return;
+    }
+    await pressEnterAndRender(mockInput, harness);
+  }
+  throw new Error(`Unable to set Prefix Popup to ${targetLabel}`);
 }
 
 async function openCustom1Editor(harness: RenderHarness) {
@@ -701,14 +753,11 @@ describe("App modal flow integration", () => {
   it("moves help settings selection with ArrowDown", async () => {
     const session = await createSession();
     const { harness } = session;
-    const { mockInput } = harness;
 
     try {
       await openHelpSettingsPage(harness);
       await waitForText(harness, "Theme mode: Default");
-      await pressArrowAndRender(mockInput, harness, "down", 6);
-
-      const frame = await waitForText(harness, "▶ Retro FX Mode: Off");
+      const frame = await focusHelpSettingsItem(harness, "▶ Retro FX Mode:");
       expect(frame).toContain("CRT FX Profile");
     } finally {
       await cleanupSession(session);
@@ -722,8 +771,7 @@ describe("App modal flow integration", () => {
 
     try {
       await openHelpSettingsPage(harness);
-      await pressArrowAndRender(mockInput, harness, "down");
-      await waitForText(harness, "▶ Keymap Aliases");
+      await focusHelpSettingsItem(harness, "▶ Keymap Aliases");
       await pressEnterAndRender(mockInput, harness);
       let frame = await waitForText(harness, "Help / Settings / Keymap Aliases");
       expect(frame).toContain("List aliases: off");
@@ -741,7 +789,7 @@ describe("App modal flow integration", () => {
       await waitForText(harness, "FOCUS: LIST");
 
       await openHelpSettingsPage(harness);
-      await pressArrowAndRender(mockInput, harness, "down");
+      await focusHelpSettingsItem(harness, "▶ Keymap Aliases");
       await pressEnterAndRender(mockInput, harness);
       await waitForText(harness, "Help / Settings / Keymap Aliases");
       await pressArrowAndRender(mockInput, harness, "down", 4);
@@ -887,6 +935,89 @@ describe("App modal flow integration", () => {
     }
   });
 
+  it("applies navigation hint surface modes (bottom, left rail, both, none)", async () => {
+    const session = await createSession();
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      let frame = await waitForText(harness, "Existing task");
+      expect(frame).toContain("KEYS");
+      expect(frame).not.toContain("HINTS");
+
+      await openHelpSettingsPage(harness);
+      await selectNavigationHintsMode(harness, "Left rail only");
+      await pressKeyAndRender(mockInput, harness, "?");
+      frame = await waitForFrame(
+        harness,
+        (next) => next.includes("HINTS") && !next.includes("KEYS")
+      );
+      expect(frame).toContain("HINTS");
+      expect(frame).not.toContain("KEYS");
+
+      await openHelpSettingsPage(harness);
+      await selectNavigationHintsMode(harness, "Both");
+      await pressKeyAndRender(mockInput, harness, "?");
+      frame = await waitForFrame(
+        harness,
+        (next) => next.includes("HINTS") && next.includes("KEYS")
+      );
+      expect(frame).toContain("HINTS");
+      expect(frame).toContain("KEYS");
+
+      await openHelpSettingsPage(harness);
+      await selectNavigationHintsMode(harness, "None");
+      await pressKeyAndRender(mockInput, harness, "?");
+      frame = await waitForFrame(
+        harness,
+        (next) => !next.includes("HINTS") && !next.includes("KEYS")
+      );
+      expect(frame).not.toContain("HINTS");
+      expect(frame).not.toContain("KEYS");
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
+  it("keeps prefix popup independent from hint display mode", async () => {
+    const session = await createSession();
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      await openHelpSettingsPage(harness);
+      await selectNavigationHintsMode(harness, "None");
+      await setPrefixPopupEnabled(harness, true);
+      await pressKeyAndRender(mockInput, harness, "?");
+
+      let frame = await waitForFrame(
+        harness,
+        (next) => !next.includes("HINTS") && !next.includes("KEYS")
+      );
+      expect(frame).not.toContain("HINTS");
+      expect(frame).not.toContain("KEYS");
+
+      await pressKeyAndRender(mockInput, harness, "g");
+      frame = await waitForText(harness, "PREFIX: g");
+      expect(frame).toContain("jump top");
+      await pressKeyAndRender(mockInput, harness, "j");
+      await waitForFrame(harness, (next) => !next.includes("PREFIX: g"));
+
+      await openHelpSettingsPage(harness);
+      await setPrefixPopupEnabled(harness, false);
+      await pressKeyAndRender(mockInput, harness, "?");
+      await waitForText(harness, "Existing task");
+
+      await pressKeyAndRender(mockInput, harness, "g");
+      await expectTextAbsentForDuration(harness, "PREFIX: g", 220);
+      await pressKeyAndRender(mockInput, harness, "j");
+      frame = harness.captureCharFrame();
+      expect(frame).not.toContain("PREFIX: g");
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
   it("backup center body scrolls with keyboard while footer stays pinned at 104x24", async () => {
     const session = await createSession({ width: 104, height: 24 });
     const { harness } = session;
@@ -899,8 +1030,7 @@ describe("App modal flow integration", () => {
         let frame = await waitForText(harness, "Dry-run summary (required)");
         expect(frame).toContain("Events parsed");
         expect(frame).toContain("COMMIT IMPORT");
-        expect(frame).toContain("Esc");
-        expect(frame).toContain("1..4");
+        expect(frame).toContain("BACK");
 
         await pressCtrlKeyAndRender(harness.mockInput, harness, "d");
         await pressCtrlKeyAndRender(harness.mockInput, harness, "d");
@@ -908,7 +1038,6 @@ describe("App modal flow integration", () => {
         frame = harness.captureCharFrame();
         expect(frame).not.toContain("Events parsed");
         expect(frame).toContain("COMMIT IMPORT");
-        expect(frame).toContain("Esc");
 
         await pressCtrlKeyAndRender(harness.mockInput, harness, "u");
         await pressCtrlKeyAndRender(harness.mockInput, harness, "u");
@@ -916,7 +1045,7 @@ describe("App modal flow integration", () => {
         frame = harness.captureCharFrame();
         expect(frame).toContain("Events parsed");
         expect(frame).toContain("COMMIT IMPORT");
-        expect(frame).toContain("1..4");
+        expect(frame).toContain("BACK");
       });
     } finally {
       await cleanupSession(session);
@@ -935,8 +1064,7 @@ describe("App modal flow integration", () => {
         let frame = await waitForText(harness, "Dry-run summary (required)");
         expect(frame).toContain("Events parsed");
         expect(frame).toContain("COMMIT IMPORT");
-        expect(frame).toContain("Esc");
-        expect(frame).toContain("1..4");
+        expect(frame).toContain("BACK");
 
         await scrollMouseAndRender(harness, {
           x: 26,
@@ -947,7 +1075,6 @@ describe("App modal flow integration", () => {
         frame = harness.captureCharFrame();
         expect(frame).not.toContain("Events parsed");
         expect(frame).toContain("COMMIT IMPORT");
-        expect(frame).toContain("Esc");
 
         await scrollMouseAndRender(harness, {
           x: 26,
@@ -958,7 +1085,7 @@ describe("App modal flow integration", () => {
         frame = harness.captureCharFrame();
         expect(frame).toContain("Events parsed");
         expect(frame).toContain("COMMIT IMPORT");
-        expect(frame).toContain("1..4");
+        expect(frame).toContain("BACK");
       });
     } finally {
       await cleanupSession(session);
@@ -1351,12 +1478,12 @@ describe("App modal flow integration", () => {
       await expectTextAbsentForDuration(harness, "TADOI BOOT ROM // CASSETTE LINK", 1200);
 
       await openHelpSettingsPage(harness);
-      let frame = await waitForText(harness, "Retro FX Mode: Classic");
+      let frame = await focusHelpSettingsItem(harness, "▶ Retro FX Mode:");
+      expect(frame).toContain("Classic");
       expect(frame).toContain("CRT FX Profile");
 
-      await pressArrowAndRender(mockInput, harness, "down", 6);
       await pressEnterAndRender(mockInput, harness);
-      frame = await waitForText(harness, "Retro FX Mode: Broadcast");
+      frame = await waitForFrame(harness, (next) => next.includes("Broadcast"));
       expect(frame).toContain("Notifications");
       await expectTextAbsentForDuration(harness, "TADOI BOOT ROM // CASSETTE LINK", 1200);
     } finally {
@@ -1371,7 +1498,7 @@ describe("App modal flow integration", () => {
     try {
       await expectTextAbsentForDuration(harness, "TADOI BOOT ROM // CASSETTE LINK", 1200);
       await cycleRetroFxModeSettingFromHelp(harness);
-      await waitForText(harness, "Retro FX Mode: Broadcast");
+      await waitForFrame(harness, (frame) => frame.includes("Broadcast"));
       await expectTextAbsentForDuration(harness, "TADOI BOOT ROM // CASSETTE LINK", 1100);
     } finally {
       await cleanupSession(session);

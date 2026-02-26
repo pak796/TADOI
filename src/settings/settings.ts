@@ -74,6 +74,8 @@ export type TadoiSettings = {
   themeId: ThemeId;
   logoMode: LogoMode;
   flashMode: FlashMode;
+  hintDisplayMode?: HintDisplayMode;
+  showPrefixHintPopup?: boolean;
   crtFxLite?: boolean;
   crtFxColor?: CrtFxLiteColor;
   crtFxPreset?: CrtFxLitePreset;
@@ -86,6 +88,7 @@ export type TadoiSettings = {
 
 export type FlashMode = "slow" | "static";
 export type LogoMode = LogoVariantId | "rotate";
+export type HintDisplayMode = "bottom" | "left_rail" | "both" | "none";
 export type CrtFxLiteColor = "green" | "amber";
 export type CrtFxLitePreset = "subtle" | "normal" | "strong";
 export type RetroFxMode = "off" | "classic" | "broadcast";
@@ -97,6 +100,8 @@ export type CrtFxLiteProfile = {
 export const DEFAULT_CRT_FX_LITE_COLOR: CrtFxLiteColor = "green";
 export const DEFAULT_CRT_FX_LITE_PRESET: CrtFxLitePreset = "normal";
 export const DEFAULT_RETRO_FX_MODE: RetroFxMode = "off";
+export const DEFAULT_HINT_DISPLAY_MODE: HintDisplayMode = "bottom";
+export const DEFAULT_SHOW_PREFIX_HINT_POPUP = true;
 export const CRT_FX_LITE_COLOR_ORDER: CrtFxLiteColor[] = [
   "green",
   "amber"
@@ -110,6 +115,12 @@ export const RETRO_FX_MODE_ORDER: RetroFxMode[] = [
   "off",
   "classic",
   "broadcast"
+];
+export const HINT_DISPLAY_MODE_ORDER: HintDisplayMode[] = [
+  "bottom",
+  "left_rail",
+  "both",
+  "none"
 ];
 export const CRT_FX_LITE_PROFILE_ORDER: CrtFxLiteProfile[] = [
   { color: "green", preset: "subtle" },
@@ -278,6 +289,8 @@ const DEFAULT_SETTINGS: TadoiSettings = {
   themeId: "default",
   logoMode: "default",
   flashMode: "slow",
+  hintDisplayMode: DEFAULT_HINT_DISPLAY_MODE,
+  showPrefixHintPopup: DEFAULT_SHOW_PREFIX_HINT_POPUP,
   notifications: DEFAULT_NOTIFICATION_SETTINGS,
   security: {
     nonHttpLinkPolicy: "prompt"
@@ -317,6 +330,15 @@ export function resolveSettingsPaths(
 
 export function isFlashMode(value: unknown): value is FlashMode {
   return value === "slow" || value === "static";
+}
+
+export function isHintDisplayMode(value: unknown): value is HintDisplayMode {
+  return (
+    value === "bottom" ||
+    value === "left_rail" ||
+    value === "both" ||
+    value === "none"
+  );
 }
 
 export function isLogoMode(value: unknown): value is LogoMode {
@@ -531,6 +553,14 @@ function normalizeRetroFxMode(value: unknown): RetroFxMode | undefined {
   return isRetroFxMode(value) ? value : undefined;
 }
 
+function normalizeHintDisplayMode(value: unknown): HintDisplayMode {
+  return isHintDisplayMode(value) ? value : DEFAULT_HINT_DISPLAY_MODE;
+}
+
+function normalizeShowPrefixHintPopup(value: unknown): boolean {
+  return typeof value === "boolean" ? value : DEFAULT_SHOW_PREFIX_HINT_POPUP;
+}
+
 function normalizeSettings(input: unknown): TadoiSettings {
   if (!isRecord(input)) {
     return getDefaultSettings();
@@ -542,6 +572,8 @@ function normalizeSettings(input: unknown): TadoiSettings {
   const maybeCrtFxColor = input.crtFxColor;
   const maybeCrtFxPreset = input.crtFxPreset;
   const maybeRetroFxMode = input.retroFxMode;
+  const maybeHintDisplayMode = input.hintDisplayMode;
+  const maybeShowPrefixHintPopup = input.showPrefixHintPopup;
   const maybeNotifications = input.notifications;
   const maybeSecurity = input.security;
   const keymapAliases = normalizeKeymapAliases(input.keymapAliases);
@@ -550,10 +582,14 @@ function normalizeSettings(input: unknown): TadoiSettings {
   const crtFxColor = normalizeCrtFxColor(maybeCrtFxColor);
   const crtFxPreset = normalizeCrtFxPreset(maybeCrtFxPreset);
   const retroFxMode = normalizeRetroFxMode(maybeRetroFxMode);
+  const hintDisplayMode = normalizeHintDisplayMode(maybeHintDisplayMode);
+  const showPrefixHintPopup = normalizeShowPrefixHintPopup(maybeShowPrefixHintPopup);
   const normalized: TadoiSettings = {
     themeId,
     logoMode: isLogoMode(maybeLogoMode) ? maybeLogoMode : DEFAULT_SETTINGS.logoMode,
     flashMode: isFlashMode(maybeFlashMode) ? maybeFlashMode : DEFAULT_SETTINGS.flashMode,
+    hintDisplayMode,
+    showPrefixHintPopup,
     notifications: normalizeNotifications(maybeNotifications),
     security: normalizeSecurity(maybeSecurity),
     customThemes: normalizeCustomThemes(input.customThemes, themeId)

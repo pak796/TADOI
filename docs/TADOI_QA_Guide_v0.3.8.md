@@ -173,8 +173,8 @@ Smoke pass criteria:
   - Expected: left rail focus labels map to recurrence targets, not fallback labels.
 - [ ] `QA-080` Context hints update with mode transitions (list/search/modal/backup/help).
   - Preconditions: app running in list mode with at least one task.
-  - Steps: observe hints in list, open search (`/`), open delete modal (`d`), open backup (`u`), open help (`?`).
-  - Expected: hint model updates by context; no stale list-only hints leak into other contexts.
+  - Steps: verify default (`bottom only`) shows footer `KEYS` and hides left-rail `HINTS`; switch `Navigation Hints` to `left rail only`, `both`, and `none` from Help settings; open search (`/`), delete modal (`d`), backup (`u`), help (`?`) while checking active hints.
+  - Expected: hint surfaces follow selected mode exactly and hint model updates by context; no stale list-only hints leak into other contexts.
 - [ ] `QA-081` `g` prefix predictability (`gg`, `gG`, and `g + non-prefix`).
   - Preconditions: list mode with enough rows to move and jump.
   - Steps: press `g` then `g`; press `g` then `G`; press `g` then `j`.
@@ -289,7 +289,7 @@ Smoke pass criteria:
   - Expected: bell follows enable state and cooldown policy.
 - [ ] `QA-039 [SMOKE]` Help settings page actions persist across restart.
   - Preconditions: app running.
-  - Steps: open Help -> `Settings & Themes`; toggle `Flash Mode`, `CRT FX Lite`, and `Notifications`, cycle `CRT FX Profile`, then toggle `Overdue Popup` and `Terminal Bell`; restart app.
+  - Steps: open Help -> `Settings & Themes`; toggle `Navigation Hints` and `Prefix Popup`, toggle `Flash Mode`, `CRT FX Lite`, and `Notifications`, cycle `CRT FX Profile`, then toggle `Overdue Popup` and `Terminal Bell`; restart app.
   - Expected: settings values persist after restart and appear in Help status lines.
 
 ### J) Theme, CRT FX, and Custom Theme Behavior

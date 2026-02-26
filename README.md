@@ -256,9 +256,11 @@ Canonical router keys (audit-complete):
 `{` `}`
 
 - Discoverability + predictability:
-  - left-rail `HINTS` are mode-aware (list/dashboard/backup/help)
-  - footer `KEYS` bar updates by active context when command/views/save-name overlays are closed
+  - `Navigation Hints` setting controls hint surfaces: `bottom only` (default), `left rail only`, `both`, `none`
+  - left-rail `HINTS` are mode-aware (list/dashboard/backup/help) when enabled
+  - footer `KEYS` bar updates by active context when enabled and command/views/save-name overlays are closed
   - pending `g` shows a prefix popup and keeps legacy compatibility:
+    - popup visibility is controlled by `Prefix Popup` (default: on)
     - `g` then `g` => jump top
     - `g` then `G` => jump bottom
     - `g` then other key => clear prefix and route only that key (no extra due-cycle mutation)
@@ -347,6 +349,7 @@ Canonical router keys (audit-complete):
   - `Enter` / `Space`: toggle selected section
   - `Enter` / `right` on the `Settings` section: open settings pages
   - In settings pages: `up` / `down` move, `Enter` / `right` apply/select, `left` / `Backspace` / `Esc` back
+  - Settings page rows include `Theme`, `Navigation Hints`, `Prefix Popup`, `Logo`, `Flash Mode`, `CRT FX Lite`, `CRT FX Profile`, `Notifications`, `Overdue Popup`, `Terminal Bell`
   - Settings include a `Keymap Aliases` page for bounded preset toggles (`list`, `dashboard`, `backup`, `help`)
   - `ctrl+u` / `PageUp`: page Help content up
   - `ctrl+d` / `PageDown`: page Help content down
@@ -419,6 +422,8 @@ Theme, logo, flash, CRT FX, notification, and security preferences are persisted
 
 Help Settings pages expose:
 - `Theme`
+- `Navigation Hints`
+- `Prefix Popup`
 - `Logo`
 - `Flash Mode`
 - `CRT FX Lite`
@@ -426,6 +431,10 @@ Help Settings pages expose:
 - `Notifications`
 - `Overdue Popup`
 - `Terminal Bell`
+
+Hint defaults:
+- `hintDisplayMode`: `bottom`
+- `showPrefixHintPopup`: `true`
 
 Flash mode values:
 - `slow`: due-today and overdue indicators pulse (default)
@@ -471,6 +480,8 @@ Example:
 {
   "themeId": "default",
   "flashMode": "slow",
+  "hintDisplayMode": "bottom",
+  "showPrefixHintPopup": true,
   "crtFxLite": true,
   "crtFxColor": "amber",
   "crtFxPreset": "strong",
