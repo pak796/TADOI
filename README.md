@@ -252,7 +252,17 @@ Canonical router keys (audit-complete):
 `G` `L` `O` `PageDown` `PageUp` `S` `Space` `Tab` `[`
 `]` `a` `b` `backspace` `c` `d` `e` `end` `f` `g` `h` `home`
 `i` `j` `k` `l` `m` `n` `o` `p` `q` `r` `s` `t` `u` `v` `x` `y` `z`
+`w`
 `{` `}`
+
+- Discoverability + predictability:
+  - left-rail `HINTS` are mode-aware (list/dashboard/backup/help)
+  - footer `KEYS` bar updates by active context when command/views/save-name overlays are closed
+  - pending `g` shows a prefix popup and keeps legacy compatibility:
+    - `g` then `g` => jump top
+    - `g` then `G` => jump bottom
+    - `g` then other key => clear prefix and route only that key (no extra due-cycle mutation)
+  - optional action aliases are supported via settings JSON field `keymapAliases` for contexts `list`/`dashboard`/`backup`/`help` (single-key + `Ctrl+<key>` tokens, first-wins conflict policy)
 
 - LIST mode navigation:
   - `j`/`k` or `up`/`down`: move selection
@@ -337,6 +347,7 @@ Canonical router keys (audit-complete):
   - `Enter` / `Space`: toggle selected section
   - `Enter` / `right` on the `Settings` section: open settings pages
   - In settings pages: `up` / `down` move, `Enter` / `right` apply/select, `left` / `Backspace` / `Esc` back
+  - Settings include a `Keymap Aliases` page for bounded preset toggles (`list`, `dashboard`, `backup`, `help`)
   - `ctrl+u` / `PageUp`: page Help content up
   - `ctrl+d` / `PageDown`: page Help content down
   - `Esc` or `?`: close help

@@ -508,6 +508,38 @@ describe("loadSettings", () => {
     expect(normalized.settings.security.nonHttpLinkPolicy).toBe("prompt");
   });
 
+  it("normalizes keymap alias settings by context/action/token", async () => {
+    const homeDir = await makeTempDir();
+    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    await fs.mkdir(path.dirname(primary), { recursive: true });
+    await fs.writeFile(
+      primary,
+      JSON.stringify({
+        themeId: "retro",
+        keymapAliases: {
+          list: {
+            list_open_search: ["ctrl+f", "/", "not-valid-token"],
+            dashboard_open_help: ["?"]
+          },
+          help: {
+            help_close: ["esc", "escape"]
+          }
+        }
+      }),
+      "utf8"
+    );
+
+    const result = await loadSettings({ homeDir, platform: "linux" });
+    expect(result.settings.keymapAliases).toEqual({
+      list: {
+        list_open_search: ["Ctrl+F", "/"]
+      },
+      help: {
+        help_close: ["Esc"]
+      }
+    });
+  });
+
   it("seeds custom1 global palette from active non-rotating theme when missing", async () => {
     const homeDir = await makeTempDir();
     const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
@@ -650,6 +682,42 @@ describe("saveSettingsDebounced", () => {
       notifications: DEFAULT_NOTIFICATIONS,
       security: DEFAULT_SECURITY,
       customThemes: expectedCustomThemesFor("highContrast")
+    });
+  });
+
+  it("persists normalized keymap aliases when provided", async () => {
+    const homeDir = await makeTempDir();
+    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    saveSettingsDebounced(
+      {
+        themeId: "retro",
+        logoMode: "default",
+        flashMode: "slow",
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY,
+        keymapAliases: {
+          list: {
+            list_open_search: ["ctrl+f", "/", "invalid token"]
+          }
+        }
+      },
+      20,
+      { filePath: primary, homeDir, platform: "linux" }
+    );
+
+    const raw = await readFileEventually(primary);
+    expect(JSON.parse(raw)).toEqual({
+      themeId: "retro",
+      logoMode: "default",
+      flashMode: "slow",
+      notifications: DEFAULT_NOTIFICATIONS,
+      security: DEFAULT_SECURITY,
+      customThemes: expectedCustomThemesFor("retro"),
+      keymapAliases: {
+        list: {
+          list_open_search: ["Ctrl+F", "/"]
+        }
+      }
     });
   });
 

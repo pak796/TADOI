@@ -51,6 +51,19 @@ Source-of-truth key tokens (as reported by `src/app/keyRouter.ts`):
 `w`
 `{` `}`
 
+Discoverability and prefix behavior:
+- Context hints are shared from a single model:
+  - left rail `HINTS` block is mode-aware (list/dashboard/backup/help)
+  - footer `KEYS` hint bar updates by active mode when no command/views/save-name overlay is active
+- Pending `g` prefix shows a transient popup:
+  - `g` then `g` jumps to top
+  - `g` then `G` jumps to bottom
+  - `g` then any non-prefix key clears prefix and routes only that key (no extra due-cycle side effect)
+- Optional action aliases can be set via settings JSON field `keymapAliases`:
+  - supported contexts: `list`, `dashboard`, `backup`, `help`
+  - P1 token scope: single-key tokens and `Ctrl+<key>`
+  - deterministic conflict rule: first action owning a token wins, later conflicting assignments are ignored with a warning
+
 
 LIST mode navigation:
 - `j` / `k` / `ArrowUp` / `ArrowDown`: move selection
@@ -126,6 +139,7 @@ HELP mode:
 - Help root is read-only for direct settings hotkeys (`h` / `m` / `n` / `o` / `l` do not toggle settings in HELP mode)
 - Settings page entries:
   - `Theme`, `Logo`, `Flash Mode`, `CRT FX Lite`, `CRT FX Profile`, `Notifications`, `Overdue Popup`, `Terminal Bell`
+  - `Keymap Aliases` page toggles bounded presets for `list`, `dashboard`, `backup`, and `help` alias contexts
 - In settings pages: `ArrowUp` / `ArrowDown` move, `Enter` / `ArrowRight` apply/select, `ArrowLeft` / `backspace` / `Esc` back
 - `Ctrl+U` / `Ctrl+D` / `page_up` / `page_down`: page help content
 - `Esc` or `?`: close Help

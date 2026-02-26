@@ -13,7 +13,7 @@ This checklist is required before daily build smoke tests and any tagged release
 - [ ] `bun run typecheck`
 - [ ] `bun run brand:check`
 - [ ] `bun run contract:dtf:check`
-- [ ] `bun run keybind:audit`
+- [ ] `bun run keybind:canonical:check`
 
 ## 3) Packaging Validation
 - [ ] `bun run pack:dry`

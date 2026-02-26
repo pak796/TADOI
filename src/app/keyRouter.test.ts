@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { FocusTarget, Mode } from "../domain/models";
 import { handleKey, type KeyInput, type KeyRouterContext } from "./keyRouter";
 import { initialUIState, unwind } from "../ui/state";
+import { normalizeKeymapAliases, resolveKeymapAliases } from "./keymapAliases";
 
 function run(
   key: Partial<KeyInput>,
@@ -667,7 +668,7 @@ describe("handleKey", () => {
     ).toEqual([]);
   });
 
-  it("flushes pending g to due-cycle when next key is not g/G", () => {
+  it("clears pending g prefix and routes only the continuation key when next key is not g/G", () => {
     expect(
       run(
         { name: "j", sequence: "j" },
@@ -675,9 +676,37 @@ describe("handleKey", () => {
       )
     ).toEqual([
       { scope: "ui", type: "SET_G_PREFIX", active: false },
-      { scope: "domain", type: "CYCLE_DUE" },
       { scope: "domain", type: "MOVE_SELECTION", delta: 1 }
     ]);
+  });
+
+  it("routes list aliases before defaults and preserves fallback when unmapped", () => {
+    const resolvedAliases = resolveKeymapAliases(
+      normalizeKeymapAliases({
+        list: {
+          list_open_search: ["Ctrl+F"],
+          list_open_add: ["n"]
+        }
+      })
+    );
+    expect(
+      run(
+        { ctrl: true, name: "f", sequence: "f" },
+        { resolvedKeymapAliases: resolvedAliases }
+      )
+    ).toEqual([{ scope: "ui", type: "OPEN_SEARCH" }]);
+    expect(
+      run(
+        { name: "n", sequence: "n" },
+        { resolvedKeymapAliases: resolvedAliases }
+      )
+    ).toEqual([{ scope: "domain", type: "OPEN_ADD" }]);
+    expect(
+      run(
+        { name: "a", sequence: "a" },
+        { resolvedKeymapAliases: resolvedAliases }
+      )
+    ).toEqual([{ scope: "domain", type: "OPEN_ADD" }]);
   });
 
   it("routes view overlay keys without leaking list movement", () => {
@@ -807,6 +836,35 @@ describe("handleKey", () => {
     ]);
   });
 
+  it("routes dashboard aliases before defaults", () => {
+    const dashboardState = {
+      ...initialUIState,
+      mode: Mode.DASHBOARD,
+      focus: FocusTarget.DASHBOARD
+    };
+    const resolvedAliases = resolveKeymapAliases(
+      normalizeKeymapAliases({
+        dashboard: {
+          dashboard_cycle_status: ["x"],
+          dashboard_apply_selection: ["Space"]
+        }
+      })
+    );
+
+    expect(
+      run(
+        { name: "x", sequence: "x" },
+        { uiState: dashboardState, resolvedKeymapAliases: resolvedAliases }
+      )
+    ).toEqual([{ scope: "domain", type: "CYCLE_STATUS" }]);
+    expect(
+      run(
+        { name: "space", sequence: " " },
+        { uiState: dashboardState, resolvedKeymapAliases: resolvedAliases }
+      )
+    ).toEqual([{ scope: "domain", type: "APPLY_DASHBOARD_ACTIVE_SELECTION" }]);
+  });
+
   it("keeps help mode read-only for settings hotkeys", () => {
     const helpState = {
       ...initialUIState,
@@ -855,6 +913,41 @@ describe("handleKey", () => {
     expect(run({ name: "escape" }, { uiState: helpState })).toEqual([
       { scope: "ui", type: "UNWIND" }
     ]);
+  });
+
+  it("routes help aliases on root page and keeps editor pages read-only", () => {
+    const helpState = {
+      ...initialUIState,
+      mode: Mode.HELP,
+      focus: FocusTarget.TASK_LIST
+    };
+    const resolvedAliases = resolveKeymapAliases(
+      normalizeKeymapAliases({
+        help: {
+          help_open_backup_center: ["9"],
+          help_close: ["q"]
+        }
+      })
+    );
+
+    expect(
+      run(
+        { name: "9", sequence: "9" },
+        { uiState: helpState, resolvedKeymapAliases: resolvedAliases }
+      )
+    ).toEqual([{ scope: "ui", type: "OPEN_BACKUP_CENTER" }]);
+    expect(
+      run(
+        { name: "q", sequence: "q" },
+        { uiState: helpState, resolvedKeymapAliases: resolvedAliases }
+      )
+    ).toEqual([{ scope: "ui", type: "CLOSE_HELP" }]);
+    expect(
+      run(
+        { name: "q", sequence: "q" },
+        { uiState: helpState, helpPage: "custom1Edit", resolvedKeymapAliases: resolvedAliases }
+      )
+    ).toEqual([]);
   });
 
   it("routes help subpage forward/back navigation actions", () => {
@@ -1063,6 +1156,52 @@ describe("handleKey", () => {
         { uiState: backupState, backupScreen: "import_picker" }
       )
     ).toEqual([]);
+  });
+
+  it("routes backup aliases with screen-aware no-op behavior", () => {
+    const backupState = {
+      ...initialUIState,
+      mode: Mode.BACKUP_CENTER,
+      focus: FocusTarget.BACKUP_CENTER
+    };
+    const resolvedAliases = resolveKeymapAliases(
+      normalizeKeymapAliases({
+        backup: {
+          backup_primary: ["Space"],
+          backup_jump_start: ["h"],
+          backup_menu_option_4: ["9"]
+        }
+      })
+    );
+
+    expect(
+      run(
+        { name: "space", sequence: " " },
+        { uiState: backupState, backupScreen: "menu", resolvedKeymapAliases: resolvedAliases }
+      )
+    ).toEqual([{ scope: "ui", type: "BACKUP_PRIMARY" }]);
+    expect(
+      run(
+        { name: "h", sequence: "h" },
+        {
+          uiState: backupState,
+          backupScreen: "import_picker",
+          resolvedKeymapAliases: resolvedAliases
+        }
+      )
+    ).toEqual([{ scope: "ui", type: "BACKUP_PICKER_JUMP_SELECTION", target: "start" }]);
+    expect(
+      run(
+        { name: "h", sequence: "h" },
+        { uiState: backupState, backupScreen: "menu", resolvedKeymapAliases: resolvedAliases }
+      )
+    ).toEqual([]);
+    expect(
+      run(
+        { name: "9", sequence: "9" },
+        { uiState: backupState, backupScreen: "menu", resolvedKeymapAliases: resolvedAliases }
+      )
+    ).toEqual([{ scope: "ui", type: "BACKUP_SELECT_MENU_OPTION", index: 3 }]);
   });
 
   it("prevents list-key leakage in add/edit text-input modes", () => {

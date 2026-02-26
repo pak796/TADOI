@@ -425,7 +425,7 @@ async function openHelpSettingsPage(harness: RenderHarness) {
 async function cycleRetroFxModeSettingFromHelp(harness: RenderHarness) {
   const { mockInput } = harness;
   await openHelpSettingsPage(harness);
-  await pressArrowAndRender(mockInput, harness, "down", 5);
+  await pressArrowAndRender(mockInput, harness, "down", 6);
   await pressEnterAndRender(mockInput, harness);
 }
 
@@ -706,10 +706,57 @@ describe("App modal flow integration", () => {
     try {
       await openHelpSettingsPage(harness);
       await waitForText(harness, "Theme mode: Default");
-      await pressArrowAndRender(mockInput, harness, "down", 5);
+      await pressArrowAndRender(mockInput, harness, "down", 6);
 
       const frame = await waitForText(harness, "▶ Retro FX Mode: Off");
       expect(frame).toContain("CRT FX Profile");
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
+  it("keymap aliases settings page toggles list preset and reset applies immediately", async () => {
+    const session = await createSession();
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      await openHelpSettingsPage(harness);
+      await pressArrowAndRender(mockInput, harness, "down");
+      await waitForText(harness, "▶ Keymap Aliases");
+      await pressEnterAndRender(mockInput, harness);
+      let frame = await waitForText(harness, "Help / Settings / Keymap Aliases");
+      expect(frame).toContain("List aliases: off");
+
+      await pressEnterAndRender(mockInput, harness);
+      frame = await waitForText(harness, "List aliases: on");
+
+      await pressKeyAndRender(mockInput, harness, "?");
+      await waitForText(harness, "Existing task");
+
+      await pressCtrlKeyAndRender(mockInput, harness, "f");
+      frame = await waitForText(harness, "Type to filter tasks and tags; Enter/Esc closes");
+      expect(frame).toContain("FOCUS: SEARCH");
+      await pressEscapeAndRender(mockInput, harness);
+      await waitForText(harness, "FOCUS: LIST");
+
+      await openHelpSettingsPage(harness);
+      await pressArrowAndRender(mockInput, harness, "down");
+      await pressEnterAndRender(mockInput, harness);
+      await waitForText(harness, "Help / Settings / Keymap Aliases");
+      await pressArrowAndRender(mockInput, harness, "down", 4);
+      await waitForText(harness, "▶ Reset all aliases");
+      await pressEnterAndRender(mockInput, harness);
+      frame = await waitForText(harness, "List aliases: off");
+      expect(frame).toContain("Reset all aliases");
+
+      await pressKeyAndRender(mockInput, harness, "?");
+      await waitForText(harness, "Existing task");
+
+      await pressCtrlKeyAndRender(mockInput, harness, "f");
+      frame = harness.captureCharFrame();
+      expect(frame).toContain("FOCUS: LIST");
+      expect(frame).not.toContain("Type to filter tasks and tags; Enter/Esc closes");
     } finally {
       await cleanupSession(session);
     }
@@ -789,6 +836,57 @@ describe("App modal flow integration", () => {
     }
   });
 
+  it("renders context-aware which-key hints in list, search, and modal states", async () => {
+    const session = await createSession();
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      let frame = await waitForText(harness, "Existing task");
+      expect(frame).toContain("KEYS");
+      expect(frame).toContain("a: add");
+
+      await pressKeyAndRender(mockInput, harness, "/");
+      frame = await waitForText(harness, "SEARCH");
+      expect(frame).toContain("KEYS");
+      expect(frame).toContain("type: filter");
+
+      await pressEscapeAndRender(mockInput, harness);
+      await waitForText(harness, "Existing task");
+
+      await pressKeyAndRender(mockInput, harness, "d");
+      frame = await waitForText(harness, "DELETE SELECTED TASK? [Y/N]");
+      expect(frame).toContain("KEYS");
+      expect(frame).toContain("y: confirm");
+      expect(frame).toContain("n: cancel");
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
+  it("shows g-prefix popup and clears it after non-prefix continuation without side effects", async () => {
+    const session = await createSession();
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      let frame = await waitForText(harness, "Existing task");
+      expect(frame).toContain("DUE (G):");
+
+      await pressKeyAndRender(mockInput, harness, "g");
+      frame = await waitForText(harness, "PREFIX: g");
+      expect(frame).toContain("jump top");
+      expect(frame).toContain("jump bottom");
+
+      await pressKeyAndRender(mockInput, harness, "j");
+      frame = await waitForText(harness, "Existing task");
+      expect(frame).not.toContain("PREFIX: g");
+      expect(frame).toMatch(/DUE \(G\):\s+ANY/);
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
   it("backup center body scrolls with keyboard while footer stays pinned at 104x24", async () => {
     const session = await createSession({ width: 104, height: 24 });
     const { harness } = session;
@@ -801,6 +899,8 @@ describe("App modal flow integration", () => {
         let frame = await waitForText(harness, "Dry-run summary (required)");
         expect(frame).toContain("Events parsed");
         expect(frame).toContain("COMMIT IMPORT");
+        expect(frame).toContain("Esc");
+        expect(frame).toContain("1..4");
 
         await pressCtrlKeyAndRender(harness.mockInput, harness, "d");
         await pressCtrlKeyAndRender(harness.mockInput, harness, "d");
@@ -808,6 +908,7 @@ describe("App modal flow integration", () => {
         frame = harness.captureCharFrame();
         expect(frame).not.toContain("Events parsed");
         expect(frame).toContain("COMMIT IMPORT");
+        expect(frame).toContain("Esc");
 
         await pressCtrlKeyAndRender(harness.mockInput, harness, "u");
         await pressCtrlKeyAndRender(harness.mockInput, harness, "u");
@@ -815,6 +916,7 @@ describe("App modal flow integration", () => {
         frame = harness.captureCharFrame();
         expect(frame).toContain("Events parsed");
         expect(frame).toContain("COMMIT IMPORT");
+        expect(frame).toContain("1..4");
       });
     } finally {
       await cleanupSession(session);
@@ -833,6 +935,8 @@ describe("App modal flow integration", () => {
         let frame = await waitForText(harness, "Dry-run summary (required)");
         expect(frame).toContain("Events parsed");
         expect(frame).toContain("COMMIT IMPORT");
+        expect(frame).toContain("Esc");
+        expect(frame).toContain("1..4");
 
         await scrollMouseAndRender(harness, {
           x: 26,
@@ -843,6 +947,7 @@ describe("App modal flow integration", () => {
         frame = harness.captureCharFrame();
         expect(frame).not.toContain("Events parsed");
         expect(frame).toContain("COMMIT IMPORT");
+        expect(frame).toContain("Esc");
 
         await scrollMouseAndRender(harness, {
           x: 26,
@@ -853,6 +958,7 @@ describe("App modal flow integration", () => {
         frame = harness.captureCharFrame();
         expect(frame).toContain("Events parsed");
         expect(frame).toContain("COMMIT IMPORT");
+        expect(frame).toContain("1..4");
       });
     } finally {
       await cleanupSession(session);
@@ -1248,7 +1354,7 @@ describe("App modal flow integration", () => {
       let frame = await waitForText(harness, "Retro FX Mode: Classic");
       expect(frame).toContain("CRT FX Profile");
 
-      await pressArrowAndRender(mockInput, harness, "down", 5);
+      await pressArrowAndRender(mockInput, harness, "down", 6);
       await pressEnterAndRender(mockInput, harness);
       frame = await waitForText(harness, "Retro FX Mode: Broadcast");
       expect(frame).toContain("Notifications");

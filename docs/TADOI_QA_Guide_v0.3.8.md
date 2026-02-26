@@ -171,6 +171,18 @@ Smoke pass criteria:
   - Preconditions: editor recurrence controls visible.
   - Steps: tab through recurrence fields.
   - Expected: left rail focus labels map to recurrence targets, not fallback labels.
+- [ ] `QA-080` Context hints update with mode transitions (list/search/modal/backup/help).
+  - Preconditions: app running in list mode with at least one task.
+  - Steps: observe hints in list, open search (`/`), open delete modal (`d`), open backup (`u`), open help (`?`).
+  - Expected: hint model updates by context; no stale list-only hints leak into other contexts.
+- [ ] `QA-081` `g` prefix predictability (`gg`, `gG`, and `g + non-prefix`).
+  - Preconditions: list mode with enough rows to move and jump.
+  - Steps: press `g` then `g`; press `g` then `G`; press `g` then `j`.
+  - Expected: jump top, jump bottom, and continuation-key-only behavior respectively (`g + j` does not additionally cycle due filter).
+- [ ] `QA-082` Keymap alias settings routing and deterministic conflict handling.
+  - Preconditions: settings JSON can be edited between launches.
+  - Steps: configure non-conflicting aliases for list/dashboard/backup/help actions, then configure an intentional token conflict in one context.
+  - Expected: aliased actions route in their declared context; conflict keeps first assignment and ignores later conflicting mapping.
 
 ### F) Recurrence and Occurrence Workflows
 

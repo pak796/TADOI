@@ -27,6 +27,8 @@ import { TagFilterPanel } from "../components/TagFilterPanel";
 import { BackupCenterScreen } from "../components/BackupCenterScreen";
 import { AppModalLayer } from "../components/AppModalLayer";
 import { resolveCrtFxColor, resolveRetroSweepBorderColor } from "../components/CrtFxLite";
+import { WhichKeyHintBar } from "../components/WhichKeyHintBar";
+import { WhichKeyPopup } from "../components/WhichKeyPopup";
 import {
   Custom1ThemeEditor,
   type Custom1ThemeEditorHandle
@@ -271,6 +273,17 @@ import { useModalOrchestration } from "./modalOrchestration";
 import { useCalendarFlow } from "./calendarFlow";
 import { shouldTriggerSaveConflictRetryFromMouse } from "./saveConflictBannerAction";
 import {
+  resolveKeymapAliases,
+  type KeymapAliasConfig,
+  type KeymapAliases
+} from "./keymapAliases";
+import {
+  buildLeftRailHintLines,
+  buildWhichKeyHintItems,
+  buildWhichKeyPrefixPopup,
+  resolveWhichKeyContext
+} from "./whichKeyHints";
+import {
   shouldRequireBackupReplaceConfirmation
 } from "./backupCalendarOrchestration";
 import {
@@ -323,6 +336,7 @@ const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings =
 const DEFAULT_SECURITY_SETTINGS: SecuritySettings = getDefaultSettings().security;
 const DEFAULT_LOGO_MODE: LogoMode = getDefaultSettings().logoMode;
 const DEFAULT_CUSTOM_THEMES: CustomThemes | undefined = getDefaultSettings().customThemes;
+const DEFAULT_KEYMAP_ALIASES = getDefaultSettings().keymapAliases;
 const DEFAULT_CRT_FX_LITE = getDefaultSettings().crtFxLite === true;
 const DEFAULT_CRT_FX_COLOR =
   getDefaultSettings().crtFxColor ?? DEFAULT_CRT_FX_LITE_COLOR;
@@ -386,6 +400,7 @@ type HelpScrollbarThumb = {
 type HelpPage =
   | "help"
   | "settings"
+  | "keymapAliases"
   | "theme"
   | "custom1"
   | "custom1Edit"
@@ -395,6 +410,7 @@ type HelpPage =
 
 type HelpNavSelectionByPage = {
   settings: number;
+  keymapAliases: number;
   theme: number;
   custom1: number;
   textTuning: number;
@@ -412,6 +428,10 @@ const HELP_SETTINGS_NAV_ITEMS: HelpNavItem[] = [
   {
     title: "Theme",
     description: "Theme mode and custom palette settings."
+  },
+  {
+    title: "Keymap Aliases",
+    description: "Configure alias presets for list, dashboard, backup, and help actions."
   },
   {
     title: "Logo",
@@ -484,6 +504,63 @@ const HELP_TEXT_TUNING_THEME_NAV_ITEMS: HelpNavItem[] = [
     description: "Open editor (live preview, save/cancel/reset)."
   }
 ];
+
+type KeymapAliasPresetContext = "list" | "dashboard" | "backup" | "help";
+type KeymapAliasPresetState = "off" | "preset" | "custom";
+
+const HELP_KEYMAP_ALIAS_NAV_ITEMS: HelpNavItem[] = [
+  {
+    title: "List aliases",
+    description: "Preset: Ctrl+F search and n add."
+  },
+  {
+    title: "Dashboard aliases",
+    description: "Preset: j/k move selection and h open help."
+  },
+  {
+    title: "Backup aliases",
+    description: "Preset: q back and j/k movement."
+  },
+  {
+    title: "Help aliases",
+    description: "Preset: j/k move, h/l nav, q close."
+  },
+  {
+    title: "Reset all aliases",
+    description: "Clear all keymap alias overrides."
+  }
+];
+
+const KEYMAP_ALIAS_PRESET_CONTEXT_ORDER: KeymapAliasPresetContext[] = [
+  "list",
+  "dashboard",
+  "backup",
+  "help"
+];
+
+const KEYMAP_ALIAS_PRESETS_BY_CONTEXT: Record<KeymapAliasPresetContext, KeymapAliasConfig> = {
+  list: {
+    list_open_search: ["Ctrl+F"],
+    list_open_add: ["n"]
+  },
+  dashboard: {
+    dashboard_move_up: ["k"],
+    dashboard_move_down: ["j"],
+    dashboard_open_help: ["h"]
+  },
+  backup: {
+    backup_back: ["q"],
+    backup_move_up: ["k"],
+    backup_move_down: ["j"]
+  },
+  help: {
+    help_move_up: ["k"],
+    help_move_down: ["j"],
+    help_nav_back: ["h"],
+    help_nav_forward: ["l"],
+    help_close: ["q"]
+  }
+};
 
 /*
  * Help menu structure:
@@ -638,6 +715,9 @@ const HELP_SETTINGS_NAV_SECTION_INDEX = HELP_MENU_SECTIONS.findIndex(
 const HELP_SETTINGS_THEME_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
   (item) => item.title === "Theme"
 );
+const HELP_SETTINGS_KEYMAP_ALIASES_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
+  (item) => item.title === "Keymap Aliases"
+);
 const HELP_SETTINGS_LOGO_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
   (item) => item.title === "Logo"
 );
@@ -661,6 +741,9 @@ const HELP_SETTINGS_OVERDUE_POPUP_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
 );
 const HELP_SETTINGS_TERMINAL_BELL_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
   (item) => item.title === "Terminal Bell"
+);
+const HELP_KEYMAP_ALIAS_RESET_NAV_INDEX = HELP_KEYMAP_ALIAS_NAV_ITEMS.findIndex(
+  (item) => item.title === "Reset all aliases"
 );
 
 function createDefaultHelpExpandedState(): boolean[] {
@@ -1196,6 +1279,62 @@ function stableSerialize(value: unknown): string {
   return JSON.stringify(normalize(value));
 }
 
+function cloneKeymapAliasConfig(config: KeymapAliasConfig): KeymapAliasConfig {
+  const next: KeymapAliasConfig = {};
+  for (const [actionId, tokens] of Object.entries(config)) {
+    next[actionId as keyof KeymapAliasConfig] = [...tokens];
+  }
+  return next;
+}
+
+function cloneKeymapAliases(aliases: KeymapAliases | undefined): KeymapAliases | undefined {
+  if (!aliases) return undefined;
+  const next: KeymapAliases = {};
+  for (const context of KEYMAP_ALIAS_PRESET_CONTEXT_ORDER) {
+    const config = aliases[context];
+    if (!config) continue;
+    next[context] = cloneKeymapAliasConfig(config);
+  }
+  return Object.keys(next).length > 0 ? next : undefined;
+}
+
+function areKeymapAliasConfigsEqual(
+  left: KeymapAliasConfig | undefined,
+  right: KeymapAliasConfig
+): boolean {
+  const leftKeys = Object.keys(left ?? {}).sort();
+  const rightKeys = Object.keys(right).sort();
+  if (leftKeys.length !== rightKeys.length) return false;
+  for (let index = 0; index < rightKeys.length; index += 1) {
+    if (leftKeys[index] !== rightKeys[index]) return false;
+    const key = rightKeys[index] as keyof KeymapAliasConfig;
+    const leftTokens = left?.[key] ?? [];
+    const rightTokens = right[key] ?? [];
+    if (leftTokens.length !== rightTokens.length) return false;
+    for (let tokenIndex = 0; tokenIndex < rightTokens.length; tokenIndex += 1) {
+      if (leftTokens[tokenIndex] !== rightTokens[tokenIndex]) return false;
+    }
+  }
+  return true;
+}
+
+function resolveKeymapAliasPresetState(
+  context: KeymapAliasPresetContext,
+  aliases: KeymapAliases | undefined
+): KeymapAliasPresetState {
+  const config = aliases?.[context];
+  if (!config) return "off";
+  return areKeymapAliasConfigsEqual(config, KEYMAP_ALIAS_PRESETS_BY_CONTEXT[context])
+    ? "preset"
+    : "custom";
+}
+
+function formatKeymapAliasPresetState(state: KeymapAliasPresetState): string {
+  if (state === "preset") return "on";
+  if (state === "custom") return "custom";
+  return "off";
+}
+
 function describeUnsavedSource(source: UIUnsavedChangesModal["source"]): string {
   switch (source) {
     case "task_editor":
@@ -1290,7 +1429,8 @@ export function App({
     retroFxMode: initialRetroFxMode,
     notifications: initialNotificationSettings,
     security: initialSecuritySettings,
-    customThemes: initialCustomThemes
+    customThemes: initialCustomThemes,
+    keymapAliases: DEFAULT_KEYMAP_ALIASES
   });
   const [uiState, uiDispatch] = useReducer(uiReducer, initialUIState);
   const [backupState, backupDispatch] = useReducer(
@@ -1359,6 +1499,7 @@ export function App({
   const [helpNavStack, setHelpNavStack] = useState<HelpPage[]>(["help"]);
   const [helpNavSelection, setHelpNavSelection] = useState<HelpNavSelectionByPage>({
     settings: 0,
+    keymapAliases: 0,
     theme: 0,
     custom1: 0,
     textTuning: 0,
@@ -1477,6 +1618,39 @@ export function App({
   const selectedTask =
     visibleTaskRows.find((task) => task.id === state.selectedId) ?? visibleTaskRows[0];
   const activeHelpPage = helpNavStack[helpNavStack.length - 1] ?? "help";
+  const resolvedKeymapAliases = React.useMemo(
+    () => resolveKeymapAliases(settingsState.keymapAliases),
+    [settingsState.keymapAliases]
+  );
+  const whichKeyContext = resolveWhichKeyContext({
+    mode: uiState.mode,
+    focus: uiState.focus,
+    backupScreen: uiState.mode === Mode.BACKUP_CENTER ? backupState.screen : null
+  });
+  const whichKeyHintItems = React.useMemo(
+    () =>
+      buildWhichKeyHintItems({
+        context: whichKeyContext,
+        resolvedAliases: resolvedKeymapAliases
+      }),
+    [whichKeyContext, resolvedKeymapAliases]
+  );
+  const leftRailHintLines = React.useMemo(
+    () =>
+      buildLeftRailHintLines({
+        context: whichKeyContext,
+        resolvedAliases: resolvedKeymapAliases
+      }),
+    [whichKeyContext, resolvedKeymapAliases]
+  );
+  const whichKeyPrefixPopup = React.useMemo(
+    () =>
+      buildWhichKeyPrefixPopup({
+        pendingGPrefix,
+        resolvedAliases: resolvedKeymapAliases
+      }),
+    [pendingGPrefix, resolvedKeymapAliases]
+  );
   const persistedCustom1 = React.useMemo(
     () => resolveCustom1Config(settingsState.customThemes),
     [settingsState.customThemes]
@@ -1528,6 +1702,8 @@ export function App({
   const helpNavItems =
     activeHelpPage === "settings"
       ? HELP_SETTINGS_NAV_ITEMS
+      : activeHelpPage === "keymapAliases"
+        ? HELP_KEYMAP_ALIAS_NAV_ITEMS
       : activeHelpPage === "theme"
         ? HELP_THEME_NAV_ITEMS
       : activeHelpPage === "custom1"
@@ -1540,6 +1716,8 @@ export function App({
   const helpNavSelectionIndex =
     activeHelpPage === "settings"
       ? helpNavSelection.settings
+      : activeHelpPage === "keymapAliases"
+        ? helpNavSelection.keymapAliases
       : activeHelpPage === "theme"
         ? helpNavSelection.theme
       : activeHelpPage === "custom1"
@@ -1659,6 +1837,8 @@ export function App({
       ? "Help"
       : activeHelpPage === "settings"
         ? "Help / Settings"
+        : activeHelpPage === "keymapAliases"
+          ? "Help / Settings / Keymap Aliases"
         : activeHelpPage === "theme"
           ? "Help / Settings / Theme"
           : activeHelpPage === "custom1"
@@ -2137,6 +2317,12 @@ export function App({
     helpInAppBannerStatusLine.trim(),
     helpTerminalBellStatusLine.trim()
   ];
+  const helpKeymapAliasPresetStates = {
+    list: resolveKeymapAliasPresetState("list", settingsState.keymapAliases),
+    dashboard: resolveKeymapAliasPresetState("dashboard", settingsState.keymapAliases),
+    backup: resolveKeymapAliasPresetState("backup", settingsState.keymapAliases),
+    help: resolveKeymapAliasPresetState("help", settingsState.keymapAliases)
+  } as const;
   const helpNavStatusLineCount =
     activeHelpPage === "settings" ? helpSettingsStatusLines.length : 0;
   function resolveHelpNavItemTitle(item: HelpNavItem, index: number): string {
@@ -2148,6 +2334,20 @@ export function App({
     }
     if (activeHelpPage === "settings" && index === HELP_SETTINGS_RETRO_FX_MODE_NAV_INDEX) {
       return `Retro FX Mode: ${formatRetroFxModeLabel(settingsState.retroFxMode)}`;
+    }
+    if (activeHelpPage === "keymapAliases") {
+      if (index === 0) {
+        return `List aliases: ${formatKeymapAliasPresetState(helpKeymapAliasPresetStates.list)}`;
+      }
+      if (index === 1) {
+        return `Dashboard aliases: ${formatKeymapAliasPresetState(helpKeymapAliasPresetStates.dashboard)}`;
+      }
+      if (index === 2) {
+        return `Backup aliases: ${formatKeymapAliasPresetState(helpKeymapAliasPresetStates.backup)}`;
+      }
+      if (index === 3) {
+        return `Help aliases: ${formatKeymapAliasPresetState(helpKeymapAliasPresetStates.help)}`;
+      }
     }
     return item.title;
   }
@@ -2199,6 +2399,16 @@ export function App({
     !commandActive && !blockingOverlayOpen && state.engagementToastActive
       ? state.engagementToastActive
       : null;
+  const suppressWhichKeyHints =
+    commandActive || viewsOverlayOpen || saveViewPromptOpen || activeEngagementToast !== null;
+  const showWhichKeyHintBar = !suppressWhichKeyHints && whichKeyHintItems.length > 0;
+  const showWhichKeyPrefixPopup =
+    !suppressWhichKeyHints &&
+    whichKeyPrefixPopup !== null &&
+    uiState.mode === Mode.LIST &&
+    uiState.focus === FocusTarget.TASK_LIST;
+  const whichKeyHintBarBottom = bottomBarHeight + activeBanners.length + 1;
+  const whichKeyPopupBottom = whichKeyHintBarBottom + (showWhichKeyHintBar ? 3 : 1);
   const engagementToastLine = activeEngagementToast
     ? fitLineToWidth(
         activeEngagementToast.message,
@@ -2623,6 +2833,13 @@ export function App({
   ]);
 
   useEffect(() => {
+    if (resolvedKeymapAliases.warnings.length === 0) return;
+    for (const warning of resolvedKeymapAliases.warnings) {
+      console.warn(`[TADOI][keymapAliases] ${warning}`);
+    }
+  }, [resolvedKeymapAliases]);
+
+  useEffect(() => {
     if (skipSettingsSaveRef.current) {
       skipSettingsSaveRef.current = false;
       return;
@@ -2638,7 +2855,8 @@ export function App({
         retroFxMode: settingsState.retroFxMode,
         notifications: settingsState.notifications,
         security: settingsState.security,
-        customThemes: settingsState.customThemes
+        customThemes: settingsState.customThemes,
+        keymapAliases: settingsState.keymapAliases
       },
       150,
       settingsPath ? { filePath: settingsPath } : {}
@@ -2651,6 +2869,7 @@ export function App({
     settingsState.retroFxMode,
     settingsState.customThemes,
     settingsState.flashMode,
+    settingsState.keymapAliases,
     settingsState.logoMode,
     settingsState.notifications,
     settingsState.security,
@@ -3182,6 +3401,10 @@ export function App({
     settingsDispatch({
       type: "setCustomThemes",
       customThemes: settingsResult.settings.customThemes
+    });
+    settingsDispatch({
+      type: "setKeymapAliases",
+      keymapAliases: settingsResult.settings.keymapAliases
     });
   }
 
@@ -4121,6 +4344,7 @@ export function App({
         saveViewPromptOpen,
         allowEmptyNuxRecoveryImport: showCorruptionRecoveryImportCta,
         backupScreen: uiState.mode === Mode.BACKUP_CENTER ? backupState.screen : null,
+        resolvedKeymapAliases,
         helpPage: activeHelpPage
       }
     );
@@ -4150,6 +4374,7 @@ export function App({
     setHelpNavStack(["help"]);
     setHelpNavSelection({
       settings: 0,
+      keymapAliases: 0,
       theme: 0,
       custom1: 0,
       textTuning: 0,
@@ -4438,6 +4663,33 @@ export function App({
     showShortNavigationBanner(`Terminal bell: ${nextEnabled ? "on" : "off"}`);
   }
 
+  function setContextKeymapAliasPreset(context: KeymapAliasPresetContext, enabled: boolean) {
+    const nextAliases = cloneKeymapAliases(settingsState.keymapAliases) ?? {};
+    if (enabled) {
+      nextAliases[context] = cloneKeymapAliasConfig(KEYMAP_ALIAS_PRESETS_BY_CONTEXT[context]);
+    } else {
+      delete nextAliases[context];
+    }
+    settingsDispatch({
+      type: "setKeymapAliases",
+      keymapAliases: Object.keys(nextAliases).length > 0 ? nextAliases : undefined
+    });
+  }
+
+  function toggleContextKeymapAliasPreset(context: KeymapAliasPresetContext) {
+    const currentState = resolveKeymapAliasPresetState(context, settingsState.keymapAliases);
+    const nextEnabled = currentState !== "preset";
+    setContextKeymapAliasPreset(context, nextEnabled);
+    showShortNavigationBanner(
+      `${context} aliases: ${nextEnabled ? "on (preset)" : "off"}`
+    );
+  }
+
+  function clearAllKeymapAliases() {
+    settingsDispatch({ type: "setKeymapAliases", keymapAliases: undefined });
+    showShortNavigationBanner("Keymap aliases reset to defaults");
+  }
+
   function openBackupCenter(options: { bypassUnsavedGuard?: boolean } = {}) {
     if (!options.bypassUnsavedGuard && requestTaskEditorUnsavedGuard("open_backup_center")) {
       return;
@@ -4542,6 +4794,14 @@ export function App({
           settings: Math.max(
             0,
             Math.min(prev.settings + delta, HELP_SETTINGS_NAV_ITEMS.length - 1)
+          )
+        }));
+      } else if (activeHelpPage === "keymapAliases") {
+        setHelpNavSelection((prev) => ({
+          ...prev,
+          keymapAliases: Math.max(
+            0,
+            Math.min(prev.keymapAliases + delta, HELP_KEYMAP_ALIAS_NAV_ITEMS.length - 1)
           )
         }));
       } else if (activeHelpPage === "theme") {
@@ -4668,6 +4928,10 @@ export function App({
       setHelpNavSelection((prev) => ({ ...prev, settings: index }));
       return;
     }
+    if (activeHelpPage === "keymapAliases") {
+      setHelpNavSelection((prev) => ({ ...prev, keymapAliases: index }));
+      return;
+    }
     if (activeHelpPage === "theme") {
       setHelpNavSelection((prev) => ({ ...prev, theme: index }));
       return;
@@ -4691,6 +4955,9 @@ export function App({
         cancelLogoModeSetting();
         pushHelpPage("theme");
       }
+      if (targetIndex === HELP_SETTINGS_KEYMAP_ALIASES_NAV_INDEX) {
+        pushHelpPage("keymapAliases");
+      }
       if (targetIndex === HELP_SETTINGS_LOGO_NAV_INDEX) {
         cycleLogoModeSetting(1, true);
       }
@@ -4705,6 +4972,16 @@ export function App({
         switchInAppOverduePopupSetting();
       }
       if (targetIndex === HELP_SETTINGS_TERMINAL_BELL_NAV_INDEX) switchTerminalBellSetting();
+      return;
+    }
+    if (activeHelpPage === "keymapAliases") {
+      if (targetIndex === HELP_KEYMAP_ALIAS_RESET_NAV_INDEX) {
+        clearAllKeymapAliases();
+        return;
+      }
+      const context = KEYMAP_ALIAS_PRESET_CONTEXT_ORDER[targetIndex];
+      if (!context) return;
+      toggleContextKeymapAliasPreset(context);
       return;
     }
     if (activeHelpPage === "theme") {
@@ -6970,6 +7247,7 @@ export function App({
           logoMode={settingsState.logoMode}
           onMenuSelect={handleLeftRailMenuSelect}
           terminalWidth={terminalWidth}
+          hintLines={leftRailHintLines}
           showLogo={showLogo}
           activeThemeId={settingsState.themeId === "rotating" ? activeThemeId : undefined}
         />
@@ -8189,6 +8467,31 @@ export function App({
               </box>
             </box>
           </box>
+        </box>
+      ) : null}
+
+      {showWhichKeyHintBar ? (
+        <box
+          style={{
+            position: "absolute",
+            left: layout.railWidth + 1,
+            right: 1,
+            bottom: whichKeyHintBarBottom
+          }}
+        >
+          <WhichKeyHintBar items={whichKeyHintItems} width={Math.max(8, bottomBarWidth - 2)} />
+        </box>
+      ) : null}
+
+      {showWhichKeyPrefixPopup && whichKeyPrefixPopup ? (
+        <box
+          style={{
+            position: "absolute",
+            right: 2,
+            bottom: whichKeyPopupBottom
+          }}
+        >
+          <WhichKeyPopup model={whichKeyPrefixPopup} />
         </box>
       ) : null}
     </box>

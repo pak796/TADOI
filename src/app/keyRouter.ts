@@ -2,6 +2,11 @@ import { FocusTarget, Mode } from "../domain/models";
 import { UIState, type EmptyNuxStep } from "../ui/state";
 import type { BackupCenterScreen } from "../state/backupCenterFlow";
 import type { ImportMode } from "../state/portability";
+import {
+  resolveAliasActionIdForInput,
+  type ActionAliasId,
+  type ResolvedKeymapAliases
+} from "./keymapAliases";
 
 export type KeyInput = {
   name: string;
@@ -21,9 +26,11 @@ export type KeyRouterContext = {
   saveViewPromptOpen: boolean;
   allowEmptyNuxRecoveryImport: boolean;
   backupScreen: BackupCenterScreen | null;
+  resolvedKeymapAliases?: ResolvedKeymapAliases | null;
   helpPage?:
     | "help"
     | "settings"
+    | "keymapAliases"
     | "theme"
     | "custom1"
     | "custom1Edit"
@@ -216,8 +223,260 @@ function isTagPanelOpenKey(
   return !ctrl && !shift && (name === "p" || sequence === "p");
 }
 
-function listModeActions(key: KeyInput): KeyRouterAction[] {
+const BACKUP_INPUT_SUBMIT_SCREENS = new Set<BackupCenterScreen>([
+  "import_path",
+  "import_confirm",
+  "calendar_export_path",
+  "calendar_import_path",
+  "calendar_import_horizon",
+  "calendar_import_tag",
+  "calendar_import_confirm"
+]);
+
+function backupScreenSupportsBodyScrollKeys(screen: BackupCenterScreen | null): boolean {
+  return (
+    screen !== null &&
+    screen !== "menu" &&
+    screen !== "calendar_menu" &&
+    screen !== "import_mode" &&
+    screen !== "import_picker" &&
+    !BACKUP_INPUT_SUBMIT_SCREENS.has(screen)
+  );
+}
+
+function resolveContextAliasActionId(
+  context: "list" | "dashboard" | "backup" | "help",
+  key: KeyInput,
+  routerContext: KeyRouterContext
+): ActionAliasId | null {
+  return resolveAliasActionIdForInput(context, key, routerContext.resolvedKeymapAliases);
+}
+
+function resolveListAliasActions(
+  key: KeyInput,
+  context: KeyRouterContext
+): KeyRouterAction[] | null {
+  const actionId = resolveContextAliasActionId("list", key, context);
+  if (!actionId) return null;
+  switch (actionId) {
+    case "list_open_add":
+      return [{ scope: "domain", type: "OPEN_ADD" }];
+    case "list_open_edit":
+      return [{ scope: "domain", type: "OPEN_EDIT" }];
+    case "list_toggle_selected":
+      return [{ scope: "domain", type: "TOGGLE_SELECTED" }];
+    case "list_open_search":
+      return [{ scope: "ui", type: "OPEN_SEARCH" }];
+    case "list_cycle_status":
+      return [{ scope: "domain", type: "CYCLE_STATUS" }];
+    case "list_cycle_sort":
+      return [{ scope: "domain", type: "CYCLE_SORT" }];
+    case "list_cycle_due":
+      return [{ scope: "domain", type: "CYCLE_DUE" }];
+    case "list_cycle_priority":
+      return [{ scope: "domain", type: "CYCLE_PRIORITY" }];
+    case "list_cycle_tag":
+      return [{ scope: "domain", type: "TOGGLE_TAG_FILTER" }];
+    case "list_open_tag_panel":
+      return [{ scope: "ui", type: "OPEN_TAG_FILTER_PANEL" }];
+    case "list_toggle_dashboard":
+      return [{ scope: "ui", type: "TOGGLE_DASHBOARD" }];
+    case "list_open_backup_center":
+      return [{ scope: "ui", type: "OPEN_BACKUP_CENTER" }];
+    case "list_move_up":
+      return [{ scope: "domain", type: "MOVE_SELECTION", delta: -1 }];
+    case "list_move_down":
+      return [{ scope: "domain", type: "MOVE_SELECTION", delta: 1 }];
+    case "list_page_up":
+      return [{ scope: "domain", type: "MOVE_SELECTION_PAGE", direction: -1 }];
+    case "list_page_down":
+      return [{ scope: "domain", type: "MOVE_SELECTION_PAGE", direction: 1 }];
+    case "list_jump_top":
+      return [{ scope: "domain", type: "JUMP_TOP" }];
+    case "list_jump_bottom":
+      return [{ scope: "domain", type: "JUMP_BOTTOM" }];
+    default:
+      return null;
+  }
+}
+
+function resolveDashboardAliasActions(
+  key: KeyInput,
+  context: KeyRouterContext
+): KeyRouterAction[] | null {
+  const actionId = resolveContextAliasActionId("dashboard", key, context);
+  if (!actionId) return null;
+  switch (actionId) {
+    case "dashboard_move_up":
+      return [{ scope: "ui", type: "DASHBOARD_MOVE_ACTIVE_SELECTION", delta: -1 }];
+    case "dashboard_move_down":
+      return [{ scope: "ui", type: "DASHBOARD_MOVE_ACTIVE_SELECTION", delta: 1 }];
+    case "dashboard_apply_selection":
+      return [{ scope: "domain", type: "APPLY_DASHBOARD_ACTIVE_SELECTION" }];
+    case "dashboard_cycle_status":
+      return [{ scope: "domain", type: "CYCLE_STATUS" }];
+    case "dashboard_cycle_due":
+      return [{ scope: "domain", type: "CYCLE_DUE" }];
+    case "dashboard_cycle_priority":
+      return [{ scope: "domain", type: "CYCLE_PRIORITY" }];
+    case "dashboard_cycle_tag":
+      return [{ scope: "domain", type: "TOGGLE_TAG_FILTER" }];
+    case "dashboard_open_tag_panel":
+      return [{ scope: "ui", type: "OPEN_TAG_FILTER_PANEL" }];
+    case "dashboard_cycle_window":
+      return [{ scope: "domain", type: "CYCLE_ANALYTICS_WINDOW" }];
+    case "dashboard_next_focus":
+      return [{ scope: "ui", type: "DASHBOARD_NEXT_FOCUS_GROUP" }];
+    case "dashboard_prev_focus":
+      return [{ scope: "ui", type: "DASHBOARD_PREV_FOCUS_GROUP" }];
+    case "dashboard_toggle_dashboard":
+      return [{ scope: "ui", type: "TOGGLE_DASHBOARD" }];
+    case "dashboard_open_help":
+      return [{ scope: "ui", type: "OPEN_HELP" }];
+    case "dashboard_open_backup_center":
+      return [{ scope: "ui", type: "OPEN_BACKUP_CENTER" }];
+    default:
+      return null;
+  }
+}
+
+function resolveHelpAliasActions(
+  key: KeyInput,
+  context: KeyRouterContext
+): KeyRouterAction[] | null {
+  const actionId = resolveContextAliasActionId("help", key, context);
+  if (!actionId) return null;
+  switch (actionId) {
+    case "help_move_up":
+      return [{ scope: "ui", type: "HELP_MOVE_SECTION_FOCUS", delta: -1 }];
+    case "help_move_down":
+      return [{ scope: "ui", type: "HELP_MOVE_SECTION_FOCUS", delta: 1 }];
+    case "help_page_up":
+      return [{ scope: "ui", type: "HELP_SCROLL_PAGE", direction: -1 }];
+    case "help_page_down":
+      return [{ scope: "ui", type: "HELP_SCROLL_PAGE", direction: 1 }];
+    case "help_nav_back":
+      return [{ scope: "ui", type: "HELP_NAV_BACK" }];
+    case "help_nav_forward":
+      return [{ scope: "ui", type: "HELP_NAV_FORWARD" }];
+    case "help_toggle_focused_section":
+      return [{ scope: "ui", type: "HELP_TOGGLE_FOCUSED_SECTION" }];
+    case "help_close":
+      return [{ scope: "ui", type: "CLOSE_HELP" }];
+    case "help_open_backup_center":
+      return [{ scope: "ui", type: "OPEN_BACKUP_CENTER" }];
+    default:
+      return null;
+  }
+}
+
+function resolveBackupAliasActions(
+  key: KeyInput,
+  context: KeyRouterContext
+): KeyRouterAction[] | null {
+  const actionId = resolveContextAliasActionId("backup", key, context);
+  if (!actionId) return null;
+  const { backupScreen } = context;
+
+  switch (actionId) {
+    case "backup_primary":
+      if (
+        backupScreen &&
+        BACKUP_INPUT_SUBMIT_SCREENS.has(backupScreen)
+      ) {
+        return [];
+      }
+      if (backupScreen === "import_picker") {
+        return [{ scope: "ui", type: "BACKUP_PICKER_CONFIRM_SELECTION" }];
+      }
+      return [{ scope: "ui", type: "BACKUP_PRIMARY" }];
+    case "backup_back":
+      return [{ scope: "ui", type: "BACKUP_BACK" }];
+    case "backup_move_up":
+      if (backupScreen === "import_picker") {
+        return [{ scope: "ui", type: "BACKUP_PICKER_MOVE_SELECTION", delta: -1 }];
+      }
+      if (backupScreen === "menu" || backupScreen === "calendar_menu") {
+        return [{ scope: "ui", type: "BACKUP_MOVE_MENU_SELECTION", delta: -1 }];
+      }
+      if (backupScreenSupportsBodyScrollKeys(backupScreen)) {
+        return [{ scope: "ui", type: "BACKUP_SCROLL_BODY", delta: -1 }];
+      }
+      return [];
+    case "backup_move_down":
+      if (backupScreen === "import_picker") {
+        return [{ scope: "ui", type: "BACKUP_PICKER_MOVE_SELECTION", delta: 1 }];
+      }
+      if (backupScreen === "menu" || backupScreen === "calendar_menu") {
+        return [{ scope: "ui", type: "BACKUP_MOVE_MENU_SELECTION", delta: 1 }];
+      }
+      if (backupScreenSupportsBodyScrollKeys(backupScreen)) {
+        return [{ scope: "ui", type: "BACKUP_SCROLL_BODY", delta: 1 }];
+      }
+      return [];
+    case "backup_page_up":
+      if (backupScreen === "import_picker") {
+        return [{ scope: "ui", type: "BACKUP_PICKER_PAGE_SELECTION", delta: -1 }];
+      }
+      if (backupScreenSupportsBodyScrollKeys(backupScreen)) {
+        return [{ scope: "ui", type: "BACKUP_SCROLL_BODY", delta: -8 }];
+      }
+      return [];
+    case "backup_page_down":
+      if (backupScreen === "import_picker") {
+        return [{ scope: "ui", type: "BACKUP_PICKER_PAGE_SELECTION", delta: 1 }];
+      }
+      if (backupScreenSupportsBodyScrollKeys(backupScreen)) {
+        return [{ scope: "ui", type: "BACKUP_SCROLL_BODY", delta: 8 }];
+      }
+      return [];
+    case "backup_jump_start":
+      if (backupScreen === "import_picker") {
+        return [{ scope: "ui", type: "BACKUP_PICKER_JUMP_SELECTION", target: "start" }];
+      }
+      return [];
+    case "backup_jump_end":
+      if (backupScreen === "import_picker") {
+        return [{ scope: "ui", type: "BACKUP_PICKER_JUMP_SELECTION", target: "end" }];
+      }
+      return [];
+    case "backup_open_manual_path":
+      if (backupScreen === "import_picker") {
+        return [{ scope: "ui", type: "BACKUP_PICKER_OPEN_MANUAL_PATH" }];
+      }
+      return [];
+    case "backup_menu_option_1":
+      if (backupScreen === "menu") {
+        return [{ scope: "ui", type: "BACKUP_SELECT_MENU_OPTION", index: 0 }];
+      }
+      return [];
+    case "backup_menu_option_2":
+      if (backupScreen === "menu") {
+        return [{ scope: "ui", type: "BACKUP_SELECT_MENU_OPTION", index: 1 }];
+      }
+      return [];
+    case "backup_menu_option_3":
+      if (backupScreen === "menu") {
+        return [{ scope: "ui", type: "BACKUP_SELECT_MENU_OPTION", index: 2 }];
+      }
+      return [];
+    case "backup_menu_option_4":
+      if (backupScreen === "menu") {
+        return [{ scope: "ui", type: "BACKUP_SELECT_MENU_OPTION", index: 3 }];
+      }
+      return [];
+    default:
+      return null;
+  }
+}
+
+function listModeActions(
+  key: KeyInput,
+  context: KeyRouterContext
+): KeyRouterAction[] {
   const { name, sequence, ctrl, shift } = key;
+  const aliasedActions = resolveListAliasActions(key, context);
+  if (aliasedActions !== null) return aliasedActions;
   if (sequence === "?") return [{ scope: "ui", type: "OPEN_HELP" }];
   if (name === "q") return [{ scope: "domain", type: "EXIT_APP" }];
   if (isUpperG(name, sequence, ctrl)) return [{ scope: "domain", type: "JUMP_BOTTOM" }];
@@ -639,6 +898,9 @@ function resolveHelpModeActions(
     return [];
   }
 
+  const aliasedActions = resolveHelpAliasActions(key, context);
+  if (aliasedActions !== null) return aliasedActions;
+
   if (activeHelpPage !== "help") {
     if (name === "up") {
       return [{ scope: "ui", type: "HELP_MOVE_SECTION_FOCUS", delta: -1 }];
@@ -695,6 +957,9 @@ function resolveBackupCenterModeActions(
   const { name, sequence, ctrl } = key;
   const { uiState, backupScreen } = context;
   if (uiState.mode !== Mode.BACKUP_CENTER) return null;
+
+  const aliasedActions = resolveBackupAliasActions(key, context);
+  if (aliasedActions !== null) return aliasedActions;
 
   const maybeDigit = sequence.length === 1 && /\d/.test(sequence) ? Number(sequence) : NaN;
 
@@ -767,23 +1032,7 @@ function resolveBackupCenterModeActions(
     return [];
   }
 
-  const inputSubmitScreens = new Set([
-    "import_path",
-    "import_confirm",
-    "calendar_export_path",
-    "calendar_import_path",
-    "calendar_import_horizon",
-    "calendar_import_tag",
-    "calendar_import_confirm"
-  ]);
-
-  const supportsBodyScrollKeys =
-    backupScreen !== null &&
-    backupScreen !== "menu" &&
-    backupScreen !== "calendar_menu" &&
-    backupScreen !== "import_mode" &&
-    backupScreen !== "import_picker" &&
-    !inputSubmitScreens.has(backupScreen);
+  const supportsBodyScrollKeys = backupScreenSupportsBodyScrollKeys(backupScreen);
   if (supportsBodyScrollKeys) {
     const lowerName = name.toLowerCase();
     const lowerSequence = sequence.toLowerCase();
@@ -804,7 +1053,7 @@ function resolveBackupCenterModeActions(
   if (
     (name === "return" || name === "enter") &&
     backupScreen &&
-    inputSubmitScreens.has(backupScreen)
+    BACKUP_INPUT_SUBMIT_SCREENS.has(backupScreen)
   ) {
     // Input screens handle Enter via onSubmit to avoid stale-state races.
     return [];
@@ -826,6 +1075,9 @@ function resolveDashboardModeActions(
   const { name, sequence, ctrl, shift } = key;
   const { uiState } = context;
   if (uiState.mode !== Mode.DASHBOARD) return null;
+
+  const aliasedActions = resolveDashboardAliasActions(key, context);
+  if (aliasedActions !== null) return aliasedActions;
 
   if (sequence === "?") return [{ scope: "ui", type: "OPEN_HELP" }];
   if (name === "q") return [{ scope: "domain", type: "EXIT_APP" }];
@@ -1062,8 +1314,7 @@ function resolveListModeActions(
     }
     return [
       { scope: "ui", type: "SET_G_PREFIX", active: false },
-      { scope: "domain", type: "CYCLE_DUE" },
-      ...listModeActions(key)
+      ...listModeActions(key, context)
     ];
   }
 
@@ -1071,5 +1322,5 @@ function resolveListModeActions(
     return [{ scope: "ui", type: "SET_G_PREFIX", active: true }];
   }
 
-  return listModeActions(key);
+  return listModeActions(key, context);
 }

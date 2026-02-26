@@ -299,6 +299,7 @@ Persistence expectations:
 
 List mode:
 - navigation: `j/k`, arrows, `gg`, `G`, `Ctrl+U`, `Ctrl+D`, `PageUp`, `PageDown`, `[`, `]`, `{`, `}`
+- `g` prefix compatibility: `g`+`g`/`G` keeps jump semantics; `g` + non-prefix clears prefix and routes only the continuation key.
 - actions: `` ` ``, `a`, `e`, `E`, `c`, `Space`, `x`, `z`, `d`, `/`, `f`, `g`, `s`, `t`, `p`, `v`, `Ctrl+S`, `q`
 
 Dashboard mode:
@@ -317,6 +318,13 @@ Global/overlay:
 - backup center import picker: `j/k`, `ArrowUp`/`ArrowDown`, `PageUp`/`PageDown`, `home/end`, `m`, `Enter`, `Esc`
 - backup center content screens: `j/k`, `ArrowUp`/`ArrowDown`, `Ctrl+U`/`Ctrl+D`, `PageUp`/`PageDown`
 - TITS command bar: open with `` ` `` in list mode, `Esc` close, `Enter` execute, `ArrowUp/ArrowDown` history
+
+Hinting + alias layer:
+- Context hints come from a shared model (left rail mode-aware hints + footer `KEYS` bar where space/overlay precedence allows).
+- Pending prefix hint popup is rendered for `g` jump family.
+- Optional settings field `keymapAliases` supports action aliases for contexts `list`, `dashboard`, `backup`, `help`.
+- Help Settings exposes a `Keymap Aliases` page to toggle bounded context presets and reset overrides.
+- P1 alias token scope: single-key and `Ctrl+<key>` tokens; conflicts are deterministic first-wins with warning output.
 
 ## 5) Quality and Validation Baseline
 

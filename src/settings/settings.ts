@@ -22,6 +22,10 @@ import {
   THEME_TOKEN_KEYS,
   normalizeHexColor
 } from "../theme/custom1ColorUtils";
+import {
+  normalizeKeymapAliases,
+  type KeymapAliases
+} from "../app/keymapAliases";
 
 export type ThemeObjectId =
   | "appChrome"
@@ -77,6 +81,7 @@ export type TadoiSettings = {
   notifications: NotificationSettings;
   security: SecuritySettings;
   customThemes?: CustomThemes;
+  keymapAliases?: KeymapAliases;
 };
 
 export type FlashMode = "slow" | "static";
@@ -539,6 +544,7 @@ function normalizeSettings(input: unknown): TadoiSettings {
   const maybeRetroFxMode = input.retroFxMode;
   const maybeNotifications = input.notifications;
   const maybeSecurity = input.security;
+  const keymapAliases = normalizeKeymapAliases(input.keymapAliases);
   const themeId = isThemeId(maybeThemeId) ? maybeThemeId : DEFAULT_SETTINGS.themeId;
   const crtFxLite = normalizeCrtFxLite(maybeCrtFxLite);
   const crtFxColor = normalizeCrtFxColor(maybeCrtFxColor);
@@ -552,6 +558,9 @@ function normalizeSettings(input: unknown): TadoiSettings {
     security: normalizeSecurity(maybeSecurity),
     customThemes: normalizeCustomThemes(input.customThemes, themeId)
   };
+  if (keymapAliases) {
+    normalized.keymapAliases = keymapAliases;
+  }
   if (crtFxLite === true) {
     normalized.crtFxLite = true;
   }

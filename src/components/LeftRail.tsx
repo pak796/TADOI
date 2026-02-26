@@ -39,6 +39,7 @@ type LeftRailProps = {
   logoMode: LogoMode;
   onMenuSelect?: (item: LeftRailMenuItem) => void;
   terminalWidth: number;
+  hintLines?: readonly string[];
   showLogo?: boolean;
   activeThemeId?: ThemeId;
 };
@@ -48,7 +49,7 @@ const LOGO_ROTATE_INTERVAL_MS = 30_000;
 const LOGO_RENDER_HEIGHT = Math.max(
   ...Object.values(LOGO_VARIANTS).map((lines) => lines.length)
 );
-const HINT_LINES = [
+const DEFAULT_HINT_LINES = [
   "j/k: MOVE",
   "p: TAG PANEL",
   "r: PRIORITY",
@@ -208,6 +209,7 @@ export function LeftRail({
   logoMode,
   onMenuSelect,
   terminalWidth,
+  hintLines,
   showLogo = true,
   activeThemeId
 }: LeftRailProps) {
@@ -294,6 +296,7 @@ export function LeftRail({
   const blocksLogoNeedsDarkInk =
     effectiveLogoId === "alternate_blocks32" && isLightHexColor(theme.accentPurple);
   const logoPrimaryColor = blocksLogoNeedsDarkInk ? "#000000" : theme.text;
+  const renderedHintLines = hintLines && hintLines.length > 0 ? hintLines : DEFAULT_HINT_LINES;
 
   return (
     <box style={{ flexDirection: "column", gap: 0, height: "100%" }}>
@@ -424,7 +427,7 @@ export function LeftRail({
 
       <box style={{ marginTop: 1, flexDirection: "column", gap: 0 }}>
         <text style={styles.muted}>HINTS</text>
-        {HINT_LINES.map((line) => (
+        {renderedHintLines.map((line) => (
           <box key={line} style={{ flexDirection: "row" }}>
             <text style={{ color: theme.text }}>{formatHintLine(line)}</text>
           </box>

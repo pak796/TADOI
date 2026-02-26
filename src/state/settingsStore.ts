@@ -17,6 +17,7 @@ import {
   NotificationSettings,
   getDefaultSettings
 } from "../settings/settings";
+import type { KeymapAliases } from "../app/keymapAliases";
 
 export type SettingsState = {
   themeId: ThemeId;
@@ -29,6 +30,7 @@ export type SettingsState = {
   notifications: NotificationSettings;
   security: SecuritySettings;
   customThemes?: CustomThemes;
+  keymapAliases?: KeymapAliases;
 };
 
 export type SettingsAction =
@@ -49,6 +51,7 @@ export type SettingsAction =
   | { type: "setNotifications"; notifications: NotificationSettings }
   | { type: "setSecurity"; security: SecuritySettings }
   | { type: "setCustomThemes"; customThemes?: CustomThemes }
+  | { type: "setKeymapAliases"; keymapAliases?: KeymapAliases }
   | { type: "toggleNotificationsEnabled" }
   | { type: "toggleInAppOverdueBanner" }
   | { type: "toggleTerminalBellOnOverdue" };
@@ -71,7 +74,8 @@ export const initialSettingsState: SettingsState = {
   security: {
     nonHttpLinkPolicy: "prompt"
   },
-  customThemes: getDefaultSettings().customThemes
+  customThemes: getDefaultSettings().customThemes,
+  keymapAliases: getDefaultSettings().keymapAliases
 };
 
 export function settingsReducer(
@@ -134,6 +138,8 @@ export function settingsReducer(
       return { ...state, security: action.security };
     case "setCustomThemes":
       return { ...state, customThemes: action.customThemes };
+    case "setKeymapAliases":
+      return { ...state, keymapAliases: action.keymapAliases };
     case "toggleNotificationsEnabled":
       return {
         ...state,
