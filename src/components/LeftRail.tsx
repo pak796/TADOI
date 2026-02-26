@@ -182,7 +182,7 @@ function formatMenuItemLabel(item: LeftRailMenuItem): string {
   if (item === "EDIT") return "EDIT (E)";
   if (item === "SEARCH") return "SEARCH (/)";
   if (item === "TAG_PANEL") return "TAG PANEL (P)";
-  if (item === "HELP") return "HELP (?)";
+  if (item === "HELP") return "SETTINGS & HELP (?)";
   if (item === "DELETE") return "DELETE (D)";
   return item;
 }

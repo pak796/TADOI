@@ -133,8 +133,10 @@ HELP mode:
 BACKUP_CENTER mode:
 - `1` / `2` / `3` / `4`: choose root menu option
 - Number keys choose on-screen options
-- `j` / `k`: move menu selection
+- `j` / `k`: move menu/picker selection
 - Import picker: `ArrowUp` / `ArrowDown` (or `j` / `k`) move, `PageUp` / `PageDown` page, `home` / `end` jump, `m` manual path
+- Content screens (dry-run/done/error): `j` / `k` or `ArrowUp` / `ArrowDown` scroll by line
+- Content screens: `Ctrl+U` / `Ctrl+D` / `page_up` / `page_down` scroll by page
 - `Enter`: confirm
 - `Esc`: back/close
 

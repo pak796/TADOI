@@ -82,6 +82,9 @@ describe("link keybinding contract", () => {
     expect(specSource).toContain(
       "- backup center import picker: `j/k`, `ArrowUp`/`ArrowDown`, `PageUp`/`PageDown`, `home/end`, `m`, `Enter`, `Esc`"
     );
+    expect(specSource).toContain(
+      "- backup center content screens: `j/k`, `ArrowUp`/`ArrowDown`, `Ctrl+U`/`Ctrl+D`, `PageUp`/`PageDown`"
+    );
 
     const backupModeState = { ...initialUIState, mode: Mode.BACKUP_CENTER };
     expect(run({ name: "4", sequence: "4" }, { uiState: backupModeState, backupScreen: "menu" })).toEqual([
@@ -96,6 +99,12 @@ describe("link keybinding contract", () => {
     expect(
       run({ name: "m", sequence: "m" }, { uiState: backupModeState, backupScreen: "import_picker" })
     ).toEqual([{ scope: "ui", type: "BACKUP_PICKER_OPEN_MANUAL_PATH" }]);
+    expect(
+      run({ name: "pagedown", sequence: "" }, { uiState: backupModeState, backupScreen: "import_dryrun" })
+    ).toEqual([{ scope: "ui", type: "BACKUP_SCROLL_BODY", delta: 8 }]);
+    expect(
+      run({ ctrl: true, name: "u", sequence: "" }, { uiState: backupModeState, backupScreen: "calendar_import_dryrun" })
+    ).toEqual([{ scope: "ui", type: "BACKUP_SCROLL_BODY", delta: -8 }]);
   });
 
   it("keeps save-conflict retry hint aligned with banner affordance", async () => {

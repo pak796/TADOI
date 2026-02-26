@@ -343,7 +343,9 @@ Canonical router keys (audit-complete):
 - Backup Center mode:
   - `1` / `2` / `3` / `4`: choose root menu option
   - In Calendar submenu and select steps, number keys choose options shown on-screen
-  - `j` / `k`: move menu selection
+  - `j` / `k`: move menu/picker selection
+  - Content screens (dry-run/done/error): `j` / `k` or `ArrowUp` / `ArrowDown` scroll by line
+  - Content screens: `ctrl+u` / `ctrl+d` / `PageUp` / `PageDown` scroll by page
   - `Enter`: confirm current step
   - `Esc`: back (or close Backup Center from menu)
 - Overdue notification modal (when shown):

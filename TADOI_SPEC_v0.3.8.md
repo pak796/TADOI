@@ -315,6 +315,7 @@ Global/overlay:
 - search close: `Enter`/`Esc`
 - backup center menu: `1/2/3/4`, `Enter`, `Esc`
 - backup center import picker: `j/k`, `ArrowUp`/`ArrowDown`, `PageUp`/`PageDown`, `home/end`, `m`, `Enter`, `Esc`
+- backup center content screens: `j/k`, `ArrowUp`/`ArrowDown`, `Ctrl+U`/`Ctrl+D`, `PageUp`/`PageDown`
 - TITS command bar: open with `` ` `` in list mode, `Esc` close, `Enter` execute, `ArrowUp/ArrowDown` history
 
 ## 5) Quality and Validation Baseline
