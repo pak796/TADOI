@@ -135,6 +135,73 @@ describe("validatePersistedState", () => {
     expect(result.ok).toBe(true);
   });
 
+  it("requires workflowStage for schema v7 tasks", () => {
+    const missingWorkflowStage = validatePersistedState(
+      {
+        ...BASE_STATE,
+        schemaVersion: 7,
+        stateRevision: 1,
+        engagement: {
+          completionLog: [],
+          achievements: {},
+          streak: {
+            currentDays: 0,
+            bestDays: 0,
+            lastCompletionDayKey: null
+          }
+        }
+      },
+      "strict"
+    );
+    expect(missingWorkflowStage.ok).toBe(false);
+  });
+
+  it("accepts schema v7 when workflowStage and new filter fields are valid", () => {
+    const result = validatePersistedState(
+      {
+        ...BASE_STATE,
+        schemaVersion: 7,
+        stateRevision: 2,
+        tasks: [
+          {
+            ...BASE_STATE.tasks[0],
+            workflowStage: "todo",
+            assignee: "alice",
+            project: "alpha"
+          }
+        ],
+        savedViews: [
+          {
+            id: "view-analytics",
+            name: "Window 14d",
+            createdAt: 1,
+            updatedAt: 2,
+            filters: {
+              status: "open",
+              due: "any",
+              analyticsWindow: "14d",
+              dueDayOffset: 3,
+              assignee: "alice",
+              project: "alpha",
+              workflowStage: "todo"
+            }
+          }
+        ],
+        engagement: {
+          completionLog: [],
+          achievements: {},
+          streak: {
+            currentDays: 0,
+            bestDays: 0,
+            lastCompletionDayKey: null
+          }
+        }
+      },
+      "strict"
+    );
+    expect(result.ok).toBe(true);
+  });
+
   it("rejects missing schemaVersion", () => {
     const result = validatePersistedState(
       { ...BASE_STATE, schemaVersion: undefined },

@@ -1,6 +1,6 @@
 # TADOI™ Task List (v0.3.8)
 
-Updated: 2026-02-25
+Updated: 2026-02-26
 Runtime baseline: `v0.3.8`
 Package baseline: `0.3.8`
 
@@ -40,6 +40,11 @@ Package baseline: `0.3.8`
 - `TA-041` Top-tags drilldown and filter parity with list. (`Complete`)
 - `TA-042` Left rail `TAG PANEL (P)` menu entry and hint strip alignment. (`Complete`)
 - `TA-043` Logo mode expansion includes `alternate_blocks32` and rotate inclusion. (`Complete`)
+- `TA-044` Canonical overdue semantics unified across KPI, due buckets, and overdue aging (includes same-day explicit-time overdue). (`Complete`)
+- `TA-045` Throughput panel upgraded from binary markers to magnitude-based bars with shared scaling. (`Complete`)
+- `TA-046` Deterministic height-priority collapse strategy added for dashboard vertical compression. (`Complete`)
+- `TA-047` Dashboard expansion: due-bucket exact drill-through (`+1..+6`), compact priority strip, dimension slices (`assignee`/`project`/`workflowStage`), backlog trend surfacing, and focus-group keyboard navigation. (`Complete`)
+- `TA-048` Analytics window filters (`7d|14d|30d`) added and persisted in saved views; dashboard `w` cycle landed. (`Complete`)
 
 ### A6) Portability, Backup, and Notifications
 - `TA-050` In-app Backup Center export/import/data-path workflows. (`Complete`)
@@ -57,6 +62,8 @@ Package baseline: `0.3.8`
 ### A8) Engagement and Schema
 - `TA-059` Engagement milestone toasts implemented for first win, recurring milestones, momentum, and streak notifications. (`Complete`)
 - `TA-060` Persisted engagement/concurrency migrations landed with schema bumps `4 -> 5` (engagement) and `5 -> 6` (`stateRevision` hardening). (`Complete`)
+- `TA-080` Schema bump `6 -> 7` landed with `workflowStage` migration backfill (`open -> todo`, `done|archived -> done`) and strict validation. (`Complete`)
+- `TA-081` Task/editor/filter schema expanded with analytics dimensions (`assignee`, `project`, `workflowStage`) and dashboard analytics fields (`analyticsWindow`, `dueDayOffset`). (`Complete`)
 
 ### A9) TITS Command Layer
 - `TA-061` TITS M1 command bar overlay landed in LIST mode with history + routing suppression. (`Complete`)
@@ -90,7 +97,7 @@ Package baseline: `0.3.8`
 ## C) QA Execution Matrix (Manual)
 
 Smoke baseline (required all platforms):
-- `QA-001`, `QA-002`, `QA-005`, `QA-008`, `QA-013`, `QA-019`, `QA-023`, `QA-029`, `QA-032`, `QA-036`, `QA-039`, `QA-042`, `QA-052`, `QA-053`, `QA-065`, `QA-066`, `QA-068`
+- `QA-001`, `QA-002`, `QA-005`, `QA-008`, `QA-013`, `QA-019`, `QA-023`, `QA-029`, `QA-032`, `QA-036`, `QA-039`, `QA-042`, `QA-052`, `QA-053`, `QA-065`, `QA-066`, `QA-068`, `QA-073`
 
 Extended functional smoke:
 - `QA-047` logo rotation parity
@@ -108,6 +115,12 @@ Extended functional smoke:
 - `QA-070` CLI command parity (`add|done|due|recur|help`) and `@selected` rejection
 - `QA-071` CLI lock-gate behavior and exit-code semantics
 - `QA-072` recurrence spawn parity from TITS/CLI completion paths
+- `QA-074` dashboard analytics window cycle + saved-view persistence
+- `QA-075` dashboard priority strip drill-through
+- `QA-076` dashboard assignee/project/stage slice drill-through
+- `QA-077` dashboard throughput magnitude scaling
+- `QA-078` dashboard height-priority collapse behavior
+- `QA-079` backlog trend runtime visibility
 
 Reference: `docs/TADOI_QA_Guide_v0.3.8.md`
 

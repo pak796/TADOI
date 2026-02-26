@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { addLocalDaysMs, startOfLocalDayMs } from "./dates";
-import { filterTasks, sortTasks } from "./query";
+import { filterTasks, resolveAnalyticsWindowDays, sortTasks } from "./query";
 import { Filters, Task } from "./models";
 
 function makeTask(partial: Partial<Task> & Pick<Task, "id" | "title">): Task {
@@ -14,7 +14,10 @@ function makeTask(partial: Partial<Task> & Pick<Task, "id" | "title">): Task {
     hasExplicitTime: partial.hasExplicitTime,
     closedAt: partial.closedAt,
     notes: partial.notes,
-    tags: partial.tags ?? []
+    tags: partial.tags ?? [],
+    assignee: partial.assignee,
+    project: partial.project,
+    workflowStage: partial.workflowStage
   };
 }
 
@@ -76,6 +79,59 @@ describe("filterTasks due=overdue boundaries", () => {
     expect(result).toContain("today-past-time");
     expect(result).not.toContain("today-future-time");
     expect(result).not.toContain("tomorrow");
+  });
+});
+
+describe("filterTasks due-day offset", () => {
+  it("filters exact +N due day offsets", () => {
+    const now = new Date(2026, 1, 8, 12, 0, 0, 0).getTime();
+    const start = startOfLocalDayMs(now);
+    const tasks: Task[] = [
+      makeTask({ id: "p1", title: "plus1", dueAt: addLocalDaysMs(start, 1) }),
+      makeTask({ id: "p3", title: "plus3", dueAt: addLocalDaysMs(start, 3) }),
+      makeTask({ id: "p6", title: "plus6", dueAt: addLocalDaysMs(start, 6) })
+    ];
+    const filters: Filters = { status: "all", due: "any", dueDayOffset: 3 };
+    expect(filterTasks(tasks, filters, now).map((task) => task.id)).toEqual(["p3"]);
+  });
+});
+
+describe("filterTasks slicing dimensions", () => {
+  it("filters by assignee/project/workflow stage", () => {
+    const now = new Date(2026, 1, 8, 12, 0, 0, 0).getTime();
+    const tasks: Task[] = [
+      makeTask({
+        id: "a",
+        title: "alpha",
+        assignee: "alice",
+        project: "platform",
+        workflowStage: "in_progress"
+      }),
+      makeTask({
+        id: "b",
+        title: "beta",
+        assignee: "bob",
+        project: "ops",
+        workflowStage: "todo"
+      })
+    ];
+
+    expect(
+      filterTasks(
+        tasks,
+        { status: "all", due: "any", assignee: "alice", project: "platform", workflowStage: "in_progress" },
+        now
+      ).map((task) => task.id)
+    ).toEqual(["a"]);
+  });
+});
+
+describe("analytics window resolution", () => {
+  it("maps window presets to day counts", () => {
+    expect(resolveAnalyticsWindowDays("7d")).toBe(7);
+    expect(resolveAnalyticsWindowDays("14d")).toBe(14);
+    expect(resolveAnalyticsWindowDays("30d")).toBe(30);
+    expect(resolveAnalyticsWindowDays(undefined)).toBe(7);
   });
 });
 

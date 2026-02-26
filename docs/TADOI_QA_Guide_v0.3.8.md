@@ -1,6 +1,6 @@
 # TADOI™ QA Guide (v0.3.8)
 
-Validation date: **2026-02-25**
+Validation date: **2026-02-26**
 Runtime baseline: **v0.3.8**
 Package baseline: **0.3.8**
 
@@ -29,7 +29,9 @@ Note on key casing:
 ## 2) Current Automated Validation Snapshot
 
 Local workspace snapshot (captured for transparency):
-- `bun run test`: **770 pass / 0 fail / 770 total** (ran across **103 files**).
+- Dashboard-focused gate:
+  - `bun test src/domain/dashboard.test.ts src/domain/dashboardKpis.test.ts src/components/DashboardPane.test.ts src/app/dashboardTagFilterContract.test.ts src/app/keyRouter.test.ts src/app/App.modalFlow.integration.test.ts src/state/migrations.test.ts src/state/validation.test.ts src/domain/savedViews.test.ts src/domain/query.test.ts`
+  - Result: **146 pass / 0 fail**
 - `bun run typecheck`: **pass** (`tsc --noEmit -p tsconfig.typecheck.json`).
 
 Manual QA is still required for cross-platform interaction and rendering coverage.
@@ -202,7 +204,7 @@ Smoke pass criteria:
 - [ ] `QA-029 [SMOKE]` Dashboard KPI strip sanity.
   - Preconditions: mixed open/done/due dataset.
   - Steps: enter dashboard with `b`.
-  - Expected: KPI strip shows plausible counts (`OVERDUE`, `TODAY`, `NEXT7`, `OPEN`, `DONE7D`).
+  - Expected: KPI strip shows plausible counts (`OVERDUE`, `TODAY`, `NEXT{7|14|30}`, `OPEN`, `DONE{7|14|30}D`) and remains consistent with due-buckets/aging overdue semantics.
 - [ ] `QA-030` Top-tags drilldown applies filter.
   - Preconditions: tagged open tasks present.
   - Steps: select top-tags row with arrows and press `Enter`.
@@ -211,6 +213,34 @@ Smoke pass criteria:
   - Preconditions: non-default filter state applied.
   - Steps: compare dashboard aggregates against visible list scope.
   - Expected: both views are derived from same filtered data.
+- [ ] `QA-073` Due-bucket `+N` drill-through applies exact day offset.
+  - Preconditions: open tasks due at `+1` and `+3`.
+  - Steps: click or keyboard-apply `+3` bucket.
+  - Expected: filters show `STATUS=OPEN`, `DUE=ANY`, `DUE+N=+3` (not coarse `next7`).
+- [ ] `QA-074` Analytics window cycle and saved-view persistence.
+  - Preconditions: dashboard open and at least one saved view slot available.
+  - Steps: press `w` to cycle `7d -> 14d -> 30d`, save view, switch away, re-apply saved view.
+  - Expected: window value round-trips and KPI/backlog/throughput panel labels recompute for the active window.
+- [ ] `QA-075` Priority strip drill-through parity.
+  - Preconditions: at least two priority levels present in filtered scope.
+  - Steps: `Tab` to priority group, move with arrows, press `Enter`; repeat via mouse click.
+  - Expected: `filters.priority` updates to selected level and can be cleared/reapplied deterministically.
+- [ ] `QA-076` Dimension slice drill-through parity (`assignee`, `project`, `workflowStage`).
+  - Preconditions: dataset includes non-empty assignee/project/stage values.
+  - Steps: apply each slice via keyboard and mouse.
+  - Expected: corresponding filter field updates exactly and combines correctly with existing filters.
+- [ ] `QA-077` Throughput magnitude scaling.
+  - Preconditions: one day with low count (for example `1`) and one day with high count (for example `20`) in window.
+  - Steps: open dashboard throughput panel.
+  - Expected: high-count day renders visibly larger bar than low-count day for both created/completed rows.
+- [ ] `QA-078` Height-priority collapse behavior.
+  - Preconditions: run at reduced but supported heights near panel-threshold boundaries.
+  - Steps: resize terminal and re-enter dashboard.
+  - Expected: deterministic section collapse order; no border overlap/corruption; footer quick filters remain clickable.
+- [ ] `QA-079` Backlog trend visibility and interaction coexistence.
+  - Preconditions: mixed backlog growth/decline data across the active window.
+  - Steps: open dashboard and interact with other drill-through widgets.
+  - Expected: backlog trend panel remains visible in runtime (except expected collapse modes) and interactions in other widgets still work.
 
 ### H) Backup Center and Portability
 
@@ -405,7 +435,7 @@ Smoke pass criteria:
 | Key routing + modal routing | `src/app/keyRouter.test.ts`, `src/app/uiState.test.ts`, `src/ui/state.test.ts` |
 | Search/filter/tag precedence | `src/domain/query.test.ts`, `src/domain/tagFilter.test.ts`, `src/domain/savedViews.test.ts`, `src/app/dashboardTagFilterContract.test.ts` |
 | Recurrence engine + draft + delete | `src/domain/recurrence/engine.test.ts`, `src/domain/recurrence/draft.test.ts`, `src/domain/recurrence/delete.test.ts`, `src/domain/taskRows.test.ts` |
-| Dashboard KPIs and tags | `src/domain/dashboard.test.ts`, `src/domain/dashboardKpis.test.ts`, `src/domain/tagStats.test.ts`, `src/app/dashboardTagFilterContract.test.ts` |
+| Dashboard KPIs, drill-through, and layout fallback | `src/domain/dashboard.test.ts`, `src/domain/dashboardKpis.test.ts`, `src/components/DashboardPane.test.ts`, `src/domain/query.test.ts`, `src/domain/savedViews.test.ts`, `src/app/dashboardTagFilterContract.test.ts`, `src/app/keyRouter.test.ts`, `src/app/App.modalFlow.integration.test.ts` |
 | Backup/import/export + portability | `src/state/backupCenterFlow.test.ts`, `src/state/backupService.test.ts`, `src/state/portability.test.ts` |
 | Calendar ICS export/import (CLI + Backup Center + services) | `src/cli/calendarCommands.test.ts`, `src/commands/calendarImport.test.ts`, `src/cli.test.ts`, `src/state/backupCenterFlow.test.ts`, `src/state/backupCenterCalendarController.test.ts`, `src/calendar/icsWriter.test.ts`, `src/calendar/icsParser.test.ts`, `src/calendar/importMapper.test.ts`, `src/calendar/calendarMapper.test.ts`, `src/calendar/range.test.ts`, `src/calendar/rrule.test.ts`, `src/state/calendarExportService.test.ts`, `src/state/calendarImportService.test.ts`, `src/state/calendarRoundTrip.test.ts` |
 | TITS command layer (M1-M3) | `src/commands/parse.test.ts`, `src/commands/execute.test.ts`, `src/commands/help.test.ts`, `src/cli/main.test.ts`, `src/app/keyRouter.test.ts`, `src/state/store.test.ts` |

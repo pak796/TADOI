@@ -755,13 +755,13 @@ describe("handleKey", () => {
 
     expect(run({ name: "j", sequence: "j" }, { uiState: dashboardState })).toEqual([]);
     expect(run({ name: "up" }, { uiState: dashboardState })).toEqual([
-      { scope: "ui", type: "MOVE_DASHBOARD_TAG_SELECTION", delta: -1 }
+      { scope: "ui", type: "DASHBOARD_MOVE_ACTIVE_SELECTION", delta: -1 }
     ]);
     expect(run({ name: "down" }, { uiState: dashboardState })).toEqual([
-      { scope: "ui", type: "MOVE_DASHBOARD_TAG_SELECTION", delta: 1 }
+      { scope: "ui", type: "DASHBOARD_MOVE_ACTIVE_SELECTION", delta: 1 }
     ]);
     expect(run({ name: "enter" }, { uiState: dashboardState })).toEqual([
-      { scope: "domain", type: "APPLY_DASHBOARD_SELECTED_TAG" }
+      { scope: "domain", type: "APPLY_DASHBOARD_ACTIVE_SELECTION" }
     ]);
     expect(run({ name: "f", sequence: "f" }, { uiState: dashboardState })).toEqual([
       { scope: "domain", type: "CYCLE_STATUS" }
@@ -769,8 +769,17 @@ describe("handleKey", () => {
     expect(run({ name: "g", sequence: "g" }, { uiState: dashboardState })).toEqual([
       { scope: "domain", type: "CYCLE_DUE" }
     ]);
+    expect(run({ name: "w", sequence: "w" }, { uiState: dashboardState })).toEqual([
+      { scope: "domain", type: "CYCLE_ANALYTICS_WINDOW" }
+    ]);
     expect(run({ name: "r", sequence: "r" }, { uiState: dashboardState })).toEqual([
       { scope: "domain", type: "CYCLE_PRIORITY" }
+    ]);
+    expect(run({ name: "tab" }, { uiState: dashboardState })).toEqual([
+      { scope: "ui", type: "DASHBOARD_NEXT_FOCUS_GROUP" }
+    ]);
+    expect(run({ name: "tab", shift: true }, { uiState: dashboardState })).toEqual([
+      { scope: "ui", type: "DASHBOARD_PREV_FOCUS_GROUP" }
     ]);
     expect(run({ name: "t", sequence: "t" }, { uiState: dashboardState })).toEqual([
       { scope: "domain", type: "TOGGLE_TAG_FILTER" }

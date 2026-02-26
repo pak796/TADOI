@@ -35,6 +35,7 @@ describe("saved views", () => {
     expect(applied).toEqual({
       status: "open",
       due: "today",
+      analyticsWindow: "7d",
       priority: "#p2",
       tag: "work",
       searchText: "important"
@@ -57,6 +58,7 @@ describe("saved views", () => {
     expect(snapped).toEqual({
       status: "open",
       due: "today",
+      analyticsWindow: "7d",
       priority: "#p3",
       tagFilter: {
         all: ["home", "work"],
@@ -77,6 +79,7 @@ describe("saved views", () => {
     expect(applySavedView(view)).toEqual({
       status: "open",
       due: "today",
+      analyticsWindow: "7d",
       tagFilter: { any: ["home"] }
     });
   });
@@ -90,6 +93,7 @@ describe("saved views", () => {
     expect(converted).toEqual({
       status: "open",
       due: "today",
+      analyticsWindow: "7d",
       priority: "#p10"
     });
 
@@ -102,6 +106,7 @@ describe("saved views", () => {
     expect(explicitPriorityWins).toEqual({
       status: "open",
       due: "today",
+      analyticsWindow: "7d",
       priority: "#p2"
     });
   });
@@ -119,10 +124,27 @@ describe("saved views", () => {
     expect(snapped).toEqual({
       status: "open",
       due: "today",
+      analyticsWindow: "7d",
       tagFilter: {
         all: ["work"],
         any: ["home"]
       }
+    });
+  });
+
+  it("round-trips analyticsWindow and exact due-day offsets", () => {
+    const view = makeView("Windowed", {
+      status: "open",
+      due: "any",
+      analyticsWindow: "30d",
+      dueDayOffset: 4
+    });
+
+    expect(applySavedView(view)).toEqual({
+      status: "open",
+      due: "any",
+      analyticsWindow: "30d",
+      dueDayOffset: 4
     });
   });
 
@@ -181,6 +203,7 @@ describe("saved views", () => {
         {
           status: "open",
           due: "today",
+          analyticsWindow: "7d",
           priority: "#p2",
           tag: "work",
           searchText: "important"
@@ -193,6 +216,7 @@ describe("saved views", () => {
         {
           status: "open",
           due: "today",
+          analyticsWindow: "7d",
           priority: "#p2",
           tag: "work",
           searchText: "different"
@@ -202,7 +226,14 @@ describe("saved views", () => {
     ).toBe(false);
     expect(
       isSavedViewActive(
-        { status: "open", due: "today", priority: "#p3", tag: "work", searchText: "important" },
+        {
+          status: "open",
+          due: "today",
+          analyticsWindow: "7d",
+          priority: "#p3",
+          tag: "work",
+          searchText: "important"
+        },
         view
       )
     ).toBe(false);

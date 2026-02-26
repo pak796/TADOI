@@ -4,6 +4,16 @@ import { normalizePriorityFilterValue, resolveTaskPriorityTag } from "./priority
 import { matchesTagFilter } from "./tagFilter";
 
 export const SORT_MODE_ORDER: SortMode[] = ["due", "updated", "created", "title"];
+export const ANALYTICS_WINDOWS = ["7d", "14d", "30d"] as const;
+export const DEFAULT_ANALYTICS_WINDOW: (typeof ANALYTICS_WINDOWS)[number] = "7d";
+
+export function resolveAnalyticsWindowDays(
+  analyticsWindow: Filters["analyticsWindow"]
+): number {
+  if (analyticsWindow === "14d") return 14;
+  if (analyticsWindow === "30d") return 30;
+  return 7;
+}
 
 export function getSortModeLabel(sortMode: SortMode): string {
   switch (sortMode) {
@@ -105,12 +115,38 @@ export function filterTasks(tasks: Task[], filters: Filters, now: number): Task[
       return false;
     }
 
+    if (
+      filters.assignee &&
+      (task.assignee ?? "").trim().toLowerCase() !== filters.assignee.trim().toLowerCase()
+    ) {
+      return false;
+    }
+    if (
+      filters.project &&
+      (task.project ?? "").trim().toLowerCase() !== filters.project.trim().toLowerCase()
+    ) {
+      return false;
+    }
+    if (filters.workflowStage && task.workflowStage !== filters.workflowStage) {
+      return false;
+    }
+
+    const dayDiff = task.dueAt !== undefined ? diffLocalDays(task.dueAt, start) : undefined;
+    const timeOverdue =
+      task.dueAt !== undefined &&
+      task.hasExplicitTime === true &&
+      dayDiff === 0 &&
+      now > task.dueAt;
+
+    if (filters.dueDayOffset !== undefined) {
+      if (task.status === "archived") return false;
+      if (task.dueAt === undefined) return false;
+      if (dayDiff !== filters.dueDayOffset) return false;
+    }
+
     if (filters.due !== "any") {
       if (task.status === "archived") return false;
-      if (!task.dueAt) return false;
-      const dayDiff = diffLocalDays(task.dueAt, start);
-      const timeOverdue =
-        task.hasExplicitTime === true && dayDiff === 0 && now > task.dueAt;
+      if (task.dueAt === undefined || dayDiff === undefined) return false;
       if (filters.due === "overdue") {
         return dayDiff < 0 || timeOverdue;
       }

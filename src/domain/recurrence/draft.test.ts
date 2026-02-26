@@ -6,7 +6,7 @@ import {
   getRecurrenceSummary
 } from "./draft";
 
-function makeDraft(overrides: Partial<EditorDraft>): EditorDraft {
+function makeDraft(overrides: Partial<EditorDraft> = {}): EditorDraft {
   return {
     title: "Task",
     dueText: "",
@@ -22,6 +22,9 @@ function makeDraft(overrides: Partial<EditorDraft>): EditorDraft {
     repeatUntilText: "",
     repeatCountText: "",
     repeatCustomRRuleText: "",
+    assigneeText: "",
+    projectText: "",
+    workflowStage: undefined,
     ...overrides
   };
 }

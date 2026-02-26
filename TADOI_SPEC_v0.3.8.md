@@ -1,9 +1,9 @@
 # TADOI™ Product Spec (v0.3.8)
 
-Updated: 2026-02-25
+Updated: 2026-02-26
 Runtime baseline: `v0.3.8`
 Package baseline: `0.3.8`
-Persistence schema baseline: `6`
+Persistence schema baseline: `7`
 
 Stability taxonomy:
 - `Canonical`: compatibility contract expected to remain stable across patch/minor updates.
@@ -105,16 +105,27 @@ Occurrence actions:
 - `b` / `B` toggles list and dashboard (blocked in text-entry contexts).
 - Dashboard uses the same filtered dataset as list.
 - Widgets:
-  - KPI strip: `OVERDUE`, `TODAY`, `NEXT7`, `OPEN`, `DONE7D`
-  - Due-bucket chart
+  - KPI strip: `OVERDUE`, `TODAY`, `NEXT{7|14|30}`, `OPEN`, `DONE{7|14|30}D`
+  - Due-bucket chart: `OVD`, `TOD`, `+1..+6`
   - `TOP TAGS (OPEN)` with drilldown (`Enter` applies selected tag)
+  - compact `PRIORITY STRIP (DRILL-THROUGH)`
+  - `DIMENSION SLICES` (`assignee`, `project`, `workflowStage`)
+  - backlog trend panel (`7d|14d|30d`)
+  - overdue aging + throughput panels
 - Dashboard also opens boolean tag panel with `p`.
+- Dashboard analytics window cycles with `w`.
+- Dashboard focus-group navigation:
+  - `Tab` / `Shift+Tab` switches widget group
+  - `ArrowUp` / `ArrowDown` moves selection in active group
+  - `Enter` applies active selection
+- Due-bucket drill-through `+N` applies exact `dueDayOffset=N` with `status=open` and `due=any`.
+- Due cycle key (`g`) clears `dueDayOffset`.
 
 Canonical invariant table:
 
 | ID | Invariant | Automated lock |
 |---|---|---|
-| DTF-005 | In `DASHBOARD` mode, `up/down` moves top-tag selection and `Enter` applies selected tag action; list movement keys do not leak. | `src/app/dashboardTagFilterContract.test.ts` |
+| DTF-005 | In `DASHBOARD` mode, widget selection/drill-through is routed while list movement keys do not leak. | `src/app/dashboardTagFilterContract.test.ts`, `src/app/keyRouter.test.ts`, `src/app/App.modalFlow.integration.test.ts` |
 | DTF-006 | In `TAG_FILTER` mode, list/dashboard routing is blocked until unwind (`Esc`). | `src/app/dashboardTagFilterContract.test.ts` |
 | DTF-007 | Dashboard analytics include recurrence occurrences through `buildVisibleTaskRows` parity, not raw tasks-only filtering. | `src/app/dashboardTagFilterContract.test.ts` |
 
@@ -264,18 +275,23 @@ Domain core (`src/domain/models.ts`):
   - optional `recurrence`
   - optional `instance_of`
   - optional `external.calendar` metadata (UID/source/tzid/import tracking fields)
+  - optional analytics dimensions: `assignee`, `project`, `workflowStage`
 - `Filters` includes:
   - `status`
   - `due`
+  - optional `analyticsWindow` (`7d|14d|30d`)
+  - optional exact `dueDayOffset` (`1..6`)
   - optional `tag`
   - optional `tagFilter` (`all`/`any`/`none`)
   - optional `searchText`
+  - optional `assignee`, `project`, `workflowStage`
 - `SortMode`: `due`, `updated`, `created`, `title`
 
 Persistence expectations:
 - local JSON storage
 - schema migrations applied at load
-- current schema version `6`
+- current schema version `7`
+- migration `6 -> 7` backfills `workflowStage` (`open -> todo`, `done|archived -> done`)
 - corrupt payload recovery creates `.corrupt.<timestamp>` backup file
 - engagement state is persisted and migrated with the rest of app state
 
@@ -284,6 +300,11 @@ Persistence expectations:
 List mode:
 - navigation: `j/k`, arrows, `gg`, `G`, `Ctrl+U`, `Ctrl+D`, `PageUp`, `PageDown`, `[`, `]`, `{`, `}`
 - actions: `` ` ``, `a`, `e`, `E`, `c`, `Space`, `x`, `z`, `d`, `/`, `f`, `g`, `s`, `t`, `p`, `v`, `Ctrl+S`, `q`
+
+Dashboard mode:
+- `f`, `g`, `r`, `t`, `p`, `w`
+- `Tab` / `Shift+Tab`, `ArrowUp` / `ArrowDown`, `Enter`
+- `b` / `B`, `?`, `q`
 
 Details links focus:
 - `Tab` / `Shift+Tab` toggles focus between task list and links.

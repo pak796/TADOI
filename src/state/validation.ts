@@ -18,6 +18,15 @@ export type ValidationResult =
   | { ok: false; errors: string[] };
 
 const VALID_STATUS = new Set<TaskStatus>(["open", "done", "archived"]);
+const VALID_WORKFLOW_STAGES = new Set([
+  "backlog",
+  "todo",
+  "in_progress",
+  "blocked",
+  "review",
+  "done"
+]);
+const VALID_ANALYTICS_WINDOWS = new Set(["7d", "14d", "30d"]);
 const VALID_TASK_LINK_KINDS = new Set<TaskLinkKind>(["url", "path"]);
 const VALID_TASK_LINK_SOURCES = new Set<TaskLinkSource>(["manual", "calendar_import"]);
 const ASCII_CONTROL_CHARS_RE = /[\u0000-\u001F\u007F]/;
@@ -116,6 +125,8 @@ export function validatePersistedState(
     return { ok: true, data: normalized };
   }
 
+  const inputSchemaVersion =
+    typeof schemaVersion === "number" && Number.isFinite(schemaVersion) ? schemaVersion : 0;
   const seenIds = new Set<string>();
   for (const task of normalized.tasks) {
     if (!isRecord(task)) {
@@ -218,6 +229,25 @@ export function validatePersistedState(
       typeof task.hasExplicitTime !== "boolean"
     ) {
       errors.push(`task.hasExplicitTime must be boolean when present (${String(task.id)})`);
+    }
+
+    if (task.assignee !== undefined && typeof task.assignee !== "string") {
+      errors.push(`task.assignee must be a string when present (${String(task.id)})`);
+    }
+    if (task.project !== undefined && typeof task.project !== "string") {
+      errors.push(`task.project must be a string when present (${String(task.id)})`);
+    }
+    if (
+      task.workflowStage !== undefined &&
+      !VALID_WORKFLOW_STAGES.has(String(task.workflowStage))
+    ) {
+      errors.push(`task.workflowStage invalid (${String(task.id)})`);
+    }
+    if (
+      inputSchemaVersion >= 7 &&
+      !VALID_WORKFLOW_STAGES.has(String(task.workflowStage))
+    ) {
+      errors.push(`task.workflowStage required for schemaVersion >= 7 (${String(task.id)})`);
     }
 
     if (task.links !== undefined) {
@@ -330,6 +360,40 @@ export function validatePersistedState(
     ) {
       errors.push(`savedView.filters.searchText must be string (${String(view.id)})`);
     }
+    if (
+      view.filters.analyticsWindow !== undefined &&
+      !VALID_ANALYTICS_WINDOWS.has(String(view.filters.analyticsWindow))
+    ) {
+      errors.push(`savedView.filters.analyticsWindow invalid (${String(view.id)})`);
+    }
+    if (view.filters.dueDayOffset !== undefined) {
+      if (
+        typeof view.filters.dueDayOffset !== "number" ||
+        !Number.isInteger(view.filters.dueDayOffset) ||
+        view.filters.dueDayOffset < 1 ||
+        view.filters.dueDayOffset > 6
+      ) {
+        errors.push(`savedView.filters.dueDayOffset invalid (${String(view.id)})`);
+      }
+    }
+    if (
+      view.filters.assignee !== undefined &&
+      typeof view.filters.assignee !== "string"
+    ) {
+      errors.push(`savedView.filters.assignee must be string (${String(view.id)})`);
+    }
+    if (
+      view.filters.project !== undefined &&
+      typeof view.filters.project !== "string"
+    ) {
+      errors.push(`savedView.filters.project must be string (${String(view.id)})`);
+    }
+    if (
+      view.filters.workflowStage !== undefined &&
+      !VALID_WORKFLOW_STAGES.has(String(view.filters.workflowStage))
+    ) {
+      errors.push(`savedView.filters.workflowStage invalid (${String(view.id)})`);
+    }
     if (view.filters.tagFilter !== undefined) {
       if (!isRecord(view.filters.tagFilter)) {
         errors.push(`savedView.filters.tagFilter must be an object (${String(view.id)})`);
@@ -390,8 +454,6 @@ export function validatePersistedState(
     }
   }
 
-  const inputSchemaVersion =
-    typeof schemaVersion === "number" && Number.isFinite(schemaVersion) ? schemaVersion : 0;
   const engagementRecord =
     engagement !== undefined && isRecord(engagement) ? engagement : undefined;
 

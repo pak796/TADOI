@@ -51,6 +51,9 @@ export function areEditorDraftsEqual(left: EditorDraft, right: EditorDraft): boo
     left.repeatUntilText === right.repeatUntilText &&
     left.repeatCountText === right.repeatCountText &&
     left.repeatCustomRRuleText === right.repeatCustomRRuleText &&
+    left.assigneeText === right.assigneeText &&
+    left.projectText === right.projectText &&
+    left.workflowStage === right.workflowStage &&
     left.editKind === right.editKind &&
     left.sourceTaskId === right.sourceTaskId &&
     left.sourceSeriesId === right.sourceSeriesId &&

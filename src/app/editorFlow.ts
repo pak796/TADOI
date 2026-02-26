@@ -433,6 +433,8 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
     const { dueAt, hasExplicitTime } = combineDueDateTime(draft.dueText, timeText);
     const tags = deps.parseTagsInput(draft.tagsText);
     const notes = draft.notes.length > 0 ? draft.notes : undefined;
+    const assignee = draft.assigneeText.trim().length > 0 ? draft.assigneeText.trim() : undefined;
+    const project = draft.projectText.trim().length > 0 ? draft.projectText.trim() : undefined;
     const links = draft.links.map((link) => ({ ...link }));
 
     if (activeMode === Mode.ADD) {
@@ -457,6 +459,9 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
         hasExplicitTime,
         notes,
         tags,
+        assignee,
+        project,
+        workflowStage: draft.workflowStage ?? "todo",
         ...(links.length > 0 ? { links } : {}),
         ...(recurrenceBuild.recurrence ? { recurrence: recurrenceBuild.recurrence } : {})
       };
@@ -516,6 +521,12 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
           closedAt: existingInstance?.status === "done" ? existingInstance.closedAt : undefined,
           notes,
           tags,
+          assignee,
+          project,
+          workflowStage:
+            draft.workflowStage ??
+            existingInstance?.workflowStage ??
+            ((existingInstance?.status ?? "open") === "done" ? "done" : "todo"),
           instance_of: {
             series_id: seriesId,
             occurrence: occurrenceIso
@@ -557,6 +568,12 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
             hasExplicitTime,
             notes,
             tags,
+            assignee,
+            project,
+            workflowStage:
+              draft.workflowStage ??
+              task.workflowStage ??
+              (task.status === "done" || task.status === "archived" ? "done" : "todo"),
             updatedAt: nowMs,
             recurrence: recurrenceBuild.recurrence
           };
@@ -590,6 +607,12 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
             hasExplicitTime,
             notes,
             tags,
+            assignee,
+            project,
+            workflowStage:
+              draft.workflowStage ??
+              task.workflowStage ??
+              (task.status === "done" || task.status === "archived" ? "done" : "todo"),
             updatedAt: nowMs,
             recurrence: recurrenceBuild.recurrence
           };

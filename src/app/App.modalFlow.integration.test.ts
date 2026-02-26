@@ -10,6 +10,7 @@ import type { Task } from "../domain/models";
 import { createDefaultEngagementState } from "../domain/engagement";
 import type { LoadedData } from "../state/persistence";
 import type { NotificationSettings, RetroFxMode } from "../settings/settings";
+import { addLocalDaysMs, startOfLocalDayMs } from "../domain/dates";
 
 type RenderHarness = Awaited<ReturnType<typeof testRender>>;
 
@@ -49,6 +50,17 @@ const SIMPLE_CALENDAR_ICS = [
   "END:VEVENT",
   "END:VCALENDAR"
 ].join("\n");
+const REPO_CWD = process.cwd();
+
+function withSchemaV7WorkflowStage(task: Task): Task {
+  if (task.workflowStage) {
+    return task;
+  }
+  return {
+    ...task,
+    workflowStage: task.status === "open" ? "todo" : "done"
+  };
+}
 
 function makeTask(id: string, title: string, nowMs = Date.now()): Task {
   return {
@@ -57,15 +69,16 @@ function makeTask(id: string, title: string, nowMs = Date.now()): Task {
     status: "open",
     createdAt: nowMs,
     updatedAt: nowMs,
-    tags: []
+    tags: [],
+    workflowStage: "todo"
   };
 }
 
 function makeInitialData(tasks: Task[] = [makeTask("task-1", "Existing task")]): LoadedData {
   return {
-    schemaVersion: 6,
+    schemaVersion: 7,
     stateRevision: 0,
-    tasks,
+    tasks: tasks.map(withSchemaV7WorkflowStage),
     tagIndex: {},
     savedViews: [],
     engagement: createDefaultEngagementState()
@@ -230,6 +243,99 @@ async function scrollMouseAndRender(
   }
 }
 
+function findTextPositions(frame: string, text: string): Array<{ x: number; y: number }> {
+  const lines = frame.split("\n");
+  const positions: Array<{ x: number; y: number }> = [];
+
+  for (let y = 0; y < lines.length; y += 1) {
+    const line = lines[y];
+    let start = 0;
+    while (start <= line.length - text.length) {
+      const x = line.indexOf(text, start);
+      if (x < 0) break;
+      positions.push({
+        x: x + Math.max(0, Math.floor(text.length / 2)),
+        y
+      });
+      start = x + 1;
+    }
+  }
+
+  return positions;
+}
+
+function findTextPosition(
+  frame: string,
+  text: string,
+  occurrence: "first" | "last" = "first"
+): { x: number; y: number } {
+  const positions = findTextPositions(frame, text);
+  const found =
+    occurrence === "first" ? positions[0] : positions[positions.length - 1];
+  if (!found) {
+    throw new Error(`Unable to locate text in frame: "${text}"\n${frame}`);
+  }
+  return found;
+}
+
+async function clickTextAndRender(
+  harness: RenderHarness,
+  text: string,
+  occurrence: "first" | "last" = "first"
+) {
+  await harness.renderOnce();
+  const frame = harness.captureCharFrame();
+  const { x, y } = findTextPosition(frame, text, occurrence);
+  await harness.mockMouse.pressDown(x + 1, y + 1);
+  await harness.mockMouse.release(x + 1, y + 1);
+  await Bun.sleep(20);
+  await harness.renderOnce();
+}
+
+async function clickTextUntil(
+  harness: RenderHarness,
+  text: string,
+  predicate: (frame: string) => boolean,
+  occurrence: "first" | "last" = "first"
+): Promise<string> {
+  await harness.renderOnce();
+  const frame = harness.captureCharFrame();
+  const positions = findTextPositions(frame, text);
+  if (positions.length === 0) {
+    throw new Error(`Unable to locate text in frame: "${text}"\n${frame}`);
+  }
+  const orderedPositions =
+    occurrence === "first" ? positions : [...positions].reverse();
+  const offsets = [
+    [0, 0],
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+    [1, 1],
+    [-1, 1],
+    [1, -1],
+    [-1, -1]
+  ] as const;
+
+  for (const position of orderedPositions) {
+    for (const [dx, dy] of offsets) {
+      const clickX = Math.max(0, position.x + 1 + dx);
+      const clickY = Math.max(0, position.y + 1 + dy);
+      await harness.mockMouse.pressDown(clickX, clickY);
+      await harness.mockMouse.release(clickX, clickY);
+      await Bun.sleep(20);
+      await harness.renderOnce();
+      const nextFrame = harness.captureCharFrame();
+      if (predicate(nextFrame)) {
+        return nextFrame;
+      }
+    }
+  }
+
+  throw new Error(`Unable to trigger mouse interaction for text: "${text}"`);
+}
+
 async function withDataPath<T>(dataPath: string, run: () => Promise<T>): Promise<T> {
   const originalDataPath = process.env.TADOI_DATA_PATH;
   process.env.TADOI_DATA_PATH = dataPath;
@@ -255,7 +361,11 @@ async function withDataPathAndCwd<T>(
     try {
       return await run();
     } finally {
-      process.chdir(originalCwd);
+      try {
+        process.chdir(originalCwd);
+      } catch {
+        process.chdir(REPO_CWD);
+      }
     }
   });
 }
@@ -836,6 +946,210 @@ describe("App modal flow integration", () => {
       });
       const movedUpSelection = await readSelectedTaskPrefix();
       expect(movedUpSelection).not.toBe(bottomSelection);
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
+  it("dashboard top-tag apply flow uses ArrowDown + Enter to mutate filters", async () => {
+    const now = Date.now();
+    const today = startOfLocalDayMs(now);
+    const tasks: Task[] = [
+      {
+        id: "tag-work-1",
+        title: "work one",
+        status: "open",
+        createdAt: now,
+        updatedAt: now,
+        dueAt: today,
+        tags: ["work"]
+      },
+      {
+        id: "tag-home-1",
+        title: "home one",
+        status: "open",
+        createdAt: now,
+        updatedAt: now,
+        dueAt: addLocalDaysMs(today, 1),
+        tags: ["home"]
+      },
+      {
+        id: "tag-work-2",
+        title: "work two",
+        status: "open",
+        createdAt: now,
+        updatedAt: now,
+        dueAt: addLocalDaysMs(today, 2),
+        tags: ["work"]
+      }
+    ];
+
+    const session = await createSession({ initialData: makeInitialData(tasks) });
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      await pressKeyAndRender(mockInput, harness, "b");
+      let frame = await waitForText(harness, "TOP TAGS (OPEN)");
+      expect(frame).toContain("TAG=(none)");
+
+      await pressArrowAndRender(mockInput, harness, "down");
+      await pressEnterAndRender(mockInput, harness);
+
+      frame = await waitForText(harness, "Dashboard tag filter: #home");
+      expect(frame).toContain("TAG=#home");
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
+  it("dashboard bottom quick-filter mouse toggles can be applied and cleared repeatedly", async () => {
+    const now = Date.now();
+    const today = startOfLocalDayMs(now);
+    const doneAt = addLocalDaysMs(today, -1);
+    const tasks: Task[] = [
+      {
+        id: "overdue-task",
+        title: "overdue task",
+        status: "open",
+        createdAt: now,
+        updatedAt: now,
+        dueAt: addLocalDaysMs(today, -1),
+        tags: []
+      },
+      {
+        id: "today-task",
+        title: "today task",
+        status: "open",
+        createdAt: now,
+        updatedAt: now,
+        dueAt: today,
+        tags: []
+      },
+      {
+        id: "next7-task",
+        title: "next7 task",
+        status: "open",
+        createdAt: now,
+        updatedAt: now,
+        dueAt: addLocalDaysMs(today, 3),
+        tags: []
+      },
+      {
+        id: "done-task",
+        title: "done task",
+        status: "done",
+        createdAt: now,
+        updatedAt: doneAt,
+        closedAt: doneAt,
+        tags: []
+      }
+    ];
+
+    const session = await createSession({ initialData: makeInitialData(tasks) });
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      await pressKeyAndRender(mockInput, harness, "b");
+      await waitForFrame(harness, (frame) => frame.includes("STATUS=ALL") && frame.includes("DUE=ANY"));
+
+      await clickTextUntil(
+        harness,
+        "DUE THIS WEEK",
+        (frame) => frame.includes("STATUS=OPEN") && frame.includes("DUE=NEXT7"),
+        "last"
+      );
+      await clickTextUntil(
+        harness,
+        "DUE THIS WEEK",
+        (frame) => frame.includes("STATUS=ALL") && frame.includes("DUE=ANY"),
+        "last"
+      );
+
+      await clickTextUntil(
+        harness,
+        "DUE TODAY",
+        (frame) => frame.includes("STATUS=OPEN") && frame.includes("DUE=TODAY"),
+        "last"
+      );
+      await clickTextUntil(
+        harness,
+        "DUE TODAY",
+        (frame) => frame.includes("STATUS=ALL") && frame.includes("DUE=ANY"),
+        "last"
+      );
+
+      await clickTextUntil(
+        harness,
+        "OVERDUE",
+        (frame) => frame.includes("STATUS=OPEN") && frame.includes("DUE=OVERDUE"),
+        "last"
+      );
+      await clickTextUntil(
+        harness,
+        "OVERDUE",
+        (frame) => frame.includes("STATUS=ALL") && frame.includes("DUE=ANY"),
+        "last"
+      );
+
+      await clickTextUntil(
+        harness,
+        "COMPLETED THIS WEEK",
+        (frame) => frame.includes("STATUS=DONE") && frame.includes("DUE=ANY"),
+        "last"
+      );
+      await clickTextUntil(
+        harness,
+        "COMPLETED THIS WEEK",
+        (frame) => frame.includes("STATUS=ALL") && frame.includes("DUE=ANY"),
+        "last"
+      );
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
+  it("dashboard due-bucket +N drill-through applies exact dueDayOffset filter", async () => {
+    const now = Date.now();
+    const today = startOfLocalDayMs(now);
+    const tasks: Task[] = [
+      {
+        id: "plus3-a",
+        title: "plus3-a",
+        status: "open",
+        createdAt: now,
+        updatedAt: now,
+        dueAt: addLocalDaysMs(today, 3),
+        tags: []
+      },
+      {
+        id: "plus1-a",
+        title: "plus1-a",
+        status: "open",
+        createdAt: now,
+        updatedAt: now,
+        dueAt: addLocalDaysMs(today, 1),
+        tags: []
+      }
+    ];
+
+    const session = await createSession({ initialData: makeInitialData(tasks) });
+    const { harness } = session;
+
+    try {
+      await pressKeyAndRender(harness.mockInput, harness, "b");
+      await waitForText(harness, "DUE+N=(none)");
+
+      await clickTextUntil(
+        harness,
+        "+3",
+        (frame) =>
+          frame.includes("STATUS=OPEN") &&
+          frame.includes("DUE=ANY") &&
+          frame.includes("DUE+N=+3"),
+        "first"
+      );
     } finally {
       await cleanupSession(session);
     }

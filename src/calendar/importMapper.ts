@@ -343,6 +343,7 @@ export function createTaskFromDraft(
     id: crypto.randomUUID(),
     title: draft.summary,
     status: "open",
+    workflowStage: "todo",
     createdAt: nowMs,
     updatedAt: nowMs,
     ...(draft.dueAt !== undefined ? { dueAt: draft.dueAt } : {}),

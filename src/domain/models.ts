@@ -2,6 +2,13 @@ import type { UIConfirmModal } from "../ui/state";
 export { FocusTarget, Mode } from "../ui/modeFocus";
 
 export type TaskStatus = "open" | "done" | "archived";
+export type WorkflowStage =
+  | "backlog"
+  | "todo"
+  | "in_progress"
+  | "blocked"
+  | "review"
+  | "done";
 
 export type TaskLinkKind = "url" | "path";
 export type TaskLinkSource = "manual" | "calendar_import";
@@ -70,6 +77,9 @@ export type Task = {
   recurrence?: TaskRecurrence;
   instance_of?: TaskInstanceOf;
   external?: TaskExternalMetadata;
+  assignee?: string;
+  project?: string;
+  workflowStage?: WorkflowStage;
 };
 
 export type CompletionEvent = {
@@ -117,10 +127,15 @@ export type TagFilter = {
 export type Filters = {
   status: "all" | "open" | "done" | "archived";
   due: "any" | "overdue" | "today" | "next7";
+  analyticsWindow?: "7d" | "14d" | "30d";
+  dueDayOffset?: 1 | 2 | 3 | 4 | 5 | 6;
   priority?: string;
   tag?: string;
   tagFilter?: TagFilter;
   searchText?: string;
+  assignee?: string;
+  project?: string;
+  workflowStage?: Task["workflowStage"];
 };
 
 export type SortMode = "due" | "updated" | "created" | "title";
@@ -149,6 +164,9 @@ export type EditorDraft = {
   repeatUntilText: string;
   repeatCountText: string;
   repeatCustomRRuleText: string;
+  assigneeText: string;
+  projectText: string;
+  workflowStage: Task["workflowStage"];
   editKind?: "regular" | "occurrence" | "series";
   sourceTaskId?: string;
   sourceSeriesId?: string;

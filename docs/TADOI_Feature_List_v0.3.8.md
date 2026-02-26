@@ -1,6 +1,6 @@
 # TADOI™ Feature List (v0.3.8)
 
-This list reflects current runtime behavior as of **2026-02-25**.
+This list reflects current runtime behavior as of **2026-02-26**.
 
 ## Core Workflow
 - Create, edit, duplicate, complete/reopen, and delete tasks.
@@ -16,9 +16,12 @@ This list reflects current runtime behavior as of **2026-02-25**.
 ## Filtering and Views
 - Status filter (`f`): `all`, `open`, `done`, `archived`.
 - Due filter (`g`): `any`, `overdue`, `today`, `next7`.
+- Analytics window (`w`, dashboard): `7d`, `14d`, `30d`.
+- Exact due-day filter (`dueDayOffset`): `+1..+6` (set by due-bucket drill-through).
 - Sort modes (`s`): `DUE`, `UPDATED`, `CREATED`, `TITLE`.
 - Search (`/`): live title/tag filtering; closes with `Enter` or `Esc`.
 - Saved views: create/apply/delete filter presets (`Ctrl+S`, `v`, `1..9`).
+- Saved views preserve dashboard analytics filters (`analyticsWindow`, `dueDayOffset`) and slice filters (`assignee`, `project`, `workflowStage`).
 
 ## Tag Filtering
 - Priority cycle (`r`) for priority tokens on open tasks.
@@ -46,12 +49,20 @@ This list reflects current runtime behavior as of **2026-02-25**.
 
 ## Dashboard and Analytics
 - Dashboard toggle (`b`/`B`) with shared filter parity.
-- KPI strip: `OVERDUE`, `TODAY`, `NEXT7`, `OPEN`, `DONE7D`.
-- `TOP TAGS (OPEN)` panel with keyboard selection and Enter drilldown.
-- Compact fallback rendering on narrow widths.
+- KPI strip with window-aware labels: `OVERDUE`, `TODAY`, `NEXT{7|14|30}`, `OPEN`, `DONE{7|14|30}D`.
+- Due buckets panel (`OVD`, `TOD`, `+1..+6`) with mouse/keyboard drill-through; `+N` applies exact `dueDayOffset`.
+- `TOP TAGS (OPEN)` panel with mouse/keyboard drill-through.
+- Compact interactive priority strip for drill-through.
+- Dimension slices panel for `assignee`, `project`, and `workflowStage` drill-through.
+- Backlog trend panel (`7d|14d|30d`) replaces the large legacy priority panel.
+- Overdue aging panel with buckets: `0d`, `1d`, `2-3d`, `4-7d`, `8-14d`, `15-30d`, `30d+`.
+- Throughput panel uses per-day quantitative magnitude (not binary presence) with shared scaling between created/completed rows.
+- Dashboard focus-group navigation: `Tab`/`Shift+Tab` (group), `ArrowUp`/`ArrowDown` (active selection), `Enter` (apply).
+- Deterministic height-priority collapse strategy to avoid border overlap on compressed heights.
 
 ## Data Safety and Portability
-- JSON persistence with schema migration and strict validation (current schema 6).
+- JSON persistence with schema migration and strict validation (current schema 7).
+- Task schema includes optional analytics dimensions: `assignee`, `project`, `workflowStage`.
 - Corrupt file recovery with timestamped `.corrupt.*` backups.
 - Save-failure banner with retry on next domain mutation.
 - In-app Backup Center for export/import with dry-run and replace confirmation gate.

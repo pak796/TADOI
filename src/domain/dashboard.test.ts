@@ -35,6 +35,11 @@ describe("computeDueBuckets8", () => {
 
     const tasks: Task[] = [
       baseTask({ id: "ovd", dueAt: addLocalDaysMs(today, -1) }),
+      baseTask({
+        id: "ovd-time",
+        dueAt: today + 8 * 60 * 60 * 1000,
+        hasExplicitTime: true
+      }),
       baseTask({ id: "tod", dueAt: addLocalDaysMs(today, 0) }),
       baseTask({ id: "p1", dueAt: addLocalDaysMs(today, 1) }),
       baseTask({ id: "p6", dueAt: addLocalDaysMs(today, 6) }),
@@ -44,7 +49,7 @@ describe("computeDueBuckets8", () => {
 
     const buckets = computeDueBuckets8(tasks, now);
 
-    expect(buckets).toEqual([1, 1, 1, 0, 0, 0, 0, 1]);
+    expect(buckets).toEqual([2, 1, 1, 0, 0, 0, 0, 1]);
   });
 
   it("returns all zeros when there are no due dates", () => {
@@ -223,6 +228,12 @@ describe("computeOverdueAgingBuckets", () => {
     const now = new Date(2026, 1, 10, 12, 0, 0);
     const today = startOfLocalDayMs(now.getTime());
     const tasks: Task[] = [
+      baseTask({
+        id: "d0-time",
+        status: "open",
+        dueAt: today + 8 * 60 * 60 * 1000,
+        hasExplicitTime: true
+      }),
       baseTask({ id: "d1", status: "open", dueAt: addLocalDaysMs(today, -1) }),
       baseTask({ id: "d2", status: "open", dueAt: addLocalDaysMs(today, -2) }),
       baseTask({ id: "d5", status: "open", dueAt: addLocalDaysMs(today, -5) }),
@@ -234,11 +245,12 @@ describe("computeOverdueAgingBuckets", () => {
     ];
 
     expect(computeOverdueAgingBuckets(tasks, now)).toEqual([
+      { label: "0d", count: 1 },
       { label: "1d", count: 1 },
-      { label: "2–3d", count: 1 },
-      { label: "4–7d", count: 1 },
-      { label: "8–14d", count: 1 },
-      { label: "15–30d", count: 1 },
+      { label: "2-3d", count: 1 },
+      { label: "4-7d", count: 1 },
+      { label: "8-14d", count: 1 },
+      { label: "15-30d", count: 1 },
       { label: "30d+", count: 1 }
     ]);
   });
@@ -257,11 +269,12 @@ describe("computeOverdueAgingBuckets", () => {
     ];
 
     expect(computeOverdueAgingBuckets(tasks, now)).toEqual([
+      { label: "0d", count: 1 },
       { label: "1d", count: 1 },
-      { label: "2–3d", count: 0 },
-      { label: "4–7d", count: 0 },
-      { label: "8–14d", count: 0 },
-      { label: "15–30d", count: 0 },
+      { label: "2-3d", count: 0 },
+      { label: "4-7d", count: 0 },
+      { label: "8-14d", count: 0 },
+      { label: "15-30d", count: 0 },
       { label: "30d+", count: 0 }
     ]);
   });

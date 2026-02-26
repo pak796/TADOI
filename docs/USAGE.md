@@ -1,6 +1,6 @@
 # TADOI™ Usage Guide
 
-Verified as of 2026-02-25 (v0.3.8).
+Verified as of 2026-02-26 (v0.3.8).
 Source of truth for key routing: `src/app/keyRouter.ts`.
 
 ## Run
@@ -48,6 +48,7 @@ Source-of-truth key tokens (as reported by `src/app/keyRouter.ts`):
 `G` `L` `O` `PageDown` `PageUp` `S` `Space` `Tab` `[`
 `]` `a` `b` `backspace` `c` `d` `e` `end` `f` `g` `h` `home`
 `i` `j` `k` `l` `m` `n` `o` `p` `q` `r` `s` `t` `u` `v` `x` `y` `z`
+`w`
 `{` `}`
 
 
@@ -90,8 +91,11 @@ Details links focus (Tab from list):
 DASHBOARD mode:
 - `b` / `B`: return to list
 - `f` / `g` / `r` / `t` / `p`: same filter cycling as list
-- `ArrowUp` / `ArrowDown`: select top-tag rows
-- `Enter`: apply selected dashboard tag
+- `w`: cycle analytics window (`7d -> 14d -> 30d -> 7d`)
+- `Tab` / `Shift+Tab`: move active dashboard focus group
+- `ArrowUp` / `ArrowDown`: move selection inside the active dashboard widget
+- `Enter`: apply active dashboard selection (top tags, due buckets, priority strip, assignee/project/stage slices)
+- `g` cycle clears exact due-day offset (`DUE+N`) when present
 - `?`: open Help
 - `q`: quit
 

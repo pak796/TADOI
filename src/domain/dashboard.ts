@@ -49,9 +49,47 @@ export type CreatedCompleted7d = {
   };
 };
 
-const OVERDUE_AGING_BUCKET_LABELS = ["1d", "2–3d", "4–7d", "8–14d", "15–30d", "30d+"] as const;
-const LAST_7_DAY_OFFSETS = [-6, -5, -4, -3, -2, -1, 0] as const;
+const OVERDUE_AGING_BUCKET_LABELS = [
+  "0d",
+  "1d",
+  "2-3d",
+  "4-7d",
+  "8-14d",
+  "15-30d",
+  "30d+"
+] as const;
 const PRIORITY_BUCKET_ORDER = ["P1", "P2", "P3", "P4", "P5"] as const;
+
+export type TaskDueTimingClassification = {
+  dayDiff: number;
+  isTimeOverdueToday: boolean;
+  isOverdue: boolean;
+  overdueAgeDays?: number;
+};
+
+export function classifyTaskDueTiming(
+  task: Pick<Task, "dueAt" | "hasExplicitTime">,
+  nowMs: number,
+  startOfTodayMs = startOfLocalDayMs(nowMs)
+): TaskDueTimingClassification | undefined {
+  if (task.dueAt === undefined) return undefined;
+
+  const dayDiff = diffLocalDays(task.dueAt, startOfTodayMs);
+  const isTimeOverdueToday =
+    task.hasExplicitTime === true && dayDiff === 0 && nowMs > task.dueAt;
+  const isOverdue = dayDiff < 0 || isTimeOverdueToday;
+
+  return {
+    dayDiff,
+    isTimeOverdueToday,
+    isOverdue,
+    ...(isOverdue
+      ? {
+          overdueAgeDays: dayDiff < 0 ? Math.abs(dayDiff) : 0
+        }
+      : {})
+  };
+}
 
 function emptyDueBuckets8(): DueBuckets8 {
   return [0, 0, 0, 0, 0, 0, 0, 0];
@@ -61,21 +99,26 @@ function emptyBacklogTrend7(): BacklogTrend7 {
   return [0, 0, 0, 0, 0, 0, 0];
 }
 
+function buildTrailingDayOffsets(windowDays: number): number[] {
+  const safeWindowDays = Math.max(1, Math.floor(windowDays));
+  return Array.from({ length: safeWindowDays }, (_, index) => index - (safeWindowDays - 1));
+}
+
 export function computeDueBuckets8(tasks: Task[], now: number): DueBuckets8 {
   const startOfToday = startOfLocalDayMs(now);
   const buckets = emptyDueBuckets8();
 
   for (const task of tasks) {
-    if (task.dueAt === undefined) continue;
-    const dayDiff = diffLocalDays(task.dueAt, startOfToday);
+    const dueTiming = classifyTaskDueTiming(task, now, startOfToday);
+    if (!dueTiming) continue;
 
-    if (dayDiff < 0) {
+    if (dueTiming.isOverdue) {
       buckets[0] += 1;
       continue;
     }
 
-    if (dayDiff >= 0 && dayDiff <= 6) {
-      buckets[dayDiff + 1] += 1;
+    if (dueTiming.dayDiff >= 0 && dueTiming.dayDiff <= 6) {
+      buckets[dueTiming.dayDiff + 1] += 1;
     }
   }
 
@@ -93,11 +136,25 @@ function resolveClosedAt(task: Task): number | undefined {
 }
 
 export function computeBacklogTrend7(tasks: Task[], now: number): BacklogTrend7 {
-  const startOfToday = startOfLocalDayMs(now);
-  const trend = emptyBacklogTrend7();
+  const trend = computeBacklogTrendWindow(tasks, now, 7);
+  const tuple = emptyBacklogTrend7();
+  for (let index = 0; index < tuple.length; index += 1) {
+    tuple[index] = trend[index] ?? 0;
+  }
+  return tuple;
+}
 
-  for (let index = 0; index < 7; index += 1) {
-    const dayStart = addLocalDaysMs(startOfToday, index - 6);
+export function computeBacklogTrendWindow(
+  tasks: Task[],
+  now: number,
+  windowDays: number
+): number[] {
+  const startOfToday = startOfLocalDayMs(now);
+  const offsets = buildTrailingDayOffsets(windowDays);
+  const trend = new Array<number>(offsets.length).fill(0);
+
+  for (let index = 0; index < offsets.length; index += 1) {
+    const dayStart = addLocalDaysMs(startOfToday, offsets[index]);
     const dayEnd = addLocalDaysMs(dayStart, 1) - 1;
     let openCount = 0;
 
@@ -162,37 +219,41 @@ export function computeOverdueAgingBuckets(
   tasks: Task[],
   now: Date
 ): OverdueAgingBucket[] {
-  const startOfToday = startOfLocalDayMs(now.getTime());
+  const nowMs = now.getTime();
+  const startOfToday = startOfLocalDayMs(nowMs);
   const counts = new Array<number>(OVERDUE_AGING_BUCKET_LABELS.length).fill(0);
 
   for (const task of tasks) {
-    if (task.status !== "open" || task.dueAt === undefined) continue;
-    const dayDiff = diffLocalDays(task.dueAt, startOfToday);
-    if (dayDiff >= 0) continue;
+    if (task.status !== "open") continue;
+    const dueTiming = classifyTaskDueTiming(task, nowMs, startOfToday);
+    if (!dueTiming || !dueTiming.isOverdue) continue;
 
-    const daysOverdue = Math.abs(dayDiff);
-
-    if (daysOverdue === 1) {
+    const daysOverdue = dueTiming.overdueAgeDays ?? 0;
+    if (daysOverdue === 0) {
       counts[0] += 1;
       continue;
     }
-    if (daysOverdue <= 3) {
+    if (daysOverdue === 1) {
       counts[1] += 1;
       continue;
     }
-    if (daysOverdue <= 7) {
+    if (daysOverdue <= 3) {
       counts[2] += 1;
       continue;
     }
-    if (daysOverdue <= 14) {
+    if (daysOverdue <= 7) {
       counts[3] += 1;
       continue;
     }
-    if (daysOverdue <= 30) {
+    if (daysOverdue <= 14) {
       counts[4] += 1;
       continue;
     }
-    counts[5] += 1;
+    if (daysOverdue <= 30) {
+      counts[5] += 1;
+      continue;
+    }
+    counts[6] += 1;
   }
 
   return OVERDUE_AGING_BUCKET_LABELS.map((label, index) => ({
@@ -202,20 +263,30 @@ export function computeOverdueAgingBuckets(
 }
 
 export function computeCreatedCompleted7d(tasks: Task[], now: Date): CreatedCompleted7d {
+  return computeCreatedCompletedWindow(tasks, now, 7);
+}
+
+export function computeCreatedCompletedWindow(
+  tasks: Task[],
+  now: Date,
+  windowDays: number
+): CreatedCompleted7d {
   const startOfToday = startOfLocalDayMs(now.getTime());
-  const created = new Array<number>(LAST_7_DAY_OFFSETS.length).fill(0);
-  const completed = new Array<number>(LAST_7_DAY_OFFSETS.length).fill(0);
+  const offsets = buildTrailingDayOffsets(windowDays);
+  const created = new Array<number>(offsets.length).fill(0);
+  const completed = new Array<number>(offsets.length).fill(0);
+  const minOffset = offsets[0] ?? 0;
 
   for (const task of tasks) {
     const createdDiff = diffLocalDays(task.createdAt, startOfToday);
-    if (createdDiff >= -6 && createdDiff <= 0) {
-      created[createdDiff + 6] += 1;
+    if (createdDiff >= minOffset && createdDiff <= 0) {
+      created[createdDiff - minOffset] += 1;
     }
 
     if (typeof task.closedAt === "number") {
       const completedDiff = diffLocalDays(task.closedAt, startOfToday);
-      if (completedDiff >= -6 && completedDiff <= 0) {
-        completed[completedDiff + 6] += 1;
+      if (completedDiff >= minOffset && completedDiff <= 0) {
+        completed[completedDiff - minOffset] += 1;
       }
     }
   }
@@ -224,7 +295,7 @@ export function computeCreatedCompleted7d(tasks: Task[], now: Date): CreatedComp
   const completedTotal = completed.reduce((sum, value) => sum + value, 0);
 
   return {
-    labels: LAST_7_DAY_OFFSETS.map((offset) => String(offset)),
+    labels: offsets.map((offset) => String(offset)),
     created,
     completed,
     totals: {

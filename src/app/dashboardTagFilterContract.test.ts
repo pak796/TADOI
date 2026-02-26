@@ -128,13 +128,13 @@ describe("dashboard/tag-filter canonical invariant contract", () => {
     };
     expect(run({ name: "j", sequence: "j" }, { uiState: dashboardState })).toEqual([]);
     expect(run({ name: "up" }, { uiState: dashboardState })).toEqual([
-      { scope: "ui", type: "MOVE_DASHBOARD_TAG_SELECTION", delta: -1 }
+      { scope: "ui", type: "DASHBOARD_MOVE_ACTIVE_SELECTION", delta: -1 }
     ]);
     expect(run({ name: "down" }, { uiState: dashboardState })).toEqual([
-      { scope: "ui", type: "MOVE_DASHBOARD_TAG_SELECTION", delta: 1 }
+      { scope: "ui", type: "DASHBOARD_MOVE_ACTIVE_SELECTION", delta: 1 }
     ]);
     expect(run({ name: "enter" }, { uiState: dashboardState })).toEqual([
-      { scope: "domain", type: "APPLY_DASHBOARD_SELECTED_TAG" }
+      { scope: "domain", type: "APPLY_DASHBOARD_ACTIVE_SELECTION" }
     ]);
   });
 

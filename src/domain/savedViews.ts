@@ -1,5 +1,6 @@
 import { Filters, SavedView } from "./models";
 import { normalizePriorityFilterValue } from "./priorityTags";
+import { DEFAULT_ANALYTICS_WINDOW } from "./query";
 import {
   normalizeTagFilter,
   normalizeTagToken,
@@ -20,6 +21,30 @@ function normalizeSearchText(searchText: string | undefined): string | undefined
   if (!searchText) return undefined;
   const trimmed = searchText.trim();
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function normalizeOptionalText(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function normalizeAnalyticsWindow(value: Filters["analyticsWindow"]): "7d" | "14d" | "30d" {
+  return value === "14d" || value === "30d" ? value : DEFAULT_ANALYTICS_WINDOW;
+}
+
+function normalizeDueDayOffset(value: Filters["dueDayOffset"]): Filters["dueDayOffset"] {
+  if (
+    value === 1 ||
+    value === 2 ||
+    value === 3 ||
+    value === 4 ||
+    value === 5 ||
+    value === 6
+  ) {
+    return value;
+  }
+  return undefined;
 }
 
 function areStringArraysEqual(left: string[] | undefined, right: string[] | undefined): boolean {
@@ -48,23 +73,38 @@ export function snapshotFilters(filters: Filters): Filters {
     normalizePriorityFilterValue(filters.priority) ??
     normalizePriorityFilterValue(filters.tag);
   const normalizedTag = filters.tag ? normalizeTagToken(filters.tag) : undefined;
+  const normalizedAnalyticsWindow = normalizeAnalyticsWindow(filters.analyticsWindow);
+  const normalizedDueDayOffset = normalizeDueDayOffset(filters.dueDayOffset);
+  const normalizedAssignee = normalizeOptionalText(filters.assignee);
+  const normalizedProject = normalizeOptionalText(filters.project);
+  const normalizedWorkflowStage = filters.workflowStage;
 
   if (normalizedTagFilter) {
     return {
       status: filters.status,
       due: filters.due,
+      analyticsWindow: normalizedAnalyticsWindow,
+      ...(normalizedDueDayOffset ? { dueDayOffset: normalizedDueDayOffset } : {}),
       ...(normalizedPriority ? { priority: normalizedPriority } : {}),
       tagFilter: normalizedTagFilter,
-      searchText: normalizeSearchText(filters.searchText)
+      searchText: normalizeSearchText(filters.searchText),
+      ...(normalizedAssignee ? { assignee: normalizedAssignee } : {}),
+      ...(normalizedProject ? { project: normalizedProject } : {}),
+      ...(normalizedWorkflowStage ? { workflowStage: normalizedWorkflowStage } : {})
     };
   }
 
   return {
     status: filters.status,
     due: filters.due,
+    analyticsWindow: normalizedAnalyticsWindow,
+    ...(normalizedDueDayOffset ? { dueDayOffset: normalizedDueDayOffset } : {}),
     ...(normalizedPriority ? { priority: normalizedPriority } : {}),
     tag: normalizedTag,
-    searchText: normalizeSearchText(filters.searchText)
+    searchText: normalizeSearchText(filters.searchText),
+    ...(normalizedAssignee ? { assignee: normalizedAssignee } : {}),
+    ...(normalizedProject ? { project: normalizedProject } : {}),
+    ...(normalizedWorkflowStage ? { workflowStage: normalizedWorkflowStage } : {})
   };
 }
 
@@ -78,10 +118,15 @@ export function isSavedViewActive(currentFilters: Filters, view: SavedView): boo
   return (
     current.status === target.status &&
     current.due === target.due &&
+    current.analyticsWindow === target.analyticsWindow &&
+    current.dueDayOffset === target.dueDayOffset &&
     current.priority === target.priority &&
     current.tag === target.tag &&
     areTagFiltersEqual(current.tagFilter, target.tagFilter) &&
-    current.searchText === target.searchText
+    current.searchText === target.searchText &&
+    current.assignee === target.assignee &&
+    current.project === target.project &&
+    current.workflowStage === target.workflowStage
   );
 }
 

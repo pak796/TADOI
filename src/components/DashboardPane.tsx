@@ -1,16 +1,15 @@
 import React from "react";
 import { colorForTag, themeForObject } from "../app/theme";
 import {
-  computePriorityBucketBreakdown,
-  computeCreatedCompleted7d,
+  computeBacklogTrendWindow,
+  computeCreatedCompletedWindow,
   computeDueBuckets8,
   computeOverdueAgingBuckets,
   type CreatedCompleted7d,
   type OverdueAgingBucket,
-  type PriorityBucketCount,
   type TopTagCount
 } from "../domain/dashboard";
-import { computeDashboardKpis } from "../domain/dashboardKpis";
+import { computeDashboardKpisWindowed } from "../domain/dashboardKpis";
 import { Filters, Task } from "../domain/models";
 import { formatTagFilterBooleanSummary } from "../domain/tagFilter";
 import {
@@ -40,9 +39,7 @@ const MIN_PANEL_W = 28;
 const LABEL_W = 6;
 const BAR_W = 16;
 const THROUGHPUT_CELL_W = 3;
-const THROUGHPUT_MARKER_OFFSET = 1;
-const THROUGHPUT_FILLER = "_";
-const THROUGHPUT_MARKER = "▊";
+const BACKLOG_CELL_W = 3;
 
 const OVERDUE_AGING_HINT = "(Switch STATUS to ALL/OPEN to view overdue aging)";
 
@@ -51,11 +48,35 @@ type DashboardPaneProps = {
   filters: Filters;
   topTags: TopTagCount[];
   selectedTopTagIndex: number;
+  selectedDueBucketIndex?: number;
+  selectedPriorityIndex?: number;
+  selectedAssigneeIndex?: number;
+  selectedProjectIndex?: number;
+  selectedWorkflowStageIndex?: number;
+  analyticsWindowDays?: number;
+  prioritySlices?: Array<{ value: string; count: number }>;
+  assigneeSlices?: Array<{ value: string; count: number }>;
+  projectSlices?: Array<{ value: string; count: number }>;
+  workflowStageSlices?: Array<{ value: string; count: number }>;
+  activeFocusGroup?: DashboardFocusGroup;
   now: number;
   width: number;
   height: number;
   onTopTagClick?: (index: number) => void;
+  onDueBucketClick?: (index: number) => void;
+  onPriorityClick?: (index: number) => void;
+  onAssigneeClick?: (index: number) => void;
+  onProjectClick?: (index: number) => void;
+  onWorkflowStageClick?: (index: number) => void;
 };
+
+export type DashboardFocusGroup =
+  | "top_tags"
+  | "due_buckets"
+  | "priority"
+  | "assignee"
+  | "project"
+  | "workflow_stage";
 
 export type DashboardLayout = {
   stacked: boolean;
@@ -78,14 +99,91 @@ export type TopTagRow = {
 };
 
 export type KpiItem = {
-  label: (typeof KPI_ORDER)[number];
+  label: string;
   shortLabel: string;
   value: number;
 };
 
+export type DashboardSectionDensity = "full" | "summary" | "hidden";
+
+export type DashboardHeightPolicy = {
+  showFilterSummary: boolean;
+  dueTop: "full" | "summary";
+  priority: DashboardSectionDensity;
+  bottom: DashboardSectionDensity;
+};
+
+export function resolveDashboardHeightPolicy(height: number): DashboardHeightPolicy {
+  const safeHeight = Math.max(6, height);
+  if (safeHeight >= 50) {
+    return {
+      showFilterSummary: true,
+      dueTop: "full",
+      priority: "full",
+      bottom: "full"
+    };
+  }
+  if (safeHeight >= 40) {
+    return {
+      showFilterSummary: true,
+      dueTop: "full",
+      priority: "full",
+      bottom: "summary"
+    };
+  }
+  if (safeHeight >= 34) {
+    return {
+      showFilterSummary: true,
+      dueTop: "full",
+      priority: "summary",
+      bottom: "summary"
+    };
+  }
+  if (safeHeight >= 28) {
+    return {
+      showFilterSummary: true,
+      dueTop: "full",
+      priority: "summary",
+      bottom: "hidden"
+    };
+  }
+  if (safeHeight >= 22) {
+    return {
+      showFilterSummary: true,
+      dueTop: "summary",
+      priority: "summary",
+      bottom: "hidden"
+    };
+  }
+  if (safeHeight >= 16) {
+    return {
+      showFilterSummary: false,
+      dueTop: "full",
+      priority: "summary",
+      bottom: "hidden"
+    };
+  }
+  if (safeHeight >= 10) {
+    return {
+      showFilterSummary: false,
+      dueTop: "summary",
+      priority: "summary",
+      bottom: "hidden"
+    };
+  }
+  return {
+    showFilterSummary: false,
+    dueTop: "summary",
+    priority: "hidden",
+    bottom: "hidden"
+  };
+}
+
 function getFilterLine(filters: Filters): string {
   const status = filters.status.toUpperCase();
   const due = filters.due === "next7" ? "NEXT7" : filters.due.toUpperCase();
+  const analyticsWindow = (filters.analyticsWindow ?? "7d").toUpperCase();
+  const dueOffset = filters.dueDayOffset ? `+${filters.dueDayOffset}` : "(none)";
   const priority = formatPriorityForDisplay(filters.priority) ?? "(any)";
   const booleanTagSummary = formatTagFilterBooleanSummary(filters.tagFilter);
   const tag = booleanTagSummary
@@ -94,7 +192,10 @@ function getFilterLine(filters: Filters): string {
       ? formatTagForReadOnlyDisplay(filters.tag)
       : "(none)";
   const search = filters.searchText?.trim() ? filters.searchText.trim() : "(none)";
-  return `STATUS=${status} DUE=${due} PRIORITY=${priority} TAG=${tag} SEARCH=${search}`;
+  const assignee = filters.assignee?.trim() ? filters.assignee.trim() : "(any)";
+  const project = filters.project?.trim() ? filters.project.trim() : "(any)";
+  const stage = filters.workflowStage ?? "(any)";
+  return `STATUS=${status} DUE=${due} DUE+N=${dueOffset} WIN=${analyticsWindow} PRIORITY=${priority} TAG=${tag} ASSIGNEE=${assignee} PROJECT=${project} STAGE=${stage} SEARCH=${search}`;
 }
 
 export function truncateLine(value: string, width: number): string {
@@ -285,73 +386,29 @@ function buildOverdueAgingLines(buckets: OverdueAgingBucket[], panelWidth: numbe
   });
 }
 
-function buildPriorityBucketLines(buckets: PriorityBucketCount[], panelWidth: number): string[] {
-  const innerWidth = Math.max(10, panelWidth - PANEL_HORIZONTAL_OVERHEAD);
-  const maxCount = Math.max(0, ...buckets.map((bucket) => bucket.count));
-  const countWidth = Math.max(1, String(maxCount).length);
-  const priorityLabelWidth = 3;
-
-  const availableBarWidth = innerWidth - priorityLabelWidth - 1 - 1 - countWidth;
-  if (availableBarWidth < 1) {
-    return ["(widen to view chart)"];
-  }
-
-  const barWidth = Math.max(1, Math.min(BAR_W, availableBarWidth));
-  const barRightSlack = Math.max(0, availableBarWidth - barWidth);
-
-  return buckets.map(({ priority, count }) => {
-    const bar = renderBlockBar(count, maxCount, barWidth);
-    const line =
-      `${priority.padEnd(priorityLabelWidth, " ")} ${bar}` +
-      `${" ".repeat(barRightSlack)} ${String(count).padStart(countWidth, " ")}`;
-    return truncateLine(line, innerWidth);
-  });
-}
 
 function renderDayGrid(labels: string[], cellWidth: number): string {
   const safeCellWidth = Math.max(2, cellWidth);
   return labels.map((label) => label.padStart(safeCellWidth, " ")).join("");
 }
 
-function renderMarkerRow(
-  markers: boolean[],
-  cellWidth: number,
-  fillerChar: string,
-  markerChar: string,
-  markerOffset: number
-): string {
+function renderMagnitudeRow(values: number[], max: number, cellWidth: number): string {
   const safeCellWidth = Math.max(2, cellWidth);
-  const safeOffset = Math.max(0, Math.min(safeCellWidth - 1, markerOffset));
-  return markers
-    .map((active) => {
-      const cell = new Array<string>(safeCellWidth).fill(fillerChar);
-      if (active) {
-        cell[safeOffset] = markerChar;
-      }
-      return cell.join("");
-    })
+  return values
+    .map((value) => renderBlockBar(value, max, safeCellWidth))
     .join("");
 }
 
 export function buildThroughputLines(data: CreatedCompleted7d, panelWidth: number): string[] {
   const innerWidth = Math.max(10, panelWidth - PANEL_HORIZONTAL_OVERHEAD);
-  const createdMarkers = data.created.map((value) => value > 0);
-  const completedMarkers = data.completed.map((value) => value > 0);
+  const sharedMax = Math.max(
+    0,
+    ...data.created,
+    ...data.completed
+  );
   const dayGrid = renderDayGrid(data.labels, THROUGHPUT_CELL_W);
-  const createdGrid = renderMarkerRow(
-    createdMarkers,
-    THROUGHPUT_CELL_W,
-    THROUGHPUT_FILLER,
-    THROUGHPUT_MARKER,
-    THROUGHPUT_MARKER_OFFSET
-  );
-  const completedGrid = renderMarkerRow(
-    completedMarkers,
-    THROUGHPUT_CELL_W,
-    THROUGHPUT_FILLER,
-    THROUGHPUT_MARKER,
-    THROUGHPUT_MARKER_OFFSET
-  );
+  const createdGrid = renderMagnitudeRow(data.created, sharedMax, THROUGHPUT_CELL_W);
+  const completedGrid = renderMagnitudeRow(data.completed, sharedMax, THROUGHPUT_CELL_W);
 
   return [
     truncateLine(`DAYS: ${dayGrid}`, innerWidth),
@@ -406,27 +463,91 @@ export function gateThroughputByStatus(
   };
 }
 
+function buildDueBucketSummaryLine(dueBuckets: number[], panelWidth: number): string {
+  const innerWidth = Math.max(10, panelWidth - PANEL_HORIZONTAL_OVERHEAD);
+  const futureTotal = dueBuckets.slice(2).reduce((sum, value) => sum + value, 0);
+  return truncateLine(
+    `OVD:${dueBuckets[0] ?? 0} TOD:${dueBuckets[1] ?? 0} +1..+6:${futureTotal}`,
+    innerWidth
+  );
+}
+
+function buildTopTagSummaryLine(topTags: TopTagCount[], panelWidth: number): string {
+  const innerWidth = Math.max(10, panelWidth - PANEL_HORIZONTAL_OVERHEAD);
+  if (topTags.length === 0) {
+    return "(No tagged open tasks)";
+  }
+  const summary = topTags
+    .slice(0, 3)
+    .map((entry) => `${formatTagForReadOnlyDisplay(entry.tag)}:${entry.count}`)
+    .join("  ");
+  return truncateLine(summary, innerWidth);
+}
+
+function buildBottomSummaryLine(
+  overdueAgingBuckets: OverdueAgingBucket[],
+  throughput: CreatedCompleted7d,
+  panelWidth: number
+): string {
+  const innerWidth = Math.max(10, panelWidth - PANEL_HORIZONTAL_OVERHEAD);
+  const totalOverdue = overdueAgingBuckets.reduce((sum, bucket) => sum + bucket.count, 0);
+  return truncateLine(
+    `AGING:${totalOverdue}  CRE:${throughput.totals.created}  DON:${throughput.totals.completed}  NET:${formatSigned(throughput.totals.net)}`,
+    innerWidth
+  );
+}
+
+function buildBacklogTrendLines(
+  trend: number[],
+  panelWidth: number
+): string[] {
+  const innerWidth = Math.max(10, panelWidth - PANEL_HORIZONTAL_OVERHEAD);
+  const offsets = trend.map((_, index) => String(index - (trend.length - 1)));
+  const max = Math.max(0, ...trend);
+  const daysRow = renderDayGrid(offsets, BACKLOG_CELL_W);
+  const valuesRow = renderMagnitudeRow(trend, max, BACKLOG_CELL_W);
+  const delta = trend.length > 0 ? (trend[trend.length - 1] ?? 0) - (trend[0] ?? 0) : 0;
+
+  return [
+    truncateLine(`DAYS: ${daysRow}`, innerWidth),
+    truncateLine(`OPEN: ${valuesRow}`, innerWidth),
+    truncateLine(
+      `NOW: ${trend[trend.length - 1] ?? 0}  START: ${trend[0] ?? 0}  DELTA: ${formatSigned(delta)}`,
+      innerWidth
+    )
+  ];
+}
+
+function formatSliceValue(value: string): string {
+  if (value.includes("_")) {
+    return value.replace(/_/g, " ").toUpperCase();
+  }
+  return value;
+}
+
 function renderMeter(value: number, max: number, width: number): string {
   return renderBlockBar(value, max, width);
 }
 
 function buildKpiItems(
   tasks: Task[],
-  now: number
+  now: number,
+  analyticsWindow: "7d" | "14d" | "30d"
 ): KpiItem[] {
-  const kpis = computeDashboardKpis(tasks, now);
+  const kpis = computeDashboardKpisWindowed(tasks, now, analyticsWindow);
+  const windowDays = analyticsWindow === "14d" ? 14 : analyticsWindow === "30d" ? 30 : 7;
   return [
-    { label: KPI_ORDER[0], shortLabel: KPI_SHORT_LABELS[0], value: kpis.overdue },
-    { label: KPI_ORDER[1], shortLabel: KPI_SHORT_LABELS[1], value: kpis.today },
-    { label: KPI_ORDER[2], shortLabel: KPI_SHORT_LABELS[2], value: kpis.next7 },
-    { label: KPI_ORDER[3], shortLabel: KPI_SHORT_LABELS[3], value: kpis.open },
-    { label: KPI_ORDER[4], shortLabel: KPI_SHORT_LABELS[4], value: kpis.done7d }
+    { label: "OVERDUE", shortLabel: KPI_SHORT_LABELS[0], value: kpis.overdue },
+    { label: "TODAY", shortLabel: KPI_SHORT_LABELS[1], value: kpis.today },
+    { label: `NEXT${windowDays}`, shortLabel: `N${windowDays}`, value: kpis.next7 },
+    { label: "OPEN", shortLabel: KPI_SHORT_LABELS[3], value: kpis.open },
+    { label: `DONE${windowDays}D`, shortLabel: `D${windowDays}`, value: kpis.done7d }
   ];
 }
 
 function getKpiColor(label: KpiItem["label"]): string {
   const theme = themeForObject("dashboard");
-  return label === "DONE7D" ? theme.ok : theme.accentBlue;
+  return label.startsWith("DONE") ? theme.ok : theme.accentBlue;
 }
 
 export function buildKpiCompactLine(items: KpiItem[], width: number): string {
@@ -440,31 +561,80 @@ export function DashboardPane({
   filters,
   topTags,
   selectedTopTagIndex,
+  selectedDueBucketIndex = 0,
+  selectedPriorityIndex = 0,
+  selectedAssigneeIndex = 0,
+  selectedProjectIndex = 0,
+  selectedWorkflowStageIndex = 0,
+  analyticsWindowDays = 7,
+  prioritySlices = [],
+  assigneeSlices = [],
+  projectSlices = [],
+  workflowStageSlices = [],
+  activeFocusGroup = "top_tags",
   now,
   width,
   height,
-  onTopTagClick
+  onTopTagClick,
+  onDueBucketClick,
+  onPriorityClick,
+  onAssigneeClick,
+  onProjectClick,
+  onWorkflowStageClick
 }: DashboardPaneProps) {
   const theme = themeForObject("dashboard");
   const dueBuckets = React.useMemo(() => computeDueBuckets8(tasks, now), [tasks, now]);
-  const kpiItems = React.useMemo(() => buildKpiItems(tasks, now), [tasks, now]);
+  const analyticsWindow = filters.analyticsWindow ?? "7d";
+  const kpiItems = React.useMemo(
+    () => buildKpiItems(tasks, now, analyticsWindow),
+    [analyticsWindow, now, tasks]
+  );
   const layout = React.useMemo(() => resolveDashboardLayout(width), [width]);
   const maxBucket = Math.max(0, ...dueBuckets);
   const headerWidth = Math.max(20, width - 2);
-  const showFilterSummary = height >= 14;
+  const heightPolicy = React.useMemo(
+    () => resolveDashboardHeightPolicy(height),
+    [height]
+  );
+  const showFilterSummary = heightPolicy.showFilterSummary;
   const openOnlyUnavailable =
     filters.status === "done" || filters.status === "archived";
   const clampedTagIndex =
     topTags.length === 0
       ? 0
       : Math.max(0, Math.min(selectedTopTagIndex, topTags.length - 1));
+  const clampedDueBucketIndex = Math.max(0, Math.min(selectedDueBucketIndex, DUE_BUCKET_LABELS.length - 1));
+  const clampedPriorityIndex =
+    prioritySlices.length === 0
+      ? 0
+      : Math.max(0, Math.min(selectedPriorityIndex, prioritySlices.length - 1));
+  const clampedAssigneeIndex =
+    assigneeSlices.length === 0
+      ? 0
+      : Math.max(0, Math.min(selectedAssigneeIndex, assigneeSlices.length - 1));
+  const clampedProjectIndex =
+    projectSlices.length === 0
+      ? 0
+      : Math.max(0, Math.min(selectedProjectIndex, projectSlices.length - 1));
+  const clampedWorkflowStageIndex =
+    workflowStageSlices.length === 0
+      ? 0
+      : Math.max(0, Math.min(selectedWorkflowStageIndex, workflowStageSlices.length - 1));
 
   const dueLines = React.useMemo(
     () => buildDueBucketLines(dueBuckets, maxBucket, layout.chartPanelWidth),
     [dueBuckets, maxBucket, layout.chartPanelWidth]
   );
+  const dueSummaryLine = React.useMemo(
+    () => buildDueBucketSummaryLine(dueBuckets, layout.chartPanelWidth),
+    [dueBuckets, layout.chartPanelWidth]
+  );
   const topTagRows = React.useMemo(
     () => buildTopTagRows(topTags, layout.rightPanelWidth),
+    [topTags, layout.rightPanelWidth]
+  );
+  const topTagSummaryLine = React.useMemo(
+    () => buildTopTagSummaryLine(topTags, layout.rightPanelWidth),
     [topTags, layout.rightPanelWidth]
   );
   const dashboardContentWidth = layout.stacked
@@ -492,8 +662,8 @@ export function DashboardPane({
   );
 
   const throughputBase = React.useMemo(
-    () => computeCreatedCompleted7d(tasks, new Date(now)),
-    [tasks, now]
+    () => computeCreatedCompletedWindow(tasks, new Date(now), analyticsWindowDays),
+    [analyticsWindowDays, tasks, now]
   );
   const throughputDisplay = React.useMemo(
     () => gateThroughputByStatus(throughputBase, filters.status),
@@ -503,13 +673,32 @@ export function DashboardPane({
     () => buildThroughputLines(throughputDisplay, bottomRowLayout.rightPanelWidth),
     [throughputDisplay, bottomRowLayout.rightPanelWidth]
   );
-  const priorityBreakdown = React.useMemo(
-    () => computePriorityBucketBreakdown(tasks),
-    [tasks]
+  const prioritySummaryLine = React.useMemo(
+    () =>
+      truncateLine(
+        prioritySlices.length === 0
+          ? "(No prioritized tasks in current view)"
+          : prioritySlices.map((slice) => `${slice.value}:${slice.count}`).join("  "),
+        Math.max(10, dashboardContentWidth - PANEL_HORIZONTAL_OVERHEAD)
+      ),
+    [prioritySlices, dashboardContentWidth]
   );
-  const priorityBreakdownLines = React.useMemo(
-    () => buildPriorityBucketLines(priorityBreakdown, dashboardContentWidth),
-    [priorityBreakdown, dashboardContentWidth]
+  const backlogTrend = React.useMemo(
+    () => computeBacklogTrendWindow(tasks, now, analyticsWindowDays),
+    [analyticsWindowDays, now, tasks]
+  );
+  const backlogTrendLines = React.useMemo(
+    () => buildBacklogTrendLines(backlogTrend, dashboardContentWidth),
+    [backlogTrend, dashboardContentWidth]
+  );
+  const bottomSummaryLine = React.useMemo(
+    () =>
+      buildBottomSummaryLine(
+        overdueAgingDisplayBuckets,
+        throughputDisplay,
+        dashboardContentWidth
+      ),
+    [dashboardContentWidth, overdueAgingDisplayBuckets, throughputDisplay]
   );
 
   const kpiMax = Math.max(0, ...kpiItems.map((item) => item.value));
@@ -624,17 +813,43 @@ export function DashboardPane({
             <text style={{ color: theme.text, fontWeight: "bold" }}>
               DUE BUCKETS (OVD, TODAY, +1..+6)
             </text>
-            {dueLines.map((line, index) => (
-              <text key={`due-${index}`} style={{ color: theme.text }}>
-                {line}
-              </text>
-            ))}
+            {heightPolicy.dueTop === "summary" ? (
+              <text style={{ color: theme.text }}>{dueSummaryLine}</text>
+            ) : (
+              dueLines.map((line, index) => (
+                <box
+                  key={`due-${index}`}
+                  style={{ flexDirection: "row" }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    onDueBucketClick?.(index);
+                  }}
+                >
+                  <text
+                    style={{
+                      color:
+                        activeFocusGroup === "due_buckets" && index === clampedDueBucketIndex
+                          ? theme.accentBlue
+                          : theme.text,
+                      fontWeight:
+                        activeFocusGroup === "due_buckets" && index === clampedDueBucketIndex
+                          ? "bold"
+                          : "normal"
+                    }}
+                  >
+                    {line}
+                  </text>
+                </box>
+              ))
+            )}
           </box>
 
           <box style={{ ...panelStyle, width: "100%" }}>
             <text style={{ color: theme.text, fontWeight: "bold" }}>TOP TAGS (OPEN)</text>
             {openOnlyUnavailable ? (
               <text style={{ color: theme.muted }}>(Top tags available for OPEN tasks only)</text>
+            ) : heightPolicy.dueTop === "summary" ? (
+              <text style={{ color: theme.text }}>{topTagSummaryLine}</text>
             ) : topTags.length === 0 ? (
               <text style={{ color: theme.muted }}>(No tagged open tasks)</text>
             ) : topTagRows.length === 0 ? (
@@ -680,11 +895,35 @@ export function DashboardPane({
             <text style={{ color: theme.text, fontWeight: "bold" }}>
               DUE BUCKETS (OVD, TODAY, +1..+6)
             </text>
-            {dueLines.map((line, index) => (
-              <text key={`due-${index}`} style={{ color: theme.text }}>
-                {line}
-              </text>
-            ))}
+            {heightPolicy.dueTop === "summary" ? (
+              <text style={{ color: theme.text }}>{dueSummaryLine}</text>
+            ) : (
+              dueLines.map((line, index) => (
+                <box
+                  key={`due-${index}`}
+                  style={{ flexDirection: "row" }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    onDueBucketClick?.(index);
+                  }}
+                >
+                  <text
+                    style={{
+                      color:
+                        activeFocusGroup === "due_buckets" && index === clampedDueBucketIndex
+                          ? theme.accentBlue
+                          : theme.text,
+                      fontWeight:
+                        activeFocusGroup === "due_buckets" && index === clampedDueBucketIndex
+                          ? "bold"
+                          : "normal"
+                    }}
+                  >
+                    {line}
+                  </text>
+                </box>
+              ))
+            )}
           </box>
 
           <box style={{ width: DASHBOARD_GUTTER }} />
@@ -693,6 +932,8 @@ export function DashboardPane({
             <text style={{ color: theme.text, fontWeight: "bold" }}>TOP TAGS (OPEN)</text>
             {openOnlyUnavailable ? (
               <text style={{ color: theme.muted }}>(Top tags available for OPEN tasks only)</text>
+            ) : heightPolicy.dueTop === "summary" ? (
+              <text style={{ color: theme.text }}>{topTagSummaryLine}</text>
             ) : topTags.length === 0 ? (
               <text style={{ color: theme.muted }}>(No tagged open tasks)</text>
             ) : topTagRows.length === 0 ? (
@@ -734,13 +975,187 @@ export function DashboardPane({
         </box>
       )}
 
-      {bottomRowLayout.stacked ? (
+      {heightPolicy.priority === "hidden" ? null : (
+        heightPolicy.priority === "summary" ? (
+          <box style={{ ...panelStyle, width: dashboardContentWidth, marginTop: 1 }}>
+            <text style={{ color: theme.text, fontWeight: "bold" }}>PRIORITY + SLICES</text>
+            <text style={{ color: theme.text }}>{prioritySummaryLine}</text>
+          </box>
+        ) : (
+          <box style={{ flexDirection: "column", width: dashboardContentWidth, marginTop: 1, gap: 1 }}>
+            <box style={{ ...panelStyle, width: "100%" }}>
+              <text style={{ color: theme.text, fontWeight: "bold" }}>
+                PRIORITY STRIP (DRILL-THROUGH)
+              </text>
+              {prioritySlices.length === 0 ? (
+                <text style={{ color: theme.muted }}>(No prioritized tasks in current view)</text>
+              ) : (
+                <box style={{ flexDirection: "row", flexWrap: "wrap", gap: 1 }}>
+                  {prioritySlices.map((slice, index) => (
+                    <box
+                      key={`priority-slice-${slice.value}`}
+                      style={{ flexDirection: "row" }}
+                      onMouseDown={(event) => {
+                        if (event.button !== 0) return;
+                        onPriorityClick?.(index);
+                      }}
+                    >
+                      <text
+                        style={{
+                          color:
+                            activeFocusGroup === "priority" && index === clampedPriorityIndex
+                              ? theme.accentBlue
+                              : theme.text,
+                          fontWeight:
+                            activeFocusGroup === "priority" && index === clampedPriorityIndex
+                              ? "bold"
+                              : "normal"
+                        }}
+                      >
+                        {`${slice.value}:${slice.count}`}
+                      </text>
+                    </box>
+                  ))}
+                </box>
+              )}
+            </box>
+
+            <box style={{ ...panelStyle, width: "100%" }}>
+              <text style={{ color: theme.text, fontWeight: "bold" }}>
+                DIMENSION SLICES (ASSIGNEE / PROJECT / STAGE)
+              </text>
+
+              <box style={{ flexDirection: "row", flexWrap: "wrap", gap: 1 }}>
+                <text style={{ color: theme.muted }}>ASSIGNEE:</text>
+                {assigneeSlices.length === 0 ? (
+                  <text style={{ color: theme.muted }}>(none)</text>
+                ) : (
+                  assigneeSlices.map((slice, index) => (
+                    <box
+                      key={`assignee-slice-${slice.value}`}
+                      style={{ flexDirection: "row" }}
+                      onMouseDown={(event) => {
+                        if (event.button !== 0) return;
+                        onAssigneeClick?.(index);
+                      }}
+                    >
+                      <text
+                        style={{
+                          color:
+                            activeFocusGroup === "assignee" && index === clampedAssigneeIndex
+                              ? theme.accentBlue
+                              : theme.text,
+                          fontWeight:
+                            activeFocusGroup === "assignee" && index === clampedAssigneeIndex
+                              ? "bold"
+                              : "normal"
+                        }}
+                      >
+                        {`${slice.value}:${slice.count}`}
+                      </text>
+                    </box>
+                  ))
+                )}
+              </box>
+
+              <box style={{ flexDirection: "row", flexWrap: "wrap", gap: 1 }}>
+                <text style={{ color: theme.muted }}>PROJECT:</text>
+                {projectSlices.length === 0 ? (
+                  <text style={{ color: theme.muted }}>(none)</text>
+                ) : (
+                  projectSlices.map((slice, index) => (
+                    <box
+                      key={`project-slice-${slice.value}`}
+                      style={{ flexDirection: "row" }}
+                      onMouseDown={(event) => {
+                        if (event.button !== 0) return;
+                        onProjectClick?.(index);
+                      }}
+                    >
+                      <text
+                        style={{
+                          color:
+                            activeFocusGroup === "project" && index === clampedProjectIndex
+                              ? theme.accentBlue
+                              : theme.text,
+                          fontWeight:
+                            activeFocusGroup === "project" && index === clampedProjectIndex
+                              ? "bold"
+                              : "normal"
+                        }}
+                      >
+                        {`${slice.value}:${slice.count}`}
+                      </text>
+                    </box>
+                  ))
+                )}
+              </box>
+
+              <box style={{ flexDirection: "row", flexWrap: "wrap", gap: 1 }}>
+                <text style={{ color: theme.muted }}>STAGE:</text>
+                {workflowStageSlices.length === 0 ? (
+                  <text style={{ color: theme.muted }}>(none)</text>
+                ) : (
+                  workflowStageSlices.map((slice, index) => (
+                    <box
+                      key={`stage-slice-${slice.value}`}
+                      style={{ flexDirection: "row" }}
+                      onMouseDown={(event) => {
+                        if (event.button !== 0) return;
+                        onWorkflowStageClick?.(index);
+                      }}
+                    >
+                      <text
+                        style={{
+                          color:
+                            activeFocusGroup === "workflow_stage" &&
+                            index === clampedWorkflowStageIndex
+                              ? theme.accentBlue
+                              : theme.text,
+                          fontWeight:
+                            activeFocusGroup === "workflow_stage" &&
+                            index === clampedWorkflowStageIndex
+                              ? "bold"
+                              : "normal"
+                        }}
+                      >
+                        {`${formatSliceValue(slice.value)}:${slice.count}`}
+                      </text>
+                    </box>
+                  ))
+                )}
+              </box>
+            </box>
+
+            <box style={{ ...panelStyle, width: "100%" }}>
+              <text style={{ color: theme.text, fontWeight: "bold" }}>
+                {`BACKLOG TREND (${analyticsWindowDays}D)`}
+              </text>
+              {backlogTrendLines.map((line, index) => (
+                <text key={`backlog-${index}`} style={{ color: theme.text }}>
+                  {line}
+                </text>
+              ))}
+            </box>
+          </box>
+        )
+      )}
+
+      {heightPolicy.bottom === "hidden" ? null : heightPolicy.bottom === "summary" ? (
+        <box style={{ ...panelStyle, width: dashboardContentWidth, marginTop: 1 }}>
+          <text style={{ color: theme.text, fontWeight: "bold" }}>OVERDUE + THROUGHPUT</text>
+          <text style={{ color: theme.text }}>{bottomSummaryLine}</text>
+        </box>
+      ) : bottomRowLayout.stacked ? (
         <box style={{ flexDirection: "column", width: dashboardContentWidth, marginTop: 1, gap: 1 }}>
           <box style={{ ...panelStyle, width: "100%" }}>
             <text style={{ color: theme.text, fontWeight: "bold" }}>OVERDUE AGING</text>
             {openOnlyUnavailable ? (
               <text style={{ color: theme.muted }}>
-                {truncateLine(OVERDUE_AGING_HINT, Math.max(10, bottomRowLayout.leftPanelWidth - PANEL_HORIZONTAL_OVERHEAD))}
+                {truncateLine(
+                  OVERDUE_AGING_HINT,
+                  Math.max(10, bottomRowLayout.leftPanelWidth - PANEL_HORIZONTAL_OVERHEAD)
+                )}
               </text>
             ) : null}
             {overdueAgingLines.map((line, index) => (
@@ -751,7 +1166,9 @@ export function DashboardPane({
           </box>
 
           <box style={{ ...panelStyle, width: "100%" }}>
-            <text style={{ color: theme.text, fontWeight: "bold" }}>THROUGHPUT (7D)</text>
+            <text style={{ color: theme.text, fontWeight: "bold" }}>
+              {`THROUGHPUT (${analyticsWindowDays}D)`}
+            </text>
             {throughputLines.map((line, index) => (
               <text
                 key={`throughput-${index}`}
@@ -777,7 +1194,10 @@ export function DashboardPane({
             <text style={{ color: theme.text, fontWeight: "bold" }}>OVERDUE AGING</text>
             {openOnlyUnavailable ? (
               <text style={{ color: theme.muted }}>
-                {truncateLine(OVERDUE_AGING_HINT, Math.max(10, bottomRowLayout.leftPanelWidth - PANEL_HORIZONTAL_OVERHEAD))}
+                {truncateLine(
+                  OVERDUE_AGING_HINT,
+                  Math.max(10, bottomRowLayout.leftPanelWidth - PANEL_HORIZONTAL_OVERHEAD)
+                )}
               </text>
             ) : null}
             {overdueAgingLines.map((line, index) => (
@@ -790,7 +1210,9 @@ export function DashboardPane({
           <box style={{ width: DASHBOARD_GUTTER }} />
 
           <box style={{ ...panelStyle, width: bottomRowLayout.rightPanelWidth }}>
-            <text style={{ color: theme.text, fontWeight: "bold" }}>THROUGHPUT (7D)</text>
+            <text style={{ color: theme.text, fontWeight: "bold" }}>
+              {`THROUGHPUT (${analyticsWindowDays}D)`}
+            </text>
             {throughputLines.map((line, index) => (
               <text
                 key={`throughput-${index}`}
@@ -811,21 +1233,6 @@ export function DashboardPane({
           </box>
         </box>
       )}
-
-      <box style={{ ...panelStyle, width: dashboardContentWidth, marginTop: 1 }}>
-        <text style={{ color: theme.text, fontWeight: "bold" }}>
-          PRIORITY BREAKDOWN (VISIBLE TASKS)
-        </text>
-        {priorityBreakdown.length === 0 ? (
-          <text style={{ color: theme.muted }}>(No prioritized tasks in current view)</text>
-        ) : (
-          priorityBreakdownLines.map((line, index) => (
-            <text key={`priority-breakdown-${index}`} style={{ color: theme.text }}>
-              {line}
-            </text>
-          ))
-        )}
-      </box>
     </box>
   );
 }

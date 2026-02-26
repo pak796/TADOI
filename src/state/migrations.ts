@@ -7,6 +7,7 @@ import {
   formatDateToLocalIso,
   parseLocalIsoToDate
 } from "../domain/recurrence/rruleAdapter";
+import type { WorkflowStage } from "../domain/models";
 import type { LoadedData } from "./persistence";
 
 type MigrationFn = (state: LoadedData) => LoadedData;
@@ -17,7 +18,8 @@ const migrations: Record<number, MigrationFn> = {
   2: migrateV2ToV3,
   3: migrateV3ToV4,
   4: migrateV4ToV5,
-  5: migrateV5ToV6
+  5: migrateV5ToV6,
+  6: migrateV6ToV7
 };
 
 function normalizeStateRevision(value: unknown): number {
@@ -193,6 +195,33 @@ function migrateV5ToV6(state: LoadedData): LoadedData {
     schemaVersion: 6,
     stateRevision: normalizeStateRevision(state.stateRevision),
     tasks: state.tasks,
+    tagIndex: normalizeTagIndex(state.tagIndex ?? {}),
+    savedViews: Array.isArray(state.savedViews) ? state.savedViews : [],
+    engagement: normalizeEngagementState(state.engagement)
+  };
+}
+
+function migrateV6ToV7(state: LoadedData): LoadedData {
+  const tasks = state.tasks.map((task) => {
+    if (typeof task !== "object" || task === null) {
+      throw new Error("Invalid task entry during migration 6->7");
+    }
+
+    if (typeof task.workflowStage === "string" && task.workflowStage.length > 0) {
+      return task;
+    }
+
+    const workflowStage: WorkflowStage = task.status === "open" ? "todo" : "done";
+    return {
+      ...task,
+      workflowStage
+    };
+  });
+
+  return {
+    schemaVersion: 7,
+    stateRevision: normalizeStateRevision(state.stateRevision),
+    tasks,
     tagIndex: normalizeTagIndex(state.tagIndex ?? {}),
     savedViews: Array.isArray(state.savedViews) ? state.savedViews : [],
     engagement: normalizeEngagementState(state.engagement)

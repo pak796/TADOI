@@ -7,6 +7,7 @@ import {
   buildTopTagRows,
   gateThroughputByStatus,
   renderBlockBar,
+  resolveDashboardHeightPolicy,
   resolveBottomRowLayout,
   resolveDashboardLayout,
   truncateLine,
@@ -88,6 +89,41 @@ describe("DashboardPane helpers", () => {
     const lines = buildThroughputLines(throughput, 48);
     expect(lines.length).toBe(4);
     expect(lines[3]).toContain("NET: +1");
+  });
+
+  it("renders throughput magnitude with shared per-day scaling", () => {
+    const throughput: CreatedCompleted7d = {
+      labels: ["M", "T", "W", "T", "F", "S", "S"],
+      created: [1, 20, 0, 0, 0, 0, 0],
+      completed: [0, 0, 0, 0, 0, 0, 0],
+      totals: { created: 21, completed: 0, net: 21 }
+    };
+    const lines = buildThroughputLines(throughput, 56);
+    const createdGrid = lines[1].replace("CRE: ", "");
+    const lowCell = createdGrid.slice(0, 3);
+    const highCell = createdGrid.slice(3, 6);
+    expect(highCell.trim().length).toBeGreaterThan(lowCell.trim().length);
+  });
+
+  it("resolves deterministic height collapse policy", () => {
+    expect(resolveDashboardHeightPolicy(24)).toEqual({
+      showFilterSummary: true,
+      dueTop: "summary",
+      priority: "summary",
+      bottom: "hidden"
+    });
+    expect(resolveDashboardHeightPolicy(17)).toEqual({
+      showFilterSummary: false,
+      dueTop: "full",
+      priority: "summary",
+      bottom: "hidden"
+    });
+    expect(resolveDashboardHeightPolicy(10)).toEqual({
+      showFilterSummary: false,
+      dueTop: "summary",
+      priority: "summary",
+      bottom: "hidden"
+    });
   });
 
   it("builds compact KPI line constrained to width", () => {

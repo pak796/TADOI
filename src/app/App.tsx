@@ -36,7 +36,10 @@ import {
   type BuiltInThemeTextEditorHandle
 } from "../components/BuiltInThemeTextEditor";
 import { diffLocalDays, startOfLocalDayMs } from "../domain/dates";
-import { computeTopTagsOpen } from "../domain/dashboard";
+import {
+  computePriorityBucketBreakdown,
+  computeTopTagsOpen
+} from "../domain/dashboard";
 import {
   buildRecurrencePreviewFromDraft
 } from "../domain/recurrence/draft";
@@ -133,6 +136,7 @@ import {
 } from "../domain/priorityTags";
 import {
   getSortModeLabel,
+  resolveAnalyticsWindowDays,
   SORT_MODE_ORDER
 } from "../domain/query";
 import { reconcileSelectionById } from "../domain/selection";
@@ -926,6 +930,55 @@ function resolveDashboardTopTagLimit(panelHeight: number): number {
   return Math.min(DASHBOARD_TOP_TAG_MAX, availableRows);
 }
 
+type DashboardSliceCount = {
+  value: string;
+  count: number;
+};
+
+const WORKFLOW_STAGE_ORDER: Array<NonNullable<Task["workflowStage"]>> = [
+  "backlog",
+  "todo",
+  "in_progress",
+  "blocked",
+  "review",
+  "done"
+];
+
+function computeTopSliceCounts(
+  tasks: Task[],
+  selector: (task: Task) => string | undefined,
+  limit: number
+): DashboardSliceCount[] {
+  if (limit <= 0) return [];
+  const counts = new Map<string, number>();
+  for (const task of tasks) {
+    const value = selector(task)?.trim();
+    if (!value) continue;
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+  return Array.from(counts.entries())
+    .map(([value, count]) => ({ value, count }))
+    .sort((left, right) => {
+      if (left.count !== right.count) return right.count - left.count;
+      return left.value.localeCompare(right.value);
+    })
+    .slice(0, limit);
+}
+
+function computeWorkflowStageSliceCounts(tasks: Task[]): DashboardSliceCount[] {
+  const counts = new Map<NonNullable<Task["workflowStage"]>, number>();
+  for (const task of tasks) {
+    const stage = task.workflowStage;
+    if (!stage) continue;
+    counts.set(stage, (counts.get(stage) ?? 0) + 1);
+  }
+
+  return WORKFLOW_STAGE_ORDER.filter((stage) => (counts.get(stage) ?? 0) > 0).map((stage) => ({
+    value: stage,
+    count: counts.get(stage) ?? 0
+  }));
+}
+
 function getTagQuery(tagsText: string): string | null {
   if (/[\s,]$/.test(tagsText)) return null;
   const tokens = tagsText.split(/[\s,]+/).filter(Boolean);
@@ -1015,18 +1068,42 @@ type PriorityTickerSegment = {
   total: number;
 };
 
+type DashboardFocusGroup =
+  | "top_tags"
+  | "due_buckets"
+  | "priority"
+  | "assignee"
+  | "project"
+  | "workflow_stage";
+
+const DASHBOARD_FOCUS_GROUP_ORDER: DashboardFocusGroup[] = [
+  "top_tags",
+  "due_buckets",
+  "priority",
+  "assignee",
+  "project",
+  "workflow_stage"
+];
+
 function summarizeViewFilters(filters: SavedView["filters"]): string {
   const search = filters.searchText?.trim();
   const searchLabel = search ? ` search=${search}` : "";
   const priority = formatPriorityForDisplay(filters.priority);
   const priorityLabel = priority ? ` priority=${priority}` : "";
+  const analyticsWindow = (filters.analyticsWindow ?? "7d").toUpperCase();
+  const analyticsLabel = ` window=${analyticsWindow}`;
+  const dueOffsetLabel =
+    filters.dueDayOffset !== undefined ? ` due+${filters.dueDayOffset}` : "";
   const booleanTagSummary = formatTagFilterBooleanSummary(filters.tagFilter);
   const tagLabel = booleanTagSummary
     ? ` tags=${booleanTagSummary}`
     : filters.tag
       ? ` tag=${formatTagForReadOnlyDisplay(filters.tag)}`
       : "";
-  return `status=${filters.status} due=${filters.due}${priorityLabel}${tagLabel}${searchLabel}`;
+  const assigneeLabel = filters.assignee ? ` assignee=${filters.assignee}` : "";
+  const projectLabel = filters.project ? ` project=${filters.project}` : "";
+  const stageLabel = filters.workflowStage ? ` stage=${filters.workflowStage}` : "";
+  return `status=${filters.status} due=${filters.due}${dueOffsetLabel}${analyticsLabel}${priorityLabel}${tagLabel}${assigneeLabel}${projectLabel}${stageLabel}${searchLabel}`;
 }
 
 function comparePriorityDigits(left: string, right: string): number {
@@ -1260,6 +1337,13 @@ export function App({
   const [commandHistoryIndex, setCommandHistoryIndex] = useState<number | null>(null);
   const [commandOutput, setCommandOutput] = useState<CommandOutput | null>(null);
   const [dashboardTagSelection, setDashboardTagSelection] = useState(0);
+  const [dashboardDueBucketSelection, setDashboardDueBucketSelection] = useState(0);
+  const [dashboardPrioritySelection, setDashboardPrioritySelection] = useState(0);
+  const [dashboardAssigneeSelection, setDashboardAssigneeSelection] = useState(0);
+  const [dashboardProjectSelection, setDashboardProjectSelection] = useState(0);
+  const [dashboardWorkflowStageSelection, setDashboardWorkflowStageSelection] = useState(0);
+  const [dashboardFocusGroup, setDashboardFocusGroup] =
+    useState<DashboardFocusGroup>("top_tags");
   const [selectedLinkId, setSelectedLinkId] = useState<string | undefined>(undefined);
   const [tagFilterDraft, setTagFilterDraft] = useState<TagFilter | undefined>(undefined);
   const [tagFilterInput, setTagFilterInput] = useState("");
@@ -1382,6 +1466,8 @@ export function App({
 
   const now = Date.now();
   const dayKey = startOfLocalDayMs(now);
+  const analyticsWindow = state.filters.analyticsWindow ?? "7d";
+  const analyticsWindowDays = resolveAnalyticsWindowDays(analyticsWindow);
   const visibleTaskRows = buildVisibleTaskRows(
     state.tasks,
     state.filters,
@@ -1795,14 +1881,61 @@ export function App({
     dashboardTopTags.length === 0
       ? 0
       : Math.max(0, Math.min(dashboardTagSelection, dashboardTopTags.length - 1));
+  const clampedDashboardDueBucketSelection = Math.max(
+    0,
+    Math.min(dashboardDueBucketSelection, 7)
+  );
+  const dashboardPriorityBuckets = React.useMemo(
+    () => computePriorityBucketBreakdown(visibleTaskRows),
+    [visibleTaskRows]
+  );
+  const clampedDashboardPrioritySelection =
+    dashboardPriorityBuckets.length === 0
+      ? 0
+      : Math.max(0, Math.min(dashboardPrioritySelection, dashboardPriorityBuckets.length - 1));
+  const dashboardAssigneeSlices = React.useMemo(
+    () => computeTopSliceCounts(visibleTaskRows, (task) => task.assignee, 5),
+    [visibleTaskRows]
+  );
+  const dashboardProjectSlices = React.useMemo(
+    () => computeTopSliceCounts(visibleTaskRows, (task) => task.project, 5),
+    [visibleTaskRows]
+  );
+  const dashboardWorkflowStageSlices = React.useMemo(
+    () => computeWorkflowStageSliceCounts(visibleTaskRows),
+    [visibleTaskRows]
+  );
+  const clampedDashboardAssigneeSelection =
+    dashboardAssigneeSlices.length === 0
+      ? 0
+      : Math.max(0, Math.min(dashboardAssigneeSelection, dashboardAssigneeSlices.length - 1));
+  const clampedDashboardProjectSelection =
+    dashboardProjectSlices.length === 0
+      ? 0
+      : Math.max(0, Math.min(dashboardProjectSelection, dashboardProjectSlices.length - 1));
+  const clampedDashboardWorkflowStageSelection =
+    dashboardWorkflowStageSlices.length === 0
+      ? 0
+      : Math.max(
+          0,
+          Math.min(dashboardWorkflowStageSelection, dashboardWorkflowStageSlices.length - 1)
+        );
   const overdueQuickFilterActive =
-    state.filters.status === "open" && state.filters.due === "overdue";
+    state.filters.status === "open" &&
+    state.filters.due === "overdue" &&
+    state.filters.dueDayOffset === undefined;
   const todayQuickFilterActive =
-    state.filters.status === "open" && state.filters.due === "today";
+    state.filters.status === "open" &&
+    state.filters.due === "today" &&
+    state.filters.dueDayOffset === undefined;
   const next7QuickFilterActive =
-    state.filters.status === "open" && state.filters.due === "next7";
+    state.filters.status === "open" &&
+    state.filters.due === "next7" &&
+    state.filters.dueDayOffset === undefined;
   const doneQuickFilterActive =
-    state.filters.status === "done" && state.filters.due === "any";
+    state.filters.status === "done" &&
+    state.filters.due === "any" &&
+    state.filters.dueDayOffset === undefined;
 
   const titleQuery = state.editor ? getTitleQuery(state.editor.title) : null;
   const titleSuggestions = titleQuery ? rankTaskTitles(state.tasks, titleQuery) : [];
@@ -2614,6 +2747,59 @@ export function App({
       setDashboardTagSelection(dashboardTopTags.length - 1);
     }
   }, [dashboardTagSelection, dashboardTopTags.length]);
+
+  useEffect(() => {
+    if (dashboardPriorityBuckets.length === 0) {
+      if (dashboardPrioritySelection !== 0) {
+        setDashboardPrioritySelection(0);
+      }
+    } else if (dashboardPrioritySelection > dashboardPriorityBuckets.length - 1) {
+      setDashboardPrioritySelection(dashboardPriorityBuckets.length - 1);
+    }
+
+    if (dashboardAssigneeSlices.length === 0) {
+      if (dashboardAssigneeSelection !== 0) {
+        setDashboardAssigneeSelection(0);
+      }
+    } else if (dashboardAssigneeSelection > dashboardAssigneeSlices.length - 1) {
+      setDashboardAssigneeSelection(dashboardAssigneeSlices.length - 1);
+    }
+
+    if (dashboardProjectSlices.length === 0) {
+      if (dashboardProjectSelection !== 0) {
+        setDashboardProjectSelection(0);
+      }
+    } else if (dashboardProjectSelection > dashboardProjectSlices.length - 1) {
+      setDashboardProjectSelection(dashboardProjectSlices.length - 1);
+    }
+
+    if (dashboardWorkflowStageSlices.length === 0) {
+      if (dashboardWorkflowStageSelection !== 0) {
+        setDashboardWorkflowStageSelection(0);
+      }
+    } else if (dashboardWorkflowStageSelection > dashboardWorkflowStageSlices.length - 1) {
+      setDashboardWorkflowStageSelection(dashboardWorkflowStageSlices.length - 1);
+    }
+
+    if (getDashboardFocusGroupItemCount(dashboardFocusGroup) > 0) return;
+    const fallback =
+      DASHBOARD_FOCUS_GROUP_ORDER.find(
+        (group) => getDashboardFocusGroupItemCount(group) > 0
+      ) ?? "due_buckets";
+    setDashboardFocusGroup(fallback);
+  }, [
+    dashboardAssigneeSelection,
+    dashboardAssigneeSlices.length,
+    dashboardFocusGroup,
+    dashboardPriorityBuckets.length,
+    dashboardPrioritySelection,
+    dashboardProjectSelection,
+    dashboardProjectSlices.length,
+    dashboardWorkflowStageSelection,
+    dashboardWorkflowStageSlices.length,
+    dashboardTopTags.length,
+    state.filters.status
+  ]);
 
   function getCurrentHelpScrollTop(): number {
     const current = Number.isFinite(helpScrollTopRef.current)
@@ -3499,7 +3685,16 @@ export function App({
         moveViewSelection(action.delta);
         return;
       case "MOVE_DASHBOARD_TAG_SELECTION":
-        moveDashboardTagSelection(action.delta);
+        moveDashboardActiveSelection(action.delta);
+        return;
+      case "DASHBOARD_NEXT_FOCUS_GROUP":
+        moveDashboardFocusGroup(1);
+        return;
+      case "DASHBOARD_PREV_FOCUS_GROUP":
+        moveDashboardFocusGroup(-1);
+        return;
+      case "DASHBOARD_MOVE_ACTIVE_SELECTION":
+        moveDashboardActiveSelection(action.delta);
         return;
       case "SCROLL_EDITOR_PAGE": {
         const nextOffset = Math.max(
@@ -3680,6 +3875,9 @@ export function App({
       case "CYCLE_DUE":
         cycleDue();
         return;
+      case "CYCLE_ANALYTICS_WINDOW":
+        cycleAnalyticsWindow();
+        return;
       case "CYCLE_PRIORITY":
         cyclePriority();
         return;
@@ -3688,6 +3886,9 @@ export function App({
         return;
       case "APPLY_DASHBOARD_SELECTED_TAG":
         applyDashboardSelectedTag();
+        return;
+      case "APPLY_DASHBOARD_ACTIVE_SELECTION":
+        applyDashboardActiveSelection();
         return;
       case "SAVE_EDITOR":
         saveEditor();
@@ -4293,6 +4494,12 @@ export function App({
     }
 
     setDashboardTagSelection(0);
+    setDashboardDueBucketSelection(0);
+    setDashboardPrioritySelection(0);
+    setDashboardAssigneeSelection(0);
+    setDashboardProjectSelection(0);
+    setDashboardWorkflowStageSelection(0);
+    setDashboardFocusGroup("top_tags");
     uiDispatch({ type: "setMode", mode: Mode.DASHBOARD });
     uiDispatch({ type: "setFocus", focus: FocusTarget.DASHBOARD });
   }
@@ -4582,6 +4789,12 @@ export function App({
       uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
     }
     setDashboardTagSelection(0);
+    setDashboardDueBucketSelection(0);
+    setDashboardPrioritySelection(0);
+    setDashboardAssigneeSelection(0);
+    setDashboardProjectSelection(0);
+    setDashboardWorkflowStageSelection(0);
+    setDashboardFocusGroup("top_tags");
     uiDispatch({ type: "setMode", mode: Mode.DASHBOARD });
     uiDispatch({ type: "setFocus", focus: FocusTarget.DASHBOARD });
   }
@@ -5355,10 +5568,15 @@ export function App({
       filters: {
         status: nextFilters.status,
         due: nextFilters.due,
+        analyticsWindow: nextFilters.analyticsWindow,
+        dueDayOffset: nextFilters.dueDayOffset,
         priority: nextFilters.priority,
         tag: nextFilters.tag,
         tagFilter: nextFilters.tagFilter,
-        searchText: nextFilters.searchText
+        searchText: nextFilters.searchText,
+        assignee: nextFilters.assignee,
+        project: nextFilters.project,
+        workflowStage: nextFilters.workflowStage
       }
     });
     closeViewsOverlay();
@@ -5376,10 +5594,15 @@ export function App({
         type: "setFilters",
         filters: {
           ...DEFAULT_VIEW_FILTERS,
+          analyticsWindow: "7d",
+          dueDayOffset: undefined,
           priority: undefined,
           tag: undefined,
           tagFilter: undefined,
-          searchText: undefined
+          searchText: undefined,
+          assignee: undefined,
+          project: undefined,
+          workflowStage: undefined
         }
       });
       closeViewsOverlay();
@@ -6177,7 +6400,17 @@ export function App({
     ];
     const current = order.indexOf(state.filters.due);
     const next = order[(current + 1) % order.length];
-    dispatch({ type: "setFilters", filters: { due: next } });
+    dispatch({ type: "setFilters", filters: { due: next, dueDayOffset: undefined } });
+  }
+
+  function cycleAnalyticsWindow() {
+    const order: Array<"7d" | "14d" | "30d"> = ["7d", "14d", "30d"];
+    const current = state.filters.analyticsWindow ?? "7d";
+    const currentIndex = order.indexOf(current);
+    const safeIndex = currentIndex === -1 ? 0 : currentIndex;
+    const next = order[(safeIndex + 1) % order.length];
+    dispatch({ type: "setFilters", filters: { analyticsWindow: next } });
+    showShortNavigationBanner(`Analytics window: ${next.toUpperCase()}`);
   }
 
   function cyclePriority() {
@@ -6203,12 +6436,70 @@ export function App({
     dispatch({ type: "setFilters", filters: { priority: priorities[nextIndex] } });
   }
 
-  function moveDashboardTagSelection(delta: 1 | -1) {
-    if (uiState.mode !== Mode.DASHBOARD || dashboardTopTags.length === 0) return;
-    setDashboardTagSelection((prev) => {
-      const next = (prev + delta + dashboardTopTags.length) % dashboardTopTags.length;
-      return next;
-    });
+  function getDashboardFocusGroupItemCount(group: DashboardFocusGroup): number {
+    switch (group) {
+      case "top_tags":
+        return state.filters.status === "done" || state.filters.status === "archived"
+          ? 0
+          : dashboardTopTags.length;
+      case "due_buckets":
+        return 8;
+      case "priority":
+        return dashboardPriorityBuckets.length;
+      case "assignee":
+        return dashboardAssigneeSlices.length;
+      case "project":
+        return dashboardProjectSlices.length;
+      case "workflow_stage":
+        return dashboardWorkflowStageSlices.length;
+      default:
+        return 0;
+    }
+  }
+
+  function moveDashboardFocusGroup(direction: 1 | -1) {
+    if (uiState.mode !== Mode.DASHBOARD) return;
+    const currentIndex = DASHBOARD_FOCUS_GROUP_ORDER.indexOf(dashboardFocusGroup);
+    const safeIndex = currentIndex === -1 ? 0 : currentIndex;
+    for (let step = 1; step <= DASHBOARD_FOCUS_GROUP_ORDER.length; step += 1) {
+      const candidateIndex =
+        (safeIndex + direction * step + DASHBOARD_FOCUS_GROUP_ORDER.length) %
+        DASHBOARD_FOCUS_GROUP_ORDER.length;
+      const candidate = DASHBOARD_FOCUS_GROUP_ORDER[candidateIndex];
+      if (getDashboardFocusGroupItemCount(candidate) > 0) {
+        setDashboardFocusGroup(candidate);
+        return;
+      }
+    }
+  }
+
+  function moveDashboardActiveSelection(delta: 1 | -1) {
+    if (uiState.mode !== Mode.DASHBOARD) return;
+    const count = getDashboardFocusGroupItemCount(dashboardFocusGroup);
+    if (count <= 0) return;
+
+    switch (dashboardFocusGroup) {
+      case "top_tags":
+        setDashboardTagSelection((prev) => (prev + delta + count) % count);
+        return;
+      case "due_buckets":
+        setDashboardDueBucketSelection((prev) => (prev + delta + count) % count);
+        return;
+      case "priority":
+        setDashboardPrioritySelection((prev) => (prev + delta + count) % count);
+        return;
+      case "assignee":
+        setDashboardAssigneeSelection((prev) => (prev + delta + count) % count);
+        return;
+      case "project":
+        setDashboardProjectSelection((prev) => (prev + delta + count) % count);
+        return;
+      case "workflow_stage":
+        setDashboardWorkflowStageSelection((prev) => (prev + delta + count) % count);
+        return;
+      default:
+        return;
+    }
   }
 
   function applyDashboardTagAtIndex(selectionIndex: number) {
@@ -6237,6 +6528,165 @@ export function App({
     );
   }
 
+  function applyDashboardDueBucketAtIndex(selectionIndex: number) {
+    const clampedIndex = Math.max(0, Math.min(selectionIndex, 7));
+    setDashboardDueBucketSelection(clampedIndex);
+
+    if (clampedIndex === 0) {
+      dispatch({
+        type: "setFilters",
+        filters: {
+          status: "open",
+          due: "overdue",
+          dueDayOffset: undefined
+        }
+      });
+      showShortNavigationBanner("Dashboard due filter: OPEN + OVERDUE");
+      return;
+    }
+
+    if (clampedIndex === 1) {
+      dispatch({
+        type: "setFilters",
+        filters: {
+          status: "open",
+          due: "today",
+          dueDayOffset: undefined
+        }
+      });
+      showShortNavigationBanner("Dashboard due filter: OPEN + TODAY");
+      return;
+    }
+
+    const dueDayOffset = clampedIndex - 1;
+    dispatch({
+      type: "setFilters",
+      filters: {
+        status: "open",
+        due: "any",
+        dueDayOffset: dueDayOffset as 1 | 2 | 3 | 4 | 5 | 6
+      }
+    });
+    showShortNavigationBanner(`Dashboard due filter: OPEN + EXACT +${dueDayOffset}`);
+  }
+
+  function applyDashboardPriorityAtIndex(selectionIndex: number) {
+    if (dashboardPriorityBuckets.length === 0) {
+      showShortNavigationBanner("No priority buckets in current view");
+      return;
+    }
+    const clampedIndex = Math.max(
+      0,
+      Math.min(selectionIndex, dashboardPriorityBuckets.length - 1)
+    );
+    const selected = dashboardPriorityBuckets[clampedIndex];
+    if (!selected) return;
+    const normalizedPriority = normalizePriorityFilterValue(selected.priority);
+    if (!normalizedPriority) return;
+
+    setDashboardPrioritySelection(clampedIndex);
+    dispatch({
+      type: "setFilters",
+      filters: {
+        status: "open",
+        due: "any",
+        dueDayOffset: undefined,
+        priority: normalizedPriority
+      }
+    });
+    const displayPriority = formatPriorityForDisplay(normalizedPriority) ?? normalizedPriority;
+    showShortNavigationBanner(`Dashboard priority filter: ${displayPriority}`);
+  }
+
+  function applyDashboardAssigneeAtIndex(selectionIndex: number) {
+    if (dashboardAssigneeSlices.length === 0) {
+      showShortNavigationBanner("No assignee slices in current view");
+      return;
+    }
+    const clampedIndex = Math.max(
+      0,
+      Math.min(selectionIndex, dashboardAssigneeSlices.length - 1)
+    );
+    const selected = dashboardAssigneeSlices[clampedIndex];
+    if (!selected) return;
+    setDashboardAssigneeSelection(clampedIndex);
+    dispatch({
+      type: "setFilters",
+      filters: {
+        assignee: selected.value
+      }
+    });
+    showShortNavigationBanner(`Dashboard assignee filter: ${selected.value}`);
+  }
+
+  function applyDashboardProjectAtIndex(selectionIndex: number) {
+    if (dashboardProjectSlices.length === 0) {
+      showShortNavigationBanner("No project slices in current view");
+      return;
+    }
+    const clampedIndex = Math.max(
+      0,
+      Math.min(selectionIndex, dashboardProjectSlices.length - 1)
+    );
+    const selected = dashboardProjectSlices[clampedIndex];
+    if (!selected) return;
+    setDashboardProjectSelection(clampedIndex);
+    dispatch({
+      type: "setFilters",
+      filters: {
+        project: selected.value
+      }
+    });
+    showShortNavigationBanner(`Dashboard project filter: ${selected.value}`);
+  }
+
+  function applyDashboardWorkflowStageAtIndex(selectionIndex: number) {
+    if (dashboardWorkflowStageSlices.length === 0) {
+      showShortNavigationBanner("No workflow-stage slices in current view");
+      return;
+    }
+    const clampedIndex = Math.max(
+      0,
+      Math.min(selectionIndex, dashboardWorkflowStageSlices.length - 1)
+    );
+    const selected = dashboardWorkflowStageSlices[clampedIndex];
+    if (!selected) return;
+    setDashboardWorkflowStageSelection(clampedIndex);
+    dispatch({
+      type: "setFilters",
+      filters: {
+        workflowStage: selected.value as Task["workflowStage"]
+      }
+    });
+    showShortNavigationBanner(`Dashboard stage filter: ${selected.value}`);
+  }
+
+  function applyDashboardActiveSelection() {
+    if (uiState.mode !== Mode.DASHBOARD) return;
+    switch (dashboardFocusGroup) {
+      case "top_tags":
+        applyDashboardTagAtIndex(clampedDashboardTagSelection);
+        return;
+      case "due_buckets":
+        applyDashboardDueBucketAtIndex(clampedDashboardDueBucketSelection);
+        return;
+      case "priority":
+        applyDashboardPriorityAtIndex(clampedDashboardPrioritySelection);
+        return;
+      case "assignee":
+        applyDashboardAssigneeAtIndex(clampedDashboardAssigneeSelection);
+        return;
+      case "project":
+        applyDashboardProjectAtIndex(clampedDashboardProjectSelection);
+        return;
+      case "workflow_stage":
+        applyDashboardWorkflowStageAtIndex(clampedDashboardWorkflowStageSelection);
+        return;
+      default:
+        return;
+    }
+  }
+
   function applyDashboardSelectedTag() {
     if (uiState.mode !== Mode.DASHBOARD) return;
     applyDashboardTagAtIndex(clampedDashboardTagSelection);
@@ -6244,14 +6694,50 @@ export function App({
 
   function handleDashboardTopTagClick(index: number) {
     if (uiState.mode !== Mode.DASHBOARD) return;
+    setDashboardFocusGroup("top_tags");
     applyDashboardTagAtIndex(index);
+  }
+
+  function handleDashboardDueBucketClick(index: number) {
+    if (uiState.mode !== Mode.DASHBOARD) return;
+    setDashboardFocusGroup("due_buckets");
+    applyDashboardDueBucketAtIndex(index);
+  }
+
+  function handleDashboardPriorityClick(index: number) {
+    if (uiState.mode !== Mode.DASHBOARD) return;
+    setDashboardFocusGroup("priority");
+    applyDashboardPriorityAtIndex(index);
+  }
+
+  function handleDashboardAssigneeClick(index: number) {
+    if (uiState.mode !== Mode.DASHBOARD) return;
+    setDashboardFocusGroup("assignee");
+    applyDashboardAssigneeAtIndex(index);
+  }
+
+  function handleDashboardProjectClick(index: number) {
+    if (uiState.mode !== Mode.DASHBOARD) return;
+    setDashboardFocusGroup("project");
+    applyDashboardProjectAtIndex(index);
+  }
+
+  function handleDashboardWorkflowStageClick(index: number) {
+    if (uiState.mode !== Mode.DASHBOARD) return;
+    setDashboardFocusGroup("workflow_stage");
+    applyDashboardWorkflowStageAtIndex(index);
   }
 
   function toggleBottomDueQuickFilter(targetDue: "overdue" | "today" | "next7") {
     const alreadyActive =
-      state.filters.status === "open" && state.filters.due === targetDue;
+      state.filters.status === "open" &&
+      state.filters.due === targetDue &&
+      state.filters.dueDayOffset === undefined;
     if (alreadyActive) {
-      dispatch({ type: "setFilters", filters: { status: "all", due: "any" } });
+      dispatch({
+        type: "setFilters",
+        filters: { status: "all", due: "any", dueDayOffset: undefined }
+      });
       showShortNavigationBanner("Quick filter cleared");
       return;
     }
@@ -6260,7 +6746,8 @@ export function App({
       type: "setFilters",
       filters: {
         status: "open",
-        due: targetDue
+        due: targetDue,
+        dueDayOffset: undefined
       }
     });
     showShortNavigationBanner(`Quick filter: OPEN + ${targetDue.toUpperCase()}`);
@@ -6268,9 +6755,14 @@ export function App({
 
   function toggleBottomCompletedQuickFilter() {
     const alreadyActive =
-      state.filters.status === "done" && state.filters.due === "any";
+      state.filters.status === "done" &&
+      state.filters.due === "any" &&
+      state.filters.dueDayOffset === undefined;
     if (alreadyActive) {
-      dispatch({ type: "setFilters", filters: { status: "all" } });
+      dispatch({
+        type: "setFilters",
+        filters: { status: "all", dueDayOffset: undefined }
+      });
       showShortNavigationBanner("Quick filter cleared");
       return;
     }
@@ -6279,7 +6771,8 @@ export function App({
       type: "setFilters",
       filters: {
         status: "done",
-        due: "any"
+        due: "any",
+        dueDayOffset: undefined
       }
     });
     showShortNavigationBanner("Quick filter: DONE");
@@ -6324,6 +6817,7 @@ export function App({
     return (
       state.filters.status === "open" &&
       state.filters.due === "any" &&
+      state.filters.dueDayOffset === undefined &&
       normalizePriorityFilterValue(state.filters.priority) === normalizedPriority
     );
   }
@@ -6339,6 +6833,7 @@ export function App({
         filters: {
           status: "all",
           due: "any",
+          dueDayOffset: undefined,
           priority: undefined
         }
       });
@@ -6351,6 +6846,7 @@ export function App({
       filters: {
         status: "open",
         due: "any",
+        dueDayOffset: undefined,
         priority: normalizedPriority
       }
     });
@@ -6555,10 +7051,29 @@ export function App({
                 filters={state.filters}
                 topTags={dashboardTopTags}
                 selectedTopTagIndex={clampedDashboardTagSelection}
+                selectedDueBucketIndex={clampedDashboardDueBucketSelection}
+                selectedPriorityIndex={clampedDashboardPrioritySelection}
+                selectedAssigneeIndex={clampedDashboardAssigneeSelection}
+                selectedProjectIndex={clampedDashboardProjectSelection}
+                selectedWorkflowStageIndex={clampedDashboardWorkflowStageSelection}
+                analyticsWindowDays={analyticsWindowDays}
+                prioritySlices={dashboardPriorityBuckets.map((bucket) => ({
+                  value: bucket.priority,
+                  count: bucket.count
+                }))}
+                assigneeSlices={dashboardAssigneeSlices}
+                projectSlices={dashboardProjectSlices}
+                workflowStageSlices={dashboardWorkflowStageSlices}
+                activeFocusGroup={dashboardFocusGroup}
                 now={now}
                 width={dashboardPaneWidth}
                 height={dashboardPaneHeight}
                 onTopTagClick={handleDashboardTopTagClick}
+                onDueBucketClick={handleDashboardDueBucketClick}
+                onPriorityClick={handleDashboardPriorityClick}
+                onAssigneeClick={handleDashboardAssigneeClick}
+                onProjectClick={handleDashboardProjectClick}
+                onWorkflowStageClick={handleDashboardWorkflowStageClick}
               />
             </box>
           </box>

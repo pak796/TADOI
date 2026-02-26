@@ -78,6 +78,9 @@ export type KeyRouterAction =
   | { scope: "ui"; type: "CONFIRM_SAVE_VIEW_PROMPT" }
   | { scope: "ui"; type: "CANCEL_SAVE_VIEW_PROMPT" }
   | { scope: "ui"; type: "MOVE_DASHBOARD_TAG_SELECTION"; delta: 1 | -1 }
+  | { scope: "ui"; type: "DASHBOARD_NEXT_FOCUS_GROUP" }
+  | { scope: "ui"; type: "DASHBOARD_PREV_FOCUS_GROUP" }
+  | { scope: "ui"; type: "DASHBOARD_MOVE_ACTIVE_SELECTION"; delta: 1 | -1 }
   | { scope: "ui"; type: "SCROLL_EDITOR_PAGE"; direction: 1 | -1 }
   | { scope: "ui"; type: "HELP_MOVE_SECTION_FOCUS"; delta: 1 | -1 }
   | { scope: "ui"; type: "HELP_TOGGLE_FOCUSED_SECTION" }
@@ -163,9 +166,11 @@ export type KeyRouterAction =
   | { scope: "domain"; type: "CYCLE_STATUS" }
   | { scope: "domain"; type: "CYCLE_SORT" }
   | { scope: "domain"; type: "CYCLE_DUE" }
+  | { scope: "domain"; type: "CYCLE_ANALYTICS_WINDOW" }
   | { scope: "domain"; type: "CYCLE_PRIORITY" }
   | { scope: "domain"; type: "TOGGLE_TAG_FILTER" }
   | { scope: "domain"; type: "APPLY_DASHBOARD_SELECTED_TAG" }
+  | { scope: "domain"; type: "APPLY_DASHBOARD_ACTIVE_SELECTION" }
   | { scope: "domain"; type: "SAVE_EDITOR" }
   | { scope: "domain"; type: "ACCEPT_TITLE_INLINE" }
   | { scope: "domain"; type: "APPLY_TIME_AUTOCOMPLETE" }
@@ -826,6 +831,9 @@ function resolveDashboardModeActions(
   if (name === "q") return [{ scope: "domain", type: "EXIT_APP" }];
   if (name === "f") return [{ scope: "domain", type: "CYCLE_STATUS" }];
   if (!ctrl && name === "g") return [{ scope: "domain", type: "CYCLE_DUE" }];
+  if (!ctrl && !shift && (name === "w" || sequence === "w")) {
+    return [{ scope: "domain", type: "CYCLE_ANALYTICS_WINDOW" }];
+  }
   if (!ctrl && name === "r") return [{ scope: "domain", type: "CYCLE_PRIORITY" }];
   if (!ctrl && !shift && (name === "u" || sequence === "u")) {
     return [{ scope: "ui", type: "OPEN_BACKUP_CENTER" }];
@@ -834,14 +842,20 @@ function resolveDashboardModeActions(
     return [{ scope: "ui", type: "OPEN_TAG_FILTER_PANEL" }];
   }
   if (name === "t") return [{ scope: "domain", type: "TOGGLE_TAG_FILTER" }];
+  if (name === "tab" && !shift) {
+    return [{ scope: "ui", type: "DASHBOARD_NEXT_FOCUS_GROUP" }];
+  }
+  if (name === "tab" && shift) {
+    return [{ scope: "ui", type: "DASHBOARD_PREV_FOCUS_GROUP" }];
+  }
   if (name === "down") {
-    return [{ scope: "ui", type: "MOVE_DASHBOARD_TAG_SELECTION", delta: 1 }];
+    return [{ scope: "ui", type: "DASHBOARD_MOVE_ACTIVE_SELECTION", delta: 1 }];
   }
   if (name === "up") {
-    return [{ scope: "ui", type: "MOVE_DASHBOARD_TAG_SELECTION", delta: -1 }];
+    return [{ scope: "ui", type: "DASHBOARD_MOVE_ACTIVE_SELECTION", delta: -1 }];
   }
   if (name === "return" || name === "enter") {
-    return [{ scope: "domain", type: "APPLY_DASHBOARD_SELECTED_TAG" }];
+    return [{ scope: "domain", type: "APPLY_DASHBOARD_ACTIVE_SELECTION" }];
   }
   return [];
 }

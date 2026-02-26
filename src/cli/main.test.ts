@@ -12,7 +12,7 @@ import {
 
 function createLoadedData(overrides: Partial<LoadedData> = {}): LoadedData {
   return {
-    schemaVersion: 6,
+    schemaVersion: 7,
     stateRevision: 0,
     tasks: [],
     tagIndex: {},

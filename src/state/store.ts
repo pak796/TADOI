@@ -68,7 +68,8 @@ export const initialState: AppState = {
   engagementToastActive: null,
   filters: {
     status: "all",
-    due: "any"
+    due: "any",
+    analyticsWindow: "7d"
   },
   sortMode: "due",
   selectedId: undefined,
@@ -96,7 +97,7 @@ export function applyArchiveAging(
 export function archiveOldDoneTasks(tasks: Task[], now: number): Task[] {
   return applyArchiveAging(
     {
-      schemaVersion: 6,
+      schemaVersion: 7,
       stateRevision: 0,
       tasks,
       tagIndex: {},
@@ -271,7 +272,10 @@ export function createEmptyDraft(): EditorDraft {
     repeatEndMode: "never",
     repeatUntilText: "",
     repeatCountText: "",
-    repeatCustomRRuleText: ""
+    repeatCustomRRuleText: "",
+    assigneeText: "",
+    projectText: "",
+    workflowStage: undefined
   };
 }
 
@@ -312,6 +316,9 @@ export function createDraftFromTask(task: Task): EditorDraft {
     repeatUntilText: parsedRule?.untilIso?.slice(0, 10) ?? "",
     repeatCountText: parsedRule?.count ? String(parsedRule.count) : "",
     repeatCustomRRuleText: task.recurrence?.rrule ?? "",
+    assigneeText: task.assignee ?? "",
+    projectText: task.project ?? "",
+    workflowStage: task.workflowStage,
     editKind: "regular"
   };
 }
