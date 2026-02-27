@@ -136,6 +136,14 @@ describe("parseCommand", () => {
       ok: true,
       command: { type: "help", topic: "recur" }
     });
+    expect(parseCommand("help check")).toEqual({
+      ok: true,
+      command: { type: "help", topic: "check" }
+    });
+    expect(parseCommand("help bulk")).toEqual({
+      ok: true,
+      command: { type: "help", topic: "bulk" }
+    });
     expect(parseCommand("wat")).toEqual({
       ok: false,
       error: 'Error: unknown command "wat"'
@@ -187,6 +195,166 @@ describe("parseCommand", () => {
     expect(parseCommand("recur id:abc every:month on:0")).toEqual({
       ok: false,
       error: 'Error: invalid monthly on value "0"'
+    });
+  });
+
+  it("parses check command families", () => {
+    expect(parseCommand('check add @selected "Buy milk"')).toEqual({
+      ok: true,
+      command: {
+        type: "check",
+        operation: "add",
+        target: { type: "selected" },
+        text: "Buy milk"
+      }
+    });
+    expect(parseCommand("check:toggle id:abc 2")).toEqual({
+      ok: true,
+      command: {
+        type: "check",
+        operation: "toggle",
+        target: { type: "id", id: "abc" },
+        index: 2
+      }
+    });
+    expect(parseCommand('check edit @selected 1 "new text"')).toEqual({
+      ok: true,
+      command: {
+        type: "check",
+        operation: "edit",
+        target: { type: "selected" },
+        index: 1,
+        text: "new text"
+      }
+    });
+    expect(parseCommand("check:del id:abc 3")).toEqual({
+      ok: true,
+      command: {
+        type: "check",
+        operation: "del",
+        target: { type: "id", id: "abc" },
+        index: 3
+      }
+    });
+    expect(parseCommand("check clear @selected")).toEqual({
+      ok: true,
+      command: {
+        type: "check",
+        operation: "clear",
+        target: { type: "selected" }
+      }
+    });
+  });
+
+  it("parses bulk command families", () => {
+    expect(parseCommand("bulk done")).toEqual({
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "done",
+        target: { type: "marked" }
+      }
+    });
+    expect(parseCommand("bulk:done id:alpha id:beta")).toEqual({
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "done",
+        target: { type: "ids", ids: ["alpha", "beta"] }
+      }
+    });
+    expect(parseCommand("bulk tag add #home #errands")).toEqual({
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "tag_add",
+        target: { type: "marked" },
+        tags: ["#home", "#errands"]
+      }
+    });
+    expect(parseCommand("bulk:tag:rm id:alpha #home")).toEqual({
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "tag_rm",
+        target: { type: "ids", ids: ["alpha"] },
+        tags: ["#home"]
+      }
+    });
+    expect(parseCommand("bulk due 2026-03-05 at:09:00")).toEqual({
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "due",
+        target: { type: "marked" },
+        clear: false,
+        dueDate: "2026-03-05",
+        atTime: "09:00"
+      }
+    });
+    expect(parseCommand("bulk:due:clear id:alpha id:beta")).toEqual({
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "due",
+        target: { type: "ids", ids: ["alpha", "beta"] },
+        clear: true
+      }
+    });
+    expect(parseCommand("bulk priority clear")).toEqual({
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "priority",
+        target: { type: "marked" },
+        clear: true
+      }
+    });
+    expect(parseCommand("bulk priority #p2")).toEqual({
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "priority",
+        target: { type: "marked" },
+        clear: false,
+        value: "#p2"
+      }
+    });
+    expect(parseCommand("bulk assignee clear")).toEqual({
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "assignee",
+        target: { type: "marked" },
+        clear: true
+      }
+    });
+    expect(parseCommand("bulk project Apollo")).toEqual({
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "project",
+        target: { type: "marked" },
+        clear: false,
+        value: "Apollo"
+      }
+    });
+    expect(parseCommand("bulk stage doing")).toEqual({
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "stage",
+        target: { type: "marked" },
+        stage: "doing"
+      }
+    });
+    expect(parseCommand("bulk delete")).toEqual({
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "delete",
+        target: { type: "marked" }
+      }
     });
   });
 });

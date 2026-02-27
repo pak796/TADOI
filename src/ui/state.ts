@@ -79,6 +79,30 @@ export type UIEditTargetSwitchModal = {
   toTaskTitle: string;
 } & UIModalReturnContext;
 
+export type UIChecklistInputModal = {
+  type: "checklist_input";
+  mode: "add" | "edit";
+  rowId: string;
+  itemId?: string;
+  taskTitle: string;
+  value: string;
+  error?: string;
+} & UIModalReturnContext;
+
+export type UIChecklistDeleteModal = {
+  type: "checklist_delete";
+  rowId: string;
+  itemId: string;
+  itemText: string;
+  taskTitle: string;
+} & UIModalReturnContext;
+
+export type UIBulkDeleteModal = {
+  type: "bulk_delete";
+  taskIds: string[];
+  recurringSeriesCount: number;
+} & UIModalReturnContext;
+
 export type UITaskEditorUnsavedContinuation =
   | "close_editor"
   | "open_list"
@@ -136,6 +160,9 @@ export type UIConfirmModal =
   | UITaskLinkDeleteModal
   | UITaskLinkExternalOpenConfirmModal
   | UIEditTargetSwitchModal
+  | UIChecklistInputModal
+  | UIChecklistDeleteModal
+  | UIBulkDeleteModal
   | UIUnsavedChangesModal
   | UIBackupFinalCheckpointModal
   | UIRecurringDeleteFutureCheckpointModal;

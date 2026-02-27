@@ -11,6 +11,7 @@ export type EditorContentEstimateOptions = {
   hasDueSuggestion?: boolean;
   hasTimeSuggestion?: boolean;
   hasTagSuggestion?: boolean;
+  checklistItemCount?: number;
   repeatMode?: EditorDraft["repeatMode"];
   repeatEndMode?: EditorDraft["repeatEndMode"];
   previewRows?: number;
@@ -39,6 +40,7 @@ type NormalizedEstimateOptions = {
   hasDueSuggestion: boolean;
   hasTimeSuggestion: boolean;
   hasTagSuggestion: boolean;
+  checklistItemCount: number;
   repeatMode: EditorDraft["repeatMode"];
   repeatEndMode: EditorDraft["repeatEndMode"];
   previewRows: number;
@@ -106,6 +108,7 @@ function normalizeEstimateOptions(
     hasDueSuggestion: options.hasDueSuggestion === true,
     hasTimeSuggestion: options.hasTimeSuggestion === true,
     hasTagSuggestion: options.hasTagSuggestion === true,
+    checklistItemCount: Math.max(0, Math.floor(options.checklistItemCount ?? 0)),
     repeatMode: options.repeatMode ?? "off",
     repeatEndMode: options.repeatEndMode ?? "never",
     previewRows: Math.max(1, options.previewRows ?? DEFAULT_PREVIEW_ROWS),
@@ -243,6 +246,12 @@ function buildEditorLineModel(options: NormalizedEstimateOptions): {
   if (options.hasTagSuggestion) {
     line += 2; // margin + suggestion row
   }
+
+  // CHECKLIST
+  line += 1; // section margin
+  line += 1; // label
+  anchors.checklist = line; // first visible checklist row
+  line += Math.max(1, Math.min(6, options.checklistItemCount));
 
   // NOTES
   line += 1; // section margin

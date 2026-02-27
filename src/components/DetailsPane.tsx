@@ -1,4 +1,5 @@
 import { diffLocalDays, formatLocalTimeHHmm, startOfLocalDayMs } from "../domain/dates";
+import { getChecklistProgress, sortChecklistItems } from "../domain/checklist";
 import { getRecurrenceSummary } from "../domain/recurrence/draft";
 import { formatTagForReadOnlyDisplay } from "../domain/priorityTags";
 import { resolveTaskLinkKind } from "../domain/taskLinks";
@@ -47,8 +48,13 @@ type DetailsPaneProps = {
   flashMode: FlashMode;
   selectedLinkId?: string;
   linksFocused: boolean;
+  selectedChecklistItemId?: string;
+  checklistFocused: boolean;
+  checklistWindowStart?: number;
+  checklistWindowSize?: number;
   onSelectLink?: (linkId: string) => void;
   onOpenLink?: (linkId: string) => void;
+  onSelectChecklistItem?: (itemId: string) => void;
 };
 
 export function DetailsPane({
@@ -59,8 +65,13 @@ export function DetailsPane({
   flashMode,
   selectedLinkId,
   linksFocused,
+  selectedChecklistItemId,
+  checklistFocused,
+  checklistWindowStart = 0,
+  checklistWindowSize = 6,
   onSelectLink,
-  onOpenLink
+  onOpenLink,
+  onSelectChecklistItem
 }: DetailsPaneProps) {
   if (!task) {
     return <text style={{ color: theme.muted }}>Select a task to view details.</text>;
@@ -114,6 +125,22 @@ export function DetailsPane({
     task.rowKind === "series_occurrence_virtual" ||
     task.rowKind === "series_occurrence_instance";
   const links = task.links ?? [];
+  const checklistItems = sortChecklistItems(task.checklist ?? []);
+  const checklistProgress = getChecklistProgress(task.checklist);
+  const checklistVisibleRows = Math.max(1, checklistWindowSize);
+  const checklistStart = Math.max(
+    0,
+    Math.min(checklistWindowStart, Math.max(0, checklistItems.length - checklistVisibleRows))
+  );
+  const checklistWindow = checklistItems.slice(
+    checklistStart,
+    checklistStart + checklistVisibleRows
+  );
+  const checklistHiddenAbove = checklistStart;
+  const checklistHiddenBelow = Math.max(
+    0,
+    checklistItems.length - (checklistStart + checklistWindow.length)
+  );
 
   return (
     <box style={{ flexDirection: "column" }}>
@@ -256,6 +283,56 @@ export function DetailsPane({
                 </box>
               );
             })}
+          </box>
+        )}
+      </box>
+      <box style={{ flexDirection: "column", marginTop: 1 }}>
+        <text style={{ color: theme.muted }}>
+          CHECKLIST ({String(checklistProgress.done)}/{String(checklistProgress.total)})
+        </text>
+        {checklistItems.length === 0 ? (
+          <text style={{ color: theme.muted }}>No checklist items</text>
+        ) : (
+          <box style={{ flexDirection: "column", marginTop: 1 }}>
+            {checklistHiddenAbove > 0 ? (
+              <text style={{ color: theme.muted }}>
+                ↑ {String(checklistHiddenAbove)} more
+              </text>
+            ) : null}
+            {checklistWindow.map((item) => {
+              const selected = item.id === selectedChecklistItemId;
+              const rowBackground = selected
+                ? checklistFocused
+                  ? theme.accentBlue
+                  : theme.outline
+                : "transparent";
+              const rowTextColor = selected && checklistFocused ? theme.bg : theme.text;
+              const status = item.isDone ? "[x]" : "[ ]";
+              return (
+                <box
+                  key={item.id}
+                  style={{
+                    flexDirection: "row",
+                    gap: 1,
+                    paddingLeft: 1,
+                    paddingRight: 1,
+                    backgroundColor: rowBackground
+                  }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    onSelectChecklistItem?.(item.id);
+                  }}
+                >
+                  <text style={{ color: rowTextColor }}>{status}</text>
+                  <text style={{ color: rowTextColor }}>{item.text}</text>
+                </box>
+              );
+            })}
+            {checklistHiddenBelow > 0 ? (
+              <text style={{ color: theme.muted }}>
+                ↓ {String(checklistHiddenBelow)} more
+              </text>
+            ) : null}
           </box>
         )}
       </box>

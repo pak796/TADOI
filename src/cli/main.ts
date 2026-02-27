@@ -25,7 +25,29 @@ import { CLI_EXIT_CODE } from "./exitCodes";
 
 export const TITS_CLI_EXIT_CODE = CLI_EXIT_CODE;
 
-type TitsCommandName = "add" | "done" | "due" | "recur" | "help";
+type TitsCommandName =
+  | "add"
+  | "done"
+  | "due"
+  | "recur"
+  | "check"
+  | "bulk"
+  | "check:add"
+  | "check:toggle"
+  | "check:edit"
+  | "check:del"
+  | "check:clear"
+  | "bulk:done"
+  | "bulk:tag:add"
+  | "bulk:tag:rm"
+  | "bulk:due"
+  | "bulk:due:clear"
+  | "bulk:priority"
+  | "bulk:assignee"
+  | "bulk:project"
+  | "bulk:stage"
+  | "bulk:delete"
+  | "help";
 
 type SaveDataOptions = {
   expectedStateRevision?: number;
@@ -75,6 +97,23 @@ function isTitsCommandName(value: string): value is TitsCommandName {
     value === "done" ||
     value === "due" ||
     value === "recur" ||
+    value === "check" ||
+    value === "bulk" ||
+    value === "check:add" ||
+    value === "check:toggle" ||
+    value === "check:edit" ||
+    value === "check:del" ||
+    value === "check:clear" ||
+    value === "bulk:done" ||
+    value === "bulk:tag:add" ||
+    value === "bulk:tag:rm" ||
+    value === "bulk:due" ||
+    value === "bulk:due:clear" ||
+    value === "bulk:priority" ||
+    value === "bulk:assignee" ||
+    value === "bulk:project" ||
+    value === "bulk:stage" ||
+    value === "bulk:delete" ||
     value === "help"
   );
 }
@@ -113,7 +152,13 @@ function resolveWrapperHelpCommand(argv: string[]): Command | null {
     return { type: "help" };
   }
 
-  const topic = first as HelpTopic;
+  const topic = (
+    first.startsWith("check")
+      ? "check"
+      : first.startsWith("bulk")
+        ? "bulk"
+        : first
+  ) as HelpTopic;
   return {
     type: "help",
     topic
@@ -150,16 +195,37 @@ export function resolveTitsCliInput(
 }
 
 function commandRequiresInAppSelection(command: Command): boolean {
-  return (
+  if (
     (command.type === "done" || command.type === "due" || command.type === "recur") &&
     command.target.type === "selected"
-  );
+  ) {
+    return true;
+  }
+  if (command.type === "check" && command.target.type === "selected") {
+    return true;
+  }
+  if (command.type === "bulk" && command.target.type === "marked") {
+    return true;
+  }
+  return false;
 }
 
-function classifyExecutionError(command: Command): number {
-  return command.type === "done" || command.type === "due" || command.type === "recur"
-    ? TITS_CLI_EXIT_CODE.TARGET_RESOLUTION
-    : TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION;
+function classifyExecutionError(command: Command, outputText: string): number {
+  if (
+    outputText.includes("requires an existing selected task or id") ||
+    outputText.includes("target id not found")
+  ) {
+    return TITS_CLI_EXIT_CODE.TARGET_RESOLUTION;
+  }
+  if (
+    command.type === "done" ||
+    command.type === "due" ||
+    command.type === "recur" ||
+    command.type === "check"
+  ) {
+    return TITS_CLI_EXIT_CODE.TARGET_RESOLUTION;
+  }
+  return TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION;
 }
 
 export async function runTitsCommandCliWithDeps(
@@ -195,7 +261,11 @@ export async function runTitsCommandCliWithDeps(
   const command = parsed.command;
 
   if (commandRequiresInAppSelection(command)) {
-    deps.error("Error: @selected is only available in-app. Use id:<uuid>.");
+    if (command.type === "bulk") {
+      deps.error('Error: CLI bulk commands require repeated "id:<task-id>" targets.');
+    } else {
+      deps.error("Error: @selected is only available in-app. Use id:<uuid>.");
+    }
     return { handled: true, exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION };
   }
 
@@ -243,7 +313,10 @@ export async function runTitsCommandCliWithDeps(
 
     if (result.output.kind === "error") {
       deps.error(toSingleLine(result.output.text));
-      return { handled: true, exitCode: classifyExecutionError(command) };
+      return {
+        handled: true,
+        exitCode: classifyExecutionError(command, result.output.text)
+      };
     }
 
     for (const action of result.actions) {

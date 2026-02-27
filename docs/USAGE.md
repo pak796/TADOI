@@ -1,6 +1,6 @@
 # TADOI™ Usage Guide
 
-Verified as of 2026-02-26 (v0.3.8).
+Verified as of 2026-02-27 (v0.3.8).
 Source of truth for key routing: `src/app/keyRouter.ts`.
 
 ## Run
@@ -44,7 +44,7 @@ Esc/Enter contracts and modal semantics are enforced across all modes.
 
 Source-of-truth key tokens (as reported by `src/app/keyRouter.ts`):
 `/` `1` `2` `3` `4` `?` `ArrowDown` `ArrowLeft` `ArrowRight` `ArrowUp`
-`B` `C` `Ctrl+D` `Ctrl+G` `Ctrl+L` `Ctrl+P` `Ctrl+S` `Ctrl+U` `Ctrl+Y` `D` `E` `Enter` `Esc`
+`A` `B` `C` `Ctrl+D` `Ctrl+G` `Ctrl+L` `Ctrl+P` `Ctrl+S` `Ctrl+U` `Ctrl+Y` `D` `E` `Enter` `Esc`
 `G` `L` `O` `PageDown` `PageUp` `S` `Space` `Tab` `[`
 `]` `a` `b` `backspace` `c` `d` `e` `end` `f` `g` `h` `home`
 `i` `j` `k` `l` `m` `n` `o` `p` `q` `r` `s` `t` `u` `v` `x` `y` `z`
@@ -81,6 +81,7 @@ LIST mode actions:
 - `e`: edit selected task
 - `E`: edit recurring series
 - `c` / `C`: duplicate selected task
+- `m`: mark/unmark selected row for bulk commands
 - `l`: add link/attachment
 - `Space`: toggle done/open
 - `x`: skip recurring occurrence
@@ -94,13 +95,24 @@ LIST mode actions:
 - `t`: cycle non-priority tag filter
 - `p`: open boolean tag filter panel
 - `b` / `B`: toggle Dashboard
+- `Esc`: clear active bulk marks (when any marks exist); otherwise normal unwind behavior
 
-Details links focus (Tab from list):
-- `Tab` / `Shift+Tab`: toggle focus list <-> details
+Details pane focus (Tab from list):
+- `Tab` / `Shift+Tab`: toggle focus list <-> details (default subpane: links)
+- While focused in details: `ArrowLeft` / `ArrowRight` switches `LINKS` <-> `CHECKLIST`
 - `ArrowUp` / `ArrowDown` / `j` / `k`: move selection
 - `Enter` / `o`: open selected link/path
 - `c`: copy selected link
 - `l`: add link, `e`: edit link, `d` / `backspace`: remove link
+- `Esc`: return focus to list
+
+Details checklist subpane:
+- `ArrowUp` / `ArrowDown` / `j` / `k`: move checklist selection
+- `Space`: toggle selected checklist item
+- `a` / `A`: add checklist item
+- `e` / `E`: edit selected checklist item
+- `d` / `D` / `backspace`: delete selected checklist item (confirm modal)
+- `Enter`: no-op (does not toggle or unwind)
 - `Esc`: return focus to list
 
 DASHBOARD mode:
@@ -127,6 +139,7 @@ ADD/EDIT mode:
 - `Esc`: cancel
 - `Ctrl+U` / `Ctrl+D` / `page_up` / `page_down`: scroll editor form
 - `ArrowRight`: accept inline suggestions when present
+- Checklist editor field: `j` / `k` / arrows move item, `Space` toggle, `a` add, `e` edit, `d`/`backspace` delete
 
 SEARCH mode:
 - Type to filter
@@ -190,24 +203,55 @@ Supported TITS commands:
 - `due @selected clear` / `due id:<task-id> clear`
 - `recur <target> clear`
 - `recur <target> every:day|week|month [interval:N] [on:mon,wed|1,15]`
-- `help` / `help add|done|due|recur`
+- `check add @selected <text>`
+- `check toggle @selected <index>`
+- `check edit @selected <index> <text>`
+- `check del @selected <index>`
+- `check clear @selected`
+- `bulk done`
+- `bulk tag add #tag...`
+- `bulk tag rm #tag...`
+- `bulk due YYYY-MM-DD [at:HH:MM]`
+- `bulk due clear`
+- `bulk priority <P?>|clear`
+- `bulk assignee <value|clear>`
+- `bulk project <value|clear>`
+- `bulk stage <todo|doing|blocked|done>`
+- `bulk delete` (confirm modal)
+- `help` / `help add|done|due|recur|check|bulk`
 
 CLI TITS notes:
-- Wrapper form: `tadoi add ...`, `tadoi done id:<task-id>`, `tadoi due id:<task-id> ...`, `tadoi recur id:<task-id> ...`
+- Wrapper form: `tadoi add ...`, `tadoi done id:<task-id>`, `tadoi due id:<task-id> ...`, `tadoi recur id:<task-id> ...`, `tadoi check:<op> id:<task-id> ...`, `tadoi bulk:<op> id:<task-id> ...`
 - Raw DSL form: `tadoi 'recur id:<task-id> every:week on:mon'`
 - Wrapper help is non-mutating:
   - `tadoi add --help`
   - `tadoi done --help`
   - `tadoi due --help`
   - `tadoi recur --help`
+  - `tadoi check:add --help`
+  - `tadoi check:toggle --help`
+  - `tadoi check:edit --help`
+  - `tadoi check:del --help`
+  - `tadoi check:clear --help`
+  - `tadoi bulk:done --help`
+  - `tadoi bulk:tag:add --help`
+  - `tadoi bulk:tag:rm --help`
+  - `tadoi bulk:due --help`
+  - `tadoi bulk:due:clear --help`
+  - `tadoi bulk:priority --help`
+  - `tadoi bulk:assignee --help`
+  - `tadoi bulk:project --help`
+  - `tadoi bulk:stage --help`
+  - `tadoi bulk:delete --help`
   - `tadoi help --help`
-- `@selected` is rejected in CLI context (use `id:<task-id>`)
+- `@selected` is rejected in CLI context (use `id:<task-id>`, including `check:*` and `bulk:*`)
 - Exit codes: `0` success, `2` parse/validation, `3` target resolution, `4` lock present, `5` IO error
 
 ## Recurrence Semantics (Behavioral Contract)
 - Complete occurrence: add `EXDATE` + materialize done history instance.
 - Skip occurrence: add `EXDATE` + remove matching override instance.
 - Snooze occurrence: add `EXDATE` + materialize open instance due `+1 day`.
+- Checklist toggle on a virtual occurrence: materialize/update override checklist instance (no `EXDATE`).
 - Delete occurrence modal: `y` this event, `f` this+future, `n` / `Esc` cancel.
 - `E` edits the series definition, not a single occurrence.
 

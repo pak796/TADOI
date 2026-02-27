@@ -1,4 +1,5 @@
 import { normalizeTagIndex, normalizeTags } from "../domain/tagIndex";
+import { normalizeChecklist } from "../domain/checklist";
 import {
   createDefaultEngagementState,
   normalizeEngagementState
@@ -19,7 +20,8 @@ const migrations: Record<number, MigrationFn> = {
   3: migrateV3ToV4,
   4: migrateV4ToV5,
   5: migrateV5ToV6,
-  6: migrateV6ToV7
+  6: migrateV6ToV7,
+  7: migrateV7ToV8
 };
 
 function normalizeStateRevision(value: unknown): number {
@@ -220,6 +222,28 @@ function migrateV6ToV7(state: LoadedData): LoadedData {
 
   return {
     schemaVersion: 7,
+    stateRevision: normalizeStateRevision(state.stateRevision),
+    tasks,
+    tagIndex: normalizeTagIndex(state.tagIndex ?? {}),
+    savedViews: Array.isArray(state.savedViews) ? state.savedViews : [],
+    engagement: normalizeEngagementState(state.engagement)
+  };
+}
+
+function migrateV7ToV8(state: LoadedData): LoadedData {
+  const tasks = state.tasks.map((task) => {
+    if (typeof task !== "object" || task === null) {
+      throw new Error("Invalid task entry during migration 7->8");
+    }
+
+    return {
+      ...task,
+      checklist: normalizeChecklist(task.checklist)
+    };
+  });
+
+  return {
+    schemaVersion: 8,
     stateRevision: normalizeStateRevision(state.stateRevision),
     tasks,
     tagIndex: normalizeTagIndex(state.tagIndex ?? {}),

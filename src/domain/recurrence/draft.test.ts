@@ -14,6 +14,7 @@ function makeDraft(overrides: Partial<EditorDraft> = {}): EditorDraft {
     tagsText: "",
     notes: "",
     links: [],
+    checklist: [],
     repeatMode: "off",
     repeatIntervalText: "1",
     repeatWeekdays: [],

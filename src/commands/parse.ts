@@ -1,4 +1,5 @@
 import type {
+  BulkTarget,
   CommandTarget,
   HelpTopic,
   RecurEvery,
@@ -29,6 +30,48 @@ function parseCommandTarget(token: string): CommandTarget | null {
     return { type: "id", id };
   }
   return null;
+}
+
+function parsePositiveOneBasedIndex(token: string): number | null {
+  if (!/^[1-9]\d*$/.test(token.trim())) {
+    return null;
+  }
+  const parsed = Number.parseInt(token, 10);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    return null;
+  }
+  return parsed;
+}
+
+function parseBulkTarget(tokens: string[]): { target: BulkTarget; rest: string[] } | null {
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  let index = 0;
+  while (index < tokens.length) {
+    const token = tokens[index];
+    if (!token.startsWith("id:")) break;
+    const id = token.slice(3).trim();
+    if (!id) {
+      return null;
+    }
+    if (!seen.has(id)) {
+      seen.add(id);
+      ids.push(id);
+    }
+    index += 1;
+  }
+
+  if (ids.length > 0) {
+    return {
+      target: { type: "ids", ids },
+      rest: tokens.slice(index)
+    };
+  }
+
+  return {
+    target: { type: "marked" },
+    rest: tokens
+  };
 }
 
 function parseAddCommand(tokens: string[], firstTokenQuoted: boolean): ParseCommandResult {
@@ -209,6 +252,326 @@ function parseDueCommand(tokens: string[]): ParseCommandResult {
   };
 }
 
+function parseCheckCommand(
+  operationToken: string | undefined,
+  tokens: string[]
+): ParseCommandResult {
+  const operation = operationToken?.toLowerCase().trim();
+  if (!operation) {
+    return error("Error: check requires operation add|toggle|edit|del|clear");
+  }
+
+  const targetToken = tokens[0];
+  if (!targetToken) {
+    return error('Error: check target must be "@selected" or "id:<task-id>"');
+  }
+  const target = parseCommandTarget(targetToken);
+  if (!target) {
+    return error('Error: check target must be "@selected" or "id:<task-id>"');
+  }
+
+  if (operation === "add") {
+    const text = tokens.slice(1).join(" ").trim();
+    if (!text) {
+      return error("Error: check add requires text");
+    }
+    return {
+      ok: true,
+      command: {
+        type: "check",
+        operation: "add",
+        target,
+        text
+      }
+    };
+  }
+
+  if (operation === "toggle" || operation === "del" || operation === "delete") {
+    if (tokens.length !== 2) {
+      return error(`Error: check ${operation === "toggle" ? "toggle" : "del"} requires index`);
+    }
+    const index = parsePositiveOneBasedIndex(tokens[1] ?? "");
+    if (index === null) {
+      return error("Error: checklist index must be a positive integer");
+    }
+    return {
+      ok: true,
+      command: {
+        type: "check",
+        operation: operation === "toggle" ? "toggle" : "del",
+        target,
+        index
+      }
+    };
+  }
+
+  if (operation === "edit") {
+    const index = parsePositiveOneBasedIndex(tokens[1] ?? "");
+    if (index === null) {
+      return error("Error: checklist index must be a positive integer");
+    }
+    const text = tokens.slice(2).join(" ").trim();
+    if (!text) {
+      return error("Error: check edit requires text");
+    }
+    return {
+      ok: true,
+      command: {
+        type: "check",
+        operation: "edit",
+        target,
+        index,
+        text
+      }
+    };
+  }
+
+  if (operation === "clear") {
+    if (tokens.length !== 1) {
+      return error("Error: check clear takes no extra tokens");
+    }
+    return {
+      ok: true,
+      command: {
+        type: "check",
+        operation: "clear",
+        target
+      }
+    };
+  }
+
+  return error("Error: check requires operation add|toggle|edit|del|clear");
+}
+
+function parseBulkCommand(
+  operationToken: string | undefined,
+  tokens: string[]
+): ParseCommandResult {
+  const operationRaw = operationToken?.toLowerCase().trim();
+  if (!operationRaw) {
+    return error(
+      "Error: bulk requires operation done|tag add|tag rm|due|priority|assignee|project|stage|delete"
+    );
+  }
+
+  let operation = operationRaw;
+  let remainder = [...tokens];
+  let forceDueClear = false;
+  if (operation === "tag") {
+    const subOp = (remainder[0] ?? "").toLowerCase();
+    if (subOp !== "add" && subOp !== "rm") {
+      return error("Error: bulk tag requires add|rm");
+    }
+    operation = `tag:${subOp}`;
+    remainder = remainder.slice(1);
+  }
+  if (operation === "tag:add") {
+    operation = "tag_add";
+  }
+  if (operation === "tag:rm") {
+    operation = "tag_rm";
+  }
+  if (operation === "due:clear") {
+    operation = "due";
+    forceDueClear = true;
+  }
+
+  const parsedTarget = parseBulkTarget(remainder);
+  if (!parsedTarget) {
+    return error('Error: bulk targets must be repeated "id:<task-id>" tokens');
+  }
+  const { target, rest: parsedRest } = parsedTarget;
+  const rest = forceDueClear ? ["clear", ...parsedRest] : parsedRest;
+
+  if (operation === "done") {
+    if (rest.length !== 0) {
+      return error("Error: bulk done takes no extra tokens");
+    }
+    return {
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "done",
+        target
+      }
+    };
+  }
+
+  if (operation === "delete") {
+    if (rest.length !== 0) {
+      return error("Error: bulk delete takes no extra tokens");
+    }
+    return {
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "delete",
+        target
+      }
+    };
+  }
+
+  if (operation === "tag_add" || operation === "tag_rm") {
+    if (rest.length === 0) {
+      return error(`Error: bulk tag ${operation === "tag_add" ? "add" : "rm"} requires tags`);
+    }
+    if (!rest.every((token) => token.startsWith("#"))) {
+      return error('Error: bulk tag tokens must start with "#"');
+    }
+    return {
+      ok: true,
+      command: {
+        type: "bulk",
+        operation,
+        target,
+        tags: rest
+      }
+    };
+  }
+
+  if (operation === "due") {
+    if (rest.length === 0) {
+      return error("Error: bulk due requires date or clear");
+    }
+    if (rest[0] === "clear") {
+      if (rest.length !== 1) {
+        return error("Error: bulk due clear takes no extra tokens");
+      }
+      return {
+        ok: true,
+        command: {
+          type: "bulk",
+          operation: "due",
+          target,
+          clear: true
+        }
+      };
+    }
+    const dueDate = rest[0];
+    if (!parseStrictLocalDate(dueDate)) {
+      return error(`Error: invalid due date "${dueDate}"`);
+    }
+    if (rest.length === 1) {
+      return {
+        ok: true,
+        command: {
+          type: "bulk",
+          operation: "due",
+          target,
+          clear: false,
+          dueDate
+        }
+      };
+    }
+    if (rest.length !== 2 || !rest[1].startsWith("at:")) {
+      return error('Error: bulk due optional token must be "at:HH:MM"');
+    }
+    const atTime = rest[1].slice(3).trim();
+    if (!atTime) {
+      return error("Error: at: value is required");
+    }
+    if (!parseStrictTime(atTime)) {
+      return error(`Error: invalid time "${atTime}"`);
+    }
+    return {
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "due",
+        target,
+        clear: false,
+        dueDate,
+        atTime
+      }
+    };
+  }
+
+  if (operation === "priority") {
+    if (rest.length !== 1) {
+      return error("Error: bulk priority requires one value");
+    }
+    const value = rest[0]?.trim();
+    if (!value) {
+      return error("Error: bulk priority value is required");
+    }
+    if (value.toLowerCase() === "clear") {
+      return {
+        ok: true,
+        command: {
+          type: "bulk",
+          operation: "priority",
+          target,
+          clear: true
+        }
+      };
+    }
+    return {
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "priority",
+        target,
+        clear: false,
+        value
+      }
+    };
+  }
+
+  if (operation === "assignee" || operation === "project") {
+    if (rest.length !== 1) {
+      return error(`Error: bulk ${operation} requires one value`);
+    }
+    const value = rest[0]?.trim();
+    if (!value) {
+      return error(`Error: bulk ${operation} value is required`);
+    }
+    if (value.toLowerCase() === "clear") {
+      return {
+        ok: true,
+        command: {
+          type: "bulk",
+          operation,
+          target,
+          clear: true
+        }
+      };
+    }
+    return {
+      ok: true,
+      command: {
+        type: "bulk",
+        operation,
+        target,
+        clear: false,
+        value
+      }
+    };
+  }
+
+  if (operation === "stage") {
+    if (rest.length !== 1) {
+      return error("Error: bulk stage requires one value");
+    }
+    const stage = rest[0]?.toLowerCase();
+    if (stage !== "todo" && stage !== "doing" && stage !== "blocked" && stage !== "done") {
+      return error('Error: bulk stage must be "todo", "doing", "blocked", or "done"');
+    }
+    return {
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "stage",
+        target,
+        stage
+      }
+    };
+  }
+
+  return error(
+    "Error: bulk requires operation done|tag add|tag rm|due|priority|assignee|project|stage|delete"
+  );
+}
+
 function parseHelpCommand(tokens: string[]): ParseCommandResult {
   if (tokens.length === 0) {
     return {
@@ -221,8 +584,15 @@ function parseHelpCommand(tokens: string[]): ParseCommandResult {
   }
 
   const topic = tokens[0].toLowerCase() as HelpTopic;
-  if (topic !== "add" && topic !== "done" && topic !== "due" && topic !== "recur") {
-    return error('Error: help topics are "add", "done", "due", or "recur"');
+  if (
+    topic !== "add" &&
+    topic !== "done" &&
+    topic !== "due" &&
+    topic !== "recur" &&
+    topic !== "check" &&
+    topic !== "bulk"
+  ) {
+    return error('Error: help topics are "add", "done", "due", "recur", "check", or "bulk"');
   }
 
   return {
@@ -406,6 +776,18 @@ export function parseCommand(input: string): ParseCommandResult {
   }
   if (commandName === "recur") {
     return parseRecurCommand(args);
+  }
+  if (commandName === "check") {
+    return parseCheckCommand(args[0], args.slice(1));
+  }
+  if (commandName.startsWith("check:")) {
+    return parseCheckCommand(commandName.slice("check:".length), args);
+  }
+  if (commandName === "bulk") {
+    return parseBulkCommand(args[0], args.slice(1));
+  }
+  if (commandName.startsWith("bulk:")) {
+    return parseBulkCommand(commandName.slice("bulk:".length), args);
   }
   return error(`Error: unknown command "${commandToken}"`);
 }

@@ -76,7 +76,7 @@ function makeTask(id: string, title: string, nowMs = Date.now()): Task {
 
 function makeInitialData(tasks: Task[] = [makeTask("task-1", "Existing task")]): LoadedData {
   return {
-    schemaVersion: 7,
+    schemaVersion: 8,
     stateRevision: 0,
     tasks: tasks.map(withSchemaV7WorkflowStage),
     tagIndex: {},
@@ -907,6 +907,43 @@ describe("App modal flow integration", () => {
       expect(frame).toContain("KEYS");
       expect(frame).toContain("y: confirm");
       expect(frame).toContain("n: cancel");
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
+  it("checklist input modal mirrors typed text and saves on Enter", async () => {
+    const session = await createSession();
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      await pressKeyAndRender(mockInput, harness, "e");
+      await waitForText(harness, "MODE:  EDIT");
+
+      let checklistFocused = false;
+      for (let index = 0; index < 16; index += 1) {
+        await harness.renderOnce();
+        const focusFrame = harness.captureCharFrame();
+        if (focusFrame.includes("MODE:  EDIT") && focusFrame.includes("FOCUS: CHECKLIST")) {
+          checklistFocused = true;
+          break;
+        }
+        await pressTabAndRender(mockInput, harness);
+      }
+      expect(checklistFocused).toBe(true);
+
+      await pressKeyAndRender(mockInput, harness, "a");
+      await waitForText(harness, "ADD CHECKLIST ITEM");
+
+      await typeTextAndRender(mockInput, harness, "Readable checklist item");
+      let frame = harness.captureCharFrame();
+      expect(frame).toContain("Readable checklist item");
+
+      await pressEnterAndRender(mockInput, harness);
+      await expectTextAbsentForDuration(harness, "ADD CHECKLIST ITEM");
+      frame = await waitForText(harness, "Readable checklist item");
+      expect(frame).toContain("CHECKLIST (0/1)");
     } finally {
       await cleanupSession(session);
     }

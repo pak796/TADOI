@@ -93,13 +93,16 @@ describe("editorPaneLayout", () => {
       repeatMode: "weekly"
     });
     const tags = getEditorFocusAnchorLine("tags", { repeatMode: "weekly" });
+    const checklist = getEditorFocusAnchorLine("checklist", { repeatMode: "weekly" });
     const notes = getEditorFocusAnchorLine("notes", { repeatMode: "weekly" });
 
     expect(title).toBeLessThan(due);
     expect(due).toBeLessThan(repeatMode);
     expect(repeatMode).toBeLessThan(repeatWeekdays);
     expect(repeatWeekdays).toBeLessThan(tags);
+    expect(tags).toBeLessThan(checklist);
     expect(tags).toBeLessThan(notes);
+    expect(checklist).toBeLessThan(notes);
   });
 
   it("anchors hidden recurrence focuses to repeat mode or nearest visible control", () => {

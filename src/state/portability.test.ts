@@ -97,6 +97,48 @@ describe("mergeTasksByIdNewestUpdatedAt", () => {
 
     expect(result.merged[0]?.tags).toEqual(["#p1", "work", "home"]);
   });
+
+  it("treats checklist differences as task updates", () => {
+    const checklistIso = new Date(2026, 1, 10, 9, 0, 0, 0).toISOString();
+    const local = [
+      {
+        ...BASE_LOCAL_TASK,
+        updatedAt: 100,
+        checklist: [
+          {
+            id: "cl-1",
+            text: "Item",
+            isDone: false,
+            createdAt: checklistIso,
+            updatedAt: checklistIso,
+            sort: 0
+          }
+        ]
+      }
+    ];
+    const incoming = [
+      {
+        ...BASE_INCOMING_TASK,
+        updatedAt: 100,
+        checklist: [
+          {
+            id: "cl-1",
+            text: "Item",
+            isDone: true,
+            createdAt: checklistIso,
+            updatedAt: checklistIso,
+            completedAt: checklistIso,
+            sort: 0
+          }
+        ]
+      }
+    ];
+
+    const result = mergeTasksByIdNewestUpdatedAt(local, incoming);
+    expect(result.merged[0]?.checklist?.[0]?.isDone).toBe(true);
+    expect(result.stats.updated).toBe(1);
+    expect(result.stats.unchanged).toBe(0);
+  });
 });
 
 describe("recomputeTagIndex", () => {

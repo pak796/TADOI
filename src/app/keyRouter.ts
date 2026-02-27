@@ -22,6 +22,7 @@ export type KeyRouterContext = {
   hasDueSuggestion: boolean;
   timeAutocompleteStep: "hour" | "minute" | "none" | "invalid";
   hasPendingGPrefix: boolean;
+  bulkActive: boolean;
   viewsOverlayOpen: boolean;
   saveViewPromptOpen: boolean;
   allowEmptyNuxRecoveryImport: boolean;
@@ -75,8 +76,12 @@ export type KeyRouterAction =
   | {
       scope: "ui";
       type: "SET_LIST_FOCUS";
-      focus: typeof FocusTarget.TASK_LIST | typeof FocusTarget.DETAILS_LINKS;
+      focus:
+        | typeof FocusTarget.TASK_LIST
+        | typeof FocusTarget.DETAILS_LINKS
+        | typeof FocusTarget.DETAILS_CHECKLIST;
     }
+  | { scope: "ui"; type: "CLEAR_BULK_MARKS" }
   | { scope: "ui"; type: "SET_G_PREFIX"; active: boolean }
   | { scope: "ui"; type: "TOGGLE_VIEWS_OVERLAY" }
   | { scope: "ui"; type: "CLOSE_VIEWS_OVERLAY" }
@@ -126,8 +131,14 @@ export type KeyRouterAction =
   | { scope: "domain"; type: "SKIP_SELECTED_OCCURRENCE" }
   | { scope: "domain"; type: "SNOOZE_SELECTED_OCCURRENCE" }
   | { scope: "domain"; type: "MOVE_LINK_SELECTION"; delta: 1 | -1 }
+  | { scope: "domain"; type: "MOVE_CHECKLIST_SELECTION"; delta: 1 | -1 }
   | { scope: "domain"; type: "OPEN_SELECTED_LINK" }
   | { scope: "domain"; type: "COPY_SELECTED_LINK" }
+  | { scope: "domain"; type: "TOGGLE_SELECTED_CHECKLIST_ITEM" }
+  | { scope: "domain"; type: "OPEN_ADD_CHECKLIST_ITEM_MODAL" }
+  | { scope: "domain"; type: "OPEN_EDIT_CHECKLIST_ITEM_MODAL" }
+  | { scope: "domain"; type: "OPEN_DELETE_CHECKLIST_ITEM_MODAL" }
+  | { scope: "domain"; type: "TOGGLE_BULK_MARK" }
   | { scope: "domain"; type: "OPEN_ADD_TASK_LINK_MODAL" }
   | { scope: "domain"; type: "OPEN_EDIT_TASK_LINK_MODAL" }
   | { scope: "domain"; type: "OPEN_DELETE_TASK_LINK_MODAL" }
@@ -159,6 +170,9 @@ export type KeyRouterAction =
   | { scope: "ui"; type: "MODAL_CANCEL_RECURRING_DELETE_FUTURE_CHECKPOINT" }
   | { scope: "domain"; type: "MODAL_CONFIRM_DELETE" }
   | { scope: "domain"; type: "MODAL_CONFIRM_DELETE_FUTURE" }
+  | { scope: "domain"; type: "MODAL_CONFIRM_CHECKLIST_DELETE" }
+  | { scope: "domain"; type: "MODAL_SUBMIT_CHECKLIST_INPUT" }
+  | { scope: "domain"; type: "MODAL_CONFIRM_BULK_DELETE" }
   | { scope: "domain"; type: "MODAL_CONFIRM_TASK_LINK_DELETE" }
   | { scope: "domain"; type: "MODAL_CONFIRM_TASK_LINK_OPEN_EXTERNAL" }
   | { scope: "domain"; type: "MODAL_EDIT_SWITCH_SAVE" }
@@ -512,6 +526,9 @@ function listModeActions(
   if (name === "k" || name === "up") {
     return [{ scope: "domain", type: "MOVE_SELECTION", delta: -1 }];
   }
+  if (!ctrl && !shift && (name === "m" || sequence === "m")) {
+    return [{ scope: "domain", type: "TOGGLE_BULK_MARK" }];
+  }
   if (name === "space") return [{ scope: "domain", type: "TOGGLE_SELECTED" }];
   if (name === "v") return [{ scope: "ui", type: "TOGGLE_VIEWS_OVERLAY" }];
   if (ctrl && name === "s") return [{ scope: "ui", type: "OPEN_SAVE_VIEW_PROMPT" }];
@@ -587,6 +604,7 @@ function resolveEscapeActions(
   const {
     uiState,
     hasPendingGPrefix,
+    bulkActive,
     saveViewPromptOpen,
     viewsOverlayOpen,
     helpPage
@@ -615,13 +633,19 @@ function resolveEscapeActions(
   if (mode === Mode.BACKUP_CENTER) {
     return [{ scope: "ui", type: "BACKUP_BACK" }];
   }
+  if (mode === Mode.LIST && bulkActive) {
+    return [{ scope: "ui", type: "CLEAR_BULK_MARKS" }];
+  }
   if (mode === Mode.LIST && saveViewPromptOpen) {
     return [{ scope: "ui", type: "CANCEL_SAVE_VIEW_PROMPT" }];
   }
   if (mode === Mode.LIST && viewsOverlayOpen) {
     return [{ scope: "ui", type: "CLOSE_VIEWS_OVERLAY" }];
   }
-  if (mode === Mode.LIST && focus === FocusTarget.DETAILS_LINKS) {
+  if (
+    mode === Mode.LIST &&
+    (focus === FocusTarget.DETAILS_LINKS || focus === FocusTarget.DETAILS_CHECKLIST)
+  ) {
     return [{ scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.TASK_LIST }];
   }
   return [{ scope: "ui", type: "UNWIND" }];
@@ -730,6 +754,34 @@ function resolveModalModeActions(
         previousMode: uiState.modal.previousMode,
         previousFocus: uiState.modal.previousFocus
       } }];
+    }
+    if (lowerName === "n" || lowerSequence === "n") {
+      return [{ scope: "ui", type: "UNWIND" }];
+    }
+    return [];
+  }
+  if (uiState.modal?.type === "checklist_delete") {
+    const lowerName = name.toLowerCase();
+    const lowerSequence = sequence.toLowerCase();
+    if (lowerName === "y" || lowerSequence === "y") {
+      return [{ scope: "domain", type: "MODAL_CONFIRM_CHECKLIST_DELETE" }];
+    }
+    if (lowerName === "n" || lowerSequence === "n") {
+      return [{ scope: "ui", type: "UNWIND" }];
+    }
+    return [];
+  }
+  if (uiState.modal?.type === "checklist_input") {
+    if (name === "return" || name === "enter") {
+      return [{ scope: "domain", type: "MODAL_SUBMIT_CHECKLIST_INPUT" }];
+    }
+    return [];
+  }
+  if (uiState.modal?.type === "bulk_delete") {
+    const lowerName = name.toLowerCase();
+    const lowerSequence = sequence.toLowerCase();
+    if (lowerName === "y" || lowerSequence === "y") {
+      return [{ scope: "domain", type: "MODAL_CONFIRM_BULK_DELETE" }];
     }
     if (lowerName === "n" || lowerSequence === "n") {
       return [{ scope: "ui", type: "UNWIND" }];
@@ -1131,7 +1183,7 @@ function resolveEditorModeActions(
   key: KeyInput,
   context: KeyRouterContext
 ): KeyRouterAction[] | null {
-  const { name, ctrl, shift } = key;
+  const { name, sequence, ctrl, shift } = key;
   const {
     uiState,
     hasTitleInlineSuggestion = false,
@@ -1169,6 +1221,32 @@ function resolveEditorModeActions(
       direction: shift ? -1 : 1
     });
     return actions;
+  }
+  if (focus === FocusTarget.EDITOR_CHECKLIST) {
+    const lowerName = name.toLowerCase();
+    const lowerSequence = sequence.toLowerCase();
+    if (lowerName === "j" || name === "down") {
+      return [{ scope: "domain", type: "MOVE_CHECKLIST_SELECTION", delta: 1 }];
+    }
+    if (lowerName === "k" || name === "up") {
+      return [{ scope: "domain", type: "MOVE_CHECKLIST_SELECTION", delta: -1 }];
+    }
+    if (name === "space") {
+      return [{ scope: "domain", type: "TOGGLE_SELECTED_CHECKLIST_ITEM" }];
+    }
+    if (lowerName === "a" || lowerSequence === "a") {
+      return [{ scope: "domain", type: "OPEN_ADD_CHECKLIST_ITEM_MODAL" }];
+    }
+    if (lowerName === "e" || lowerSequence === "e") {
+      return [{ scope: "domain", type: "OPEN_EDIT_CHECKLIST_ITEM_MODAL" }];
+    }
+    if (lowerName === "d" || lowerSequence === "d" || name === "backspace") {
+      return [{ scope: "domain", type: "OPEN_DELETE_CHECKLIST_ITEM_MODAL" }];
+    }
+    if (name === "return" || name === "enter") {
+      return [];
+    }
+    return [];
   }
   if (name === "right") {
     if (focus === FocusTarget.EDITOR_TITLE && hasTitleInlineSuggestion) {
@@ -1259,6 +1337,30 @@ function resolveListModeActions(
     ];
   }
 
+  if (
+    focus === FocusTarget.DETAILS_LINKS ||
+    focus === FocusTarget.DETAILS_CHECKLIST
+  ) {
+    if (name === "left") {
+      return [
+        {
+          scope: "ui",
+          type: "SET_LIST_FOCUS",
+          focus: FocusTarget.DETAILS_LINKS
+        }
+      ];
+    }
+    if (name === "right") {
+      return [
+        {
+          scope: "ui",
+          type: "SET_LIST_FOCUS",
+          focus: FocusTarget.DETAILS_CHECKLIST
+        }
+      ];
+    }
+  }
+
   if (focus === FocusTarget.DETAILS_LINKS) {
     if (name === "j" || name === "down") {
       return [{ scope: "domain", type: "MOVE_LINK_SELECTION", delta: 1 }];
@@ -1293,6 +1395,37 @@ function resolveListModeActions(
       name === "backspace"
     ) {
       return [{ scope: "domain", type: "OPEN_DELETE_TASK_LINK_MODAL" }];
+    }
+    return [];
+  }
+
+  if (focus === FocusTarget.DETAILS_CHECKLIST) {
+    if (name === "j" || name === "down") {
+      return [{ scope: "domain", type: "MOVE_CHECKLIST_SELECTION", delta: 1 }];
+    }
+    if (name === "k" || name === "up") {
+      return [{ scope: "domain", type: "MOVE_CHECKLIST_SELECTION", delta: -1 }];
+    }
+    if (name === "space") {
+      return [{ scope: "domain", type: "TOGGLE_SELECTED_CHECKLIST_ITEM" }];
+    }
+    if (name === "a" || name === "A" || sequence === "a" || sequence === "A") {
+      return [{ scope: "domain", type: "OPEN_ADD_CHECKLIST_ITEM_MODAL" }];
+    }
+    if (name === "e" || name === "E" || sequence === "e" || sequence === "E") {
+      return [{ scope: "domain", type: "OPEN_EDIT_CHECKLIST_ITEM_MODAL" }];
+    }
+    if (
+      name === "d" ||
+      name === "D" ||
+      sequence === "d" ||
+      sequence === "D" ||
+      name === "backspace"
+    ) {
+      return [{ scope: "domain", type: "OPEN_DELETE_CHECKLIST_ITEM_MODAL" }];
+    }
+    if (name === "return" || name === "enter") {
+      return [];
     }
     return [];
   }

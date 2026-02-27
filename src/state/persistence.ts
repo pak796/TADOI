@@ -151,7 +151,7 @@ export function resolveDataPath(options: ResolveDataPathOptions = {}): string {
 }
 
 const DEFAULT_FS_OPS: PersistenceFsOps = fs;
-export const CURRENT_SCHEMA_VERSION = 7;
+export const CURRENT_SCHEMA_VERSION = 8;
 const PRIVATE_DIR_MODE = 0o700;
 const PRIVATE_FILE_MODE = 0o600;
 let saveTimer: ReturnType<typeof setTimeout> | null = null;

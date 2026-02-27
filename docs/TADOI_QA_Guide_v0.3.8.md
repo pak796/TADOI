@@ -1,6 +1,6 @@
 # TADOI™ QA Guide (v0.3.8)
 
-Validation date: **2026-02-26**
+Validation date: **2026-02-27**
 Runtime baseline: **v0.3.8**
 Package baseline: **0.3.8**
 
@@ -16,6 +16,8 @@ In scope:
 - Dashboard parity with list data.
 - Left-rail menu and logo-mode surface behavior.
 - Recurrence creation, occurrence actions, and delete variants.
+- Checklist/subtask behavior (details focus, recurrence override materialization, series reconciliation).
+- Bulk mark + bulk command application safety.
 - Calendar ICS export/import CLI workflows plus in-app Backup Center calendar import/export flows.
 - Backup/import/export safety flows.
 - Theme/settings persistence, including `custom1` and CRT FX behavior.
@@ -60,7 +62,7 @@ Clear or rotate the override file between major suites to avoid cross-suite cont
 ## 5) Expedited Smoke Runbook
 
 Run these first for a fast confidence pass:
-- `QA-001`, `QA-002`, `QA-005`, `QA-008`, `QA-013`, `QA-019`, `QA-023`, `QA-029`, `QA-032`, `QA-036`, `QA-039`, `QA-042`, `QA-052`, `QA-053`, `QA-065`, `QA-066`, `QA-068`.
+- `QA-001`, `QA-002`, `QA-005`, `QA-008`, `QA-013`, `QA-019`, `QA-023`, `QA-029`, `QA-032`, `QA-036`, `QA-039`, `QA-042`, `QA-052`, `QA-053`, `QA-065`, `QA-066`, `QA-068`, `QA-083`, `QA-085`.
 
 Smoke pass criteria:
 1. All smoke cases pass on all three platforms.
@@ -439,6 +441,33 @@ Smoke pass criteria:
   - Steps: complete once with TITS `done` and once with CLI `done id:<task-id>`.
   - Expected: each `open -> done` transition materializes next open occurrence once.
 
+### O) Checklists + Bulk Ops (Schema 8 / v0.1)
+
+- [ ] `QA-083 [SMOKE]` Details subpane routing and checklist key isolation.
+  - Preconditions: selected task has at least two links and checklist items.
+  - Steps: `Tab` into details; verify default links focus; press `ArrowRight` to checklist; run `j/k`, `Space`, `a`, `e`, `d`, `Enter`, `Esc`.
+  - Expected: left/right swaps links/checklist focus, checklist keys only affect checklist, `Enter` is no-op in checklist, `Esc` returns to list focus in one step.
+- [ ] `QA-084` List row and details rendering for checklist progress.
+  - Preconditions: one task with checklist and one without checklist.
+  - Steps: toggle checklist items and observe list/details.
+  - Expected: list shows `CL x/y` only when checklist length > 0; details section shows `CHECKLIST (x/y)` with consistent counts.
+- [ ] `QA-085 [SMOKE]` Recurrence checklist toggle on virtual occurrence materializes override without EXDATE.
+  - Preconditions: recurring series with checklist, future virtual occurrence visible.
+  - Steps: focus checklist subpane on virtual occurrence row and toggle one item.
+  - Expected: occurrence becomes materialized override with checklist state; series `EXDATE` is unchanged.
+- [ ] `QA-086` Series checklist edit reconciles existing overrides by id.
+  - Preconditions: recurring series with at least one override and differing checklist structure.
+  - Steps: use `E` to edit series checklist template (add/remove/reorder), save, then inspect override checklist.
+  - Expected: override retains matching ids and override-only items, and receives any missing series items as `isDone=false`.
+- [ ] `QA-087` LIST bulk marking + `Esc` clear precedence.
+  - Preconditions: list has multiple regular rows plus at least one pure virtual occurrence row.
+  - Steps: mark rows with `m`; attempt mark on pure virtual row; press `Esc` when marks active and again when marks are clear.
+  - Expected: regular rows toggle mark with `[*]`; pure virtual mark is blocked with banner; first `Esc` clears marks and is consumed, second `Esc` follows normal unwind behavior.
+- [ ] `QA-088` TITS/CLI checklist + bulk command parity and guardrails.
+  - Preconditions: marked rows exist; app closed for CLI checks.
+  - Steps: run in-app `check add/toggle/edit/del/clear @selected ...` and `bulk done/tag/due/priority/assignee/project/stage/delete`; run CLI `check:* id:<id> ...` and `bulk:* id:<id> ...`.
+  - Expected: in-app `bulk` requires marked set and fails when empty; CLI rejects `@selected`; bulk operations apply atomically with deterministic ordering; `bulk delete` blocks recurring occurrence targets requiring this-vs-future choice.
+
 ## 7) Automated Coverage Mapping
 
 | Manual area | Primary automated references |
@@ -450,7 +479,8 @@ Smoke pass criteria:
 | Dashboard KPIs, drill-through, and layout fallback | `src/domain/dashboard.test.ts`, `src/domain/dashboardKpis.test.ts`, `src/components/DashboardPane.test.ts`, `src/domain/query.test.ts`, `src/domain/savedViews.test.ts`, `src/app/dashboardTagFilterContract.test.ts`, `src/app/keyRouter.test.ts`, `src/app/App.modalFlow.integration.test.ts` |
 | Backup/import/export + portability | `src/state/backupCenterFlow.test.ts`, `src/state/backupService.test.ts`, `src/state/portability.test.ts` |
 | Calendar ICS export/import (CLI + Backup Center + services) | `src/cli/calendarCommands.test.ts`, `src/commands/calendarImport.test.ts`, `src/cli.test.ts`, `src/state/backupCenterFlow.test.ts`, `src/state/backupCenterCalendarController.test.ts`, `src/calendar/icsWriter.test.ts`, `src/calendar/icsParser.test.ts`, `src/calendar/importMapper.test.ts`, `src/calendar/calendarMapper.test.ts`, `src/calendar/range.test.ts`, `src/calendar/rrule.test.ts`, `src/state/calendarExportService.test.ts`, `src/state/calendarImportService.test.ts`, `src/state/calendarRoundTrip.test.ts` |
-| TITS command layer (M1-M3) | `src/commands/parse.test.ts`, `src/commands/execute.test.ts`, `src/commands/help.test.ts`, `src/cli/main.test.ts`, `src/app/keyRouter.test.ts`, `src/state/store.test.ts` |
+| TITS command layer (M1-M3 + check/bulk) | `src/commands/parse.test.ts`, `src/commands/execute.test.ts`, `src/commands/help.test.ts`, `src/cli/main.test.ts`, `src/app/keyRouter.test.ts`, `src/app/App.tits.integration.test.ts`, `src/state/store.test.ts` |
+| Checklist migration + persistence | `src/state/migrations.test.ts`, `src/state/validation.test.ts`, `src/state/store.test.ts`, `src/state/portability.test.ts`, `src/state/persistence.test.ts` |
 | Notifications + engagement toasts | `src/notifications/notificationManager.test.ts`, `src/notifications/overdueTaskActions.test.ts`, `src/notifications/notifiers/inAppModalNotifier.test.ts`, `src/notifications/notifiers/terminalBellNotifier.test.ts`, `src/state/store.test.ts` |
 | Settings/theme/custom1/CRT FX | `src/settings/settings.test.ts`, `src/theme/themes.test.ts`, `src/theme/resolveThemeTokens.test.ts`, `src/theme/custom1ColorUtils.test.ts`, `src/components/CrtFxLite.test.ts` |
 | Brand/logo + left rail | `src/brand/brand.test.ts`, `src/components/LeftRail.tsx`, `src/app/keyRouter.test.ts` |
@@ -459,8 +489,8 @@ Smoke pass criteria:
 
 ## 8) Known Issues in Current Workspace
 
-No known automated failures in targeted TITS validation (`2026-02-20`):
-- `bun test src/commands/parse.test.ts src/commands/execute.test.ts src/cli/main.test.ts src/app/keyRouter.test.ts src/state/store.test.ts`: 63/63 passing.
+No known automated failures in targeted checklist/bulk validation (`2026-02-27`):
+- `bun test src/commands/parse.test.ts src/commands/execute.test.ts src/cli/main.test.ts src/app/keyRouter.test.ts src/app/App.tits.integration.test.ts src/state/migrations.test.ts src/state/portability.test.ts`: passing.
 - `bun run typecheck`: passing.
 
 Residual risk still covered by manual QA:
@@ -492,6 +522,6 @@ Defect report format:
 
 Release candidate is manual-QA ready when:
 1. All smoke cases pass on macOS, Windows, Linux.
-2. Full case set (`QA-001` to `QA-072`) is executed at least once per target platform.
+2. Full case set (`QA-001` to `QA-088`) is executed at least once per target platform.
 3. No open `P0` or `P1` defects remain.
 4. Known automated failures are either resolved or explicitly accepted with owner and follow-up.

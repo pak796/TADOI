@@ -31,7 +31,7 @@ function makeTask(id: string, title: string, nowMs = Date.now()): Task {
 
 function makeInitialData(tasks: Task[]): LoadedData {
   return {
-    schemaVersion: 7,
+    schemaVersion: 8,
     stateRevision: 0,
     tasks,
     tagIndex: {},
@@ -40,13 +40,26 @@ function makeInitialData(tasks: Task[]): LoadedData {
   };
 }
 
-async function createSession(initialData: LoadedData): Promise<AppSession> {
+function toLocalFloatingIso(date: Date): string {
+  const yyyy = String(date.getFullYear()).padStart(4, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  const hh = String(date.getHours()).padStart(2, "0");
+  const min = String(date.getMinutes()).padStart(2, "0");
+  const ss = String(date.getSeconds()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}T${hh}:${min}:${ss}`;
+}
+
+async function createSession(
+  initialData: LoadedData,
+  options: { skipInitialSave?: boolean } = {}
+): Promise<AppSession> {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-app-tits-flow-"));
   const settingsPath = path.join(tempDir, "settings.json");
   const harness = await testRender(
     React.createElement(App, {
       initialData,
-      skipInitialSave: true,
+      skipInitialSave: options.skipInitialSave ?? true,
       showLogo: false,
       settingsPath
     }),
@@ -95,6 +108,19 @@ async function waitForTextAbsent(
   return waitForFrame(harness, (frame) => !frame.includes(text), timeoutMs);
 }
 
+async function waitForFile(pathname: string, timeoutMs = 4000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() <= deadline) {
+    try {
+      await fs.stat(pathname);
+      return;
+    } catch {
+      await Bun.sleep(20);
+    }
+  }
+  throw new Error(`Timed out waiting for file: ${pathname}`);
+}
+
 async function pressKeyAndRender(
   mockInput: MockInput,
   harness: RenderHarness,
@@ -111,6 +137,27 @@ async function pressEscapeAndRender(
   harness: RenderHarness
 ): Promise<string> {
   mockInput.pressEscape();
+  await Bun.sleep(10);
+  await harness.renderOnce();
+  return harness.captureCharFrame();
+}
+
+async function pressTabAndRender(
+  mockInput: MockInput,
+  harness: RenderHarness
+): Promise<string> {
+  mockInput.pressTab();
+  await Bun.sleep(10);
+  await harness.renderOnce();
+  return harness.captureCharFrame();
+}
+
+async function pressArrowAndRender(
+  mockInput: MockInput,
+  harness: RenderHarness,
+  direction: "up" | "down" | "left" | "right"
+): Promise<string> {
+  mockInput.pressArrow(direction);
   await Bun.sleep(10);
   await harness.renderOnce();
   return harness.captureCharFrame();
@@ -182,6 +229,79 @@ describe("App TITS integration", () => {
       expect(frame).toContain("Task One");
     } finally {
       await cleanupSession(session);
+    }
+  });
+
+  it("toggles checklist on a virtual occurrence by materializing an override without EXDATE", async () => {
+    const now = Date.now();
+    const start = new Date(now);
+    start.setDate(start.getDate() - 1);
+    start.setHours(9, 0, 0, 0);
+    const createdIso = new Date(now).toISOString();
+    const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-app-checklist-virtual-"));
+    const dataPath = path.join(dataDir, "tadoi_data.json");
+    const originalDataPath = process.env.TADOI_DATA_PATH;
+    process.env.TADOI_DATA_PATH = dataPath;
+
+    const session = await createSession(
+      makeInitialData([
+        {
+          id: "series-1",
+          title: "Daily Series",
+          status: "open",
+          workflowStage: "todo",
+          createdAt: now,
+          updatedAt: now,
+          tags: [],
+          recurrence: {
+            dtstart: toLocalFloatingIso(start),
+            rrule: "FREQ=DAILY;INTERVAL=1",
+            series_id: "series:1"
+          },
+          checklist: [
+            {
+              id: "item-1",
+              text: "Check me",
+              isDone: false,
+              createdAt: createdIso,
+              updatedAt: createdIso,
+              sort: 0
+            }
+          ]
+        }
+      ]),
+      { skipInitialSave: false }
+    );
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      await waitForText(harness, "DAILY SERIES");
+      await pressTabAndRender(mockInput, harness);
+      await pressArrowAndRender(mockInput, harness, "right");
+      await waitForText(harness, "CHECKLIST");
+      await pressKeyAndRender(mockInput, harness, " ");
+      await waitForText(harness, "CL 1/1");
+
+      await waitForFile(dataPath, 4000);
+      await Bun.sleep(1400);
+      const raw = await fs.readFile(dataPath, "utf8");
+      const savedJson = JSON.parse(raw) as LoadedData;
+      const instance = savedJson.tasks.find((task) => task.instance_of?.series_id === "series:1");
+      const seriesTask = savedJson.tasks.find((task) => task.id === "series-1");
+      expect(instance).toBeDefined();
+      expect(instance?.checklist?.[0]?.isDone).toBe(true);
+      expect((seriesTask?.recurrence?.exdates ?? []).includes(instance!.instance_of!.occurrence)).toBe(
+        false
+      );
+    } finally {
+      await cleanupSession(session);
+      await fs.rm(dataDir, { recursive: true, force: true });
+      if (originalDataPath === undefined) {
+        delete process.env.TADOI_DATA_PATH;
+      } else {
+        process.env.TADOI_DATA_PATH = originalDataPath;
+      }
     }
   });
 });

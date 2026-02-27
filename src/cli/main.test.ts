@@ -12,7 +12,7 @@ import {
 
 function createLoadedData(overrides: Partial<LoadedData> = {}): LoadedData {
   return {
-    schemaVersion: 7,
+    schemaVersion: 8,
     stateRevision: 0,
     tasks: [],
     tagIndex: {},
@@ -106,6 +106,17 @@ describe("resolveTitsCliInput", () => {
       dsl: "add --help"
     });
   });
+
+  it("resolves checklist and bulk wrapper commands", () => {
+    expect(resolveTitsCliInput(["check:add", "id:task-1", "Draft", "brief"])).toEqual({
+      mode: "subcommand",
+      dsl: 'check:add id:task-1 Draft brief'
+    });
+    expect(resolveTitsCliInput(["bulk:tag:add", "id:a", "id:b", "#home"])).toEqual({
+      mode: "subcommand",
+      dsl: "bulk:tag:add id:a id:b #home"
+    });
+  });
 });
 
 describe("runTitsCommandCliWithDeps", () => {
@@ -155,6 +166,18 @@ describe("runTitsCommandCliWithDeps", () => {
     ]);
   });
 
+  it("rejects bulk commands without explicit ids in CLI context", async () => {
+    const { deps, errors } = createDeps();
+    const result = await runTitsCommandCliWithDeps(["bulk", "done"], deps);
+    expect(result).toEqual({
+      handled: true,
+      exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION
+    });
+    expect(errors).toEqual([
+      'Error: CLI bulk commands require repeated "id:<task-id>" targets.'
+    ]);
+  });
+
   it("maps done/due target resolution failures to exit code 3", async () => {
     const { deps, errors } = createDeps();
     const result = await runTitsCommandCliWithDeps(["done", "id:not-a-real-id"], deps);
@@ -195,7 +218,9 @@ describe("runTitsCommandCliWithDeps", () => {
     const result = await runTitsCommandCliWithDeps(["help"], deps);
 
     expect(result).toEqual({ handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS });
-    expect(logs).toEqual(["Commands: add, done, due, recur, help. Try: help recur"]);
+    expect(logs).toEqual([
+      "Commands: add, done, due, recur, check, bulk, help. Try: help check"
+    ]);
     expect(saved).toHaveLength(0);
   });
 

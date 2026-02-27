@@ -62,6 +62,16 @@ export type TaskExternalMetadata = {
   calendar?: TaskExternalCalendarMetadata;
 };
 
+export type ChecklistItem = {
+  id: string;
+  text: string;
+  isDone: boolean;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+  sort: number;
+};
+
 export type Task = {
   id: string;
   title: string;
@@ -77,6 +87,7 @@ export type Task = {
   recurrence?: TaskRecurrence;
   instance_of?: TaskInstanceOf;
   external?: TaskExternalMetadata;
+  checklist?: ChecklistItem[];
   assignee?: string;
   project?: string;
   workflowStage?: WorkflowStage;
@@ -156,6 +167,7 @@ export type EditorDraft = {
   tagsText: string;
   notes: string;
   links: TaskLink[];
+  checklist: ChecklistItem[];
   repeatMode: "off" | "daily" | "weekly" | "monthly" | "custom";
   repeatIntervalText: string;
   repeatWeekdays: string[]; // MO,TU,WE,TH,FR,SA,SU
@@ -186,6 +198,7 @@ export type EditorFocus =
   | "repeat_count"
   | "repeat_custom"
   | "tags"
+  | "checklist"
   | "notes"
   | "save"
   | "cancel";

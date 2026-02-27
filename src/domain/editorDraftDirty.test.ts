@@ -19,6 +19,7 @@ function makeDraft(overrides: Partial<EditorDraft> = {}): EditorDraft {
         source: "manual"
       }
     ],
+    checklist: [],
     repeatMode: "weekly",
     repeatIntervalText: "2",
     repeatWeekdays: ["MO", "WE"],

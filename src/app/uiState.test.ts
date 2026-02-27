@@ -21,6 +21,7 @@ function makeDraft(patch: Partial<EditorDraft> = {}): EditorDraft {
     tagsText: "",
     notes: "",
     links: [],
+    checklist: [],
     repeatMode: "off",
     repeatIntervalText: "1",
     repeatWeekdays: [],
@@ -59,6 +60,8 @@ describe("uiState editor focus mapping", () => {
     expect(toFocusTarget("time")).toBe(FocusTarget.EDITOR_DUE_TIME);
     expect(toFocusTarget("repeat_mode")).toBe(FocusTarget.EDITOR_REPEAT_MODE);
     expect(toEditorFocus(FocusTarget.EDITOR_REPEAT_CUSTOM)).toBe("repeat_custom");
+    expect(toFocusTarget("checklist")).toBe(FocusTarget.EDITOR_CHECKLIST);
+    expect(toEditorFocus(FocusTarget.EDITOR_CHECKLIST)).toBe("checklist");
   });
 
   it("cycles editor focus with tab order", () => {
@@ -78,6 +81,7 @@ describe("uiState editor focus mapping", () => {
       FocusTarget.EDITOR_DUE_TIME,
       FocusTarget.EDITOR_REPEAT_MODE,
       FocusTarget.EDITOR_TAGS,
+      FocusTarget.EDITOR_CHECKLIST,
       FocusTarget.EDITOR_NOTES,
       FocusTarget.EDITOR_SAVE,
       FocusTarget.EDITOR_CANCEL
@@ -94,6 +98,7 @@ describe("uiState editor focus mapping", () => {
       FocusTarget.EDITOR_REPEAT_INTERVAL,
       FocusTarget.EDITOR_REPEAT_END_MODE,
       FocusTarget.EDITOR_TAGS,
+      FocusTarget.EDITOR_CHECKLIST,
       FocusTarget.EDITOR_NOTES,
       FocusTarget.EDITOR_SAVE,
       FocusTarget.EDITOR_CANCEL
@@ -112,6 +117,7 @@ describe("uiState editor focus mapping", () => {
       FocusTarget.EDITOR_REPEAT_END_MODE,
       FocusTarget.EDITOR_REPEAT_UNTIL,
       FocusTarget.EDITOR_TAGS,
+      FocusTarget.EDITOR_CHECKLIST,
       FocusTarget.EDITOR_NOTES,
       FocusTarget.EDITOR_SAVE,
       FocusTarget.EDITOR_CANCEL
@@ -130,6 +136,7 @@ describe("uiState editor focus mapping", () => {
       FocusTarget.EDITOR_REPEAT_END_MODE,
       FocusTarget.EDITOR_REPEAT_COUNT,
       FocusTarget.EDITOR_TAGS,
+      FocusTarget.EDITOR_CHECKLIST,
       FocusTarget.EDITOR_NOTES,
       FocusTarget.EDITOR_SAVE,
       FocusTarget.EDITOR_CANCEL
@@ -145,6 +152,7 @@ describe("uiState editor focus mapping", () => {
       FocusTarget.EDITOR_REPEAT_MODE,
       FocusTarget.EDITOR_REPEAT_CUSTOM,
       FocusTarget.EDITOR_TAGS,
+      FocusTarget.EDITOR_CHECKLIST,
       FocusTarget.EDITOR_NOTES,
       FocusTarget.EDITOR_SAVE,
       FocusTarget.EDITOR_CANCEL

@@ -1,4 +1,5 @@
 import { diffLocalDays, startOfLocalDayMs } from "../domain/dates";
+import { getChecklistProgress } from "../domain/checklist";
 import { formatTagForReadOnlyDisplay } from "../domain/priorityTags";
 import { VisibleTaskRow } from "../domain/taskRows";
 import { Mode } from "../domain/models";
@@ -26,6 +27,7 @@ export function resolveTaskRowClickIntent(input: {
 
 type TaskListProps = {
   tasks: VisibleTaskRow[];
+  markedTaskIds?: Set<string>;
   selectedId?: string;
   now: number;
   pulseOn: boolean;
@@ -62,6 +64,7 @@ export function resolveTaskListWheelSelectionIndex(input: {
 
 export function TaskList({
   tasks,
+  markedTaskIds,
   selectedId,
   now,
   pulseOn,
@@ -105,6 +108,7 @@ export function TaskList({
             <TaskRow
               key={task.id}
               task={task}
+              marked={markedTaskIds?.has(task.id) ?? false}
               selected={task.id === selectedId}
               now={now}
               pulseOn={pulseOn}
@@ -141,6 +145,7 @@ export function TaskList({
 
 type TaskRowProps = {
   task: VisibleTaskRow;
+  marked: boolean;
   selected: boolean;
   now: number;
   pulseOn: boolean;
@@ -151,6 +156,7 @@ type TaskRowProps = {
 
 function TaskRow({
   task,
+  marked,
   selected,
   now,
   pulseOn,
@@ -194,6 +200,11 @@ function TaskRow({
         : `DUE ${formatDate(task.dueAt)}`
     : "NO DUE DATE";
   const dueInLabel = task.status === "open" && task.dueAt ? getDueInLabel(task, now) : "";
+  const checklistProgress = getChecklistProgress(task.checklist);
+  const checklistLabel =
+    checklistProgress.total > 0
+      ? `CL ${String(checklistProgress.done)}/${String(checklistProgress.total)}`
+      : null;
 
   const baseOpenColor = isOverdue
     ? theme.warn
@@ -272,6 +283,9 @@ function TaskRow({
             {selected ? "▶" : " "}
           </text>
         </box>
+        <box style={{ width: 4, justifyContent: "center" }}>
+          <text style={{ color: selectedSecondaryForeground }}>{marked ? "[*]" : "   "}</text>
+        </box>
         <box style={{ flexDirection: "column", flexGrow: 1 }}>
           <box style={{ flexDirection: "row", gap: 1 }}>
             <text style={{ color: statusColor }}>{statusIcon}</text>
@@ -292,25 +306,32 @@ function TaskRow({
                 <text style={{ color: baseOpenColor }}>{dueLabel}</text>
               )}
             </box>
-            {closedText ? (
-              <text style={{ color: isDone ? theme.bg : selected ? selectedForeground : theme.ok }}>
-                DONE {closedText}
-              </text>
-            ) : isOverdue && dueInLabel ? (
-              <box style={{ backgroundColor: dueHighlightBackground }}>
-                <text style={{ color: dueHighlightText }}>{dueInLabel}</text>
-              </box>
-            ) : dueInDays !== null && dueInLabel ? (
-              isDueToday ? (
-                <box style={{ backgroundColor: theme.dueSoon }}>
-                  <text style={{ color: dueTodayPulseOn ? theme.bg : theme.text }}>
-                    {dueInLabel}
-                  </text>
+            <box style={{ flexDirection: "row", gap: 1 }}>
+              {checklistLabel ? (
+                <text style={{ color: selected ? selectedForeground : theme.muted }}>
+                  {checklistLabel}
+                </text>
+              ) : null}
+              {closedText ? (
+                <text style={{ color: isDone ? theme.bg : selected ? selectedForeground : theme.ok }}>
+                  DONE {closedText}
+                </text>
+              ) : isOverdue && dueInLabel ? (
+                <box style={{ backgroundColor: dueHighlightBackground }}>
+                  <text style={{ color: dueHighlightText }}>{dueInLabel}</text>
                 </box>
-              ) : (
-                <text style={{ color: dueInLabelColor }}>{dueInLabel}</text>
-              )
-            ) : null}
+              ) : dueInDays !== null && dueInLabel ? (
+                isDueToday ? (
+                  <box style={{ backgroundColor: theme.dueSoon }}>
+                    <text style={{ color: dueTodayPulseOn ? theme.bg : theme.text }}>
+                      {dueInLabel}
+                    </text>
+                  </box>
+                ) : (
+                  <text style={{ color: dueInLabelColor }}>{dueInLabel}</text>
+                )
+              ) : null}
+            </box>
           </box>
           <box style={{ flexDirection: "row", gap: 1 }}>
             {task.tags.length > 0 ? (

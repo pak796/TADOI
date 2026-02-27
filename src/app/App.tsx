@@ -55,6 +55,7 @@ import {
   deleteRecurringOccurrence,
   deleteRecurringOccurrenceAndFuture
 } from "../domain/recurrence/delete";
+import { materializeChecklistOccurrenceOverride } from "../domain/recurrence/checklistOccurrence";
 import {
   findNextMatchingIndex,
   isTaskDueToday,
@@ -63,6 +64,15 @@ import {
 import { clampScrollOffset, ensureSelectedVisible } from "../domain/scroll";
 import { computeOpenPriorityStats, computeTopTagStats } from "../domain/tagStats";
 import { completeTaskWithRecurrence } from "../domain/recurrence";
+import {
+  addChecklistItem,
+  checklistItemAtDisplayIndex,
+  clearChecklist,
+  deleteChecklistItem,
+  editChecklistItem,
+  sortChecklistItems,
+  toggleChecklistItem
+} from "../domain/checklist";
 import {
   addTaskLink,
   deleteTaskLink,
@@ -331,6 +341,7 @@ const HELP_FOOTER_ROWS = 2;
 const HELP_PANEL_CHROME_ROWS = HELP_HEADER_ROWS + HELP_DIVIDER_ROWS + HELP_FOOTER_ROWS;
 const HELP_SECTION_SCROLL_PADDING = 1;
 const HELP_NAV_ITEM_ROW_COUNT = 2;
+const EDITOR_CHECKLIST_MODAL_ROW_ID = "__editor_checklist__";
 const HELP_SETTINGS_STATUS_ROW_COUNT = 11;
 const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings =
   getDefaultSettings().notifications;
@@ -1520,6 +1531,14 @@ export function App({
   const [dashboardFocusGroup, setDashboardFocusGroup] =
     useState<DashboardFocusGroup>("top_tags");
   const [selectedLinkId, setSelectedLinkId] = useState<string | undefined>(undefined);
+  const [selectedChecklistItemId, setSelectedChecklistItemId] = useState<
+    string | undefined
+  >(undefined);
+  const [selectedEditorChecklistItemId, setSelectedEditorChecklistItemId] = useState<
+    string | undefined
+  >(undefined);
+  const [checklistScrollOffset, setChecklistScrollOffset] = useState(0);
+  const [bulkMarkedTaskIds, setBulkMarkedTaskIds] = useState<string[]>([]);
   const [tagFilterDraft, setTagFilterDraft] = useState<TagFilter | undefined>(undefined);
   const [tagFilterInput, setTagFilterInput] = useState("");
   const tagFilterInputRef = useRef("");
@@ -1652,6 +1671,11 @@ export function App({
   );
   const selectedTask =
     visibleTaskRows.find((task) => task.id === state.selectedId) ?? visibleTaskRows[0];
+  const bulkActive = bulkMarkedTaskIds.length > 0;
+  const bulkMarkedTaskIdSet = React.useMemo(
+    () => new Set(bulkMarkedTaskIds),
+    [bulkMarkedTaskIds]
+  );
   const activeHelpPage = helpNavStack[helpNavStack.length - 1] ?? "help";
   const resolvedKeymapAliases = React.useMemo(
     () => resolveKeymapAliases(settingsState.keymapAliases),
@@ -1937,6 +1961,22 @@ export function App({
   const selectedTaskLinks = selectedPersistedTask?.links ?? [];
   const selectedTaskLinkIdsKey = selectedTaskLinks.map((link) => link.id).join("|");
   const selectedTaskLink = selectedTaskLinks.find((link) => link.id === selectedLinkId);
+  const selectedChecklistTask =
+    selectedTask?.rowKind === "series_occurrence_virtual"
+      ? selectedTask
+      : selectedPersistedTask;
+  const selectedChecklistItems = sortChecklistItems(selectedChecklistTask?.checklist ?? []);
+  const selectedChecklistItemIdsKey = selectedChecklistItems
+    .map((item) => item.id)
+    .join("|");
+  const selectedChecklistItem =
+    selectedChecklistItems.find((item) => item.id === selectedChecklistItemId) ??
+    selectedChecklistItems[0];
+  const editorChecklistItems = sortChecklistItems(state.editor?.checklist ?? []);
+  const editorChecklistItemIdsKey = editorChecklistItems.map((item) => item.id).join("|");
+  const selectedEditorChecklistItem =
+    editorChecklistItems.find((item) => item.id === selectedEditorChecklistItemId) ??
+    editorChecklistItems[0];
   const retroFxMode = settingsState.retroFxMode;
   const isRetroFxActive = retroFxMode !== "off";
   const bottomBarHeight = 3;
@@ -1978,6 +2018,10 @@ export function App({
   const { contentHeight: editorContentVisibleLines } =
     getEditorViewportHeights(editorPaneHeightLines);
   const editorPageStep = Math.max(1, editorContentVisibleLines - 1);
+  const checklistViewportRows = Math.max(3, Math.min(8, editorPaneHeightLines - 18));
+  const selectedChecklistIndex = selectedChecklistItem
+    ? selectedChecklistItems.findIndex((item) => item.id === selectedChecklistItem.id)
+    : -1;
   const dashboardPaneWidth = Math.max(20, terminalWidth - layout.railWidth - 4);
   const dashboardPaneHeight = Math.max(
     8,
@@ -3021,6 +3065,96 @@ export function App({
   }, [selectedLinkId, selectedTaskLinkIdsKey, selectedPersistedTask?.id]);
 
   useEffect(() => {
+    if (selectedChecklistItems.length === 0) {
+      if (selectedChecklistItemId !== undefined) {
+        setSelectedChecklistItemId(undefined);
+      }
+      return;
+    }
+
+    if (
+      selectedChecklistItemId &&
+      selectedChecklistItems.some((item) => item.id === selectedChecklistItemId)
+    ) {
+      return;
+    }
+
+    setSelectedChecklistItemId(selectedChecklistItems[0]?.id);
+  }, [
+    selectedChecklistItemId,
+    selectedChecklistItemIdsKey,
+    selectedChecklistTask?.id
+  ]);
+
+  useEffect(() => {
+    if (!isEditorMode(uiState.mode) || !state.editor) {
+      if (selectedEditorChecklistItemId !== undefined) {
+        setSelectedEditorChecklistItemId(undefined);
+      }
+      return;
+    }
+
+    if (editorChecklistItems.length === 0) {
+      if (selectedEditorChecklistItemId !== undefined) {
+        setSelectedEditorChecklistItemId(undefined);
+      }
+      return;
+    }
+
+    if (
+      selectedEditorChecklistItemId &&
+      editorChecklistItems.some((item) => item.id === selectedEditorChecklistItemId)
+    ) {
+      return;
+    }
+
+    setSelectedEditorChecklistItemId(editorChecklistItems[0]?.id);
+  }, [
+    editorChecklistItemIdsKey,
+    selectedEditorChecklistItemId,
+    state.editor,
+    uiState.mode
+  ]);
+
+  useEffect(() => {
+    if (selectedChecklistItems.length === 0) {
+      if (checklistScrollOffset !== 0) {
+        setChecklistScrollOffset(0);
+      }
+      return;
+    }
+    const safeSelectedIndex = Math.max(0, selectedChecklistIndex);
+    const clampedOffset = clampScrollOffset(
+      checklistScrollOffset,
+      checklistViewportRows,
+      selectedChecklistItems.length
+    );
+    const nextOffset = ensureSelectedVisible({
+      selectedIndex: safeSelectedIndex,
+      scrollOffset: clampedOffset,
+      visibleRows: checklistViewportRows,
+      itemCount: selectedChecklistItems.length
+    });
+    if (nextOffset !== checklistScrollOffset) {
+      setChecklistScrollOffset(nextOffset);
+    }
+  }, [
+    checklistScrollOffset,
+    checklistViewportRows,
+    selectedChecklistIndex,
+    selectedChecklistItems.length
+  ]);
+
+  useEffect(() => {
+    if (!bulkActive) return;
+    const visibleIds = new Set(visibleTaskRows.map((row) => row.id));
+    setBulkMarkedTaskIds((previous) => {
+      const next = previous.filter((id) => visibleIds.has(id));
+      return next.length === previous.length ? previous : next;
+    });
+  }, [bulkActive, visibleTaskRows]);
+
+  useEffect(() => {
     if (dashboardTopTags.length === 0) {
       if (dashboardTagSelection !== 0) {
         setDashboardTagSelection(0);
@@ -3809,12 +3943,22 @@ export function App({
       "OPEN_EDIT_TASK_LINK_MODAL",
       "OPEN_DELETE_TASK_LINK_MODAL"
     ]);
+    const detailsChecklistFocusOnly = new Set<KeyRouterAction["type"]>([
+      "MOVE_CHECKLIST_SELECTION",
+      "TOGGLE_SELECTED_CHECKLIST_ITEM",
+      "OPEN_ADD_CHECKLIST_ITEM_MODAL",
+      "OPEN_EDIT_CHECKLIST_ITEM_MODAL",
+      "OPEN_DELETE_CHECKLIST_ITEM_MODAL"
+    ]);
     const modalOnly = new Set<KeyRouterAction["type"]>([
       "MODAL_CONFIRM_TASK_LINK_DELETE",
       "MODAL_CONFIRM_TASK_LINK_OPEN_EXTERNAL",
       "MODAL_SUBMIT_TASK_LINK_FORM",
       "MODAL_MOVE_TASK_LINK_FORM_FOCUS",
-      "MODAL_CYCLE_TASK_LINK_FORM_TYPE"
+      "MODAL_CYCLE_TASK_LINK_FORM_TYPE",
+      "MODAL_CONFIRM_CHECKLIST_DELETE",
+      "MODAL_SUBMIT_CHECKLIST_INPUT",
+      "MODAL_CONFIRM_BULK_DELETE"
     ]);
 
     if (
@@ -3823,6 +3967,20 @@ export function App({
     ) {
       throw new Error(
         `Link action ${action.type} requires LIST + DETAILS_LINKS (got ${uiState.mode}/${uiState.focus})`
+      );
+    }
+
+    const inListChecklistFocus =
+      uiState.mode === Mode.LIST && uiState.focus === FocusTarget.DETAILS_CHECKLIST;
+    const inEditorChecklistFocus =
+      isEditorMode(uiState.mode) && uiState.focus === FocusTarget.EDITOR_CHECKLIST;
+    if (
+      detailsChecklistFocusOnly.has(action.type) &&
+      !inListChecklistFocus &&
+      !inEditorChecklistFocus
+    ) {
+      throw new Error(
+        `Checklist action ${action.type} requires LIST+DETAILS_CHECKLIST or EDITOR_CHECKLIST (got ${uiState.mode}/${uiState.focus})`
       );
     }
 
@@ -3836,9 +3994,18 @@ export function App({
       );
     }
 
+    if (
+      action.type === "TOGGLE_BULK_MARK" &&
+      (uiState.mode !== Mode.LIST || uiState.focus !== FocusTarget.TASK_LIST)
+    ) {
+      throw new Error(
+        `Bulk action ${action.type} requires LIST + TASK_LIST (got ${uiState.mode}/${uiState.focus})`
+      );
+    }
+
     if (modalOnly.has(action.type) && uiState.mode !== Mode.MODAL_CONFIRM) {
       throw new Error(
-        `Link modal action ${action.type} requires MODAL_CONFIRM mode (got ${uiState.mode})`
+        `Modal action ${action.type} requires MODAL_CONFIRM mode (got ${uiState.mode})`
       );
     }
   }
@@ -3966,6 +4133,9 @@ export function App({
         clearPendingGPrefix();
         uiDispatch({ type: "setFocus", focus: action.focus });
         return;
+      case "CLEAR_BULK_MARKS":
+        clearBulkMarks();
+        return;
       case "SET_G_PREFIX":
         if (action.active) {
           armPendingGPrefix();
@@ -4056,6 +4226,9 @@ export function App({
       case "TOGGLE_SELECTED":
         toggleSelected();
         return;
+      case "TOGGLE_BULK_MARK":
+        toggleBulkMark();
+        return;
       case "OPEN_ADD":
         openAdd();
         return;
@@ -4077,11 +4250,26 @@ export function App({
       case "MOVE_LINK_SELECTION":
         moveLinkSelection(action.delta);
         return;
+      case "MOVE_CHECKLIST_SELECTION":
+        moveChecklistSelection(action.delta);
+        return;
       case "OPEN_SELECTED_LINK":
         openSelectedTaskLink();
         return;
       case "COPY_SELECTED_LINK":
         copySelectedTaskLink();
+        return;
+      case "TOGGLE_SELECTED_CHECKLIST_ITEM":
+        toggleSelectedChecklistItem();
+        return;
+      case "OPEN_ADD_CHECKLIST_ITEM_MODAL":
+        openAddChecklistItemModal();
+        return;
+      case "OPEN_EDIT_CHECKLIST_ITEM_MODAL":
+        openEditChecklistItemModal();
+        return;
+      case "OPEN_DELETE_CHECKLIST_ITEM_MODAL":
+        openDeleteChecklistItemModal();
         return;
       case "OPEN_ADD_TASK_LINK_MODAL":
         openAddTaskLinkModal();
@@ -4130,6 +4318,15 @@ export function App({
         return;
       case "MODAL_CONFIRM_DELETE_FUTURE":
         handleDeleteSelectedAndFuture();
+        return;
+      case "MODAL_CONFIRM_CHECKLIST_DELETE":
+        handleDeleteChecklistItemFromModal();
+        return;
+      case "MODAL_SUBMIT_CHECKLIST_INPUT":
+        submitChecklistInputModal();
+        return;
+      case "MODAL_CONFIRM_BULK_DELETE":
+        handleConfirmBulkDeleteFromModal();
         return;
       case "MODAL_CONFIRM_TASK_LINK_DELETE":
         handleDeleteTaskLinkFromModal();
@@ -4282,11 +4479,136 @@ export function App({
 
     const nowMs = Date.now();
     const visibleTasks = getVisibleTasks(state, nowMs);
+
+    if (
+      parsed.command.type === "check" &&
+      parsed.command.target.type === "selected" &&
+      selectedTask &&
+      (selectedTask.rowKind === "series_occurrence_virtual" ||
+        selectedTask.rowKind === "series_occurrence_instance")
+    ) {
+      const nowIso = new Date(nowMs).toISOString();
+      let outcome:
+        | { ok: true; checklist: NonNullable<Task["checklist"]>; selectedTaskId: string }
+        | { ok: false; error: string };
+      let outputText = "";
+
+      if (parsed.command.operation === "add") {
+        outcome = mutateChecklistForRow(selectedTask.id, (checklist) =>
+          addChecklistItem(checklist, parsed.command.text, nowIso)
+        );
+        outputText = `Checklist added: ${selectedTask.title}`;
+      } else if (parsed.command.operation === "clear") {
+        outcome = mutateChecklistForRow(selectedTask.id, () => clearChecklist());
+        outputText = `Checklist cleared: ${selectedTask.title}`;
+      } else {
+        const item = checklistItemAtDisplayIndex(
+          selectedChecklistTask?.checklist,
+          parsed.command.index
+        );
+        if (!item) {
+          setCommandOutput({ kind: "error", text: "Error: checklist item not found" });
+          return;
+        }
+        if (parsed.command.operation === "toggle") {
+          outcome = mutateChecklistForRow(selectedTask.id, (checklist) =>
+            toggleChecklistItem(checklist, item.id, nowIso)
+          );
+          outputText = `Checklist toggled: ${selectedTask.title} (#${String(parsed.command.index)})`;
+        } else if (parsed.command.operation === "edit") {
+          outcome = mutateChecklistForRow(selectedTask.id, (checklist) =>
+            editChecklistItem(checklist, item.id, parsed.command.text, nowIso)
+          );
+          outputText = `Checklist edited: ${selectedTask.title} (#${String(parsed.command.index)})`;
+        } else {
+          outcome = mutateChecklistForRow(selectedTask.id, (checklist) =>
+            deleteChecklistItem(checklist, item.id)
+          );
+          outputText = `Checklist deleted: ${selectedTask.title} (#${String(parsed.command.index)})`;
+        }
+      }
+
+      if (!outcome.ok) {
+        setCommandOutput({ kind: "error", text: outcome.error });
+        return;
+      }
+
+      if (parsed.command.operation === "add") {
+        const nextItems = sortChecklistItems(outcome.checklist);
+        setSelectedChecklistItemId(nextItems[nextItems.length - 1]?.id);
+      } else if (parsed.command.operation === "clear") {
+        setSelectedChecklistItemId(undefined);
+      } else if (parsed.command.operation === "del") {
+        const nextItems = sortChecklistItems(outcome.checklist);
+        setSelectedChecklistItemId(nextItems[0]?.id);
+      } else {
+        const item = checklistItemAtDisplayIndex(
+          selectedChecklistTask?.checklist,
+          parsed.command.index
+        );
+        setSelectedChecklistItemId(item?.id);
+      }
+
+      setCommandOutput({ kind: "ok", text: outputText });
+      setCommandHistory((previous) => [...previous, raw]);
+      setCommandHistoryIndex(null);
+      setCommandTextValue("");
+      return;
+    }
+
+    if (
+      parsed.command.type === "bulk" &&
+      parsed.command.operation === "delete" &&
+      parsed.command.target.type === "marked"
+    ) {
+      const marked = Array.from(new Set(bulkMarkedTaskIds)).sort((left, right) =>
+        left.localeCompare(right)
+      );
+      if (marked.length === 0) {
+        setCommandOutput({ kind: "error", text: "No tasks marked. Press 'm' to mark tasks first." });
+        return;
+      }
+      const byId = new Map(state.tasks.map((task) => [task.id, task]));
+      const targetTasks: Task[] = [];
+      for (const id of marked) {
+        const task = byId.get(id);
+        if (!task) {
+          setCommandOutput({ kind: "error", text: `Error: bulk target id not found (${id})` });
+          return;
+        }
+        targetTasks.push(task);
+      }
+      if (targetTasks.some((task) => task.instance_of)) {
+        setCommandOutput({
+          kind: "error",
+          text:
+            "Bulk delete cannot delete recurring occurrences. Unmark occurrences or delete individually (d)."
+        });
+        return;
+      }
+      openModalWithContext({
+        type: "bulk_delete",
+        taskIds: marked,
+        recurringSeriesCount: targetTasks.filter((task) => Boolean(task.recurrence)).length,
+        previousMode: Mode.LIST,
+        previousFocus: uiState.focus
+      });
+      setCommandOutput({
+        kind: "ok",
+        text: `Bulk delete pending confirmation (${String(marked.length)} tasks)`
+      });
+      setCommandHistory((previous) => [...previous, raw]);
+      setCommandHistoryIndex(null);
+      setCommandTextValue("");
+      return;
+    }
+
     const result = executeCommand(parsed.command, {
       now: nowMs,
       state,
       visibleTasks,
-      selectedTaskId: state.selectedId ?? visibleTasks[0]?.id
+      selectedTaskId: state.selectedId ?? visibleTasks[0]?.id,
+      bulkMarkedTaskIds
     });
     for (const action of result.actions) {
       dispatch(action);
@@ -4446,6 +4768,7 @@ export function App({
         hasDueSuggestion: Boolean(dueSuggestion),
         timeAutocompleteStep,
         hasPendingGPrefix: pendingGPrefix,
+        bulkActive,
         viewsOverlayOpen,
         saveViewPromptOpen,
         allowEmptyNuxRecoveryImport: showCorruptionRecoveryImportCta,
@@ -5498,6 +5821,450 @@ export function App({
     const safeIndex = currentIndex === -1 ? 0 : currentIndex;
     const nextIndex = (safeIndex + delta + selectedTaskLinks.length) % selectedTaskLinks.length;
     setSelectedLinkId(selectedTaskLinks[nextIndex]?.id);
+  }
+
+  function findVisibleRowById(rowId: string | undefined): VisibleTaskRow | undefined {
+    if (!rowId) return undefined;
+    if (selectedTask?.id === rowId) return selectedTask;
+    return visibleTaskRows.find((row) => row.id === rowId);
+  }
+
+  function mutateChecklistForRow(
+    rowId: string,
+    mutate: (checklist: Task["checklist"]) => { ok: true; checklist: NonNullable<Task["checklist"]> } | { ok: false; error: string }
+  ): { ok: true; checklist: NonNullable<Task["checklist"]>; selectedTaskId: string } | { ok: false; error: string } {
+    const row = findVisibleRowById(rowId);
+    if (!row) {
+      return { ok: false, error: "Checklist target is not visible." };
+    }
+
+    const nowMs = Date.now();
+    const nowIso = new Date(nowMs).toISOString();
+
+    if (row.rowKind === "series_occurrence_virtual") {
+      const context = resolveOccurrenceContextForRow(row);
+      if (!context) {
+        return { ok: false, error: "Unable to resolve recurring occurrence." };
+      }
+
+      const source = context.instanceTask ?? context.seriesTask;
+      const mutation = mutate(source.checklist);
+      if (!mutation.ok) {
+        return { ok: false, error: mutation.error };
+      }
+      const materialized = materializeChecklistOccurrenceOverride({
+        tasks: state.tasks,
+        context: {
+          seriesTask: context.seriesTask,
+          seriesId: context.seriesId,
+          occurrenceIso: context.occurrenceIso,
+          instanceTask: context.instanceTask
+        },
+        checklist: mutation.checklist,
+        nowMs
+      });
+      if (!materialized.ok) {
+        return { ok: false, error: materialized.error };
+      }
+      dispatch({ type: "setTasks", tasks: materialized.tasks });
+      dispatch({ type: "setSelected", id: materialized.instance.id });
+      return {
+        ok: true,
+        checklist: mutation.checklist,
+        selectedTaskId: materialized.instance.id
+      };
+    }
+
+    const persisted = resolvePersistedTaskForRow(row);
+    if (!persisted) {
+      return { ok: false, error: "Checklist target could not be resolved." };
+    }
+    const mutation = mutate(persisted.checklist);
+    if (!mutation.ok) {
+      return { ok: false, error: mutation.error };
+    }
+    const updatedTask: Task = {
+      ...persisted,
+      checklist: mutation.checklist,
+      updatedAt: nowMs
+    };
+    dispatch({
+      type: "setTasks",
+      tasks: state.tasks.map((task) => (task.id === updatedTask.id ? updatedTask : task))
+    });
+    dispatch({ type: "setSelected", id: updatedTask.id });
+    return {
+      ok: true,
+      checklist: mutation.checklist,
+      selectedTaskId: updatedTask.id
+    };
+  }
+
+  function moveChecklistSelection(delta: 1 | -1) {
+    if (isEditorMode(uiState.mode) && uiState.focus === FocusTarget.EDITOR_CHECKLIST) {
+      if (editorChecklistItems.length === 0) return;
+      const currentIndex = editorChecklistItems.findIndex(
+        (item) => item.id === selectedEditorChecklistItemId
+      );
+      const safeIndex = currentIndex === -1 ? 0 : currentIndex;
+      const nextIndex =
+        (safeIndex + delta + editorChecklistItems.length) % editorChecklistItems.length;
+      setSelectedEditorChecklistItemId(editorChecklistItems[nextIndex]?.id);
+      return;
+    }
+
+    if (selectedChecklistItems.length === 0) return;
+    const currentIndex = selectedChecklistItems.findIndex(
+      (item) => item.id === selectedChecklistItemId
+    );
+    const safeIndex = currentIndex === -1 ? 0 : currentIndex;
+    const nextIndex =
+      (safeIndex + delta + selectedChecklistItems.length) % selectedChecklistItems.length;
+    setSelectedChecklistItemId(selectedChecklistItems[nextIndex]?.id);
+  }
+
+  function toggleSelectedChecklistItem() {
+    if (isEditorMode(uiState.mode) && uiState.focus === FocusTarget.EDITOR_CHECKLIST) {
+      if (!state.editor) {
+        showShortNavigationBanner("Editor draft unavailable");
+        return;
+      }
+      const checklistItem = selectedEditorChecklistItem ?? editorChecklistItems[0];
+      if (!checklistItem) {
+        showShortNavigationBanner("No checklist item selected");
+        return;
+      }
+      const nowIso = new Date().toISOString();
+      const outcome = toggleChecklistItem(state.editor.checklist, checklistItem.id, nowIso);
+      if (!outcome.ok) {
+        showShortNavigationBanner(outcome.error);
+        return;
+      }
+      updateEditorDraft({ checklist: outcome.checklist });
+      setSelectedEditorChecklistItemId(checklistItem.id);
+      return;
+    }
+
+    if (!selectedTask) {
+      showShortNavigationBanner("No task selected");
+      return;
+    }
+    const checklistItem = selectedChecklistItem ?? selectedChecklistItems[0];
+    if (!checklistItem) {
+      showShortNavigationBanner("No checklist item selected");
+      return;
+    }
+    const nowIso = new Date().toISOString();
+    const outcome = mutateChecklistForRow(selectedTask.id, (checklist) =>
+      toggleChecklistItem(checklist, checklistItem.id, nowIso)
+    );
+    if (!outcome.ok) {
+      showShortNavigationBanner(outcome.error);
+      return;
+    }
+    setSelectedChecklistItemId(checklistItem.id);
+  }
+
+  function openAddChecklistItemModal() {
+    if (isEditorMode(uiState.mode) && uiState.focus === FocusTarget.EDITOR_CHECKLIST) {
+      const taskTitle = state.editor?.title?.trim() || (uiState.mode === Mode.ADD ? "New task" : "Task");
+      openModalWithContext({
+        type: "checklist_input",
+        mode: "add",
+        rowId: EDITOR_CHECKLIST_MODAL_ROW_ID,
+        taskTitle,
+        value: "",
+        previousMode: uiState.mode,
+        previousFocus: uiState.focus
+      });
+      return;
+    }
+
+    if (uiState.mode !== Mode.LIST || !selectedTask) {
+      showShortNavigationBanner("No task selected");
+      return;
+    }
+    openModalWithContext({
+      type: "checklist_input",
+      mode: "add",
+      rowId: selectedTask.id,
+      taskTitle: selectedTask.title,
+      value: "",
+      previousMode: Mode.LIST,
+      previousFocus: uiState.focus
+    });
+  }
+
+  function openEditChecklistItemModal() {
+    if (isEditorMode(uiState.mode) && uiState.focus === FocusTarget.EDITOR_CHECKLIST) {
+      if (!state.editor) {
+        showShortNavigationBanner("Editor draft unavailable");
+        return;
+      }
+      const checklistItem = selectedEditorChecklistItem ?? editorChecklistItems[0];
+      if (!checklistItem) {
+        showShortNavigationBanner("No checklist item selected");
+        return;
+      }
+      const taskTitle = state.editor.title.trim() || (uiState.mode === Mode.ADD ? "New task" : "Task");
+      openModalWithContext({
+        type: "checklist_input",
+        mode: "edit",
+        rowId: EDITOR_CHECKLIST_MODAL_ROW_ID,
+        itemId: checklistItem.id,
+        taskTitle,
+        value: checklistItem.text,
+        previousMode: uiState.mode,
+        previousFocus: uiState.focus
+      });
+      return;
+    }
+
+    if (uiState.mode !== Mode.LIST || !selectedTask) {
+      showShortNavigationBanner("No task selected");
+      return;
+    }
+    const checklistItem = selectedChecklistItem ?? selectedChecklistItems[0];
+    if (!checklistItem) {
+      showShortNavigationBanner("No checklist item selected");
+      return;
+    }
+    openModalWithContext({
+      type: "checklist_input",
+      mode: "edit",
+      rowId: selectedTask.id,
+      itemId: checklistItem.id,
+      taskTitle: selectedTask.title,
+      value: checklistItem.text,
+      previousMode: Mode.LIST,
+      previousFocus: uiState.focus
+    });
+  }
+
+  function openDeleteChecklistItemModal() {
+    if (isEditorMode(uiState.mode) && uiState.focus === FocusTarget.EDITOR_CHECKLIST) {
+      if (!state.editor) {
+        showShortNavigationBanner("Editor draft unavailable");
+        return;
+      }
+      const checklistItem = selectedEditorChecklistItem ?? editorChecklistItems[0];
+      if (!checklistItem) {
+        showShortNavigationBanner("No checklist item selected");
+        return;
+      }
+      const taskTitle = state.editor.title.trim() || (uiState.mode === Mode.ADD ? "New task" : "Task");
+      openModalWithContext({
+        type: "checklist_delete",
+        rowId: EDITOR_CHECKLIST_MODAL_ROW_ID,
+        itemId: checklistItem.id,
+        itemText: checklistItem.text,
+        taskTitle,
+        previousMode: uiState.mode,
+        previousFocus: uiState.focus
+      });
+      return;
+    }
+
+    if (uiState.mode !== Mode.LIST || !selectedTask) {
+      showShortNavigationBanner("No task selected");
+      return;
+    }
+    const checklistItem = selectedChecklistItem ?? selectedChecklistItems[0];
+    if (!checklistItem) {
+      showShortNavigationBanner("No checklist item selected");
+      return;
+    }
+    openModalWithContext({
+      type: "checklist_delete",
+      rowId: selectedTask.id,
+      itemId: checklistItem.id,
+      itemText: checklistItem.text,
+      taskTitle: selectedTask.title,
+      previousMode: Mode.LIST,
+      previousFocus: uiState.focus
+    });
+  }
+
+  function getChecklistInputModal() {
+    return uiState.modal?.type === "checklist_input" ? uiState.modal : null;
+  }
+
+  function patchChecklistInputModal(patch: { value?: string; error?: string }) {
+    const modal = getChecklistInputModal();
+    if (!modal) return;
+    uiDispatch({
+      type: "setModal",
+      modal: {
+        ...modal,
+        ...patch
+      }
+    });
+  }
+
+  function submitChecklistInputModal() {
+    const modal = getChecklistInputModal();
+    if (!modal) return;
+    const nowIso = new Date().toISOString();
+
+    if (modal.rowId === EDITOR_CHECKLIST_MODAL_ROW_ID) {
+      if (!state.editor) {
+        patchChecklistInputModal({ error: "Editor draft unavailable." });
+        return;
+      }
+      if (modal.mode === "add") {
+        const outcome = addChecklistItem(state.editor.checklist, modal.value, nowIso);
+        if (!outcome.ok) {
+          patchChecklistInputModal({ error: outcome.error });
+          return;
+        }
+        updateEditorDraft({ checklist: outcome.checklist });
+        const nextItems = sortChecklistItems(outcome.checklist);
+        setSelectedEditorChecklistItemId(nextItems[nextItems.length - 1]?.id);
+        closeModalWithPreviousContext(modal);
+        return;
+      }
+
+      if (!modal.itemId) {
+        patchChecklistInputModal({ error: "Checklist item not found." });
+        return;
+      }
+
+      const outcome = editChecklistItem(state.editor.checklist, modal.itemId, modal.value, nowIso);
+      if (!outcome.ok) {
+        patchChecklistInputModal({ error: outcome.error });
+        return;
+      }
+      updateEditorDraft({ checklist: outcome.checklist });
+      setSelectedEditorChecklistItemId(modal.itemId);
+      closeModalWithPreviousContext(modal);
+      return;
+    }
+
+    if (modal.mode === "add") {
+      const outcome = mutateChecklistForRow(modal.rowId, (checklist) =>
+        addChecklistItem(checklist, modal.value, nowIso)
+      );
+      if (!outcome.ok) {
+        patchChecklistInputModal({ error: outcome.error });
+        return;
+      }
+      const nextItems = sortChecklistItems(outcome.checklist);
+      setSelectedChecklistItemId(nextItems[nextItems.length - 1]?.id);
+      closeModalWithPreviousContext(modal);
+      return;
+    }
+
+    if (!modal.itemId) {
+      patchChecklistInputModal({ error: "Checklist item not found." });
+      return;
+    }
+
+    const outcome = mutateChecklistForRow(modal.rowId, (checklist) =>
+      editChecklistItem(checklist, modal.itemId as string, modal.value, nowIso)
+    );
+    if (!outcome.ok) {
+      patchChecklistInputModal({ error: outcome.error });
+      return;
+    }
+    setSelectedChecklistItemId(modal.itemId);
+    closeModalWithPreviousContext(modal);
+  }
+
+  function handleDeleteChecklistItemFromModal() {
+    const modal = uiState.modal;
+    if (!modal || modal.type !== "checklist_delete") return;
+
+    if (modal.rowId === EDITOR_CHECKLIST_MODAL_ROW_ID) {
+      if (!state.editor) {
+        showShortNavigationBanner("Editor draft unavailable");
+        closeModalWithPreviousContext(modal);
+        return;
+      }
+      const outcome = deleteChecklistItem(state.editor.checklist, modal.itemId);
+      if (!outcome.ok) {
+        showShortNavigationBanner(outcome.error);
+        closeModalWithPreviousContext(modal);
+        return;
+      }
+      updateEditorDraft({ checklist: outcome.checklist });
+      const nextItems = sortChecklistItems(outcome.checklist);
+      setSelectedEditorChecklistItemId(nextItems[0]?.id);
+      closeModalWithPreviousContext(modal);
+      return;
+    }
+
+    const outcome = mutateChecklistForRow(modal.rowId, (checklist) =>
+      deleteChecklistItem(checklist, modal.itemId)
+    );
+    if (!outcome.ok) {
+      showShortNavigationBanner(outcome.error);
+      closeModalWithPreviousContext(modal);
+      return;
+    }
+    const nextItems = sortChecklistItems(outcome.checklist);
+    setSelectedChecklistItemId(nextItems[0]?.id);
+    closeModalWithPreviousContext(modal);
+  }
+
+  function clearBulkMarks() {
+    if (!bulkActive) return;
+    setBulkMarkedTaskIds([]);
+  }
+
+  function toggleBulkMark() {
+    if (uiState.mode !== Mode.LIST || uiState.focus !== FocusTarget.TASK_LIST || !selectedTask) {
+      return;
+    }
+    if (selectedTask.rowKind === "series_occurrence_virtual") {
+      showShortNavigationBanner("Virtual occurrences cannot be bulk-marked");
+      return;
+    }
+    setBulkMarkedTaskIds((previous) => {
+      if (previous.includes(selectedTask.id)) {
+        return previous.filter((id) => id !== selectedTask.id);
+      }
+      return [...previous, selectedTask.id];
+    });
+  }
+
+  function handleConfirmBulkDeleteFromModal() {
+    const modal = uiState.modal;
+    if (!modal || modal.type !== "bulk_delete") return;
+
+    const nowMs = Date.now();
+    const visibleTasks = getVisibleTasks(state, nowMs);
+    const result = executeCommand(
+      {
+        type: "bulk",
+        operation: "delete",
+        target: {
+          type: "ids",
+          ids: modal.taskIds
+        }
+      },
+      {
+        now: nowMs,
+        state,
+        visibleTasks,
+        selectedTaskId: state.selectedId ?? visibleTasks[0]?.id,
+        bulkMarkedTaskIds
+      }
+    );
+
+    if (result.output.kind === "error") {
+      showShortNavigationBanner(result.output.text);
+      closeModalWithPreviousContext(modal);
+      return;
+    }
+
+    for (const action of result.actions) {
+      dispatch(action);
+    }
+    setBulkMarkedTaskIds((previous) =>
+      previous.filter((id) => !modal.taskIds.includes(id))
+    );
+    setCommandOutput(result.output);
+    closeModalWithPreviousContext(modal);
   }
 
   function openAddTaskLinkModal() {
@@ -7435,6 +8202,8 @@ export function App({
                 ? `FILTERED TASKS: ${visibleTaskRows.length}`
                 : isBackupMode
                   ? "SAFE IMPORT / EXPORT FLOW"
+                : bulkActive
+                  ? `BULK MARKED: ${String(bulkMarkedTaskIds.length)} · \` bulk ...`
                 : selectedTask
                   ? getDueInLabel(selectedTask, now)
                   : ""}
@@ -7537,6 +8306,7 @@ export function App({
                   ) : null}
                   <TaskList
                     tasks={visibleTaskRows}
+                    markedTaskIds={bulkMarkedTaskIdSet}
                     selectedId={state.selectedId}
                     now={now}
                     pulseOn={pulseOn}
@@ -7602,6 +8372,9 @@ export function App({
                     dueSuggestionHint={dueSuggestionHint}
                     timeSuggestionHint={timeSuggestionHint}
                     recurrencePreview={recurrencePreview}
+                    selectedChecklistItemId={selectedEditorChecklistItem?.id}
+                    checklistFocused={uiState.focus === FocusTarget.EDITOR_CHECKLIST}
+                    onSelectChecklistItem={setSelectedEditorChecklistItemId}
                     onUpdate={updateEditorDraft}
                     onScrollOffsetChange={(scrollOffset) =>
                       uiDispatch({ type: "setEditorScrollOffset", scrollOffset })
@@ -7618,8 +8391,13 @@ export function App({
                     flashMode={settingsState.flashMode}
                     selectedLinkId={selectedLinkId}
                     linksFocused={uiState.focus === FocusTarget.DETAILS_LINKS}
+                    selectedChecklistItemId={selectedChecklistItemId}
+                    checklistFocused={uiState.focus === FocusTarget.DETAILS_CHECKLIST}
+                    checklistWindowStart={checklistScrollOffset}
+                    checklistWindowSize={checklistViewportRows}
                     onSelectLink={selectDetailsLink}
                     onOpenLink={openDetailsLink}
+                    onSelectChecklistItem={setSelectedChecklistItemId}
                   />
                 )}
               </box>
@@ -7962,6 +8740,10 @@ export function App({
         cancelUnsavedChangesContinue={cancelUnsavedChangesContinue}
         handleBackupFinalCheckpointConfirm={handleBackupFinalCheckpointConfirm}
         cancelBackupFinalCheckpoint={cancelBackupFinalCheckpoint}
+        patchChecklistInputModal={patchChecklistInputModal}
+        submitChecklistInputModal={submitChecklistInputModal}
+        handleDeleteChecklistItemFromModal={handleDeleteChecklistItemFromModal}
+        handleConfirmBulkDeleteFromModal={handleConfirmBulkDeleteFromModal}
         patchTaskLinkFormModal={patchTaskLinkFormModal}
         submitTaskLinkFormModal={submitTaskLinkFormModal}
         applyEscUnwind={applyEscUnwind}

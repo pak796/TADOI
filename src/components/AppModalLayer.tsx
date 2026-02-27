@@ -38,6 +38,10 @@ type AppModalLayerProps = {
   cancelUnsavedChangesContinue: () => void;
   handleBackupFinalCheckpointConfirm: () => void;
   cancelBackupFinalCheckpoint: () => void;
+  patchChecklistInputModal: (patch: { value?: string; error?: string }) => void;
+  submitChecklistInputModal: () => void;
+  handleDeleteChecklistItemFromModal: () => void;
+  handleConfirmBulkDeleteFromModal: () => void;
   patchTaskLinkFormModal: (patch: Partial<UITaskLinkFormModal>) => void;
   submitTaskLinkFormModal: () => void;
   applyEscUnwind: () => void;
@@ -83,6 +87,10 @@ export function AppModalLayer({
   cancelUnsavedChangesContinue,
   handleBackupFinalCheckpointConfirm,
   cancelBackupFinalCheckpoint,
+  patchChecklistInputModal,
+  submitChecklistInputModal,
+  handleDeleteChecklistItemFromModal,
+  handleConfirmBulkDeleteFromModal,
   patchTaskLinkFormModal,
   submitTaskLinkFormModal,
   applyEscUnwind,
@@ -259,6 +267,174 @@ export function AppModalLayer({
                   }}
                 >
                   <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>NO [N/ESC]</text>
+                </box>
+              </box>
+            </box>
+          ) : uiState.modal.type === "checklist_input" ? (
+            <box
+              style={{
+                padding: 2,
+                backgroundColor: theme.panel,
+                border: true,
+                borderStyle: "single",
+                borderColor: theme.outline,
+                width: MODAL_STANDARD_WIDTH,
+                flexDirection: "column",
+                gap: 1
+              }}
+            >
+              <text style={{ color: theme.text, fontWeight: "bold" }}>
+                {uiState.modal.mode === "add" ? "ADD CHECKLIST ITEM" : "EDIT CHECKLIST ITEM"}
+              </text>
+              <text style={{ color: theme.muted }}>{uiState.modal.taskTitle}</text>
+              <input
+                value={uiState.modal.value}
+                onChange={(value) => patchChecklistInputModal({ value, error: undefined })}
+                onInput={(value) => patchChecklistInputModal({ value, error: undefined })}
+                onKeyDown={(event) => {
+                  if (event.name === "return" || event.name === "enter") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    submitChecklistInputModal();
+                    return;
+                  }
+                  if (event.name === "escape") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    applyEscUnwind();
+                  }
+                }}
+                focused
+                placeholder="Checklist item text"
+                style={{
+                  backgroundColor: inputTheme.bg,
+                  color: inputTheme.text
+                }}
+              />
+              {uiState.modal.error ? (
+                <text style={{ color: theme.warn }}>{uiState.modal.error}</text>
+              ) : null}
+              <box style={{ flexDirection: "row", gap: 1 }}>
+                <box
+                  style={{
+                    backgroundColor: theme.panel,
+                    border: true,
+                    borderStyle: "single",
+                    borderColor: theme.outline,
+                    paddingLeft: 2,
+                    paddingRight: 2
+                  }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    submitChecklistInputModal();
+                  }}
+                >
+                  <text style={{ color: theme.text, fontWeight: "bold" }}>SAVE [ENTER]</text>
+                </box>
+                <box
+                  style={{
+                    backgroundColor: theme.panel,
+                    border: true,
+                    borderStyle: "single",
+                    borderColor: theme.outline,
+                    paddingLeft: 2,
+                    paddingRight: 2
+                  }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    applyEscUnwind();
+                  }}
+                >
+                  <text style={{ color: theme.text, fontWeight: "bold" }}>CANCEL [ESC]</text>
+                </box>
+              </box>
+            </box>
+          ) : uiState.modal.type === "checklist_delete" ? (
+            <box
+              style={{
+                padding: 2,
+                backgroundColor: modalTheme.warn,
+                color: modalTheme.bg,
+                minWidth: MODAL_STANDARD_WIDTH,
+                flexDirection: "column",
+                gap: 1
+              }}
+            >
+              <text>DELETE CHECKLIST ITEM? [Y/N]</text>
+              <text>{uiState.modal.taskTitle}</text>
+              <text>{uiState.modal.itemText}</text>
+              <box style={{ flexDirection: "row", gap: 1 }}>
+                <box
+                  style={{
+                    backgroundColor: modalTheme.bg,
+                    paddingLeft: 2,
+                    paddingRight: 2
+                  }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    handleDeleteChecklistItemFromModal();
+                  }}
+                >
+                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>YES [Y]</text>
+                </box>
+                <box
+                  style={{
+                    backgroundColor: modalTheme.bg,
+                    paddingLeft: 2,
+                    paddingRight: 2
+                  }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    applyEscUnwind();
+                  }}
+                >
+                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>NO [N]</text>
+                </box>
+              </box>
+            </box>
+          ) : uiState.modal.type === "bulk_delete" ? (
+            <box
+              style={{
+                padding: 2,
+                backgroundColor: modalTheme.warn,
+                color: modalTheme.bg,
+                minWidth: MODAL_STANDARD_WIDTH,
+                flexDirection: "column",
+                gap: 1
+              }}
+            >
+              <text>DELETE {String(uiState.modal.taskIds.length)} TASKS? [Y/N]</text>
+              <text>
+                {uiState.modal.recurringSeriesCount > 0
+                  ? `${String(uiState.modal.recurringSeriesCount)} recurring series included`
+                  : "No recurring series in selection"}
+              </text>
+              <box style={{ flexDirection: "row", gap: 1 }}>
+                <box
+                  style={{
+                    backgroundColor: modalTheme.bg,
+                    paddingLeft: 2,
+                    paddingRight: 2
+                  }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    handleConfirmBulkDeleteFromModal();
+                  }}
+                >
+                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>YES [Y]</text>
+                </box>
+                <box
+                  style={{
+                    backgroundColor: modalTheme.bg,
+                    paddingLeft: 2,
+                    paddingRight: 2
+                  }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    applyEscUnwind();
+                  }}
+                >
+                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>NO [N]</text>
                 </box>
               </box>
             </box>

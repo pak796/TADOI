@@ -138,6 +138,8 @@ function getFocusLabel(focus: FocusTarget): string {
       return "CUSTOM RRULE";
     case FocusTarget.EDITOR_TAGS:
       return "TAGS";
+    case FocusTarget.EDITOR_CHECKLIST:
+      return "CHECKLIST";
     case FocusTarget.EDITOR_NOTES:
       return "NOTES";
     case FocusTarget.EDITOR_SAVE:

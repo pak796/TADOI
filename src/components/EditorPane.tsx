@@ -26,6 +26,7 @@ import {
   shouldInterceptRepeatArrowAtEdge
 } from "./editorRepeatKeyboard";
 import { APP_NAME } from "../brand/brand";
+import { getChecklistProgress, sortChecklistItems } from "../domain/checklist";
 
 type EditorPaneProps = {
   mode: Mode;
@@ -38,6 +39,9 @@ type EditorPaneProps = {
   dueSuggestionHint?: string | null;
   timeSuggestionHint?: string | null;
   recurrencePreview?: string[];
+  selectedChecklistItemId?: string | null;
+  checklistFocused?: boolean;
+  onSelectChecklistItem?: (itemId: string | null) => void;
   onUpdate: (patch: Partial<EditorDraft>) => void;
   onScrollOffsetChange: (scrollOffset: number) => void;
   onSave: () => void;
@@ -107,6 +111,9 @@ export function EditorPane({
   dueSuggestionHint,
   timeSuggestionHint,
   recurrencePreview,
+  selectedChecklistItemId = null,
+  checklistFocused = false,
+  onSelectChecklistItem,
   onUpdate,
   onScrollOffsetChange,
   onSave,
@@ -124,6 +131,28 @@ export function EditorPane({
     recurrencePreview?.[1] ?? "",
     recurrencePreview?.[2] ?? ""
   ];
+  const checklistItems = sortChecklistItems(draft.checklist);
+  const checklistProgress = getChecklistProgress(draft.checklist);
+  const checklistWindowSize = 5;
+  const checklistSelectedIndex = checklistItems.findIndex(
+    (item) => item.id === selectedChecklistItemId
+  );
+  const checklistWindowStart = Math.max(
+    0,
+    Math.min(
+      Math.max(0, checklistSelectedIndex - 2),
+      Math.max(0, checklistItems.length - checklistWindowSize)
+    )
+  );
+  const checklistWindow = checklistItems.slice(
+    checklistWindowStart,
+    checklistWindowStart + checklistWindowSize
+  );
+  const checklistHiddenAbove = checklistWindowStart;
+  const checklistHiddenBelow = Math.max(
+    0,
+    checklistItems.length - (checklistWindowStart + checklistWindow.length)
+  );
   const previewLineCount = Math.max(1, previewRows.length);
   const estimateOptions = useMemo(
     () => ({
@@ -131,6 +160,7 @@ export function EditorPane({
       hasDueSuggestion: Boolean(dueSuggestionHint),
       hasTimeSuggestion: Boolean(timeSuggestionHint),
       hasTagSuggestion: Boolean(tagInlineSuggestion?.remainder),
+      checklistItemCount: draft.checklist.length,
       repeatMode: draft.repeatMode,
       repeatEndMode: draft.repeatEndMode,
       previewRows: previewLineCount,
@@ -139,6 +169,7 @@ export function EditorPane({
     [
       draft.repeatEndMode,
       draft.repeatMode,
+      draft.checklist.length,
       titleInlineSuggestion?.remainder,
       dueSuggestionHint,
       timeSuggestionHint,
@@ -174,6 +205,9 @@ export function EditorPane({
   const footerHintText = showOverflowIndicator
     ? `TAB: NEXT FIELD · CTRL+S: SAVE · ESC: CANCEL · PgUp/PgDn: Scroll${linksHint}`
     : `TAB: NEXT FIELD · CTRL+S: SAVE · ESC: CANCEL${linksHint}`;
+  const checklistHintText = checklistFocused
+    ? " · CHECKLIST: J/K MOVE · SPACE TOGGLE · A/E/D"
+    : "";
   const titleSuggestionPrefix = titleInlineSuggestion
     ? titleInlineSuggestion.full.slice(
         0,
@@ -612,6 +646,50 @@ export function EditorPane({
       </box>
 
       <box style={{ flexDirection: "column", marginTop: 1 }}>
+        <text style={{ color: checklistFocused ? theme.accentBlue : theme.muted }}>
+          CHECKLIST ({String(checklistProgress.done)}/{String(checklistProgress.total)})
+        </text>
+        {checklistItems.length === 0 ? (
+          <text style={{ color: checklistFocused ? theme.text : theme.muted }}>
+            No checklist items (A to add)
+          </text>
+        ) : (
+          <>
+            {checklistHiddenAbove > 0 ? (
+              <text style={{ color: theme.muted }}>↑ {String(checklistHiddenAbove)} more</text>
+            ) : null}
+            {checklistWindow.map((item) => {
+              const selected = item.id === selectedChecklistItemId;
+              const itemPrefix = item.isDone ? "[x]" : "[ ]";
+              const bg = selected && checklistFocused ? theme.accentBlue : "transparent";
+              const color = selected && checklistFocused ? theme.bg : theme.text;
+              return (
+                <box
+                  key={item.id}
+                  style={{
+                    backgroundColor: bg,
+                    paddingLeft: 1,
+                    paddingRight: 1
+                  }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    onSelectChecklistItem?.(item.id);
+                  }}
+                >
+                  <text style={{ color }}>
+                    {itemPrefix} {item.text}
+                  </text>
+                </box>
+              );
+            })}
+            {checklistHiddenBelow > 0 ? (
+              <text style={{ color: theme.muted }}>↓ {String(checklistHiddenBelow)} more</text>
+            ) : null}
+          </>
+        )}
+      </box>
+
+      <box style={{ flexDirection: "column", marginTop: 1 }}>
         <text style={{ color: theme.muted }}>NOTES</text>
         <box style={{ flexDirection: "row", width: "100%", minHeight: NOTES_VISIBLE_ROWS }}>
           <textarea
@@ -704,6 +782,7 @@ export function EditorPane({
       <box>
         <text style={{ color: theme.muted }}>
           {footerHintText}
+          {checklistHintText}
         </text>
       </box>
       </box>

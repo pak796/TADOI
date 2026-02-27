@@ -9,7 +9,7 @@ import {
 
 function createSnapshot(): SaveConflictRetrySnapshot {
   return {
-    schemaVersion: 7,
+    schemaVersion: 8,
     tasks: [],
     tagIndex: {},
     savedViews: [],

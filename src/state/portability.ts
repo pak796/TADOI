@@ -1,4 +1,5 @@
 import { normalizeTags } from "../domain/tagIndex";
+import { normalizeChecklist, sortChecklistItems } from "../domain/checklist";
 import {
   createDefaultEngagementState,
   mergeEngagementStates,
@@ -79,7 +80,8 @@ function asTimestamp(value: unknown, fallback = 0): number {
 function normalizeTask(task: Task): Task {
   return {
     ...task,
-    tags: normalizePriorityTags(Array.isArray(task.tags) ? task.tags : [])
+    tags: normalizePriorityTags(Array.isArray(task.tags) ? task.tags : []),
+    checklist: normalizeChecklist(task.checklist)
   };
 }
 
@@ -115,6 +117,31 @@ function areTaskLinksEquivalent(left: Task["links"], right: Task["links"]): bool
   return true;
 }
 
+function areTaskChecklistEquivalent(
+  left: Task["checklist"],
+  right: Task["checklist"]
+): boolean {
+  const leftChecklist = sortChecklistItems(left ?? []);
+  const rightChecklist = sortChecklistItems(right ?? []);
+  if (leftChecklist.length !== rightChecklist.length) return false;
+  for (let i = 0; i < leftChecklist.length; i += 1) {
+    const leftItem = leftChecklist[i];
+    const rightItem = rightChecklist[i];
+    if (
+      leftItem.id !== rightItem.id ||
+      leftItem.text !== rightItem.text ||
+      leftItem.isDone !== rightItem.isDone ||
+      leftItem.createdAt !== rightItem.createdAt ||
+      leftItem.updatedAt !== rightItem.updatedAt ||
+      leftItem.completedAt !== rightItem.completedAt ||
+      leftItem.sort !== rightItem.sort
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function areTasksEquivalent(left: Task, right: Task): boolean {
   const recurrenceEqual =
     left.recurrence?.dtstart === right.recurrence?.dtstart &&
@@ -137,6 +164,7 @@ function areTasksEquivalent(left: Task, right: Task): boolean {
     left.notes === right.notes &&
     areStringArraysEqual(left.tags, right.tags) &&
     areTaskLinksEquivalent(left.links, right.links) &&
+    areTaskChecklistEquivalent(left.checklist, right.checklist) &&
     recurrenceEqual &&
     instanceEqual
   );

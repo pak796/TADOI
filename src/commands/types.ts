@@ -49,14 +49,98 @@ export type RecurCommand =
       onMonthDays?: number[];
     };
 
-export type HelpTopic = "add" | "done" | "due" | "recur";
+export type CheckCommand =
+  | {
+      type: "check";
+      operation: "add";
+      target: CommandTarget;
+      text: string;
+    }
+  | {
+      type: "check";
+      operation: "toggle" | "del";
+      target: CommandTarget;
+      index: number;
+    }
+  | {
+      type: "check";
+      operation: "edit";
+      target: CommandTarget;
+      index: number;
+      text: string;
+    }
+  | {
+      type: "check";
+      operation: "clear";
+      target: CommandTarget;
+    };
+
+export type BulkTarget =
+  | { type: "marked" }
+  | { type: "ids"; ids: string[] };
+
+export type BulkCommand =
+  | {
+      type: "bulk";
+      operation: "done" | "delete";
+      target: BulkTarget;
+    }
+  | {
+      type: "bulk";
+      operation: "tag_add" | "tag_rm";
+      target: BulkTarget;
+      tags: string[];
+    }
+  | {
+      type: "bulk";
+      operation: "due";
+      target: BulkTarget;
+      clear: true;
+    }
+  | {
+      type: "bulk";
+      operation: "due";
+      target: BulkTarget;
+      clear: false;
+      dueDate: string;
+      atTime?: string;
+    }
+  | {
+      type: "bulk";
+      operation: "priority";
+      target: BulkTarget;
+      clear: boolean;
+      value?: string;
+    }
+  | {
+      type: "bulk";
+      operation: "assignee" | "project";
+      target: BulkTarget;
+      clear: boolean;
+      value?: string;
+    }
+  | {
+      type: "bulk";
+      operation: "stage";
+      target: BulkTarget;
+      stage: "todo" | "doing" | "blocked" | "done";
+    };
+
+export type HelpTopic = "add" | "done" | "due" | "recur" | "check" | "bulk";
 
 export type HelpCommand = {
   type: "help";
   topic?: HelpTopic;
 };
 
-export type Command = AddCommand | DoneCommand | DueCommand | RecurCommand | HelpCommand;
+export type Command =
+  | AddCommand
+  | DoneCommand
+  | DueCommand
+  | RecurCommand
+  | CheckCommand
+  | BulkCommand
+  | HelpCommand;
 
 export type CommandOutput = {
   kind: "ok" | "error";
@@ -77,4 +161,5 @@ export type ExecContext = {
   state: AppState;
   visibleTasks: Task[];
   selectedTaskId?: string;
+  bulkMarkedTaskIds?: string[];
 };

@@ -10,6 +10,7 @@ import {
   listBackupFiles,
   importBackup
 } from "./backupService";
+import { CURRENT_SCHEMA_VERSION } from "./persistence";
 import { resolveSettingsPaths } from "../settings/settings";
 import { THEMES, type ThemeId, type ThemeTokens } from "../theme/themes";
 
@@ -153,7 +154,7 @@ describe("backupService import/export", () => {
         path.join(outputDir, "tadoi-backup-20260210-000000.json")
       );
       expect(result.taskCount).toBe(1);
-      expect(result.schemaVersion).toBe(6);
+      expect(result.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
       expect(result.bytesWritten).toBeGreaterThan(0);
     } finally {
       if (originalDataPath === undefined) {
@@ -435,6 +436,8 @@ describe("backupService import/export", () => {
         themeId: "retro",
         logoMode: "default",
         flashMode: "static",
+        hintDisplayMode: "bottom",
+        showPrefixHintPopup: true,
         notifications: {
           enabled: true,
           inAppOverdueBanner: false,

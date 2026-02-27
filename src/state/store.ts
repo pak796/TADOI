@@ -29,6 +29,7 @@ import {
   Task
 } from "../domain/models";
 import { normalizePriorityTags } from "../domain/priorityTags";
+import { normalizeChecklist } from "../domain/checklist";
 import type { LoadedData } from "./persistence";
 
 export type Action =
@@ -76,6 +77,13 @@ export const initialState: AppState = {
   editor: null,
 };
 
+function normalizeTaskForRuntime(task: Task): Task {
+  return {
+    ...task,
+    checklist: normalizeChecklist(task.checklist)
+  };
+}
+
 export function applyArchiveAging(
   data: LoadedData,
   now: number
@@ -97,7 +105,7 @@ export function applyArchiveAging(
 export function archiveOldDoneTasks(tasks: Task[], now: number): Task[] {
   return applyArchiveAging(
     {
-      schemaVersion: 7,
+      schemaVersion: 8,
       stateRevision: 0,
       tasks,
       tagIndex: {},
@@ -113,7 +121,7 @@ export function reducer(state: AppState, action: Action): AppState {
     case "load":
       return {
         ...state,
-        tasks: action.data.tasks,
+        tasks: action.data.tasks.map(normalizeTaskForRuntime),
         tagIndex: action.data.tagIndex,
         savedViews: action.data.savedViews,
         engagement: normalizeEngagementState(action.data.engagement),
@@ -240,7 +248,7 @@ export function reducer(state: AppState, action: Action): AppState {
         ? { ...state, editor: { ...state.editor, ...action.patch } }
         : state;
     case "setTasks":
-      return { ...state, tasks: action.tasks };
+      return { ...state, tasks: action.tasks.map(normalizeTaskForRuntime) };
     case "setSavedViews":
       return { ...state, savedViews: action.savedViews };
     case "setSortMode":
@@ -265,6 +273,7 @@ export function createEmptyDraft(): EditorDraft {
     tagsText: "",
     notes: "",
     links: [],
+    checklist: [],
     repeatMode: "off",
     repeatIntervalText: "1",
     repeatWeekdays: [],
@@ -305,6 +314,7 @@ export function createDraftFromTask(task: Task): EditorDraft {
       .join(" "),
     notes: task.notes ?? "",
     links: (task.links ?? []).map((link) => ({ ...link })),
+    checklist: normalizeChecklist(task.checklist),
     repeatMode,
     repeatIntervalText: String(parsedRule?.interval ?? 1),
     repeatWeekdays: parsedRule?.byday ?? [],

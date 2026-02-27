@@ -13,6 +13,7 @@ const EDITOR_BASE_FOCUS_ORDER: FocusTarget[] = [
   FocusTarget.EDITOR_DUE_TIME,
   FocusTarget.EDITOR_REPEAT_MODE,
   FocusTarget.EDITOR_TAGS,
+  FocusTarget.EDITOR_CHECKLIST,
   FocusTarget.EDITOR_NOTES,
   FocusTarget.EDITOR_SAVE,
   FocusTarget.EDITOR_CANCEL
@@ -73,6 +74,7 @@ export function getVisibleEditorFocusOrder(
 
   order.push(
     FocusTarget.EDITOR_TAGS,
+    FocusTarget.EDITOR_CHECKLIST,
     FocusTarget.EDITOR_NOTES,
     FocusTarget.EDITOR_SAVE,
     FocusTarget.EDITOR_CANCEL
@@ -113,6 +115,8 @@ export function toFocusTarget(editorFocus: EditorFocus): FocusTarget {
       return FocusTarget.EDITOR_REPEAT_CUSTOM;
     case "tags":
       return FocusTarget.EDITOR_TAGS;
+    case "checklist":
+      return FocusTarget.EDITOR_CHECKLIST;
     case "notes":
       return FocusTarget.EDITOR_NOTES;
     case "save":
@@ -150,6 +154,8 @@ export function toEditorFocus(focus: FocusTarget): EditorFocus {
       return "repeat_custom";
     case FocusTarget.EDITOR_TAGS:
       return "tags";
+    case FocusTarget.EDITOR_CHECKLIST:
+      return "checklist";
     case FocusTarget.EDITOR_NOTES:
       return "notes";
     case FocusTarget.EDITOR_SAVE:

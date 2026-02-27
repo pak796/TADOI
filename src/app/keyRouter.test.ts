@@ -22,6 +22,7 @@ function run(
     hasDueSuggestion: false,
     timeAutocompleteStep: "none",
     hasPendingGPrefix: false,
+    bulkActive: false,
     viewsOverlayOpen: false,
     saveViewPromptOpen: false,
     allowEmptyNuxRecoveryImport: false,
@@ -93,6 +94,33 @@ describe("handleKey", () => {
     ).toEqual([
       { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.TASK_LIST }
     ]);
+    expect(
+      run(
+        { name: "escape" },
+        {
+          uiState: {
+            ...initialUIState,
+            mode: Mode.LIST,
+            focus: FocusTarget.DETAILS_CHECKLIST
+          }
+        }
+      )
+    ).toEqual([
+      { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.TASK_LIST }
+    ]);
+    expect(
+      run(
+        { name: "escape" },
+        {
+          uiState: {
+            ...initialUIState,
+            mode: Mode.LIST,
+            focus: FocusTarget.TASK_LIST
+          },
+          bulkActive: true
+        }
+      )
+    ).toEqual([{ scope: "ui", type: "CLEAR_BULK_MARKS" }]);
     expect(
       run(
         { name: "escape" },
@@ -530,6 +558,25 @@ describe("handleKey", () => {
     ).toEqual([{ scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.TASK_LIST }]);
   });
 
+  it("switches details subpane focus with left/right arrows", () => {
+    const linksState = {
+      ...initialUIState,
+      mode: Mode.LIST,
+      focus: FocusTarget.DETAILS_LINKS
+    };
+    const checklistState = {
+      ...initialUIState,
+      mode: Mode.LIST,
+      focus: FocusTarget.DETAILS_CHECKLIST
+    };
+    expect(run({ name: "right" }, { uiState: linksState })).toEqual([
+      { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.DETAILS_CHECKLIST }
+    ]);
+    expect(run({ name: "left" }, { uiState: checklistState })).toEqual([
+      { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.DETAILS_LINKS }
+    ]);
+  });
+
   it("routes details-links actions when details focus is active", () => {
     const detailsState = {
       ...initialUIState,
@@ -560,7 +607,37 @@ describe("handleKey", () => {
     ]);
   });
 
+  it("routes details-checklist actions without leaking list movement", () => {
+    const checklistState = {
+      ...initialUIState,
+      mode: Mode.LIST,
+      focus: FocusTarget.DETAILS_CHECKLIST
+    };
+    expect(run({ name: "j", sequence: "j" }, { uiState: checklistState })).toEqual([
+      { scope: "domain", type: "MOVE_CHECKLIST_SELECTION", delta: 1 }
+    ]);
+    expect(run({ name: "k", sequence: "k" }, { uiState: checklistState })).toEqual([
+      { scope: "domain", type: "MOVE_CHECKLIST_SELECTION", delta: -1 }
+    ]);
+    expect(run({ name: "space" }, { uiState: checklistState })).toEqual([
+      { scope: "domain", type: "TOGGLE_SELECTED_CHECKLIST_ITEM" }
+    ]);
+    expect(run({ name: "a", sequence: "a" }, { uiState: checklistState })).toEqual([
+      { scope: "domain", type: "OPEN_ADD_CHECKLIST_ITEM_MODAL" }
+    ]);
+    expect(run({ name: "e", sequence: "e" }, { uiState: checklistState })).toEqual([
+      { scope: "domain", type: "OPEN_EDIT_CHECKLIST_ITEM_MODAL" }
+    ]);
+    expect(run({ name: "d", sequence: "d" }, { uiState: checklistState })).toEqual([
+      { scope: "domain", type: "OPEN_DELETE_CHECKLIST_ITEM_MODAL" }
+    ]);
+    expect(run({ name: "enter" }, { uiState: checklistState })).toEqual([]);
+  });
+
   it("routes jump and paging keys in list mode", () => {
+    expect(run({ name: "m", sequence: "m" })).toEqual([
+      { scope: "domain", type: "TOGGLE_BULK_MARK" }
+    ]);
     expect(run({ ctrl: true, name: "g", sequence: "g" })).toEqual([
       { scope: "ui", type: "SET_G_PREFIX", active: true }
     ]);
@@ -1322,6 +1399,38 @@ describe("handleKey", () => {
         { uiState: timeEditState, timeAutocompleteStep: "hour" }
       )
     ).toEqual([{ scope: "domain", type: "APPLY_TIME_AUTOCOMPLETE" }]);
+  });
+
+  it("routes editor checklist actions without leaking list movement", () => {
+    const checklistEditorState = {
+      ...initialUIState,
+      mode: Mode.EDIT,
+      focus: FocusTarget.EDITOR_CHECKLIST
+    };
+
+    expect(run({ name: "j", sequence: "j" }, { uiState: checklistEditorState })).toEqual([
+      { scope: "domain", type: "MOVE_CHECKLIST_SELECTION", delta: 1 }
+    ]);
+    expect(run({ name: "k", sequence: "k" }, { uiState: checklistEditorState })).toEqual([
+      { scope: "domain", type: "MOVE_CHECKLIST_SELECTION", delta: -1 }
+    ]);
+    expect(run({ name: "down" }, { uiState: checklistEditorState })).toEqual([
+      { scope: "domain", type: "MOVE_CHECKLIST_SELECTION", delta: 1 }
+    ]);
+    expect(run({ name: "space" }, { uiState: checklistEditorState })).toEqual([
+      { scope: "domain", type: "TOGGLE_SELECTED_CHECKLIST_ITEM" }
+    ]);
+    expect(run({ name: "a", sequence: "a" }, { uiState: checklistEditorState })).toEqual([
+      { scope: "domain", type: "OPEN_ADD_CHECKLIST_ITEM_MODAL" }
+    ]);
+    expect(run({ name: "e", sequence: "e" }, { uiState: checklistEditorState })).toEqual([
+      { scope: "domain", type: "OPEN_EDIT_CHECKLIST_ITEM_MODAL" }
+    ]);
+    expect(run({ name: "d", sequence: "d" }, { uiState: checklistEditorState })).toEqual([
+      { scope: "domain", type: "OPEN_DELETE_CHECKLIST_ITEM_MODAL" }
+    ]);
+    expect(run({ name: "enter" }, { uiState: checklistEditorState })).toEqual([]);
+    expect(run({ name: "b", sequence: "b" }, { uiState: checklistEditorState })).toEqual([]);
   });
 
   it("keeps link hotkeys scoped to list/details focus and blocks leakage elsewhere", () => {

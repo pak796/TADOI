@@ -380,4 +380,245 @@ describe("executeCommand", () => {
     if (clearTasksAction.type !== "setTasks") return;
     expect(clearTasksAction.tasks[0]?.recurrence).toBeUndefined();
   });
+
+  it("executes check add/toggle/edit/del/clear", () => {
+    const now = new Date(2026, 1, 21, 8, 0).getTime();
+    const task: Task = {
+      id: "task-check-1",
+      title: "Checklist task",
+      status: "open",
+      createdAt: now - 2000,
+      updatedAt: now - 1000,
+      tags: [],
+      checklist: []
+    };
+
+    const addResult = executeCommand(
+      {
+        type: "check",
+        operation: "add",
+        target: { type: "id", id: task.id },
+        text: "First item"
+      },
+      {
+        now,
+        state: createState([task], task.id),
+        visibleTasks: [task],
+        selectedTaskId: task.id
+      }
+    );
+    expect(addResult.output.kind).toBe("ok");
+    const addedTasksAction = addResult.actions[0];
+    if (addedTasksAction.type !== "setTasks") return;
+    expect(addedTasksAction.tasks[0]?.checklist).toHaveLength(1);
+    expect(addedTasksAction.tasks[0]?.checklist?.[0]?.text).toBe("First item");
+
+    const toggled = executeCommand(
+      {
+        type: "check",
+        operation: "toggle",
+        target: { type: "id", id: task.id },
+        index: 1
+      },
+      {
+        now,
+        state: createState(addedTasksAction.tasks, task.id),
+        visibleTasks: addedTasksAction.tasks,
+        selectedTaskId: task.id
+      }
+    );
+    const toggledTasksAction = toggled.actions[0];
+    if (toggledTasksAction.type !== "setTasks") return;
+    expect(toggledTasksAction.tasks[0]?.checklist?.[0]?.isDone).toBe(true);
+
+    const edited = executeCommand(
+      {
+        type: "check",
+        operation: "edit",
+        target: { type: "id", id: task.id },
+        index: 1,
+        text: "Renamed item"
+      },
+      {
+        now,
+        state: createState(toggledTasksAction.tasks, task.id),
+        visibleTasks: toggledTasksAction.tasks,
+        selectedTaskId: task.id
+      }
+    );
+    const editedTasksAction = edited.actions[0];
+    if (editedTasksAction.type !== "setTasks") return;
+    expect(editedTasksAction.tasks[0]?.checklist?.[0]?.text).toBe("Renamed item");
+
+    const deleted = executeCommand(
+      {
+        type: "check",
+        operation: "del",
+        target: { type: "id", id: task.id },
+        index: 1
+      },
+      {
+        now,
+        state: createState(editedTasksAction.tasks, task.id),
+        visibleTasks: editedTasksAction.tasks,
+        selectedTaskId: task.id
+      }
+    );
+    const deletedTasksAction = deleted.actions[0];
+    if (deletedTasksAction.type !== "setTasks") return;
+    expect(deletedTasksAction.tasks[0]?.checklist).toEqual([]);
+
+    const cleared = executeCommand(
+      {
+        type: "check",
+        operation: "clear",
+        target: { type: "id", id: task.id }
+      },
+      {
+        now,
+        state: createState(editedTasksAction.tasks, task.id),
+        visibleTasks: editedTasksAction.tasks,
+        selectedTaskId: task.id
+      }
+    );
+    const clearedTasksAction = cleared.actions[0];
+    if (clearedTasksAction.type !== "setTasks") return;
+    expect(clearedTasksAction.tasks[0]?.checklist).toEqual([]);
+  });
+
+  it("fails bulk marked commands when no tasks are marked", () => {
+    const now = new Date(2026, 1, 21, 8, 0).getTime();
+    const task: Task = {
+      id: "bulk-empty-1",
+      title: "Bulk empty",
+      status: "open",
+      createdAt: now - 10,
+      updatedAt: now - 10,
+      tags: []
+    };
+    const result = executeCommand(
+      {
+        type: "bulk",
+        operation: "done",
+        target: { type: "marked" }
+      },
+      {
+        now,
+        state: createState([task], task.id),
+        visibleTasks: [task],
+        selectedTaskId: task.id,
+        bulkMarkedTaskIds: []
+      }
+    );
+    expect(result.output).toEqual({
+      kind: "error",
+      text: "No tasks marked. Press 'm' to mark tasks first."
+    });
+    expect(result.actions).toEqual([]);
+  });
+
+  it("executes bulk done in deterministic id order and commits once", () => {
+    const now = new Date(2026, 1, 21, 8, 0).getTime();
+    const taskB: Task = {
+      id: "b-task",
+      title: "Task B",
+      status: "open",
+      createdAt: now - 20,
+      updatedAt: now - 20,
+      tags: []
+    };
+    const taskA: Task = {
+      id: "a-task",
+      title: "Task A",
+      status: "open",
+      createdAt: now - 10,
+      updatedAt: now - 10,
+      tags: []
+    };
+    const result = executeCommand(
+      {
+        type: "bulk",
+        operation: "done",
+        target: { type: "ids", ids: ["b-task", "a-task"] }
+      },
+      {
+        now,
+        state: createState([taskB, taskA], taskB.id),
+        visibleTasks: [taskB, taskA]
+      }
+    );
+
+    expect(result.output.kind).toBe("ok");
+    expect(result.actions[0]?.type).toBe("setTasks");
+    const setTasksAction = result.actions[0];
+    if (setTasksAction.type !== "setTasks") return;
+    const doneStates = new Map(setTasksAction.tasks.map((task) => [task.id, task.status]));
+    expect(doneStates.get("a-task")).toBe("done");
+    expect(doneStates.get("b-task")).toBe("done");
+  });
+
+  it("fails whole bulk operation on invalid priority with no writes", () => {
+    const now = new Date(2026, 1, 21, 8, 0).getTime();
+    const task: Task = {
+      id: "bulk-priority-1",
+      title: "Priority",
+      status: "open",
+      createdAt: now - 10,
+      updatedAt: now - 10,
+      tags: []
+    };
+    const result = executeCommand(
+      {
+        type: "bulk",
+        operation: "priority",
+        target: { type: "ids", ids: [task.id] },
+        clear: false,
+        value: "not-priority"
+      },
+      {
+        now,
+        state: createState([task], task.id),
+        visibleTasks: [task]
+      }
+    );
+
+    expect(result.output.kind).toBe("error");
+    expect(result.actions).toEqual([]);
+  });
+
+  it("blocks bulk delete for recurring occurrence instances", () => {
+    const now = new Date(2026, 1, 21, 8, 0).getTime();
+    const instanceTask: Task = {
+      id: "inst-1",
+      title: "Occurrence override",
+      status: "open",
+      createdAt: now - 20,
+      updatedAt: now - 20,
+      tags: [],
+      instance_of: {
+        series_id: "series:1",
+        occurrence: "2026-02-21T09:00:00"
+      }
+    };
+
+    const result = executeCommand(
+      {
+        type: "bulk",
+        operation: "delete",
+        target: { type: "ids", ids: [instanceTask.id] }
+      },
+      {
+        now,
+        state: createState([instanceTask], instanceTask.id),
+        visibleTasks: [instanceTask]
+      }
+    );
+
+    expect(result.output).toEqual({
+      kind: "error",
+      text:
+        "Bulk delete cannot delete recurring occurrences. Unmark occurrences or delete individually (d)."
+    });
+    expect(result.actions).toEqual([]);
+  });
 });

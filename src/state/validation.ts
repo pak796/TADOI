@@ -62,6 +62,13 @@ function normalizeLocalIso(value: unknown): string | undefined {
   return formatDateToLocalIso(parsed);
 }
 
+function normalizeIsoUtc(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed)) return undefined;
+  return new Date(parsed).toISOString();
+}
+
 export function validatePersistedState(
   input: unknown,
   mode: ValidationMode = "strict"
@@ -248,6 +255,89 @@ export function validatePersistedState(
       !VALID_WORKFLOW_STAGES.has(String(task.workflowStage))
     ) {
       errors.push(`task.workflowStage required for schemaVersion >= 7 (${String(task.id)})`);
+    }
+
+    if (task.checklist !== undefined) {
+      if (!Array.isArray(task.checklist)) {
+        errors.push(`task.checklist must be an array when present (${String(task.id)})`);
+      } else {
+        const seenChecklistIds = new Set<string>();
+        for (const item of task.checklist) {
+          if (!isRecord(item)) {
+            errors.push(`task.checklist[] entry must be an object (${String(task.id)})`);
+            continue;
+          }
+          const itemId = item.id;
+          const itemText = item.text;
+          const itemIsDone = item.isDone;
+          const itemCreatedAt = item.createdAt;
+          const itemUpdatedAt = item.updatedAt;
+          const itemCompletedAt = item.completedAt;
+          const itemSort = item.sort;
+
+          if (!isNonEmptyString(itemId)) {
+            errors.push(`task.checklist[].id must be a non-empty string (${String(task.id)})`);
+          } else if (seenChecklistIds.has(itemId)) {
+            errors.push(`task.checklist[].id must be unique (${String(task.id)})`);
+          } else {
+            seenChecklistIds.add(itemId);
+          }
+
+          if (!isNonEmptyString(itemText)) {
+            errors.push(`task.checklist[].text must be a non-empty string (${String(task.id)})`);
+          } else if (itemText.trim() !== itemText) {
+            errors.push(`task.checklist[].text must be trimmed (${String(task.id)})`);
+          } else if (hasAsciiControlChars(itemText)) {
+            errors.push(
+              `task.checklist[].text must not contain ASCII control characters (${String(task.id)})`
+            );
+          }
+
+          if (typeof itemIsDone !== "boolean") {
+            errors.push(`task.checklist[].isDone must be boolean (${String(task.id)})`);
+          }
+
+          const normalizedCreatedAt = normalizeIsoUtc(itemCreatedAt);
+          if (!normalizedCreatedAt) {
+            errors.push(`task.checklist[].createdAt must be ISO timestamp (${String(task.id)})`);
+          } else if (itemCreatedAt !== normalizedCreatedAt) {
+            errors.push(
+              `task.checklist[].createdAt must be normalized ISO timestamp (${String(task.id)})`
+            );
+          }
+
+          const normalizedUpdatedAt = normalizeIsoUtc(itemUpdatedAt);
+          if (!normalizedUpdatedAt) {
+            errors.push(`task.checklist[].updatedAt must be ISO timestamp (${String(task.id)})`);
+          } else if (itemUpdatedAt !== normalizedUpdatedAt) {
+            errors.push(
+              `task.checklist[].updatedAt must be normalized ISO timestamp (${String(task.id)})`
+            );
+          }
+
+          if (itemCompletedAt !== undefined) {
+            const normalizedCompletedAt = normalizeIsoUtc(itemCompletedAt);
+            if (!normalizedCompletedAt) {
+              errors.push(
+                `task.checklist[].completedAt must be ISO timestamp when present (${String(task.id)})`
+              );
+            } else if (itemCompletedAt !== normalizedCompletedAt) {
+              errors.push(
+                `task.checklist[].completedAt must be normalized ISO timestamp (${String(task.id)})`
+              );
+            }
+          }
+
+          if (
+            typeof itemSort !== "number" ||
+            !Number.isFinite(itemSort) ||
+            !Number.isInteger(itemSort) ||
+            itemSort < 0
+          ) {
+            errors.push(`task.checklist[].sort must be non-negative integer (${String(task.id)})`);
+          }
+        }
+      }
     }
 
     if (task.links !== undefined) {

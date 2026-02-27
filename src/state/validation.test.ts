@@ -202,6 +202,80 @@ describe("validatePersistedState", () => {
     expect(result.ok).toBe(true);
   });
 
+  it("rejects malformed checklist payloads for schema v8 tasks", () => {
+    const malformedChecklist = validatePersistedState(
+      {
+        ...BASE_STATE,
+        schemaVersion: 8,
+        stateRevision: 3,
+        tasks: [
+          {
+            ...BASE_STATE.tasks[0],
+            workflowStage: "todo",
+            checklist: [
+              {
+                id: "cl-1",
+                text: "  ",
+                isDone: "yes",
+                createdAt: "bad",
+                updatedAt: "bad",
+                sort: -1
+              }
+            ]
+          }
+        ],
+        engagement: {
+          completionLog: [],
+          achievements: {},
+          streak: {
+            currentDays: 0,
+            bestDays: 0,
+            lastCompletionDayKey: null
+          }
+        }
+      },
+      "strict"
+    );
+    expect(malformedChecklist.ok).toBe(false);
+  });
+
+  it("accepts schema v8 with normalized checklist items", () => {
+    const result = validatePersistedState(
+      {
+        ...BASE_STATE,
+        schemaVersion: 8,
+        stateRevision: 3,
+        tasks: [
+          {
+            ...BASE_STATE.tasks[0],
+            workflowStage: "todo",
+            checklist: [
+              {
+                id: "cl-1",
+                text: "Draft outline",
+                isDone: false,
+                createdAt: "2026-02-26T12:00:00.000Z",
+                updatedAt: "2026-02-26T12:00:00.000Z",
+                sort: 0
+              }
+            ]
+          }
+        ],
+        engagement: {
+          completionLog: [],
+          achievements: {},
+          streak: {
+            currentDays: 0,
+            bestDays: 0,
+            lastCompletionDayKey: null
+          }
+        }
+      },
+      "strict"
+    );
+    expect(result.ok).toBe(true);
+  });
+
   it("rejects missing schemaVersion", () => {
     const result = validatePersistedState(
       { ...BASE_STATE, schemaVersion: undefined },

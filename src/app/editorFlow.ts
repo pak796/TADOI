@@ -2,6 +2,10 @@ import type React from "react";
 import { resolveTaskRowClickIntent } from "../components/TaskList";
 import { buildRecurrenceFromDraft } from "../domain/recurrence/draft";
 import {
+  reconcileOverrideChecklistWithSeries,
+  sortChecklistItems
+} from "../domain/checklist";
+import {
   formatDateToLocalIso,
   parseLocalIsoToDate
 } from "../domain/recurrence/rruleAdapter";
@@ -436,6 +440,7 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
     const assignee = draft.assigneeText.trim().length > 0 ? draft.assigneeText.trim() : undefined;
     const project = draft.projectText.trim().length > 0 ? draft.projectText.trim() : undefined;
     const links = draft.links.map((link) => ({ ...link }));
+    const checklist = sortChecklistItems(draft.checklist.map((item) => ({ ...item })));
 
     if (activeMode === Mode.ADD) {
       const taskId = crypto.randomUUID();
@@ -459,6 +464,7 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
         hasExplicitTime,
         notes,
         tags,
+        checklist,
         assignee,
         project,
         workflowStage: draft.workflowStage ?? "todo",
@@ -521,6 +527,7 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
           closedAt: existingInstance?.status === "done" ? existingInstance.closedAt : undefined,
           notes,
           tags,
+          checklist,
           assignee,
           project,
           workflowStage:
@@ -559,23 +566,42 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
           return false;
         }
 
+        const nowIso = new Date(nowMs).toISOString();
+        const resolvedSeriesId =
+          recurrenceBuild.recurrence?.series_id ??
+          seriesTask.recurrence?.series_id ??
+          draft.sourceSeriesId;
         const updatedTasks = deps.state.tasks.map((task) => {
-          if (task.id !== seriesTask.id) return task;
+          if (task.id === seriesTask.id) {
+            return {
+              ...task,
+              title,
+              dueAt,
+              hasExplicitTime,
+              notes,
+              tags,
+              checklist,
+              assignee,
+              project,
+              workflowStage:
+                draft.workflowStage ??
+                task.workflowStage ??
+                (task.status === "done" || task.status === "archived" ? "done" : "todo"),
+              updatedAt: nowMs,
+              recurrence: recurrenceBuild.recurrence
+            };
+          }
+          if (!resolvedSeriesId || task.instance_of?.series_id !== resolvedSeriesId) {
+            return task;
+          }
           return {
             ...task,
-            title,
-            dueAt,
-            hasExplicitTime,
-            notes,
-            tags,
-            assignee,
-            project,
-            workflowStage:
-              draft.workflowStage ??
-              task.workflowStage ??
-              (task.status === "done" || task.status === "archived" ? "done" : "todo"),
             updatedAt: nowMs,
-            recurrence: recurrenceBuild.recurrence
+            checklist: reconcileOverrideChecklistWithSeries(
+              task.checklist,
+              checklist,
+              nowIso
+            )
           };
         });
         deps.dispatch({ type: "setTasks", tasks: updatedTasks });
@@ -607,6 +633,7 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
             hasExplicitTime,
             notes,
             tags,
+            checklist,
             assignee,
             project,
             workflowStage:

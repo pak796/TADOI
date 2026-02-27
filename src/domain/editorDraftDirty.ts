@@ -1,4 +1,4 @@
-import type { EditorDraft, TaskLink } from "./models";
+import type { ChecklistItem, EditorDraft, TaskLink } from "./models";
 
 function areStringArraysEqual(left: string[], right: string[]): boolean {
   if (left.length !== right.length) return false;
@@ -26,11 +26,32 @@ function areTaskLinksEqual(left: TaskLink[], right: TaskLink[]): boolean {
   return true;
 }
 
+function areChecklistItemsEqual(left: ChecklistItem[], right: ChecklistItem[]): boolean {
+  if (left.length !== right.length) return false;
+  for (let index = 0; index < left.length; index += 1) {
+    const leftItem = left[index];
+    const rightItem = right[index];
+    if (
+      leftItem.id !== rightItem.id ||
+      leftItem.text !== rightItem.text ||
+      leftItem.isDone !== rightItem.isDone ||
+      leftItem.createdAt !== rightItem.createdAt ||
+      leftItem.updatedAt !== rightItem.updatedAt ||
+      leftItem.completedAt !== rightItem.completedAt ||
+      leftItem.sort !== rightItem.sort
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
 export function cloneEditorDraft(draft: EditorDraft): EditorDraft {
   return {
     ...draft,
     repeatWeekdays: [...draft.repeatWeekdays],
-    links: draft.links.map((link) => ({ ...link }))
+    links: draft.links.map((link) => ({ ...link })),
+    checklist: draft.checklist.map((item) => ({ ...item }))
   };
 }
 
@@ -43,6 +64,7 @@ export function areEditorDraftsEqual(left: EditorDraft, right: EditorDraft): boo
     left.tagsText === right.tagsText &&
     left.notes === right.notes &&
     areTaskLinksEqual(left.links, right.links) &&
+    areChecklistItemsEqual(left.checklist, right.checklist) &&
     left.repeatMode === right.repeatMode &&
     left.repeatIntervalText === right.repeatIntervalText &&
     areStringArraysEqual(left.repeatWeekdays, right.repeatWeekdays) &&

@@ -15,6 +15,7 @@ export type Mode = (typeof Mode)[keyof typeof Mode];
 export const FocusTarget = {
   TASK_LIST: "task_list",
   DETAILS_LINKS: "details_links",
+  DETAILS_CHECKLIST: "details_checklist",
   DASHBOARD: "dashboard",
   BACKUP_CENTER: "backup_center",
   SEARCH_INPUT: "search_input",
@@ -32,6 +33,7 @@ export const FocusTarget = {
   EDITOR_REPEAT_COUNT: "editor_repeat_count",
   EDITOR_REPEAT_CUSTOM: "editor_repeat_custom",
   EDITOR_TAGS: "editor_tags",
+  EDITOR_CHECKLIST: "editor_checklist",
   EDITOR_NOTES: "editor_notes",
   // Compatibility targets for current editor controls.
   EDITOR_SAVE: "editor_save",
