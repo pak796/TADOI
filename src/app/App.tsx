@@ -653,6 +653,10 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
       {
         title: "Recurring controls: x skip, z snooze",
         description: "Skip or push the selected recurring occurrence by one day."
+      },
+      {
+        title: "Bulk ops: m mark, ` bulk ...`, Esc clear",
+        description: "Mark tasks in LIST, run bulk commands from TITS, and clear marks with Esc."
       }
     ]
   },
@@ -2529,7 +2533,7 @@ export function App({
     commandOverlayInnerWidth
   );
   const commandIdleHintLine = fitLineToWidth(
-    'Try: add "Buy milk" #errands  •  help',
+    'Try: add "Plan sprint" due:2026-03-02 at:09:30 #work #planning  •  help',
     commandOverlayInnerWidth
   );
   const commandStatusLine = commandOutput
@@ -4559,21 +4563,21 @@ export function App({
       return;
     }
 
-    if (
-      parsed.command.type === "bulk" &&
-      parsed.command.operation === "delete" &&
-      parsed.command.target.type === "marked"
-    ) {
-      const marked = Array.from(new Set(bulkMarkedTaskIds)).sort((left, right) =>
+    if (parsed.command.type === "bulk" && parsed.command.operation === "delete") {
+      const targetIds =
+        parsed.command.target.type === "marked"
+          ? bulkMarkedTaskIds
+          : parsed.command.target.ids;
+      const resolvedTargetIds = Array.from(new Set(targetIds)).sort((left, right) =>
         left.localeCompare(right)
       );
-      if (marked.length === 0) {
+      if (resolvedTargetIds.length === 0) {
         setCommandOutput({ kind: "error", text: "No tasks marked. Press 'm' to mark tasks first." });
         return;
       }
       const byId = new Map(state.tasks.map((task) => [task.id, task]));
       const targetTasks: Task[] = [];
-      for (const id of marked) {
+      for (const id of resolvedTargetIds) {
         const task = byId.get(id);
         if (!task) {
           setCommandOutput({ kind: "error", text: `Error: bulk target id not found (${id})` });
@@ -4591,14 +4595,14 @@ export function App({
       }
       openModalWithContext({
         type: "bulk_delete",
-        taskIds: marked,
+        taskIds: resolvedTargetIds,
         recurringSeriesCount: targetTasks.filter((task) => Boolean(task.recurrence)).length,
         previousMode: Mode.LIST,
         previousFocus: uiState.focus
       });
       setCommandOutput({
         kind: "ok",
-        text: `Bulk delete pending confirmation (${String(marked.length)} tasks)`
+        text: `Bulk delete pending confirmation (${String(resolvedTargetIds.length)} tasks)`
       });
       setCommandHistory((previous) => [...previous, raw]);
       setCommandHistoryIndex(null);
@@ -6220,7 +6224,7 @@ export function App({
       return;
     }
     if (selectedTask.rowKind === "series_occurrence_virtual") {
-      showShortNavigationBanner("Virtual occurrences cannot be bulk-marked");
+      showShortNavigationBanner("Bulk selection does not support virtual occurrences (yet).");
       return;
     }
     setBulkMarkedTaskIds((previous) => {
@@ -8215,7 +8219,7 @@ export function App({
                 : isBackupMode
                   ? "SAFE IMPORT / EXPORT FLOW"
                 : bulkActive
-                  ? `BULK MARKED: ${String(bulkMarkedTaskIds.length)} · \` bulk ...`
+                  ? `BULK MARKED: ${String(bulkMarkedTaskIds.length)} · \` bulk ... · Esc clear`
                 : selectedTask
                   ? getDueInLabel(selectedTask, now)
                   : ""}
@@ -8716,7 +8720,7 @@ export function App({
               value={commandText}
               onInput={setCommandTextValue}
               focused
-              placeholder='add "Buy milk" #errands'
+              placeholder='add "Plan sprint" due:2026-03-02 at:09:30 #work #planning'
               style={{
                 backgroundColor: theme.bg,
                 color: inputTheme.text,

@@ -82,6 +82,7 @@ LIST mode actions:
 - `E`: edit recurring series
 - `c` / `C`: duplicate selected task
 - `m`: mark/unmark selected row for bulk commands
+  - Virtual recurring occurrence rows are rejected with: `Bulk selection does not support virtual occurrences (yet).`
 - `l`: add link/attachment
 - `Space`: toggle done/open
 - `x`: skip recurring occurrence
@@ -217,7 +218,7 @@ Supported TITS commands:
 - `bulk assignee <value|clear>`
 - `bulk project <value|clear>`
 - `bulk stage <todo|doing|blocked|done>`
-- `bulk delete` (confirm modal)
+- `bulk delete` (in-app always opens confirm modal, for marked and explicit `id:` targets)
 - `help` / `help add|done|due|recur|check|bulk`
 
 CLI TITS notes:

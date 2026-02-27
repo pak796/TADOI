@@ -107,15 +107,60 @@ describe("resolveTitsCliInput", () => {
     });
   });
 
-  it("resolves checklist and bulk wrapper commands", () => {
-    expect(resolveTitsCliInput(["check:add", "id:task-1", "Draft", "brief"])).toEqual({
-      mode: "subcommand",
-      dsl: 'check:add id:task-1 Draft brief'
-    });
-    expect(resolveTitsCliInput(["bulk:tag:add", "id:a", "id:b", "#home"])).toEqual({
-      mode: "subcommand",
-      dsl: "bulk:tag:add id:a id:b #home"
-    });
+  it("resolves checklist and all bulk wrapper commands", () => {
+    const cases: Array<{ argv: string[]; dsl: string }> = [
+      {
+        argv: ["check:add", "id:task-1", "Draft", "brief"],
+        dsl: "check:add id:task-1 Draft brief"
+      },
+      {
+        argv: ["bulk:done", "id:task-a", "id:task-b"],
+        dsl: "bulk:done id:task-a id:task-b"
+      },
+      {
+        argv: ["bulk:tag:add", "id:task-a", "id:task-b", "#home"],
+        dsl: "bulk:tag:add id:task-a id:task-b #home"
+      },
+      {
+        argv: ["bulk:tag:rm", "id:task-a", "id:task-b", "#home"],
+        dsl: "bulk:tag:rm id:task-a id:task-b #home"
+      },
+      {
+        argv: ["bulk:due", "id:task-a", "id:task-b", "2026-03-01", "at:09:00"],
+        dsl: "bulk:due id:task-a id:task-b 2026-03-01 at:09:00"
+      },
+      {
+        argv: ["bulk:due:clear", "id:task-a", "id:task-b"],
+        dsl: "bulk:due:clear id:task-a id:task-b"
+      },
+      {
+        argv: ["bulk:priority", "id:task-a", "id:task-b", "#p2"],
+        dsl: "bulk:priority id:task-a id:task-b #p2"
+      },
+      {
+        argv: ["bulk:assignee", "id:task-a", "id:task-b", "alice"],
+        dsl: "bulk:assignee id:task-a id:task-b alice"
+      },
+      {
+        argv: ["bulk:project", "id:task-a", "id:task-b", "Apollo"],
+        dsl: "bulk:project id:task-a id:task-b Apollo"
+      },
+      {
+        argv: ["bulk:stage", "id:task-a", "id:task-b", "doing"],
+        dsl: "bulk:stage id:task-a id:task-b doing"
+      },
+      {
+        argv: ["bulk:delete", "id:task-a", "id:task-b"],
+        dsl: "bulk:delete id:task-a id:task-b"
+      }
+    ];
+
+    for (const testCase of cases) {
+      expect(resolveTitsCliInput(testCase.argv)).toEqual({
+        mode: "subcommand",
+        dsl: testCase.dsl
+      });
+    }
   });
 });
 
@@ -123,6 +168,15 @@ describe("runTitsCommandCliWithDeps", () => {
   it("returns locked exit code for write commands when lock is present", async () => {
     const { deps, errors, saved } = createDeps({ locked: true });
     const result = await runTitsCommandCliWithDeps(["add", "X"], deps);
+
+    expect(result).toEqual({ handled: true, exitCode: TITS_CLI_EXIT_CODE.LOCKED });
+    expect(errors).toEqual(["Error: TADOI is running (lock present)."]);
+    expect(saved).toHaveLength(0);
+  });
+
+  it("returns locked exit code for bulk write commands when lock is present", async () => {
+    const { deps, errors, saved } = createDeps({ locked: true });
+    const result = await runTitsCommandCliWithDeps(["bulk:done", "id:task-a"], deps);
 
     expect(result).toEqual({ handled: true, exitCode: TITS_CLI_EXIT_CODE.LOCKED });
     expect(errors).toEqual(["Error: TADOI is running (lock present)."]);
