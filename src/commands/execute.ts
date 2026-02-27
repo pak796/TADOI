@@ -147,6 +147,7 @@ function executeAdd(command: AddCommand, ctx: ExecContext): CommandResult {
     id: crypto.randomUUID(),
     title,
     status: "open",
+    workflowStage: "todo",
     createdAt: ctx.now,
     updatedAt: ctx.now,
     tags,

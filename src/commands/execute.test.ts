@@ -53,6 +53,7 @@ describe("executeCommand", () => {
     expect(setTasksAction.tasks).toHaveLength(1);
     const created = setTasksAction.tasks[0];
     expect(created.status).toBe("open");
+    expect(created.workflowStage).toBe("todo");
     expect(created.tags).toEqual(["errands", "invalid"]);
     expect(created.notes).toBe("2% milk");
     expect(created.dueAt).toBe(new Date(2026, 1, 28, 17, 30).getTime());

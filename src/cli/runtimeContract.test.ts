@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
+import { loadStateStrict } from "../state/persistence";
 
 type CliRunResult = {
   exitCode: number;
@@ -56,6 +57,34 @@ describe("runtime CLI contract", () => {
       tasks?: Array<{ title?: string }>;
     };
     expect(parsed.tasks?.[0]?.title).toBe("--help");
+  });
+
+  it("preserves tasks across repeated cli add commands with strict reload pass", async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-cli-repeat-add-"));
+    const dataPath = path.join(tempDir, "tadoi_data.json");
+
+    const first = await runCliProcess(["--data-file", dataPath, "add", "Task A"]);
+    expect(first.exitCode).toBe(0);
+
+    const second = await runCliProcess(["--data-file", dataPath, "add", "Task B"]);
+    expect(second.exitCode).toBe(0);
+
+    const raw = await fs.readFile(dataPath, "utf8");
+    const parsed = JSON.parse(raw) as {
+      tasks?: Array<{ title?: string; workflowStage?: string }>;
+    };
+    expect(parsed.tasks).toHaveLength(2);
+    expect(parsed.tasks?.map((task) => task.title)).toEqual(["Task A", "Task B"]);
+    expect(parsed.tasks?.every((task) => task.workflowStage === "todo")).toBe(true);
+
+    const strict = await loadStateStrict({ filePath: dataPath });
+    expect(strict.data.tasks).toHaveLength(2);
+    expect(strict.data.tasks.map((task) => task.title)).toEqual(["Task A", "Task B"]);
+    expect(strict.data.tasks.every((task) => task.workflowStage === "todo")).toBe(true);
+
+    const files = await fs.readdir(tempDir);
+    const hasCorruptBackup = files.some((name) => name.startsWith("tadoi_data.json.corrupt."));
+    expect(hasCorruptBackup).toBe(false);
   });
 
   it("returns parse/validation exit code for export missing --out", async () => {
