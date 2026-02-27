@@ -1,5 +1,6 @@
 import { normalizeTags } from "../domain/tagIndex";
 import { normalizeChecklist, sortChecklistItems } from "../domain/checklist";
+import { normalizeTaskReminder } from "../domain/reminders";
 import {
   createDefaultEngagementState,
   mergeEngagementStates,
@@ -81,7 +82,8 @@ function normalizeTask(task: Task): Task {
   return {
     ...task,
     tags: normalizePriorityTags(Array.isArray(task.tags) ? task.tags : []),
-    checklist: normalizeChecklist(task.checklist)
+    checklist: normalizeChecklist(task.checklist),
+    reminder: normalizeTaskReminder(task.reminder)
   };
 }
 
@@ -142,6 +144,25 @@ function areTaskChecklistEquivalent(
   return true;
 }
 
+function areTaskRemindersEquivalent(
+  left: Task["reminder"],
+  right: Task["reminder"]
+): boolean {
+  const normalizedLeft = normalizeTaskReminder(left);
+  const normalizedRight = normalizeTaskReminder(right);
+
+  if (!normalizedLeft && !normalizedRight) return true;
+  if (!normalizedLeft || !normalizedRight) return false;
+
+  return (
+    normalizedLeft.kind === normalizedRight.kind &&
+    normalizedLeft.at === normalizedRight.at &&
+    normalizedLeft.offsetMs === normalizedRight.offsetMs &&
+    normalizedLeft.lastFiredAt === normalizedRight.lastFiredAt &&
+    normalizedLeft.snoozedUntilAt === normalizedRight.snoozedUntilAt
+  );
+}
+
 function areTasksEquivalent(left: Task, right: Task): boolean {
   const recurrenceEqual =
     left.recurrence?.dtstart === right.recurrence?.dtstart &&
@@ -165,6 +186,7 @@ function areTasksEquivalent(left: Task, right: Task): boolean {
     areStringArraysEqual(left.tags, right.tags) &&
     areTaskLinksEquivalent(left.links, right.links) &&
     areTaskChecklistEquivalent(left.checklist, right.checklist) &&
+    areTaskRemindersEquivalent(left.reminder, right.reminder) &&
     recurrenceEqual &&
     instanceEqual
   );
@@ -556,7 +578,8 @@ export function redactStateForExport(
       hasExplicitTime: undefined,
       recurrence: undefined,
       instance_of: undefined,
-      external: undefined
+      external: undefined,
+      reminder: undefined
     })),
     engagement: createDefaultEngagementState(),
     settings: payload.settings

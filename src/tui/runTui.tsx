@@ -5,6 +5,7 @@ import { redactPathForDisplay } from "../app/pathRedaction";
 import { applyThemeWithSettings } from "../app/theme";
 import { startOfLocalDayMs } from "../domain/dates";
 import { normalizeEngagementState } from "../domain/engagement";
+import { normalizeTaskReminder } from "../domain/reminders";
 import { normalizeTagIndex, normalizeTags } from "../domain/tagIndex";
 import {
   DEFAULT_CRT_FX_LITE_COLOR,
@@ -52,6 +53,7 @@ export function normalizeLoadedDataForStartup(
     const nextTags = normalizeTags(task.tags ?? []);
     const hasExplicitTime =
       typeof task.hasExplicitTime === "boolean" ? task.hasExplicitTime : false;
+    const normalizedReminder = normalizeTaskReminder(task.reminder);
     const normalizedDueAt =
       task.dueAt !== undefined && !hasExplicitTime
         ? startOfLocalDayMs(task.dueAt)
@@ -74,12 +76,16 @@ export function normalizeLoadedDataForStartup(
       if (task.dueAt !== normalizedDueAt) {
         tasksChanged = true;
       }
+      if (JSON.stringify(task.reminder ?? null) !== JSON.stringify(normalizedReminder ?? null)) {
+        tasksChanged = true;
+      }
     }
     return {
       ...task,
       tags: nextTags,
       hasExplicitTime,
-      dueAt: normalizedDueAt
+      dueAt: normalizedDueAt,
+      reminder: normalizedReminder
     };
   });
 

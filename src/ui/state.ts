@@ -1,5 +1,9 @@
 import { FocusTarget, Mode, isEditorMode, isModalMode, type Mode as ModeType } from "./modeFocus";
-import type { TaskOverdueEvent } from "../notifications/types";
+import type {
+  NotificationModalEvent,
+  TaskOverdueEvent,
+  TaskReminderEvent
+} from "../notifications/types";
 import type { BackupCenterScreen } from "../state/backupCenterFlow";
 
 type UIModalReturnContext = {
@@ -30,6 +34,11 @@ export type UIDeleteModal = UIRegularTaskDeleteModal | UIRecurringOccurrenceDele
 export type UIOverdueModal = {
   type: "overdue";
   event: TaskOverdueEvent;
+} & UIModalReturnContext;
+
+export type UIReminderModal = {
+  type: "reminder";
+  event: TaskReminderEvent;
 } & UIModalReturnContext;
 
 export type UITaskLinkModalKind = "auto" | "url" | "path";
@@ -155,6 +164,7 @@ export type EmptyNuxState = {
 export type UIConfirmModal =
   | UIDeleteModal
   | UIOverdueModal
+  | UIReminderModal
   | UIEmptyNuxModal
   | UITaskLinkFormModal
   | UITaskLinkDeleteModal
@@ -174,7 +184,7 @@ export type UIState = {
   scrollOffset: number;
   editorScrollOffset: number;
   modal: UIConfirmModal | null;
-  notificationModalQueue: TaskOverdueEvent[];
+  notificationModalQueue: NotificationModalEvent[];
   emptyNuxDismissed: boolean;
   emptyNux?: EmptyNuxState;
   emptyNuxCelebratePending?: boolean;
@@ -195,9 +205,10 @@ export type UIAction =
   | { type: "DISMISS_EMPTY_NUX" }
   | { type: "CLEAR_EMPTY_NUX" }
   | { type: "SET_EMPTY_NUX_CELEBRATE_PENDING"; pending: boolean }
-  | { type: "enqueueNotificationModal"; event: TaskOverdueEvent }
+  | { type: "enqueueNotificationModal"; event: NotificationModalEvent }
   | { type: "dequeueNotificationModal" }
   | { type: "clearNotificationModalQueue" }
+  | { type: "clearOverdueNotificationModals" }
   | { type: "setSelectedIndex"; selectedIndex: number }
   | { type: "setScrollOffset"; scrollOffset: number }
   | { type: "setEditorScrollOffset"; scrollOffset: number }
@@ -345,6 +356,18 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
         return state;
       }
       return { ...state, notificationModalQueue: [] };
+    case "clearOverdueNotificationModals": {
+      if (state.notificationModalQueue.length === 0) {
+        return state;
+      }
+      const nextQueue = state.notificationModalQueue.filter(
+        (event) => event.type !== "TASK_OVERDUE"
+      );
+      if (nextQueue.length === state.notificationModalQueue.length) {
+        return state;
+      }
+      return { ...state, notificationModalQueue: nextQueue };
+    }
     case "setSelectedIndex":
       return { ...state, selectedIndex: action.selectedIndex };
     case "setScrollOffset":

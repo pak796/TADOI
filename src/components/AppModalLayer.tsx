@@ -3,9 +3,11 @@ import type { RuntimeTheme } from "../app/theme";
 import { Mode, type Task } from "../domain/models";
 import { EmptyNuxModal } from "./EmptyNuxModal";
 import { OverdueNotificationModal } from "./OverdueNotificationModal";
+import { ReminderNotificationModal } from "./ReminderNotificationModal";
 import type {
   EmptyNuxStep,
   UIOverdueModal,
+  UIReminderModal,
   UIState,
   UITaskEditorUnsavedContinuation,
   UITaskLinkFormModal,
@@ -23,6 +25,8 @@ type AppModalLayerProps = {
   showCorruptionRecoveryImportCta: boolean;
   activeOverdueModal: UIOverdueModal | null;
   activeOverdueTask: Task | undefined;
+  activeReminderModal: UIReminderModal | null;
+  activeReminderTask: Task | undefined;
   now: number;
   TASK_LINK_FORM_KIND_ORDER: UITaskLinkModalKind[];
   describeUnsavedSource: (source: UIUnsavedChangesModal["source"]) => string;
@@ -60,6 +64,11 @@ type AppModalLayerProps = {
   handleOverdueModalSnooze: () => void;
   handleOverdueModalDone: () => void;
   handleOverdueModalGoToTask: () => void;
+  handleReminderModalDismiss: () => void;
+  handleReminderModalSnooze10m: () => void;
+  handleReminderModalSnooze1h: () => void;
+  handleReminderModalSnooze1d: () => void;
+  handleReminderModalGoToTask: () => void;
 };
 
 export function AppModalLayer({
@@ -72,6 +81,8 @@ export function AppModalLayer({
   showCorruptionRecoveryImportCta,
   activeOverdueModal,
   activeOverdueTask,
+  activeReminderModal,
+  activeReminderTask,
   now,
   TASK_LINK_FORM_KIND_ORDER,
   describeUnsavedSource,
@@ -108,7 +119,12 @@ export function AppModalLayer({
   closeCelebrateToList,
   handleOverdueModalSnooze,
   handleOverdueModalDone,
-  handleOverdueModalGoToTask
+  handleOverdueModalGoToTask,
+  handleReminderModalDismiss,
+  handleReminderModalSnooze10m,
+  handleReminderModalSnooze1h,
+  handleReminderModalSnooze1d,
+  handleReminderModalGoToTask
 }: AppModalLayerProps) {
   if (uiState.mode !== Mode.MODAL_CONFIRM || !uiState.modal) {
     return null;
@@ -898,6 +914,16 @@ export function AppModalLayer({
               showImportBackupAction={
                 showCorruptionRecoveryImportCta && activeEmptyNuxStep === "welcome"
               }
+            />
+          ) : activeReminderModal ? (
+            <ReminderNotificationModal
+              event={activeReminderModal.event}
+              task={activeReminderTask}
+              onDismiss={handleReminderModalDismiss}
+              onSnooze10m={handleReminderModalSnooze10m}
+              onSnooze1h={handleReminderModalSnooze1h}
+              onSnooze1d={handleReminderModalSnooze1d}
+              onGoToTask={handleReminderModalGoToTask}
             />
           ) : activeOverdueModal ? (
             <OverdueNotificationModal

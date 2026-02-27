@@ -186,6 +186,9 @@ export type KeyRouterAction =
   | { scope: "domain"; type: "MODAL_OVERDUE_SNOOZE" }
   | { scope: "domain"; type: "MODAL_OVERDUE_DONE" }
   | { scope: "domain"; type: "MODAL_OVERDUE_GO_TO_TASK" }
+  | { scope: "domain"; type: "MODAL_REMINDER_DISMISS" }
+  | { scope: "domain"; type: "MODAL_REMINDER_SNOOZE"; deltaMs: number }
+  | { scope: "domain"; type: "MODAL_REMINDER_GO_TO_TASK" }
   | { scope: "domain"; type: "CYCLE_STATUS" }
   | { scope: "domain"; type: "CYCLE_SORT" }
   | { scope: "domain"; type: "CYCLE_DUE" }
@@ -638,6 +641,9 @@ function resolveEscapeActions(
   if (mode === Mode.MODAL_CONFIRM && uiState.modal?.type === "backup_final_checkpoint") {
     return [{ scope: "ui", type: "MODAL_CANCEL_BACKUP_FINAL_CHECKPOINT" }];
   }
+  if (mode === Mode.MODAL_CONFIRM && uiState.modal?.type === "reminder") {
+    return [{ scope: "domain", type: "MODAL_REMINDER_DISMISS" }];
+  }
   if (mode === Mode.BACKUP_CENTER) {
     return [{ scope: "ui", type: "BACKUP_BACK" }];
   }
@@ -806,6 +812,26 @@ function resolveModalModeActions(
     }
     if (lowerName === "g" || sequence === "g" || sequence === "G") {
       return [{ scope: "domain", type: "MODAL_OVERDUE_GO_TO_TASK" }];
+    }
+    return [];
+  }
+  if (uiState.modal?.type === "reminder") {
+    const lowerName = name.toLowerCase();
+    const lowerSequence = sequence.toLowerCase();
+    if (name === "return" || name === "enter") {
+      return [{ scope: "domain", type: "MODAL_REMINDER_DISMISS" }];
+    }
+    if (lowerName === "g" || lowerSequence === "g") {
+      return [{ scope: "domain", type: "MODAL_REMINDER_GO_TO_TASK" }];
+    }
+    if (name === "1" || sequence === "1") {
+      return [{ scope: "domain", type: "MODAL_REMINDER_SNOOZE", deltaMs: 10 * 60_000 }];
+    }
+    if (name === "2" || sequence === "2") {
+      return [{ scope: "domain", type: "MODAL_REMINDER_SNOOZE", deltaMs: 60 * 60_000 }];
+    }
+    if (name === "3" || sequence === "3") {
+      return [{ scope: "domain", type: "MODAL_REMINDER_SNOOZE", deltaMs: 24 * 60 * 60_000 }];
     }
     return [];
   }

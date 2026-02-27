@@ -50,6 +50,13 @@ import {
   formatDateToLocalIso,
   parseLocalIsoToDate
 } from "../domain/recurrence/rruleAdapter";
+import {
+  applyReminderFired,
+  isReminderPendingForEffectiveAt,
+  nextPendingReminderAt,
+  resolveEffectiveReminderAt,
+  stripReminderRuntimeState
+} from "../domain/reminders";
 import { isRepeatOccurrenceAfterSeriesStart } from "../domain/recurrence/repeatOccurrence";
 import {
   deleteRecurringOccurrence,
@@ -262,7 +269,7 @@ import { NotificationManager } from "../notifications/notificationManager";
 import { InAppModalNotifier } from "../notifications/notifiers/inAppModalNotifier";
 import { OSNotifier } from "../notifications/notifiers/osNotifier";
 import { TerminalBellNotifier } from "../notifications/notifiers/terminalBellNotifier";
-import type { TaskOverdueEvent } from "../notifications/types";
+import type { TaskOverdueEvent, TaskReminderEvent } from "../notifications/types";
 import { APP_VERSION } from "./version";
 import {
   getTerminalSizeWarning,
@@ -333,6 +340,8 @@ const BOTTOM_INFO_VIEW_ORDER = ["summary", "tags", "priorities"] as const;
 const SLOW_PULSE_INTERVAL_MS = 2000;
 const FAST_PULSE_INTERVAL_MS = 700;
 const NOTIFICATION_EVALUATION_INTERVAL_MS = 10000;
+const REMINDER_TIMEOUT_MAX_DELAY_MS = 12 * 60 * 60 * 1000;
+const REMINDER_TIMEOUT_FALLBACK_MS = 30_000;
 const ENGAGEMENT_TOAST_TICK_INTERVAL_MS = 350;
 const FIRST_RECURRING_TASK_TOAST_MS = 10_000;
 const FIRST_RECURRING_REPEAT_DONE_TOAST_MS = 10_000;
@@ -1590,6 +1599,7 @@ export function App({
   const [helpTextTuningThemeId, setHelpTextTuningThemeId] = useState<RotatingThemeId>(
     HELP_TEXT_TUNING_THEMES[0] ?? "default"
   );
+  const [reminderSchedulerTick, setReminderSchedulerTick] = useState(0);
   const [custom1DraftGlobal, setCustom1DraftGlobal] = useState<ThemeTokens>(() =>
     resolveCustom1Config(initialCustomThemes).global
   );
@@ -1619,6 +1629,7 @@ export function App({
   );
   const gPrefixTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navBannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reminderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previousTaskCountRef = useRef(state.tasks.length);
   const pendingCelebrateTaskIdRef = useRef<string | undefined>(undefined);
   const helpScrollTopRef = useRef(0);
@@ -1949,6 +1960,51 @@ export function App({
 
   function findTaskForOverdueEvent(event: TaskOverdueEvent): Task | undefined {
     return findTaskById(event.taskId);
+  }
+
+  function findTaskForReminderEvent(event: TaskReminderEvent): Task | undefined {
+    return findTaskById(event.taskId);
+  }
+
+  function evaluateReminderTriggers(
+    tasks: Task[],
+    nowMs: number
+  ): { tasks: Task[]; events: TaskReminderEvent[] } {
+    let nextTasks = tasks;
+    const events: TaskReminderEvent[] = [];
+
+    for (const task of tasks) {
+      if (task.status !== "open") {
+        continue;
+      }
+      const effectiveReminderAt = resolveEffectiveReminderAt(task);
+      if (!isReminderPendingForEffectiveAt(task.reminder, effectiveReminderAt)) {
+        continue;
+      }
+      if (effectiveReminderAt === undefined || effectiveReminderAt > nowMs) {
+        continue;
+      }
+
+      const updatedTasks = applyReminderFired(nextTasks, task.id, effectiveReminderAt);
+      if (updatedTasks === nextTasks) {
+        continue;
+      }
+
+      nextTasks = updatedTasks;
+      events.push({
+        type: "TASK_REMINDER",
+        taskId: task.id,
+        title: task.title,
+        effectiveReminderAt,
+        dueAt:
+          typeof task.dueAt === "number" && Number.isFinite(task.dueAt)
+            ? new Date(task.dueAt).toISOString()
+            : undefined,
+        firedAt: new Date(nowMs).toISOString()
+      });
+    }
+
+    return { tasks: nextTasks, events };
   }
 
   function findSeriesTaskBySeriesId(seriesId: string | undefined): Task | undefined {
@@ -2510,6 +2566,13 @@ export function App({
   const activeOverdueTask = activeOverdueModal
     ? findTaskForOverdueEvent(activeOverdueModal.event)
     : undefined;
+  const activeReminderModal =
+    uiState.mode === Mode.MODAL_CONFIRM && uiState.modal?.type === "reminder"
+      ? uiState.modal
+      : null;
+  const activeReminderTask = activeReminderModal
+    ? findTaskForReminderEvent(activeReminderModal.event)
+    : undefined;
   const isNuxIdle =
     uiState.modal === null &&
     uiState.notificationModalQueue.length === 0 &&
@@ -2726,6 +2789,41 @@ export function App({
   }, [state.tasks]);
 
   useEffect(() => {
+    if (reminderTimerRef.current) {
+      clearTimeout(reminderTimerRef.current);
+      reminderTimerRef.current = null;
+    }
+
+    const nowMs = Date.now();
+    const reminderEvaluation = evaluateReminderTriggers(state.tasks, nowMs);
+    if (reminderEvaluation.tasks !== state.tasks) {
+      dispatch({ type: "setTasks", tasks: reminderEvaluation.tasks });
+    }
+    for (const event of reminderEvaluation.events) {
+      uiDispatch({ type: "enqueueNotificationModal", event });
+    }
+
+    const nextReminderAt = nextPendingReminderAt(reminderEvaluation.tasks, nowMs);
+    if (nextReminderAt === undefined) {
+      return;
+    }
+
+    const waitMs = Math.max(0, nextReminderAt - nowMs);
+    const nextDelay =
+      waitMs > REMINDER_TIMEOUT_MAX_DELAY_MS ? REMINDER_TIMEOUT_FALLBACK_MS : waitMs;
+    reminderTimerRef.current = setTimeout(() => {
+      setReminderSchedulerTick((previous) => previous + 1);
+    }, Math.max(250, nextDelay));
+
+    return () => {
+      if (reminderTimerRef.current) {
+        clearTimeout(reminderTimerRef.current);
+        reminderTimerRef.current = null;
+      }
+    };
+  }, [state.tasks, reminderSchedulerTick]);
+
+  useEffect(() => {
     if (state.tasks.length !== 0) return;
     if (uiState.emptyNuxDismissed) {
       return;
@@ -2818,33 +2916,49 @@ export function App({
   }, [state.tasks.length, uiState.modal, uiState.emptyNux?.startedFromNux]);
 
   useEffect(() => {
-    if (
-      !settingsState.notifications.enabled ||
-      !settingsState.notifications.inAppOverdueBanner
-    ) {
-      return;
-    }
     if (uiState.modal) return;
     if (uiState.notificationModalQueue.length === 0) return;
 
     const nextEvent = uiState.notificationModalQueue[0];
+    if (
+      nextEvent?.type === "TASK_OVERDUE" &&
+      (!settingsState.notifications.enabled ||
+        !settingsState.notifications.inAppOverdueBanner)
+    ) {
+      uiDispatch({ type: "dequeueNotificationModal" });
+      return;
+    }
     const previousMode = uiState.mode === Mode.MODAL_CONFIRM ? Mode.LIST : uiState.mode;
     const previousFocus =
       uiState.mode === Mode.MODAL_CONFIRM ? FocusTarget.TASK_LIST : uiState.focus;
 
     uiDispatch({ type: "dequeueNotificationModal" });
-    uiDispatch({
-      type: "setModal",
-      modal: {
-        type: "overdue",
-        event: nextEvent,
-        previousMode,
-        previousFocus
-      }
-    });
+    if (nextEvent?.type === "TASK_OVERDUE") {
+      uiDispatch({
+        type: "setModal",
+        modal: {
+          type: "overdue",
+          event: nextEvent,
+          previousMode,
+          previousFocus
+        }
+      });
+      modalBellNotifierRef.current?.notify(nextEvent);
+    } else if (nextEvent?.type === "TASK_REMINDER") {
+      uiDispatch({
+        type: "setModal",
+        modal: {
+          type: "reminder",
+          event: nextEvent,
+          previousMode,
+          previousFocus
+        }
+      });
+    } else {
+      return;
+    }
     uiDispatch({ type: "setMode", mode: Mode.MODAL_CONFIRM });
     uiDispatch({ type: "setFocus", focus: FocusTarget.MODAL });
-    modalBellNotifierRef.current?.notify(nextEvent);
   }, [
     settingsState.notifications.enabled,
     settingsState.notifications.inAppOverdueBanner,
@@ -2861,8 +2975,8 @@ export function App({
     ) {
       return;
     }
-    if (uiState.notificationModalQueue.length > 0) {
-      uiDispatch({ type: "clearNotificationModalQueue" });
+    if (uiState.notificationModalQueue.some((event) => event.type === "TASK_OVERDUE")) {
+      uiDispatch({ type: "clearOverdueNotificationModals" });
     }
     if (uiState.modal?.type === "overdue") {
       applyEscUnwind();
@@ -2871,7 +2985,7 @@ export function App({
     settingsState.notifications.enabled,
     settingsState.notifications.inAppOverdueBanner,
     uiState.modal,
-    uiState.notificationModalQueue.length
+    uiState.notificationModalQueue
   ]);
 
   useEffect(() => {
@@ -2881,6 +2995,9 @@ export function App({
       }
       if (navBannerTimerRef.current) {
         clearTimeout(navBannerTimerRef.current);
+      }
+      if (reminderTimerRef.current) {
+        clearTimeout(reminderTimerRef.current);
       }
     };
   }, []);
@@ -4836,6 +4953,15 @@ export function App({
         return;
       case "MODAL_OVERDUE_GO_TO_TASK":
         handleOverdueModalGoToTask();
+        return;
+      case "MODAL_REMINDER_DISMISS":
+        handleReminderModalDismiss();
+        return;
+      case "MODAL_REMINDER_SNOOZE":
+        handleReminderModalSnooze(action.deltaMs);
+        return;
+      case "MODAL_REMINDER_GO_TO_TASK":
+        handleReminderModalGoToTask();
         return;
       case "CYCLE_STATUS":
         cycleStatus();
@@ -7578,6 +7704,7 @@ export function App({
 
     const dueAt = occurrenceDate.getTime();
     const instanceId = crypto.randomUUID();
+    const reminder = stripReminderRuntimeState(context.seriesTask.reminder);
     const doneInstance: Task = {
       id: instanceId,
       title: context.seriesTask.title,
@@ -7589,6 +7716,7 @@ export function App({
       hasExplicitTime: context.seriesTask.hasExplicitTime,
       notes: context.seriesTask.notes,
       tags: context.seriesTask.tags,
+      ...(reminder ? { reminder } : {}),
       instance_of: {
         series_id: context.seriesId,
         occurrence: context.occurrenceIso
@@ -7675,6 +7803,9 @@ export function App({
 
     const source = context.instanceTask ?? context.seriesTask;
     const instanceId = context.instanceTask?.id ?? crypto.randomUUID();
+    const reminder = context.instanceTask
+      ? context.instanceTask.reminder
+      : stripReminderRuntimeState(source.reminder);
     const snoozedInstance: Task = {
       id: instanceId,
       title: source.title,
@@ -7685,6 +7816,7 @@ export function App({
       hasExplicitTime: source.hasExplicitTime,
       notes: source.notes,
       tags: source.tags,
+      ...(reminder ? { reminder } : {}),
       instance_of: {
         series_id: context.seriesId,
         occurrence: context.occurrenceIso
@@ -7957,6 +8089,18 @@ export function App({
 
   function handleOverdueModalGoToTask() {
     modalFlow.handleOverdueModalGoToTask();
+  }
+
+  function handleReminderModalDismiss() {
+    modalFlow.handleReminderModalDismiss();
+  }
+
+  function handleReminderModalSnooze(deltaMs: number) {
+    modalFlow.handleReminderModalSnooze(deltaMs);
+  }
+
+  function handleReminderModalGoToTask() {
+    modalFlow.handleReminderModalGoToTask();
   }
 
   function setTagFilter(next?: TagFilter) {
@@ -9210,6 +9354,8 @@ export function App({
         showCorruptionRecoveryImportCta={showCorruptionRecoveryImportCta}
         activeOverdueModal={activeOverdueModal}
         activeOverdueTask={activeOverdueTask}
+        activeReminderModal={activeReminderModal}
+        activeReminderTask={activeReminderTask}
         now={now}
         TASK_LINK_FORM_KIND_ORDER={TASK_LINK_FORM_KIND_ORDER}
         describeUnsavedSource={describeUnsavedSource}
@@ -9247,6 +9393,11 @@ export function App({
         handleOverdueModalSnooze={handleOverdueModalSnooze}
         handleOverdueModalDone={handleOverdueModalDone}
         handleOverdueModalGoToTask={handleOverdueModalGoToTask}
+        handleReminderModalDismiss={handleReminderModalDismiss}
+        handleReminderModalSnooze10m={() => handleReminderModalSnooze(10 * 60_000)}
+        handleReminderModalSnooze1h={() => handleReminderModalSnooze(60 * 60_000)}
+        handleReminderModalSnooze1d={() => handleReminderModalSnooze(24 * 60 * 60_000)}
+        handleReminderModalGoToTask={handleReminderModalGoToTask}
       />
 
       {viewsOverlayOpen ? (

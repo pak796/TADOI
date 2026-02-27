@@ -11,6 +11,7 @@ const EDITOR_BASE_FOCUS_ORDER: FocusTarget[] = [
   FocusTarget.EDITOR_TITLE,
   FocusTarget.EDITOR_DUE_DATE,
   FocusTarget.EDITOR_DUE_TIME,
+  FocusTarget.EDITOR_REMINDER_KIND,
   FocusTarget.EDITOR_REPEAT_MODE,
   FocusTarget.EDITOR_TAGS,
   FocusTarget.EDITOR_CHECKLIST,
@@ -29,10 +30,23 @@ const RECURRENCE_DETAIL_FOCUS_ORDER: FocusTarget[] = [
   FocusTarget.EDITOR_REPEAT_COUNT
 ];
 
+const REMINDER_DETAIL_FOCUS_ORDER: FocusTarget[] = [
+  FocusTarget.EDITOR_REMINDER_AT_DATE,
+  FocusTarget.EDITOR_REMINDER_AT_TIME,
+  FocusTarget.EDITOR_REMINDER_OFFSET_VALUE,
+  FocusTarget.EDITOR_REMINDER_OFFSET_UNIT
+];
+
 function getFirstVisibleRecurrenceFocusTarget(
   order: FocusTarget[]
 ): FocusTarget | undefined {
   return order.find((target) => RECURRENCE_DETAIL_FOCUS_ORDER.includes(target));
+}
+
+function getFirstVisibleReminderFocusTarget(
+  order: FocusTarget[]
+): FocusTarget | undefined {
+  return order.find((target) => REMINDER_DETAIL_FOCUS_ORDER.includes(target));
 }
 
 export function getVisibleEditorFocusOrder(
@@ -42,13 +56,27 @@ export function getVisibleEditorFocusOrder(
     editorDraft?.repeatMode,
     editorDraft?.repeatEndMode
   );
+  const reminderKind = editorDraft?.reminderKind ?? "none";
+  const reminderShowsAbsolute = reminderKind === "absolute";
+  const reminderShowsBeforeDue = reminderKind === "before_due";
 
   const order: FocusTarget[] = [
     FocusTarget.EDITOR_TITLE,
     FocusTarget.EDITOR_DUE_DATE,
     FocusTarget.EDITOR_DUE_TIME,
+    FocusTarget.EDITOR_REMINDER_KIND,
     FocusTarget.EDITOR_REPEAT_MODE
   ];
+
+  if (reminderShowsAbsolute) {
+    order.push(FocusTarget.EDITOR_REMINDER_AT_DATE, FocusTarget.EDITOR_REMINDER_AT_TIME);
+  }
+  if (reminderShowsBeforeDue) {
+    order.push(
+      FocusTarget.EDITOR_REMINDER_OFFSET_VALUE,
+      FocusTarget.EDITOR_REMINDER_OFFSET_UNIT
+    );
+  }
 
   if (recurrenceVisibility.showInterval) {
     order.push(FocusTarget.EDITOR_REPEAT_INTERVAL);
@@ -97,6 +125,16 @@ export function toFocusTarget(editorFocus: EditorFocus): FocusTarget {
       return FocusTarget.EDITOR_DUE_DATE;
     case "time":
       return FocusTarget.EDITOR_DUE_TIME;
+    case "reminder_kind":
+      return FocusTarget.EDITOR_REMINDER_KIND;
+    case "reminder_at_date":
+      return FocusTarget.EDITOR_REMINDER_AT_DATE;
+    case "reminder_at_time":
+      return FocusTarget.EDITOR_REMINDER_AT_TIME;
+    case "reminder_offset_value":
+      return FocusTarget.EDITOR_REMINDER_OFFSET_VALUE;
+    case "reminder_offset_unit":
+      return FocusTarget.EDITOR_REMINDER_OFFSET_UNIT;
     case "repeat_mode":
       return FocusTarget.EDITOR_REPEAT_MODE;
     case "repeat_interval":
@@ -136,6 +174,16 @@ export function toEditorFocus(focus: FocusTarget): EditorFocus {
       return "due";
     case FocusTarget.EDITOR_DUE_TIME:
       return "time";
+    case FocusTarget.EDITOR_REMINDER_KIND:
+      return "reminder_kind";
+    case FocusTarget.EDITOR_REMINDER_AT_DATE:
+      return "reminder_at_date";
+    case FocusTarget.EDITOR_REMINDER_AT_TIME:
+      return "reminder_at_time";
+    case FocusTarget.EDITOR_REMINDER_OFFSET_VALUE:
+      return "reminder_offset_value";
+    case FocusTarget.EDITOR_REMINDER_OFFSET_UNIT:
+      return "reminder_offset_unit";
     case FocusTarget.EDITOR_REPEAT_MODE:
       return "repeat_mode";
     case FocusTarget.EDITOR_REPEAT_INTERVAL:
@@ -184,7 +232,11 @@ export function resolveEditorFocusAfterDraftChange(
   previousDraft: EditorDraft | null | undefined,
   nextDraft: EditorDraft | null | undefined
 ): FocusTarget {
-  if (!EDITOR_BASE_FOCUS_ORDER.includes(current) && !RECURRENCE_DETAIL_FOCUS_ORDER.includes(current)) {
+  if (
+    !EDITOR_BASE_FOCUS_ORDER.includes(current) &&
+    !RECURRENCE_DETAIL_FOCUS_ORDER.includes(current) &&
+    !REMINDER_DETAIL_FOCUS_ORDER.includes(current)
+  ) {
     return current;
   }
 
@@ -203,6 +255,16 @@ export function resolveEditorFocusAfterDraftChange(
     }
     return (
       getFirstVisibleRecurrenceFocusTarget(nextOrder) ?? FocusTarget.EDITOR_REPEAT_MODE
+    );
+  }
+
+  if (REMINDER_DETAIL_FOCUS_ORDER.includes(current)) {
+    const nextReminderKind = nextDraft?.reminderKind ?? "none";
+    if (nextReminderKind === "none") {
+      return FocusTarget.EDITOR_REMINDER_KIND;
+    }
+    return (
+      getFirstVisibleReminderFocusTarget(nextOrder) ?? FocusTarget.EDITOR_REMINDER_KIND
     );
   }
 

@@ -721,4 +721,44 @@ describe("validatePersistedState", () => {
     );
     expect(result.ok).toBe(false);
   });
+
+  it("accepts valid task reminder payloads", () => {
+    const result = validatePersistedState(
+      {
+        ...BASE_STATE,
+        tasks: [
+          {
+            ...BASE_STATE.tasks[0],
+            reminder: {
+              kind: "before_due",
+              offsetMs: 600000,
+              lastFiredAt: 100,
+              snoozedUntilAt: 200
+            }
+          }
+        ]
+      },
+      "strict"
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it("rejects malformed task reminder payloads", () => {
+    const result = validatePersistedState(
+      {
+        ...BASE_STATE,
+        tasks: [
+          {
+            ...BASE_STATE.tasks[0],
+            reminder: {
+              kind: "before_due",
+              offsetMs: 0
+            }
+          }
+        ]
+      },
+      "strict"
+    );
+    expect(result.ok).toBe(false);
+  });
 });

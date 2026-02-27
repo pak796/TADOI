@@ -8,6 +8,11 @@ function makeDraft(overrides: Partial<EditorDraft> = {}): EditorDraft {
     title: "Task A",
     dueText: "2026-02-20",
     timeText: "09:15",
+    reminderKind: "before_due",
+    reminderAtDateText: "",
+    reminderAtTimeText: "",
+    reminderOffsetText: "15",
+    reminderOffsetUnit: "minutes",
     tagsText: "work #p1",
     notes: "note",
     links: [

@@ -10,17 +10,20 @@ import { WEEKDAY_ORDER } from "../domain/recurrence/draft";
 import { themeForObject } from "../app/theme";
 import { TagInput } from "./TagInput";
 import { normalizeTimeTextInput } from "../domain/dates";
+import { normalizeReminderOffsetUnit } from "../domain/reminders";
 import {
   EDITOR_ACTION_ROW,
   EDITOR_FOOTER_HINT_ROW,
   estimateEditorContentLines,
   getEditorFocusAnchorLine,
+  getEditorReminderVisibility,
   getEditorRecurrenceVisibility,
   getEditorViewportHeights,
   hasEditorOverflow
 } from "../domain/editorPaneLayout";
 import { clampScrollOffset, ensureSelectedVisible } from "../domain/scroll";
 import {
+  cycleReminderKindClamp,
   cycleRepeatEndModeClamp,
   cycleRepeatModeClamp,
   shouldInterceptRepeatArrowAtEdge
@@ -56,6 +59,8 @@ const REPEAT_MODES = [
   { value: "custom", label: "CUS" }
 ] as const;
 const END_MODES = ["never", "until", "count"] as const;
+const REMINDER_KIND_OPTIONS = ["none", "absolute", "before_due"] as const;
+const REMINDER_OFFSET_UNIT_OPTIONS = ["minutes", "hours", "days"] as const;
 const NOTES_VISIBLE_ROWS = 6;
 
 function normalizeRepeatMode(input: string): EditorDraft["repeatMode"] {
@@ -72,6 +77,18 @@ function normalizeEndMode(input: string): EditorDraft["repeatEndMode"] {
     return value;
   }
   return "never";
+}
+
+function normalizeReminderKind(input: string): EditorDraft["reminderKind"] {
+  const value = input.trim().toLowerCase();
+  if (value === "absolute" || value === "before_due") {
+    return value;
+  }
+  return "none";
+}
+
+function normalizeReminderOffsetUnitInput(input: string): EditorDraft["reminderOffsetUnit"] {
+  return normalizeReminderOffsetUnit(input.trim().toLowerCase());
 }
 
 function parseWeekdaysInput(value: string): string[] {
@@ -121,6 +138,10 @@ export function EditorPane({
 }: EditorPaneProps) {
   const theme = themeForObject("inputs");
   const repeatWeekdaysText = draft.repeatWeekdays.join(",");
+  const reminderVisibility = useMemo(
+    () => getEditorReminderVisibility(draft.reminderKind),
+    [draft.reminderKind]
+  );
   const recurrenceVisibility = useMemo(
     () => getEditorRecurrenceVisibility(draft.repeatMode, draft.repeatEndMode),
     [draft.repeatEndMode, draft.repeatMode]
@@ -140,7 +161,7 @@ export function EditorPane({
   const checklistWindowStart = Math.max(
     0,
     Math.min(
-      Math.max(0, checklistSelectedIndex - 2),
+      Math.max(0, checklistSelectedIndex),
       Math.max(0, checklistItems.length - checklistWindowSize)
     )
   );
@@ -159,6 +180,7 @@ export function EditorPane({
       hasTitleSuggestion: Boolean(titleInlineSuggestion?.remainder),
       hasDueSuggestion: Boolean(dueSuggestionHint),
       hasTimeSuggestion: Boolean(timeSuggestionHint),
+      reminderKind: draft.reminderKind,
       hasTagSuggestion: Boolean(tagInlineSuggestion?.remainder),
       checklistItemCount: draft.checklist.length,
       repeatMode: draft.repeatMode,
@@ -169,6 +191,7 @@ export function EditorPane({
     [
       draft.repeatEndMode,
       draft.repeatMode,
+      draft.reminderKind,
       draft.checklist.length,
       titleInlineSuggestion?.remainder,
       dueSuggestionHint,
@@ -214,6 +237,8 @@ export function EditorPane({
         titleInlineSuggestion.full.length - titleInlineSuggestion.remainder.length
       )
     : "";
+  const beforeDueReminderMissingDue =
+    reminderVisibility.kind === "before_due" && draft.dueText.trim().length === 0;
 
   useEffect(() => {
     if (clampedOffset !== scrollOffset) {
@@ -295,9 +320,20 @@ export function EditorPane({
   // Clamp behavior: repeat mode stops at OFF/CUS instead of wrapping.
   function handleRepeatCycleFromInputKey(
     key: KeyEvent,
-    source: "time" | "repeat_mode" | "repeat_interval" | "repeat_end_mode"
+    source: "time" | "reminder_kind" | "repeat_mode" | "repeat_interval" | "repeat_end_mode"
   ): void {
     if (key.name !== "left" && key.name !== "right") return;
+
+    if (source === "reminder_kind") {
+      key.preventDefault();
+      key.stopPropagation();
+      const direction: 1 | -1 = key.name === "right" ? 1 : -1;
+      const nextReminderKind = cycleReminderKindClamp(draft.reminderKind, direction);
+      if (nextReminderKind !== draft.reminderKind) {
+        onUpdate({ reminderKind: nextReminderKind });
+      }
+      return;
+    }
 
     if (source === "repeat_mode") {
       key.preventDefault();
@@ -420,6 +456,147 @@ export function EditorPane({
           <text style={{ color: theme.muted, marginTop: 1 }}>{timeSuggestionHint}</text>
         ) : null}
       </box>
+
+      <box style={{ flexDirection: "column", marginTop: 1 }}>
+        <text style={{ color: theme.muted }}>REMINDER</text>
+        <input
+          value={draft.reminderKind}
+          onChange={(value) => onUpdate({ reminderKind: normalizeReminderKind(value) })}
+          onKeyDown={(key) => handleRepeatCycleFromInputKey(key, "reminder_kind")}
+          focused={focus === "reminder_kind"}
+          placeholder="none"
+          style={{
+            backgroundColor: theme.bg,
+            color: fieldInputColor(true),
+            width: "100%"
+          }}
+        />
+        <box style={{ flexDirection: "row", gap: 0, marginTop: 1 }}>
+          {REMINDER_KIND_OPTIONS.map((kind) => {
+            const selected = draft.reminderKind === kind;
+            const label = kind === "none" ? "NONE" : kind === "absolute" ? "AT" : "BEFORE DUE";
+            return (
+              <box
+                key={kind}
+                style={{
+                  backgroundColor: selected ? theme.accentBlue : theme.panel,
+                  paddingLeft: 1,
+                  paddingRight: 1
+                }}
+                onMouseDown={(event) =>
+                  runPrimaryMouseDownAction(event.button, () =>
+                    onUpdate({ reminderKind: kind })
+                  )
+                }
+              >
+                <text style={{ color: selected ? theme.bg : theme.text, fontWeight: "bold" }}>
+                  {label}
+                </text>
+              </box>
+            );
+          })}
+        </box>
+      </box>
+
+      {reminderVisibility.showAbsolute ? (
+        <>
+          <box style={{ flexDirection: "column", marginTop: 1 }}>
+            <text style={{ color: fieldLabelColor(true) }}>REMIND AT DATE (YYYY-MM-DD)</text>
+            <input
+              value={draft.reminderAtDateText}
+              onChange={(value) => onUpdate({ reminderAtDateText: value })}
+              focused={focus === "reminder_at_date"}
+              placeholder="2026-02-08"
+              style={{
+                backgroundColor: theme.bg,
+                color: fieldInputColor(true),
+                width: "100%"
+              }}
+            />
+          </box>
+          <box style={{ flexDirection: "column", marginTop: 1 }}>
+            <text style={{ color: fieldLabelColor(true) }}>REMIND AT TIME (HH:mm optional)</text>
+            <input
+              value={draft.reminderAtTimeText}
+              onChange={(value) => onUpdate({ reminderAtTimeText: normalizeTimeTextInput(value) })}
+              focused={focus === "reminder_at_time"}
+              placeholder="09:00"
+              style={{
+                backgroundColor: theme.bg,
+                color: fieldInputColor(true),
+                width: "100%"
+              }}
+            />
+          </box>
+        </>
+      ) : null}
+
+      {reminderVisibility.showBeforeDue ? (
+        <>
+          <box style={{ flexDirection: "column", marginTop: 1 }}>
+            <text style={{ color: fieldLabelColor(true) }}>BEFORE DUE OFFSET</text>
+            <input
+              value={draft.reminderOffsetText}
+              onChange={(value) => onUpdate({ reminderOffsetText: value })}
+              focused={focus === "reminder_offset_value"}
+              placeholder="10"
+              style={{
+                backgroundColor: theme.bg,
+                color: fieldInputColor(true),
+                width: "100%"
+              }}
+            />
+          </box>
+          <box style={{ flexDirection: "column", marginTop: 1 }}>
+            <text style={{ color: fieldLabelColor(true) }}>OFFSET UNIT</text>
+            <input
+              value={draft.reminderOffsetUnit}
+              onChange={(value) =>
+                onUpdate({
+                  reminderOffsetUnit: normalizeReminderOffsetUnitInput(value)
+                })
+              }
+              focused={focus === "reminder_offset_unit"}
+              placeholder="minutes"
+              style={{
+                backgroundColor: theme.bg,
+                color: fieldInputColor(true),
+                width: "100%"
+              }}
+            />
+            <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
+              {REMINDER_OFFSET_UNIT_OPTIONS.map((unit) => {
+                const selected = draft.reminderOffsetUnit === unit;
+                const label = unit === "minutes" ? "MIN" : unit === "hours" ? "HRS" : "DAYS";
+                return (
+                  <box
+                    key={unit}
+                    style={{
+                      backgroundColor: selected ? theme.accentBlue : theme.panel,
+                      paddingLeft: 1,
+                      paddingRight: 1
+                    }}
+                    onMouseDown={(event) =>
+                      runPrimaryMouseDownAction(event.button, () =>
+                        onUpdate({ reminderOffsetUnit: unit })
+                      )
+                    }
+                  >
+                    <text style={{ color: selected ? theme.bg : theme.text, fontWeight: "bold" }}>
+                      {label}
+                    </text>
+                  </box>
+                );
+              })}
+            </box>
+          </box>
+          {beforeDueReminderMissingDue ? (
+            <text style={{ color: theme.warn, marginTop: 1 }}>
+              Set a due date to use 'before due' reminders
+            </text>
+          ) : null}
+        </>
+      ) : null}
 
       <box style={{ flexDirection: "column", marginTop: 1 }}>
         <text style={{ color: theme.muted }}>REPEAT</text>

@@ -10,6 +10,7 @@ export type EditorContentEstimateOptions = {
   hasTitleSuggestion?: boolean;
   hasDueSuggestion?: boolean;
   hasTimeSuggestion?: boolean;
+  reminderKind?: EditorDraft["reminderKind"];
   hasTagSuggestion?: boolean;
   checklistItemCount?: number;
   repeatMode?: EditorDraft["repeatMode"];
@@ -30,6 +31,12 @@ export type EditorRecurrenceVisibility = {
   showPreview: boolean;
 };
 
+export type EditorReminderVisibility = {
+  kind: EditorDraft["reminderKind"];
+  showAbsolute: boolean;
+  showBeforeDue: boolean;
+};
+
 export type EditorViewportHeights = {
   contentHeight: number;
   footerHeight: number;
@@ -39,6 +46,7 @@ type NormalizedEstimateOptions = {
   hasTitleSuggestion: boolean;
   hasDueSuggestion: boolean;
   hasTimeSuggestion: boolean;
+  reminderKind: EditorDraft["reminderKind"];
   hasTagSuggestion: boolean;
   checklistItemCount: number;
   repeatMode: EditorDraft["repeatMode"];
@@ -100,6 +108,20 @@ export function getEditorRecurrenceVisibility(
   };
 }
 
+export function getEditorReminderVisibility(
+  reminderKind: EditorDraft["reminderKind"] | undefined
+): EditorReminderVisibility {
+  const kind =
+    reminderKind === "absolute" || reminderKind === "before_due"
+      ? reminderKind
+      : "none";
+  return {
+    kind,
+    showAbsolute: kind === "absolute",
+    showBeforeDue: kind === "before_due"
+  };
+}
+
 function normalizeEstimateOptions(
   options: EditorContentEstimateOptions = {}
 ): NormalizedEstimateOptions {
@@ -107,6 +129,7 @@ function normalizeEstimateOptions(
     hasTitleSuggestion: options.hasTitleSuggestion === true,
     hasDueSuggestion: options.hasDueSuggestion === true,
     hasTimeSuggestion: options.hasTimeSuggestion === true,
+    reminderKind: options.reminderKind ?? "none",
     hasTagSuggestion: options.hasTagSuggestion === true,
     checklistItemCount: Math.max(0, Math.floor(options.checklistItemCount ?? 0)),
     repeatMode: options.repeatMode ?? "off",
@@ -142,6 +165,56 @@ function buildEditorLineModel(options: NormalizedEstimateOptions): {
   anchors.time = line; // input line
   line += 1; // input
   if (options.hasTimeSuggestion) line += 1;
+
+  // REMINDER MODE
+  line += 1; // section margin
+  line += 1; // label
+  anchors.reminder_kind = line; // input line
+  line += 1; // input
+  line += 1; // chip row
+
+  const reminderVisibility = getEditorReminderVisibility(options.reminderKind);
+  let firstVisibleReminderAnchor: number | null = null;
+  const markReminderAnchor = (focus: EditorFocus) => {
+    if (firstVisibleReminderAnchor === null) {
+      firstVisibleReminderAnchor = anchors[focus];
+    }
+  };
+
+  if (reminderVisibility.showAbsolute) {
+    line += 1; // section margin
+    line += 1; // label
+    anchors.reminder_at_date = line; // input line
+    line += 1; // input
+    markReminderAnchor("reminder_at_date");
+
+    line += 1; // section margin
+    line += 1; // label
+    anchors.reminder_at_time = line; // input line
+    line += 1; // input
+    markReminderAnchor("reminder_at_time");
+  }
+
+  if (reminderVisibility.showBeforeDue) {
+    line += 1; // section margin
+    line += 1; // label
+    anchors.reminder_offset_value = line; // input line
+    line += 1; // input
+    markReminderAnchor("reminder_offset_value");
+
+    line += 1; // section margin
+    line += 1; // label
+    anchors.reminder_offset_unit = line; // input line
+    line += 1; // input
+    line += 1; // chip row
+    markReminderAnchor("reminder_offset_unit");
+  }
+
+  const reminderFallbackAnchor = firstVisibleReminderAnchor ?? anchors.reminder_kind;
+  anchors.reminder_at_date ??= reminderFallbackAnchor;
+  anchors.reminder_at_time ??= reminderFallbackAnchor;
+  anchors.reminder_offset_value ??= reminderFallbackAnchor;
+  anchors.reminder_offset_unit ??= reminderFallbackAnchor;
 
   // REPEAT MODE
   line += 1; // section margin

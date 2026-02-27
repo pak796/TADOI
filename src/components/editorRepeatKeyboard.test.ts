@@ -1,7 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import {
+  cycleReminderKindClamp,
   cycleRepeatEndModeClamp,
   cycleRepeatModeClamp,
+  REMINDER_KIND_KEYBOARD_ORDER,
   REPEAT_END_MODE_KEYBOARD_ORDER,
   REPEAT_MODE_KEYBOARD_ORDER,
   shouldInterceptRepeatArrowAtEdge
@@ -17,6 +19,7 @@ describe("editorRepeatKeyboard", () => {
       "custom"
     ]);
     expect(REPEAT_END_MODE_KEYBOARD_ORDER).toEqual(["never", "until", "count"]);
+    expect(REMINDER_KIND_KEYBOARD_ORDER).toEqual(["none", "absolute", "before_due"]);
   });
 
   it("cycles repeat mode forward/backward with clamp behavior", () => {
@@ -35,6 +38,14 @@ describe("editorRepeatKeyboard", () => {
     expect(cycleRepeatEndModeClamp("until", 1)).toBe("count");
     expect(cycleRepeatEndModeClamp("count", 1)).toBe("count");
     expect(cycleRepeatEndModeClamp("count", -1)).toBe("until");
+  });
+
+  it("cycles reminder kind forward/backward with clamp behavior", () => {
+    expect(cycleReminderKindClamp("none", -1)).toBe("none");
+    expect(cycleReminderKindClamp("none", 1)).toBe("absolute");
+    expect(cycleReminderKindClamp("absolute", 1)).toBe("before_due");
+    expect(cycleReminderKindClamp("before_due", 1)).toBe("before_due");
+    expect(cycleReminderKindClamp("before_due", -1)).toBe("absolute");
   });
 
   it("intercepts arrows only when caret is at edge and no selection exists", () => {

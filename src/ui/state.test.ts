@@ -10,6 +10,15 @@ const OVERDUE_EVENT = {
   firedAt: "2026-02-10T09:01:00.000Z"
 };
 
+const REMINDER_EVENT = {
+  type: "TASK_REMINDER" as const,
+  taskId: "task-2",
+  title: "Task 2",
+  effectiveReminderAt: Date.parse("2026-02-10T08:00:00.000Z"),
+  dueAt: "2026-02-10T09:00:00.000Z",
+  firedAt: "2026-02-10T08:00:00.000Z"
+};
+
 describe("ui state", () => {
   it("initializes to list mode and task list focus", () => {
     expect(initialUIState.mode).toBe(Mode.LIST);
@@ -24,10 +33,14 @@ describe("ui state", () => {
       type: "enqueueNotificationModal",
       event: OVERDUE_EVENT
     });
-    expect(queued.notificationModalQueue).toEqual([OVERDUE_EVENT]);
+    const queuedTwice = uiReducer(queued, {
+      type: "enqueueNotificationModal",
+      event: REMINDER_EVENT
+    });
+    expect(queuedTwice.notificationModalQueue).toEqual([OVERDUE_EVENT, REMINDER_EVENT]);
 
-    const dequeued = uiReducer(queued, { type: "dequeueNotificationModal" });
-    expect(dequeued.notificationModalQueue).toEqual([]);
+    const dequeued = uiReducer(queuedTwice, { type: "dequeueNotificationModal" });
+    expect(dequeued.notificationModalQueue).toEqual([REMINDER_EVENT]);
   });
 
   it("clears notification modal queue", () => {
@@ -37,6 +50,19 @@ describe("ui state", () => {
     });
     const cleared = uiReducer(queued, { type: "clearNotificationModalQueue" });
     expect(cleared.notificationModalQueue).toEqual([]);
+  });
+
+  it("clears only overdue events from the notification queue", () => {
+    const queuedOverdue = uiReducer(initialUIState, {
+      type: "enqueueNotificationModal",
+      event: OVERDUE_EVENT
+    });
+    const queuedMixed = uiReducer(queuedOverdue, {
+      type: "enqueueNotificationModal",
+      event: REMINDER_EVENT
+    });
+    const pruned = uiReducer(queuedMixed, { type: "clearOverdueNotificationModals" });
+    expect(pruned.notificationModalQueue).toEqual([REMINDER_EVENT]);
   });
 
   it("opens empty NUX with default welcome step and merges payload", () => {
@@ -182,6 +208,30 @@ describe("unwind", () => {
         ...initialUIState,
         mode: Mode.DASHBOARD,
         focus: FocusTarget.DASHBOARD,
+        modal: null
+      },
+      clearEditorDraft: false
+    });
+  });
+
+  it("returns to previous mode/focus from reminder modal", () => {
+    const result = unwind({
+      ...initialUIState,
+      mode: Mode.MODAL_CONFIRM,
+      focus: FocusTarget.MODAL,
+      modal: {
+        type: "reminder",
+        event: REMINDER_EVENT,
+        previousMode: Mode.LIST,
+        previousFocus: FocusTarget.TASK_LIST
+      }
+    });
+
+    expect(result).toEqual({
+      state: {
+        ...initialUIState,
+        mode: Mode.LIST,
+        focus: FocusTarget.TASK_LIST,
         modal: null
       },
       clearEditorDraft: false

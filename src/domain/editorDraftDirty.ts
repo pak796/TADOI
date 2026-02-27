@@ -61,6 +61,11 @@ export function areEditorDraftsEqual(left: EditorDraft, right: EditorDraft): boo
     left.title === right.title &&
     left.dueText === right.dueText &&
     left.timeText === right.timeText &&
+    left.reminderKind === right.reminderKind &&
+    left.reminderAtDateText === right.reminderAtDateText &&
+    left.reminderAtTimeText === right.reminderAtTimeText &&
+    left.reminderOffsetText === right.reminderOffsetText &&
+    left.reminderOffsetUnit === right.reminderOffsetUnit &&
     left.tagsText === right.tagsText &&
     left.notes === right.notes &&
     areTaskLinksEqual(left.links, right.links) &&

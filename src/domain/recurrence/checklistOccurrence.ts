@@ -1,4 +1,5 @@
 import type { ChecklistItem, Task } from "../models";
+import { normalizeTaskReminder, stripReminderRuntimeState } from "../reminders";
 import { parseLocalIsoToDate } from "./rruleAdapter";
 
 export type ChecklistOccurrenceContext = {
@@ -25,6 +26,9 @@ export function materializeChecklistOccurrenceOverride(params: {
   const source = context.instanceTask ?? context.seriesTask;
   const instanceId = context.instanceTask?.id ?? crypto.randomUUID();
   const instanceStatus = context.instanceTask?.status ?? "open";
+  const reminder = context.instanceTask
+    ? normalizeTaskReminder(context.instanceTask.reminder)
+    : stripReminderRuntimeState(source.reminder);
   const instance: Task = {
     id: instanceId,
     title: source.title,
@@ -41,6 +45,7 @@ export function materializeChecklistOccurrenceOverride(params: {
     assignee: source.assignee,
     project: source.project,
     workflowStage: source.workflowStage,
+    ...(reminder ? { reminder } : {}),
     instance_of: {
       series_id: context.seriesId,
       occurrence: context.occurrenceIso

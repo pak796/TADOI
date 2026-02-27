@@ -9,6 +9,7 @@ import {
   formatDateToLocalIso,
   parseLocalIsoToDate
 } from "../domain/recurrence/rruleAdapter";
+import { buildReminderFromDraft, stripReminderRuntimeState } from "../domain/reminders";
 import { getSuggestedTime, type SuggestedTime } from "../domain/timeAutocomplete";
 import {
   combineDueDateTime,
@@ -278,6 +279,7 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
             ...context.seriesTask,
             id: `occurrence:${context.seriesId}:${context.occurrenceIso}`,
             dueAt: occurrenceDate.getTime(),
+            reminder: stripReminderRuntimeState(context.seriesTask.reminder),
             recurrence: undefined
           };
       const baseDraft = createDraftFromTask(editSource);
@@ -443,6 +445,14 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
     const checklist = sortChecklistItems(draft.checklist.map((item) => ({ ...item })));
 
     if (activeMode === Mode.ADD) {
+      const reminderBuild = buildReminderFromDraft({
+        draft,
+        dueAt
+      });
+      if (reminderBuild.validationMessage) {
+        deps.showShortNavigationBanner(reminderBuild.validationMessage);
+      }
+
       const taskId = crypto.randomUUID();
       const recurrenceBuild = buildRecurrenceFromDraft(
         draft,
@@ -468,6 +478,7 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
         assignee,
         project,
         workflowStage: draft.workflowStage ?? "todo",
+        ...(reminderBuild.reminder ? { reminder: reminderBuild.reminder } : {}),
         ...(links.length > 0 ? { links } : {}),
         ...(recurrenceBuild.recurrence ? { recurrence: recurrenceBuild.recurrence } : {})
       };
@@ -516,6 +527,14 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
 
         const instanceId = draft.id ?? crypto.randomUUID();
         const existingInstance = draft.id ? deps.findTaskById(draft.id) : undefined;
+        const reminderBuild = buildReminderFromDraft({
+          draft,
+          dueAt,
+          previousReminder: existingInstance?.reminder
+        });
+        if (reminderBuild.validationMessage) {
+          deps.showShortNavigationBanner(reminderBuild.validationMessage);
+        }
         const instance: Task = {
           id: instanceId,
           title,
@@ -534,6 +553,7 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
             draft.workflowStage ??
             existingInstance?.workflowStage ??
             ((existingInstance?.status ?? "open") === "done" ? "done" : "todo"),
+          ...(reminderBuild.reminder ? { reminder: reminderBuild.reminder } : {}),
           instance_of: {
             series_id: seriesId,
             occurrence: occurrenceIso
@@ -567,6 +587,14 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
         }
 
         const nowIso = new Date(nowMs).toISOString();
+        const reminderBuild = buildReminderFromDraft({
+          draft,
+          dueAt,
+          previousReminder: seriesTask.reminder
+        });
+        if (reminderBuild.validationMessage) {
+          deps.showShortNavigationBanner(reminderBuild.validationMessage);
+        }
         const resolvedSeriesId =
           recurrenceBuild.recurrence?.series_id ??
           seriesTask.recurrence?.series_id ??
@@ -588,6 +616,7 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
                 task.workflowStage ??
                 (task.status === "done" || task.status === "archived" ? "done" : "todo"),
               updatedAt: nowMs,
+              reminder: reminderBuild.reminder,
               recurrence: recurrenceBuild.recurrence
             };
           }
@@ -624,6 +653,14 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
           return false;
         }
 
+        const reminderBuild = buildReminderFromDraft({
+          draft,
+          dueAt,
+          previousReminder: targetTask.reminder
+        });
+        if (reminderBuild.validationMessage) {
+          deps.showShortNavigationBanner(reminderBuild.validationMessage);
+        }
         const updatedTasks = deps.state.tasks.map((task) => {
           if (task.id !== targetTask.id) return task;
           return {
@@ -641,6 +678,7 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
               task.workflowStage ??
               (task.status === "done" || task.status === "archived" ? "done" : "todo"),
             updatedAt: nowMs,
+            reminder: reminderBuild.reminder,
             recurrence: recurrenceBuild.recurrence
           };
         });

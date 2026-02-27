@@ -19,6 +19,11 @@ import {
 import { formatTagForDisplay } from "../domain/tagIndex";
 import { parseRRule } from "../domain/recurrence/rruleAdapter";
 import {
+  createDefaultReminderDraftFields,
+  normalizeTaskReminder,
+  reminderDraftFieldsFromTask
+} from "../domain/reminders";
+import {
   AppState,
   EditorDraft,
   EngagementToast,
@@ -78,9 +83,11 @@ export const initialState: AppState = {
 };
 
 function normalizeTaskForRuntime(task: Task): Task {
+  const reminder = normalizeTaskReminder(task.reminder);
   return {
     ...task,
-    checklist: normalizeChecklist(task.checklist)
+    checklist: normalizeChecklist(task.checklist),
+    reminder
   };
 }
 
@@ -270,6 +277,7 @@ export function createEmptyDraft(): EditorDraft {
     title: "",
     dueText: "",
     timeText: "",
+    ...createDefaultReminderDraftFields(),
     tagsText: "",
     notes: "",
     links: [],
@@ -304,11 +312,13 @@ export function createDraftFromTask(task: Task): EditorDraft {
     : parsedRule?.untilIso
       ? "until"
       : "never";
+  const reminderDraft = reminderDraftFieldsFromTask(task);
   return {
     id: task.id,
     title: task.title,
     dueText: task.dueAt ? formatDate(task.dueAt) : "",
     timeText: task.hasExplicitTime && task.dueAt ? formatLocalTimeHHmm(task.dueAt) : "",
+    ...reminderDraft,
     tagsText: normalizePriorityTags(task.tags)
       .map((tag) => formatTagForDisplay(tag))
       .join(" "),

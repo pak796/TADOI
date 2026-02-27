@@ -48,6 +48,17 @@ export type TaskInstanceOf = {
   occurrence: string; // original scheduled local floating ISO timestamp
 };
 
+export type TaskReminderKind = "none" | "absolute" | "before_due";
+export type TaskReminderOffsetUnit = "minutes" | "hours" | "days";
+
+export type TaskReminder = {
+  kind: TaskReminderKind;
+  at?: number; // epoch ms for absolute reminders
+  offsetMs?: number; // milliseconds before dueAt for relative reminders
+  lastFiredAt?: number; // epoch ms of the last effective reminder fired
+  snoozedUntilAt?: number; // epoch ms override while snoozed
+};
+
 export type TaskExternalCalendarMetadata = {
   uid: string;
   source?: string;
@@ -91,6 +102,7 @@ export type Task = {
   assignee?: string;
   project?: string;
   workflowStage?: WorkflowStage;
+  reminder?: TaskReminder;
 };
 
 export type CompletionEvent = {
@@ -164,6 +176,11 @@ export type EditorDraft = {
   title: string;
   dueText: string;
   timeText: string;
+  reminderKind: TaskReminderKind;
+  reminderAtDateText: string;
+  reminderAtTimeText: string;
+  reminderOffsetText: string;
+  reminderOffsetUnit: TaskReminderOffsetUnit;
   tagsText: string;
   notes: string;
   links: TaskLink[];
@@ -189,6 +206,11 @@ export type EditorFocus =
   | "title"
   | "due"
   | "time"
+  | "reminder_kind"
+  | "reminder_at_date"
+  | "reminder_at_time"
+  | "reminder_offset_value"
+  | "reminder_offset_unit"
   | "repeat_mode"
   | "repeat_interval"
   | "repeat_weekdays"

@@ -1,4 +1,5 @@
 import type { RecurrenceRule, RecurrenceWeekday, Task } from "./models";
+import { stripReminderRuntimeState } from "./reminders";
 
 const WEEKDAY_ORDER: RecurrenceWeekday[] = [
   "mon",
@@ -185,6 +186,7 @@ export function completeTaskWithRecurrence(
   });
 
   if (shouldSpawn && nextDueAt !== undefined) {
+    const reminder = stripReminderRuntimeState(task.reminder);
     spawnedTask = {
       id: crypto.randomUUID(),
       title: task.title,
@@ -195,6 +197,7 @@ export function completeTaskWithRecurrence(
       hasExplicitTime: task.hasExplicitTime,
       tags: [...task.tags],
       ...(task.notes !== undefined ? { notes: task.notes } : {}),
+      ...(reminder ? { reminder } : {}),
       recurrence
     };
     nextTasks.push(spawnedTask);

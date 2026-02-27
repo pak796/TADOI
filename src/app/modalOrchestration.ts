@@ -10,7 +10,8 @@ import {
   applyOverdueSnooze,
   resolveGoToTaskTarget
 } from "../notifications/overdueTaskActions";
-import type { TaskOverdueEvent } from "../notifications/types";
+import { applyReminderDismiss, applyReminderSnooze } from "../domain/reminders";
+import type { TaskOverdueEvent, TaskReminderEvent } from "../notifications/types";
 import { deleteRecurringOccurrenceAndFuture } from "../domain/recurrence/delete";
 import {
   clearEmptyNux,
@@ -108,6 +109,9 @@ type ModalHandlers = {
   handleOverdueModalSnooze: () => void;
   handleOverdueModalDone: () => void;
   handleOverdueModalGoToTask: () => void;
+  handleReminderModalDismiss: () => void;
+  handleReminderModalSnooze: (deltaMs: number) => void;
+  handleReminderModalGoToTask: () => void;
 };
 
 export function useModalOrchestration(deps: ModalOrchestrationDeps): ModalHandlers {
@@ -357,6 +361,12 @@ export function useModalOrchestration(deps: ModalOrchestrationDeps): ModalHandle
     return deps.uiState.modal.event;
   }
 
+  function getActiveReminderModalEvent(): TaskReminderEvent | null {
+    if (deps.uiState.mode !== Mode.MODAL_CONFIRM) return null;
+    if (!deps.uiState.modal || deps.uiState.modal.type !== "reminder") return null;
+    return deps.uiState.modal.event;
+  }
+
   function handleOverdueModalSnooze() {
     const event = getActiveOverdueModalEvent();
     if (!event) return;
@@ -418,6 +428,58 @@ export function useModalOrchestration(deps: ModalOrchestrationDeps): ModalHandle
     deps.showShortNavigationBanner(`Jumped to overdue task: ${event.title}`);
   }
 
+  function handleReminderModalDismiss() {
+    const event = getActiveReminderModalEvent();
+    if (!event) return;
+    const updatedTasks = applyReminderDismiss(
+      deps.state.tasks,
+      event.taskId,
+      event.effectiveReminderAt,
+      Date.now()
+    );
+    deps.dispatch({ type: "setTasks", tasks: updatedTasks });
+    applyEscUnwind();
+  }
+
+  function handleReminderModalSnooze(deltaMs: number) {
+    const event = getActiveReminderModalEvent();
+    if (!event) return;
+    const updatedTasks = applyReminderSnooze(
+      deps.state.tasks,
+      event.taskId,
+      deltaMs,
+      Date.now()
+    );
+    deps.dispatch({ type: "setTasks", tasks: updatedTasks });
+    applyEscUnwind();
+  }
+
+  function handleReminderModalGoToTask() {
+    const event = getActiveReminderModalEvent();
+    if (!event) return;
+    const task = deps.state.tasks.find((candidate) => candidate.id === event.taskId);
+
+    deps.openListMode({ bypassUnsavedGuard: true });
+    deps.dispatch({
+      type: "setFilters",
+      filters: {
+        status: "all",
+        due: "any",
+        priority: undefined,
+        tag: undefined,
+        tagFilter: undefined,
+        searchText: undefined
+      }
+    });
+
+    if (!task) {
+      deps.showShortNavigationBanner("Reminder task is no longer available");
+      return;
+    }
+    deps.dispatch({ type: "setSelected", id: task.id });
+    deps.showShortNavigationBanner(`Jumped to task: ${task.title}`);
+  }
+
   return {
     applyEscUnwind,
     openUnsavedChangesModal,
@@ -445,7 +507,10 @@ export function useModalOrchestration(deps: ModalOrchestrationDeps): ModalHandle
     createTaskFromEmptyNuxModal,
     handleOverdueModalSnooze,
     handleOverdueModalDone,
-    handleOverdueModalGoToTask
+    handleOverdueModalGoToTask,
+    handleReminderModalDismiss,
+    handleReminderModalSnooze,
+    handleReminderModalGoToTask
   };
 }
 

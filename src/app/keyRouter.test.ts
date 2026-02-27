@@ -284,6 +284,45 @@ describe("handleKey", () => {
     ]);
   });
 
+  it("routes reminder modal keys", () => {
+    const modalState = {
+      ...initialUIState,
+      mode: Mode.MODAL_CONFIRM,
+      focus: FocusTarget.MODAL,
+      modal: {
+        type: "reminder" as const,
+        event: {
+          type: "TASK_REMINDER" as const,
+          taskId: "task-2",
+          title: "Task",
+          effectiveReminderAt: Date.parse("2026-02-10T08:00:00.000Z"),
+          dueAt: "2026-02-10T09:00:00.000Z",
+          firedAt: "2026-02-10T08:00:00.000Z"
+        },
+        previousMode: Mode.LIST,
+        previousFocus: FocusTarget.TASK_LIST
+      }
+    };
+    expect(run({ name: "enter" }, { uiState: modalState })).toEqual([
+      { scope: "domain", type: "MODAL_REMINDER_DISMISS" }
+    ]);
+    expect(run({ name: "escape" }, { uiState: modalState })).toEqual([
+      { scope: "domain", type: "MODAL_REMINDER_DISMISS" }
+    ]);
+    expect(run({ name: "1", sequence: "1" }, { uiState: modalState })).toEqual([
+      { scope: "domain", type: "MODAL_REMINDER_SNOOZE", deltaMs: 600000 }
+    ]);
+    expect(run({ name: "2", sequence: "2" }, { uiState: modalState })).toEqual([
+      { scope: "domain", type: "MODAL_REMINDER_SNOOZE", deltaMs: 3600000 }
+    ]);
+    expect(run({ name: "3", sequence: "3" }, { uiState: modalState })).toEqual([
+      { scope: "domain", type: "MODAL_REMINDER_SNOOZE", deltaMs: 86400000 }
+    ]);
+    expect(run({ name: "g", sequence: "g" }, { uiState: modalState })).toEqual([
+      { scope: "domain", type: "MODAL_REMINDER_GO_TO_TASK" }
+    ]);
+  });
+
   it("routes edit-switch modal keys", () => {
     const modalState = {
       ...initialUIState,

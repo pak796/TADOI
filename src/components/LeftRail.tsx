@@ -120,6 +120,16 @@ function getFocusLabel(focus: FocusTarget): string {
       return "DUE DATE";
     case FocusTarget.EDITOR_DUE_TIME:
       return "DUE TIME";
+    case FocusTarget.EDITOR_REMINDER_KIND:
+      return "REMINDER";
+    case FocusTarget.EDITOR_REMINDER_AT_DATE:
+      return "REMIND DATE";
+    case FocusTarget.EDITOR_REMINDER_AT_TIME:
+      return "REMIND TIME";
+    case FocusTarget.EDITOR_REMINDER_OFFSET_VALUE:
+      return "REMIND OFFSET";
+    case FocusTarget.EDITOR_REMINDER_OFFSET_UNIT:
+      return "OFFSET UNIT";
     case FocusTarget.EDITOR_REPEAT_MODE:
       return "REPEAT MODE";
     case FocusTarget.EDITOR_REPEAT_INTERVAL:

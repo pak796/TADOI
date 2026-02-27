@@ -139,6 +139,34 @@ describe("mergeTasksByIdNewestUpdatedAt", () => {
     expect(result.stats.updated).toBe(1);
     expect(result.stats.unchanged).toBe(0);
   });
+
+  it("treats reminder differences as task updates", () => {
+    const local = [
+      {
+        ...BASE_LOCAL_TASK,
+        updatedAt: 100,
+        reminder: {
+          kind: "before_due" as const,
+          offsetMs: 10 * 60_000
+        }
+      }
+    ];
+    const incoming = [
+      {
+        ...BASE_INCOMING_TASK,
+        updatedAt: 100,
+        reminder: {
+          kind: "before_due" as const,
+          offsetMs: 5 * 60_000
+        }
+      }
+    ];
+
+    const result = mergeTasksByIdNewestUpdatedAt(local, incoming);
+    expect(result.merged[0]?.reminder?.offsetMs).toBe(5 * 60_000);
+    expect(result.stats.updated).toBe(1);
+    expect(result.stats.unchanged).toBe(0);
+  });
 });
 
 describe("recomputeTagIndex", () => {
@@ -489,6 +517,7 @@ describe("redactStateForExport", () => {
           hasExplicitTime: true,
           notes: "private",
           tags: ["work"],
+          reminder: { kind: "absolute", at: 1700000000000, lastFiredAt: 1699999900000 },
           links: [{ id: "link-1", target: "https://example.com", source: "manual" }],
           external: { calendar: { uid: "uid-1", lastImportedAt: "2026-02-12T00:00:00.000Z" } }
         }
@@ -513,6 +542,7 @@ describe("redactStateForExport", () => {
     expect(task?.tags).toEqual([]);
     expect(task?.links).toBeUndefined();
     expect(task?.dueAt).toBeUndefined();
+    expect(task?.reminder).toBeUndefined();
     expect(task?.external).toBeUndefined();
     expect(redacted.engagement?.completionLog).toEqual([]);
     expect(redacted.settings?.notifications).toEqual(DEFAULT_NOTIFICATIONS);

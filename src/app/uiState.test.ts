@@ -18,6 +18,11 @@ function makeDraft(patch: Partial<EditorDraft> = {}): EditorDraft {
     title: "",
     dueText: "",
     timeText: "",
+    reminderKind: "none",
+    reminderAtDateText: "",
+    reminderAtTimeText: "",
+    reminderOffsetText: "10",
+    reminderOffsetUnit: "minutes",
     tagsText: "",
     notes: "",
     links: [],
@@ -58,6 +63,8 @@ describe("uiState editor focus mapping", () => {
   it("maps editor focus round-trip", () => {
     expect(toEditorFocus(FocusTarget.EDITOR_DUE_DATE)).toBe("due");
     expect(toFocusTarget("time")).toBe(FocusTarget.EDITOR_DUE_TIME);
+    expect(toFocusTarget("reminder_kind")).toBe(FocusTarget.EDITOR_REMINDER_KIND);
+    expect(toEditorFocus(FocusTarget.EDITOR_REMINDER_OFFSET_UNIT)).toBe("reminder_offset_unit");
     expect(toFocusTarget("repeat_mode")).toBe(FocusTarget.EDITOR_REPEAT_MODE);
     expect(toEditorFocus(FocusTarget.EDITOR_REPEAT_CUSTOM)).toBe("repeat_custom");
     expect(toFocusTarget("checklist")).toBe(FocusTarget.EDITOR_CHECKLIST);
@@ -79,6 +86,7 @@ describe("uiState editor focus mapping", () => {
       FocusTarget.EDITOR_TITLE,
       FocusTarget.EDITOR_DUE_DATE,
       FocusTarget.EDITOR_DUE_TIME,
+      FocusTarget.EDITOR_REMINDER_KIND,
       FocusTarget.EDITOR_REPEAT_MODE,
       FocusTarget.EDITOR_TAGS,
       FocusTarget.EDITOR_CHECKLIST,
@@ -94,6 +102,7 @@ describe("uiState editor focus mapping", () => {
       FocusTarget.EDITOR_TITLE,
       FocusTarget.EDITOR_DUE_DATE,
       FocusTarget.EDITOR_DUE_TIME,
+      FocusTarget.EDITOR_REMINDER_KIND,
       FocusTarget.EDITOR_REPEAT_MODE,
       FocusTarget.EDITOR_REPEAT_INTERVAL,
       FocusTarget.EDITOR_REPEAT_END_MODE,
@@ -111,6 +120,7 @@ describe("uiState editor focus mapping", () => {
       FocusTarget.EDITOR_TITLE,
       FocusTarget.EDITOR_DUE_DATE,
       FocusTarget.EDITOR_DUE_TIME,
+      FocusTarget.EDITOR_REMINDER_KIND,
       FocusTarget.EDITOR_REPEAT_MODE,
       FocusTarget.EDITOR_REPEAT_INTERVAL,
       FocusTarget.EDITOR_REPEAT_WEEKDAYS,
@@ -130,6 +140,7 @@ describe("uiState editor focus mapping", () => {
       FocusTarget.EDITOR_TITLE,
       FocusTarget.EDITOR_DUE_DATE,
       FocusTarget.EDITOR_DUE_TIME,
+      FocusTarget.EDITOR_REMINDER_KIND,
       FocusTarget.EDITOR_REPEAT_MODE,
       FocusTarget.EDITOR_REPEAT_INTERVAL,
       FocusTarget.EDITOR_REPEAT_MONTHDAY,
@@ -149,6 +160,7 @@ describe("uiState editor focus mapping", () => {
       FocusTarget.EDITOR_TITLE,
       FocusTarget.EDITOR_DUE_DATE,
       FocusTarget.EDITOR_DUE_TIME,
+      FocusTarget.EDITOR_REMINDER_KIND,
       FocusTarget.EDITOR_REPEAT_MODE,
       FocusTarget.EDITOR_REPEAT_CUSTOM,
       FocusTarget.EDITOR_TAGS,

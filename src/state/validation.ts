@@ -29,6 +29,7 @@ const VALID_WORKFLOW_STAGES = new Set([
 const VALID_ANALYTICS_WINDOWS = new Set(["7d", "14d", "30d"]);
 const VALID_TASK_LINK_KINDS = new Set<TaskLinkKind>(["url", "path"]);
 const VALID_TASK_LINK_SOURCES = new Set<TaskLinkSource>(["manual", "calendar_import"]);
+const VALID_REMINDER_KINDS = new Set(["none", "absolute", "before_due"]);
 const ASCII_CONTROL_CHARS_RE = /[\u0000-\u001F\u007F]/;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -236,6 +237,45 @@ export function validatePersistedState(
       typeof task.hasExplicitTime !== "boolean"
     ) {
       errors.push(`task.hasExplicitTime must be boolean when present (${String(task.id)})`);
+    }
+
+    if (task.reminder !== undefined) {
+      if (!isRecord(task.reminder)) {
+        errors.push(`task.reminder must be an object when present (${String(task.id)})`);
+      } else {
+        if (!VALID_REMINDER_KINDS.has(String(task.reminder.kind))) {
+          errors.push(
+            `task.reminder.kind must be none|absolute|before_due (${String(task.id)})`
+          );
+        }
+        if (task.reminder.at !== undefined && !isFiniteNumber(task.reminder.at)) {
+          errors.push(`task.reminder.at must be a number when present (${String(task.id)})`);
+        }
+        if (
+          task.reminder.offsetMs !== undefined &&
+          (!isFiniteNumber(task.reminder.offsetMs) || task.reminder.offsetMs <= 0)
+        ) {
+          errors.push(
+            `task.reminder.offsetMs must be a positive number when present (${String(task.id)})`
+          );
+        }
+        if (
+          task.reminder.lastFiredAt !== undefined &&
+          !isFiniteNumber(task.reminder.lastFiredAt)
+        ) {
+          errors.push(
+            `task.reminder.lastFiredAt must be a number when present (${String(task.id)})`
+          );
+        }
+        if (
+          task.reminder.snoozedUntilAt !== undefined &&
+          !isFiniteNumber(task.reminder.snoozedUntilAt)
+        ) {
+          errors.push(
+            `task.reminder.snoozedUntilAt must be a number when present (${String(task.id)})`
+          );
+        }
+      }
     }
 
     if (task.assignee !== undefined && typeof task.assignee !== "string") {
