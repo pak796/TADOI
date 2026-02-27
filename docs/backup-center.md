@@ -107,6 +107,7 @@ Status panel shows:
    - owner matches active `gh` username (personal-only gate),
    - repo privacy check (public requires explicit typed `PUBLIC` confirmation).
 4. Saves non-secret config only (`ownerRepo`, `branch`, `deviceId`, `pathPrefix`, policy, push metadata).
+5. If connected repo is public, Backup Center shows an explicit warning in the GitHub status panel.
 
 ### Push snapshot now
 

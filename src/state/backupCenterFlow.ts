@@ -121,6 +121,7 @@ export type BackupCenterState = {
   githubLoggedIn: boolean;
   githubUsername?: string;
   githubOwnerRepoConfigured?: string;
+  githubRepoIsPublic?: boolean;
   githubAutoPushPolicy: GitHubAutoPushPolicy;
   githubLastPushedAt?: string;
   githubLastRestorePulledAt?: string;
@@ -220,6 +221,7 @@ export type BackupCenterAction =
       loggedIn: boolean;
       username?: string;
       ownerRepoConfigured?: string;
+      repoIsPublic?: boolean;
       autoPushPolicy: GitHubAutoPushPolicy;
       lastPushedAt?: string;
       lastRestorePulledAt?: string;
@@ -978,6 +980,7 @@ export function backupCenterReducer(
         githubLoggedIn: action.loggedIn,
         githubUsername: normalizeOptionalInput(action.username),
         githubOwnerRepoConfigured: normalizeOptionalInput(action.ownerRepoConfigured),
+        githubRepoIsPublic: action.repoIsPublic,
         githubAutoPushPolicy: action.autoPushPolicy,
         githubLastPushedAt: normalizeOptionalInput(action.lastPushedAt),
         githubLastRestorePulledAt: normalizeOptionalInput(action.lastRestorePulledAt)

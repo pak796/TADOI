@@ -3854,6 +3854,7 @@ export function App({
     const ghDetected = await detectGh().catch(() => false);
     let loggedIn = false;
     let username: string | undefined;
+    let repoIsPublic: boolean | undefined;
     if (ghDetected) {
       const authStatus = await getAuthStatus().catch(() => ({
         loggedIn: false,
@@ -3861,6 +3862,18 @@ export function App({
       }));
       loggedIn = authStatus.loggedIn;
       username = authStatus.username;
+      const ownerRepo = githubSettings?.ownerRepo?.trim();
+      if (loggedIn && ownerRepo) {
+        const privateCheck = await ensureRepoPrivate(ownerRepo).catch(() => ({
+          ok: false as const,
+          error: "Unable to resolve repository visibility."
+        }));
+        if (privateCheck.ok) {
+          repoIsPublic = false;
+        } else if (privateCheck.isPublic) {
+          repoIsPublic = true;
+        }
+      }
     }
 
     backupDispatch({
@@ -3869,6 +3882,7 @@ export function App({
       loggedIn,
       username,
       ownerRepoConfigured: githubSettings?.ownerRepo ?? undefined,
+      repoIsPublic,
       autoPushPolicy: githubSettings?.autoPushPolicy ?? "off",
       lastPushedAt: githubSettings?.lastPushed?.timestamp,
       lastRestorePulledAt: backupState.githubLastRestorePulledAt
@@ -4001,6 +4015,11 @@ export function App({
 
         persistGitHubConfig(ownership.ownerRepo);
         backupDispatch({ type: "githubConnectSucceeded", ownerRepo: ownership.ownerRepo });
+        if (!privateCheck.ok && privateCheck.isPublic) {
+          showShortNavigationBanner(
+            "Warning: connected repository is public; cloud backups are publicly accessible."
+          );
+        }
         await refreshGitHubBackupStatus();
       } catch (error: unknown) {
         openBackupError("GitHub connect failed", error, "github_status");
@@ -4015,11 +4034,14 @@ export function App({
       try {
         const auth = await requireGitHubAuthAndConfig({ requireConfiguredRepo: true });
         const privateCheck = await ensureRepoPrivate(auth.ownerRepo);
-        if (!privateCheck.ok && privateCheck.isPublic) {
-          throw new Error("Configured repository is public. Connect to a private repo.");
-        }
         if (!privateCheck.ok) {
+          if (privateCheck.isPublic) {
+            showShortNavigationBanner(
+              "Warning: repository is public; pushed snapshots are publicly accessible."
+            );
+          } else {
           throw new Error(privateCheck.error);
+          }
         }
 
         const dataPath = getResolvedDataPath();

@@ -29,6 +29,29 @@ async function runCliProcess(args: string[]): Promise<CliRunResult> {
 }
 
 describe("runtime CLI contract", () => {
+  it("returns structured payload for list --json", async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-cli-list-json-"));
+    const dataPath = path.join(tempDir, "tadoi_data.json");
+    await runCliProcess(["--data-file", dataPath, "add", "Task A", "#work"]);
+
+    const result = await runCliProcess(["--json", "--data-file", dataPath, "list"]);
+    expect(result.exitCode).toBe(0);
+    const parsed = JSON.parse(result.stdout) as {
+      ok: boolean;
+      exitCode: number;
+      data?: {
+        type?: string;
+        count?: number;
+        tasks?: Array<{ id?: string; title?: string }>;
+      };
+    };
+    expect(parsed.ok).toBe(true);
+    expect(parsed.exitCode).toBe(0);
+    expect(parsed.data?.type).toBe("tadoi.list.v1");
+    expect(parsed.data?.count).toBe(1);
+    expect(parsed.data?.tasks?.[0]?.title).toBe("Task A");
+  });
+
   it("fails fast for unknown top-level args", async () => {
     const result = await runCliProcess(["--wat"]);
     expect(result.exitCode).toBe(2);
@@ -105,5 +128,76 @@ describe("runtime CLI contract", () => {
     const result = await runCliProcess(["--data-file", dataPath, "add", "x"]);
     expect(result.exitCode).toBe(4);
     expect(result.stderr).toContain("TADOI is running (lock present)");
+  });
+
+  it("supports selector mode for done", async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-cli-done-selector-"));
+    const dataPath = path.join(tempDir, "tadoi_data.json");
+    await runCliProcess(["--data-file", dataPath, "add", "Task A", "#work"]);
+    await runCliProcess(["--data-file", dataPath, "add", "Task B", "#home"]);
+
+    const result = await runCliProcess(["--data-file", dataPath, "done", "+work"]);
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Bulk done applied (1 tasks)");
+
+    const strict = await loadStateStrict({ filePath: dataPath });
+    const workTask = strict.data.tasks.find((task) => task.title === "Task A");
+    const homeTask = strict.data.tasks.find((task) => task.title === "Task B");
+    expect(workTask?.status).toBe("done");
+    expect(homeTask?.status).toBe("open");
+  });
+
+  it("supports selector mode for due updates", async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-cli-due-selector-"));
+    const dataPath = path.join(tempDir, "tadoi_data.json");
+    await runCliProcess(["--data-file", dataPath, "add", "Task A", "#work"]);
+
+    const setResult = await runCliProcess([
+      "--data-file",
+      dataPath,
+      "due",
+      "+work",
+      "2026-03-05",
+      "at:09:00"
+    ]);
+    expect(setResult.exitCode).toBe(0);
+    expect(setResult.stdout).toContain("Bulk due set (1 tasks)");
+
+    const clearResult = await runCliProcess([
+      "--data-file",
+      dataPath,
+      "due",
+      "+work",
+      "due:any",
+      "clear"
+    ]);
+    expect(clearResult.exitCode).toBe(0);
+    expect(clearResult.stdout).toContain("Bulk due cleared (1 tasks)");
+  });
+
+  it("returns target resolution exit code when selector mode matches no tasks", async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-cli-selector-none-"));
+    const dataPath = path.join(tempDir, "tadoi_data.json");
+    await runCliProcess(["--data-file", dataPath, "add", "Task B", "#home"]);
+
+    const result = await runCliProcess(["--data-file", dataPath, "done", "+work"]);
+    expect(result.exitCode).toBe(3);
+    expect(result.stderr).toContain("no tasks match selector");
+  });
+
+  it("returns parse exit code for mixed id and selector mode tokens", async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-cli-selector-mixed-"));
+    const dataPath = path.join(tempDir, "tadoi_data.json");
+    await runCliProcess(["--data-file", dataPath, "add", "Task A", "#work"]);
+
+    const result = await runCliProcess([
+      "--data-file",
+      dataPath,
+      "done",
+      "id:task-a",
+      "+work"
+    ]);
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain('selector mode does not accept "id:<task-id>" tokens');
   });
 });

@@ -9,6 +9,7 @@ import { APP_VERSION } from "./app/version";
 import { runPortabilityCommand } from "./cli/portabilityCommands";
 import { runCalendarCommand } from "./cli/calendarCommands";
 import { runTitsCommandCli, TITS_CLI_EXIT_CODE } from "./cli/main";
+import { runListCommand } from "./cli/listCommand";
 import { runTui, runTuiSmoke, type RunTuiOptions } from "./tui/runTui";
 import { TadoiLockBusyError } from "./state/lockfile";
 
@@ -30,10 +31,18 @@ export type CliRoute =
   | { kind: "help"; showLogo: boolean }
   | { kind: "version" }
   | { kind: "smoke_tui" }
+  | { kind: "list"; args: string[] }
   | { kind: "portability"; command: "export" | "import"; args: string[] }
   | { kind: "calendar"; command: "export" | "import"; args: string[] }
   | { kind: "unknown"; token: string }
   | { kind: "tui"; showLogo: boolean };
+
+type StructuredRunResult = {
+  exitCode: number;
+  data?: unknown;
+};
+
+type CliRunResult = number | StructuredRunResult | undefined;
 
 export type CliRunDeps = {
   runPortability: (
@@ -41,6 +50,7 @@ export type CliRunDeps = {
     args: string[]
   ) => Promise<number>;
   runCalendar: (command: "export" | "import", args: string[]) => Promise<number>;
+  runList: (args: string[], options: { json: boolean }) => Promise<StructuredRunResult>;
   runInteractiveTui: (options: RunTuiOptions) => Promise<void>;
   runSmokeTui: () => Promise<number>;
   printHelp: (showLogo: boolean) => void;
@@ -176,12 +186,25 @@ async function withDataFileOverride<T>(
   }
 }
 
-async function withOutputMode<T extends number | undefined>(
+function isStructuredRunResult(value: unknown): value is StructuredRunResult {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "exitCode" in value &&
+    typeof (value as { exitCode?: unknown }).exitCode === "number"
+  );
+}
+
+async function withOutputMode(
   runtime: RuntimeCliOptions,
-  run: () => Promise<T>
-): Promise<T | number> {
+  run: () => Promise<CliRunResult>
+): Promise<number | undefined> {
   if (!runtime.json && !runtime.quiet) {
-    return run();
+    const value = await run();
+    if (isStructuredRunResult(value)) {
+      return value.exitCode;
+    }
+    return value;
   }
 
   const stdout: string[] = [];
@@ -204,7 +227,7 @@ async function withOutputMode<T extends number | undefined>(
     originalError(...values);
   };
 
-  let value: T | undefined;
+  let value: CliRunResult = undefined;
   let thrown: unknown;
   try {
     value = await run();
@@ -216,37 +239,50 @@ async function withOutputMode<T extends number | undefined>(
   }
 
   if (runtime.json) {
+    const structured = isStructuredRunResult(value) ? value : undefined;
     const exitCode =
       thrown !== undefined
         ? TITS_CLI_EXIT_CODE.IO_ERROR
-        : typeof value === "number"
-          ? value
-          : 0;
+        : structured
+          ? structured.exitCode
+          : typeof value === "number"
+            ? value
+            : 0;
     if (thrown !== undefined) {
       stderr.push(
         `Unhandled error: ${thrown instanceof Error ? thrown.message : String(thrown)}`
       );
     }
+    const envelope =
+      structured && structured.data !== undefined
+        ? {
+            ok: exitCode === 0,
+            exitCode,
+            stdout,
+            stderr,
+            data: structured.data
+          }
+        : {
+            ok: exitCode === 0,
+            exitCode,
+            stdout,
+            stderr
+          };
     originalLog(
-      JSON.stringify(
-        {
-          ok: exitCode === 0,
-          exitCode,
-          stdout,
-          stderr
-        },
-        null,
-        2
-      )
+      JSON.stringify(envelope, null, 2)
     );
     if (thrown !== undefined) {
       return TITS_CLI_EXIT_CODE.IO_ERROR;
     }
+    return exitCode;
   } else if (thrown !== undefined) {
     throw thrown;
   }
 
-  return value as T;
+  if (isStructuredRunResult(value)) {
+    return value.exitCode;
+  }
+  return value;
 }
 
 export function printHelp(showLogo: boolean): void {
@@ -274,6 +310,7 @@ export function printHelp(showLogo: boolean): void {
   console.log("  done            Mark task done by id via TITS command engine");
   console.log("  due             Set/clear due by id via TITS command engine");
   console.log("  recur           Set/clear recurrence by id via TITS command engine");
+  console.log("  list            List tasks with selector filters");
   console.log("  check:*         Checklist commands (add/toggle/edit/del/clear)");
   console.log("  bulk:*          Bulk commands (done/tag/due/priority/assignee/project/stage/delete)");
   console.log("  help            Show TITS command help topics");
@@ -297,6 +334,7 @@ function printVersion(): void {
 const DEFAULT_DEPS: CliRunDeps = {
   runPortability: runPortabilityCommand,
   runCalendar: runCalendarCommand,
+  runList: runListCommand,
   runInteractiveTui: runTui,
   runSmokeTui: runTuiSmoke,
   printHelp,
@@ -305,6 +343,12 @@ const DEFAULT_DEPS: CliRunDeps = {
 
 export function resolveCliRoute(argv: string[]): CliRoute {
   const command = argv[0];
+  if (command === "list") {
+    return {
+      kind: "list",
+      args: argv.slice(1)
+    };
+  }
   if (command === "export" || command === "import") {
     return {
       kind: "portability",
@@ -380,6 +424,9 @@ export async function runCli(
       }
       if (route.kind === "calendar") {
         return deps.runCalendar(route.command, route.args);
+      }
+      if (route.kind === "list") {
+        return deps.runList(route.args, { json: runtime.json });
       }
 
       const titsResult = await runTitsCommandCli(runtimeArgv);

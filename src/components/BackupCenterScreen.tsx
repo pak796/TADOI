@@ -1407,6 +1407,28 @@ export function BackupCenterScreen({
           <text style={{ color: theme.muted }}>
             repo: {state.githubOwnerRepoConfigured ?? "(not configured)"}
           </text>
+          <text
+            style={{
+              color:
+                state.githubRepoIsPublic === true
+                  ? theme.warn
+                  : state.githubRepoIsPublic === false
+                    ? theme.ok
+                    : theme.muted
+            }}
+          >
+            visibility:{" "}
+            {state.githubRepoIsPublic === true
+              ? "public"
+              : state.githubRepoIsPublic === false
+                ? "private"
+                : "unknown"}
+          </text>
+          {state.githubRepoIsPublic === true ? (
+            <text style={{ color: theme.warn, fontWeight: "bold" }}>
+              WARNING: repo is public; cloud backups are publicly accessible.
+            </text>
+          ) : null}
           <text style={{ color: theme.muted }}>
             auto-push policy: {state.githubAutoPushPolicy}
           </text>
@@ -1511,6 +1533,9 @@ export function BackupCenterScreen({
           </text>
           <text style={{ color: theme.text }}>
             Type PUBLIC to confirm using a public repo:
+          </text>
+          <text style={{ color: theme.warn }}>
+            This repo is not private. Backup snapshots will be publicly readable.
           </text>
           <input
             value={state.githubPublicConfirmInput}

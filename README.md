@@ -67,10 +67,22 @@ Supported commands:
 - `done` / `done @selected` / `done id:<task-id>`
 - `due @selected YYYY-MM-DD [at:HH:MM]` / `due id:<task-id> YYYY-MM-DD [at:HH:MM]` / `due <target> clear`
 - `recur <target> clear` / `recur <target> every:day|week|month [interval:N] [on:...]`
-- `help` / `help add|done|due|recur`
+- `check add|toggle|edit|del|clear ...`
+- `bulk done|tag add|tag rm|due|priority|assignee|project|stage|delete ...`
+- `help` / `help add|done|due|recur|check|bulk`
+
+CLI query command:
+- `list [selectors...] [--sort due|updated|created|title] [--limit N]`
 
 CLI parity and safety:
 - CLI accepts wrapper form (`tadoi add ...`) and raw DSL (`tadoi 'add "Task" #tag'`)
+- CLI selector mode for `done` / `due`:
+  - `tadoi done +work`
+  - `tadoi due +work 2026-03-05 at:09:00`
+  - `tadoi due +work due:today clear`
+- Selector grammar: `+tag`, `-tag`, `project:<value>`, `assignee:<value>`, `status:open|done|archived|all`, `due:any|overdue|today|next7`, `stage:backlog|todo|doing|in_progress|blocked|review|done`
+- Selector mode rejects mixed `id:<task-id>` tokens.
+- `list --json` includes structured payload: `data.type = "tadoi.list.v1"`.
 - Interactive routing is explicit and deterministic:
   - `tadoi` or `tadoi --interactive` launches TUI
   - unknown top-level tokens (example: `tadoi --wat`) fail fast and print usage (no TUI fallback)
@@ -79,6 +91,22 @@ CLI parity and safety:
   - `tadoi done --help`
   - `tadoi due --help`
   - `tadoi recur --help`
+  - `tadoi list --help`
+  - `tadoi check:add --help`
+  - `tadoi check:toggle --help`
+  - `tadoi check:edit --help`
+  - `tadoi check:del --help`
+  - `tadoi check:clear --help`
+  - `tadoi bulk:done --help`
+  - `tadoi bulk:tag:add --help`
+  - `tadoi bulk:tag:rm --help`
+  - `tadoi bulk:due --help`
+  - `tadoi bulk:due:clear --help`
+  - `tadoi bulk:priority --help`
+  - `tadoi bulk:assignee --help`
+  - `tadoi bulk:project --help`
+  - `tadoi bulk:stage --help`
+  - `tadoi bulk:delete --help`
   - `tadoi help --help`
 - Use `--` delimiter to pass literal dash-prefixed tokens:
   - `tadoi add -- --help` creates a task titled `--help`

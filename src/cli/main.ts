@@ -1,11 +1,14 @@
 import { parseCommand } from "../commands/parse";
 import { executeCommand } from "../commands/execute";
 import type {
+  BulkCommand,
   Command,
   CommandResult,
   HelpTopic,
   ParseCommandResult
 } from "../commands/types";
+import { parseStrictLocalDate, parseStrictTime } from "../commands/validate";
+import { filterTasks } from "../domain/query";
 import { getVisibleTasks, initialState, reducer } from "../state/store";
 import {
   CURRENT_SCHEMA_VERSION,
@@ -22,6 +25,7 @@ import {
   type TadoiLockPayload
 } from "../state/lockfile";
 import { CLI_EXIT_CODE } from "./exitCodes";
+import { parseSelectorTokens } from "./selectors";
 
 export const TITS_CLI_EXIT_CODE = CLI_EXIT_CODE;
 
@@ -228,6 +232,192 @@ function classifyExecutionError(command: Command, outputText: string): number {
   return TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION;
 }
 
+type SelectorCommandIntent =
+  | {
+      kind: "done";
+      selectorTokens: string[];
+    }
+  | {
+      kind: "due";
+      selectorTokens: string[];
+      clear: true;
+    }
+  | {
+      kind: "due";
+      selectorTokens: string[];
+      clear: false;
+      dueDate: string;
+      atTime?: string;
+    };
+
+function parseSelectorIntent(argv: string[]): {
+  ok: true;
+  intent: SelectorCommandIntent;
+} | {
+  ok: false;
+  error: string;
+} | null {
+  const command = argv[0]?.trim().toLowerCase();
+  if (command !== "done" && command !== "due") {
+    return null;
+  }
+
+  const args = argv.slice(1);
+  if (args.length === 0) {
+    return null;
+  }
+  if (isHelpFlag(args[0] ?? "") && args.length === 1) {
+    return null;
+  }
+
+  if (command === "done") {
+    const idTokens = args.filter((token) => token.startsWith("id:"));
+    if (idTokens.length === 1 && args.length === 1) {
+      return null;
+    }
+    if (idTokens.length === args.length) {
+      return null;
+    }
+    if (idTokens.length > 0) {
+      return {
+        ok: false,
+        error: 'Error: selector mode does not accept "id:<task-id>" tokens.'
+      };
+    }
+    return {
+      ok: true,
+      intent: {
+        kind: "done",
+        selectorTokens: args
+      }
+    };
+  }
+
+  const first = args[0] ?? "";
+  if (first.startsWith("id:") || first === "@selected") {
+    return null;
+  }
+  if (args.some((token) => token.startsWith("id:"))) {
+    return {
+      ok: false,
+      error: 'Error: selector mode does not accept "id:<task-id>" tokens.'
+    };
+  }
+
+  const tail = [...args];
+  let atTime: string | undefined;
+  const maybeAt = tail[tail.length - 1] ?? "";
+  if (maybeAt.startsWith("at:")) {
+    const value = maybeAt.slice(3).trim();
+    if (!value || !parseStrictTime(value)) {
+      return { ok: false, error: `Error: invalid time "${value}"` };
+    }
+    atTime = value;
+    tail.pop();
+  }
+
+  if (tail.length < 2) {
+    return {
+      ok: false,
+      error: "Error: due selector mode requires selectors and date/clear."
+    };
+  }
+
+  const dueArg = tail.pop() ?? "";
+  if (dueArg === "clear") {
+    if (atTime) {
+      return { ok: false, error: "Error: due clear takes no at: token" };
+    }
+    return {
+      ok: true,
+      intent: {
+        kind: "due",
+        selectorTokens: tail,
+        clear: true
+      }
+    };
+  }
+
+  if (!parseStrictLocalDate(dueArg)) {
+    return { ok: false, error: `Error: invalid due date "${dueArg}"` };
+  }
+
+  return {
+    ok: true,
+    intent: {
+      kind: "due",
+      selectorTokens: tail,
+      clear: false,
+      dueDate: dueArg,
+      ...(atTime ? { atTime } : {})
+    }
+  };
+}
+
+function buildSelectorCommand(
+  intent: SelectorCommandIntent,
+  state: Parameters<typeof reducer>[0],
+  now: number
+): { ok: true; command: BulkCommand } | { ok: false; error: string; exitCode: number } {
+  const selectorResult = parseSelectorTokens(intent.selectorTokens, {
+    status: "open",
+    due: "any"
+  });
+  if (!selectorResult.ok) {
+    return {
+      ok: false,
+      error: selectorResult.error,
+      exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION
+    };
+  }
+
+  const ids = filterTasks(state.tasks, selectorResult.filters, now)
+    .map((task) => task.id)
+    .sort((left, right) => left.localeCompare(right));
+  if (ids.length === 0) {
+    return {
+      ok: false,
+      error: "Error: no tasks match selector.",
+      exitCode: TITS_CLI_EXIT_CODE.TARGET_RESOLUTION
+    };
+  }
+
+  if (intent.kind === "done") {
+    return {
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "done",
+        target: { type: "ids", ids }
+      }
+    };
+  }
+
+  if (intent.clear) {
+    return {
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "due",
+        target: { type: "ids", ids },
+        clear: true
+      }
+    };
+  }
+
+  return {
+    ok: true,
+    command: {
+      type: "bulk",
+      operation: "due",
+      target: { type: "ids", ids },
+      clear: false,
+      dueDate: intent.dueDate,
+      ...(intent.atTime ? { atTime: intent.atTime } : {})
+    }
+  };
+}
+
 export async function runTitsCommandCliWithDeps(
   argv: string[],
   deps: TitsCliDeps
@@ -248,40 +438,50 @@ export async function runTitsCommandCliWithDeps(
     return { handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS };
   }
 
-  const resolved = resolveTitsCliInput(argv);
-  if (!resolved) {
-    return { handled: false };
-  }
-
-  const parsed = deps.parseCommand(resolved.dsl);
-  if (!parsed.ok) {
-    deps.error(toSingleLine(parsed.error));
+  const selectorIntentResult = parseSelectorIntent(argv);
+  if (selectorIntentResult && !selectorIntentResult.ok) {
+    deps.error(selectorIntentResult.error);
     return { handled: true, exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION };
   }
-  const command = parsed.command;
 
-  if (commandRequiresInAppSelection(command)) {
-    if (command.type === "bulk") {
-      deps.error('Error: CLI bulk commands require repeated "id:<task-id>" targets.');
-    } else {
-      deps.error("Error: @selected is only available in-app. Use id:<uuid>.");
+  const selectorIntent = selectorIntentResult?.intent;
+
+  let parsedCommand: Command | null = null;
+  if (!selectorIntent) {
+    const resolved = resolveTitsCliInput(argv);
+    if (!resolved) {
+      return { handled: false };
     }
-    return { handled: true, exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION };
-  }
-
-  if (command.type === "help") {
-    const result = deps.executeCommand(command, {
-      now: deps.now(),
-      state: initialState,
-      visibleTasks: [],
-      selectedTaskId: undefined
-    });
-    if (result.output.kind === "error") {
-      deps.error(toSingleLine(result.output.text));
+    const parsed = deps.parseCommand(resolved.dsl);
+    if (!parsed.ok) {
+      deps.error(toSingleLine(parsed.error));
       return { handled: true, exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION };
     }
-    deps.log(toSingleLine(result.output.text));
-    return { handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS };
+    parsedCommand = parsed.command;
+
+    if (commandRequiresInAppSelection(parsedCommand)) {
+      if (parsedCommand.type === "bulk") {
+        deps.error('Error: CLI bulk commands require repeated "id:<task-id>" targets.');
+      } else {
+        deps.error("Error: @selected is only available in-app. Use id:<uuid>.");
+      }
+      return { handled: true, exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION };
+    }
+
+    if (parsedCommand.type === "help") {
+      const result = deps.executeCommand(parsedCommand, {
+        now: deps.now(),
+        state: initialState,
+        visibleTasks: [],
+        selectedTaskId: undefined
+      });
+      if (result.output.kind === "error") {
+        deps.error(toSingleLine(result.output.text));
+        return { handled: true, exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION };
+      }
+      deps.log(toSingleLine(result.output.text));
+      return { handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS };
+    }
   }
 
   const dataFilePath = deps.getDataFilePath();
@@ -304,6 +504,25 @@ export async function runTitsCommandCliWithDeps(
         : 0;
     let state = reducer(initialState, { type: "load", data: loaded });
     const now = deps.now();
+    const command = (() => {
+      if (!selectorIntent) {
+        return parsedCommand as Command;
+      }
+      const resolved = buildSelectorCommand(selectorIntent, state, now);
+      if (!resolved.ok) {
+        deps.error(resolved.error);
+        return resolved;
+      }
+      return resolved.command;
+    })();
+
+    if ("ok" in command && command.ok === false) {
+      return {
+        handled: true,
+        exitCode: command.exitCode
+      };
+    }
+
     const result = deps.executeCommand(command, {
       now,
       state,

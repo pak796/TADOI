@@ -267,6 +267,135 @@ describe("runTitsCommandCliWithDeps", () => {
     expect(saved[0]?.tasks[0]?.hasExplicitTime).toBe(false);
   });
 
+  it("supports done selector mode and applies bulk done to matched tasks", async () => {
+    const { deps, logs, errors, saved } = createDeps({
+      loadedData: createLoadedData({
+        tasks: [
+          {
+            id: "task-open-work",
+            title: "Work task",
+            status: "open",
+            createdAt: 1,
+            updatedAt: 1,
+            tags: ["work"]
+          },
+          {
+            id: "task-open-home",
+            title: "Home task",
+            status: "open",
+            createdAt: 1,
+            updatedAt: 1,
+            tags: ["home"]
+          }
+        ]
+      })
+    });
+
+    const result = await runTitsCommandCliWithDeps(["done", "+work"], deps);
+    expect(result).toEqual({ handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS });
+    expect(errors).toHaveLength(0);
+    expect(logs).toEqual(["Bulk done applied (1 tasks)"]);
+    expect(saved).toHaveLength(1);
+    const savedTask = saved[0]?.tasks.find((task) => task.id === "task-open-work");
+    expect(savedTask?.status).toBe("done");
+  });
+
+  it("supports due selector mode with date/time", async () => {
+    const { deps, logs, errors, saved } = createDeps({
+      loadedData: createLoadedData({
+        tasks: [
+          {
+            id: "task-open-work",
+            title: "Work task",
+            status: "open",
+            createdAt: 1,
+            updatedAt: 1,
+            tags: ["work"]
+          }
+        ]
+      })
+    });
+
+    const result = await runTitsCommandCliWithDeps(
+      ["due", "+work", "2026-03-05", "at:09:00"],
+      deps
+    );
+    expect(result).toEqual({ handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS });
+    expect(errors).toHaveLength(0);
+    expect(logs).toEqual(["Bulk due set (1 tasks)"]);
+    expect(saved).toHaveLength(1);
+    expect(saved[0]?.tasks[0]?.dueAt).toBeDefined();
+    expect(saved[0]?.tasks[0]?.hasExplicitTime).toBe(true);
+  });
+
+  it("supports due selector mode clear with selector due filter", async () => {
+    const { deps, logs, errors, saved } = createDeps({
+      loadedData: createLoadedData({
+        tasks: [
+          {
+            id: "task-open-work",
+            title: "Work task",
+            status: "open",
+            createdAt: 1,
+            updatedAt: 1,
+            dueAt: new Date(2026, 1, 20, 8, 0).getTime(),
+            hasExplicitTime: true,
+            tags: ["work"]
+          }
+        ]
+      })
+    });
+
+    const result = await runTitsCommandCliWithDeps(
+      ["due", "+work", "due:today", "clear"],
+      deps
+    );
+    expect(result).toEqual({ handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS });
+    expect(errors).toHaveLength(0);
+    expect(logs).toEqual(["Bulk due cleared (1 tasks)"]);
+    expect(saved).toHaveLength(1);
+    expect(saved[0]?.tasks[0]?.dueAt).toBeUndefined();
+    expect(saved[0]?.tasks[0]?.hasExplicitTime).toBe(false);
+  });
+
+  it("returns target resolution when selector mode matches no tasks", async () => {
+    const { deps, errors, saved } = createDeps({
+      loadedData: createLoadedData({
+        tasks: [
+          {
+            id: "task-open-home",
+            title: "Home task",
+            status: "open",
+            createdAt: 1,
+            updatedAt: 1,
+            tags: ["home"]
+          }
+        ]
+      })
+    });
+
+    const result = await runTitsCommandCliWithDeps(["done", "+work"], deps);
+    expect(result).toEqual({
+      handled: true,
+      exitCode: TITS_CLI_EXIT_CODE.TARGET_RESOLUTION
+    });
+    expect(errors).toEqual(["Error: no tasks match selector."]);
+    expect(saved).toHaveLength(0);
+  });
+
+  it("rejects mixed id and selector tokens in selector mode", async () => {
+    const { deps, errors, saved } = createDeps();
+    const result = await runTitsCommandCliWithDeps(["done", "id:task-a", "+work"], deps);
+    expect(result).toEqual({
+      handled: true,
+      exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION
+    });
+    expect(errors).toEqual([
+      'Error: selector mode does not accept "id:<task-id>" tokens.'
+    ]);
+    expect(saved).toHaveLength(0);
+  });
+
   it("allows help even if lock is present", async () => {
     const { deps, logs, saved } = createDeps({ locked: true });
     const result = await runTitsCommandCliWithDeps(["help"], deps);

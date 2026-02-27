@@ -19,7 +19,23 @@ commands=(
   'done:Mark task done by id via TITS command engine'
   'due:Set or clear due date via TITS command engine'
   'recur:Set or clear recurrence by id via TITS command engine'
+  'list:List tasks via selector grammar'
   'help:Show TITS help topics'
+  'check:add:Add checklist item by id'
+  'check:toggle:Toggle checklist item by id'
+  'check:edit:Edit checklist item by id'
+  'check:del:Delete checklist item by id'
+  'check:clear:Clear checklist items by id'
+  'bulk:done:Bulk done by id targets'
+  'bulk:tag:add:Bulk add tags by id targets'
+  'bulk:tag:rm:Bulk remove tags by id targets'
+  'bulk:due:Bulk due update by id targets'
+  'bulk:due:clear:Bulk clear due by id targets'
+  'bulk:priority:Bulk priority by id targets'
+  'bulk:assignee:Bulk assignee by id targets'
+  'bulk:project:Bulk project by id targets'
+  'bulk:stage:Bulk stage by id targets'
+  'bulk:delete:Bulk delete by id targets'
   'export:Export persisted state and settings'
   'import:Import persisted state from JSON export'
   'calendar:export:Export one-way calendar ICS file'
@@ -34,6 +50,19 @@ fi
 
 case "${words[2]}" in
   add|done|due|recur|help)
+    _arguments '*:arg: '
+    ;;
+  list)
+    _arguments \
+      '--help[Show list help]' \
+      '-h[Show list help]' \
+      '--sort[Sort mode]:sort:(due updated created title)' \
+      '--limit[Limit result count]:count:' \
+      '--json[Emit machine-readable output]' \
+      '--quiet[Suppress non-essential output]' \
+      '--data-file[Override data file path]:path:_files'
+    ;;
+  check:add|check:toggle|check:edit|check:del|check:clear|bulk:done|bulk:tag:add|bulk:tag:rm|bulk:due|bulk:due:clear|bulk:priority|bulk:assignee|bulk:project|bulk:stage|bulk:delete)
     _arguments '*:arg: '
     ;;
   export)

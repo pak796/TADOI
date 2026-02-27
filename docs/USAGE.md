@@ -221,14 +221,25 @@ Supported TITS commands:
 - `bulk delete` (in-app always opens confirm modal, for marked and explicit `id:` targets)
 - `help` / `help add|done|due|recur|check|bulk`
 
+CLI query command:
+- `list [selectors...] [--sort due|updated|created|title] [--limit N]`
+
 CLI TITS notes:
-- Wrapper form: `tadoi add ...`, `tadoi done id:<task-id>`, `tadoi due id:<task-id> ...`, `tadoi recur id:<task-id> ...`, `tadoi check:<op> id:<task-id> ...`, `tadoi bulk:<op> id:<task-id> ...`
+- Wrapper form: `tadoi add ...`, `tadoi done id:<task-id>`, `tadoi due id:<task-id> ...`, `tadoi recur id:<task-id> ...`, `tadoi check:<op> id:<task-id> ...`, `tadoi bulk:<op> id:<task-id> ...`, `tadoi list ...`
 - Raw DSL form: `tadoi 'recur id:<task-id> every:week on:mon'`
+- Selector mode for CLI `done` and `due`:
+  - `tadoi done +work`
+  - `tadoi due +work 2026-03-05 at:09:00`
+  - `tadoi due +work due:today clear`
+- Selector grammar: `+tag`, `-tag`, `project:<value>`, `assignee:<value>`, `status:open|done|archived|all`, `due:any|overdue|today|next7`, `stage:backlog|todo|doing|in_progress|blocked|review|done`
+- Selector mode rejects mixed `id:<task-id>` tokens.
+- `list --json` returns structured payload `data.type = "tadoi.list.v1"` in the standard JSON envelope.
 - Wrapper help is non-mutating:
   - `tadoi add --help`
   - `tadoi done --help`
   - `tadoi due --help`
   - `tadoi recur --help`
+  - `tadoi list --help`
   - `tadoi check:add --help`
   - `tadoi check:toggle --help`
   - `tadoi check:edit --help`

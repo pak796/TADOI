@@ -1,4 +1,4 @@
-set -l _tadoi_commands add done due recur help export import calendar:export calendar:import
+set -l _tadoi_commands add done due recur list help check:add check:toggle check:edit check:del check:clear bulk:done bulk:tag:add bulk:tag:rm bulk:due bulk:due:clear bulk:priority bulk:assignee bulk:project bulk:stage bulk:delete export import calendar:export calendar:import
 
 complete -c tadoi -n "not __fish_seen_subcommand_from $_tadoi_commands" -a "$_tadoi_commands"
 complete -c tadoi -n "not __fish_seen_subcommand_from $_tadoi_commands" -l help -s h -d "Show help"
@@ -11,6 +11,15 @@ complete -c tadoi -n "not __fish_seen_subcommand_from $_tadoi_commands" -l data-
 complete -c tadoi -n "not __fish_seen_subcommand_from $_tadoi_commands" -l no-logo -d "Hide ASCII logo in app header"
 
 complete -c tadoi -n "__fish_seen_subcommand_from add done due recur help" -l help -s h -d "Show command help"
+
+complete -c tadoi -n "__fish_seen_subcommand_from list" -l help -s h -d "Show list help"
+complete -c tadoi -n "__fish_seen_subcommand_from list" -l sort -r -a "due updated created title" -d "Sort mode"
+complete -c tadoi -n "__fish_seen_subcommand_from list" -l limit -r -d "Limit result count"
+complete -c tadoi -n "__fish_seen_subcommand_from list" -l json -d "Emit machine-readable output"
+complete -c tadoi -n "__fish_seen_subcommand_from list" -l quiet -d "Suppress non-essential output"
+complete -c tadoi -n "__fish_seen_subcommand_from list" -l data-file -r -d "Override data file path for this invocation"
+
+complete -c tadoi -n "__fish_seen_subcommand_from check:add check:toggle check:edit check:del check:clear bulk:done bulk:tag:add bulk:tag:rm bulk:due bulk:due:clear bulk:priority bulk:assignee bulk:project bulk:stage bulk:delete" -l help -s h -d "Show command help"
 
 complete -c tadoi -n "__fish_seen_subcommand_from export" -l out -r -d "Output file path"
 complete -c tadoi -n "__fish_seen_subcommand_from export" -l format -r -a "json" -d "Export format"

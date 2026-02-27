@@ -3,6 +3,13 @@ import { printHelp, resolveCliRoute, runCli, type CliRunDeps } from "./cli";
 import { TadoiLockBusyError } from "./state/lockfile";
 
 describe("resolveCliRoute", () => {
+  it("routes list before global flags", () => {
+    const route = resolveCliRoute(["list", "+work", "--sort", "updated"]);
+    expect(route.kind).toBe("list");
+    if (route.kind !== "list") return;
+    expect(route.args).toEqual(["+work", "--sort", "updated"]);
+  });
+
   it("routes portability commands before global flags", () => {
     const route = resolveCliRoute(["export", "--help"]);
     expect(route.kind).toBe("portability");
@@ -46,6 +53,7 @@ describe("resolveCliRoute", () => {
 describe("runCli", () => {
   function createDeps() {
     const calls = {
+      list: 0,
       portability: 0,
       calendar: 0,
       tui: 0,
@@ -56,6 +64,10 @@ describe("runCli", () => {
     };
 
     const deps: CliRunDeps = {
+      async runList() {
+        calls.list += 1;
+        return { exitCode: 0 };
+      },
       async runPortability() {
         calls.portability += 1;
         calls.seenDataPath = process.env.TADOI_DATA_PATH ?? "";
@@ -88,6 +100,7 @@ describe("runCli", () => {
     const code = await runCli(["--version"], deps);
     expect(code).toBe(0);
     expect(calls.version).toBe(1);
+    expect(calls.list).toBe(0);
     expect(calls.tui).toBe(0);
     expect(calls.portability).toBe(0);
     expect(calls.smoke).toBe(0);
@@ -98,6 +111,7 @@ describe("runCli", () => {
     const code = await runCli(["export", "--help"], deps);
     expect(code).toBe(0);
     expect(calls.portability).toBe(1);
+    expect(calls.list).toBe(0);
     expect(calls.calendar).toBe(0);
     expect(calls.tui).toBe(0);
     expect(calls.smoke).toBe(0);
@@ -108,6 +122,7 @@ describe("runCli", () => {
     const code = await runCli(["calendar:export", "--help"], deps);
     expect(code).toBe(0);
     expect(calls.portability).toBe(0);
+    expect(calls.list).toBe(0);
     expect(calls.calendar).toBe(1);
     expect(calls.tui).toBe(0);
     expect(calls.smoke).toBe(0);
@@ -118,6 +133,7 @@ describe("runCli", () => {
     const code = await runCli(["calendar:import", "--help"], deps);
     expect(code).toBe(0);
     expect(calls.portability).toBe(0);
+    expect(calls.list).toBe(0);
     expect(calls.calendar).toBe(1);
     expect(calls.tui).toBe(0);
     expect(calls.smoke).toBe(0);
@@ -128,6 +144,7 @@ describe("runCli", () => {
     const code = await runCli(["--smoke-tui"], deps);
     expect(code).toBe(0);
     expect(calls.smoke).toBe(1);
+    expect(calls.list).toBe(0);
     expect(calls.tui).toBe(0);
     expect(calls.portability).toBe(0);
   });
@@ -141,6 +158,7 @@ describe("runCli", () => {
     const code = await runCli([], deps);
     expect(code).toBe(4);
     expect(calls.tui).toBe(0);
+    expect(calls.list).toBe(0);
     expect(calls.portability).toBe(0);
     expect(calls.calendar).toBe(0);
   });
@@ -150,6 +168,7 @@ describe("runCli", () => {
     const code = await runCli(["--wat"], deps);
     expect(code).toBe(2);
     expect(calls.tui).toBe(0);
+    expect(calls.list).toBe(0);
     expect(calls.portability).toBe(0);
     expect(calls.calendar).toBe(0);
   });
@@ -159,6 +178,16 @@ describe("runCli", () => {
     const code = await runCli(["--interactive"], deps);
     expect(code).toBeUndefined();
     expect(calls.tui).toBe(1);
+  });
+
+  it("runs list in headless mode", async () => {
+    const { calls, deps } = createDeps();
+    const code = await runCli(["list"], deps);
+    expect(code).toBe(0);
+    expect(calls.list).toBe(1);
+    expect(calls.tui).toBe(0);
+    expect(calls.portability).toBe(0);
+    expect(calls.calendar).toBe(0);
   });
 
   it("rejects json mode for interactive route", async () => {
@@ -208,6 +237,7 @@ describe("printHelp", () => {
     expect(output).toContain("--json");
     expect(output).toContain("--quiet");
     expect(output).toContain("--data-file <path>");
+    expect(output).toContain("list");
     expect(output).toContain("calendar:export");
     expect(output).toContain("calendar:import");
   });

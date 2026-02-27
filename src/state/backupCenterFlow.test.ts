@@ -422,6 +422,32 @@ describe("backupCenterFlow", () => {
     expect(state.calendarImportCommittedWarnings).toEqual([]);
   });
 
+  it("stores github repo visibility status for warning display", () => {
+    let state = backupCenterReducer(initialBackupCenterState, {
+      type: "setGitHubStatus",
+      ghDetected: true,
+      loggedIn: true,
+      username: "patrick",
+      ownerRepoConfigured: "patrick/tadoi-backups",
+      repoIsPublic: true,
+      autoPushPolicy: "off",
+      lastPushedAt: "2026-02-27T12:00:00.000Z",
+      lastRestorePulledAt: "2026-02-27T11:00:00.000Z"
+    });
+    expect(state.githubRepoIsPublic).toBe(true);
+
+    state = backupCenterReducer(state, {
+      type: "setGitHubStatus",
+      ghDetected: true,
+      loggedIn: true,
+      username: "patrick",
+      ownerRepoConfigured: "patrick/tadoi-backups",
+      repoIsPublic: false,
+      autoPushPolicy: "off"
+    });
+    expect(state.githubRepoIsPublic).toBe(false);
+  });
+
   it("handles github restore picker selection and restore transitions", () => {
     const snapshots = [
       {
