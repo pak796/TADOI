@@ -27,6 +27,7 @@ function run(
     saveViewPromptOpen: false,
     allowEmptyNuxRecoveryImport: false,
     backupScreen: null,
+    selectedTaskHasChecklistItems: false,
     ...contextOverrides
   };
   return handleKey(input, context);
@@ -574,6 +575,13 @@ describe("handleKey", () => {
     ]);
     expect(run({ name: "left" }, { uiState: checklistState })).toEqual([
       { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.DETAILS_LINKS }
+    ]);
+  });
+
+  it("routes task-list right arrow to checklist quick edit only when checklist exists", () => {
+    expect(run({ name: "right" })).toEqual([]);
+    expect(run({ name: "right" }, { selectedTaskHasChecklistItems: true })).toEqual([
+      { scope: "domain", type: "OPEN_EDIT_CHECKLIST_QUICK" }
     ]);
   });
 
@@ -1428,6 +1436,9 @@ describe("handleKey", () => {
     ]);
     expect(run({ name: "d", sequence: "d" }, { uiState: checklistEditorState })).toEqual([
       { scope: "domain", type: "OPEN_DELETE_CHECKLIST_ITEM_MODAL" }
+    ]);
+    expect(run({ name: "left" }, { uiState: checklistEditorState })).toEqual([
+      { scope: "domain", type: "SAVE_EDITOR" }
     ]);
     expect(run({ name: "enter" }, { uiState: checklistEditorState })).toEqual([]);
     expect(run({ name: "b", sequence: "b" }, { uiState: checklistEditorState })).toEqual([]);

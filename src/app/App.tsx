@@ -4235,6 +4235,9 @@ export function App({
       case "OPEN_EDIT":
         openEdit();
         return;
+      case "OPEN_EDIT_CHECKLIST_QUICK":
+        openChecklistQuickEditFromList();
+        return;
       case "OPEN_EDIT_SERIES":
         openEditSeries();
         return;
@@ -4773,6 +4776,7 @@ export function App({
         saveViewPromptOpen,
         allowEmptyNuxRecoveryImport: showCorruptionRecoveryImportCta,
         backupScreen: uiState.mode === Mode.BACKUP_CENTER ? backupState.screen : null,
+        selectedTaskHasChecklistItems: (selectedTask?.checklist?.length ?? 0) > 0,
         resolvedKeymapAliases,
         helpPage: activeHelpPage
       }
@@ -7315,6 +7319,14 @@ export function App({
 
   function openEdit(options: { bypassUnsavedGuard?: boolean } = {}) {
     editorFlow.openEdit(options);
+  }
+
+  function openChecklistQuickEditFromList() {
+    if (uiState.mode !== Mode.LIST || uiState.focus !== FocusTarget.TASK_LIST) return;
+    if (!selectedTask || (selectedTask.checklist?.length ?? 0) === 0) return;
+    const opened = openEditForRow(selectedTask);
+    if (!opened) return;
+    uiDispatch({ type: "setFocus", focus: FocusTarget.EDITOR_CHECKLIST });
   }
 
   function openDuplicate() {

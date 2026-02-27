@@ -27,6 +27,7 @@ export type KeyRouterContext = {
   saveViewPromptOpen: boolean;
   allowEmptyNuxRecoveryImport: boolean;
   backupScreen: BackupCenterScreen | null;
+  selectedTaskHasChecklistItems?: boolean;
   resolvedKeymapAliases?: ResolvedKeymapAliases | null;
   helpPage?:
     | "help"
@@ -126,6 +127,7 @@ export type KeyRouterAction =
   | { scope: "domain"; type: "TOGGLE_SELECTED" }
   | { scope: "domain"; type: "OPEN_ADD" }
   | { scope: "domain"; type: "OPEN_EDIT" }
+  | { scope: "domain"; type: "OPEN_EDIT_CHECKLIST_QUICK" }
   | { scope: "domain"; type: "OPEN_EDIT_SERIES" }
   | { scope: "domain"; type: "OPEN_DUPLICATE" }
   | { scope: "domain"; type: "SKIP_SELECTED_OCCURRENCE" }
@@ -489,6 +491,7 @@ function listModeActions(
   context: KeyRouterContext
 ): KeyRouterAction[] {
   const { name, sequence, ctrl, shift } = key;
+  const selectedTaskHasChecklistItems = context.selectedTaskHasChecklistItems ?? false;
   const aliasedActions = resolveListAliasActions(key, context);
   if (aliasedActions !== null) return aliasedActions;
   if (sequence === "?") return [{ scope: "ui", type: "OPEN_HELP" }];
@@ -536,6 +539,9 @@ function listModeActions(
     return [{ scope: "domain", type: "APPLY_VIEW_SLOT", slot: Number(sequence) - 1 }];
   }
   if (name === "a") return [{ scope: "domain", type: "OPEN_ADD" }];
+  if (name === "right" && selectedTaskHasChecklistItems) {
+    return [{ scope: "domain", type: "OPEN_EDIT_CHECKLIST_QUICK" }];
+  }
   if (name === "l" || name === "L" || sequence === "l" || sequence === "L") {
     return [{ scope: "domain", type: "OPEN_ADD_TASK_LINK_MODAL" }];
   }
@@ -1245,6 +1251,9 @@ function resolveEditorModeActions(
     }
     if (name === "return" || name === "enter") {
       return [];
+    }
+    if (!ctrl && !shift && name === "left") {
+      return [{ scope: "domain", type: "SAVE_EDITOR" }];
     }
     return [];
   }

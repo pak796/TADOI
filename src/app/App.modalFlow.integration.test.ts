@@ -949,6 +949,58 @@ describe("App modal flow integration", () => {
     }
   });
 
+  it("quick-routes list Right Arrow into checklist edit and Left saves back to list", async () => {
+    const nowMs = Date.now();
+    const nowIso = new Date(nowMs).toISOString();
+    const checklistTask: Task = {
+      ...makeTask("task-checklist-nav", "Checklist nav task", nowMs),
+      checklist: [
+        {
+          id: "item-1",
+          text: "First item",
+          isDone: true,
+          createdAt: nowIso,
+          updatedAt: nowIso,
+          completedAt: nowIso,
+          sort: 0
+        },
+        {
+          id: "item-2",
+          text: "Second item",
+          isDone: false,
+          createdAt: nowIso,
+          updatedAt: nowIso,
+          sort: 1
+        }
+      ]
+    };
+    const session = await createSession({ initialData: makeInitialData([checklistTask]) });
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      await waitForText(harness, "CL 1/2");
+      await pressArrowAndRender(mockInput, harness, "right");
+
+      let frame = await waitForText(harness, "MODE:  EDIT");
+      expect(frame).toContain("FOCUS: CHECKLIST");
+      expect(frame).toContain("CHECKLIST (1/2)");
+
+      await pressArrowAndRender(mockInput, harness, "down");
+      await pressKeyAndRender(mockInput, harness, " ");
+
+      frame = await waitForText(harness, "CHECKLIST (2/2)");
+      expect(frame).toContain("Second item");
+
+      await pressArrowAndRender(mockInput, harness, "left");
+      frame = await waitForText(harness, "MODE:  LIST");
+      expect(frame).toContain("FOCUS: LIST");
+      expect(frame).toContain("CL 2/2");
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
   it("shows Ctrl+g prefix popup and clears it after non-prefix continuation without side effects", async () => {
     const session = await createSession();
     const { harness } = session;
