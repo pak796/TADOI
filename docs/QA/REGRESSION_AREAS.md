@@ -1,6 +1,6 @@
 # TADOI™ Regression Areas
 
-Verified as of 2026-02-20 (v0.3.8).
+Verified as of 2026-02-20 (v0.3.9).
 
 High-severity regression surfaces to re-check after every change.
 

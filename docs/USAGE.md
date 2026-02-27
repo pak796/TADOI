@@ -1,6 +1,6 @@
 # TADOI™ Usage Guide
 
-Verified as of 2026-02-27 (v0.3.8).
+Verified as of 2026-02-27 (v0.3.9).
 Source of truth for key routing: `src/app/keyRouter.ts`.
 
 ## Run

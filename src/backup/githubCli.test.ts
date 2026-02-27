@@ -83,7 +83,7 @@ describe("githubCli", () => {
   it("lists snapshot refs newest-first with manifest metadata", async () => {
     const manifestContent = Buffer.from(
       JSON.stringify({
-        appVersion: "v0.3.8",
+        appVersion: "v0.3.9",
         schemaVersion: 8,
         counts: {
           tasksTotal: 7,
@@ -142,7 +142,7 @@ describe("githubCli", () => {
     expect(snapshots[0]?.timestamp).toBe("20260227-123000Z");
     expect(snapshots[0]?.tasksTotal).toBe(7);
     expect(snapshots[0]?.tasksOpen).toBe(3);
-    expect(snapshots[0]?.appVersion).toBe("v0.3.8");
+    expect(snapshots[0]?.appVersion).toBe("v0.3.9");
   });
 
   it("formats snapshot ids in UTC", () => {

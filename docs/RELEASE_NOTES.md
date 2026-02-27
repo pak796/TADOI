@@ -1,27 +1,22 @@
 # TADOI™ Release Notes
 
-Current release baseline: `v0.3.8` (`package.json`: `0.3.8`).
+Current release baseline: `v0.3.9` (`package.json`: `0.3.9`).
 
 Primary changelog lives at `CHANGELOG.md` in the repo root.
 
-## Latest Notes (v0.3.8)
-- Version: `v0.3.8`
+## Latest Notes (v0.3.9)
+- Version: `v0.3.9`
 - Date: `2026-02-27`
-- Highlights:
-  - Engagement-toast runtime behavior is documented and aligned to active `v0.3.8` baselines.
-  - Contract and release-governance docs were refreshed to current evidence.
-  - Notion staging package was refreshed from current source markdown for deferred apply.
-- Fixes:
-  - Added named DTF coverage labels for `DTF-008` and `DTF-009` in existing tests.
-  - `bun run contract:dtf:check` now passes with `9` covered IDs from `DASHBOARD_SPEC_MVP.md` and `TADOI_SPEC_v0.3.8.md`.
-- Quality gates:
+- Release scope:
+  - Version alignment release for runtime and active documentation (`v0.3.9` / `0.3.9`).
+  - New active versioned artifacts for spec, task list, QA guide, feature list, and Notion sync pack.
+  - No runtime behavior changes were introduced in this release note pass.
+- Validation snapshot:
   - `bun run docs:lint`: PASS
-  - `bun run keybind:canonical:check`: PASS (`canonical=64 missing_in_docs=0 missing_in_code=0`)
-  - `bun run contract:dtf:check`: PASS
-  - `bun run notion:sync:validate`: PASS (`items=14`)
+  - `bun run typecheck`: PASS
+  - `bun test scripts/check-dtf-contract-drift.test.ts`: PASS
+  - `bun test scripts/keybind-sync-audit.test.ts`: PASS
+  - `bun test src/backup/githubCli.test.ts`: PASS
+  - `bun test keybindingContract.test.ts` (from `src/app`): PASS
 - Known issues:
-  - No blocking issues identified in this documentation remediation pass.
-- Docs updated:
-  - `CHANGELOG.md`
-  - `docs/RELEASE_RUN_REPORT.md`
-  - `docs/RELEASE_NOTES.md`
+  - No blocking release issues identified.

@@ -1,6 +1,6 @@
 # TADOI™ Black Box Test Matrix
 
-Verified as of 2026-02-20 (v0.3.8).
+Verified as of 2026-02-20 (v0.3.9).
 
 Focus: user-visible behavior with no code inspection.
 

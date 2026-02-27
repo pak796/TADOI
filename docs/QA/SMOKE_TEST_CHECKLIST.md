@@ -1,6 +1,6 @@
 # TADOI™ Smoke Test Checklist
 
-Verified as of 2026-02-20 (v0.3.8).
+Verified as of 2026-02-20 (v0.3.9).
 
 Run on macOS, Windows, Linux.
 

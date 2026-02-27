@@ -158,7 +158,7 @@ export function handleKey(input: { name: string; sequence: string }) {
         "README.md",
         [
           "- Schema version: `6`",
-          "- App release: `v0.3.8`",
+          "- App release: `v0.3.9`",
           "- Open backup center: `u`"
         ].join("\n")
       );

@@ -3,8 +3,8 @@
 Prepared for deferred Notion apply (no remote write executed in this pass).
 
 ## Baseline
-- Runtime: `v0.3.8`
-- Package: `0.3.8`
+- Runtime: `v0.3.9`
+- Package: `0.3.9`
 - Persistence schema: `7`
 - Audit token: `[AUDIT 2026-02-27] Full docs sweep + Notion payload refresh staged for deferred apply`
 
@@ -14,7 +14,7 @@ Prepared for deferred Notion apply (no remote write executed in this pass).
 - `docs/NOTION_SYNC.md`
 - `docs/notion/NOTION_SYNC_RUNBOOK.md`
 - `docs/notion/NOTION_SYNC_INSTRUCTIONS.md`
-- `docs/ops/notion_v0.3.8_sync_pack.md`
+- `docs/ops/notion_v0.3.9_sync_pack.md`
 
 ## Validation Snapshot
 - `bun run docs:lint` -> PASS

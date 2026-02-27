@@ -1,7 +1,7 @@
 {
   "automation_id": "docs-audit-notion-staging-2026-02-27",
-  "version_baseline": "v0.3.8",
-  "package_version_baseline": "0.3.8",
+  "version_baseline": "v0.3.9",
+  "package_version_baseline": "0.3.9",
   "audit_token": "[AUDIT 2026-02-27] Full docs sweep + Notion payload refresh staged for deferred apply",
   "generated_at_utc": "2026-02-27T20:08:39.135Z",
   "sources": {
@@ -16,7 +16,7 @@
   "checks": [
     {
       "page_id": "3045aa1e-f93f-8191-848a-cbc69ec6e869",
-      "title": "TADOI Installation Guide (All Platforms) v0.3.8",
+      "title": "TADOI Installation Guide (All Platforms) v0.3.9",
       "source_file": "docs/TADOI_Installation_Guide_All_Platforms.md",
       "heading": "# TADOI™ Installation Guide (macOS, Windows, Linux)",
       "heading_ok": true,
@@ -24,7 +24,7 @@
     },
     {
       "page_id": "3065aa1e-f93f-8188-adb2-c39dc13f90bb",
-      "title": "TADOI Install Guide (Concise) v0.3.8",
+      "title": "TADOI Install Guide (Concise) v0.3.9",
       "source_file": "docs/INSTALL.md",
       "heading": "# TADOI™ Install Guide",
       "heading_ok": true,
@@ -32,7 +32,7 @@
     },
     {
       "page_id": "3065aa1e-f93f-81b5-a6cb-d4d3e64684c0",
-      "title": "TADOI Usage Guide v0.3.8",
+      "title": "TADOI Usage Guide v0.3.9",
       "source_file": "docs/USAGE.md",
       "heading": "# TADOI™ Usage Guide",
       "heading_ok": true,
@@ -40,15 +40,15 @@
     },
     {
       "page_id": "3045aa1e-f93f-8103-bda5-f77d2bf55e8e",
-      "title": "TADOI QA Guide (v0.3.8)",
-      "source_file": "docs/TADOI_QA_Guide_v0.3.8.md",
-      "heading": "# TADOI™ QA Guide (v0.3.8)",
+      "title": "TADOI QA Guide (v0.3.9)",
+      "source_file": "docs/TADOI_QA_Guide_v0.3.9.md",
+      "heading": "# TADOI™ QA Guide (v0.3.9)",
       "heading_ok": true,
       "version_marker_found": true
     },
     {
       "page_id": "3065aa1e-f93f-81ec-8bd6-cba6cf3876eb",
-      "title": "TADOI Smoke Test Checklist (v0.3.8)",
+      "title": "TADOI Smoke Test Checklist (v0.3.9)",
       "source_file": "docs/QA/SMOKE_TEST_CHECKLIST.md",
       "heading": "# TADOI™ Smoke Test Checklist",
       "heading_ok": true,
@@ -56,7 +56,7 @@
     },
     {
       "page_id": "3065aa1e-f93f-8178-af7d-c31a8241854d",
-      "title": "TADOI Black Box Test Matrix (v0.3.8)",
+      "title": "TADOI Black Box Test Matrix (v0.3.9)",
       "source_file": "docs/QA/BLACK_BOX_TEST_MATRIX.md",
       "heading": "# TADOI™ Black Box Test Matrix",
       "heading_ok": true,
@@ -64,7 +64,7 @@
     },
     {
       "page_id": "3065aa1e-f93f-8166-998c-d94e5bc16917",
-      "title": "TADOI Regression Areas (v0.3.8)",
+      "title": "TADOI Regression Areas (v0.3.9)",
       "source_file": "docs/QA/REGRESSION_AREAS.md",
       "heading": "# TADOI™ Regression Areas",
       "heading_ok": true,
@@ -72,7 +72,7 @@
     },
     {
       "page_id": "3065aa1e-f93f-819b-a606-e8337a7ca1d5",
-      "title": "TADOI Release Checklist (v0.3.8)",
+      "title": "TADOI Release Checklist (v0.3.9)",
       "source_file": "docs/RELEASE_CHECKLIST.md",
       "heading": "# TADOI™ Release Checklist",
       "heading_ok": true,
@@ -88,7 +88,7 @@
     },
     {
       "page_id": "3065aa1e-f93f-8131-b0ed-c9b0dfd1ad0e",
-      "title": "TADOI Architecture Overview (v0.3.8)",
+      "title": "TADOI Architecture Overview (v0.3.9)",
       "source_file": "docs/ARCHITECTURE_OVERVIEW.md",
       "heading": "# TADOI™ Architecture Overview",
       "heading_ok": true,
@@ -96,7 +96,7 @@
     },
     {
       "page_id": "3045aa1e-f93f-810c-82a5-c03e17858168",
-      "title": "TADOI User Guide (v0.3.8)",
+      "title": "TADOI User Guide (v0.3.9)",
       "source_file": "README.md",
       "heading": "# TADOI™",
       "heading_ok": true,
@@ -104,25 +104,25 @@
     },
     {
       "page_id": "3045aa1e-f93f-81fd-84cd-c93a6b68b49c",
-      "title": "TADOI App Overview + Feature Catalog (v0.3.8)",
-      "source_file": "docs/TADOI_Feature_List_v0.3.8.md",
-      "heading": "# TADOI™ Feature List (v0.3.8)",
+      "title": "TADOI App Overview + Feature Catalog (v0.3.9)",
+      "source_file": "docs/TADOI_Feature_List_v0.3.9.md",
+      "heading": "# TADOI™ Feature List (v0.3.9)",
       "heading_ok": true,
       "version_marker_found": true
     },
     {
       "page_id": "3055aa1e-f93f-812d-ad44-f3d94b8a7219",
-      "title": "TADOI Product Spec (v0.3.8)",
-      "source_file": "TADOI_SPEC_v0.3.8.md",
-      "heading": "# TADOI™ Product Spec (v0.3.8)",
+      "title": "TADOI Product Spec (v0.3.9)",
+      "source_file": "TADOI_SPEC_v0.3.9.md",
+      "heading": "# TADOI™ Product Spec (v0.3.9)",
       "heading_ok": true,
       "version_marker_found": true
     },
     {
       "page_id": "3055aa1e-f93f-8159-b07c-ee692df137eb",
-      "title": "TADOI Task List (v0.3.8)",
-      "source_file": "TADOI_TASKS_v0.3.8.md",
-      "heading": "# TADOI™ Task List (v0.3.8)",
+      "title": "TADOI Task List (v0.3.9)",
+      "source_file": "TADOI_TASKS_v0.3.9.md",
+      "heading": "# TADOI™ Task List (v0.3.9)",
       "heading_ok": true,
       "version_marker_found": true
     }

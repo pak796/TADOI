@@ -22,6 +22,22 @@ The format is based on Keep a Changelog.
   - `enabled`, `ownerRepo`, `branch`, `deviceId`, `pathPrefix`, `autoPushPolicy`, `lastPushed`.
 - Backup Center calendar submenu now includes the GitHub cloud backup entry.
 
+## [0.3.9] - 2026-02-27
+### Added
+- New active versioned documentation artifacts:
+  - `TADOI_SPEC_v0.3.9.md`
+  - `TADOI_TASKS_v0.3.9.md`
+  - `docs/TADOI_QA_Guide_v0.3.9.md`
+  - `docs/TADOI_Feature_List_v0.3.9.md`
+  - `docs/ops/notion_v0.3.9_sync_pack.md`
+
+### Changed
+- App/runtime version surfaces now align to `v0.3.9` / `0.3.9`:
+  - `src/app/version.ts`
+  - `package.json`
+- Active documentation links and baselines were updated to point to the `v0.3.9` artifact set across README/docs indexes, QA/install/usage guides, and Notion staging manifests.
+- Historical index coverage was expanded to include `v0.3.8` artifacts now that `v0.3.9` is active.
+
 ## [0.3.8] - 2026-02-27
 ### Added
 - Persistence schema baseline moved to `7` with migration `6 -> 7` backfilling
