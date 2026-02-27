@@ -300,8 +300,8 @@ Persistence expectations:
 ## 4) Keybindings Snapshot (Primary)
 
 List mode:
-- navigation: `j/k`, arrows, `gg`, `G`, `Ctrl+U`, `Ctrl+D`, `PageUp`, `PageDown`, `[`, `]`, `{`, `}`
-- `g` prefix compatibility: `g`+`g`/`G` keeps jump semantics; `g` + non-prefix clears prefix and routes only the continuation key.
+- navigation: `j/k`, arrows, `Ctrl+g`/`Ctrl+p`/`Ctrl+y` then `g`, `G`, `Ctrl+U`, `Ctrl+D`, `PageUp`, `PageDown`, `[`, `]`, `{`, `}`
+- prefix compatibility: `Ctrl+g`/`Ctrl+p`/`Ctrl+y`+`g`/`G` keeps jump semantics; prefix + non-prefix clears and routes only the continuation key.
 - actions: `` ` ``, `a`, `e`, `E`, `c`, `Space`, `x`, `z`, `d`, `/`, `f`, `g`, `s`, `t`, `p`, `v`, `Ctrl+S`, `q`
 
 Dashboard mode:
@@ -327,7 +327,7 @@ Hinting + alias layer:
   - `hintDisplayMode=left_rail`: left-rail hints only
   - `hintDisplayMode=both`: both surfaces
   - `hintDisplayMode=none`: no persistent hints
-- Pending prefix hint popup for `g` jump family is controlled independently by `showPrefixHintPopup`.
+- Pending prefix hint popup for the `Ctrl+g` jump family (fallback `Ctrl+p`/`Ctrl+y`) is controlled independently by `showPrefixHintPopup`.
 - Optional settings field `keymapAliases` supports action aliases for contexts `list`, `dashboard`, `backup`, `help`.
 - Help Settings exposes a `Keymap Aliases` page to toggle bounded context presets and reset overrides.
 - P1 alias token scope: single-key and `Ctrl+<key>` tokens; conflicts are deterministic first-wins with warning output.

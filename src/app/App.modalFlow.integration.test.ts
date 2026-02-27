@@ -912,7 +912,7 @@ describe("App modal flow integration", () => {
     }
   });
 
-  it("shows g-prefix popup and clears it after non-prefix continuation without side effects", async () => {
+  it("shows Ctrl+g prefix popup and clears it after non-prefix continuation without side effects", async () => {
     const session = await createSession();
     const { harness } = session;
     const { mockInput } = harness;
@@ -921,14 +921,60 @@ describe("App modal flow integration", () => {
       let frame = await waitForText(harness, "Existing task");
       expect(frame).toContain("DUE (G):");
 
-      await pressKeyAndRender(mockInput, harness, "g");
-      frame = await waitForText(harness, "PREFIX: g");
+      await pressCtrlKeyAndRender(mockInput, harness, "g");
+      frame = await waitForText(harness, "PREFIX: Ctrl+g / Ctrl+p / Ctrl+y");
       expect(frame).toContain("jump top");
       expect(frame).toContain("jump bottom");
 
       await pressKeyAndRender(mockInput, harness, "j");
       frame = await waitForText(harness, "Existing task");
-      expect(frame).not.toContain("PREFIX: g");
+      expect(frame).not.toContain("PREFIX: Ctrl+g / Ctrl+p / Ctrl+y");
+      expect(frame).toMatch(/DUE \(G\):\s+ANY/);
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
+  it("cycles due on g without opening the prefix popup", async () => {
+    const session = await createSession();
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      let frame = await waitForText(harness, "Existing task");
+      expect(frame).toMatch(/DUE \(G\):\s+ANY/);
+
+      await pressKeyAndRender(mockInput, harness, "g");
+      frame = await waitForFrame(harness, (next) => /DUE \(G\):\s+(?!ANY)/.test(next));
+      expect(frame).not.toContain("PREFIX: Ctrl+g / Ctrl+p / Ctrl+y");
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
+  it("keeps Ctrl+g prefix popup open while waiting and resolves after release delay", async () => {
+    const session = await createSession();
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      let frame = await waitForText(harness, "Existing task");
+      expect(frame).toMatch(/DUE \(G\):\s+ANY/);
+
+      await pressCtrlKeyAndRender(mockInput, harness, "g");
+      frame = await waitForText(harness, "PREFIX: Ctrl+g / Ctrl+p / Ctrl+y");
+      expect(frame).toContain("jump top");
+
+      await Bun.sleep(700);
+      await harness.renderOnce();
+      frame = harness.captureCharFrame();
+      expect(frame).toContain("PREFIX: Ctrl+g / Ctrl+p / Ctrl+y");
+
+      frame = await waitForFrame(
+        harness,
+        (next) => !next.includes("PREFIX: Ctrl+g / Ctrl+p / Ctrl+y"),
+        2500
+      );
       expect(frame).toMatch(/DUE \(G\):\s+ANY/);
     } finally {
       await cleanupSession(session);
@@ -997,22 +1043,50 @@ describe("App modal flow integration", () => {
       expect(frame).not.toContain("HINTS");
       expect(frame).not.toContain("KEYS");
 
-      await pressKeyAndRender(mockInput, harness, "g");
-      frame = await waitForText(harness, "PREFIX: g");
+      await pressCtrlKeyAndRender(mockInput, harness, "g");
+      frame = await waitForText(harness, "PREFIX: Ctrl+g / Ctrl+p / Ctrl+y");
       expect(frame).toContain("jump top");
       await pressKeyAndRender(mockInput, harness, "j");
-      await waitForFrame(harness, (next) => !next.includes("PREFIX: g"));
+      await waitForFrame(
+        harness,
+        (next) => !next.includes("PREFIX: Ctrl+g / Ctrl+p / Ctrl+y")
+      );
 
       await openHelpSettingsPage(harness);
       await setPrefixPopupEnabled(harness, false);
       await pressKeyAndRender(mockInput, harness, "?");
       await waitForText(harness, "Existing task");
 
-      await pressKeyAndRender(mockInput, harness, "g");
-      await expectTextAbsentForDuration(harness, "PREFIX: g", 220);
+      await pressCtrlKeyAndRender(mockInput, harness, "g");
+      await expectTextAbsentForDuration(
+        harness,
+        "PREFIX: Ctrl+g / Ctrl+p / Ctrl+y",
+        220
+      );
       await pressKeyAndRender(mockInput, harness, "j");
       frame = harness.captureCharFrame();
-      expect(frame).not.toContain("PREFIX: g");
+      expect(frame).not.toContain("PREFIX: Ctrl+g / Ctrl+p / Ctrl+y");
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
+  it("supports Ctrl+p and Ctrl+y as fallback prefix triggers", async () => {
+    const session = await createSession();
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      await waitForText(harness, "Existing task");
+
+      for (const fallbackKey of ["p", "y"]) {
+        await pressCtrlKeyAndRender(mockInput, harness, fallbackKey);
+        let frame = await waitForText(harness, "PREFIX: Ctrl+g / Ctrl+p / Ctrl+y");
+        expect(frame).toContain("jump top");
+        await pressKeyAndRender(mockInput, harness, "g");
+        frame = await waitForText(harness, "Existing task");
+        expect(frame).not.toContain("PREFIX: Ctrl+g / Ctrl+p / Ctrl+y");
+      }
     } finally {
       await cleanupSession(session);
     }

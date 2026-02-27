@@ -176,6 +176,8 @@ def extract_code_bindings(path: Path) -> dict[str, list[str]]:
         rf"ctrl\s*:\s*true[^\n\r\}}]*{key_vars}\s*:\s*'([a-zA-Z0-9])'",
         rf"(?<!\!)(?:key\.)?ctrl\s*&&\s*(?:key\.)?{key_vars}\s*===\s*\"([a-zA-Z0-9])\"",
         rf"(?<!\!)(?:key\.)?ctrl\s*&&\s*(?:key\.)?{key_vars}\s*===\s*'([a-zA-Z0-9])'",
+        rf"(?<!\!)(?:key\.)?ctrl\s*&&[^\n\r\}}]*(?:key\.)?{key_vars}\s*===\s*\"([a-zA-Z0-9])\"",
+        rf"(?<!\!)(?:key\.)?ctrl\s*&&[^\n\r\}}]*(?:key\.)?{key_vars}\s*===\s*'([a-zA-Z0-9])'",
         rf"(?:key\.)?{key_vars}\s*===\s*\"([a-zA-Z0-9])\"\s*&&\s*(?:key\.)?ctrl",
         rf"(?:key\.)?{key_vars}\s*===\s*'([a-zA-Z0-9])'\s*&&\s*(?:key\.)?ctrl",
     ]

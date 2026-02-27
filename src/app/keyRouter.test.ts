@@ -561,7 +561,13 @@ describe("handleKey", () => {
   });
 
   it("routes jump and paging keys in list mode", () => {
-    expect(run({ name: "g", sequence: "g" })).toEqual([
+    expect(run({ ctrl: true, name: "g", sequence: "g" })).toEqual([
+      { scope: "ui", type: "SET_G_PREFIX", active: true }
+    ]);
+    expect(run({ ctrl: true, name: "p", sequence: "p" })).toEqual([
+      { scope: "ui", type: "SET_G_PREFIX", active: true }
+    ]);
+    expect(run({ ctrl: true, name: "y", sequence: "y" })).toEqual([
       { scope: "ui", type: "SET_G_PREFIX", active: true }
     ]);
     expect(
@@ -590,6 +596,9 @@ describe("handleKey", () => {
     ]);
     expect(run({ name: "s", sequence: "s" })).toEqual([
       { scope: "domain", type: "CYCLE_SORT" }
+    ]);
+    expect(run({ name: "g", sequence: "g" })).toEqual([
+      { scope: "domain", type: "CYCLE_DUE" }
     ]);
     expect(run({ name: "r", sequence: "r" })).toEqual([
       { scope: "domain", type: "CYCLE_PRIORITY" }

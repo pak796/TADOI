@@ -44,7 +44,7 @@ Esc/Enter contracts and modal semantics are enforced across all modes.
 
 Source-of-truth key tokens (as reported by `src/app/keyRouter.ts`):
 `/` `1` `2` `3` `4` `?` `ArrowDown` `ArrowLeft` `ArrowRight` `ArrowUp`
-`B` `C` `Ctrl+D` `Ctrl+L` `Ctrl+S` `Ctrl+U` `D` `E` `Enter` `Esc`
+`B` `C` `Ctrl+D` `Ctrl+G` `Ctrl+L` `Ctrl+P` `Ctrl+S` `Ctrl+U` `Ctrl+Y` `D` `E` `Enter` `Esc`
 `G` `L` `O` `PageDown` `PageUp` `S` `Space` `Tab` `[`
 `]` `a` `b` `backspace` `c` `d` `e` `end` `f` `g` `h` `home`
 `i` `j` `k` `l` `m` `n` `o` `p` `q` `r` `s` `t` `u` `v` `x` `y` `z`
@@ -56,11 +56,11 @@ Discoverability and prefix behavior:
   - `Navigation Hints` setting controls surfaces: `bottom only` (default), `left rail only`, `both`, `none`
   - left rail `HINTS` block is mode-aware (list/dashboard/backup/help) when enabled
   - footer `KEYS` hint bar updates by active mode when enabled and no command/views/save-name overlay is active
-- Pending `g` prefix shows a transient popup:
+- Pending `Ctrl+g` prefix (fallback `Ctrl+p` / `Ctrl+y`) shows a transient popup:
   - popup visibility is controlled by `Prefix Popup` setting (default: `on`)
-  - `g` then `g` jumps to top
-  - `g` then `G` jumps to bottom
-  - `g` then any non-prefix key clears prefix and routes only that key (no extra due-cycle side effect)
+  - `Ctrl+g` or `Ctrl+p` or `Ctrl+y`, then `g` jumps to top
+  - `Ctrl+g` or `Ctrl+p` or `Ctrl+y`, then `G` jumps to bottom
+  - `Ctrl+g` or `Ctrl+p` or `Ctrl+y`, then any non-prefix key clears prefix and routes only that key
 - Optional action aliases can be set via settings JSON field `keymapAliases`:
   - supported contexts: `list`, `dashboard`, `backup`, `help`
   - P1 token scope: single-key tokens and `Ctrl+<key>`
@@ -69,7 +69,7 @@ Discoverability and prefix behavior:
 
 LIST mode navigation:
 - `j` / `k` / `ArrowUp` / `ArrowDown`: move selection
-- `gg`: jump to top
+- `Ctrl+g` or `Ctrl+p` or `Ctrl+y`, then `g`: jump to top
 - `G`: jump to bottom
 - `Ctrl+U` / `page_up` / `pageup` / `prior`: page up
 - `Ctrl+D` / `page_down` / `pagedown` / `next`: page down

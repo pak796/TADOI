@@ -310,7 +310,7 @@ const ENGAGEMENT_TOAST_TICK_INTERVAL_MS = 350;
 const FIRST_RECURRING_TASK_TOAST_MS = 10_000;
 const FIRST_RECURRING_REPEAT_DONE_TOAST_MS = 10_000;
 const ROTATING_THEME_INTERVAL_MS = 15000;
-const G_PREFIX_TIMEOUT_MS = 280;
+const G_PREFIX_RELEASE_TIMEOUT_MS = 1500;
 const CORRUPTION_STARTUP_BANNER_AUTO_DISMISS_MS = 60_000;
 const NAV_BANNER_TIMEOUT_MS = 1800;
 const VIEW_NAME_MAX_LENGTH = 40;
@@ -444,7 +444,7 @@ const HELP_SETTINGS_NAV_ITEMS: HelpNavItem[] = [
   },
   {
     title: "Prefix Popup",
-    description: "Toggle the transient g-prefix popup."
+    description: "Toggle the transient Ctrl+g / Ctrl+p / Ctrl+y prefix popup."
   },
   {
     title: "Logo",
@@ -616,7 +616,7 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
     title: "Navigation & Keybindings",
     items: [
       {
-        title: "List navigation: j/k, arrows, gg, G",
+        title: "List navigation: j/k, arrows, Ctrl+g/Ctrl+p/Ctrl+y then g/G",
         description: "Jump and browse tasks quickly."
       },
       {
@@ -4299,7 +4299,7 @@ export function App({
 
   useKeyboard((key) => {
     if (!terminalIsSupported) {
-      if ((key.name ?? "") === "q") {
+      if ((key.name ?? "") === "q" && key.eventType !== "release") {
         void renderer.destroy();
       }
       return;
@@ -4307,6 +4307,37 @@ export function App({
 
     const keyName = key.name ?? "";
     const keySequence = key.sequence ?? "";
+    const isCtrlPrefixStartKey =
+      key.ctrl &&
+      !key.meta &&
+      !key.option &&
+      !key.shift &&
+      (
+        keyName === "g" ||
+        keySequence === "g" ||
+        keyName === "p" ||
+        keySequence === "p" ||
+        keyName === "y" ||
+        keySequence === "y"
+      );
+
+    if (key.eventType === "release") {
+      if (isCtrlPrefixStartKey && pendingGPrefix) {
+        armPendingGPrefixResolveTimeout();
+      }
+      return;
+    }
+
+    if (
+      isCtrlPrefixStartKey &&
+      pendingGPrefix &&
+      (key.eventType === "repeat" || key.repeated === true)
+    ) {
+      // Keep prefix popup open while Ctrl+g/Ctrl+p/Ctrl+y is held by extending timeout on repeats.
+      armPendingGPrefixResolveTimeout();
+      return;
+    }
+
     if (
       uiState.mode === Mode.EDIT &&
       uiState.focus !== FocusTarget.EDITOR_SAVE &&
@@ -4433,7 +4464,7 @@ export function App({
         console.error("[TADOI] routed action failed", action, error);
       }
     }
-  });
+  }, { release: true });
 
   function openHelp(options: { bypassUnsavedGuard?: boolean } = {}) {
     if (!options.bypassUnsavedGuard && requestTaskEditorUnsavedGuard("open_help")) {
@@ -5904,14 +5935,19 @@ export function App({
     }
   }
 
-  function armPendingGPrefix() {
-    clearPendingGPrefix();
-    setPendingGPrefix(true);
+  function armPendingGPrefixResolveTimeout() {
+    if (gPrefixTimerRef.current) {
+      clearTimeout(gPrefixTimerRef.current);
+    }
     gPrefixTimerRef.current = setTimeout(() => {
       setPendingGPrefix(false);
       gPrefixTimerRef.current = null;
-      cycleDue();
-    }, G_PREFIX_TIMEOUT_MS);
+    }, G_PREFIX_RELEASE_TIMEOUT_MS);
+  }
+
+  function armPendingGPrefix() {
+    armPendingGPrefixResolveTimeout();
+    setPendingGPrefix(true);
   }
 
   function closeViewsOverlay() {

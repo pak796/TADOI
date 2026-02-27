@@ -157,7 +157,7 @@ Smoke pass criteria:
 
 - [ ] `QA-019 [SMOKE]` Core navigation keys in list mode.
   - Preconditions: list has enough tasks to navigate.
-  - Steps: `j/k`, arrows, `gg`, `G`, `Ctrl+U`, `Ctrl+D`, `[` `]`, `{` `}`.
+  - Steps: `j/k`, arrows, `Ctrl+g` then `g` (fallback `Ctrl+p` or `Ctrl+y` then `g`), `G`, `Ctrl+U`, `Ctrl+D`, `[` `]`, `{` `}`.
   - Expected: navigation works and remains bounded.
 - [ ] `QA-020` No key leakage in text-entry contexts.
   - Preconditions: search/editor/save-view naming contexts.
@@ -175,10 +175,10 @@ Smoke pass criteria:
   - Preconditions: app running in list mode with at least one task.
   - Steps: verify default (`bottom only`) shows footer `KEYS` and hides left-rail `HINTS`; switch `Navigation Hints` to `left rail only`, `both`, and `none` from Help settings; open search (`/`), delete modal (`d`), backup (`u`), help (`?`) while checking active hints.
   - Expected: hint surfaces follow selected mode exactly and hint model updates by context; no stale list-only hints leak into other contexts.
-- [ ] `QA-081` `g` prefix predictability (`gg`, `gG`, and `g + non-prefix`).
+- [ ] `QA-081` prefix predictability (`Ctrl+g g` / `Ctrl+p g` / `Ctrl+y g`, `Ctrl+g G` / `Ctrl+p G` / `Ctrl+y G`, and prefix + non-prefix).
   - Preconditions: list mode with enough rows to move and jump.
-  - Steps: press `g` then `g`; press `g` then `G`; press `g` then `j`.
-  - Expected: jump top, jump bottom, and continuation-key-only behavior respectively (`g + j` does not additionally cycle due filter).
+  - Steps: press `Ctrl+g` then `g`; repeat with `Ctrl+p` and `Ctrl+y`; press `Ctrl+g` then `G`; repeat with `Ctrl+p` and `Ctrl+y`; press `Ctrl+g` then `j`.
+  - Expected: jump top/bottom work for all prefix triggers, and continuation-key-only behavior remains (`Ctrl+g + j` does not additionally cycle due filter).
 - [ ] `QA-082` Keymap alias settings routing and deterministic conflict handling.
   - Preconditions: settings JSON can be edited between launches.
   - Steps: configure non-conflicting aliases for list/dashboard/backup/help actions, then configure an intentional token conflict in one context.

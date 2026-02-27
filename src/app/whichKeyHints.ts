@@ -218,7 +218,7 @@ export function buildWhichKeyPrefixPopup(params: {
   );
 
   return {
-    title: "PREFIX: g",
+    title: "PREFIX: Ctrl+g / Ctrl+p / Ctrl+y",
     hints: [
       { key: jumpTop, label: "jump top", actionId: "list_jump_top" },
       { key: jumpBottom, label: "jump bottom", actionId: "list_jump_bottom" },

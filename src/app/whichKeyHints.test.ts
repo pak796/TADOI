@@ -83,7 +83,7 @@ describe("whichKeyHints", () => {
     expect(backupLines).toContain("1..4: MENU");
   });
 
-  it("builds prefix popup for pending g-prefix and resolves alias-aware targets", () => {
+  it("builds prefix popup for pending Ctrl+g/Ctrl+p/Ctrl+y prefix and resolves alias-aware targets", () => {
     const resolved = resolveKeymapAliases(
       normalizeKeymapAliases({
         list: {
@@ -96,7 +96,7 @@ describe("whichKeyHints", () => {
       pendingGPrefix: true,
       resolvedAliases: resolved
     });
-    expect(popup?.title).toBe("PREFIX: g");
+    expect(popup?.title).toBe("PREFIX: Ctrl+g / Ctrl+p / Ctrl+y");
     expect(popup?.hints).toEqual([
       { key: "t", label: "jump top", actionId: "list_jump_top" },
       { key: "b", label: "jump bottom", actionId: "list_jump_bottom" },

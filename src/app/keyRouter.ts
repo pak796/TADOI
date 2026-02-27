@@ -1318,7 +1318,15 @@ function resolveListModeActions(
     ];
   }
 
-  if (isLowerG(name, sequence, ctrl, shift)) {
+  if (ctrl && !shift && (name === "g" || sequence === "g")) {
+    return [{ scope: "ui", type: "SET_G_PREFIX", active: true }];
+  }
+
+  if (ctrl && !shift && (name === "p" || sequence === "p")) {
+    return [{ scope: "ui", type: "SET_G_PREFIX", active: true }];
+  }
+
+  if (ctrl && !shift && (name === "y" || sequence === "y")) {
     return [{ scope: "ui", type: "SET_G_PREFIX", active: true }];
   }
 

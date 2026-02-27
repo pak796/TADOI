@@ -248,7 +248,7 @@ Behavior notes:
 Full canonical list: `docs/USAGE.md` (source: `src/app/keyRouter.ts`).
 Canonical router keys (audit-complete):
 `/` `1` `2` `3` `4` `?` `ArrowDown` `ArrowLeft` `ArrowRight` `ArrowUp`
-`B` `C` `Ctrl+D` `Ctrl+L` `Ctrl+S` `Ctrl+U` `D` `E` `Enter` `Esc`
+`B` `C` `Ctrl+D` `Ctrl+G` `Ctrl+L` `Ctrl+P` `Ctrl+S` `Ctrl+U` `Ctrl+Y` `D` `E` `Enter` `Esc`
 `G` `L` `O` `PageDown` `PageUp` `S` `Space` `Tab` `[`
 `]` `a` `b` `backspace` `c` `d` `e` `end` `f` `g` `h` `home`
 `i` `j` `k` `l` `m` `n` `o` `p` `q` `r` `s` `t` `u` `v` `x` `y` `z`
@@ -259,16 +259,16 @@ Canonical router keys (audit-complete):
   - `Navigation Hints` setting controls hint surfaces: `bottom only` (default), `left rail only`, `both`, `none`
   - left-rail `HINTS` are mode-aware (list/dashboard/backup/help) when enabled
   - footer `KEYS` bar updates by active context when enabled and command/views/save-name overlays are closed
-  - pending `g` shows a prefix popup and keeps legacy compatibility:
+  - pending `Ctrl+g` (fallback `Ctrl+p` / `Ctrl+y`) shows a prefix popup and keeps jump compatibility:
     - popup visibility is controlled by `Prefix Popup` (default: on)
-    - `g` then `g` => jump top
-    - `g` then `G` => jump bottom
-    - `g` then other key => clear prefix and route only that key (no extra due-cycle mutation)
+    - `Ctrl+g` or `Ctrl+p` or `Ctrl+y`, then `g` => jump top
+    - `Ctrl+g` or `Ctrl+p` or `Ctrl+y`, then `G` => jump bottom
+    - `Ctrl+g` or `Ctrl+p` or `Ctrl+y`, then other key => clear prefix and route only that key
   - optional action aliases are supported via settings JSON field `keymapAliases` for contexts `list`/`dashboard`/`backup`/`help` (single-key + `Ctrl+<key>` tokens, first-wins conflict policy)
 
 - LIST mode navigation:
   - `j`/`k` or `up`/`down`: move selection
-  - `gg`: jump to top
+  - `Ctrl+g` or `Ctrl+p` or `Ctrl+y`, then `g`: jump to top
   - `G`: jump to bottom
   - `ctrl+u` / `PageUp`: page up
   - `ctrl+d` / `PageDown`: page down
