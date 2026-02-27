@@ -246,7 +246,9 @@ const BACKUP_INPUT_SUBMIT_SCREENS = new Set<BackupCenterScreen>([
   "calendar_import_path",
   "calendar_import_horizon",
   "calendar_import_tag",
-  "calendar_import_confirm"
+  "calendar_import_confirm",
+  "github_connect_repo_input",
+  "github_connect_public_confirm"
 ]);
 
 function backupScreenSupportsBodyScrollKeys(screen: BackupCenterScreen | null): boolean {
@@ -402,14 +404,14 @@ function resolveBackupAliasActions(
       ) {
         return [];
       }
-      if (backupScreen === "import_picker") {
+      if (backupScreen === "import_picker" || backupScreen === "github_restore_picker") {
         return [{ scope: "ui", type: "BACKUP_PICKER_CONFIRM_SELECTION" }];
       }
       return [{ scope: "ui", type: "BACKUP_PRIMARY" }];
     case "backup_back":
       return [{ scope: "ui", type: "BACKUP_BACK" }];
     case "backup_move_up":
-      if (backupScreen === "import_picker") {
+      if (backupScreen === "import_picker" || backupScreen === "github_restore_picker") {
         return [{ scope: "ui", type: "BACKUP_PICKER_MOVE_SELECTION", delta: -1 }];
       }
       if (backupScreen === "menu" || backupScreen === "calendar_menu") {
@@ -420,7 +422,7 @@ function resolveBackupAliasActions(
       }
       return [];
     case "backup_move_down":
-      if (backupScreen === "import_picker") {
+      if (backupScreen === "import_picker" || backupScreen === "github_restore_picker") {
         return [{ scope: "ui", type: "BACKUP_PICKER_MOVE_SELECTION", delta: 1 }];
       }
       if (backupScreen === "menu" || backupScreen === "calendar_menu") {
@@ -431,7 +433,7 @@ function resolveBackupAliasActions(
       }
       return [];
     case "backup_page_up":
-      if (backupScreen === "import_picker") {
+      if (backupScreen === "import_picker" || backupScreen === "github_restore_picker") {
         return [{ scope: "ui", type: "BACKUP_PICKER_PAGE_SELECTION", delta: -1 }];
       }
       if (backupScreenSupportsBodyScrollKeys(backupScreen)) {
@@ -439,7 +441,7 @@ function resolveBackupAliasActions(
       }
       return [];
     case "backup_page_down":
-      if (backupScreen === "import_picker") {
+      if (backupScreen === "import_picker" || backupScreen === "github_restore_picker") {
         return [{ scope: "ui", type: "BACKUP_PICKER_PAGE_SELECTION", delta: 1 }];
       }
       if (backupScreenSupportsBodyScrollKeys(backupScreen)) {
@@ -447,12 +449,12 @@ function resolveBackupAliasActions(
       }
       return [];
     case "backup_jump_start":
-      if (backupScreen === "import_picker") {
+      if (backupScreen === "import_picker" || backupScreen === "github_restore_picker") {
         return [{ scope: "ui", type: "BACKUP_PICKER_JUMP_SELECTION", target: "start" }];
       }
       return [];
     case "backup_jump_end":
-      if (backupScreen === "import_picker") {
+      if (backupScreen === "import_picker" || backupScreen === "github_restore_picker") {
         return [{ scope: "ui", type: "BACKUP_PICKER_JUMP_SELECTION", target: "end" }];
       }
       return [];
@@ -1060,7 +1062,7 @@ function resolveBackupCenterModeActions(
     }
   }
 
-  if (backupScreen === "import_picker") {
+  if (backupScreen === "import_picker" || backupScreen === "github_restore_picker") {
     const lowerName = name.toLowerCase();
     const lowerSequence = sequence.toLowerCase();
     if (name === "up" || lowerName === "k" || lowerSequence === "k") {
@@ -1084,7 +1086,10 @@ function resolveBackupCenterModeActions(
     if (name === "return" || name === "enter") {
       return [{ scope: "ui", type: "BACKUP_PICKER_CONFIRM_SELECTION" }];
     }
-    if (lowerName === "m" || lowerSequence === "m") {
+    if (
+      backupScreen === "import_picker" &&
+      (lowerName === "m" || lowerSequence === "m")
+    ) {
       return [{ scope: "ui", type: "BACKUP_PICKER_OPEN_MANUAL_PATH" }];
     }
     return [];

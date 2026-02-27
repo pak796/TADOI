@@ -421,4 +421,114 @@ describe("backupCenterFlow", () => {
     expect(state.calendarImportDryRunWarnings).toEqual([]);
     expect(state.calendarImportCommittedWarnings).toEqual([]);
   });
+
+  it("handles github restore picker selection and restore transitions", () => {
+    const snapshots = [
+      {
+        id: "snap-1",
+        timestamp: "20260227-101500Z",
+        tasksOpen: 4,
+        tasksTotal: 10
+      },
+      {
+        id: "snap-2",
+        timestamp: "20260227-091500Z",
+        tasksOpen: 5,
+        tasksTotal: 11
+      },
+      {
+        id: "snap-3",
+        timestamp: "20260227-081500Z",
+        tasksOpen: 6,
+        tasksTotal: 12
+      }
+    ];
+
+    let state = backupCenterReducer(initialBackupCenterState, { type: "openGitHubStatus" });
+    expect(state.screen).toBe("github_status");
+
+    state = backupCenterReducer(state, { type: "startGitHubRestoreLoad" });
+    expect(state.screen).toBe("github_restore_loading");
+    expect(state.githubSnapshotLoading).toBe(true);
+
+    state = backupCenterReducer(state, {
+      type: "githubRestoreLoadSucceeded",
+      snapshots
+    });
+    expect(state.screen).toBe("github_restore_picker");
+    expect(state.githubSnapshots).toHaveLength(3);
+    expect(state.githubSnapshotSelectedIndex).toBe(0);
+
+    state = backupCenterReducer(state, {
+      type: "moveGitHubSnapshotSelection",
+      delta: 1,
+      visibleRows: 2
+    });
+    expect(state.githubSnapshotSelectedIndex).toBe(1);
+    expect(state.githubSnapshotScrollOffset).toBe(0);
+
+    state = backupCenterReducer(state, {
+      type: "moveGitHubSnapshotSelection",
+      delta: 1,
+      visibleRows: 2
+    });
+    expect(state.githubSnapshotSelectedIndex).toBe(2);
+    expect(state.githubSnapshotScrollOffset).toBe(1);
+
+    state = backupCenterReducer(state, {
+      type: "jumpGitHubSnapshotSelection",
+      target: "start",
+      visibleRows: 2
+    });
+    expect(state.githubSnapshotSelectedIndex).toBe(0);
+    expect(state.githubSnapshotScrollOffset).toBe(0);
+
+    state = backupCenterReducer(state, { type: "startGitHubRestoreDownload" });
+    expect(state.screen).toBe("github_restore_downloading");
+
+    state = backupCenterReducer(state, {
+      type: "githubRestoreDownloadSucceeded",
+      timestamp: "2026-02-27T10:30:00.000Z"
+    });
+    expect(state.screen).toBe("github_status");
+    expect(state.githubLastRestorePulledAt).toBe("2026-02-27T10:30:00.000Z");
+    expect(state.githubSelectedSnapshotTimestamp).toBe("2026-02-27T10:30:00.000Z");
+  });
+
+  it("keeps github back-graph transitions consistent", () => {
+    let state = backupCenterReducer(initialBackupCenterState, {
+      type: "setScreen",
+      screen: "calendar_menu"
+    });
+    state = backupCenterReducer(state, { type: "openGitHubStatus" });
+    expect(state.screen).toBe("github_status");
+
+    state = backupCenterReducer(state, { type: "back" });
+    expect(state.screen).toBe("calendar_menu");
+
+    state = backupCenterReducer(state, { type: "openGitHubStatus" });
+    state = backupCenterReducer(state, { type: "openGitHubConnectMode" });
+    expect(state.screen).toBe("github_connect_mode");
+
+    state = backupCenterReducer(state, { type: "setScreen", screen: "github_connect_repo_input" });
+    state = backupCenterReducer(state, { type: "back" });
+    expect(state.screen).toBe("github_connect_mode");
+
+    state = backupCenterReducer(state, {
+      type: "setScreen",
+      screen: "github_connect_public_confirm"
+    });
+    state = backupCenterReducer(state, { type: "setGitHubPublicConfirmInput", value: "PUBLIC" });
+    state = backupCenterReducer(state, { type: "back" });
+    expect(state.screen).toBe("github_connect_repo_input");
+    expect(state.githubPublicConfirmInput).toBe("");
+
+    state = backupCenterReducer(state, { type: "setScreen", screen: "github_restore_picker" });
+    state = backupCenterReducer(state, { type: "back" });
+    expect(state.screen).toBe("github_status");
+
+    state = backupCenterReducer(state, { type: "setScreen", screen: "github_connecting" });
+    const noOpWhileRunning = backupCenterReducer(state, { type: "back" });
+    expect(noOpWhileRunning.screen).toBe("github_connecting");
+  });
 });

@@ -32,6 +32,7 @@ const DEFAULT_SECURITY = {
 } as const;
 const DEFAULT_LOGO_MODE = getDefaultSettings().logoMode;
 const DEFAULT_CUSTOM_THEMES = getDefaultSettings().customThemes;
+const DEFAULT_GITHUB_BACKUP = getDefaultSettings().githubBackup;
 const DEFAULT_HINT_DISPLAY_MODE = getDefaultSettings().hintDisplayMode ?? "bottom";
 const DEFAULT_SHOW_PREFIX_HINT_POPUP =
   getDefaultSettings().showPrefixHintPopup ?? true;
@@ -40,6 +41,7 @@ function withHintDefaults<T extends Record<string, unknown>>(settings: T) {
   return {
     hintDisplayMode: DEFAULT_HINT_DISPLAY_MODE,
     showPrefixHintPopup: DEFAULT_SHOW_PREFIX_HINT_POPUP,
+    githubBackup: DEFAULT_GITHUB_BACKUP,
     ...settings
   };
 }
@@ -154,9 +156,79 @@ describe("loadSettings", () => {
     expect(result.settings.crtFxLite).toBeUndefined();
     expect(result.settings.crtFxColor).toBeUndefined();
     expect(result.settings.crtFxPreset).toBeUndefined();
+    expect(result.settings.githubBackup).toEqual(DEFAULT_GITHUB_BACKUP);
     expect(result.resolvedPath).toBe(
       path.posix.join(homeDir, ".config", "tadoi", "settings.json")
     );
+  });
+
+  it("normalizes githubBackup values with safe defaults", async () => {
+    const homeDir = await makeTempDir();
+    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    await fs.mkdir(path.dirname(primary), { recursive: true });
+    await fs.writeFile(
+      primary,
+      JSON.stringify({
+        githubBackup: {
+          enabled: "yes",
+          ownerRepo: 123,
+          branch: "   ",
+          deviceId: "",
+          pathPrefix: "",
+          autoPushPolicy: "always",
+          lastPushed: {
+            stateRevision: -1,
+            settingsHash: 7
+          }
+        }
+      }),
+      "utf8"
+    );
+
+    const result = await loadSettings({ homeDir, platform: "linux" });
+    expect(result.settings.githubBackup).toEqual(DEFAULT_GITHUB_BACKUP);
+  });
+
+  it("keeps valid githubBackup config and sanitizes lastPushed", async () => {
+    const homeDir = await makeTempDir();
+    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    await fs.mkdir(path.dirname(primary), { recursive: true });
+    await fs.writeFile(
+      primary,
+      JSON.stringify({
+        githubBackup: {
+          enabled: true,
+          ownerRepo: "patrick/tadoi-backups",
+          branch: "main",
+          deviceId: "dev_abc123",
+          pathPrefix: "tadoi/devices/dev_abc123",
+          autoPushPolicy: "interval15m",
+          lastPushed: {
+            stateRevision: 12,
+            settingsHash: "abc",
+            timestamp: "2026-02-27T00:00:00.000Z",
+            remoteCommitSha: "deadbeef"
+          }
+        }
+      }),
+      "utf8"
+    );
+
+    const result = await loadSettings({ homeDir, platform: "linux" });
+    expect(result.settings.githubBackup).toEqual({
+      enabled: true,
+      ownerRepo: "patrick/tadoi-backups",
+      branch: "main",
+      deviceId: "dev_abc123",
+      pathPrefix: "tadoi/devices/dev_abc123",
+      autoPushPolicy: "interval15m",
+      lastPushed: {
+        stateRevision: 12,
+        settingsHash: "abc",
+        timestamp: "2026-02-27T00:00:00.000Z",
+        remoteCommitSha: "deadbeef"
+      }
+    });
   });
 
   it("reads primary settings file first when valid", async () => {

@@ -18,7 +18,8 @@ Runtime baseline: **v0.3.8**.
 Calendar submenu:
 1. `Export Calendar (.ics)`
 2. `Import Calendar (.ics)`
-3. `Back`
+3. `Cloud Backups -> GitHub (CLI)`
+4. `Back`
 
 ## Export Flow
 
@@ -80,6 +81,56 @@ Safety:
 - RRULE validity/horizon/hard-cap safeguards remain enforced by the calendar import service.
 - High-impact imports (`mode=update` or `range=all`) require typed `IMPORT` confirmation.
 - Non-fatal warnings (for example report-write failures after successful processing) are shown in dry-run/commit summaries and do not block commit by themselves.
+
+## Cloud Backups: GitHub (CLI)
+
+Scope (v1):
+- Optional flow under Backup Center only (no background live sync).
+- Personal repository only (`owner/repo` owner must match active `gh` account).
+- Uses GitHub CLI auth state from `gh`; no PAT/token storage in TADOI settings.
+
+Status panel shows:
+- `gh` detected / logged-in state
+- active account username
+- configured repo (`owner/repo`)
+- auto-push policy value (`off` default in v1)
+- last push timestamp
+- last restore-pull timestamp
+
+### Connect flow
+
+1. Open `Cloud Backups -> GitHub (CLI)`.
+2. Choose:
+   - create private repo (default name `tadoi-backups`), or
+   - use existing `owner/repo`.
+3. Existing repo path validates:
+   - owner matches active `gh` username (personal-only gate),
+   - repo privacy check (public requires explicit typed `PUBLIC` confirmation).
+4. Saves non-secret config only (`ownerRepo`, `branch`, `deviceId`, `pathPrefix`, policy, push metadata).
+
+### Push snapshot now
+
+- Push creates restore-grade artifacts in remote repo:
+  - timestamped `*.state.json`
+  - timestamped `*.settings.json`
+  - timestamped `*.manifest.json`
+  - coherent `latest/state.json`, `latest/settings.json`, `latest/manifest.json`
+- Path layout:
+  - `/<pathPrefix>/snapshots/YYYY/MM/<timestamp>.state.json`
+  - `/<pathPrefix>/snapshots/YYYY/MM/<timestamp>.settings.json`
+  - `/<pathPrefix>/snapshots/YYYY/MM/<timestamp>.manifest.json`
+  - `/<pathPrefix>/latest/*`
+- Push skips when unchanged (same `stateRevision` + settings hash as last push).
+
+### Restore from GitHub
+
+1. List snapshots newest-first from remote manifests.
+2. Select snapshot and download state/settings/manifest into local staging.
+3. Build staged import payload and route into the existing JSON import path.
+4. Existing safety gates remain unchanged:
+   - mandatory dry-run
+   - summary review
+   - commit path with pre-import backup + atomic/lock-safe write behavior.
 
 ## Safety Guarantees
 

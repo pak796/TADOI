@@ -1,4 +1,5 @@
 import os from "os";
+import { createHash } from "node:crypto";
 import { promises as fs } from "fs";
 import path from "path";
 import {
@@ -84,6 +85,7 @@ export type TadoiSettings = {
   security: SecuritySettings;
   customThemes?: CustomThemes;
   keymapAliases?: KeymapAliases;
+  githubBackup?: GitHubBackupSettings;
 };
 
 export type FlashMode = "slow" | "static";
@@ -249,6 +251,25 @@ export type SecuritySettings = {
   nonHttpLinkPolicy: NonHttpLinkPolicy;
 };
 
+export type GitHubAutoPushPolicy = "off" | "onExit" | "interval15m";
+
+export type GitHubBackupLastPushed = {
+  stateRevision?: number;
+  settingsHash?: string;
+  timestamp?: string;
+  remoteCommitSha?: string;
+};
+
+export type GitHubBackupSettings = {
+  enabled: boolean;
+  ownerRepo: string | null;
+  branch: string;
+  deviceId: string;
+  pathPrefix: string;
+  autoPushPolicy: GitHubAutoPushPolicy;
+  lastPushed?: GitHubBackupLastPushed;
+};
+
 export type SettingsFsOps = Pick<typeof fs, "mkdir" | "readFile" | "writeFile">;
 
 export type ResolveSettingsPathOptions = {
@@ -285,6 +306,27 @@ const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   bellCooldownMs: 2000
 };
 
+export const DEFAULT_GITHUB_BACKUP_BRANCH = "main";
+export const DEFAULT_GITHUB_AUTO_PUSH_POLICY: GitHubAutoPushPolicy = "off";
+
+function buildDefaultDeviceId(): string {
+  const seed = `${os.hostname()}|${os.homedir()}|${process.platform}`;
+  return `dev_${createHash("sha256").update(seed).digest("hex").slice(0, 12)}`;
+}
+
+export function getDefaultGitHubBackupSettings(
+  deviceId = buildDefaultDeviceId()
+): GitHubBackupSettings {
+  return {
+    enabled: false,
+    ownerRepo: null,
+    branch: DEFAULT_GITHUB_BACKUP_BRANCH,
+    deviceId,
+    pathPrefix: `tadoi/devices/${deviceId}`,
+    autoPushPolicy: DEFAULT_GITHUB_AUTO_PUSH_POLICY
+  };
+}
+
 const DEFAULT_SETTINGS: TadoiSettings = {
   themeId: "default",
   logoMode: "default",
@@ -299,7 +341,8 @@ const DEFAULT_SETTINGS: TadoiSettings = {
     custom1: {
       global: { ...THEMES.default }
     }
-  }
+  },
+  githubBackup: getDefaultGitHubBackupSettings()
 };
 
 const DEFAULT_DEBOUNCE_MS = 150;
@@ -561,6 +604,89 @@ function normalizeShowPrefixHintPopup(value: unknown): boolean {
   return typeof value === "boolean" ? value : DEFAULT_SHOW_PREFIX_HINT_POPUP;
 }
 
+function isGitHubAutoPushPolicy(value: unknown): value is GitHubAutoPushPolicy {
+  return value === "off" || value === "onExit" || value === "interval15m";
+}
+
+function normalizeOptionalString(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function normalizeGitHubOwnerRepo(value: unknown): string | null {
+  const normalized = normalizeOptionalString(value);
+  return normalized ?? null;
+}
+
+function normalizeGitHubDeviceId(value: unknown): string {
+  const normalized = normalizeOptionalString(value);
+  return normalized ?? buildDefaultDeviceId();
+}
+
+function normalizeGitHubPathPrefix(value: unknown, deviceId: string): string {
+  const normalized = normalizeOptionalString(value);
+  return normalized ?? `tadoi/devices/${deviceId}`;
+}
+
+function normalizeGitHubLastPushed(value: unknown): GitHubBackupLastPushed | undefined {
+  if (!isRecord(value)) return undefined;
+  const normalized: GitHubBackupLastPushed = {};
+
+  const stateRevision = value.stateRevision;
+  if (
+    typeof stateRevision === "number" &&
+    Number.isFinite(stateRevision) &&
+    Number.isInteger(stateRevision) &&
+    stateRevision >= 0
+  ) {
+    normalized.stateRevision = stateRevision;
+  }
+
+  const settingsHash = normalizeOptionalString(value.settingsHash);
+  if (settingsHash) {
+    normalized.settingsHash = settingsHash;
+  }
+
+  const timestamp = normalizeOptionalString(value.timestamp);
+  if (timestamp) {
+    normalized.timestamp = timestamp;
+  }
+
+  const remoteCommitSha = normalizeOptionalString(value.remoteCommitSha);
+  if (remoteCommitSha) {
+    normalized.remoteCommitSha = remoteCommitSha;
+  }
+
+  return Object.keys(normalized).length > 0 ? normalized : undefined;
+}
+
+function normalizeGitHubBackup(input: unknown): GitHubBackupSettings {
+  const defaults = getDefaultGitHubBackupSettings();
+  if (!isRecord(input)) {
+    return defaults;
+  }
+
+  const deviceId = normalizeGitHubDeviceId(input.deviceId);
+  const normalized: GitHubBackupSettings = {
+    enabled: input.enabled === true,
+    ownerRepo: normalizeGitHubOwnerRepo(input.ownerRepo),
+    branch: normalizeOptionalString(input.branch) ?? DEFAULT_GITHUB_BACKUP_BRANCH,
+    deviceId,
+    pathPrefix: normalizeGitHubPathPrefix(input.pathPrefix, deviceId),
+    autoPushPolicy: isGitHubAutoPushPolicy(input.autoPushPolicy)
+      ? input.autoPushPolicy
+      : DEFAULT_GITHUB_AUTO_PUSH_POLICY
+  };
+
+  const lastPushed = normalizeGitHubLastPushed(input.lastPushed);
+  if (lastPushed) {
+    normalized.lastPushed = lastPushed;
+  }
+
+  return normalized;
+}
+
 function normalizeSettings(input: unknown): TadoiSettings {
   if (!isRecord(input)) {
     return getDefaultSettings();
@@ -576,6 +702,7 @@ function normalizeSettings(input: unknown): TadoiSettings {
   const maybeShowPrefixHintPopup = input.showPrefixHintPopup;
   const maybeNotifications = input.notifications;
   const maybeSecurity = input.security;
+  const maybeGithubBackup = input.githubBackup;
   const keymapAliases = normalizeKeymapAliases(input.keymapAliases);
   const themeId = isThemeId(maybeThemeId) ? maybeThemeId : DEFAULT_SETTINGS.themeId;
   const crtFxLite = normalizeCrtFxLite(maybeCrtFxLite);
@@ -592,7 +719,8 @@ function normalizeSettings(input: unknown): TadoiSettings {
     showPrefixHintPopup,
     notifications: normalizeNotifications(maybeNotifications),
     security: normalizeSecurity(maybeSecurity),
-    customThemes: normalizeCustomThemes(input.customThemes, themeId)
+    customThemes: normalizeCustomThemes(input.customThemes, themeId),
+    githubBackup: normalizeGitHubBackup(maybeGithubBackup)
   };
   if (keymapAliases) {
     normalized.keymapAliases = keymapAliases;
@@ -764,7 +892,8 @@ export function getDefaultSettings(): TadoiSettings {
     ...DEFAULT_SETTINGS,
     notifications: { ...DEFAULT_NOTIFICATION_SETTINGS },
     security: { ...DEFAULT_SETTINGS.security },
-    customThemes
+    customThemes,
+    githubBackup: getDefaultGitHubBackupSettings()
   };
 }
 

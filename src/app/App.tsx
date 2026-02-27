@@ -208,6 +208,7 @@ import {
   type CustomThemeConfig,
   type CustomThemes,
   type FlashMode,
+  type GitHubBackupSettings,
   type HintDisplayMode,
   type LogoMode,
   type SecuritySettings,
@@ -240,6 +241,7 @@ import {
 import {
   BACKUP_IMPORT_PICKER_MAX_VISIBLE_ROWS,
   backupCenterReducer,
+  type GitHubSnapshotListItem,
   hasMatchingCalendarImportDryRun,
   hasMatchingDryRun,
   initialBackupCenterState,
@@ -282,6 +284,21 @@ import { redactPathForDisplay } from "./pathRedaction";
 import { useEditorFlow } from "./editorFlow";
 import { useModalOrchestration } from "./modalOrchestration";
 import { useCalendarFlow } from "./calendarFlow";
+import {
+  buildRestoreImportPayload,
+  buildSnapshotArtifacts,
+  computeSettingsHashForBackup,
+  createPrivateRepo,
+  detectGh,
+  downloadSnapshot,
+  ensurePersonalOwner,
+  ensureRepoPrivate,
+  getAuthStatus,
+  listSnapshots,
+  pushSnapshot,
+  shouldSkipSnapshotPush,
+  type SnapshotRef
+} from "../backup/githubCli";
 import { shouldTriggerSaveConflictRetryFromMouse } from "./saveConflictBannerAction";
 import {
   resolveKeymapAliases,
@@ -349,6 +366,7 @@ const DEFAULT_SECURITY_SETTINGS: SecuritySettings = getDefaultSettings().securit
 const DEFAULT_LOGO_MODE: LogoMode = getDefaultSettings().logoMode;
 const DEFAULT_CUSTOM_THEMES: CustomThemes | undefined = getDefaultSettings().customThemes;
 const DEFAULT_KEYMAP_ALIASES = getDefaultSettings().keymapAliases;
+const DEFAULT_GITHUB_BACKUP = getDefaultSettings().githubBackup;
 const DEFAULT_HINT_DISPLAY_MODE: HintDisplayMode =
   getDefaultSettings().hintDisplayMode ?? "bottom";
 const DEFAULT_SHOW_PREFIX_HINT_POPUP =
@@ -1420,6 +1438,7 @@ type AppProps = {
   initialNotificationSettings?: NotificationSettings;
   initialSecuritySettings?: SecuritySettings;
   initialCustomThemes?: CustomThemes;
+  initialGithubBackup?: GitHubBackupSettings;
   settingsPath?: string;
   showLogo?: boolean;
 };
@@ -1462,6 +1481,7 @@ export function App({
   initialNotificationSettings = DEFAULT_NOTIFICATION_SETTINGS,
   initialSecuritySettings = DEFAULT_SECURITY_SETTINGS,
   initialCustomThemes = DEFAULT_CUSTOM_THEMES,
+  initialGithubBackup = DEFAULT_GITHUB_BACKUP,
   settingsPath,
   showLogo = true
 }: AppProps) {
@@ -1480,7 +1500,8 @@ export function App({
     notifications: initialNotificationSettings,
     security: initialSecuritySettings,
     customThemes: initialCustomThemes,
-    keymapAliases: DEFAULT_KEYMAP_ALIASES
+    keymapAliases: DEFAULT_KEYMAP_ALIASES,
+    githubBackup: initialGithubBackup
   });
   const [uiState, uiDispatch] = useReducer(uiReducer, initialUIState);
   const [backupState, backupDispatch] = useReducer(
@@ -1500,6 +1521,7 @@ export function App({
   calendarImportModeRef.current = backupState.calendarImportMode;
   const calendarImportConfirmInputRef = useRef(backupState.calendarImportConfirmInput);
   calendarImportConfirmInputRef.current = backupState.calendarImportConfirmInput;
+  const githubSnapshotRefsRef = useRef<SnapshotRef[]>([]);
   const [crtFxTick, setCrtFxTick] = useState(0);
   const [retroFxTick, setRetroFxTick] = useState(0);
   const [pulseOn, setPulseOn] = useState(false);
@@ -2967,7 +2989,8 @@ export function App({
         notifications: settingsState.notifications,
         security: settingsState.security,
         customThemes: settingsState.customThemes,
-        keymapAliases: settingsState.keymapAliases
+        keymapAliases: settingsState.keymapAliases,
+        githubBackup: settingsState.githubBackup
       },
       150,
       settingsPath ? { filePath: settingsPath } : {}
@@ -2981,6 +3004,7 @@ export function App({
     settingsState.customThemes,
     settingsState.flashMode,
     settingsState.hintDisplayMode,
+    settingsState.githubBackup,
     settingsState.keymapAliases,
     settingsState.logoMode,
     settingsState.notifications,
@@ -3619,6 +3643,10 @@ export function App({
       type: "setKeymapAliases",
       keymapAliases: settingsResult.settings.keymapAliases
     });
+    settingsDispatch({
+      type: "setGitHubBackup",
+      githubBackup: settingsResult.settings.githubBackup
+    });
   }
 
   async function handleRetrySaveAfterConflictReload() {
@@ -3805,6 +3833,340 @@ export function App({
     })();
   }
 
+  function resolveGitHubSettings() {
+    const defaults = getDefaultSettings().githubBackup;
+    return settingsState.githubBackup ?? defaults;
+  }
+
+  function toGitHubSnapshotListItem(snapshot: SnapshotRef): GitHubSnapshotListItem {
+    return {
+      id: snapshot.id,
+      timestamp: snapshot.timestamp,
+      tasksOpen: snapshot.tasksOpen,
+      tasksTotal: snapshot.tasksTotal,
+      appVersion: snapshot.appVersion,
+      schemaVersion: snapshot.schemaVersion
+    };
+  }
+
+  async function refreshGitHubBackupStatus() {
+    const githubSettings = resolveGitHubSettings();
+    const ghDetected = await detectGh().catch(() => false);
+    let loggedIn = false;
+    let username: string | undefined;
+    if (ghDetected) {
+      const authStatus = await getAuthStatus().catch(() => ({
+        loggedIn: false,
+        raw: ""
+      }));
+      loggedIn = authStatus.loggedIn;
+      username = authStatus.username;
+    }
+
+    backupDispatch({
+      type: "setGitHubStatus",
+      ghDetected,
+      loggedIn,
+      username,
+      ownerRepoConfigured: githubSettings?.ownerRepo ?? undefined,
+      autoPushPolicy: githubSettings?.autoPushPolicy ?? "off",
+      lastPushedAt: githubSettings?.lastPushed?.timestamp,
+      lastRestorePulledAt: backupState.githubLastRestorePulledAt
+    });
+  }
+
+  function openGitHubCloudStatus() {
+    backupDispatch({ type: "openGitHubStatus" });
+    void refreshGitHubBackupStatus();
+  }
+
+  async function requireGitHubAuthAndConfig(options: {
+    requireConfiguredRepo: boolean;
+  }): Promise<{
+    username: string;
+    ownerRepo: string;
+    branch: string;
+    pathPrefix: string;
+    deviceId: string;
+  }> {
+    const ghReady = await detectGh();
+    if (!ghReady) {
+      throw new Error("GitHub CLI (gh) is not installed. Install gh and retry.");
+    }
+    const authStatus = await getAuthStatus();
+    if (!authStatus.loggedIn || !authStatus.username) {
+      throw new Error("GitHub CLI is not logged in. Run `gh auth login` and retry.");
+    }
+
+    const githubSettings = resolveGitHubSettings();
+    const ownerRepo = githubSettings?.ownerRepo?.trim() ?? "";
+    if (options.requireConfiguredRepo && ownerRepo.length === 0) {
+      throw new Error("GitHub backup repo is not configured. Use Connect first.");
+    }
+    const ownership = ensurePersonalOwner(ownerRepo, authStatus.username);
+    if (options.requireConfiguredRepo && !ownership.ok) {
+      throw new Error(ownership.error);
+    }
+
+    return {
+      username: authStatus.username,
+      ownerRepo: ownership.ok ? ownership.ownerRepo : ownerRepo,
+      branch: githubSettings?.branch ?? "main",
+      pathPrefix:
+        githubSettings?.pathPrefix ??
+        `tadoi/devices/${githubSettings?.deviceId ?? "dev_local"}`,
+      deviceId: githubSettings?.deviceId ?? "dev_local"
+    };
+  }
+
+  function persistGitHubConfig(ownerRepo: string) {
+    const defaults = getDefaultSettings().githubBackup;
+    const current = resolveGitHubSettings();
+    if (!current || !defaults) {
+      throw new Error("Default GitHub backup settings are unavailable.");
+    }
+    const deviceId = current.deviceId?.trim() || defaults.deviceId;
+    const nextPathPrefix =
+      current.pathPrefix?.trim().length ? current.pathPrefix.trim() : `tadoi/devices/${deviceId}`;
+
+    settingsDispatch({
+      type: "setGitHubBackup",
+      githubBackup: {
+        enabled: true,
+        ownerRepo,
+        branch: current.branch?.trim() || "main",
+        deviceId,
+        pathPrefix: nextPathPrefix,
+        autoPushPolicy: current.autoPushPolicy ?? "off",
+        ...(current.lastPushed ? { lastPushed: current.lastPushed } : {})
+      }
+    });
+  }
+
+  function runGitHubConnectCreateFlow() {
+    backupDispatch({ type: "startGitHubConnect" });
+    void (async () => {
+      try {
+        const ghReady = await detectGh();
+        if (!ghReady) {
+          throw new Error("GitHub CLI (gh) is not installed. Install gh and retry.");
+        }
+        const authStatus = await getAuthStatus();
+        if (!authStatus.loggedIn || !authStatus.username) {
+          throw new Error("GitHub CLI is not logged in. Run `gh auth login` and retry.");
+        }
+        const repoName = backupState.githubRepoNameInput.trim() || "tadoi-backups";
+        const ownerRepo = await createPrivateRepo(repoName, {
+          owner: authStatus.username
+        });
+        persistGitHubConfig(ownerRepo);
+        backupDispatch({ type: "githubConnectSucceeded", ownerRepo });
+        await refreshGitHubBackupStatus();
+      } catch (error: unknown) {
+        openBackupError("GitHub connect failed", error, "github_status");
+      }
+    })();
+  }
+
+  function runGitHubConnectExistingFlow(options: { allowPublic: boolean }) {
+    const ownerRepoRaw = backupState.githubOwnerRepoInput.trim();
+    if (!ownerRepoRaw) {
+      openBackupError("owner/repo is required.", undefined, "github_connect_repo_input");
+      return;
+    }
+
+    backupDispatch({ type: "startGitHubConnect" });
+    void (async () => {
+      try {
+        const ghReady = await detectGh();
+        if (!ghReady) {
+          throw new Error("GitHub CLI (gh) is not installed. Install gh and retry.");
+        }
+        const authStatus = await getAuthStatus();
+        if (!authStatus.loggedIn || !authStatus.username) {
+          throw new Error("GitHub CLI is not logged in. Run `gh auth login` and retry.");
+        }
+        const ownership = ensurePersonalOwner(ownerRepoRaw, authStatus.username);
+        if (!ownership.ok) {
+          throw new Error(ownership.error);
+        }
+        const privateCheck = await ensureRepoPrivate(ownership.ownerRepo);
+        if (!privateCheck.ok && privateCheck.isPublic && !options.allowPublic) {
+          backupDispatch({ type: "setScreen", screen: "github_connect_public_confirm" });
+          return;
+        }
+        if (!privateCheck.ok && !privateCheck.isPublic) {
+          throw new Error(privateCheck.error);
+        }
+
+        persistGitHubConfig(ownership.ownerRepo);
+        backupDispatch({ type: "githubConnectSucceeded", ownerRepo: ownership.ownerRepo });
+        await refreshGitHubBackupStatus();
+      } catch (error: unknown) {
+        openBackupError("GitHub connect failed", error, "github_status");
+      }
+    })();
+  }
+
+  function runGitHubPushSnapshotNow() {
+    if (backupState.screen === "github_push_running") return;
+    backupDispatch({ type: "startGitHubPush" });
+    void (async () => {
+      try {
+        const auth = await requireGitHubAuthAndConfig({ requireConfiguredRepo: true });
+        const privateCheck = await ensureRepoPrivate(auth.ownerRepo);
+        if (!privateCheck.ok && privateCheck.isPublic) {
+          throw new Error("Configured repository is public. Connect to a private repo.");
+        }
+        if (!privateCheck.ok) {
+          throw new Error(privateCheck.error);
+        }
+
+        const dataPath = getResolvedDataPath();
+        const [stateResult, settingsResult] = await Promise.all([
+          loadStateStrict({ filePath: dataPath }),
+          loadSettings()
+        ]);
+        const settingsHash = computeSettingsHashForBackup(settingsResult.settings);
+        const stateRevision =
+          typeof stateResult.data.stateRevision === "number" &&
+          Number.isFinite(stateResult.data.stateRevision) &&
+          Number.isInteger(stateResult.data.stateRevision) &&
+          stateResult.data.stateRevision >= 0
+            ? stateResult.data.stateRevision
+            : 0;
+        if (
+          shouldSkipSnapshotPush({
+            stateRevision,
+            settingsHash,
+            lastPushed: settingsResult.settings.githubBackup?.lastPushed
+          })
+        ) {
+          backupDispatch({ type: "setScreen", screen: "github_status" });
+          showShortNavigationBanner("Cloud snapshot already up to date.");
+          await refreshGitHubBackupStatus();
+          return;
+        }
+
+        const artifacts = buildSnapshotArtifacts({
+          state: stateResult.data,
+          settings: settingsResult.settings,
+          repoConfig: {
+            ownerRepo: auth.ownerRepo,
+            branch: auth.branch,
+            pathPrefix: auth.pathPrefix
+          },
+          deviceId: auth.deviceId
+        });
+        const result = await pushSnapshot(
+          {
+            ownerRepo: auth.ownerRepo,
+            branch: auth.branch,
+            pathPrefix: auth.pathPrefix
+          },
+          artifacts
+        );
+
+        const pushedAt = new Date().toISOString();
+        const current = resolveGitHubSettings();
+        if (!current) {
+          throw new Error("GitHub backup settings are unavailable.");
+        }
+        settingsDispatch({
+          type: "setGitHubBackup",
+          githubBackup: {
+            ...current,
+            enabled: true,
+            ownerRepo: auth.ownerRepo,
+            branch: auth.branch,
+            pathPrefix: auth.pathPrefix,
+            deviceId: auth.deviceId,
+            lastPushed: {
+              stateRevision: artifacts.stateRevision,
+              settingsHash,
+              timestamp: pushedAt,
+              ...(result.commitSha ? { remoteCommitSha: result.commitSha } : {})
+            }
+          }
+        });
+        backupDispatch({
+          type: "githubPushSucceeded",
+          timestamp: pushedAt,
+          commitSha: result.commitSha
+        });
+        await refreshGitHubBackupStatus();
+      } catch (error: unknown) {
+        openBackupError("GitHub push failed", error, "github_status");
+      }
+    })();
+  }
+
+  function runGitHubRestoreListFlow() {
+    backupDispatch({ type: "startGitHubRestoreLoad" });
+    void (async () => {
+      try {
+        const auth = await requireGitHubAuthAndConfig({ requireConfiguredRepo: true });
+        const snapshots = await listSnapshots({
+          ownerRepo: auth.ownerRepo,
+          branch: auth.branch,
+          pathPrefix: auth.pathPrefix
+        });
+        githubSnapshotRefsRef.current = snapshots;
+        backupDispatch({
+          type: "githubRestoreLoadSucceeded",
+          snapshots: snapshots.map(toGitHubSnapshotListItem)
+        });
+      } catch (error: unknown) {
+        backupDispatch({
+          type: "githubRestoreLoadFailed",
+          error: normalizeErrorDetail(error)
+        });
+      }
+    })();
+  }
+
+  function runGitHubRestoreSelectedFlow() {
+    const selected = githubSnapshotRefsRef.current[backupState.githubSnapshotSelectedIndex];
+    if (!selected) {
+      openBackupError("Select a snapshot before restore.", undefined, "github_restore_picker");
+      return;
+    }
+    backupDispatch({ type: "startGitHubRestoreDownload" });
+    void (async () => {
+      try {
+        const auth = await requireGitHubAuthAndConfig({ requireConfiguredRepo: true });
+        const downloaded = await downloadSnapshot(
+          {
+            ownerRepo: auth.ownerRepo,
+            branch: auth.branch,
+            pathPrefix: auth.pathPrefix
+          },
+          selected
+        );
+        const importPayloadPath = await buildRestoreImportPayload({
+          statePath: downloaded.statePath,
+          settingsPath: downloaded.settingsPath,
+          timestampId: selected.timestamp
+        });
+        const pulledAt = new Date().toISOString();
+        backupDispatch({ type: "setGitHubLastRestorePulledAt", value: pulledAt });
+        backupDispatch({
+          type: "githubRestoreDownloadSucceeded",
+          timestamp: pulledAt
+        });
+        backupDispatch({ type: "setImportMode", mode: "merge" });
+        backupDispatch({ type: "setImportPath", value: importPayloadPath });
+        runBackupDryRunFlow({
+          inputPath: importPayloadPath,
+          mode: "merge",
+          replaceConfirmed: true
+        });
+      } catch (error: unknown) {
+        openBackupError("GitHub restore failed", error, "github_restore_picker");
+      }
+    })();
+  }
+
   const calendarFlow = useCalendarFlow({
     backupState,
     backupDispatch,
@@ -3815,7 +4177,8 @@ export function App({
     calendarImportConfirmInputRef,
     openBackupError,
     openBackupFinalCheckpoint,
-    refreshRuntimeStateFromDisk
+    refreshRuntimeStateFromDisk,
+    openGitHubCloudStatus
   });
 
   function runCalendarExportFromBackupCenter() {
@@ -3830,8 +4193,9 @@ export function App({
     calendarFlow.runCalendarImportCommitFromBackupCenter();
   }
 
-  function handleCalendarMenuSelect(index: 0 | 1 | 2) {
-    calendarFlow.handleCalendarMenuSelect(index);
+  function handleCalendarMenuSelect(index: number) {
+    if (index < 0 || index > 3) return;
+    calendarFlow.handleCalendarMenuSelect(index as 0 | 1 | 2 | 3);
   }
 
   function handleBackupMenuSelect(index: 0 | 1 | 2 | 3) {
@@ -3854,7 +4218,32 @@ export function App({
   }
 
   function handleBackupDigitSelection(digit: number) {
-    calendarFlow.handleCalendarDigitSelection(digit);
+    if (calendarFlow.handleCalendarDigitSelection(digit)) {
+      return;
+    }
+    if (backupState.screen === "github_status") {
+      if (digit === 1) {
+        backupDispatch({ type: "openGitHubConnectMode" });
+      }
+      if (digit === 2) {
+        runGitHubPushSnapshotNow();
+      }
+      if (digit === 3) {
+        runGitHubRestoreListFlow();
+      }
+      if (digit === 4) {
+        handleBackupBackAction();
+      }
+      return;
+    }
+    if (backupState.screen === "github_connect_mode") {
+      if (digit === 1) {
+        backupDispatch({ type: "setGitHubConnectMode", mode: "create" });
+      }
+      if (digit === 2) {
+        backupDispatch({ type: "setGitHubConnectMode", mode: "existing" });
+      }
+    }
   }
 
   function requestBackupBodyScroll(delta: number) {
@@ -3896,6 +4285,36 @@ export function App({
       case "error":
         backupDispatch({ type: "back" });
         return;
+      case "github_status":
+        backupDispatch({ type: "openGitHubConnectMode" });
+        return;
+      case "github_connect_mode":
+        if (backupState.githubConnectMode === "create") {
+          runGitHubConnectCreateFlow();
+        } else {
+          backupDispatch({ type: "setScreen", screen: "github_connect_repo_input" });
+        }
+        return;
+      case "github_connect_repo_input":
+        runGitHubConnectExistingFlow({ allowPublic: false });
+        return;
+      case "github_connect_public_confirm":
+        if (backupState.githubPublicConfirmInput.trim() !== "PUBLIC") {
+          openBackupError(
+            "Type PUBLIC to confirm a public repo.",
+            undefined,
+            "github_connect_public_confirm"
+          );
+          return;
+        }
+        runGitHubConnectExistingFlow({ allowPublic: true });
+        return;
+      case "github_restore_picker":
+        runGitHubRestoreSelectedFlow();
+        return;
+      case "github_push_done":
+        backupDispatch({ type: "setScreen", screen: "github_status" });
+        return;
       case "import_picker":
         backupDispatch({ type: "confirmImportPickerSelection" });
         return;
@@ -3932,6 +4351,10 @@ export function App({
         return;
       case "exporting":
       case "importing":
+      case "github_connecting":
+      case "github_push_running":
+      case "github_restore_loading":
+      case "github_restore_downloading":
       default:
         return;
     }
@@ -4092,25 +4515,49 @@ export function App({
         backupDispatch({ type: "setImportMode", mode: action.mode });
         return;
       case "BACKUP_PICKER_MOVE_SELECTION":
-        backupDispatch({
-          type: "moveImportPickerSelection",
-          delta: action.delta,
-          visibleRows: backupImportPickerVisibleRows
-        });
+        if (backupState.screen === "github_restore_picker") {
+          backupDispatch({
+            type: "moveGitHubSnapshotSelection",
+            delta: action.delta,
+            visibleRows: backupImportPickerVisibleRows
+          });
+        } else {
+          backupDispatch({
+            type: "moveImportPickerSelection",
+            delta: action.delta,
+            visibleRows: backupImportPickerVisibleRows
+          });
+        }
         return;
       case "BACKUP_PICKER_PAGE_SELECTION":
-        backupDispatch({
-          type: "pageImportPickerSelection",
-          delta: action.delta,
-          visibleRows: backupImportPickerVisibleRows
-        });
+        if (backupState.screen === "github_restore_picker") {
+          backupDispatch({
+            type: "pageGitHubSnapshotSelection",
+            delta: action.delta,
+            visibleRows: backupImportPickerVisibleRows
+          });
+        } else {
+          backupDispatch({
+            type: "pageImportPickerSelection",
+            delta: action.delta,
+            visibleRows: backupImportPickerVisibleRows
+          });
+        }
         return;
       case "BACKUP_PICKER_JUMP_SELECTION":
-        backupDispatch({
-          type: "jumpImportPickerSelection",
-          target: action.target,
-          visibleRows: backupImportPickerVisibleRows
-        });
+        if (backupState.screen === "github_restore_picker") {
+          backupDispatch({
+            type: "jumpGitHubSnapshotSelection",
+            target: action.target,
+            visibleRows: backupImportPickerVisibleRows
+          });
+        } else {
+          backupDispatch({
+            type: "jumpImportPickerSelection",
+            target: action.target,
+            visibleRows: backupImportPickerVisibleRows
+          });
+        }
         return;
       case "BACKUP_PICKER_CONFIRM_SELECTION":
         handleBackupPrimaryAction();
@@ -8939,6 +9386,15 @@ export function App({
                 backupDispatch({ type: "setCalendarImportConfirmInput", value });
               }
             }
+            onGitHubRepoNameChange={(value) =>
+              backupDispatch({ type: "setGitHubRepoNameInput", value })
+            }
+            onGitHubOwnerRepoChange={(value) =>
+              backupDispatch({ type: "setGitHubOwnerRepoInput", value })
+            }
+            onGitHubPublicConfirmChange={(value) =>
+              backupDispatch({ type: "setGitHubPublicConfirmInput", value })
+            }
             onPrimaryAction={handleBackupPrimaryAction}
             onBackAction={handleBackupBackAction}
             onMenuSelect={handleBackupMenuSelect}
@@ -8969,6 +9425,25 @@ export function App({
                 calendarImportModeRef.current = mode;
                 backupDispatch({ type: "setCalendarImportMode", mode });
               }
+            }
+            onGitHubConnectModeSelect={(mode) =>
+              backupDispatch({ type: "setGitHubConnectMode", mode })
+            }
+            onGitHubPushNow={runGitHubPushSnapshotNow}
+            onGitHubOpenRestore={runGitHubRestoreListFlow}
+            onGitHubSnapshotSelectIndex={(index) =>
+              backupDispatch({
+                type: "setGitHubSnapshotSelection",
+                index,
+                visibleRows: backupImportPickerVisibleRows
+              })
+            }
+            onGitHubSnapshotWheelScroll={(delta) =>
+              backupDispatch({
+                type: "moveGitHubSnapshotSelection",
+                delta,
+                visibleRows: backupImportPickerVisibleRows
+              })
             }
           />
         </box>

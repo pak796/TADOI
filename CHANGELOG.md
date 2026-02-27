@@ -5,7 +5,22 @@ All notable changes to TADOI are documented in this file.
 The format is based on Keep a Changelog.
 
 ## [Unreleased]
-- No pending entries.
+### Added
+- Backup Center now includes `Cloud Backups -> GitHub (CLI)` with:
+  - connect flow (create private repo or use existing personal repo),
+  - status panel (`gh` detect/login/account/repo/last push/last restore),
+  - manual `Push snapshot now`,
+  - `Restore from GitHub` snapshot picker routed into existing JSON dry-run -> commit gates.
+- New GitHub CLI cloud backup adapter (`src/backup/githubCli.ts`) for:
+  - `gh` detection/auth status checks,
+  - personal owner enforcement,
+  - repo privacy checks,
+  - snapshot list/download/push operations.
+
+### Changed
+- Settings schema/normalization now includes non-secret `githubBackup` config with safe defaults:
+  - `enabled`, `ownerRepo`, `branch`, `deviceId`, `pathPrefix`, `autoPushPolicy`, `lastPushed`.
+- Backup Center calendar submenu now includes the GitHub cloud backup entry.
 
 ## [0.3.8] - 2026-02-27
 ### Added

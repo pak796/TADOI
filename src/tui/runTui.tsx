@@ -217,6 +217,7 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
       initialNotificationSettings={settingsResult.settings.notifications}
       initialSecuritySettings={settingsResult.settings.security}
       initialCustomThemes={settingsResult.settings.customThemes}
+      initialGithubBackup={settingsResult.settings.githubBackup}
       settingsPath={settingsResult.resolvedPath}
       showLogo={options.showLogo}
       startupBanner={startupBanner}

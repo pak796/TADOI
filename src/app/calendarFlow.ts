@@ -36,6 +36,7 @@ type CalendarFlowDeps = {
     sourceScreen: BackupCenterScreen
   ) => void;
   refreshRuntimeStateFromDisk: () => Promise<void>;
+  openGitHubCloudStatus: () => void;
 };
 
 type CalendarFlowHandlers = {
@@ -43,7 +44,7 @@ type CalendarFlowHandlers = {
   runCalendarExportFromBackupCenter: () => void;
   runCalendarImportDryRunFromBackupCenter: () => void;
   runCalendarImportCommitFromBackupCenter: () => void;
-  handleCalendarMenuSelect: (index: 0 | 1 | 2) => void;
+  handleCalendarMenuSelect: (index: 0 | 1 | 2 | 3) => void;
   handleCalendarDigitSelection: (digit: number) => boolean;
   handleCalendarPrimaryAction: () => boolean;
 };
@@ -212,7 +213,7 @@ export function useCalendarFlow(deps: CalendarFlowDeps): CalendarFlowHandlers {
     })();
   }
 
-  function handleCalendarMenuSelect(index: 0 | 1 | 2) {
+  function handleCalendarMenuSelect(index: 0 | 1 | 2 | 3) {
     switch (index) {
       case 0:
         deps.backupDispatch({ type: "setCalendarExportRange", range: "next7" });
@@ -236,6 +237,9 @@ export function useCalendarFlow(deps: CalendarFlowDeps): CalendarFlowHandlers {
         deps.backupDispatch({ type: "setScreen", screen: "calendar_import_intro" });
         return;
       case 2:
+        deps.openGitHubCloudStatus();
+        return;
+      case 3:
         deps.backupDispatch({ type: "setScreen", screen: "menu" });
         return;
       default:
@@ -246,8 +250,8 @@ export function useCalendarFlow(deps: CalendarFlowDeps): CalendarFlowHandlers {
   function handleCalendarDigitSelection(digit: number): boolean {
     switch (deps.backupState.screen) {
       case "calendar_menu":
-        if (digit >= 1 && digit <= 3) {
-          const index = (digit - 1) as 0 | 1 | 2;
+        if (digit >= 1 && digit <= 4) {
+          const index = (digit - 1) as 0 | 1 | 2 | 3;
           deps.backupDispatch({ type: "setCalendarMenuIndex", index });
           handleCalendarMenuSelect(index);
         }

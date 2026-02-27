@@ -23,12 +23,17 @@ describe("BackupCenterScreen helpers", () => {
   it("maps screens to step labels", () => {
     expect(getStepLabel("menu")).toBe("MENU");
     expect(getStepLabel("calendar_import_dryrun")).toBe("CALENDAR / IMPORT");
+    expect(getStepLabel("github_status")).toBe("CLOUD / GITHUB");
+    expect(getStepLabel("github_restore_picker")).toBe("CLOUD / GITHUB");
     expect(getStepLabel("error")).toBe("ERROR");
   });
 
   it("resolves focusable input screens by kind", () => {
     expect(isScreenForInput("import_path", "data-import-path")).toBe(true);
     expect(isScreenForInput("calendar_import_horizon", "calendar-import-horizon")).toBe(true);
+    expect(isScreenForInput("github_connect_mode", "github-repo-name")).toBe(true);
+    expect(isScreenForInput("github_connect_repo_input", "github-owner-repo")).toBe(true);
+    expect(isScreenForInput("github_connect_public_confirm", "github-public-confirm")).toBe(true);
     expect(isScreenForInput("menu", "calendar-import-horizon")).toBe(false);
   });
 

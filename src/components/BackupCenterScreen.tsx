@@ -24,10 +24,13 @@ type BackupCenterScreenProps = {
   onCalendarImportHorizonChange: (value: string) => void;
   onCalendarImportTagChange: (value: string) => void;
   onCalendarImportConfirmChange: (value: string) => void;
+  onGitHubRepoNameChange?: (value: string) => void;
+  onGitHubOwnerRepoChange?: (value: string) => void;
+  onGitHubPublicConfirmChange?: (value: string) => void;
   onPrimaryAction: () => void;
   onBackAction: () => void;
   onMenuSelect: (index: 0 | 1 | 2 | 3) => void;
-  onCalendarMenuSelect: (index: 0 | 1 | 2) => void;
+  onCalendarMenuSelect: (index: number) => void;
   onImportModeSelect: (mode: "merge" | "replace") => void;
   onCalendarExportRangeSelect: (range: CalendarExportRange) => void;
   onCalendarExportViewSelect: (viewName?: string) => void;
@@ -35,6 +38,11 @@ type BackupCenterScreenProps = {
   onCalendarImportRangeSelect: (range: CalendarExportRange) => void;
   onCalendarImportViewSelect: (viewName?: string) => void;
   onCalendarImportModeSelect: (mode: CalendarImportMode) => void;
+  onGitHubConnectModeSelect?: (mode: "create" | "existing") => void;
+  onGitHubPushNow?: () => void;
+  onGitHubOpenRestore?: () => void;
+  onGitHubSnapshotSelectIndex?: (index: number) => void;
+  onGitHubSnapshotWheelScroll?: (delta: 1 | -1) => void;
 };
 
 type BackupActionButtonProps = {
@@ -134,6 +142,17 @@ export function getStepLabel(screen: BackupCenterState["screen"]): string {
       return "CALENDAR / IMPORT";
     case "error":
       return "ERROR";
+    case "github_status":
+    case "github_connect_mode":
+    case "github_connect_repo_input":
+    case "github_connect_public_confirm":
+    case "github_connecting":
+    case "github_push_running":
+    case "github_push_done":
+    case "github_restore_loading":
+    case "github_restore_picker":
+    case "github_restore_downloading":
+      return "CLOUD / GITHUB";
     default:
       return "BACKUP";
   }
@@ -209,6 +228,9 @@ export function isScreenForInput(state: BackupCenterState["screen"], kind: strin
   if (kind === "calendar-import-horizon") return state === "calendar_import_horizon";
   if (kind === "calendar-import-tag") return state === "calendar_import_tag";
   if (kind === "calendar-import-confirm") return state === "calendar_import_confirm";
+  if (kind === "github-repo-name") return state === "github_connect_mode";
+  if (kind === "github-owner-repo") return state === "github_connect_repo_input";
+  if (kind === "github-public-confirm") return state === "github_connect_public_confirm";
   return false;
 }
 
@@ -269,6 +291,9 @@ export function BackupCenterScreen({
   onCalendarImportHorizonChange,
   onCalendarImportTagChange,
   onCalendarImportConfirmChange,
+  onGitHubRepoNameChange,
+  onGitHubOwnerRepoChange,
+  onGitHubPublicConfirmChange,
   onPrimaryAction,
   onBackAction,
   onMenuSelect,
@@ -279,7 +304,12 @@ export function BackupCenterScreen({
   onCalendarExportPrivacySelect,
   onCalendarImportRangeSelect,
   onCalendarImportViewSelect,
-  onCalendarImportModeSelect
+  onCalendarImportModeSelect,
+  onGitHubConnectModeSelect,
+  onGitHubPushNow,
+  onGitHubOpenRestore,
+  onGitHubSnapshotSelectIndex,
+  onGitHubSnapshotWheelScroll
 }: BackupCenterScreenProps) {
   const theme = themeForObject("modal");
   const inputTheme = themeForObject("inputs");
@@ -294,12 +324,13 @@ export function BackupCenterScreen({
     { index: 0, label: "1) Export backup (recommended)" },
     { index: 1, label: "2) Import data..." },
     { index: 2, label: "3) Show data path" },
-    { index: 3, label: "4) Calendar (ICS)..." }
+    { index: 3, label: "4) Calendar (ICS) + Cloud..." }
   ];
-  const calendarMenuOptions: Array<{ index: 0 | 1 | 2; label: string }> = [
+  const calendarMenuOptions: Array<{ index: 0 | 1 | 2 | 3; label: string }> = [
     { index: 0, label: "1) Export Calendar (.ics)" },
     { index: 1, label: "2) Import Calendar (.ics)" },
-    { index: 2, label: "3) Back" }
+    { index: 2, label: "3) Cloud Backups -> GitHub (CLI)" },
+    { index: 3, label: "4) Back" }
   ];
 
   const calendarViewChoices: Array<{ label: string; value?: string }> = [
@@ -318,6 +349,16 @@ export function BackupCenterScreen({
     visibleRows: importPickerVisibleRows
   });
   const pickerVisibleFiles = state.importPickerFiles.slice(pickerWindow.start, pickerWindow.end);
+  const githubPickerWindow = resolveImportPickerWindow({
+    fileCount: state.githubSnapshots.length,
+    selectedIndex: state.githubSnapshotSelectedIndex,
+    scrollOffset: state.githubSnapshotScrollOffset,
+    visibleRows: importPickerVisibleRows
+  });
+  const githubVisibleSnapshots = state.githubSnapshots.slice(
+    githubPickerWindow.start,
+    githubPickerWindow.end
+  );
   const bodyScrollboxRef = useRef<ScrollBoxRenderable | null>(null);
 
   useEffect(() => {
@@ -344,7 +385,8 @@ export function BackupCenterScreen({
       footerActions = [
         { key: "cal-export", label: "EXPORT ICS", onPress: () => onCalendarMenuSelect(0) },
         { key: "cal-import", label: "IMPORT ICS", onPress: () => onCalendarMenuSelect(1) },
-        { key: "back", label: "BACK", onPress: () => onCalendarMenuSelect(2), tone: "neutral" }
+        { key: "cloud-github", label: "CLOUD GITHUB", onPress: () => onCalendarMenuSelect(2) },
+        { key: "back", label: "BACK", onPress: () => onCalendarMenuSelect(3), tone: "neutral" }
       ];
       break;
     case "import_mode":
@@ -479,6 +521,49 @@ export function BackupCenterScreen({
         { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
       ];
       break;
+    case "github_status":
+      footerActions = [
+        { key: "connect", label: "CONNECT", onPress: onPrimaryAction },
+        { key: "push-now", label: "PUSH NOW", onPress: onGitHubPushNow ?? (() => {}) },
+        { key: "restore", label: "RESTORE", onPress: onGitHubOpenRestore ?? (() => {}) },
+        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
+      ];
+      break;
+    case "github_connect_mode":
+      footerActions = [
+        {
+          key: "create-private",
+          label: "CREATE PRIVATE",
+          onPress: () => onGitHubConnectModeSelect?.("create"),
+          active: state.githubConnectMode === "create"
+        },
+        {
+          key: "use-existing",
+          label: "USE EXISTING",
+          onPress: () => onGitHubConnectModeSelect?.("existing"),
+          active: state.githubConnectMode === "existing"
+        },
+        { key: "continue", label: "CONTINUE", onPress: onPrimaryAction },
+        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
+      ];
+      break;
+    case "github_connect_repo_input":
+    case "github_connect_public_confirm":
+      footerActions = [
+        { key: "continue", label: "CONTINUE", onPress: onPrimaryAction },
+        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
+      ];
+      break;
+    case "github_restore_picker":
+      footerActions = [
+        {
+          key: "restore",
+          label: state.githubSnapshots.length > 0 ? "RESTORE SELECTED" : "RESTORE (NONE)",
+          onPress: state.githubSnapshots.length > 0 ? onPrimaryAction : () => {}
+        },
+        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
+      ];
+      break;
     case "import_picker":
       footerActions = [
         {
@@ -531,6 +616,7 @@ export function BackupCenterScreen({
     case "show_path":
     case "calendar_export_done":
     case "calendar_import_done":
+    case "github_push_done":
     case "error":
       footerActions = [{ key: "back", label: "BACK", onPress: onPrimaryAction }];
       break;
@@ -539,6 +625,10 @@ export function BackupCenterScreen({
     case "calendar_exporting":
     case "calendar_import_dryrun_running":
     case "calendar_importing":
+    case "github_connecting":
+    case "github_push_running":
+    case "github_restore_loading":
+    case "github_restore_downloading":
     default:
       footerActions = [];
       break;
@@ -561,7 +651,9 @@ export function BackupCenterScreen({
       }}
     >
       <text style={{ color: theme.text, fontWeight: "bold" }}>Backup Center</text>
-      <text style={{ color: theme.muted }}>Guided backup, import, and calendar flows</text>
+      <text style={{ color: theme.muted }}>
+        Guided backup, import, calendar, and cloud flows
+      </text>
       <box style={{ flexDirection: "row", gap: 2, marginTop: 1 }}>
         <text style={{ color: theme.muted }}>STEP: {stepLabel}</text>
         <text style={{ color: theme.muted }}>DATA MODE: {modeLabel}</text>
@@ -609,7 +701,7 @@ export function BackupCenterScreen({
           <text style={{ color: theme.muted, marginTop: 1 }}>
             One-way per action (not sync). Import can round-trip by X-TADOI-TASK-ID.
           </text>
-          <text style={{ color: theme.muted }}>1/2/3 or Enter: select   j/k: move   Esc: back</text>
+          <text style={{ color: theme.muted }}>1/2/3/4 or Enter: select   j/k: move   Esc: back</text>
         </box>
       ) : null}
 
@@ -1294,6 +1386,265 @@ export function BackupCenterScreen({
           ) : null}
           <text style={{ color: theme.muted, marginTop: 1 }}>
             Enter or Esc: back
+          </text>
+        </box>
+      ) : null}
+
+      {state.screen === "github_status" ? (
+        <box style={{ flexDirection: "column", marginTop: 1 }}>
+          <text style={{ color: theme.text, fontWeight: "bold" }}>
+            GitHub (CLI) Cloud Backups
+          </text>
+          <text style={{ color: state.githubGhDetected ? theme.ok : theme.warn }}>
+            gh detected: {state.githubGhDetected ? "yes" : "no"}
+          </text>
+          <text style={{ color: state.githubLoggedIn ? theme.ok : theme.warn }}>
+            gh login: {state.githubLoggedIn ? "yes" : "no"}
+          </text>
+          <text style={{ color: theme.muted }}>
+            account: {state.githubUsername ?? "(unknown)"}
+          </text>
+          <text style={{ color: theme.muted }}>
+            repo: {state.githubOwnerRepoConfigured ?? "(not configured)"}
+          </text>
+          <text style={{ color: theme.muted }}>
+            auto-push policy: {state.githubAutoPushPolicy}
+          </text>
+          <text style={{ color: theme.muted }}>
+            last push: {state.githubLastPushedAt ?? "(never)"}
+          </text>
+          <text style={{ color: theme.muted }}>
+            last restore pull: {state.githubLastRestorePulledAt ?? "(never)"}
+          </text>
+          {state.githubSelectedSnapshotTimestamp ? (
+            <text style={{ color: theme.muted }}>
+              last selected snapshot: {state.githubSelectedSnapshotTimestamp}
+            </text>
+          ) : null}
+          <text style={{ color: theme.muted, marginTop: 1 }}>
+            Connect checks gh auth and enforces personal repo ownership.
+          </text>
+          <text style={{ color: theme.muted }}>
+            Push/Restore stay inside existing JSON import safety gates.
+          </text>
+          <text style={{ color: theme.muted, marginTop: 1 }}>
+            1 connect   2 push now   3 restore   4 back   Enter: connect flow
+          </text>
+        </box>
+      ) : null}
+
+      {state.screen === "github_connect_mode" ? (
+        <box style={{ flexDirection: "column", marginTop: 1 }}>
+          <text style={{ color: theme.text, fontWeight: "bold" }}>
+            Connect GitHub backup repo
+          </text>
+          <SelectableOptionLine
+            label={`1) Create private repo (${state.githubConnectMode === "create" ? "selected" : ""})`}
+            selected={state.githubConnectMode === "create"}
+            theme={theme}
+            onSelect={() => onGitHubConnectModeSelect("create")}
+          />
+          <SelectableOptionLine
+            label={`2) Use existing repo (${state.githubConnectMode === "existing" ? "selected" : ""})`}
+            selected={state.githubConnectMode === "existing"}
+            theme={theme}
+            onSelect={() => onGitHubConnectModeSelect("existing")}
+          />
+          {state.githubConnectMode === "create" ? (
+            <>
+              <text style={{ color: theme.text, marginTop: 1 }}>
+                New private repo name:
+              </text>
+              <input
+                value={state.githubRepoNameInput}
+                onChange={(value) => onGitHubRepoNameChange?.(value)}
+                onSubmit={(value) => {
+                  onGitHubRepoNameChange?.(value);
+                  onPrimaryAction();
+                }}
+                focused={isScreenForInput(state.screen, "github-repo-name")}
+                placeholder="tadoi-backups"
+                style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
+              />
+            </>
+          ) : (
+            <text style={{ color: theme.muted, marginTop: 1 }}>
+              Continue to enter owner/repo.
+            </text>
+          )}
+          <text style={{ color: theme.muted, marginTop: 1 }}>
+            1/2 select mode   Enter continue   Esc back
+          </text>
+        </box>
+      ) : null}
+
+      {state.screen === "github_connect_repo_input" ? (
+        <box style={{ flexDirection: "column", marginTop: 1 }}>
+          <text style={{ color: theme.text, fontWeight: "bold" }}>
+            Use existing personal repo
+          </text>
+          <text style={{ color: theme.text }}>owner/repo:</text>
+          <input
+            value={state.githubOwnerRepoInput}
+            onChange={(value) => onGitHubOwnerRepoChange?.(value)}
+            onSubmit={(value) => {
+              onGitHubOwnerRepoChange?.(value);
+              onPrimaryAction();
+            }}
+            focused={isScreenForInput(state.screen, "github-owner-repo")}
+            placeholder="your-username/tadoi-backups"
+            style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
+          />
+          <text style={{ color: theme.muted }}>
+            v1 supports personal repos only (owner must match active gh account).
+          </text>
+          <text style={{ color: theme.muted, marginTop: 1 }}>
+            Enter continue   Esc back
+          </text>
+        </box>
+      ) : null}
+
+      {state.screen === "github_connect_public_confirm" ? (
+        <box style={{ flexDirection: "column", marginTop: 1 }}>
+          <text style={{ color: theme.warn, fontWeight: "bold" }}>
+            Repository is public
+          </text>
+          <text style={{ color: theme.text }}>
+            Type PUBLIC to confirm using a public repo:
+          </text>
+          <input
+            value={state.githubPublicConfirmInput}
+            onChange={(value) => onGitHubPublicConfirmChange?.(value)}
+            onSubmit={(value) => {
+              onGitHubPublicConfirmChange?.(value);
+              onPrimaryAction();
+            }}
+            focused={isScreenForInput(state.screen, "github-public-confirm")}
+            placeholder="PUBLIC"
+            style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
+          />
+          <text style={{ color: theme.muted }}>
+            Enter confirm   Esc back
+          </text>
+        </box>
+      ) : null}
+
+      {state.screen === "github_connecting" ? (
+        <box style={{ flexDirection: "column", marginTop: 1 }}>
+          <text style={{ color: theme.text }}>Connecting GitHub backup repo...</text>
+          <text style={{ color: theme.muted }}>
+            Checking gh, auth status, and repository privacy.
+          </text>
+        </box>
+      ) : null}
+
+      {state.screen === "github_push_running" ? (
+        <box style={{ flexDirection: "column", marginTop: 1 }}>
+          <text style={{ color: theme.text }}>Pushing snapshot to GitHub...</text>
+          <text style={{ color: theme.muted }}>
+            Writing timestamped state/settings/manifest and updating latest pointers.
+          </text>
+        </box>
+      ) : null}
+
+      {state.screen === "github_push_done" ? (
+        <box style={{ flexDirection: "column", marginTop: 1 }}>
+          <text style={{ color: theme.ok, fontWeight: "bold" }}>GitHub snapshot pushed</text>
+          <text style={{ color: theme.muted }}>
+            Last push: {state.githubLastPushedAt ?? "(unknown)"}
+          </text>
+          <text style={{ color: theme.muted }}>
+            Commit: {state.githubPushCommitSha ?? "(n/a)"}
+          </text>
+          <text style={{ color: theme.muted, marginTop: 1 }}>
+            Enter or Esc: back
+          </text>
+        </box>
+      ) : null}
+
+      {state.screen === "github_restore_loading" ? (
+        <box style={{ flexDirection: "column", marginTop: 1 }}>
+          <text style={{ color: theme.text }}>Loading remote snapshots...</text>
+          <text style={{ color: theme.muted }}>
+            Listing manifests from the configured GitHub repo.
+          </text>
+        </box>
+      ) : null}
+
+      {state.screen === "github_restore_picker" ? (
+        <box
+          style={{ flexDirection: "column", marginTop: 1 }}
+          onMouseScroll={(event) => {
+            const delta = resolveBackupWheelDelta(event.scroll?.direction);
+            if (delta === 0 || state.githubSnapshots.length === 0) return;
+            if (typeof event.stopPropagation === "function") {
+              event.stopPropagation();
+            }
+            onGitHubSnapshotWheelScroll?.(delta);
+          }}
+        >
+          <text style={{ color: theme.text, fontWeight: "bold" }}>Restore from GitHub</text>
+          {state.githubSnapshotLoading ? (
+            <text style={{ color: theme.muted, marginTop: 1 }}>Loading snapshots...</text>
+          ) : null}
+          {state.githubSnapshotError ? (
+            <text style={{ color: theme.warn, marginTop: 1 }}>
+              Failed to list snapshots: {state.githubSnapshotError}
+            </text>
+          ) : null}
+          {state.githubSnapshots.length === 0 ? (
+            <text style={{ color: theme.muted, marginTop: 1 }}>
+              No snapshots found for this device path prefix.
+            </text>
+          ) : (
+            <>
+              <box
+                style={{
+                  flexDirection: "column",
+                  marginTop: 1,
+                  border: true,
+                  borderStyle: "single",
+                  borderColor: theme.outline
+                }}
+              >
+                {githubVisibleSnapshots.map((snapshot, visibleIndex) => {
+                  const index = githubPickerWindow.start + visibleIndex;
+                  const selected = index === githubPickerWindow.selectedIndex;
+                  const counts =
+                    snapshot.tasksTotal !== undefined
+                      ? ` open=${String(snapshot.tasksOpen ?? 0)} total=${String(snapshot.tasksTotal)}`
+                      : "";
+                  return (
+                    <SelectableOptionLine
+                      key={snapshot.id}
+                      label={`${snapshot.timestamp}${counts}`}
+                      selected={selected}
+                      theme={theme}
+                      onSelect={() => onGitHubSnapshotSelectIndex?.(index)}
+                    />
+                  );
+                })}
+              </box>
+              <text style={{ color: theme.muted, marginTop: 1 }}>
+                Showing {String(githubPickerWindow.start + 1)}-{String(githubPickerWindow.end)} of{" "}
+                {String(state.githubSnapshots.length)} snapshots
+              </text>
+            </>
+          )}
+          <text style={{ color: theme.muted, marginTop: 1 }}>
+            ↑/↓ move   PgUp/PgDn page   Home/End jump
+          </text>
+          <text style={{ color: theme.muted }}>
+            Enter: download + run dry-run import gate   Esc: back
+          </text>
+        </box>
+      ) : null}
+
+      {state.screen === "github_restore_downloading" ? (
+        <box style={{ flexDirection: "column", marginTop: 1 }}>
+          <text style={{ color: theme.text }}>Downloading selected snapshot...</text>
+          <text style={{ color: theme.muted }}>
+            Preparing staged JSON payload for existing dry-run import flow.
           </text>
         </box>
       ) : null}

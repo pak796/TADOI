@@ -257,6 +257,12 @@ function parsePositiveMsSetting(
   return { ok: true, value: Math.floor(value) };
 }
 
+function parseOptionalTrimmedString(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
 function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | undefined> {
   if (!isRecord(input) || input.settings === undefined) {
     return { ok: true, value: undefined };
@@ -345,6 +351,122 @@ function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | un
     };
   }
 
+  const githubBackupRaw = settings.githubBackup;
+  if (githubBackupRaw !== undefined && !isRecord(githubBackupRaw)) {
+    return { ok: false, error: "settings.githubBackup must be an object when present" };
+  }
+  const githubBackupRecord = githubBackupRaw as Record<string, unknown> | undefined;
+  const githubDefaults = defaultSettings.githubBackup;
+
+  const githubEnabledRaw = githubBackupRecord?.enabled;
+  if (githubEnabledRaw !== undefined && typeof githubEnabledRaw !== "boolean") {
+    return { ok: false, error: "settings.githubBackup.enabled is invalid" };
+  }
+  const ownerRepoRaw = githubBackupRecord?.ownerRepo;
+  if (
+    ownerRepoRaw !== undefined &&
+    ownerRepoRaw !== null &&
+    typeof ownerRepoRaw !== "string"
+  ) {
+    return { ok: false, error: "settings.githubBackup.ownerRepo is invalid" };
+  }
+  const branchRaw = githubBackupRecord?.branch;
+  if (branchRaw !== undefined && typeof branchRaw !== "string") {
+    return { ok: false, error: "settings.githubBackup.branch is invalid" };
+  }
+  const deviceIdRaw = githubBackupRecord?.deviceId;
+  if (deviceIdRaw !== undefined && typeof deviceIdRaw !== "string") {
+    return { ok: false, error: "settings.githubBackup.deviceId is invalid" };
+  }
+  const pathPrefixRaw = githubBackupRecord?.pathPrefix;
+  if (pathPrefixRaw !== undefined && typeof pathPrefixRaw !== "string") {
+    return { ok: false, error: "settings.githubBackup.pathPrefix is invalid" };
+  }
+  const autoPushPolicyRaw = githubBackupRecord?.autoPushPolicy;
+  if (
+    autoPushPolicyRaw !== undefined &&
+    autoPushPolicyRaw !== "off" &&
+    autoPushPolicyRaw !== "onExit" &&
+    autoPushPolicyRaw !== "interval15m"
+  ) {
+    return { ok: false, error: "settings.githubBackup.autoPushPolicy is invalid" };
+  }
+  const lastPushedRaw = githubBackupRecord?.lastPushed;
+  if (lastPushedRaw !== undefined && !isRecord(lastPushedRaw)) {
+    return { ok: false, error: "settings.githubBackup.lastPushed must be an object when present" };
+  }
+  const stateRevisionRaw = (lastPushedRaw as Record<string, unknown> | undefined)?.stateRevision;
+  if (
+    stateRevisionRaw !== undefined &&
+    (typeof stateRevisionRaw !== "number" ||
+      !Number.isFinite(stateRevisionRaw) ||
+      !Number.isInteger(stateRevisionRaw) ||
+      stateRevisionRaw < 0)
+  ) {
+    return { ok: false, error: "settings.githubBackup.lastPushed.stateRevision is invalid" };
+  }
+  const settingsHashRaw = (lastPushedRaw as Record<string, unknown> | undefined)?.settingsHash;
+  if (settingsHashRaw !== undefined && typeof settingsHashRaw !== "string") {
+    return { ok: false, error: "settings.githubBackup.lastPushed.settingsHash is invalid" };
+  }
+  const timestampRaw = (lastPushedRaw as Record<string, unknown> | undefined)?.timestamp;
+  if (timestampRaw !== undefined && typeof timestampRaw !== "string") {
+    return { ok: false, error: "settings.githubBackup.lastPushed.timestamp is invalid" };
+  }
+  const remoteCommitShaRaw =
+    (lastPushedRaw as Record<string, unknown> | undefined)?.remoteCommitSha;
+  if (remoteCommitShaRaw !== undefined && typeof remoteCommitShaRaw !== "string") {
+    return {
+      ok: false,
+      error: "settings.githubBackup.lastPushed.remoteCommitSha is invalid"
+    };
+  }
+
+  const githubBackup =
+    githubBackupRecord && githubDefaults
+      ? (() => {
+          const ownerRepo =
+            ownerRepoRaw === null ? null : parseOptionalTrimmedString(ownerRepoRaw) ?? null;
+          const branch = parseOptionalTrimmedString(branchRaw) ?? githubDefaults.branch;
+          const deviceId = parseOptionalTrimmedString(deviceIdRaw) ?? githubDefaults.deviceId;
+          const pathPrefix =
+            parseOptionalTrimmedString(pathPrefixRaw) ??
+            `tadoi/devices/${deviceId}`;
+          const normalized = {
+            enabled: githubEnabledRaw === true,
+            ownerRepo,
+            branch,
+            deviceId,
+            pathPrefix,
+            autoPushPolicy:
+              autoPushPolicyRaw === "onExit" || autoPushPolicyRaw === "interval15m"
+                ? autoPushPolicyRaw
+                : "off"
+          } as NonNullable<TadoiSettings["githubBackup"]>;
+
+          const nextLastPushed: NonNullable<TadoiSettings["githubBackup"]>["lastPushed"] = {};
+          if (typeof stateRevisionRaw === "number") {
+            nextLastPushed.stateRevision = Math.floor(stateRevisionRaw);
+          }
+          const settingsHash = parseOptionalTrimmedString(settingsHashRaw);
+          if (settingsHash) {
+            nextLastPushed.settingsHash = settingsHash;
+          }
+          const timestamp = parseOptionalTrimmedString(timestampRaw);
+          if (timestamp) {
+            nextLastPushed.timestamp = timestamp;
+          }
+          const remoteCommitSha = parseOptionalTrimmedString(remoteCommitShaRaw);
+          if (remoteCommitSha) {
+            nextLastPushed.remoteCommitSha = remoteCommitSha;
+          }
+          if (Object.keys(nextLastPushed).length > 0) {
+            normalized.lastPushed = nextLastPushed;
+          }
+          return normalized;
+        })()
+      : githubDefaults;
+
   return {
     ok: true,
     value: {
@@ -374,7 +496,8 @@ function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | un
       customThemes:
         customThemesRaw === undefined
           ? undefined
-          : (customThemesRaw as TadoiSettings["customThemes"])
+          : (customThemesRaw as TadoiSettings["customThemes"]),
+      githubBackup
     }
   };
 }

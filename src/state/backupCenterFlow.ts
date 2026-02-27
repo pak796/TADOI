@@ -5,6 +5,7 @@ import type { BackupFileInfo, BackupImportSummary } from "./backupService";
 import type { CalendarExportResult } from "./calendarExportService";
 import type { CalendarImportSummary } from "./calendarImportService";
 import type { ImportMode } from "./portability";
+import type { GitHubAutoPushPolicy } from "../settings/settings";
 
 export type BackupCenterScreen =
   | "menu"
@@ -39,12 +40,31 @@ export type BackupCenterScreen =
   | "calendar_import_confirm"
   | "calendar_importing"
   | "calendar_import_done"
+  | "github_status"
+  | "github_connect_mode"
+  | "github_connect_repo_input"
+  | "github_connect_public_confirm"
+  | "github_connecting"
+  | "github_push_running"
+  | "github_push_done"
+  | "github_restore_loading"
+  | "github_restore_picker"
+  | "github_restore_downloading"
   | "error";
 
 type MainMenuIndex = 0 | 1 | 2 | 3;
-type CalendarMenuIndex = 0 | 1 | 2;
+type CalendarMenuIndex = 0 | 1 | 2 | 3;
 export const BACKUP_IMPORT_PICKER_MAX_VISIBLE_ROWS = 8;
 const BACKUP_IMPORT_PICKER_MIN_VISIBLE_ROWS = 1;
+
+export type GitHubSnapshotListItem = {
+  id: string;
+  timestamp: string;
+  tasksTotal?: number;
+  tasksOpen?: number;
+  appVersion?: string;
+  schemaVersion?: number;
+};
 
 export type BackupCenterState = {
   screen: BackupCenterScreen;
@@ -95,6 +115,26 @@ export type BackupCenterState = {
   calendarImportDryRunWarnings: string[];
   calendarImportCommittedWarnings: string[];
   calendarImportConfirmInput: string;
+
+  // GITHUB cloud backup flow state.
+  githubGhDetected: boolean;
+  githubLoggedIn: boolean;
+  githubUsername?: string;
+  githubOwnerRepoConfigured?: string;
+  githubAutoPushPolicy: GitHubAutoPushPolicy;
+  githubLastPushedAt?: string;
+  githubLastRestorePulledAt?: string;
+  githubConnectMode: "create" | "existing";
+  githubRepoNameInput: string;
+  githubOwnerRepoInput: string;
+  githubPublicConfirmInput: string;
+  githubPushCommitSha?: string;
+  githubSnapshots: GitHubSnapshotListItem[];
+  githubSnapshotSelectedIndex: number;
+  githubSnapshotScrollOffset: number;
+  githubSnapshotLoading: boolean;
+  githubSnapshotError?: string;
+  githubSelectedSnapshotTimestamp?: string;
 
   errorMessage?: string;
   errorDetail?: string;
@@ -173,6 +213,36 @@ export type BackupCenterAction =
       backupPath?: string;
       warnings?: string[];
     }
+  | { type: "openGitHubStatus" }
+  | {
+      type: "setGitHubStatus";
+      ghDetected: boolean;
+      loggedIn: boolean;
+      username?: string;
+      ownerRepoConfigured?: string;
+      autoPushPolicy: GitHubAutoPushPolicy;
+      lastPushedAt?: string;
+      lastRestorePulledAt?: string;
+    }
+  | { type: "openGitHubConnectMode" }
+  | { type: "setGitHubConnectMode"; mode: "create" | "existing" }
+  | { type: "setGitHubRepoNameInput"; value: string }
+  | { type: "setGitHubOwnerRepoInput"; value: string }
+  | { type: "setGitHubPublicConfirmInput"; value: string }
+  | { type: "startGitHubConnect" }
+  | { type: "githubConnectSucceeded"; ownerRepo: string }
+  | { type: "startGitHubPush" }
+  | { type: "githubPushSucceeded"; timestamp: string; commitSha?: string }
+  | { type: "startGitHubRestoreLoad" }
+  | { type: "githubRestoreLoadSucceeded"; snapshots: GitHubSnapshotListItem[] }
+  | { type: "githubRestoreLoadFailed"; error: string }
+  | { type: "moveGitHubSnapshotSelection"; delta: 1 | -1; visibleRows: number }
+  | { type: "pageGitHubSnapshotSelection"; delta: 1 | -1; visibleRows: number }
+  | { type: "jumpGitHubSnapshotSelection"; target: "start" | "end"; visibleRows: number }
+  | { type: "setGitHubSnapshotSelection"; index: number; visibleRows: number }
+  | { type: "startGitHubRestoreDownload" }
+  | { type: "githubRestoreDownloadSucceeded"; timestamp?: string }
+  | { type: "setGitHubLastRestorePulledAt"; value?: string }
   | { type: "setError"; message: string; detail?: string; returnScreen?: BackupCenterScreen }
   | { type: "back" };
 
@@ -202,7 +272,18 @@ export const initialBackupCenterState: BackupCenterState = {
   calendarImportDryRunErrorReasons: [],
   calendarImportDryRunWarnings: [],
   calendarImportCommittedWarnings: [],
-  calendarImportConfirmInput: ""
+  calendarImportConfirmInput: "",
+  githubGhDetected: false,
+  githubLoggedIn: false,
+  githubAutoPushPolicy: "off",
+  githubConnectMode: "create",
+  githubRepoNameInput: "tadoi-backups",
+  githubOwnerRepoInput: "",
+  githubPublicConfirmInput: "",
+  githubSnapshots: [],
+  githubSnapshotSelectedIndex: 0,
+  githubSnapshotScrollOffset: 0,
+  githubSnapshotLoading: false
 };
 
 function normalizeOptionalInput(value: string | undefined): string | undefined {
@@ -219,6 +300,11 @@ function normalizeImportPickerVisibleRows(visibleRows: number): number {
 }
 
 function clampImportPickerSelection(index: number, fileCount: number): number {
+  if (fileCount <= 0) return 0;
+  return Math.max(0, Math.min(index, fileCount - 1));
+}
+
+function clampGitHubSnapshotSelection(index: number, fileCount: number): number {
   if (fileCount <= 0) return 0;
   return Math.max(0, Math.min(index, fileCount - 1));
 }
@@ -264,6 +350,33 @@ function toCalendarImportFingerprint(state: BackupCenterState): string | undefin
     horizonDays: horizon,
     importTag: normalizeOptionalInput(state.calendarImportTagInput)
   });
+}
+
+function ensureGitHubSnapshotSelectionVisible(
+  snapshots: GitHubSnapshotListItem[],
+  selectedIndex: number,
+  scrollOffset: number,
+  visibleRows: number
+): { selectedIndex: number; scrollOffset: number } {
+  const rowCount = normalizeImportPickerVisibleRows(visibleRows);
+  const itemCount = snapshots.length;
+  if (itemCount <= 0) {
+    return { selectedIndex: 0, scrollOffset: 0 };
+  }
+
+  const clampedSelected = clampGitHubSnapshotSelection(selectedIndex, itemCount);
+  const maxOffset = Math.max(0, itemCount - rowCount);
+  let clampedOffset = Math.max(0, Math.min(scrollOffset, maxOffset));
+  if (clampedSelected < clampedOffset) {
+    clampedOffset = clampedSelected;
+  } else if (clampedSelected >= clampedOffset + rowCount) {
+    clampedOffset = clampedSelected - rowCount + 1;
+  }
+
+  return {
+    selectedIndex: clampedSelected,
+    scrollOffset: Math.max(0, Math.min(clampedOffset, maxOffset))
+  };
 }
 
 export function isReplaceConfirmationValid(state: BackupCenterState): boolean {
@@ -351,7 +464,7 @@ export function backupCenterReducer(
       };
     case "moveMenuIndex": {
       if (state.screen === "calendar_menu") {
-        const next = ((state.calendarMenuIndex + action.delta + 3) % 3) as CalendarMenuIndex;
+        const next = ((state.calendarMenuIndex + action.delta + 4) % 4) as CalendarMenuIndex;
         return { ...state, calendarMenuIndex: next };
       }
       const next = ((state.menuIndex + action.delta + 4) % 4) as MainMenuIndex;
@@ -360,7 +473,7 @@ export function backupCenterReducer(
     case "setMenuIndex":
       return { ...state, menuIndex: action.index };
     case "moveCalendarMenuIndex": {
-      const next = ((state.calendarMenuIndex + action.delta + 3) % 3) as CalendarMenuIndex;
+      const next = ((state.calendarMenuIndex + action.delta + 4) % 4) as CalendarMenuIndex;
       return { ...state, calendarMenuIndex: next };
     }
     case "setCalendarMenuIndex":
@@ -843,6 +956,222 @@ export function backupCenterReducer(
         errorDetail: undefined,
         errorReturnScreen: undefined
       };
+    case "openGitHubStatus":
+      return {
+        ...state,
+        screen: "github_status",
+        githubSnapshots: [],
+        githubSnapshotSelectedIndex: 0,
+        githubSnapshotScrollOffset: 0,
+        githubSnapshotLoading: false,
+        githubSnapshotError: undefined,
+        githubPushCommitSha: undefined,
+        githubSelectedSnapshotTimestamp: undefined,
+        errorMessage: undefined,
+        errorDetail: undefined,
+        errorReturnScreen: undefined
+      };
+    case "setGitHubStatus":
+      return {
+        ...state,
+        githubGhDetected: action.ghDetected,
+        githubLoggedIn: action.loggedIn,
+        githubUsername: normalizeOptionalInput(action.username),
+        githubOwnerRepoConfigured: normalizeOptionalInput(action.ownerRepoConfigured),
+        githubAutoPushPolicy: action.autoPushPolicy,
+        githubLastPushedAt: normalizeOptionalInput(action.lastPushedAt),
+        githubLastRestorePulledAt: normalizeOptionalInput(action.lastRestorePulledAt)
+      };
+    case "openGitHubConnectMode":
+      return {
+        ...state,
+        screen: "github_connect_mode",
+        githubPublicConfirmInput: "",
+        errorMessage: undefined,
+        errorDetail: undefined,
+        errorReturnScreen: undefined
+      };
+    case "setGitHubConnectMode":
+      return {
+        ...state,
+        githubConnectMode: action.mode,
+        githubPublicConfirmInput: ""
+      };
+    case "setGitHubRepoNameInput":
+      return {
+        ...state,
+        githubRepoNameInput: action.value
+      };
+    case "setGitHubOwnerRepoInput":
+      return {
+        ...state,
+        githubOwnerRepoInput: action.value
+      };
+    case "setGitHubPublicConfirmInput":
+      return {
+        ...state,
+        githubPublicConfirmInput: action.value
+      };
+    case "startGitHubConnect":
+      return {
+        ...state,
+        screen: "github_connecting",
+        errorMessage: undefined,
+        errorDetail: undefined,
+        errorReturnScreen: undefined
+      };
+    case "githubConnectSucceeded":
+      return {
+        ...state,
+        screen: "github_status",
+        githubOwnerRepoConfigured: normalizeOptionalInput(action.ownerRepo),
+        githubPublicConfirmInput: "",
+        errorMessage: undefined,
+        errorDetail: undefined,
+        errorReturnScreen: undefined
+      };
+    case "startGitHubPush":
+      return {
+        ...state,
+        screen: "github_push_running",
+        githubPushCommitSha: undefined,
+        errorMessage: undefined,
+        errorDetail: undefined,
+        errorReturnScreen: undefined
+      };
+    case "githubPushSucceeded":
+      return {
+        ...state,
+        screen: "github_push_done",
+        githubLastPushedAt: normalizeOptionalInput(action.timestamp),
+        githubPushCommitSha: normalizeOptionalInput(action.commitSha),
+        errorMessage: undefined,
+        errorDetail: undefined,
+        errorReturnScreen: undefined
+      };
+    case "startGitHubRestoreLoad":
+      return {
+        ...state,
+        screen: "github_restore_loading",
+        githubSnapshots: [],
+        githubSnapshotSelectedIndex: 0,
+        githubSnapshotScrollOffset: 0,
+        githubSnapshotLoading: true,
+        githubSnapshotError: undefined,
+        githubSelectedSnapshotTimestamp: undefined,
+        errorMessage: undefined,
+        errorDetail: undefined,
+        errorReturnScreen: undefined
+      };
+    case "githubRestoreLoadSucceeded":
+      return {
+        ...state,
+        screen: "github_restore_picker",
+        githubSnapshots: [...action.snapshots],
+        githubSnapshotSelectedIndex: 0,
+        githubSnapshotScrollOffset: 0,
+        githubSnapshotLoading: false,
+        githubSnapshotError: undefined,
+        githubSelectedSnapshotTimestamp: undefined,
+        errorMessage: undefined,
+        errorDetail: undefined,
+        errorReturnScreen: undefined
+      };
+    case "githubRestoreLoadFailed":
+      return {
+        ...state,
+        screen: "github_restore_picker",
+        githubSnapshots: [],
+        githubSnapshotSelectedIndex: 0,
+        githubSnapshotScrollOffset: 0,
+        githubSnapshotLoading: false,
+        githubSnapshotError: action.error
+      };
+    case "moveGitHubSnapshotSelection": {
+      if (state.screen !== "github_restore_picker") return state;
+      const current = ensureGitHubSnapshotSelectionVisible(
+        state.githubSnapshots,
+        state.githubSnapshotSelectedIndex + action.delta,
+        state.githubSnapshotScrollOffset,
+        action.visibleRows
+      );
+      return {
+        ...state,
+        githubSnapshotSelectedIndex: current.selectedIndex,
+        githubSnapshotScrollOffset: current.scrollOffset
+      };
+    }
+    case "pageGitHubSnapshotSelection": {
+      if (state.screen !== "github_restore_picker") return state;
+      const rows = normalizeImportPickerVisibleRows(action.visibleRows);
+      const current = ensureGitHubSnapshotSelectionVisible(
+        state.githubSnapshots,
+        state.githubSnapshotSelectedIndex + action.delta * rows,
+        state.githubSnapshotScrollOffset,
+        rows
+      );
+      return {
+        ...state,
+        githubSnapshotSelectedIndex: current.selectedIndex,
+        githubSnapshotScrollOffset: current.scrollOffset
+      };
+    }
+    case "jumpGitHubSnapshotSelection": {
+      if (state.screen !== "github_restore_picker") return state;
+      const targetIndex =
+        action.target === "start"
+          ? 0
+          : Math.max(0, state.githubSnapshots.length - 1);
+      const current = ensureGitHubSnapshotSelectionVisible(
+        state.githubSnapshots,
+        targetIndex,
+        state.githubSnapshotScrollOffset,
+        action.visibleRows
+      );
+      return {
+        ...state,
+        githubSnapshotSelectedIndex: current.selectedIndex,
+        githubSnapshotScrollOffset: current.scrollOffset
+      };
+    }
+    case "setGitHubSnapshotSelection": {
+      if (state.screen !== "github_restore_picker") return state;
+      const current = ensureGitHubSnapshotSelectionVisible(
+        state.githubSnapshots,
+        action.index,
+        state.githubSnapshotScrollOffset,
+        action.visibleRows
+      );
+      return {
+        ...state,
+        githubSnapshotSelectedIndex: current.selectedIndex,
+        githubSnapshotScrollOffset: current.scrollOffset
+      };
+    }
+    case "startGitHubRestoreDownload":
+      return {
+        ...state,
+        screen: "github_restore_downloading",
+        errorMessage: undefined,
+        errorDetail: undefined,
+        errorReturnScreen: undefined
+      };
+    case "githubRestoreDownloadSucceeded":
+      return {
+        ...state,
+        screen: "github_status",
+        githubLastRestorePulledAt:
+          normalizeOptionalInput(action.timestamp) ?? state.githubLastRestorePulledAt,
+        githubSelectedSnapshotTimestamp: normalizeOptionalInput(action.timestamp),
+        errorMessage: undefined,
+        errorDetail: undefined,
+        errorReturnScreen: undefined
+      };
+    case "setGitHubLastRestorePulledAt":
+      return {
+        ...state,
+        githubLastRestorePulledAt: normalizeOptionalInput(action.value)
+      };
     case "setError":
       return {
         ...state,
@@ -870,6 +1199,18 @@ export function backupCenterReducer(
             ...resetCalendarExportState(resetCalendarImportState(state)),
             screen: "menu"
           };
+        case "github_status":
+          return { ...state, screen: "calendar_menu" };
+        case "github_connect_mode":
+          return { ...state, screen: "github_status" };
+        case "github_connect_repo_input":
+          return { ...state, screen: "github_connect_mode" };
+        case "github_connect_public_confirm":
+          return { ...state, screen: "github_connect_repo_input", githubPublicConfirmInput: "" };
+        case "github_push_done":
+          return { ...state, screen: "github_status" };
+        case "github_restore_picker":
+          return { ...state, screen: "github_status" };
         case "calendar_export_intro":
           return { ...state, screen: "calendar_menu" };
         case "calendar_export_range":
@@ -931,6 +1272,11 @@ export function backupCenterReducer(
           };
         case "import_dryrun":
           return { ...state, screen: "import_mode" };
+        case "github_connecting":
+        case "github_push_running":
+        case "github_restore_loading":
+        case "github_restore_downloading":
+          return state;
         default:
           return state;
       }

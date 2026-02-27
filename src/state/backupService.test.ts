@@ -431,8 +431,8 @@ describe("backupService import/export", () => {
       });
       const resolvedSettingsPath =
         summary.settings.path === fallback ? fallback : primary;
-      const rawSettings = await fs.readFile(resolvedSettingsPath, "utf8");
-      expect(JSON.parse(rawSettings)).toEqual({
+      const parsedSettings = JSON.parse(await fs.readFile(resolvedSettingsPath, "utf8"));
+      expect(parsedSettings).toEqual({
         themeId: "retro",
         logoMode: "default",
         flashMode: "static",
@@ -448,8 +448,19 @@ describe("backupService import/export", () => {
         security: {
           nonHttpLinkPolicy: "prompt"
         },
-        customThemes: expectedCustomThemesFor("retro")
+        customThemes: expectedCustomThemesFor("retro"),
+        githubBackup: {
+          enabled: false,
+          ownerRepo: null,
+          branch: "main",
+          deviceId: expect.stringMatching(/^dev_[a-f0-9]{12}$/),
+          pathPrefix: expect.stringMatching(/^tadoi\/devices\/dev_[a-f0-9]{12}$/),
+          autoPushPolicy: "off"
+        }
       });
+      expect(parsedSettings.githubBackup.pathPrefix).toBe(
+        `tadoi/devices/${parsedSettings.githubBackup.deviceId}`
+      );
     } finally {
       if (originalDataPath === undefined) {
         delete process.env.TADOI_DATA_PATH;
