@@ -9,6 +9,27 @@ The format is based on Keep a Changelog.
 
 ## [0.3.8] - 2026-02-27
 ### Added
+- Persistence schema baseline moved to `7` with migration `6 -> 7` backfilling
+  `workflowStage` (`open -> todo`, `done|archived -> done`).
+- Dashboard analytics dimensions and filters were expanded in active v0.3.8 contracts:
+  - dimension slices: `assignee`, `project`, `workflowStage`
+  - analytics window cycle: `7d|14d|30d`
+  - exact due-bucket drill-through via `dueDayOffset` (`+N`)
+
+### Changed
+- DTF contract coverage now includes `DTF-008` and `DTF-009` named tests.
+- Release governance docs were refreshed to current `v0.3.8` evidence:
+  - `docs/RELEASE_RUN_REPORT.md`
+  - `docs/RELEASE_NOTES.md`
+
+### Validation
+- `bun run docs:lint`: PASS (`[docs-lint] PASS: local markdown links and anchors resolved.`)
+- `bun run keybind:canonical:check`: PASS (`canonical=64 missing_in_docs=0 missing_in_code=0`)
+- `bun run contract:dtf:check`: PASS (`OK: 9 DTF IDs from DASHBOARD_SPEC_MVP.md, TADOI_SPEC_v0.3.8.md are covered by named test cases in 100 test files.`)
+- `bun run notion:sync:validate`: PASS (`[sync] validation OK: items=14`)
+
+## [0.3.7] - 2026-02-25
+### Added
 - Non-interactive engagement toasts in the bottom bar for completion milestones:
   - first completed task
   - first recurring task created
@@ -22,16 +43,13 @@ The format is based on Keep a Changelog.
 ### Changed
 - Engagement toasts are queued (cap 3), priority ordered, auto-dismissed, and suppressed while
   blocking overlays are open, then resumed after overlays close.
-- DTF contract coverage now includes `DTF-008` and `DTF-009` named tests.
-- Release governance docs were refreshed to current `v0.3.8` evidence:
-  - `docs/RELEASE_RUN_REPORT.md`
-  - `docs/RELEASE_NOTES.md`
-
-### Validation
-- `bun run docs:lint`: PASS (`[docs-lint] PASS: local markdown links and anchors resolved.`)
-- `bun run keybind:canonical:check`: PASS (`canonical=64 missing_in_docs=0 missing_in_code=0`)
-- `bun run contract:dtf:check`: PASS (`OK: 9 DTF IDs from DASHBOARD_SPEC_MVP.md, TADOI_SPEC_v0.3.8.md are covered by named test cases in 100 test files.`)
-- `bun run notion:sync:validate`: PASS (`[sync] validation OK: items=14`)
+- Persistence schema baseline for this release was `6` with `stateRevision` concurrency hardening.
+- Active docs were aligned to the v0.3.7 artifact set:
+  - `TADOI_SPEC_v0.3.7.md`
+  - `TADOI_TASKS_v0.3.7.md`
+  - `docs/TADOI_Feature_List_v0.3.7.md`
+  - `docs/TADOI_QA_Guide_v0.3.7.md`
+  - `docs/ops/notion_v0.3.7_sync_pack.md`
 
 ## [0.3.6] - 2026-02-13
 ### Changed
