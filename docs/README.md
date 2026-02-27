@@ -27,6 +27,7 @@ This index links the current user-facing TADOI documentation set.
 - [Recurring Tasks Implementation Plan](./recurring-tasks-implementation-plan.md)
 - [Branding Operations Guide](./ops/branding.md)
 - [Notion Sync Pack (v0.3.8)](./ops/notion_v0.3.8_sync_pack.md)
+- [Notion Deploy Package (2026-02-27)](./ops/NOTION_DEPLOY_PACKAGE_2026-02-27.md)
 - [Documentation Index](./DOC_INDEX.md)
 - [Archival Path Policy](./ARCHIVAL_PATH_POLICY.md)
 - [Documentation Audit Report](./DOC_AUDIT_REPORT.md)

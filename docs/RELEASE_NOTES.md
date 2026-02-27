@@ -10,6 +10,7 @@ Primary changelog lives at `CHANGELOG.md` in the repo root.
 - Highlights:
   - Engagement-toast runtime behavior is documented and aligned to active `v0.3.8` baselines.
   - Contract and release-governance docs were refreshed to current evidence.
+  - Notion staging package was refreshed from current source markdown for deferred apply.
 - Fixes:
   - Added named DTF coverage labels for `DTF-008` and `DTF-009` in existing tests.
   - `bun run contract:dtf:check` now passes with `9` covered IDs from `DASHBOARD_SPEC_MVP.md` and `TADOI_SPEC_v0.3.8.md`.

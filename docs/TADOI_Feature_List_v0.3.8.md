@@ -1,6 +1,6 @@
 # TADOI™ Feature List (v0.3.8)
 
-This list reflects current runtime behavior as of **2026-02-26**.
+This list reflects current runtime behavior as of **2026-02-27**.
 
 ## Core Workflow
 - Create, edit, duplicate, complete/reopen, and delete tasks.

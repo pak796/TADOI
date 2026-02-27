@@ -1,6 +1,6 @@
 # TADOI™ Install Guide
 
-Verified as of 2026-02-25 (v0.3.8).
+Verified as of 2026-02-27 (v0.3.8).
 
 This is the concise install guide. For deep troubleshooting and platform detail, see the all-platform installation guide.
 

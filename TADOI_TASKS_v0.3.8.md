@@ -1,6 +1,6 @@
 # TADOI™ Task List (v0.3.8)
 
-Updated: 2026-02-26
+Updated: 2026-02-27
 Runtime baseline: `v0.3.8`
 Package baseline: `0.3.8`
 

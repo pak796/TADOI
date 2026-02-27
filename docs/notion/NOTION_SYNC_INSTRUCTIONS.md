@@ -1,6 +1,6 @@
 # Notion Sync Instructions
 
-Verified as of 2026-02-25.
+Verified as of 2026-02-27.
 
 This repo treats local docs as canonical source. Stage Notion updates from current Markdown via payload, then apply only when explicitly requested.
 

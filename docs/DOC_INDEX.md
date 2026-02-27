@@ -1,6 +1,6 @@
 # TADOI™ Documentation Index
 
-Updated: 2026-02-25
+Updated: 2026-02-27
 Active runtime baseline: `v0.3.8`
 Active package baseline: `0.3.8`
 
@@ -41,6 +41,8 @@ Active package baseline: `0.3.8`
 - `docs/NOTION_SYNC.md`: Notion mapping and sync checklist.
 - `docs/notion/NOTION_SYNC_PAYLOAD.json`: deterministic Notion payload artifact.
 - `docs/notion/NOTION_SYNC_RUNBOOK.md`: deterministic sync runbook.
+- `docs/ops/TADOI_DOC_AUDIT_POST_REMEDIATION_2026-02-27.md`: latest post-remediation docs audit record.
+- `docs/ops/NOTION_DEPLOY_PACKAGE_2026-02-27.md`: deployment-ready Notion package manifest for deferred apply.
 - `docs/ARCHIVAL_PATH_POLICY.md`: archival path normalization policy and scope.
 - `docs/HISTORICAL_DOCS_INDEX.md`: single index for deprecated/historical docs.
 - `docs/ops/branding.md`: branding + external GitHub/Notion guidance.

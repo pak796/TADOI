@@ -36,11 +36,12 @@ The format is based on Keep a Changelog.
 - Release governance docs were refreshed to current `v0.3.8` evidence:
   - `docs/RELEASE_RUN_REPORT.md`
   - `docs/RELEASE_NOTES.md`
+- Documentation governance sweep aligned active docs, spec sheets, and Notion staging runbooks to current `v0.3.8` implementation.
 
 ### Validation
 - `bun run docs:lint`: PASS (`[docs-lint] PASS: local markdown links and anchors resolved.`)
 - `bun run keybind:canonical:check`: PASS (`canonical=64 missing_in_docs=0 missing_in_code=0`)
-- `bun run contract:dtf:check`: PASS (`OK: 9 DTF IDs from DASHBOARD_SPEC_MVP.md, TADOI_SPEC_v0.3.8.md are covered by named test cases in 100 test files.`)
+- `bun run contract:dtf:check`: PASS (`OK: 9 DTF IDs from DASHBOARD_SPEC_MVP.md, TADOI_SPEC_v0.3.8.md are covered by named test cases in 107 test files.`)
 - `bun run notion:sync:validate`: PASS (`[sync] validation OK: items=14`)
 
 ## [0.3.7] - 2026-02-25

@@ -1,6 +1,6 @@
 # TADOI™ Product Spec (v0.3.8)
 
-Updated: 2026-02-26
+Updated: 2026-02-27
 Runtime baseline: `v0.3.8`
 Package baseline: `0.3.8`
 Persistence schema baseline: `7`
@@ -128,6 +128,8 @@ Canonical invariant table:
 | DTF-005 | In `DASHBOARD` mode, widget selection/drill-through is routed while list movement keys do not leak. | `src/app/dashboardTagFilterContract.test.ts`, `src/app/keyRouter.test.ts`, `src/app/App.modalFlow.integration.test.ts` |
 | DTF-006 | In `TAG_FILTER` mode, list/dashboard routing is blocked until unwind (`Esc`). | `src/app/dashboardTagFilterContract.test.ts` |
 | DTF-007 | Dashboard analytics include recurrence occurrences through `buildVisibleTaskRows` parity, not raw tasks-only filtering. | `src/app/dashboardTagFilterContract.test.ts` |
+| DTF-008 | Saved views round-trip dashboard analytics filters and exact due-day offsets. | `src/domain/savedViews.test.ts` |
+| DTF-009 | Dashboard due-bucket `+N` drill-through applies exact `dueDayOffset` filter. | `src/app/App.modalFlow.integration.test.ts`, `src/domain/query.test.ts` |
 
 ### 2.8 Notifications Contract
 - Tier 1: in-app overdue modal queue.

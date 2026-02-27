@@ -1,6 +1,6 @@
 # Notion Sync Runbook
 
-Generated: 2026-02-25
+Generated: 2026-02-27
 Mode: offline payload staging (deferred apply)
 
 ## Inputs
@@ -21,8 +21,8 @@ Mode: offline payload staging (deferred apply)
    - Spec/tasks pages include TITS M1-M3 narrative
 
 5. Verify notes/audit token and metadata:
-   - Confirm `Notes` includes `[AUDIT 2026-02-25] Docs audit + payload refresh staged for deferred apply` on all mapped pages.
-   - Review `docs/notion/NOTION_SYNC_VERIFY_2026-02-25.json` for title/date/heading/version/notes summary.
+   - Confirm `Notes` includes `[AUDIT 2026-02-27] Full docs sweep + Notion payload refresh staged for deferred apply` on all mapped pages.
+   - Review `docs/notion/NOTION_SYNC_VERIFY_2026-02-27.json` for title/date/heading/version/notes summary.
    - Validate `bun run notion:sync:validate` returns PASS for payload.
 ## Fallback (No Notion Write Access)
 - Store payload artifact with daily build artifacts.

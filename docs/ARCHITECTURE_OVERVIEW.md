@@ -1,6 +1,6 @@
 # TADOI™ Architecture Overview
 
-Verified as of 2026-02-25 (v0.3.8).
+Verified as of 2026-02-27 (v0.3.8).
 
 This is a high-level map for orientation. Source code is the authority.
 
