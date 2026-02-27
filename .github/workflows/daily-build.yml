@@ -43,6 +43,38 @@ jobs:
         if: matrix.target == 'windows'
         run: choco install innosetup --no-progress -y
 
+      - name: Install Linux packaging prerequisites
+        if: matrix.target == 'linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y dpkg-dev
+
+          if ! command -v dpkg-deb >/dev/null 2>&1; then
+            echo "dpkg-deb not found after installing dpkg-dev." >&2
+            exit 1
+          fi
+
+          appimagetool_version="1.9.1"
+          appimage_path="$RUNNER_TEMP/appimagetool-${appimagetool_version}.AppImage"
+          wrapper_path="$RUNNER_TEMP/appimagetool"
+          curl -fsSL "https://github.com/AppImage/appimagetool/releases/download/${appimagetool_version}/appimagetool-x86_64.AppImage" -o "$appimage_path"
+          chmod +x "$appimage_path"
+          {
+            echo "#!/usr/bin/env bash"
+            echo "set -euo pipefail"
+            echo "APPIMAGE_EXTRACT_AND_RUN=1 \"$appimage_path\" \"\$@\""
+          } > "$wrapper_path"
+          chmod +x "$wrapper_path"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+          export PATH="$RUNNER_TEMP:$PATH"
+
+          if ! command -v appimagetool >/dev/null 2>&1; then
+            echo "appimagetool wrapper install failed." >&2
+            exit 1
+          fi
+
       - name: Build daily artifacts
         run: bun run build:daily
 
