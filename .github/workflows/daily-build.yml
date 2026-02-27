@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: "0 14 * * *" # 08:00 America/Chicago (UTC; DST shift applies)
   workflow_dispatch:
+    inputs:
+      upload_artifacts:
+        description: "Upload artifacts (recommended for manual runs only)"
+        required: false
+        default: true
+        type: boolean
 
 jobs:
   daily-build:
@@ -54,8 +60,12 @@ jobs:
           $matches | ForEach-Object { Write-Host " - $($_.FullName)" }
 
       - name: Upload artifacts
-        if: always()
+        if: always() && github.event_name == 'workflow_dispatch' && inputs.upload_artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: tadoi-daily-${{ matrix.target }}-${{ github.sha }}
-          path: dist/artifacts/**
+          retention-days: 2
+          if-no-files-found: error
+          path: |
+            dist/artifacts/**/BUILD_REPORT.md
+            dist/artifacts/**/${{ matrix.target }}/**
