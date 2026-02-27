@@ -5,6 +5,9 @@ All notable changes to TADOI are documented in this file.
 The format is based on Keep a Changelog.
 
 ## [Unreleased]
+- No pending entries.
+
+## [0.3.8] - 2026-02-27
 ### Added
 - Non-interactive engagement toasts in the bottom bar for completion milestones:
   - first completed task
@@ -19,14 +22,16 @@ The format is based on Keep a Changelog.
 ### Changed
 - Engagement toasts are queued (cap 3), priority ordered, auto-dismissed, and suppressed while
   blocking overlays are open, then resumed after overlays close.
-- Release-readiness audit pass on February 13, 2026:
-  - `bun run typecheck`, `bun run test`, and `bun run contract:dtf:check` passed.
-  - `bun audit` failed in this environment with `ConnectionRefused: audit request failed`;
-    dependency advisory verification is still pending rerun on a network-enabled runner.
-- Documentation accuracy sweep on February 13, 2026:
-  - active docs now describe both `calendar:export` and `calendar:import` CLI availability
-  - QA snapshot updated to `555 pass / 0 fail / 555 total`
-  - Notion sync payload refreshed to mirror current repo docs
+- DTF contract coverage now includes `DTF-008` and `DTF-009` named tests.
+- Release governance docs were refreshed to current `v0.3.8` evidence:
+  - `docs/RELEASE_RUN_REPORT.md`
+  - `docs/RELEASE_NOTES.md`
+
+### Validation
+- `bun run docs:lint`: PASS (`[docs-lint] PASS: local markdown links and anchors resolved.`)
+- `bun run keybind:canonical:check`: PASS (`canonical=64 missing_in_docs=0 missing_in_code=0`)
+- `bun run contract:dtf:check`: PASS (`OK: 9 DTF IDs from DASHBOARD_SPEC_MVP.md, TADOI_SPEC_v0.3.8.md are covered by named test cases in 100 test files.`)
+- `bun run notion:sync:validate`: PASS (`[sync] validation OK: items=14`)
 
 ## [0.3.6] - 2026-02-13
 ### Changed

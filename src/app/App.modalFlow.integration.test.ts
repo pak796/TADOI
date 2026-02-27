@@ -1417,7 +1417,7 @@ describe("App modal flow integration", () => {
     }
   });
 
-  it("dashboard due-bucket +N drill-through applies exact dueDayOffset filter", async () => {
+  it("DTF-009: dashboard due-bucket +N drill-through applies exact dueDayOffset filter", async () => {
     const now = Date.now();
     const today = startOfLocalDayMs(now);
     const tasks: Task[] = [

@@ -132,7 +132,7 @@ describe("saved views", () => {
     });
   });
 
-  it("round-trips analyticsWindow and exact due-day offsets", () => {
+  it("DTF-008: saved views round-trip analytics and exact due-day offsets", () => {
     const view = makeView("Windowed", {
       status: "open",
       due: "any",
