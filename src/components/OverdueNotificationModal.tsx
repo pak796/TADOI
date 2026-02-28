@@ -61,7 +61,7 @@ export function OverdueNotificationModal({
       <text style={{ fontWeight: "bold" }}>TASK OVERDUE [S/D/G/ESC]</text>
       <text>Task: {event.title}</text>
       <text>Due: {dueLabel}</text>
-      <text>Status: Overdue by {overdueBy}</text>
+      <text>Status: overdue by {overdueBy}</text>
       {tags.length > 0 ? (
         <text>Tags: {tags.map((tag) => formatTagForReadOnlyDisplay(tag)).join(" ")}</text>
       ) : null}
@@ -71,26 +71,30 @@ export function OverdueNotificationModal({
           tone="warning"
           label="SNOOZE 10M [S]"
           onPress={onSnooze}
+          paddingX={2}
         />
         <ModalActionButton
           theme={theme}
           tone="warning"
           label="MARK DONE [D]"
           onPress={onDone}
-        />
-        <ModalActionButton
-          theme={theme}
-          tone="warning"
-          label="GO TO TASK [G]"
-          onPress={onGoToTask}
+          paddingX={2}
         />
       </ModalActionRow>
       <ModalActionRow>
         <ModalActionButton
           theme={theme}
           tone="warning"
+          label="GO TO TASK [G]"
+          onPress={onGoToTask}
+          paddingX={2}
+        />
+        <ModalActionButton
+          theme={theme}
+          tone="warning"
           label="DISMISS [ESC]"
           onPress={onDismiss}
+          paddingX={2}
         />
       </ModalActionRow>
     </ModalContainer>

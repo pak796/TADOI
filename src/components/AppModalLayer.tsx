@@ -175,18 +175,23 @@ export function AppModalLayer({
                     tone="warning"
                     label="THIS EVENT [Y]"
                     onPress={confirmDeleteSelectedFromModal}
+                    paddingX={2}
                   />
                   <ModalActionButton
                     theme={modalTheme}
                     tone="warning"
                     label="THIS + FUTURE [F]"
                     onPress={confirmDeleteSelectedAndFutureFromModal}
+                    paddingX={2}
                   />
+                </ModalActionRow>
+                <ModalActionRow>
                   <ModalActionButton
                     theme={modalTheme}
                     tone="warning"
                     label="CANCEL [N/ESC]"
                     onPress={cancelDeleteSelectedFromModal}
+                    paddingX={2}
                   />
                 </ModalActionRow>
               </ModalContainer>
@@ -280,7 +285,7 @@ export function AppModalLayer({
               </text>
               <text>
                 {uiState.modal.recurringSeriesCount > 0
-                  ? `${String(uiState.modal.recurringSeriesCount)} recurring series included.`
+                  ? `Recurring series included: ${String(uiState.modal.recurringSeriesCount)}.`
                   : "No recurring series in selection."}
               </text>
               <ModalActionRow>
@@ -314,11 +319,13 @@ export function AppModalLayer({
                   theme={theme}
                   label="SAVE + CONTINUE [S]"
                   onPress={handleUnsavedChangesSaveAndContinue}
+                  paddingX={2}
                 />
                 <ModalActionButton
                   theme={theme}
                   label="DISCARD + CONTINUE [D]"
                   onPress={handleUnsavedChangesDiscardAndContinue}
+                  paddingX={2}
                 />
               </ModalActionRow>
               <ModalActionRow>
@@ -326,6 +333,7 @@ export function AppModalLayer({
                   theme={theme}
                   label="CANCEL [C/N/ESC]"
                   onPress={cancelUnsavedChangesContinue}
+                  paddingX={2}
                 />
               </ModalActionRow>
             </ModalContainer>
@@ -359,7 +367,8 @@ export function AppModalLayer({
                 {uiState.modal.mode === "add" ? "ADD LINK / ATTACHMENT" : "EDIT LINK / ATTACHMENT"}
               </text>
               <text style={{ color: theme.muted }}>
-                Tab: next, Up/Down: move, Left/Right: type, Enter/Ctrl+S: save, Esc: cancel.
+                Tab: next field. Up/Down: move focus. Left/Right: cycle type. Enter/Ctrl+S:
+                save. Esc: cancel.
               </text>
               <box
                 style={{ flexDirection: "column" }}
@@ -405,7 +414,7 @@ export function AppModalLayer({
               </box>
               <box style={{ flexDirection: "column" }}>
                 <text style={{ color: theme.muted }}>
-                  Type ({uiState.modal.activeField === "type" ? "active" : "auto/url/path"})
+                  Type ({uiState.modal.activeField === "type" ? "active field" : "auto/url/path"})
                 </text>
                 <ModalActionRow>
                   {TASK_LINK_FORM_KIND_ORDER.map((kind) => {
@@ -416,6 +425,7 @@ export function AppModalLayer({
                         theme={theme}
                         label={kind.toUpperCase()}
                         active={selected}
+                        paddingX={2}
                         onPress={() => {
                           patchTaskLinkFormModal({
                             kindValue: kind,
@@ -437,12 +447,14 @@ export function AppModalLayer({
                   label="SAVE [CTRL+S/ENTER]"
                   active={uiState.modal.activeField === "save"}
                   onPress={submitTaskLinkFormModal}
+                  paddingX={2}
                 />
                 <ModalActionButton
                   theme={theme}
                   label="CANCEL [ESC/ENTER]"
                   active={uiState.modal.activeField === "cancel"}
                   onPress={applyEscUnwind}
+                  paddingX={2}
                 />
               </ModalActionRow>
             </ModalContainer>
@@ -488,18 +500,20 @@ export function AppModalLayer({
             <ModalContainer theme={theme} minWidth={MODAL_STANDARD_WIDTH}>
               <text style={{ color: theme.text, fontWeight: "bold" }}>UNSAVED CHANGES</text>
               <text style={{ color: theme.muted }}>
-                {`Switch edit target to: ${uiState.modal.toTaskTitle}`}
+                {`Switch edit target to this task: ${uiState.modal.toTaskTitle}.`}
               </text>
               <ModalActionRow>
                 <ModalActionButton
                   theme={theme}
                   label="SAVE + SWITCH [S]"
                   onPress={handleModalSaveAndSwitchEditTarget}
+                  paddingX={2}
                 />
                 <ModalActionButton
                   theme={theme}
                   label="DISCARD + SWITCH [D]"
                   onPress={handleModalDiscardAndSwitchEditTarget}
+                  paddingX={2}
                 />
               </ModalActionRow>
               <ModalActionRow>
@@ -507,8 +521,14 @@ export function AppModalLayer({
                   theme={theme}
                   label="DISCARD + CLOSE [C]"
                   onPress={handleModalDiscardAndCloseEditor}
+                  paddingX={2}
                 />
-                <ModalActionButton theme={theme} label="CANCEL [ESC]" onPress={applyEscUnwind} />
+                <ModalActionButton
+                  theme={theme}
+                  label="CANCEL [ESC]"
+                  onPress={applyEscUnwind}
+                  paddingX={2}
+                />
               </ModalActionRow>
             </ModalContainer>
           ) : uiState.modal.type === "emptyNux" ? (

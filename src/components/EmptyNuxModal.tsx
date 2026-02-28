@@ -50,32 +50,44 @@ export function EmptyNuxModal({
     <ModalContainer theme={theme} minWidth={modalWidth}>
       <box style={{ flexDirection: "row", justifyContent: "space-between" }}>
         <text style={{ fontWeight: "bold" }}>{meta.title}</text>
-        <ModalActionButton theme={theme} label="CLOSE" onPress={closeAction} paddingX={1} />
+        <ModalActionButton theme={theme} label="CLOSE" onPress={closeAction} paddingX={2} />
       </box>
 
       {step === "welcome" ? (
         <>
           <text style={{ marginTop: 1 }}>Press A or Enter to create your first task.</text>
-          <text style={{ color: theme.muted }}>Press S or Esc to skip for this session.</text>
+          <text style={{ color: theme.muted }}>
+            Press S or Esc to skip this walkthrough for now.
+          </text>
           <ModalActionRow marginTop={1}>
             <ModalActionButton
               theme={theme}
               label="CREATE TASK [A/ENTER]"
               primary
               onPress={onCreateTask}
+              paddingX={2}
             />
             {showImportBackupAction ? (
               <ModalActionButton
                 theme={theme}
                 label="IMPORT BACKUP [I]"
                 onPress={onOpenBackupImport}
+                paddingX={2}
               />
             ) : null}
-            <ModalActionButton theme={theme} label="SHORTCUTS [H]" onPress={onShowShortcuts} />
+          </ModalActionRow>
+          <ModalActionRow>
+            <ModalActionButton
+              theme={theme}
+              label="SHORTCUTS [H]"
+              onPress={onShowShortcuts}
+              paddingX={2}
+            />
             <ModalActionButton
               theme={theme}
               label="SKIP SESSION [S/ESC]"
               onPress={onDismissSession}
+              paddingX={2}
             />
           </ModalActionRow>
         </>
@@ -83,21 +95,23 @@ export function EmptyNuxModal({
 
       {step === "shortcuts" ? (
         <>
-          <text style={{ marginTop: 1 }}>A/Enter: create task.</text>
-          <text>Esc: back to welcome.</text>
-          <text>J/K or arrows: move selection.</text>
+          <text style={{ marginTop: 1 }}>A or Enter: create a task.</text>
+          <text>Esc: return to welcome.</text>
+          <text>J/K or Arrow keys: move selection.</text>
           <text style={{ color: theme.muted }}>Use ? anytime to open full help.</text>
           <ModalActionRow marginTop={1}>
             <ModalActionButton
               theme={theme}
               label="BACK TO WELCOME [ESC]"
               onPress={onBackToWelcome}
+              paddingX={2}
             />
             <ModalActionButton
               theme={theme}
               label="CREATE TASK [A/ENTER]"
               primary
               onPress={onCreateTask}
+              paddingX={2}
             />
           </ModalActionRow>
         </>
@@ -107,7 +121,7 @@ export function EmptyNuxModal({
         <>
           <text style={{ marginTop: 1 }}>Nice start. Your first task is saved.</text>
           <text style={{ color: theme.muted }}>
-            Press Enter to return to list, or create another task.
+            Press Enter to return to list, or press A to create another task.
           </text>
           <ModalActionRow marginTop={1}>
             <ModalActionButton
@@ -115,13 +129,27 @@ export function EmptyNuxModal({
               label="GO TO LIST [ENTER]"
               primary
               onPress={onGoToList}
+              paddingX={2}
             />
-            <ModalActionButton theme={theme} label="ADD ANOTHER [A]" onPress={onCreateTask} />
-            <ModalActionButton theme={theme} label="SHORTCUTS [H]" onPress={onShowShortcuts} />
+            <ModalActionButton
+              theme={theme}
+              label="ADD ANOTHER [A]"
+              onPress={onCreateTask}
+              paddingX={2}
+            />
+          </ModalActionRow>
+          <ModalActionRow>
+            <ModalActionButton
+              theme={theme}
+              label="SHORTCUTS [H]"
+              onPress={onShowShortcuts}
+              paddingX={2}
+            />
             <ModalActionButton
               theme={theme}
               label="CLOSE [ESC]"
               onPress={onClearWalkthrough}
+              paddingX={2}
             />
           </ModalActionRow>
         </>

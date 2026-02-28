@@ -56,13 +56,24 @@ export function ReminderNotificationModal({
           theme={theme}
           label="DISMISS [ENTER/ESC]"
           onPress={onDismiss}
+          paddingX={2}
         />
-        <ModalActionButton theme={theme} label="GO TO TASK [G]" onPress={onGoToTask} />
+        <ModalActionButton
+          theme={theme}
+          label="GO TO TASK [G]"
+          onPress={onGoToTask}
+          paddingX={2}
+        />
       </ModalActionRow>
       <ModalActionRow>
-        <ModalActionButton theme={theme} label="SNOOZE +10M [1]" onPress={onSnooze10m} />
-        <ModalActionButton theme={theme} label="SNOOZE +1H [2]" onPress={onSnooze1h} />
-        <ModalActionButton theme={theme} label="SNOOZE +1D [3]" onPress={onSnooze1d} />
+        <ModalActionButton
+          theme={theme}
+          label="SNOOZE +10M [1]"
+          onPress={onSnooze10m}
+          paddingX={2}
+        />
+        <ModalActionButton theme={theme} label="SNOOZE +1H [2]" onPress={onSnooze1h} paddingX={2} />
+        <ModalActionButton theme={theme} label="SNOOZE +1D [3]" onPress={onSnooze1d} paddingX={2} />
       </ModalActionRow>
     </ModalContainer>
   );

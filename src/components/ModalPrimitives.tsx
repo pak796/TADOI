@@ -80,7 +80,7 @@ export function ModalActionButton({
   onPress,
   primary = false,
   active = false,
-  paddingX = 2
+  paddingX = 3
 }: ModalActionButtonProps) {
   const warningTone = tone === "warning";
   const highlighted = !warningTone && (primary || active);

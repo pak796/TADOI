@@ -1683,7 +1683,7 @@ describe("App modal flow integration", () => {
 
         await pressKeyAndRender(harness.mockInput, harness, "h");
         frame = await waitForText(harness, "TADOI SHORTCUTS");
-        expect(frame).toContain("Esc: back to welcome.");
+        expect(frame).toContain("Esc: return to welcome.");
 
         await pressEscapeAndRender(harness.mockInput, harness);
         frame = await waitForText(harness, "WELCOME TO TADOI");
