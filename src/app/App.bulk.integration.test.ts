@@ -299,11 +299,11 @@ describe("App bulk integration", () => {
       await waitForText(harness, "BULK MARKED: 1 · ` bulk ... · Esc clear");
       await runTitsCommand(harness, "bulk delete");
 
-      let frame = await waitForText(harness, "DELETE 1 TASKS? [Y/N]");
+      let frame = await waitForText(harness, "DELETE 1 TASKS? [Y/N/ESC]");
       expect(frame).toContain("No recurring series in selection");
 
       await pressKeyAndRender(harness.mockInput, harness, "n");
-      frame = await waitForFrame(harness, (next) => !next.includes("DELETE 1 TASKS? [Y/N]"));
+      frame = await waitForFrame(harness, (next) => !next.includes("DELETE 1 TASKS? [Y/N/ESC]"));
       expect(frame).toContain("DELETE TARGET A");
     } finally {
       await cleanupSession(session);
@@ -324,11 +324,11 @@ describe("App bulk integration", () => {
       await waitForText(harness, "DELETE TARGET A");
       await runTitsCommand(harness, "bulk:delete id:task-a id:task-b");
 
-      let frame = await waitForText(harness, "DELETE 2 TASKS? [Y/N]");
+      let frame = await waitForText(harness, "DELETE 2 TASKS? [Y/N/ESC]");
       expect(frame).toContain("No recurring series in selection");
 
       await pressKeyAndRender(harness.mockInput, harness, "n");
-      frame = await waitForFrame(harness, (next) => !next.includes("DELETE 2 TASKS? [Y/N]"));
+      frame = await waitForFrame(harness, (next) => !next.includes("DELETE 2 TASKS? [Y/N/ESC]"));
       expect(frame).toContain("DELETE TARGET A");
     } finally {
       await cleanupSession(session);
@@ -360,7 +360,7 @@ describe("App bulk integration", () => {
         harness,
         "Bulk delete cannot delete recurring occurrences. Unmark occurrences or delete individually (d)."
       );
-      expect(frame).not.toContain("DELETE 1 TASKS? [Y/N]");
+      expect(frame).not.toContain("DELETE 1 TASKS? [Y/N/ESC]");
     } finally {
       await cleanupSession(session);
     }

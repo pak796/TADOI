@@ -4,6 +4,7 @@ import { formatTagForReadOnlyDisplay, normalizePriorityTags } from "../domain/pr
 import { themeForObject } from "../app/theme";
 import { formatDate } from "../state/store";
 import type { TaskOverdueEvent } from "../notifications/types";
+import { ModalActionButton, ModalActionRow, ModalContainer } from "./ModalPrimitives";
 
 type OverdueNotificationModalProps = {
   event: TaskOverdueEvent;
@@ -56,17 +57,7 @@ export function OverdueNotificationModal({
   const tags = normalizePriorityTags(task?.tags ?? []);
 
   return (
-    <box
-      style={{
-        padding: 2,
-        backgroundColor: theme.warn,
-        color: theme.bg,
-        minWidth: modalWidth,
-        border: true,
-        borderStyle: "single",
-        borderColor: theme.outline
-      }}
-    >
+    <ModalContainer theme={theme} tone="warning" minWidth={modalWidth}>
       <text style={{ fontWeight: "bold" }}>TASK OVERDUE [S/D/G/ESC]</text>
       <text>Task: {event.title}</text>
       <text>Due: {dueLabel}</text>
@@ -74,44 +65,34 @@ export function OverdueNotificationModal({
       {tags.length > 0 ? (
         <text>Tags: {tags.map((tag) => formatTagForReadOnlyDisplay(tag)).join(" ")}</text>
       ) : null}
-      <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
-        <box
-          style={{ backgroundColor: theme.bg, paddingLeft: 1, paddingRight: 1 }}
-          onMouseDown={(mouseEvent) => {
-            if (mouseEvent.button !== 0) return;
-            onSnooze();
-          }}
-        >
-          <text style={{ color: theme.warn, fontWeight: "bold" }}>[S] SNOOZE 10M</text>
-        </box>
-        <box
-          style={{ backgroundColor: theme.bg, paddingLeft: 1, paddingRight: 1 }}
-          onMouseDown={(mouseEvent) => {
-            if (mouseEvent.button !== 0) return;
-            onDone();
-          }}
-        >
-          <text style={{ color: theme.warn, fontWeight: "bold" }}>[D] MARK DONE</text>
-        </box>
-        <box
-          style={{ backgroundColor: theme.bg, paddingLeft: 1, paddingRight: 1 }}
-          onMouseDown={(mouseEvent) => {
-            if (mouseEvent.button !== 0) return;
-            onGoToTask();
-          }}
-        >
-          <text style={{ color: theme.warn, fontWeight: "bold" }}>[G] GO TO TASK</text>
-        </box>
-        <box
-          style={{ backgroundColor: theme.bg, paddingLeft: 1, paddingRight: 1 }}
-          onMouseDown={(mouseEvent) => {
-            if (mouseEvent.button !== 0) return;
-            onDismiss();
-          }}
-        >
-          <text style={{ color: theme.warn, fontWeight: "bold" }}>[ESC] DISMISS</text>
-        </box>
-      </box>
-    </box>
+      <ModalActionRow marginTop={1}>
+        <ModalActionButton
+          theme={theme}
+          tone="warning"
+          label="SNOOZE 10M [S]"
+          onPress={onSnooze}
+        />
+        <ModalActionButton
+          theme={theme}
+          tone="warning"
+          label="MARK DONE [D]"
+          onPress={onDone}
+        />
+        <ModalActionButton
+          theme={theme}
+          tone="warning"
+          label="GO TO TASK [G]"
+          onPress={onGoToTask}
+        />
+      </ModalActionRow>
+      <ModalActionRow>
+        <ModalActionButton
+          theme={theme}
+          tone="warning"
+          label="DISMISS [ESC]"
+          onPress={onDismiss}
+        />
+      </ModalActionRow>
+    </ModalContainer>
   );
 }

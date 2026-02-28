@@ -2,6 +2,7 @@ import React from "react";
 import type { RuntimeTheme } from "../app/theme";
 import { Mode, type Task } from "../domain/models";
 import { EmptyNuxModal } from "./EmptyNuxModal";
+import { ModalActionButton, ModalActionRow, ModalContainer } from "./ModalPrimitives";
 import { OverdueNotificationModal } from "./OverdueNotificationModal";
 import { ReminderNotificationModal } from "./ReminderNotificationModal";
 import type {
@@ -144,165 +145,78 @@ export function AppModalLayer({
     >
           {uiState.modal.type === "delete" ? (
             uiState.modal.target === "regular_task" ? (
-              <box
-                style={{
-                  padding: 2,
-                  backgroundColor: modalTheme.warn,
-                  color: modalTheme.bg,
-                  minWidth: MODAL_STANDARD_WIDTH
-                }}
-              >
-                <text>DELETE SELECTED TASK? [Y/N]</text>
-                <text>{uiState.modal.taskTitle}</text>
-                <text>ID: {uiState.modal.taskId.slice(0, 8)}</text>
-                <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
-                  <box
-                    style={{
-                      backgroundColor: modalTheme.bg,
-                      paddingLeft: 2,
-                      paddingRight: 2
-                    }}
-                    onMouseDown={(event) => {
-                      if (event.button !== 0) return;
-                      confirmDeleteSelectedFromModal();
-                    }}
-                  >
-                    <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>YES [Y]</text>
-                  </box>
-                  <box
-                    style={{
-                      backgroundColor: modalTheme.bg,
-                      paddingLeft: 2,
-                      paddingRight: 2
-                    }}
-                    onMouseDown={(event) => {
-                      if (event.button !== 0) return;
-                      cancelDeleteSelectedFromModal();
-                    }}
-                  >
-                    <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>NO [N]</text>
-                  </box>
-                </box>
-              </box>
+              <ModalContainer theme={modalTheme} tone="warning" minWidth={MODAL_STANDARD_WIDTH}>
+                <text style={{ fontWeight: "bold" }}>DELETE SELECTED TASK? [Y/N/ESC]</text>
+                <text>Task: {uiState.modal.taskTitle}</text>
+                <text>Task ID: {uiState.modal.taskId.slice(0, 8)}</text>
+                <ModalActionRow marginTop={1}>
+                  <ModalActionButton
+                    theme={modalTheme}
+                    tone="warning"
+                    label="CONFIRM DELETE [Y]"
+                    onPress={confirmDeleteSelectedFromModal}
+                  />
+                  <ModalActionButton
+                    theme={modalTheme}
+                    tone="warning"
+                    label="CANCEL [N/ESC]"
+                    onPress={cancelDeleteSelectedFromModal}
+                  />
+                </ModalActionRow>
+              </ModalContainer>
             ) : (
-              <box
-                style={{
-                  padding: 2,
-                  backgroundColor: modalTheme.warn,
-                  color: modalTheme.bg,
-                  minWidth: MODAL_STANDARD_WIDTH
-                }}
-              >
-                <text>DELETE RECURRING OCCURRENCE? [Y/F/N]</text>
-                <text>{uiState.modal.taskTitle}</text>
-                <text>OCCURRENCE: {uiState.modal.occurrenceIso.slice(0, 16)}</text>
-                <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
-                  <box
-                    style={{
-                      backgroundColor: modalTheme.bg,
-                      paddingLeft: 2,
-                      paddingRight: 2
-                    }}
-                    onMouseDown={(event) => {
-                      if (event.button !== 0) return;
-                      confirmDeleteSelectedFromModal();
-                    }}
-                  >
-                    <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>
-                      THIS EVENT [Y]
-                    </text>
-                  </box>
-                  <box
-                    style={{
-                      backgroundColor: modalTheme.bg,
-                      paddingLeft: 2,
-                      paddingRight: 2
-                    }}
-                    onMouseDown={(event) => {
-                      if (event.button !== 0) return;
-                      confirmDeleteSelectedAndFutureFromModal();
-                    }}
-                  >
-                    <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>
-                      THIS + FUTURE [F]
-                    </text>
-                  </box>
-                  <box
-                    style={{
-                      backgroundColor: modalTheme.bg,
-                      paddingLeft: 2,
-                      paddingRight: 2
-                    }}
-                    onMouseDown={(event) => {
-                      if (event.button !== 0) return;
-                      cancelDeleteSelectedFromModal();
-                    }}
-                  >
-                    <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>
-                      CANCEL [N]
-                    </text>
-                  </box>
-                </box>
-              </box>
+              <ModalContainer theme={modalTheme} tone="warning" minWidth={MODAL_STANDARD_WIDTH}>
+                <text style={{ fontWeight: "bold" }}>DELETE RECURRING OCCURRENCE? [Y/F/N/ESC]</text>
+                <text>Task: {uiState.modal.taskTitle}</text>
+                <text>Occurrence: {uiState.modal.occurrenceIso.slice(0, 16)}</text>
+                <ModalActionRow marginTop={1}>
+                  <ModalActionButton
+                    theme={modalTheme}
+                    tone="warning"
+                    label="THIS EVENT [Y]"
+                    onPress={confirmDeleteSelectedFromModal}
+                  />
+                  <ModalActionButton
+                    theme={modalTheme}
+                    tone="warning"
+                    label="THIS + FUTURE [F]"
+                    onPress={confirmDeleteSelectedAndFutureFromModal}
+                  />
+                  <ModalActionButton
+                    theme={modalTheme}
+                    tone="warning"
+                    label="CANCEL [N/ESC]"
+                    onPress={cancelDeleteSelectedFromModal}
+                  />
+                </ModalActionRow>
+              </ModalContainer>
             )
           ) : uiState.modal.type === "recurring_delete_future_checkpoint" ? (
-            <box
-              style={{
-                padding: 2,
-                backgroundColor: modalTheme.warn,
-                color: modalTheme.bg,
-                minWidth: MODAL_STANDARD_WIDTH
-              }}
-            >
-              <text>DELETE THIS + FUTURE OCCURRENCES? [Y/N]</text>
-              <text>{uiState.modal.deleteModal.taskTitle}</text>
-              <text>OCCURRENCE: {uiState.modal.deleteModal.occurrenceIso.slice(0, 16)}</text>
-              <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
-                <box
-                  style={{
-                    backgroundColor: modalTheme.bg,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    handleRecurringDeleteFutureCheckpointConfirm();
-                  }}
-                >
-                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>YES [Y]</text>
-                </box>
-                <box
-                  style={{
-                    backgroundColor: modalTheme.bg,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    cancelRecurringDeleteFutureCheckpoint();
-                  }}
-                >
-                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>NO [N/ESC]</text>
-                </box>
-              </box>
-            </box>
+            <ModalContainer theme={modalTheme} tone="warning" minWidth={MODAL_STANDARD_WIDTH}>
+              <text style={{ fontWeight: "bold" }}>DELETE THIS + FUTURE OCCURRENCES? [Y/N/ESC]</text>
+              <text>Task: {uiState.modal.deleteModal.taskTitle}</text>
+              <text>Occurrence: {uiState.modal.deleteModal.occurrenceIso.slice(0, 16)}</text>
+              <ModalActionRow marginTop={1}>
+                <ModalActionButton
+                  theme={modalTheme}
+                  tone="warning"
+                  label="CONFIRM DELETE [Y]"
+                  onPress={handleRecurringDeleteFutureCheckpointConfirm}
+                />
+                <ModalActionButton
+                  theme={modalTheme}
+                  tone="warning"
+                  label="CANCEL [N/ESC]"
+                  onPress={cancelRecurringDeleteFutureCheckpoint}
+                />
+              </ModalActionRow>
+            </ModalContainer>
           ) : uiState.modal.type === "checklist_input" ? (
-            <box
-              style={{
-                padding: 2,
-                backgroundColor: theme.panel,
-                border: true,
-                borderStyle: "single",
-                borderColor: theme.outline,
-                width: MODAL_STANDARD_WIDTH,
-                flexDirection: "column",
-                gap: 1
-              }}
-            >
+            <ModalContainer theme={theme} width={MODAL_STANDARD_WIDTH}>
               <text style={{ color: theme.text, fontWeight: "bold" }}>
                 {uiState.modal.mode === "add" ? "ADD CHECKLIST ITEM" : "EDIT CHECKLIST ITEM"}
               </text>
-              <text style={{ color: theme.muted }}>{uiState.modal.taskTitle}</text>
+              <text style={{ color: theme.muted }}>Task: {uiState.modal.taskTitle}</text>
               <input
                 value={uiState.modal.value}
                 onChange={(value) => patchChecklistInputModal({ value, error: undefined })}
@@ -330,143 +244,62 @@ export function AppModalLayer({
               {uiState.modal.error ? (
                 <text style={{ color: theme.warn }}>{uiState.modal.error}</text>
               ) : null}
-              <box style={{ flexDirection: "row", gap: 1 }}>
-                <box
-                  style={{
-                    backgroundColor: theme.panel,
-                    border: true,
-                    borderStyle: "single",
-                    borderColor: theme.outline,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    submitChecklistInputModal();
-                  }}
-                >
-                  <text style={{ color: theme.text, fontWeight: "bold" }}>SAVE [ENTER]</text>
-                </box>
-                <box
-                  style={{
-                    backgroundColor: theme.panel,
-                    border: true,
-                    borderStyle: "single",
-                    borderColor: theme.outline,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    applyEscUnwind();
-                  }}
-                >
-                  <text style={{ color: theme.text, fontWeight: "bold" }}>CANCEL [ESC]</text>
-                </box>
-              </box>
-            </box>
+              <ModalActionRow>
+                <ModalActionButton
+                  theme={theme}
+                  label="SAVE [ENTER]"
+                  onPress={submitChecklistInputModal}
+                />
+                <ModalActionButton theme={theme} label="CANCEL [ESC]" onPress={applyEscUnwind} />
+              </ModalActionRow>
+            </ModalContainer>
           ) : uiState.modal.type === "checklist_delete" ? (
-            <box
-              style={{
-                padding: 2,
-                backgroundColor: modalTheme.warn,
-                color: modalTheme.bg,
-                minWidth: MODAL_STANDARD_WIDTH,
-                flexDirection: "column",
-                gap: 1
-              }}
-            >
-              <text>DELETE CHECKLIST ITEM? [Y/N]</text>
-              <text>{uiState.modal.taskTitle}</text>
-              <text>{uiState.modal.itemText}</text>
-              <box style={{ flexDirection: "row", gap: 1 }}>
-                <box
-                  style={{
-                    backgroundColor: modalTheme.bg,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    handleDeleteChecklistItemFromModal();
-                  }}
-                >
-                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>YES [Y]</text>
-                </box>
-                <box
-                  style={{
-                    backgroundColor: modalTheme.bg,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    applyEscUnwind();
-                  }}
-                >
-                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>NO [N]</text>
-                </box>
-              </box>
-            </box>
+            <ModalContainer theme={modalTheme} tone="warning" minWidth={MODAL_STANDARD_WIDTH}>
+              <text style={{ fontWeight: "bold" }}>DELETE CHECKLIST ITEM? [Y/N/ESC]</text>
+              <text>Task: {uiState.modal.taskTitle}</text>
+              <text>Item: {uiState.modal.itemText}</text>
+              <ModalActionRow>
+                <ModalActionButton
+                  theme={modalTheme}
+                  tone="warning"
+                  label="CONFIRM DELETE [Y]"
+                  onPress={handleDeleteChecklistItemFromModal}
+                />
+                <ModalActionButton
+                  theme={modalTheme}
+                  tone="warning"
+                  label="CANCEL [N/ESC]"
+                  onPress={applyEscUnwind}
+                />
+              </ModalActionRow>
+            </ModalContainer>
           ) : uiState.modal.type === "bulk_delete" ? (
-            <box
-              style={{
-                padding: 2,
-                backgroundColor: modalTheme.warn,
-                color: modalTheme.bg,
-                minWidth: MODAL_STANDARD_WIDTH,
-                flexDirection: "column",
-                gap: 1
-              }}
-            >
-              <text>DELETE {String(uiState.modal.taskIds.length)} TASKS? [Y/N]</text>
+            <ModalContainer theme={modalTheme} tone="warning" minWidth={MODAL_STANDARD_WIDTH}>
+              <text style={{ fontWeight: "bold" }}>
+                DELETE {String(uiState.modal.taskIds.length)} TASKS? [Y/N/ESC]
+              </text>
               <text>
                 {uiState.modal.recurringSeriesCount > 0
-                  ? `${String(uiState.modal.recurringSeriesCount)} recurring series included`
-                  : "No recurring series in selection"}
+                  ? `${String(uiState.modal.recurringSeriesCount)} recurring series included.`
+                  : "No recurring series in selection."}
               </text>
-              <box style={{ flexDirection: "row", gap: 1 }}>
-                <box
-                  style={{
-                    backgroundColor: modalTheme.bg,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    handleConfirmBulkDeleteFromModal();
-                  }}
-                >
-                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>YES [Y]</text>
-                </box>
-                <box
-                  style={{
-                    backgroundColor: modalTheme.bg,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    applyEscUnwind();
-                  }}
-                >
-                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>NO [N]</text>
-                </box>
-              </box>
-            </box>
+              <ModalActionRow>
+                <ModalActionButton
+                  theme={modalTheme}
+                  tone="warning"
+                  label="CONFIRM DELETE [Y]"
+                  onPress={handleConfirmBulkDeleteFromModal}
+                />
+                <ModalActionButton
+                  theme={modalTheme}
+                  tone="warning"
+                  label="CANCEL [N/ESC]"
+                  onPress={applyEscUnwind}
+                />
+              </ModalActionRow>
+            </ModalContainer>
           ) : uiState.modal.type === "unsaved_changes" ? (
-            <box
-              style={{
-                padding: 2,
-                backgroundColor: theme.panel,
-                border: true,
-                borderStyle: "single",
-                borderColor: theme.outline,
-                minWidth: MODAL_STANDARD_WIDTH,
-                flexDirection: "column",
-                gap: 1
-              }}
-            >
+            <ModalContainer theme={theme} minWidth={MODAL_STANDARD_WIDTH}>
               <text style={{ color: theme.text, fontWeight: "bold" }}>UNSAVED CHANGES</text>
               <text style={{ color: theme.muted }}>{describeUnsavedSource(uiState.modal.source)}</text>
               <text style={{ color: theme.muted }}>
@@ -476,76 +309,28 @@ export function AppModalLayer({
                     ? "Continue action: close help."
                     : "Continue action: leave theme editor."}
               </text>
-              <box style={{ flexDirection: "row", gap: 1 }}>
-                <box
-                  style={{
-                    backgroundColor: theme.panel,
-                    border: true,
-                    borderStyle: "single",
-                    borderColor: theme.outline,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    handleUnsavedChangesSaveAndContinue();
-                  }}
-                >
-                  <text style={{ color: theme.text, fontWeight: "bold" }}>
-                    [S] Save+Continue
-                  </text>
-                </box>
-                <box
-                  style={{
-                    backgroundColor: theme.panel,
-                    border: true,
-                    borderStyle: "single",
-                    borderColor: theme.outline,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    handleUnsavedChangesDiscardAndContinue();
-                  }}
-                >
-                  <text style={{ color: theme.text, fontWeight: "bold" }}>
-                    [D] Discard+Continue
-                  </text>
-                </box>
-              </box>
-              <box style={{ flexDirection: "row", gap: 1 }}>
-                <box
-                  style={{
-                    backgroundColor: theme.panel,
-                    border: true,
-                    borderStyle: "single",
-                    borderColor: theme.outline,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    cancelUnsavedChangesContinue();
-                  }}
-                >
-                  <text style={{ color: theme.text, fontWeight: "bold" }}>[C/Esc] Cancel</text>
-                </box>
-              </box>
-            </box>
+              <ModalActionRow>
+                <ModalActionButton
+                  theme={theme}
+                  label="SAVE + CONTINUE [S]"
+                  onPress={handleUnsavedChangesSaveAndContinue}
+                />
+                <ModalActionButton
+                  theme={theme}
+                  label="DISCARD + CONTINUE [D]"
+                  onPress={handleUnsavedChangesDiscardAndContinue}
+                />
+              </ModalActionRow>
+              <ModalActionRow>
+                <ModalActionButton
+                  theme={theme}
+                  label="CANCEL [C/N/ESC]"
+                  onPress={cancelUnsavedChangesContinue}
+                />
+              </ModalActionRow>
+            </ModalContainer>
           ) : uiState.modal.type === "backup_final_checkpoint" ? (
-            <box
-              style={{
-                padding: 2,
-                backgroundColor: theme.panel,
-                border: true,
-                borderStyle: "single",
-                borderColor: theme.outline,
-                minWidth: MODAL_STANDARD_WIDTH,
-                flexDirection: "column",
-                gap: 1
-              }}
-            >
+            <ModalContainer theme={theme} minWidth={MODAL_STANDARD_WIDTH}>
               <text style={{ color: theme.text, fontWeight: "bold" }}>FINAL IMPORT CHECKPOINT</text>
               <text style={{ color: theme.muted }}>
                 {uiState.modal.checkpoint === "data_import"
@@ -555,61 +340,26 @@ export function AppModalLayer({
               <text style={{ color: theme.muted }}>
                 This writes changes and cannot be undone from this screen.
               </text>
-              <box style={{ flexDirection: "row", gap: 1 }}>
-                <box
-                  style={{
-                    backgroundColor: theme.panel,
-                    border: true,
-                    borderStyle: "single",
-                    borderColor: theme.outline,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    handleBackupFinalCheckpointConfirm();
-                  }}
-                >
-                  <text style={{ color: theme.text, fontWeight: "bold" }}>COMMIT [Y]</text>
-                </box>
-                <box
-                  style={{
-                    backgroundColor: theme.panel,
-                    border: true,
-                    borderStyle: "single",
-                    borderColor: theme.outline,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    cancelBackupFinalCheckpoint();
-                  }}
-                >
-                  <text style={{ color: theme.text, fontWeight: "bold" }}>CANCEL [N/ESC]</text>
-                </box>
-              </box>
-            </box>
+              <ModalActionRow>
+                <ModalActionButton
+                  theme={theme}
+                  label="COMMIT [Y]"
+                  onPress={handleBackupFinalCheckpointConfirm}
+                />
+                <ModalActionButton
+                  theme={theme}
+                  label="CANCEL [N/ESC]"
+                  onPress={cancelBackupFinalCheckpoint}
+                />
+              </ModalActionRow>
+            </ModalContainer>
           ) : uiState.modal.type === "task_link_form" ? (
-            <box
-              style={{
-                padding: 2,
-                backgroundColor: theme.panel,
-                border: true,
-                borderStyle: "single",
-                borderColor: theme.outline,
-                width: MODAL_STANDARD_WIDTH,
-                flexDirection: "column",
-                gap: 1
-              }}
-            >
+            <ModalContainer theme={theme} width={MODAL_STANDARD_WIDTH}>
               <text style={{ color: theme.text, fontWeight: "bold" }}>
-                {uiState.modal.mode === "add"
-                  ? "ADD LINK / ATTACHMENT"
-                  : "EDIT LINK / ATTACHMENT"}
+                {uiState.modal.mode === "add" ? "ADD LINK / ATTACHMENT" : "EDIT LINK / ATTACHMENT"}
               </text>
               <text style={{ color: theme.muted }}>
-                [TAB] NEXT  [UP/DOWN] MOVE  [LEFT/RIGHT] TYPE  [ENTER/CTRL+S] SAVE  [ESC] CANCEL
+                Tab: next, Up/Down: move, Left/Right: type, Enter/Ctrl+S: save, Esc: cancel.
               </text>
               <box
                 style={{ flexDirection: "column" }}
@@ -618,7 +368,7 @@ export function AppModalLayer({
                   patchTaskLinkFormModal({ activeField: "label" });
                 }}
               >
-                <text style={{ color: theme.muted }}>LABEL (OPTIONAL)</text>
+                <text style={{ color: theme.muted }}>Label (optional)</text>
                 <input
                   value={uiState.modal.labelValue}
                   onChange={(value) =>
@@ -639,7 +389,7 @@ export function AppModalLayer({
                   patchTaskLinkFormModal({ activeField: "target" });
                 }}
               >
-                <text style={{ color: theme.muted }}>TARGET *</text>
+                <text style={{ color: theme.muted }}>Target *</text>
                 <input
                   value={uiState.modal.targetValue}
                   onChange={(value) =>
@@ -655,252 +405,112 @@ export function AppModalLayer({
               </box>
               <box style={{ flexDirection: "column" }}>
                 <text style={{ color: theme.muted }}>
-                  TYPE ({uiState.modal.activeField === "type" ? "ACTIVE" : "AUTO/URL/PATH"})
+                  Type ({uiState.modal.activeField === "type" ? "active" : "auto/url/path"})
                 </text>
-                <box style={{ flexDirection: "row", gap: 1 }}>
+                <ModalActionRow>
                   {TASK_LINK_FORM_KIND_ORDER.map((kind) => {
                     const selected = uiState.modal.kindValue === kind;
                     return (
-                      <box
+                      <ModalActionButton
                         key={kind}
-                        style={{
-                          paddingLeft: 2,
-                          paddingRight: 2,
-                          backgroundColor: selected ? theme.accentBlue : theme.panel,
-                          border: true,
-                          borderStyle: "single",
-                          borderColor:
-                            uiState.modal.activeField === "type"
-                              ? theme.accentBlue
-                              : theme.outline
-                        }}
-                        onMouseDown={(event) => {
-                          if (event.button !== 0) return;
+                        theme={theme}
+                        label={kind.toUpperCase()}
+                        active={selected}
+                        onPress={() => {
                           patchTaskLinkFormModal({
                             kindValue: kind,
                             activeField: "type",
                             error: undefined
                           });
                         }}
-                      >
-                        <text style={{ color: selected ? theme.bg : theme.text }}>
-                          {kind.toUpperCase()}
-                        </text>
-                      </box>
+                      />
                     );
                   })}
-                </box>
+                </ModalActionRow>
               </box>
               {uiState.modal.error ? (
                 <text style={{ color: theme.warn }}>{uiState.modal.error}</text>
               ) : null}
-              <box style={{ flexDirection: "row", gap: 1 }}>
-                <box
-                  style={{
-                    backgroundColor:
-                      uiState.modal.activeField === "save" ? theme.accentBlue : theme.panel,
-                    border: true,
-                    borderStyle: "single",
-                    borderColor: theme.outline,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    submitTaskLinkFormModal();
-                  }}
-                >
-                  <text
-                    style={{
-                      color: uiState.modal.activeField === "save" ? theme.bg : theme.text,
-                      fontWeight: "bold"
-                    }}
-                  >
-                    SAVE [ENTER/CTRL+S]
-                  </text>
-                </box>
-                <box
-                  style={{
-                    backgroundColor:
-                      uiState.modal.activeField === "cancel" ? theme.accentBlue : theme.panel,
-                    border: true,
-                    borderStyle: "single",
-                    borderColor: theme.outline,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    applyEscUnwind();
-                  }}
-                >
-                  <text
-                    style={{
-                      color: uiState.modal.activeField === "cancel" ? theme.bg : theme.text,
-                      fontWeight: "bold"
-                    }}
-                  >
-                    CANCEL [ESC]
-                  </text>
-                </box>
-              </box>
-            </box>
+              <ModalActionRow>
+                <ModalActionButton
+                  theme={theme}
+                  label="SAVE [CTRL+S/ENTER]"
+                  active={uiState.modal.activeField === "save"}
+                  onPress={submitTaskLinkFormModal}
+                />
+                <ModalActionButton
+                  theme={theme}
+                  label="CANCEL [ESC/ENTER]"
+                  active={uiState.modal.activeField === "cancel"}
+                  onPress={applyEscUnwind}
+                />
+              </ModalActionRow>
+            </ModalContainer>
           ) : uiState.modal.type === "task_link_delete" ? (
-            <box
-              style={{
-                padding: 2,
-                backgroundColor: modalTheme.warn,
-                color: modalTheme.bg,
-                minWidth: MODAL_STANDARD_WIDTH
-              }}
-            >
-              <text>REMOVE LINK? [Y/N]</text>
+            <ModalContainer theme={modalTheme} tone="warning" minWidth={MODAL_STANDARD_WIDTH}>
+              <text style={{ fontWeight: "bold" }}>REMOVE LINK? [Y/N/ESC]</text>
               <text>{formatLinkSnippet(uiState.modal.label, uiState.modal.target)}</text>
-              <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
-                <box
-                  style={{ backgroundColor: modalTheme.bg, paddingLeft: 2, paddingRight: 2 }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    handleDeleteTaskLinkFromModal();
-                  }}
-                >
-                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>YES [Y]</text>
-                </box>
-                <box
-                  style={{ backgroundColor: modalTheme.bg, paddingLeft: 2, paddingRight: 2 }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    applyEscUnwind();
-                  }}
-                >
-                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>NO [N]</text>
-                </box>
-              </box>
-            </box>
+              <ModalActionRow marginTop={1}>
+                <ModalActionButton
+                  theme={modalTheme}
+                  tone="warning"
+                  label="REMOVE [Y]"
+                  onPress={handleDeleteTaskLinkFromModal}
+                />
+                <ModalActionButton
+                  theme={modalTheme}
+                  tone="warning"
+                  label="CANCEL [N/ESC]"
+                  onPress={applyEscUnwind}
+                />
+              </ModalActionRow>
+            </ModalContainer>
           ) : uiState.modal.type === "task_link_open_external" ? (
-            <box
-              style={{
-                padding: 2,
-                backgroundColor: modalTheme.warn,
-                color: modalTheme.bg,
-                minWidth: MODAL_STANDARD_WIDTH
-              }}
-            >
-              <text>{`OPEN EXTERNAL SCHEME \"${uiState.modal.scheme}\"? [Y/N]`}</text>
+            <ModalContainer theme={modalTheme} tone="warning" minWidth={MODAL_STANDARD_WIDTH}>
+              <text style={{ fontWeight: "bold" }}>{`OPEN EXTERNAL SCHEME "${uiState.modal.scheme}"? [Y/N/ESC]`}</text>
               <text>{formatLinkSnippet(undefined, uiState.modal.target)}</text>
-              <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
-                <box
-                  style={{ backgroundColor: modalTheme.bg, paddingLeft: 2, paddingRight: 2 }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    handleOpenExternalTaskLinkFromModal();
-                  }}
-                >
-                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>YES [Y]</text>
-                </box>
-                <box
-                  style={{ backgroundColor: modalTheme.bg, paddingLeft: 2, paddingRight: 2 }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    applyEscUnwind();
-                  }}
-                >
-                  <text style={{ color: modalTheme.warn, fontWeight: "bold" }}>NO [N]</text>
-                </box>
-              </box>
-            </box>
+              <ModalActionRow marginTop={1}>
+                <ModalActionButton
+                  theme={modalTheme}
+                  tone="warning"
+                  label="OPEN LINK [Y]"
+                  onPress={handleOpenExternalTaskLinkFromModal}
+                />
+                <ModalActionButton
+                  theme={modalTheme}
+                  tone="warning"
+                  label="CANCEL [N/ESC]"
+                  onPress={applyEscUnwind}
+                />
+              </ModalActionRow>
+            </ModalContainer>
           ) : uiState.modal.type === "edit_switch_confirm" ? (
-            <box
-              style={{
-                padding: 2,
-                backgroundColor: theme.panel,
-                border: true,
-                borderStyle: "single",
-                borderColor: theme.outline,
-                minWidth: MODAL_STANDARD_WIDTH,
-                flexDirection: "column",
-                gap: 1
-              }}
-            >
+            <ModalContainer theme={theme} minWidth={MODAL_STANDARD_WIDTH}>
               <text style={{ color: theme.text, fontWeight: "bold" }}>UNSAVED CHANGES</text>
               <text style={{ color: theme.muted }}>
                 {`Switch edit target to: ${uiState.modal.toTaskTitle}`}
               </text>
-              <box style={{ flexDirection: "row", gap: 1 }}>
-                <box
-                  style={{
-                    backgroundColor: theme.panel,
-                    border: true,
-                    borderStyle: "single",
-                    borderColor: theme.outline,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    handleModalSaveAndSwitchEditTarget();
-                  }}
-                >
-                  <text style={{ color: theme.text, fontWeight: "bold" }}>
-                    [S] Save+Switch
-                  </text>
-                </box>
-                <box
-                  style={{
-                    backgroundColor: theme.panel,
-                    border: true,
-                    borderStyle: "single",
-                    borderColor: theme.outline,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    handleModalDiscardAndSwitchEditTarget();
-                  }}
-                >
-                  <text style={{ color: theme.text, fontWeight: "bold" }}>
-                    [D] Discard+Switch
-                  </text>
-                </box>
-              </box>
-              <box style={{ flexDirection: "row", gap: 1 }}>
-                <box
-                  style={{
-                    backgroundColor: theme.panel,
-                    border: true,
-                    borderStyle: "single",
-                    borderColor: theme.outline,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    handleModalDiscardAndCloseEditor();
-                  }}
-                >
-                  <text style={{ color: theme.text, fontWeight: "bold" }}>
-                    [C] Discard+Close
-                  </text>
-                </box>
-                <box
-                  style={{
-                    backgroundColor: theme.panel,
-                    border: true,
-                    borderStyle: "single",
-                    borderColor: theme.outline,
-                    paddingLeft: 2,
-                    paddingRight: 2
-                  }}
-                  onMouseDown={(event) => {
-                    if (event.button !== 0) return;
-                    applyEscUnwind();
-                  }}
-                >
-                  <text style={{ color: theme.text, fontWeight: "bold" }}>[Esc] Cancel</text>
-                </box>
-              </box>
-            </box>
+              <ModalActionRow>
+                <ModalActionButton
+                  theme={theme}
+                  label="SAVE + SWITCH [S]"
+                  onPress={handleModalSaveAndSwitchEditTarget}
+                />
+                <ModalActionButton
+                  theme={theme}
+                  label="DISCARD + SWITCH [D]"
+                  onPress={handleModalDiscardAndSwitchEditTarget}
+                />
+              </ModalActionRow>
+              <ModalActionRow>
+                <ModalActionButton
+                  theme={theme}
+                  label="DISCARD + CLOSE [C]"
+                  onPress={handleModalDiscardAndCloseEditor}
+                />
+                <ModalActionButton theme={theme} label="CANCEL [ESC]" onPress={applyEscUnwind} />
+              </ModalActionRow>
+            </ModalContainer>
           ) : uiState.modal.type === "emptyNux" ? (
             <EmptyNuxModal
               step={activeEmptyNuxStep}

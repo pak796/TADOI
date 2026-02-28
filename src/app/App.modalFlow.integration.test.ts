@@ -903,7 +903,7 @@ describe("App modal flow integration", () => {
       await waitForText(harness, "Existing task");
 
       await pressKeyAndRender(mockInput, harness, "d");
-      frame = await waitForText(harness, "DELETE SELECTED TASK? [Y/N]");
+      frame = await waitForText(harness, "DELETE SELECTED TASK? [Y/N/ESC]");
       expect(frame).toContain("KEYS");
       expect(frame).toContain("y: confirm");
       expect(frame).toContain("n: cancel");
@@ -1277,13 +1277,13 @@ describe("App modal flow integration", () => {
 
     const readSelectedTaskPrefix = async (): Promise<string> => {
       await pressKeyAndRender(harness.mockInput, harness, "d");
-      const frame = await waitForText(harness, "DELETE SELECTED TASK? [Y/N]");
+      const frame = await waitForText(harness, "DELETE SELECTED TASK? [Y/N/ESC]");
       const selectedPrefix = taskPrefixes.find((prefix) => frame.includes(`ID: ${prefix}`));
       expect(selectedPrefix).toBeTruthy();
       await pressKeyAndRender(harness.mockInput, harness, "n");
       await waitForFrame(
         harness,
-        (next) => !next.includes("DELETE SELECTED TASK? [Y/N]")
+        (next) => !next.includes("DELETE SELECTED TASK? [Y/N/ESC]")
       );
       return selectedPrefix as string;
     };
@@ -1678,16 +1678,16 @@ describe("App modal flow integration", () => {
 
     try {
       await withDataPath(fixture.dataPath, async () => {
-        let frame = await waitForText(harness, "Welcome to TADOI", 8000);
-        expect(frame).toContain("Import backup (I)");
+        let frame = await waitForText(harness, "WELCOME TO TADOI", 8000);
+        expect(frame).toContain("IMPORT BACKUP [I]");
 
         await pressKeyAndRender(harness.mockInput, harness, "h");
-        frame = await waitForText(harness, "TADOI Shortcuts");
-        expect(frame).toContain("Esc: Back to welcome");
+        frame = await waitForText(harness, "TADOI SHORTCUTS");
+        expect(frame).toContain("Esc: back to welcome.");
 
         await pressEscapeAndRender(harness.mockInput, harness);
-        frame = await waitForText(harness, "Welcome to TADOI");
-        expect(frame).toContain("Shortcuts (H)");
+        frame = await waitForText(harness, "WELCOME TO TADOI");
+        expect(frame).toContain("SHORTCUTS [H]");
 
         await pressKeyAndRender(harness.mockInput, harness, "i");
         await waitForAnyText(harness, ["Loading backups...", "Select backup file"], 8000);

@@ -3,6 +3,7 @@ import { formatLocalTimeHHmm } from "../domain/dates";
 import type { Task } from "../domain/models";
 import { themeForObject } from "../app/theme";
 import { formatDate } from "../state/store";
+import { ModalActionButton, ModalActionRow, ModalContainer } from "./ModalPrimitives";
 
 type ReminderNotificationModalProps = {
   event: TaskReminderEvent;
@@ -43,73 +44,26 @@ export function ReminderNotificationModal({
   const reminderTimeLabel = formatDateTimeLabel(event.effectiveReminderAt);
 
   return (
-    <box
-      style={{
-        padding: 2,
-        backgroundColor: theme.panel,
-        border: true,
-        borderStyle: "single",
-        borderColor: theme.outline,
-        minWidth: 72,
-        flexDirection: "column",
-        gap: 1
-      }}
-    >
+    <ModalContainer theme={theme} minWidth={72}>
       <text style={{ color: theme.text, fontWeight: "bold" }}>
         REMINDER [ENTER/ESC/1/2/3/G]
       </text>
       <text style={{ color: theme.text }}>Task: {event.title}</text>
       {dueLabel ? <text style={{ color: theme.muted }}>Due: {dueLabel}</text> : null}
       <text style={{ color: theme.muted }}>Reminder time: {reminderTimeLabel}</text>
-      <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
-        <box
-          style={{ backgroundColor: theme.bg, paddingLeft: 1, paddingRight: 1 }}
-          onMouseDown={(mouseEvent) => {
-            if (mouseEvent.button !== 0) return;
-            onDismiss();
-          }}
-        >
-          <text style={{ color: theme.text, fontWeight: "bold" }}>[Enter/Esc] DISMISS</text>
-        </box>
-        <box
-          style={{ backgroundColor: theme.bg, paddingLeft: 1, paddingRight: 1 }}
-          onMouseDown={(mouseEvent) => {
-            if (mouseEvent.button !== 0) return;
-            onGoToTask();
-          }}
-        >
-          <text style={{ color: theme.text, fontWeight: "bold" }}>[G] GO TO TASK</text>
-        </box>
-      </box>
-      <box style={{ flexDirection: "row", gap: 1 }}>
-        <box
-          style={{ backgroundColor: theme.bg, paddingLeft: 1, paddingRight: 1 }}
-          onMouseDown={(mouseEvent) => {
-            if (mouseEvent.button !== 0) return;
-            onSnooze10m();
-          }}
-        >
-          <text style={{ color: theme.text, fontWeight: "bold" }}>[1] +10M</text>
-        </box>
-        <box
-          style={{ backgroundColor: theme.bg, paddingLeft: 1, paddingRight: 1 }}
-          onMouseDown={(mouseEvent) => {
-            if (mouseEvent.button !== 0) return;
-            onSnooze1h();
-          }}
-        >
-          <text style={{ color: theme.text, fontWeight: "bold" }}>[2] +1H</text>
-        </box>
-        <box
-          style={{ backgroundColor: theme.bg, paddingLeft: 1, paddingRight: 1 }}
-          onMouseDown={(mouseEvent) => {
-            if (mouseEvent.button !== 0) return;
-            onSnooze1d();
-          }}
-        >
-          <text style={{ color: theme.text, fontWeight: "bold" }}>[3] +1D</text>
-        </box>
-      </box>
-    </box>
+      <ModalActionRow marginTop={1}>
+        <ModalActionButton
+          theme={theme}
+          label="DISMISS [ENTER/ESC]"
+          onPress={onDismiss}
+        />
+        <ModalActionButton theme={theme} label="GO TO TASK [G]" onPress={onGoToTask} />
+      </ModalActionRow>
+      <ModalActionRow>
+        <ModalActionButton theme={theme} label="SNOOZE +10M [1]" onPress={onSnooze10m} />
+        <ModalActionButton theme={theme} label="SNOOZE +1H [2]" onPress={onSnooze1h} />
+        <ModalActionButton theme={theme} label="SNOOZE +1D [3]" onPress={onSnooze1d} />
+      </ModalActionRow>
+    </ModalContainer>
   );
 }
