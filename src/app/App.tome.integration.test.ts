@@ -619,7 +619,7 @@ describe("App TOME integration", () => {
       await waitForMarkdownCount(notesRoot, beforePaths.length - 1);
       await pressKeyAndRender(mockInput, harness, "j");
       await pressEnterAndRender(mockInput, harness);
-      await waitForFrame(harness, (frame) => frame.includes("PATH: "));
+      await waitForFrame(harness, (frame) => frame.includes("MODE:  TOME VIEW"));
     } finally {
       await cleanupSession(session);
     }

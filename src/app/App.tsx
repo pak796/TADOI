@@ -2310,6 +2310,15 @@ export function App({
   const visibleRows = Math.max(1, Math.floor(visibleLines / taskRowHeight));
   const notesPreviewLineLimit = Math.max(8, visibleLines - 10);
   const tomeActionRowGap = 1;
+  const notesPaneAvailableWidth = Math.max(0, terminalWidth - layout.railWidth - 4);
+  const notesListPaneMinWidth = Math.max(
+    28,
+    Math.min(36, Math.floor(notesPaneAvailableWidth * 0.4))
+  );
+  const notesContextPaneMinWidth = Math.max(
+    34,
+    Math.min(52, notesPaneAvailableWidth - notesListPaneMinWidth)
+  );
   const editorPaneHeightLines = Math.max(
     1,
     terminalHeight -
@@ -10085,7 +10094,13 @@ export function App({
             key={`notes-pane-${terminalWidth}x${terminalHeight}`}
             style={{ flexDirection: "row", flexGrow: 1 }}
           >
-            <box style={{ flexDirection: "column", flexGrow: 1 }}>
+            <box
+              style={{
+                flexDirection: "column",
+                flexGrow: 2,
+                minWidth: notesListPaneMinWidth
+              }}
+            >
               <box
                 style={{
                   backgroundColor: taskListTheme.panel,
@@ -10094,7 +10109,7 @@ export function App({
                 }}
               >
                 <text style={{ color: taskListTheme.muted }}>
-                  TOME: Terminal Oriented Markdown Environment
+                  TOMEs
                 </text>
               </box>
               <box
@@ -10361,7 +10376,13 @@ export function App({
                 </box>
               ) : null}
             </box>
-            <box style={{ flexDirection: "column", width: layout.rightWidth }}>
+            <box
+              style={{
+                flexDirection: "column",
+                flexGrow: 3,
+                minWidth: notesContextPaneMinWidth
+              }}
+            >
               <box
                 style={{
                   backgroundColor: theme.panel,
