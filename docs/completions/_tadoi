@@ -19,6 +19,7 @@ commands=(
   'done:Mark task done by id via TITS command engine'
   'due:Set or clear due date via TITS command engine'
   'recur:Set or clear recurrence by id via TITS command engine'
+  'note:Notes commands (new/open/search/reindex/help)'
   'list:List tasks via selector grammar'
   'help:Show TITS help topics'
   'check:add:Add checklist item by id'
@@ -49,7 +50,7 @@ if (( CURRENT == 2 )); then
 fi
 
 case "${words[2]}" in
-  add|done|due|recur|help)
+  add|done|due|recur|note|help)
     _arguments '*:arg: '
     ;;
   list)

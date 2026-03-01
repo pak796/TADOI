@@ -29,6 +29,7 @@ export type KeyRouterContext = {
   backupScreen: BackupCenterScreen | null;
   selectedTaskHasChecklistItems?: boolean;
   resolvedKeymapAliases?: ResolvedKeymapAliases | null;
+  notesRootSettingsOpen?: boolean;
   helpPage?:
     | "help"
     | "settings"
@@ -43,6 +44,24 @@ export type KeyRouterContext = {
 
 export type KeyRouterAction =
   | { scope: "ui"; type: "UNWIND" }
+  | { scope: "ui"; type: "OPEN_NOTES" }
+  | { scope: "ui"; type: "OPEN_NOTES_SEARCH" }
+  | { scope: "ui"; type: "CLOSE_NOTES_SEARCH" }
+  | { scope: "ui"; type: "OPEN_NOTES_TAG_FILTER" }
+  | { scope: "ui"; type: "CLOSE_NOTES_TAG_FILTER" }
+  | { scope: "ui"; type: "NOTES_MOVE_SELECTION"; delta: 1 | -1 }
+  | { scope: "ui"; type: "NOTES_OPEN_SELECTED" }
+  | { scope: "ui"; type: "NOTES_NEW" }
+  | { scope: "ui"; type: "NOTES_EDIT_SELECTED" }
+  | { scope: "ui"; type: "NOTES_REINDEX" }
+  | { scope: "ui"; type: "NOTES_OPEN_ROOT_SETTINGS" }
+  | { scope: "ui"; type: "NOTES_CLOSE_ROOT_SETTINGS" }
+  | { scope: "ui"; type: "NOTES_CONFIRM_ROOT_SETTINGS" }
+  | { scope: "ui"; type: "NOTES_VIEW_MOVE_LINK_SELECTION"; delta: 1 | -1 }
+  | { scope: "ui"; type: "NOTES_FOLLOW_LINK" }
+  | { scope: "ui"; type: "NOTES_BACK_TO_LIST" }
+  | { scope: "ui"; type: "NOTES_SAVE_EDIT" }
+  | { scope: "ui"; type: "NOTES_CANCEL_EDIT" }
   | {
       scope: "ui";
       type: "OPEN_EMPTY_NUX";
@@ -240,6 +259,15 @@ function isTagPanelOpenKey(
   shift: boolean
 ): boolean {
   return !ctrl && !shift && (name === "p" || sequence === "p");
+}
+
+function isNotesOpenKey(
+  name: string,
+  sequence: string,
+  ctrl: boolean,
+  shift: boolean
+): boolean {
+  return !ctrl && !shift && (name === "n" || sequence === "n");
 }
 
 const BACKUP_INPUT_SUBMIT_SCREENS = new Set<BackupCenterScreen>([
@@ -566,6 +594,9 @@ function listModeActions(
   if (!ctrl && !shift && (name === "u" || sequence === "u")) {
     return [{ scope: "ui", type: "OPEN_BACKUP_CENTER" }];
   }
+  if (isNotesOpenKey(name, sequence, ctrl, shift)) {
+    return [{ scope: "ui", type: "OPEN_NOTES" }];
+  }
   if (isTagPanelOpenKey(name, sequence, ctrl, shift)) {
     return [{ scope: "ui", type: "OPEN_TAG_FILTER_PANEL" }];
   }
@@ -592,6 +623,7 @@ export function handleKey(
     resolveHelpModeActions,
     resolveBackupCenterModeActions,
     resolveDashboardModeActions,
+    resolveNotesModeActions,
     resolveSearchModeActions,
     resolveEditorModeActions,
     resolveListModeActions
@@ -618,9 +650,27 @@ function resolveEscapeActions(
     bulkActive,
     saveViewPromptOpen,
     viewsOverlayOpen,
-    helpPage
+    helpPage,
+    notesRootSettingsOpen = false
   } = context;
   const { mode, focus } = uiState;
+
+  if (notesRootSettingsOpen) {
+    return [{ scope: "ui", type: "NOTES_CLOSE_ROOT_SETTINGS" }];
+  }
+
+  if (mode === Mode.NOTES_EDIT) {
+    return [{ scope: "ui", type: "NOTES_CANCEL_EDIT" }];
+  }
+  if (mode === Mode.NOTES_VIEW) {
+    return [{ scope: "ui", type: "NOTES_BACK_TO_LIST" }];
+  }
+  if (mode === Mode.NOTES_SEARCH) {
+    return [{ scope: "ui", type: "CLOSE_NOTES_SEARCH" }];
+  }
+  if (mode === Mode.NOTES_TAG_FILTER) {
+    return [{ scope: "ui", type: "CLOSE_NOTES_TAG_FILTER" }];
+  }
 
   if (mode === Mode.HELP && (helpPage ?? "help") !== "help") {
     return [{ scope: "ui", type: "HELP_NAV_BACK" }];
@@ -961,6 +1011,11 @@ function resolveDashboardToggleActions(
     mode === Mode.SEARCH ||
     mode === Mode.ADD ||
     mode === Mode.EDIT ||
+    mode === Mode.NOTES_LIST ||
+    mode === Mode.NOTES_VIEW ||
+    mode === Mode.NOTES_SEARCH ||
+    mode === Mode.NOTES_EDIT ||
+    mode === Mode.NOTES_TAG_FILTER ||
     mode === Mode.HELP ||
     mode === Mode.BACKUP_CENTER ||
     saveViewPromptOpen;
@@ -1179,6 +1234,9 @@ function resolveDashboardModeActions(
   if (!ctrl && !shift && (name === "u" || sequence === "u")) {
     return [{ scope: "ui", type: "OPEN_BACKUP_CENTER" }];
   }
+  if (isNotesOpenKey(name, sequence, ctrl, shift)) {
+    return [{ scope: "ui", type: "OPEN_NOTES" }];
+  }
   if (isTagPanelOpenKey(name, sequence, ctrl, shift)) {
     return [{ scope: "ui", type: "OPEN_TAG_FILTER_PANEL" }];
   }
@@ -1198,6 +1256,113 @@ function resolveDashboardModeActions(
   if (name === "return" || name === "enter") {
     return [{ scope: "domain", type: "APPLY_DASHBOARD_ACTIVE_SELECTION" }];
   }
+  return [];
+}
+
+function resolveNotesModeActions(
+  key: KeyInput,
+  context: KeyRouterContext
+): KeyRouterAction[] | null {
+  const { name, sequence, ctrl, shift } = key;
+  const { uiState, notesRootSettingsOpen = false } = context;
+
+  if (
+    uiState.mode !== Mode.NOTES_LIST &&
+    uiState.mode !== Mode.NOTES_VIEW &&
+    uiState.mode !== Mode.NOTES_EDIT &&
+    uiState.mode !== Mode.NOTES_SEARCH &&
+    uiState.mode !== Mode.NOTES_TAG_FILTER
+  ) {
+    return null;
+  }
+
+  if (notesRootSettingsOpen) {
+    if (name === "escape") {
+      return [{ scope: "ui", type: "NOTES_CLOSE_ROOT_SETTINGS" }];
+    }
+    if (name === "return" || name === "enter") {
+      return [{ scope: "ui", type: "NOTES_CONFIRM_ROOT_SETTINGS" }];
+    }
+    return [];
+  }
+
+  if (uiState.mode === Mode.NOTES_SEARCH) {
+    if (name === "escape" || name === "return" || name === "enter") {
+      return [{ scope: "ui", type: "CLOSE_NOTES_SEARCH" }];
+    }
+    return [];
+  }
+
+  if (uiState.mode === Mode.NOTES_TAG_FILTER) {
+    if (name === "escape" || name === "return" || name === "enter") {
+      return [{ scope: "ui", type: "CLOSE_NOTES_TAG_FILTER" }];
+    }
+    return [];
+  }
+
+  if (uiState.mode === Mode.NOTES_VIEW) {
+    if (name === "j" || name === "down") {
+      return [{ scope: "ui", type: "NOTES_VIEW_MOVE_LINK_SELECTION", delta: 1 }];
+    }
+    if (name === "k" || name === "up") {
+      return [{ scope: "ui", type: "NOTES_VIEW_MOVE_LINK_SELECTION", delta: -1 }];
+    }
+    if (name === "return" || name === "enter") {
+      return [{ scope: "ui", type: "NOTES_FOLLOW_LINK" }];
+    }
+    if (!ctrl && !shift && (name === "e" || sequence === "e")) {
+      return [{ scope: "ui", type: "NOTES_EDIT_SELECTED" }];
+    }
+    if (!ctrl && !shift && (name === "r" || sequence === "r")) {
+      return [{ scope: "ui", type: "NOTES_REINDEX" }];
+    }
+    if (name === "tab") {
+      return [];
+    }
+    return [];
+  }
+
+  if (uiState.mode === Mode.NOTES_EDIT) {
+    if (ctrl && name === "s") {
+      return [{ scope: "ui", type: "NOTES_SAVE_EDIT" }];
+    }
+    if (name === "escape") {
+      return [{ scope: "ui", type: "NOTES_CANCEL_EDIT" }];
+    }
+    return [];
+  }
+
+  if (uiState.mode === Mode.NOTES_LIST) {
+    if (name === "j" || name === "down") {
+      return [{ scope: "ui", type: "NOTES_MOVE_SELECTION", delta: 1 }];
+    }
+    if (name === "k" || name === "up") {
+      return [{ scope: "ui", type: "NOTES_MOVE_SELECTION", delta: -1 }];
+    }
+    if (name === "return" || name === "enter") {
+      return [{ scope: "ui", type: "NOTES_OPEN_SELECTED" }];
+    }
+    if (!ctrl && !shift && (name === "a" || sequence === "a")) {
+      return [{ scope: "ui", type: "NOTES_NEW" }];
+    }
+    if (!ctrl && !shift && (name === "e" || sequence === "e")) {
+      return [{ scope: "ui", type: "NOTES_EDIT_SELECTED" }];
+    }
+    if (!ctrl && !shift && (name === "/" || sequence === "/")) {
+      return [{ scope: "ui", type: "OPEN_NOTES_SEARCH" }];
+    }
+    if (!ctrl && !shift && (name === "p" || sequence === "p")) {
+      return [{ scope: "ui", type: "OPEN_NOTES_TAG_FILTER" }];
+    }
+    if (!ctrl && !shift && (name === "r" || sequence === "r")) {
+      return [{ scope: "ui", type: "NOTES_REINDEX" }];
+    }
+    if (!ctrl && !shift && (name === "o" || sequence === "o")) {
+      return [{ scope: "ui", type: "NOTES_OPEN_ROOT_SETTINGS" }];
+    }
+    return [];
+  }
+
   return [];
 }
 

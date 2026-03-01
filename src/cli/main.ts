@@ -3,8 +3,10 @@ import { executeCommand } from "../commands/execute";
 import type {
   BulkCommand,
   Command,
+  CommandOutput,
   CommandResult,
   HelpTopic,
+  NoteCommand,
   ParseCommandResult
 } from "../commands/types";
 import { parseStrictLocalDate, parseStrictTime } from "../commands/validate";
@@ -26,6 +28,7 @@ import {
 } from "../state/lockfile";
 import { CLI_EXIT_CODE } from "./exitCodes";
 import { parseSelectorTokens } from "./selectors";
+import { runNoteCommandCli } from "./noteCommands";
 
 export const TITS_CLI_EXIT_CODE = CLI_EXIT_CODE;
 
@@ -51,6 +54,7 @@ type TitsCommandName =
   | "bulk:project"
   | "bulk:stage"
   | "bulk:delete"
+  | "note"
   | "help";
 
 type SaveDataOptions = {
@@ -71,6 +75,7 @@ type TitsCliDeps = {
   releaseLock: (lockPath: string) => Promise<void>;
   loadData: (filePath: string) => Promise<LoadedData>;
   saveData: (data: LoadedData, filePath: string, options?: SaveDataOptions) => Promise<void>;
+  runNoteCommand: (command: NoteCommand, dataFilePath: string) => Promise<CommandOutput>;
   log: (line: string) => void;
   error: (line: string) => void;
 };
@@ -91,6 +96,7 @@ const DEFAULT_DEPS: TitsCliDeps = {
   saveData: async (data: LoadedData, filePath: string, options?: SaveDataOptions) => {
     await saveStateAtomic(data, filePath, undefined, options);
   },
+  runNoteCommand: runNoteCommandCli,
   log: (line: string) => console.log(line),
   error: (line: string) => console.error(line)
 };
@@ -118,12 +124,27 @@ function isTitsCommandName(value: string): value is TitsCommandName {
     value === "bulk:project" ||
     value === "bulk:stage" ||
     value === "bulk:delete" ||
+    value === "note" ||
     value === "help"
   );
 }
 
 function toSingleLine(value: string): string {
   return value.replace(/\s+/g, " ").trim();
+}
+
+function formatCliOutput(
+  text: string,
+  options: { preserveMultiline?: boolean } = {}
+): string {
+  if (options.preserveMultiline) {
+    return text.trimEnd();
+  }
+  return toSingleLine(text);
+}
+
+function shouldPreserveHelpFormatting(command: Command): boolean {
+  return command.type === "help" && command.topic === "note";
 }
 
 function formatDslToken(token: string): string {
@@ -434,7 +455,11 @@ export async function runTitsCommandCliWithDeps(
       deps.error(toSingleLine(result.output.text));
       return { handled: true, exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION };
     }
-    deps.log(toSingleLine(result.output.text));
+    deps.log(
+      formatCliOutput(result.output.text, {
+        preserveMultiline: shouldPreserveHelpFormatting(wrapperHelpCommand)
+      })
+    );
     return { handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS };
   }
 
@@ -479,7 +504,21 @@ export async function runTitsCommandCliWithDeps(
         deps.error(toSingleLine(result.output.text));
         return { handled: true, exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION };
       }
-      deps.log(toSingleLine(result.output.text));
+      deps.log(
+        formatCliOutput(result.output.text, {
+          preserveMultiline: shouldPreserveHelpFormatting(parsedCommand)
+        })
+      );
+      return { handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS };
+    }
+
+    if (parsedCommand.type === "note" && parsedCommand.operation === "help") {
+      const output = await deps.runNoteCommand(parsedCommand, deps.getDataFilePath());
+      if (output.kind === "error") {
+        deps.error(toSingleLine(output.text));
+        return { handled: true, exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION };
+      }
+      deps.log(formatCliOutput(output.text, { preserveMultiline: true }));
       return { handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS };
     }
   }
@@ -493,6 +532,16 @@ export async function runTitsCommandCliWithDeps(
     if (!lockAcquired) {
       deps.error("Error: TADOI is running (lock present).");
       return { handled: true, exitCode: TITS_CLI_EXIT_CODE.LOCKED };
+    }
+
+    if (parsedCommand?.type === "note") {
+      const output = await deps.runNoteCommand(parsedCommand, dataFilePath);
+      if (output.kind === "error") {
+        deps.error(toSingleLine(output.text));
+        return { handled: true, exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION };
+      }
+      deps.log(formatCliOutput(output.text, { preserveMultiline: true }));
+      return { handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS };
     }
 
     const loaded = await deps.loadData(dataFilePath);

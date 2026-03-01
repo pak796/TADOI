@@ -310,6 +310,7 @@ export function printHelp(showLogo: boolean): void {
   console.log("  done            Mark task done by id via TITS command engine");
   console.log("  due             Set/clear due by id via TITS command engine");
   console.log("  recur           Set/clear recurrence by id via TITS command engine");
+  console.log("  note            Notes commands (new/open/search/reindex/help)");
   console.log("  list            List tasks with selector filters");
   console.log("  check:*         Checklist commands (add/toggle/edit/del/clear)");
   console.log("  bulk:*          Bulk commands (done/tag/due/priority/assignee/project/stage/delete)");

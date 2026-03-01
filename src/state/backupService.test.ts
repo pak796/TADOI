@@ -17,7 +17,10 @@ import {
   writeTadoiLock
 } from "./lockfile";
 import { CURRENT_SCHEMA_VERSION } from "./persistence";
-import { resolveSettingsPaths } from "../settings/settings";
+import {
+  DEFAULT_HINT_DISPLAY_MODE,
+  resolveSettingsPaths
+} from "../settings/settings";
 import { THEMES, type ThemeId, type ThemeTokens } from "../theme/themes";
 
 const FIXED_DATE = new Date(2026, 1, 10, 0, 0, 0);
@@ -542,7 +545,7 @@ describe("backupService import/export", () => {
         themeId: "retro",
         logoMode: "default",
         flashMode: "static",
-        hintDisplayMode: "bottom",
+        hintDisplayMode: DEFAULT_HINT_DISPLAY_MODE,
         showPrefixHintPopup: true,
         notifications: {
           enabled: true,
@@ -562,6 +565,10 @@ describe("backupService import/export", () => {
           deviceId: expect.stringMatching(/^dev_[a-f0-9]{12}$/),
           pathPrefix: expect.stringMatching(/^tadoi\/devices\/dev_[a-f0-9]{12}$/),
           autoPushPolicy: "off"
+        },
+        notes: {
+          enabled: true,
+          rootPath: null
         }
       });
       expect(parsedSettings.githubBackup.pathPrefix).toBe(

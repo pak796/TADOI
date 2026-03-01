@@ -36,12 +36,17 @@ const DEFAULT_GITHUB_BACKUP = getDefaultSettings().githubBackup;
 const DEFAULT_HINT_DISPLAY_MODE = getDefaultSettings().hintDisplayMode ?? "left_rail";
 const DEFAULT_SHOW_PREFIX_HINT_POPUP =
   getDefaultSettings().showPrefixHintPopup ?? true;
+const DEFAULT_NOTES = getDefaultSettings().notes ?? {
+  enabled: true,
+  rootPath: null
+};
 
 function withHintDefaults<T extends Record<string, unknown>>(settings: T) {
   return {
     hintDisplayMode: DEFAULT_HINT_DISPLAY_MODE,
     showPrefixHintPopup: DEFAULT_SHOW_PREFIX_HINT_POPUP,
     githubBackup: DEFAULT_GITHUB_BACKUP,
+    notes: DEFAULT_NOTES,
     ...settings
   };
 }
@@ -187,6 +192,25 @@ describe("loadSettings", () => {
 
     const result = await loadSettings({ homeDir, platform: "linux" });
     expect(result.settings.githubBackup).toEqual(DEFAULT_GITHUB_BACKUP);
+  });
+
+  it("normalizes notes settings with defaults", async () => {
+    const homeDir = await makeTempDir();
+    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    await fs.mkdir(path.dirname(primary), { recursive: true });
+    await fs.writeFile(
+      primary,
+      JSON.stringify({
+        notes: {
+          enabled: "yes",
+          rootPath: 123
+        }
+      }),
+      "utf8"
+    );
+
+    const result = await loadSettings({ homeDir, platform: "linux" });
+    expect(result.settings.notes).toEqual(DEFAULT_NOTES);
   });
 
   it("keeps valid githubBackup config and sanitizes lastPushed", async () => {

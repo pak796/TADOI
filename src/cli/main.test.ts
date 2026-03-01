@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { createDefaultEngagementState } from "../domain/engagement";
 import type { LoadedData } from "../state/persistence";
 import type { TadoiLockPayload } from "../state/lockfile";
+import type { CommandOutput, NoteCommand } from "../commands/types";
 import { executeCommand } from "../commands/execute";
 import { parseCommand } from "../commands/parse";
 import {
@@ -31,6 +32,7 @@ function createDeps(options: {
   const logs: string[] = [];
   const errors: string[] = [];
   const saved: LoadedData[] = [];
+  const noteRuns: NoteCommand[] = [];
   let loadedData = options.loadedData ?? createLoadedData();
   let lockAcquired = false;
 
@@ -70,11 +72,24 @@ function createDeps(options: {
       loadedData = data;
       saved.push(data);
     },
+    runNoteCommand: async (command: NoteCommand): Promise<CommandOutput> => {
+      noteRuns.push(command);
+      if (command.operation === "help") {
+        return {
+          kind: "ok",
+          text: "NOTES COMMANDS\n- note new \"Title\"      Create note"
+        };
+      }
+      return {
+        kind: "ok",
+        text: "note command ok"
+      };
+    },
     log: (line: string) => logs.push(line),
     error: (line: string) => errors.push(line)
   };
 
-  return { deps, logs, errors, saved };
+  return { deps, logs, errors, saved, noteRuns };
 }
 
 describe("resolveTitsCliInput", () => {
@@ -97,6 +112,13 @@ describe("resolveTitsCliInput", () => {
     expect(resolveTitsCliInput(["recur", "id:task-1", "every:week", "on:mon"])).toEqual({
       mode: "subcommand",
       dsl: "recur id:task-1 every:week on:mon"
+    });
+  });
+
+  it("resolves note wrapper command", () => {
+    expect(resolveTitsCliInput(["note", "search", "tag:inbox"])).toEqual({
+      mode: "subcommand",
+      dsl: "note search tag:inbox"
     });
   });
 
@@ -402,9 +424,54 @@ describe("runTitsCommandCliWithDeps", () => {
 
     expect(result).toEqual({ handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS });
     expect(logs).toEqual([
-      "Commands: add, done, due, recur, check, bulk, help. Try: help check"
+      "Commands: add, done, due, recur, check, bulk, note, help. Try: help note"
     ]);
     expect(saved).toHaveLength(0);
+  });
+
+  it("handles note help without lock and preserves multiline output", async () => {
+    const { deps, logs, errors, saved, noteRuns } = createDeps({ locked: true });
+    const result = await runTitsCommandCliWithDeps(["note", "--help"], deps);
+
+    expect(result).toEqual({ handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS });
+    expect(errors).toHaveLength(0);
+    expect(saved).toHaveLength(0);
+    expect(noteRuns).toEqual([]);
+    expect(logs[0]).toContain("NOTES COMMANDS");
+    expect(logs[0]).toContain('note new "Title"');
+  });
+
+  it("routes note commands through shared notes runner", async () => {
+    const { deps, logs, errors, saved, noteRuns } = createDeps();
+    const result = await runTitsCommandCliWithDeps(["note", "reindex"], deps);
+
+    expect(result).toEqual({ handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS });
+    expect(errors).toHaveLength(0);
+    expect(saved).toHaveLength(0);
+    expect(noteRuns).toEqual([
+      {
+        type: "note",
+        operation: "reindex"
+      }
+    ]);
+    expect(logs).toEqual(["note command ok"]);
+  });
+
+  it("preserves multiline output for non-help note commands", async () => {
+    const { deps, logs, errors, saved } = createDeps();
+    deps.runNoteCommand = async () => ({
+      kind: "ok",
+      text: "Opened note (title): Design\nPath: notes/Design.md\nGraph: out=1 back=0 tasks=0 broken=0"
+    });
+
+    const result = await runTitsCommandCliWithDeps(["note", "open", "Design"], deps);
+
+    expect(result).toEqual({ handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS });
+    expect(errors).toHaveLength(0);
+    expect(saved).toHaveLength(0);
+    expect(logs).toEqual([
+      "Opened note (title): Design\nPath: notes/Design.md\nGraph: out=1 back=0 tasks=0 broken=0"
+    ]);
   });
 
   it("treats <command> --help as non-mutating wrapper help", async () => {

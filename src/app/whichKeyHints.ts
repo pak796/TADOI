@@ -12,7 +12,10 @@ export type WhichKeyContext =
   | "search"
   | "editor"
   | "modal"
-  | "tag_filter";
+  | "tag_filter"
+  | "notes"
+  | "notes_view"
+  | "notes_edit";
 
 export type WhichKeyHintItem = {
   key: string;
@@ -101,6 +104,29 @@ const TAG_FILTER_HINTS: HintSpec[] = [
   { key: "Esc", label: "close" }
 ];
 
+const NOTES_HINTS: HintSpec[] = [
+  { key: "Enter", label: "open" },
+  { key: "a", label: "new note" },
+  { key: "e", label: "edit" },
+  { key: "/", label: "search" },
+  { key: "p", label: "tag filter" },
+  { key: "r", label: "reindex" },
+  { key: "o", label: "notes root" },
+  { key: "Esc", label: "back" }
+];
+
+const NOTES_VIEW_HINTS: HintSpec[] = [
+  { key: "j/k", label: "select link" },
+  { key: "Enter", label: "follow link" },
+  { key: "e", label: "edit note" },
+  { key: "Esc", label: "back" }
+];
+
+const NOTES_EDIT_HINTS: HintSpec[] = [
+  { key: "Ctrl+S", label: "save" },
+  { key: "Esc", label: "cancel" }
+];
+
 const HINTS_BY_CONTEXT: Record<WhichKeyContext, HintSpec[]> = {
   list: LIST_HINTS,
   dashboard: DASHBOARD_HINTS,
@@ -109,7 +135,10 @@ const HINTS_BY_CONTEXT: Record<WhichKeyContext, HintSpec[]> = {
   search: SEARCH_HINTS,
   editor: EDITOR_HINTS,
   modal: MODAL_HINTS,
-  tag_filter: TAG_FILTER_HINTS
+  tag_filter: TAG_FILTER_HINTS,
+  notes: NOTES_HINTS,
+  notes_view: NOTES_VIEW_HINTS,
+  notes_edit: NOTES_EDIT_HINTS
 };
 
 function resolveAliasBackedKey(
@@ -137,6 +166,11 @@ export function resolveWhichKeyContext(params: {
   if (mode === Mode.HELP) return "help";
   if (mode === Mode.SEARCH) return "search";
   if (mode === Mode.ADD || mode === Mode.EDIT) return "editor";
+  if (mode === Mode.NOTES_LIST || mode === Mode.NOTES_SEARCH || mode === Mode.NOTES_TAG_FILTER) {
+    return "notes";
+  }
+  if (mode === Mode.NOTES_VIEW) return "notes_view";
+  if (mode === Mode.NOTES_EDIT) return "notes_edit";
   if (mode === Mode.MODAL_CONFIRM) return "modal";
   if (mode === Mode.TAG_FILTER) return "tag_filter";
   return "list";
@@ -187,6 +221,16 @@ export function buildLeftRailHintLines(params: {
       `${resolveAliasBackedKey("help", "help_open_backup_center", "1", resolvedAliases)}: BACKUP`,
       `${resolveAliasBackedKey("help", "help_close", "Esc", resolvedAliases)}: CLOSE`
     ];
+  }
+
+  if (context === "notes" || context === "notes_view" || context === "notes_edit") {
+    if (context === "notes_view") {
+      return ["j/k: LINKS", "Enter: FOLLOW", "e: EDIT", "Esc: BACK", "r: REINDEX"];
+    }
+    if (context === "notes_edit") {
+      return ["Ctrl+S: SAVE", "Esc: CANCEL", "j/k: TYPE NAV", "r: REINDEX", "n: EXIT NOTES"];
+    }
+    return ["j/k: MOVE", "a: NEW NOTE", "e: EDIT", "/: SEARCH", "p: TAG FILTER"];
   }
 
   return [

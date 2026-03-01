@@ -86,6 +86,12 @@ export type TadoiSettings = {
   customThemes?: CustomThemes;
   keymapAliases?: KeymapAliases;
   githubBackup?: GitHubBackupSettings;
+  notes?: NotesSettings;
+};
+
+export type NotesSettings = {
+  enabled: boolean;
+  rootPath: string | null;
 };
 
 export type FlashMode = "slow" | "static";
@@ -306,6 +312,11 @@ const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   bellCooldownMs: 2000
 };
 
+const DEFAULT_NOTES_SETTINGS: NotesSettings = {
+  enabled: true,
+  rootPath: null
+};
+
 export const DEFAULT_GITHUB_BACKUP_BRANCH = "main";
 export const DEFAULT_GITHUB_AUTO_PUSH_POLICY: GitHubAutoPushPolicy = "off";
 
@@ -342,7 +353,8 @@ const DEFAULT_SETTINGS: TadoiSettings = {
       global: { ...THEMES.default }
     }
   },
-  githubBackup: getDefaultGitHubBackupSettings()
+  githubBackup: getDefaultGitHubBackupSettings(),
+  notes: DEFAULT_NOTES_SETTINGS
 };
 
 const DEFAULT_DEBOUNCE_MS = 150;
@@ -687,6 +699,21 @@ function normalizeGitHubBackup(input: unknown): GitHubBackupSettings {
   return normalized;
 }
 
+function normalizeNotesSettings(input: unknown): NotesSettings {
+  if (!isRecord(input)) {
+    return { ...DEFAULT_NOTES_SETTINGS };
+  }
+  const rootPathValue = input.rootPath;
+  const rootPath =
+    typeof rootPathValue === "string" && rootPathValue.trim().length > 0
+      ? rootPathValue.trim()
+      : null;
+  return {
+    enabled: input.enabled !== false,
+    rootPath
+  };
+}
+
 function normalizeSettings(input: unknown): TadoiSettings {
   if (!isRecord(input)) {
     return getDefaultSettings();
@@ -703,6 +730,7 @@ function normalizeSettings(input: unknown): TadoiSettings {
   const maybeNotifications = input.notifications;
   const maybeSecurity = input.security;
   const maybeGithubBackup = input.githubBackup;
+  const maybeNotes = input.notes;
   const keymapAliases = normalizeKeymapAliases(input.keymapAliases);
   const themeId = isThemeId(maybeThemeId) ? maybeThemeId : DEFAULT_SETTINGS.themeId;
   const crtFxLite = normalizeCrtFxLite(maybeCrtFxLite);
@@ -720,7 +748,8 @@ function normalizeSettings(input: unknown): TadoiSettings {
     notifications: normalizeNotifications(maybeNotifications),
     security: normalizeSecurity(maybeSecurity),
     customThemes: normalizeCustomThemes(input.customThemes, themeId),
-    githubBackup: normalizeGitHubBackup(maybeGithubBackup)
+    githubBackup: normalizeGitHubBackup(maybeGithubBackup),
+    notes: normalizeNotesSettings(maybeNotes)
   };
   if (keymapAliases) {
     normalized.keymapAliases = keymapAliases;
@@ -893,7 +922,8 @@ export function getDefaultSettings(): TadoiSettings {
     notifications: { ...DEFAULT_NOTIFICATION_SETTINGS },
     security: { ...DEFAULT_SETTINGS.security },
     customThemes,
-    githubBackup: getDefaultGitHubBackupSettings()
+    githubBackup: getDefaultGitHubBackupSettings(),
+    notes: { ...DEFAULT_NOTES_SETTINGS }
   };
 }
 

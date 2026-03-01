@@ -56,6 +56,27 @@ async function createSession(
 ): Promise<AppSession> {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-app-tits-flow-"));
   const settingsPath = path.join(tempDir, "settings.json");
+  await fs.writeFile(
+    settingsPath,
+    JSON.stringify(
+      {
+        notifications: {
+          enabled: false,
+          inAppOverdueBanner: false,
+          terminalBellOnOverdue: false,
+          bannerDurationMs: 6000,
+          bellCooldownMs: 3000
+        },
+        notes: {
+          enabled: false,
+          rootPath: null
+        }
+      },
+      null,
+      2
+    ),
+    "utf8"
+  );
   const harness = await testRender(
     React.createElement(App, {
       initialData,
@@ -235,7 +256,7 @@ describe("App TITS integration", () => {
   it("toggles checklist on a virtual occurrence by materializing an override without EXDATE", async () => {
     const now = Date.now();
     const start = new Date(now);
-    start.setDate(start.getDate() - 1);
+    start.setDate(start.getDate() + 1);
     start.setHours(9, 0, 0, 0);
     const createdIso = new Date(now).toISOString();
     const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-app-checklist-virtual-"));

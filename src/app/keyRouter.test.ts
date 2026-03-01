@@ -1534,4 +1534,54 @@ describe("handleKey", () => {
       }
     }
   });
+
+  it("opens notes from list/dashboard and keeps notes mode key scope isolated", () => {
+    expect(
+      run({
+        name: "n",
+        sequence: "n"
+      })
+    ).toEqual([{ scope: "ui", type: "OPEN_NOTES" }]);
+
+    expect(
+      run(
+        {
+          name: "n",
+          sequence: "n"
+        },
+        {
+          uiState: {
+            ...initialUIState,
+            mode: Mode.DASHBOARD,
+            focus: FocusTarget.DASHBOARD
+          }
+        }
+      )
+    ).toEqual([{ scope: "ui", type: "OPEN_NOTES" }]);
+
+    const notesListState = {
+      ...initialUIState,
+      mode: Mode.NOTES_LIST,
+      focus: FocusTarget.NOTES_LIST
+    };
+    expect(run({ name: "j", sequence: "j" }, { uiState: notesListState })).toEqual([
+      { scope: "ui", type: "NOTES_MOVE_SELECTION", delta: 1 }
+    ]);
+    expect(run({ name: "return" }, { uiState: notesListState })).toEqual([
+      { scope: "ui", type: "NOTES_OPEN_SELECTED" }
+    ]);
+    expect(run({ name: "/", sequence: "/" }, { uiState: notesListState })).toEqual([
+      { scope: "ui", type: "OPEN_NOTES_SEARCH" }
+    ]);
+
+    const notesViewState = {
+      ...initialUIState,
+      mode: Mode.NOTES_VIEW,
+      focus: FocusTarget.NOTES_VIEW
+    };
+    expect(run({ name: "escape" }, { uiState: notesViewState })).toEqual([
+      { scope: "ui", type: "NOTES_BACK_TO_LIST" }
+    ]);
+    expect(run({ name: "b", sequence: "b" }, { uiState: notesViewState })).toEqual([]);
+  });
 });

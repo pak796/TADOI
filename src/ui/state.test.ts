@@ -497,6 +497,27 @@ describe("unwind", () => {
     });
   });
 
+  it("returns from notes modes to previous captured context", () => {
+    const result = unwind({
+      ...initialUIState,
+      mode: Mode.NOTES_LIST,
+      focus: FocusTarget.NOTES_LIST,
+      previousMode: Mode.DASHBOARD,
+      previousFocus: FocusTarget.DASHBOARD
+    });
+
+    expect(result).toEqual({
+      state: {
+        ...initialUIState,
+        mode: Mode.DASHBOARD,
+        focus: FocusTarget.DASHBOARD,
+        previousMode: Mode.DASHBOARD,
+        previousFocus: FocusTarget.DASHBOARD
+      },
+      clearEditorDraft: false
+    });
+  });
+
   it("returns null from list mode", () => {
     expect(unwind(initialUIState)).toBeNull();
   });

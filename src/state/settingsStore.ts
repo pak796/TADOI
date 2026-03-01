@@ -14,6 +14,7 @@ import {
   DEFAULT_CRT_FX_LITE_PRESET,
   DEFAULT_RETRO_FX_MODE,
   type GitHubBackupSettings,
+  type NotesSettings,
   FlashMode,
   LogoMode,
   SecuritySettings,
@@ -37,6 +38,7 @@ export type SettingsState = {
   customThemes?: CustomThemes;
   keymapAliases?: KeymapAliases;
   githubBackup?: GitHubBackupSettings;
+  notes: NotesSettings;
 };
 
 export type SettingsAction =
@@ -63,6 +65,7 @@ export type SettingsAction =
   | { type: "setCustomThemes"; customThemes?: CustomThemes }
   | { type: "setKeymapAliases"; keymapAliases?: KeymapAliases }
   | { type: "setGitHubBackup"; githubBackup?: GitHubBackupSettings }
+  | { type: "setNotes"; notes: NotesSettings }
   | { type: "toggleNotificationsEnabled" }
   | { type: "toggleInAppOverdueBanner" }
   | { type: "toggleTerminalBellOnOverdue" };
@@ -89,7 +92,8 @@ export const initialSettingsState: SettingsState = {
   },
   customThemes: getDefaultSettings().customThemes,
   keymapAliases: getDefaultSettings().keymapAliases,
-  githubBackup: getDefaultSettings().githubBackup
+  githubBackup: getDefaultSettings().githubBackup,
+  notes: getDefaultSettings().notes ?? { enabled: true, rootPath: null }
 };
 
 export function settingsReducer(
@@ -171,6 +175,8 @@ export function settingsReducer(
       return { ...state, keymapAliases: action.keymapAliases };
     case "setGitHubBackup":
       return { ...state, githubBackup: action.githubBackup };
+    case "setNotes":
+      return { ...state, notes: action.notes };
     case "toggleNotificationsEnabled":
       return {
         ...state,

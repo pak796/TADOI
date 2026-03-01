@@ -144,9 +144,62 @@ describe("parseCommand", () => {
       ok: true,
       command: { type: "help", topic: "bulk" }
     });
+    expect(parseCommand("help note")).toEqual({
+      ok: true,
+      command: { type: "help", topic: "note" }
+    });
     expect(parseCommand("wat")).toEqual({
       ok: false,
       error: 'Error: unknown command "wat"'
+    });
+  });
+
+  it("parses note command families", () => {
+    expect(parseCommand('note new "Design notes"')).toEqual({
+      ok: true,
+      command: {
+        type: "note",
+        operation: "new",
+        title: "Design notes"
+      }
+    });
+    expect(parseCommand('note open "Design notes"')).toEqual({
+      ok: true,
+      command: {
+        type: "note",
+        operation: "open",
+        query: "Design notes"
+      }
+    });
+    expect(parseCommand("note search tag:inbox")).toEqual({
+      ok: true,
+      command: {
+        type: "note",
+        operation: "search",
+        query: "tag:inbox"
+      }
+    });
+    expect(parseCommand("note reindex")).toEqual({
+      ok: true,
+      command: {
+        type: "note",
+        operation: "reindex"
+      }
+    });
+    expect(parseCommand("note help")).toEqual({
+      ok: true,
+      command: {
+        type: "note",
+        operation: "help"
+      }
+    });
+    expect(parseCommand('note root set "./vault notes"')).toEqual({
+      ok: true,
+      command: {
+        type: "note",
+        operation: "root_set",
+        path: "./vault notes"
+      }
     });
   });
 

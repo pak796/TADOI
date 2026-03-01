@@ -89,6 +89,16 @@ function getModeLabel(mode: Mode): string {
       return "SEARCH";
     case Mode.TAG_FILTER:
       return "TAG FILTER";
+    case Mode.NOTES_LIST:
+      return "NOTES";
+    case Mode.NOTES_VIEW:
+      return "NOTES VIEW";
+    case Mode.NOTES_EDIT:
+      return "NOTES EDIT";
+    case Mode.NOTES_SEARCH:
+      return "NOTES SEARCH";
+    case Mode.NOTES_TAG_FILTER:
+      return "NOTES TAGS";
     case Mode.BACKUP_CENTER:
       return "BACKUP";
     case Mode.HELP:
@@ -112,6 +122,16 @@ function getFocusLabel(focus: FocusTarget): string {
       return "SEARCH";
     case FocusTarget.TAG_FILTER_INPUT:
       return "TAG FILTER";
+    case FocusTarget.NOTES_LIST:
+      return "NOTES";
+    case FocusTarget.NOTES_VIEW:
+      return "NOTE VIEW";
+    case FocusTarget.NOTES_EDIT:
+      return "NOTE EDIT";
+    case FocusTarget.NOTES_SEARCH_INPUT:
+      return "NOTES SEARCH";
+    case FocusTarget.NOTES_TAG_FILTER_INPUT:
+      return "NOTES TAG FILTER";
     case FocusTarget.MODAL:
       return "DELETE";
     case FocusTarget.EDITOR_TITLE:

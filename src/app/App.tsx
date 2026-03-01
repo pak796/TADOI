@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useReducer, useRef, useState } from "react";
+import path from "path";
 import type { KeyEvent } from "@opentui/core";
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/react";
 import {
@@ -120,6 +121,7 @@ import {
   reducer
 } from "../state/store";
 import {
+  createDataBackup,
   getDataFilePath,
   CURRENT_SCHEMA_VERSION,
   loadStateStrict,
@@ -218,6 +220,7 @@ import {
   type GitHubBackupSettings,
   type HintDisplayMode,
   type LogoMode,
+  type NotesSettings,
   type SecuritySettings,
   type NotificationSettings,
   type ThemeObjectId,
@@ -225,6 +228,18 @@ import {
 } from "../settings/settings";
 import { settingsReducer } from "../state/settingsStore";
 import { isEditorMode } from "../ui/modeFocus";
+import {
+  buildTaskSeededNoteContent,
+  createNotesService,
+  deriveDefaultNoteTitleFromTaskTitle,
+  isPathWithin
+} from "../notes/service";
+import { executeNoteCommand, parseNoteSearchQuery } from "../notes/commands";
+import { renderMarkdownToTerminalLines } from "../notes/markdown";
+import { noteTagMatchesFilter } from "../notes/tags";
+import { resolveNotesRootPath } from "../notes/storage";
+import type { NoteMention } from "../notes/mentions";
+import type { NotePath, NoteRef, NoteWarning } from "../notes/types";
 import {
   clearEmptyNux,
   dismissEmptyNux,
@@ -349,6 +364,7 @@ const ROTATING_THEME_INTERVAL_MS = 15000;
 const G_PREFIX_RELEASE_TIMEOUT_MS = 1500;
 const CORRUPTION_STARTUP_BANNER_AUTO_DISMISS_MS = 60_000;
 const NAV_BANNER_TIMEOUT_MS = 1800;
+const NOTES_REFRESH_INTERVAL_MS = 2500;
 const VIEW_NAME_MAX_LENGTH = 40;
 const DASHBOARD_TOP_TAG_MIN = 5;
 const DASHBOARD_TOP_TAG_MAX = 8;
@@ -376,6 +392,8 @@ const DEFAULT_LOGO_MODE: LogoMode = getDefaultSettings().logoMode;
 const DEFAULT_CUSTOM_THEMES: CustomThemes | undefined = getDefaultSettings().customThemes;
 const DEFAULT_KEYMAP_ALIASES = getDefaultSettings().keymapAliases;
 const DEFAULT_GITHUB_BACKUP = getDefaultSettings().githubBackup;
+const DEFAULT_NOTES_SETTINGS: NotesSettings =
+  getDefaultSettings().notes ?? { enabled: true, rootPath: null };
 const DEFAULT_HINT_DISPLAY_MODE: HintDisplayMode =
   getDefaultSettings().hintDisplayMode ?? "left_rail";
 const DEFAULT_SHOW_PREFIX_HINT_POPUP =
@@ -1448,6 +1466,7 @@ type AppProps = {
   initialSecuritySettings?: SecuritySettings;
   initialCustomThemes?: CustomThemes;
   initialGithubBackup?: GitHubBackupSettings;
+  initialNotesSettings?: NotesSettings;
   settingsPath?: string;
   showLogo?: boolean;
 };
@@ -1461,6 +1480,13 @@ type SaveConflictBannerState = {
 type BackupBodyScrollRequest = {
   token: number;
   delta: number;
+};
+
+type NotesRuntimeState = {
+  ready: boolean;
+  enabled: boolean;
+  notesRoot: string;
+  error?: string;
 };
 
 function initState(data?: LoadedData): AppState {
@@ -1491,6 +1517,7 @@ export function App({
   initialSecuritySettings = DEFAULT_SECURITY_SETTINGS,
   initialCustomThemes = DEFAULT_CUSTOM_THEMES,
   initialGithubBackup = DEFAULT_GITHUB_BACKUP,
+  initialNotesSettings = DEFAULT_NOTES_SETTINGS,
   settingsPath,
   showLogo = true
 }: AppProps) {
@@ -1510,7 +1537,8 @@ export function App({
     security: initialSecuritySettings,
     customThemes: initialCustomThemes,
     keymapAliases: DEFAULT_KEYMAP_ALIASES,
-    githubBackup: initialGithubBackup
+    githubBackup: initialGithubBackup,
+    notes: initialNotesSettings
   });
   const [uiState, uiDispatch] = useReducer(uiReducer, initialUIState);
   const [backupState, backupDispatch] = useReducer(
@@ -1579,6 +1607,36 @@ export function App({
   const tagFilterInputRef = useRef("");
   const [activeTagFilterBucket, setActiveTagFilterBucket] =
     useState<TagFilterBucket>("all");
+  const notesServiceRef = useRef<ReturnType<typeof createNotesService> | null>(null);
+  const [notesRuntime, setNotesRuntime] = useState<NotesRuntimeState>({
+    ready: false,
+    enabled: initialNotesSettings.enabled,
+    notesRoot: resolveNotesRootPath(getDataFilePath(), initialNotesSettings.rootPath)
+  });
+  const [notesList, setNotesList] = useState<
+    Array<{ path: NotePath; title: string; mtimeMs: number; tags: string[] }>
+  >([]);
+  const [notesSelectedIndex, setNotesSelectedIndex] = useState(0);
+  const [notesSearchQuery, setNotesSearchQuery] = useState("");
+  const [notesTagFilterQuery, setNotesTagFilterQuery] = useState("");
+  const [notesOpenPath, setNotesOpenPath] = useState<NotePath | null>(null);
+  const [notesViewContent, setNotesViewContent] = useState("");
+  const [notesViewLines, setNotesViewLines] = useState<string[]>([]);
+  const [notesOutgoingRefs, setNotesOutgoingRefs] = useState<NoteRef[]>([]);
+  const [notesWarnings, setNotesWarnings] = useState<NoteWarning[]>([]);
+  const [notesBacklinks, setNotesBacklinks] = useState<NotePath[]>([]);
+  const [notesUnlinkedMentions, setNotesUnlinkedMentions] = useState<NoteMention[]>([]);
+  const [notesLinkedTasks, setNotesLinkedTasks] = useState<string[]>([]);
+  const [notesSelectedLinkIndex, setNotesSelectedLinkIndex] = useState(0);
+  const [notesEditValue, setNotesEditValue] = useState("");
+  const [notesEditDirty, setNotesEditDirty] = useState(false);
+  const [notesEditEscGuardArmed, setNotesEditEscGuardArmed] = useState(false);
+  const notesEditTextareaRef = useRef<{ plainText: string; setText?: (value: string) => void } | null>(
+    null
+  );
+  const [notesRootSettingsOpen, setNotesRootSettingsOpen] = useState(false);
+  const [notesRootInput, setNotesRootInput] = useState("");
+  const [notesRootApplying, setNotesRootApplying] = useState(false);
   const [helpExpandedBySection, setHelpExpandedBySection] = useState<boolean[]>(
     createDefaultHelpExpandedState
   );
@@ -1629,6 +1687,7 @@ export function App({
   );
   const gPrefixTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navBannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const navigationBannerRef = useRef<string | null>(navigationBanner);
   const reminderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previousTaskCountRef = useRef(state.tasks.length);
   const pendingCelebrateTaskIdRef = useRef<string | undefined>(undefined);
@@ -1656,6 +1715,7 @@ export function App({
 
   settingsRef.current = settingsState;
   tasksRef.current = state.tasks;
+  navigationBannerRef.current = navigationBanner;
   helpFocusedSectionRef.current = helpFocusedSectionIndex;
 
   if (!notificationManagerRef.current) {
@@ -1680,6 +1740,76 @@ export function App({
     notificationManagerRef.current?.evaluate(tasksRef.current, nowMs);
   };
 
+  useEffect(() => {
+    const notesService = createNotesService({
+      dataFilePath: getDataFilePath(),
+      rootPath: settingsState.notes.rootPath,
+      enabled: settingsState.notes.enabled
+    });
+    notesServiceRef.current = notesService;
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        await notesService.initialize();
+        if (cancelled) return;
+        const status = notesService.getStatus();
+        setNotesRuntime({
+          ready: true,
+          enabled: status.enabled,
+          notesRoot: status.notesRoot
+        });
+        setNotesRootInput(status.notesRoot);
+        setNotesList(notesService.listNotes());
+      } catch (error: unknown) {
+        if (cancelled) return;
+        const detail = normalizeErrorDetail(error);
+        setNotesRuntime({
+          ready: true,
+          enabled: false,
+          notesRoot: resolveNotesRootPath(getDataFilePath(), settingsState.notes.rootPath),
+          error: detail
+        });
+        showShortNavigationBannerIfIdle(`Notes disabled: ${detail}`);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (notesServiceRef.current === notesService) {
+        notesServiceRef.current = null;
+      }
+    };
+  }, [settingsState.notes.enabled, settingsState.notes.rootPath]);
+
+  useEffect(() => {
+    if (!notesRuntime.ready || !notesRuntime.enabled) return;
+    const interval = setInterval(() => {
+      void (async () => {
+        const service = notesServiceRef.current;
+        if (!service) return;
+        try {
+          await service.refreshChanged();
+          setNotesList(service.listNotes());
+          if (notesOpenPath) {
+            const current = await service.getNoteContent(notesOpenPath);
+            if (!current) return;
+            setNotesViewContent(current.content);
+            setNotesViewLines(renderMarkdownToTerminalLines(current.content));
+            setNotesOutgoingRefs(service.getResolvedOutgoingRefs(notesOpenPath));
+            setNotesBacklinks(service.getBacklinks(notesOpenPath));
+            setNotesWarnings(service.getWarnings(notesOpenPath));
+            setNotesUnlinkedMentions(service.getUnlinkedMentions(notesOpenPath));
+            setNotesLinkedTasks(service.getLinkedTasksForNote(notesOpenPath));
+          }
+        } catch {
+          // Best effort periodic refresh; errors surface through manual actions.
+        }
+      })();
+    }, NOTES_REFRESH_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [notesOpenPath, notesRuntime.enabled, notesRuntime.ready]);
+
   // Force a frame request on mode/size transitions so borders are repainted
   // after layout shape changes (list/details <-> dashboard).
   useEffect(() => {
@@ -1695,6 +1825,14 @@ export function App({
   useEffect(() => {
     selectedRowIdRef.current = state.selectedId;
   }, [state.selectedId]);
+
+  useEffect(() => {
+    const textarea = notesEditTextareaRef.current;
+    if (!textarea || typeof textarea.setText !== "function") return;
+    if (textarea.plainText !== notesEditValue) {
+      textarea.setText(notesEditValue);
+    }
+  }, [notesEditValue, uiState.mode]);
 
   const now = Date.now();
   const dayKey = startOfLocalDayMs(now);
@@ -2059,6 +2197,59 @@ export function App({
   const selectedEditorChecklistItem =
     editorChecklistItems.find((item) => item.id === selectedEditorChecklistItemId) ??
     editorChecklistItems[0];
+  const notesSearchTerm = notesSearchQuery.trim().toLowerCase();
+  const notesTagFilterTerm = notesTagFilterQuery.trim();
+  const filteredNotes = React.useMemo(() => {
+    return notesList.filter((note) => {
+      const matchesSearch =
+        notesSearchTerm.length === 0 ||
+        note.title.toLowerCase().includes(notesSearchTerm) ||
+        note.path.toLowerCase().includes(notesSearchTerm);
+      const matchesTag =
+        notesTagFilterTerm.length === 0 ||
+        note.tags.some((tag) => noteTagMatchesFilter(tag, notesTagFilterTerm));
+      return matchesSearch && matchesTag;
+    });
+  }, [notesList, notesSearchTerm, notesTagFilterTerm]);
+  const clampedNotesSelectedIndex =
+    filteredNotes.length === 0
+      ? 0
+      : Math.max(0, Math.min(notesSelectedIndex, filteredNotes.length - 1));
+  const selectedNotesListItem = filteredNotes[clampedNotesSelectedIndex];
+  const activeNoteTitle =
+    (notesOpenPath
+      ? notesList.find((note) => note.path === notesOpenPath)?.title
+      : selectedNotesListItem?.title) ?? "Notes";
+  const selectedNoteTags =
+    notesList.find((note) => note.path === notesOpenPath)?.tags ??
+    selectedNotesListItem?.tags ??
+    [];
+
+  useEffect(() => {
+    if (filteredNotes.length === 0) {
+      if (notesSelectedIndex !== 0) {
+        setNotesSelectedIndex(0);
+      }
+      return;
+    }
+    if (notesSelectedIndex > filteredNotes.length - 1) {
+      setNotesSelectedIndex(filteredNotes.length - 1);
+    }
+  }, [filteredNotes.length, notesSelectedIndex]);
+
+  useEffect(() => {
+    if (!notesOpenPath) return;
+    const index = filteredNotes.findIndex((note) => note.path === notesOpenPath);
+    if (index >= 0 && index !== notesSelectedIndex) {
+      setNotesSelectedIndex(index);
+    }
+  }, [filteredNotes, notesOpenPath, notesSelectedIndex]);
+
+  const selectedTaskLinkedNotes = React.useMemo(() => {
+    const taskId = selectedPersistedTask?.id;
+    if (!taskId) return [] as NotePath[];
+    return notesServiceRef.current?.getLinkedNotesForTask(taskId) ?? [];
+  }, [notesList, notesRuntime.ready, selectedPersistedTask?.id]);
   const retroFxMode = settingsState.retroFxMode;
   const isRetroFxActive = retroFxMode !== "off";
   const bottomBarHeight = 3;
@@ -2100,6 +2291,7 @@ export function App({
     searchHeight;
   const visibleLines = Math.max(1, listContentHeight);
   const visibleRows = Math.max(1, Math.floor(visibleLines / taskRowHeight));
+  const notesPreviewLineLimit = Math.max(8, visibleLines - 10);
   const editorPaneHeightLines = Math.max(
     1,
     terminalHeight -
@@ -2144,11 +2336,21 @@ export function App({
     selectedDayDiff !== null && (selectedDayDiff < 0 || selectedTimeOverdue);
   const isStaticFlashMode = settingsState.flashMode === "static";
   const visibleBaseMode =
-    uiState.mode === Mode.TAG_FILTER ? uiState.previousMode : uiState.mode;
+    uiState.mode === Mode.TAG_FILTER
+      ? uiState.previousMode
+      : uiState.mode === Mode.NOTES_SEARCH || uiState.mode === Mode.NOTES_TAG_FILTER
+        ? Mode.NOTES_LIST
+        : uiState.mode;
+  const isNotesMode =
+    visibleBaseMode === Mode.NOTES_LIST ||
+    visibleBaseMode === Mode.NOTES_VIEW ||
+    visibleBaseMode === Mode.NOTES_EDIT;
   const isDashboardMode = visibleBaseMode === Mode.DASHBOARD;
   const isBackupMode = visibleBaseMode === Mode.BACKUP_CENTER;
   const selectedHeaderBackground = isBackupMode
     ? theme.accentBlue
+    : isNotesMode
+      ? theme.accentBlue
     : selectedOverdue
       ? isStaticFlashMode
         ? theme.warn
@@ -3121,7 +3323,8 @@ export function App({
         security: settingsState.security,
         customThemes: settingsState.customThemes,
         keymapAliases: settingsState.keymapAliases,
-        githubBackup: settingsState.githubBackup
+        githubBackup: settingsState.githubBackup,
+        notes: settingsState.notes
       },
       150,
       settingsPath ? { filePath: settingsPath } : {}
@@ -3138,6 +3341,7 @@ export function App({
     settingsState.githubBackup,
     settingsState.keymapAliases,
     settingsState.logoMode,
+    settingsState.notes,
     settingsState.notifications,
     settingsState.security,
     settingsState.showPrefixHintPopup,
@@ -3777,6 +3981,10 @@ export function App({
     settingsDispatch({
       type: "setGitHubBackup",
       githubBackup: settingsResult.settings.githubBackup
+    });
+    settingsDispatch({
+      type: "setNotes",
+      notes: settingsResult.settings.notes ?? DEFAULT_NOTES_SETTINGS
     });
   }
 
@@ -4596,6 +4804,60 @@ export function App({
       case "UNWIND":
         applyEscUnwind();
         return;
+      case "OPEN_NOTES":
+        openNotesMode();
+        return;
+      case "OPEN_NOTES_SEARCH":
+        openNotesSearchMode();
+        return;
+      case "CLOSE_NOTES_SEARCH":
+        closeNotesSearchMode();
+        return;
+      case "OPEN_NOTES_TAG_FILTER":
+        openNotesTagFilterMode();
+        return;
+      case "CLOSE_NOTES_TAG_FILTER":
+        closeNotesTagFilterMode();
+        return;
+      case "NOTES_MOVE_SELECTION":
+        moveNotesSelection(action.delta);
+        return;
+      case "NOTES_OPEN_SELECTED":
+        openSelectedNoteFromList();
+        return;
+      case "NOTES_NEW":
+        createNewNote();
+        return;
+      case "NOTES_EDIT_SELECTED":
+        openCurrentNoteForEdit();
+        return;
+      case "NOTES_REINDEX":
+        void reindexNotes();
+        return;
+      case "NOTES_OPEN_ROOT_SETTINGS":
+        openNotesRootSettings();
+        return;
+      case "NOTES_CLOSE_ROOT_SETTINGS":
+        closeNotesRootSettings();
+        return;
+      case "NOTES_CONFIRM_ROOT_SETTINGS":
+        void confirmNotesRootSettings();
+        return;
+      case "NOTES_VIEW_MOVE_LINK_SELECTION":
+        moveNotesLinkSelection(action.delta);
+        return;
+      case "NOTES_FOLLOW_LINK":
+        void followSelectedNoteLink();
+        return;
+      case "NOTES_BACK_TO_LIST":
+        backToNotesList();
+        return;
+      case "NOTES_SAVE_EDIT":
+        void saveCurrentNoteEdit();
+        return;
+      case "NOTES_CANCEL_EDIT":
+        cancelCurrentNoteEdit();
+        return;
       case "OPEN_EMPTY_NUX":
         openEmptyNuxModal({
           step: action.step,
@@ -5079,7 +5341,7 @@ export function App({
     setCommandTextValue(commandHistory[nextIndex]);
   }
 
-  function executeCommandBar() {
+  async function executeCommandBar() {
     const raw = commandTextRef.current;
     const trimmed = raw.trim();
     if (!trimmed) {
@@ -5090,6 +5352,84 @@ export function App({
     const parsed = parseCommand(trimmed);
     if (!parsed.ok) {
       setCommandOutput({ kind: "error", text: parsed.error });
+      return;
+    }
+
+    if (parsed.command.type === "note") {
+      const service = resolveNotesService();
+      if (!service) return;
+
+      try {
+        const result = await executeNoteCommand(parsed.command, {
+          service,
+          dataFilePath: getDataFilePath(),
+          notesSettings: settingsState.notes,
+          createBackup: createDataBackup,
+          persistNotesSettings: async (nextNotes) => {
+            settingsDispatch({ type: "setNotes", notes: nextNotes });
+          }
+        });
+
+        setCommandOutput(result.output);
+        if (result.output.kind === "error") {
+          return;
+        }
+
+        setCommandHistory((previous) => [...previous, raw]);
+        setCommandHistoryIndex(null);
+        setCommandTextValue("");
+
+        setNotesList(service.listNotes());
+        if (result.notesRoot) {
+          setNotesRuntime({
+            ready: true,
+            enabled: true,
+            notesRoot: result.notesRoot
+          });
+          setNotesRootInput(result.notesRoot);
+        }
+
+        if (parsed.command.operation === "search") {
+          const parsedQuery = parseNoteSearchQuery(parsed.command.query);
+          setNotesSearchQuery(parsedQuery.textTerms.join(" "));
+          setNotesTagFilterQuery(parsedQuery.tagFilters[0] ?? "");
+          uiDispatch({
+            type: "captureReturnContext",
+            mode: uiState.mode,
+            focus: uiState.focus
+          });
+          uiDispatch({ type: "setMode", mode: Mode.NOTES_LIST });
+          uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_LIST });
+          if ((result.matches ?? []).length > 0) {
+            const firstMatch = result.matches?.[0];
+            if (firstMatch) {
+              const matchIndex = service
+                .listNotes()
+                .findIndex((item) => item.path === firstMatch);
+              if (matchIndex >= 0) {
+                setNotesSelectedIndex(matchIndex);
+              }
+            }
+          }
+          return;
+        }
+
+        if (result.notePath) {
+          await hydrateOpenNote(result.notePath);
+          uiDispatch({
+            type: "captureReturnContext",
+            mode: uiState.mode,
+            focus: uiState.focus
+          });
+          uiDispatch({ type: "setMode", mode: Mode.NOTES_VIEW });
+          uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_VIEW });
+        }
+      } catch (error: unknown) {
+        setCommandOutput({
+          kind: "error",
+          text: `Error: ${normalizeErrorDetail(error)}`
+        });
+      }
       return;
     }
 
@@ -5303,7 +5643,7 @@ export function App({
         return;
       }
       if (keyName === "return" || keyName === "enter") {
-        executeCommandBar();
+        void executeCommandBar();
         return;
       }
       return;
@@ -5390,6 +5730,7 @@ export function App({
         allowEmptyNuxRecoveryImport: showCorruptionRecoveryImportCta,
         backupScreen: uiState.mode === Mode.BACKUP_CENTER ? backupState.screen : null,
         selectedTaskHasChecklistItems: (selectedTask?.checklist?.length ?? 0) > 0,
+        notesRootSettingsOpen,
         resolvedKeymapAliases,
         helpPage: activeHelpPage
       }
@@ -6168,6 +6509,327 @@ export function App({
     }
     uiDispatch({ type: "setMode", mode: Mode.SEARCH });
     uiDispatch({ type: "setFocus", focus: FocusTarget.SEARCH_INPUT });
+  }
+
+  function resolveNotesService(): ReturnType<typeof createNotesService> | null {
+    const service = notesServiceRef.current;
+    if (!service) {
+      showShortNavigationBanner("Notes service unavailable");
+      return null;
+    }
+    return service;
+  }
+
+  function clampNotesSelectionToAvailable() {
+    if (filteredNotes.length === 0) {
+      setNotesSelectedIndex(0);
+      return;
+    }
+    setNotesSelectedIndex((current) =>
+      Math.max(0, Math.min(current, filteredNotes.length - 1))
+    );
+  }
+
+  async function hydrateOpenNote(pathValue: NotePath): Promise<void> {
+    const service = resolveNotesService();
+    if (!service) return;
+    const document = await service.getNoteContent(pathValue);
+    if (!document) {
+      showShortNavigationBanner(`Note not found: ${pathValue}`);
+      return;
+    }
+    setNotesOpenPath(pathValue);
+    setNotesViewContent(document.content);
+    setNotesViewLines(renderMarkdownToTerminalLines(document.content));
+    setNotesOutgoingRefs(service.getResolvedOutgoingRefs(pathValue));
+    setNotesBacklinks(service.getBacklinks(pathValue));
+    setNotesWarnings(service.getWarnings(pathValue));
+    setNotesUnlinkedMentions(service.getUnlinkedMentions(pathValue));
+    setNotesLinkedTasks(service.getLinkedTasksForNote(pathValue));
+    setNotesSelectedLinkIndex(0);
+  }
+
+  function openNotesMode() {
+    if (!settingsState.notes.enabled || !notesRuntime.enabled) {
+      showShortNavigationBanner(notesRuntime.error ?? "Notes are disabled in settings.");
+      return;
+    }
+    clearPendingGPrefix();
+    closeViewsOverlay();
+    uiDispatch({
+      type: "captureReturnContext",
+      mode: uiState.mode,
+      focus: uiState.focus
+    });
+    uiDispatch({ type: "setMode", mode: Mode.NOTES_LIST });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_LIST });
+    clampNotesSelectionToAvailable();
+  }
+
+  function openNotesSearchMode() {
+    uiDispatch({
+      type: "captureReturnContext",
+      mode: Mode.NOTES_LIST,
+      focus: FocusTarget.NOTES_LIST
+    });
+    uiDispatch({ type: "setMode", mode: Mode.NOTES_SEARCH });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_SEARCH_INPUT });
+  }
+
+  function closeNotesSearchMode() {
+    uiDispatch({ type: "setMode", mode: Mode.NOTES_LIST });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_LIST });
+    clampNotesSelectionToAvailable();
+  }
+
+  function openNotesTagFilterMode() {
+    uiDispatch({
+      type: "captureReturnContext",
+      mode: Mode.NOTES_LIST,
+      focus: FocusTarget.NOTES_LIST
+    });
+    uiDispatch({ type: "setMode", mode: Mode.NOTES_TAG_FILTER });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_TAG_FILTER_INPUT });
+  }
+
+  function closeNotesTagFilterMode() {
+    uiDispatch({ type: "setMode", mode: Mode.NOTES_LIST });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_LIST });
+    clampNotesSelectionToAvailable();
+  }
+
+  function moveNotesSelection(delta: 1 | -1) {
+    if (filteredNotes.length === 0) {
+      setNotesSelectedIndex(0);
+      return;
+    }
+    setNotesSelectedIndex((current) => {
+      const safe = Math.max(0, Math.min(current, filteredNotes.length - 1));
+      return (safe + delta + filteredNotes.length) % filteredNotes.length;
+    });
+  }
+
+  async function openSelectedNoteFromList(): Promise<void> {
+    const selected = selectedNotesListItem;
+    if (!selected) {
+      showShortNavigationBanner("No notes available");
+      return;
+    }
+    await hydrateOpenNote(selected.path);
+    uiDispatch({
+      type: "captureReturnContext",
+      mode: Mode.NOTES_LIST,
+      focus: FocusTarget.NOTES_LIST
+    });
+    uiDispatch({ type: "setMode", mode: Mode.NOTES_VIEW });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_VIEW });
+  }
+
+  async function createNewNote(): Promise<void> {
+    const service = resolveNotesService();
+    if (!service) return;
+    const seedTitle =
+      notesSearchQuery.trim() ||
+      deriveDefaultNoteTitleFromTaskTitle(selectedPersistedTask?.title ?? "New Note");
+    try {
+      const created = await service.createNote(seedTitle, `# ${seedTitle}\\n\\n`);
+      setNotesList(service.listNotes());
+      const index = filteredNotes.findIndex((note) => note.path === created.path);
+      setNotesSelectedIndex(index >= 0 ? index : 0);
+      setNotesOpenPath(created.path);
+      setNotesEditValue(created.content);
+      setNotesEditDirty(false);
+      setNotesEditEscGuardArmed(false);
+      await hydrateOpenNote(created.path);
+      uiDispatch({
+        type: "captureReturnContext",
+        mode: Mode.NOTES_VIEW,
+        focus: FocusTarget.NOTES_VIEW
+      });
+      uiDispatch({ type: "setMode", mode: Mode.NOTES_EDIT });
+      uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_EDIT });
+    } catch (error: unknown) {
+      showShortNavigationBanner(`Failed to create note: ${normalizeErrorDetail(error)}`);
+    }
+  }
+
+  async function openCurrentNoteForEdit(): Promise<void> {
+    let targetPath = notesOpenPath;
+    if (!targetPath) {
+      targetPath = selectedNotesListItem?.path ?? null;
+    }
+    if (!targetPath) {
+      showShortNavigationBanner("No note selected");
+      return;
+    }
+    await hydrateOpenNote(targetPath);
+    const service = resolveNotesService();
+    if (!service) return;
+    const document = await service.getNoteContent(targetPath);
+    if (!document) {
+      showShortNavigationBanner(`Note not found: ${targetPath}`);
+      return;
+    }
+    setNotesEditValue(document.content);
+    setNotesEditDirty(false);
+    setNotesEditEscGuardArmed(false);
+    uiDispatch({
+      type: "captureReturnContext",
+      mode: Mode.NOTES_VIEW,
+      focus: FocusTarget.NOTES_VIEW
+    });
+    uiDispatch({ type: "setMode", mode: Mode.NOTES_EDIT });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_EDIT });
+  }
+
+  async function saveCurrentNoteEdit(): Promise<void> {
+    if (!notesOpenPath) {
+      showShortNavigationBanner("No note selected");
+      return;
+    }
+    const service = resolveNotesService();
+    if (!service) return;
+    try {
+      await service.saveNote(notesOpenPath, notesEditValue);
+      setNotesList(service.listNotes());
+      await hydrateOpenNote(notesOpenPath);
+      setNotesEditDirty(false);
+      setNotesEditEscGuardArmed(false);
+      uiDispatch({ type: "setMode", mode: Mode.NOTES_VIEW });
+      uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_VIEW });
+      showShortNavigationBanner("Note saved");
+    } catch (error: unknown) {
+      showShortNavigationBanner(`Failed to save note: ${normalizeErrorDetail(error)}`);
+    }
+  }
+
+  function cancelCurrentNoteEdit(): void {
+    if (notesEditDirty && !notesEditEscGuardArmed) {
+      setNotesEditEscGuardArmed(true);
+      showShortNavigationBanner("Unsaved note changes. Press Esc again to discard.");
+      return;
+    }
+    setNotesEditEscGuardArmed(false);
+    setNotesEditDirty(false);
+    uiDispatch({ type: "setMode", mode: Mode.NOTES_VIEW });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_VIEW });
+  }
+
+  function backToNotesList(): void {
+    setNotesRootSettingsOpen(false);
+    setNotesEditEscGuardArmed(false);
+    uiDispatch({ type: "setMode", mode: Mode.NOTES_LIST });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_LIST });
+    clampNotesSelectionToAvailable();
+  }
+
+  function moveNotesLinkSelection(delta: 1 | -1): void {
+    if (notesOutgoingRefs.length === 0) {
+      setNotesSelectedLinkIndex(0);
+      return;
+    }
+    setNotesSelectedLinkIndex((current) => {
+      const safe = Math.max(0, Math.min(current, notesOutgoingRefs.length - 1));
+      return (safe + delta + notesOutgoingRefs.length) % notesOutgoingRefs.length;
+    });
+  }
+
+  async function followSelectedNoteLink(): Promise<void> {
+    const selectedRef = notesOutgoingRefs[notesSelectedLinkIndex];
+    if (!selectedRef) {
+      showShortNavigationBanner("No link selected");
+      return;
+    }
+    if (!selectedRef.toResolved) {
+      showShortNavigationBanner(`Unresolved link: ${selectedRef.toRaw}`);
+      return;
+    }
+    await hydrateOpenNote(selectedRef.toResolved);
+    uiDispatch({ type: "setMode", mode: Mode.NOTES_VIEW });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_VIEW });
+  }
+
+  async function openNoteFromTaskLinkedNotes(notePath: NotePath): Promise<void> {
+    const service = resolveNotesService();
+    if (!service) return;
+    await hydrateOpenNote(notePath);
+    uiDispatch({
+      type: "captureReturnContext",
+      mode: uiState.mode,
+      focus: uiState.focus
+    });
+    uiDispatch({ type: "setMode", mode: Mode.NOTES_VIEW });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_VIEW });
+  }
+
+  async function reindexNotes(): Promise<void> {
+    const service = resolveNotesService();
+    if (!service) return;
+    try {
+      await service.reindexAll();
+      setNotesList(service.listNotes());
+      if (notesOpenPath) {
+        await hydrateOpenNote(notesOpenPath);
+      }
+      showShortNavigationBanner("Notes reindex complete");
+    } catch (error: unknown) {
+      showShortNavigationBanner(`Notes reindex failed: ${normalizeErrorDetail(error)}`);
+    }
+  }
+
+  function openNotesRootSettings(): void {
+    setNotesRootInput(notesRuntime.notesRoot);
+    setNotesRootSettingsOpen(true);
+  }
+
+  function closeNotesRootSettings(): void {
+    setNotesRootSettingsOpen(false);
+    setNotesRootApplying(false);
+    setNotesRootInput(notesRuntime.notesRoot);
+  }
+
+  async function confirmNotesRootSettings(): Promise<void> {
+    if (notesRootApplying) return;
+    const service = resolveNotesService();
+    if (!service) return;
+    const rawInput = notesRootInput.trim();
+    const nextRoot =
+      rawInput.length > 0
+        ? path.resolve(rawInput)
+        : resolveNotesRootPath(getDataFilePath(), null);
+    if (!isPathWithin(path.dirname(nextRoot), nextRoot)) {
+      showShortNavigationBanner("Invalid notes root path");
+      return;
+    }
+
+    setNotesRootApplying(true);
+    try {
+      await createDataBackup(getDataFilePath());
+      await service.migrateNotesRootCopyFirst(nextRoot);
+      settingsDispatch({
+        type: "setNotes",
+        notes: {
+          enabled: true,
+          rootPath: nextRoot
+        }
+      });
+      setNotesRootSettingsOpen(false);
+      setNotesRootInput(nextRoot);
+      setNotesList(service.listNotes());
+      setNotesRuntime({
+        ready: true,
+        enabled: true,
+        notesRoot: nextRoot
+      });
+      if (notesOpenPath) {
+        await hydrateOpenNote(notesOpenPath);
+      }
+      showShortNavigationBanner(`Notes root migrated to ${redactPathForDisplay(nextRoot)}`);
+    } catch (error: unknown) {
+      showShortNavigationBanner(`Notes root change failed: ${normalizeErrorDetail(error)}`);
+    } finally {
+      setNotesRootApplying(false);
+    }
   }
 
   function openTagFilterPanel() {
@@ -7269,14 +7931,23 @@ export function App({
   }
 
   function showShortNavigationBanner(message: string) {
+    navigationBannerRef.current = message;
     setNavigationBanner(message);
     if (navBannerTimerRef.current) {
       clearTimeout(navBannerTimerRef.current);
     }
     navBannerTimerRef.current = setTimeout(() => {
+      navigationBannerRef.current = null;
       setNavigationBanner(null);
       navBannerTimerRef.current = null;
     }, NAV_BANNER_TIMEOUT_MS);
+  }
+
+  function showShortNavigationBannerIfIdle(message: string) {
+    if (navigationBannerRef.current) {
+      return;
+    }
+    showShortNavigationBanner(message);
   }
 
   function jumpToAttention(kind: "overdue" | "today", direction: 1 | -1) {
@@ -8829,6 +9500,8 @@ export function App({
                 ? "DASHBOARD MODE"
                 : isBackupMode
                   ? "BACKUP CENTER"
+                : isNotesMode
+                  ? activeNoteTitle.toUpperCase()
                 : selectedTask
                   ? selectedTask.title.toUpperCase()
                   : "NO TASK SELECTED"}
@@ -8845,6 +9518,8 @@ export function App({
                 ? `FILTERED TASKS: ${visibleTaskRows.length}`
                 : isBackupMode
                   ? "SAFE IMPORT / EXPORT FLOW"
+                : isNotesMode
+                  ? `NOTES: ${String(filteredNotes.length)} · ROOT: ${redactPathForDisplay(notesRuntime.notesRoot)}`
                 : bulkActive
                   ? `BULK MARKED: ${String(bulkMarkedTaskIds.length)} · \` bulk ... · Esc clear`
                 : selectedTask
@@ -8907,6 +9582,277 @@ export function App({
                 onProjectClick={handleDashboardProjectClick}
                 onWorkflowStageClick={handleDashboardWorkflowStageClick}
               />
+            </box>
+          </box>
+        ) : isNotesMode ? (
+          <box
+            key={`notes-pane-${terminalWidth}x${terminalHeight}`}
+            style={{ flexDirection: "row", flexGrow: 1 }}
+          >
+            <box style={{ flexDirection: "column", flexGrow: 1 }}>
+              <box
+                style={{
+                  backgroundColor: taskListTheme.panel,
+                  paddingLeft: 3,
+                  paddingTop: 1
+                }}
+              >
+                <text style={{ color: taskListTheme.muted }}>NOTES LIST</text>
+              </box>
+              <box
+                style={{
+                  flexGrow: 1,
+                  padding: 1,
+                  backgroundColor: taskListPanelBackgroundColor,
+                  border: true,
+                  borderStyle: "single",
+                  borderColor: taskListPanelBorderColor
+                }}
+              >
+                {uiState.mode === Mode.NOTES_SEARCH ? (
+                  <box style={{ flexDirection: "column", marginBottom: 1 }}>
+                    <text style={{ color: taskListTheme.muted }}>NOTES SEARCH</text>
+                    <input
+                      value={notesSearchQuery}
+                      onChange={setNotesSearchQuery}
+                      focused={uiState.focus === FocusTarget.NOTES_SEARCH_INPUT}
+                      placeholder="Search notes by title/path"
+                      style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
+                    />
+                  </box>
+                ) : null}
+                {uiState.mode === Mode.NOTES_TAG_FILTER ? (
+                  <box style={{ flexDirection: "column", marginBottom: 1 }}>
+                    <text style={{ color: taskListTheme.muted }}>NOTES TAG FILTER</text>
+                    <input
+                      value={notesTagFilterQuery}
+                      onChange={setNotesTagFilterQuery}
+                      focused={uiState.focus === FocusTarget.NOTES_TAG_FILTER_INPUT}
+                      placeholder="Filter tag (supports nested e.g. inbox)"
+                      style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
+                    />
+                  </box>
+                ) : null}
+                {!notesRuntime.enabled ? (
+                  <text style={{ color: theme.warn }}>
+                    {notesRuntime.error ?? "Notes unavailable for current root path."}
+                  </text>
+                ) : filteredNotes.length === 0 ? (
+                  <text style={{ color: theme.muted }}>No notes found. Press a to create one.</text>
+                ) : (
+                  <box style={{ flexDirection: "column" }}>
+                    {filteredNotes.map((note, index) => {
+                      const selected = index === clampedNotesSelectedIndex;
+                      return (
+                        <box
+                          key={note.path}
+                          style={{
+                            flexDirection: "column",
+                            paddingLeft: 1,
+                            paddingRight: 1,
+                            backgroundColor: selected ? theme.accentBlue : "transparent"
+                          }}
+                          onMouseDown={(event) => {
+                            if (event.button !== 0) return;
+                            setNotesSelectedIndex(index);
+                            if (selected) {
+                              void openSelectedNoteFromList();
+                            }
+                          }}
+                        >
+                          <text style={{ color: selected ? theme.bg : theme.text }}>
+                            {note.title}
+                          </text>
+                          <text style={{ color: selected ? theme.bg : theme.muted }}>
+                            {note.path}
+                          </text>
+                        </box>
+                      );
+                    })}
+                  </box>
+                )}
+              </box>
+              {notesRootSettingsOpen ? (
+                <box
+                  style={{
+                    marginTop: 1,
+                    border: true,
+                    borderStyle: "single",
+                    borderColor: theme.accentBlue,
+                    paddingLeft: 1,
+                    paddingRight: 1,
+                    paddingTop: 1,
+                    paddingBottom: 1,
+                    flexDirection: "column"
+                  }}
+                >
+                  <text style={{ color: theme.muted }}>NOTES ROOT SETTINGS</text>
+                  <input
+                    value={notesRootInput}
+                    onChange={setNotesRootInput}
+                    focused
+                    placeholder="Absolute path to notes root"
+                    onSubmit={() => {
+                      void confirmNotesRootSettings();
+                    }}
+                    style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
+                  />
+                  <text style={{ color: theme.muted }}>
+                    Enter: apply (copy-first) · Esc: cancel
+                  </text>
+                </box>
+              ) : null}
+            </box>
+            <box style={{ flexDirection: "column", width: layout.rightWidth }}>
+              <box
+                style={{
+                  backgroundColor: theme.panel,
+                  paddingLeft: 3,
+                  paddingTop: 1
+                }}
+              >
+                <text style={{ color: theme.muted }}>
+                  {uiState.mode === Mode.NOTES_EDIT ? "EDIT NOTE" : "NOTE CONTEXT"}
+                </text>
+              </box>
+              <box
+                style={{
+                  flexGrow: 1,
+                  padding: 1,
+                  backgroundColor: detailsPanelBackgroundColor,
+                  border: true,
+                  borderStyle: "single",
+                  borderColor: detailsPanelBorderColor
+                }}
+              >
+                {uiState.mode === Mode.NOTES_EDIT ? (
+                  <textarea
+                    ref={notesEditTextareaRef}
+                    initialValue={notesEditValue}
+                    focused={uiState.focus === FocusTarget.NOTES_EDIT}
+                    placeholder="Write markdown note..."
+                    wrapMode="word"
+                    onContentChange={() => {
+                      const nextValue = notesEditTextareaRef.current?.plainText ?? "";
+                      setNotesEditValue(nextValue);
+                      setNotesEditDirty(nextValue !== notesViewContent);
+                    }}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      minHeight: 8,
+                      backgroundColor: inputTheme.bg,
+                      color: inputTheme.text
+                    }}
+                  />
+                ) : notesOpenPath ? (
+                  <box style={{ flexDirection: "column", width: "100%" }}>
+                    <text style={{ color: theme.muted }}>PATH: {notesOpenPath}</text>
+                    <text style={{ color: theme.muted }}>
+                      TAGS: {selectedNoteTags.length > 0 ? selectedNoteTags.join(", ") : "(none)"}
+                    </text>
+                    <box style={{ marginTop: 1 }}>
+                      <text style={{ color: theme.muted }}>PREVIEW</text>
+                    </box>
+                    {notesViewLines.slice(0, notesPreviewLineLimit).map((line, index) => (
+                      <text key={`note-preview-${index}`} style={{ color: theme.text }}>
+                        {line || " "}
+                      </text>
+                    ))}
+                    {notesViewLines.length > notesPreviewLineLimit ? (
+                      <text style={{ color: theme.muted }}>
+                        ... ({String(notesViewLines.length - notesPreviewLineLimit)} more lines)
+                      </text>
+                    ) : null}
+                    <box style={{ marginTop: 1 }}>
+                      <text style={{ color: theme.muted }}>
+                        LINKS ({String(notesOutgoingRefs.length)})
+                      </text>
+                    </box>
+                    {notesOutgoingRefs.length === 0 ? (
+                      <text style={{ color: theme.muted }}>(none)</text>
+                    ) : (
+                      notesOutgoingRefs.map((ref, index) => {
+                        const selected = index === notesSelectedLinkIndex;
+                        const target = ref.display ? `${ref.display} -> ${ref.toRaw}` : ref.toRaw;
+                        const status = ref.toResolved
+                          ? ` => ${ref.toResolved}`
+                          : ref.ambiguous
+                            ? " (ambiguous)"
+                            : ref.broken
+                              ? " (broken)"
+                              : "";
+                        return (
+                          <text
+                            key={`note-link-${index}`}
+                            style={{ color: selected ? theme.accentBlue : theme.text }}
+                          >
+                            {`${selected ? ">" : " "} ${target}${status}`}
+                          </text>
+                        );
+                      })
+                    )}
+                    <box style={{ marginTop: 1 }}>
+                      <text style={{ color: theme.muted }}>
+                        LINKED MENTIONS ({String(notesBacklinks.length)})
+                      </text>
+                    </box>
+                    {notesBacklinks.length === 0 ? (
+                      <text style={{ color: theme.muted }}>(none)</text>
+                    ) : (
+                      notesBacklinks.map((pathValue) => (
+                        <text key={`note-backlink-${pathValue}`} style={{ color: theme.text }}>
+                          {pathValue}
+                        </text>
+                      ))
+                    )}
+                    <box style={{ marginTop: 1 }}>
+                      <text style={{ color: theme.muted }}>
+                        UNLINKED MENTIONS ({String(notesUnlinkedMentions.length)})
+                      </text>
+                    </box>
+                    {notesUnlinkedMentions.length === 0 ? (
+                      <text style={{ color: theme.muted }}>(none)</text>
+                    ) : (
+                      notesUnlinkedMentions.slice(0, 5).map((mention, index) => (
+                        <text key={`note-mention-${index}`} style={{ color: theme.text }}>
+                          {`${mention.from}:${String(mention.line)} ${mention.excerpt}`}
+                        </text>
+                      ))
+                    )}
+                    <box style={{ marginTop: 1 }}>
+                      <text style={{ color: theme.muted }}>
+                        LINKED TASKS ({String(notesLinkedTasks.length)})
+                      </text>
+                    </box>
+                    {notesLinkedTasks.length === 0 ? (
+                      <text style={{ color: theme.muted }}>(none)</text>
+                    ) : (
+                      notesLinkedTasks.map((taskId) => (
+                        <text key={`note-task-${taskId}`} style={{ color: theme.text }}>
+                          {taskId}
+                        </text>
+                      ))
+                    )}
+                    {notesWarnings.length > 0 ? (
+                      <box style={{ marginTop: 1, flexDirection: "column" }}>
+                        <text style={{ color: theme.warn }}>
+                          WARNINGS ({String(notesWarnings.length)})
+                        </text>
+                        {notesWarnings.slice(0, 5).map((warning, index) => (
+                          <text key={`note-warning-${index}`} style={{ color: theme.warn }}>
+                            {warning.message}
+                          </text>
+                        ))}
+                      </box>
+                    ) : null}
+                  </box>
+                ) : (
+                  <text style={{ color: theme.muted }}>
+                    Select a note and press Enter to open it.
+                  </text>
+                )}
+              </box>
             </box>
           </box>
         ) : (
@@ -9038,9 +9984,13 @@ export function App({
                     checklistFocused={uiState.focus === FocusTarget.DETAILS_CHECKLIST}
                     checklistWindowStart={checklistScrollOffset}
                     checklistWindowSize={checklistViewportRows}
+                    linkedNotes={selectedTaskLinkedNotes}
                     onSelectLink={selectDetailsLink}
                     onOpenLink={openDetailsLink}
                     onSelectChecklistItem={setSelectedChecklistItemId}
+                    onOpenLinkedNote={(notePath) => {
+                      void openNoteFromTaskLinkedNotes(notePath);
+                    }}
                   />
                 )}
               </box>

@@ -52,9 +52,11 @@ type DetailsPaneProps = {
   checklistFocused: boolean;
   checklistWindowStart?: number;
   checklistWindowSize?: number;
+  linkedNotes?: string[];
   onSelectLink?: (linkId: string) => void;
   onOpenLink?: (linkId: string) => void;
   onSelectChecklistItem?: (itemId: string) => void;
+  onOpenLinkedNote?: (notePath: string) => void;
 };
 
 export function DetailsPane({
@@ -69,9 +71,11 @@ export function DetailsPane({
   checklistFocused,
   checklistWindowStart = 0,
   checklistWindowSize = 6,
+  linkedNotes = [],
   onSelectLink,
   onOpenLink,
-  onSelectChecklistItem
+  onSelectChecklistItem,
+  onOpenLinkedNote
 }: DetailsPaneProps) {
   if (!task) {
     return <text style={{ color: theme.muted }}>Select a task to view details.</text>;
@@ -232,6 +236,27 @@ export function DetailsPane({
         <text style={{ color: theme.muted }}>NOTES</text>
       </box>
       <text style={{ color: theme.text }}>{task.notes || "(no notes)"}</text>
+      <box style={{ flexDirection: "column", marginTop: 1 }}>
+        <text style={{ color: theme.muted }}>LINKED NOTES ({linkedNotes.length})</text>
+        {linkedNotes.length === 0 ? (
+          <text style={{ color: theme.muted }}>No linked notes (@task:&lt;id&gt; in notes)</text>
+        ) : (
+          <box style={{ flexDirection: "column", marginTop: 1 }}>
+            {linkedNotes.map((notePath) => (
+              <box
+                key={notePath}
+                style={{ paddingLeft: 1, paddingRight: 1 }}
+                onMouseDown={(event) => {
+                  if (event.button !== 0) return;
+                  onOpenLinkedNote?.(notePath);
+                }}
+              >
+                <text style={{ color: theme.accentBlue }}>{notePath}</text>
+              </box>
+            ))}
+          </box>
+        )}
+      </box>
       <box style={{ flexDirection: "column", marginTop: 1 }}>
         <text style={{ color: theme.muted }}>
           Links / Attachments ({links.length})

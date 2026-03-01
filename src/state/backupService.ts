@@ -502,6 +502,34 @@ function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | un
         })()
       : githubDefaults;
 
+  const notesRaw = settings.notes;
+  if (notesRaw !== undefined && !isRecord(notesRaw)) {
+    return { ok: false, error: "settings.notes must be an object when present" };
+  }
+  const notesRecord = notesRaw as Record<string, unknown> | undefined;
+  const notesEnabledRaw = notesRecord?.enabled;
+  if (notesEnabledRaw !== undefined && typeof notesEnabledRaw !== "boolean") {
+    return { ok: false, error: "settings.notes.enabled is invalid" };
+  }
+  const notesRootPathRaw = notesRecord?.rootPath;
+  if (
+    notesRootPathRaw !== undefined &&
+    notesRootPathRaw !== null &&
+    typeof notesRootPathRaw !== "string"
+  ) {
+    return { ok: false, error: "settings.notes.rootPath is invalid" };
+  }
+  const defaultNotes = defaultSettings.notes ?? { enabled: true, rootPath: null };
+  const notesRootPath =
+    typeof notesRootPathRaw === "string"
+      ? (() => {
+          const trimmed = notesRootPathRaw.trim();
+          return trimmed.length > 0 ? trimmed : null;
+        })()
+      : notesRootPathRaw === null
+        ? null
+        : defaultNotes.rootPath;
+
   return {
     ok: true,
     value: {
@@ -532,7 +560,12 @@ function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | un
         customThemesRaw === undefined
           ? undefined
           : (customThemesRaw as TadoiSettings["customThemes"]),
-      githubBackup
+      githubBackup,
+      notes: {
+        enabled:
+          typeof notesEnabledRaw === "boolean" ? notesEnabledRaw : defaultNotes.enabled,
+        rootPath: notesRootPath
+      }
     }
   };
 }

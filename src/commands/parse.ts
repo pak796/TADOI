@@ -590,15 +590,119 @@ function parseHelpCommand(tokens: string[]): ParseCommandResult {
     topic !== "due" &&
     topic !== "recur" &&
     topic !== "check" &&
-    topic !== "bulk"
+    topic !== "bulk" &&
+    topic !== "note"
   ) {
-    return error('Error: help topics are "add", "done", "due", "recur", "check", or "bulk"');
+    return error(
+      'Error: help topics are "add", "done", "due", "recur", "check", "bulk", or "note"'
+    );
   }
 
   return {
     ok: true,
     command: { type: "help", topic }
   };
+}
+
+function parseNoteCommand(tokens: string[]): ParseCommandResult {
+  if (tokens.length === 0) {
+    return error("Error: note requires subcommand new|open|search|reindex|help|root set");
+  }
+
+  const operation = tokens[0]?.toLowerCase();
+  const rest = tokens.slice(1);
+
+  if (operation === "help" || operation === "--help" || operation === "-h") {
+    if (rest.length > 0) {
+      return error("Error: note help takes no extra tokens");
+    }
+    return {
+      ok: true,
+      command: {
+        type: "note",
+        operation: "help"
+      }
+    };
+  }
+
+  if (operation === "new") {
+    const title = rest.join(" ").trim();
+    if (!title) {
+      return error('Error: note new requires a title (example: note new "Title")');
+    }
+    return {
+      ok: true,
+      command: {
+        type: "note",
+        operation: "new",
+        title
+      }
+    };
+  }
+
+  if (operation === "open") {
+    const query = rest.join(" ").trim();
+    if (!query) {
+      return error('Error: note open requires a query (example: note open "Query")');
+    }
+    return {
+      ok: true,
+      command: {
+        type: "note",
+        operation: "open",
+        query
+      }
+    };
+  }
+
+  if (operation === "search") {
+    const query = rest.join(" ").trim();
+    if (!query) {
+      return error('Error: note search requires a query (example: note search "Term")');
+    }
+    return {
+      ok: true,
+      command: {
+        type: "note",
+        operation: "search",
+        query
+      }
+    };
+  }
+
+  if (operation === "reindex") {
+    if (rest.length > 0) {
+      return error("Error: note reindex takes no extra tokens");
+    }
+    return {
+      ok: true,
+      command: {
+        type: "note",
+        operation: "reindex"
+      }
+    };
+  }
+
+  if (operation === "root") {
+    const subOperation = rest[0]?.toLowerCase();
+    if (subOperation !== "set") {
+      return error('Error: note root only supports "set"');
+    }
+    const rootPath = rest.slice(1).join(" ").trim();
+    if (!rootPath) {
+      return error('Error: note root set requires a path (example: note root set "/path/to/notes")');
+    }
+    return {
+      ok: true,
+      command: {
+        type: "note",
+        operation: "root_set",
+        path: rootPath
+      }
+    };
+  }
+
+  return error("Error: note requires subcommand new|open|search|reindex|help|root set");
 }
 
 const WEEKDAYS = new Set(["mon", "tue", "wed", "thu", "fri", "sat", "sun"]);
@@ -788,6 +892,12 @@ export function parseCommand(input: string): ParseCommandResult {
   }
   if (commandName.startsWith("bulk:")) {
     return parseBulkCommand(commandName.slice("bulk:".length), args);
+  }
+  if (commandName === "note") {
+    return parseNoteCommand(args);
+  }
+  if (commandName.startsWith("note:")) {
+    return parseNoteCommand([commandName.slice("note:".length), ...args]);
   }
   return error(`Error: unknown command "${commandToken}"`);
 }

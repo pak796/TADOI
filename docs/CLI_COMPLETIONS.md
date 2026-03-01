@@ -7,7 +7,7 @@ Optional shell completion scripts for `tadoi` are in:
 - `docs/completions/tadoi.fish`
 
 Covered surface:
-- top-level commands (`add`, `done`, `due`, `recur`, `list`, `help`, `check:*`, `bulk:*`, `export`, `import`, `calendar:export`, `calendar:import`)
+- top-level commands (`add`, `done`, `due`, `recur`, `note`, `list`, `help`, `check:*`, `bulk:*`, `export`, `import`, `calendar:export`, `calendar:import`)
 - global runtime flags (`--interactive`, `--json`, `--quiet`, `--data-file`, plus existing help/version flags)
 - command-specific flags for `list`, portability, and calendar commands
 

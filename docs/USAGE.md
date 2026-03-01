@@ -219,13 +219,28 @@ Supported TITS commands:
 - `bulk project <value|clear>`
 - `bulk stage <todo|doing|blocked|done>`
 - `bulk delete` (in-app always opens confirm modal, for marked and explicit `id:` targets)
-- `help` / `help add|done|due|recur|check|bulk`
+- `help` / `help add|done|due|recur|check|bulk|note`
+
+NOTES COMMANDS
+- note new "Title"      Create note
+- note open "Query"     Open note
+- note search "Term"    Search notes (supports tag:<x>)
+- note reindex          Rebuild notes index
+- note help             Show this help
+
+Notes command examples:
+- In-app TITS or CLI wrapper: `tadoi note new "Meeting Notes"`
+- Search with tag + text: `tadoi note search "tag:inbox design"`
+- Open by exact title: `tadoi note open "Meeting Notes"`
+- Open by id disambiguation: `tadoi note open id:note-dup-primary`
+- Open by path disambiguation: `tadoi note open "Conflicts/SameTitle1.md"`
+- Safe vault migration: `tadoi note root set "./notes-next"` (pre-change backup + copy-first migration)
 
 CLI query command:
 - `list [selectors...] [--sort due|updated|created|title] [--limit N]`
 
 CLI TITS notes:
-- Wrapper form: `tadoi add ...`, `tadoi done id:<task-id>`, `tadoi due id:<task-id> ...`, `tadoi recur id:<task-id> ...`, `tadoi check:<op> id:<task-id> ...`, `tadoi bulk:<op> id:<task-id> ...`, `tadoi list ...`
+- Wrapper form: `tadoi add ...`, `tadoi done id:<task-id>`, `tadoi due id:<task-id> ...`, `tadoi recur id:<task-id> ...`, `tadoi check:<op> id:<task-id> ...`, `tadoi bulk:<op> id:<task-id> ...`, `tadoi note ...`, `tadoi list ...`
 - Raw DSL form: `tadoi 'recur id:<task-id> every:week on:mon'`
 - Selector mode for CLI `done` and `due`:
   - `tadoi done +work`

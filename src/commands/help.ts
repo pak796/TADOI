@@ -1,7 +1,7 @@
 import type { HelpTopic } from "./types";
 
 const HELP_GENERAL =
-  "Commands: add, done, due, recur, check, bulk, help. Try: help check";
+  "Commands: add, done, due, recur, check, bulk, note, help. Try: help note";
 const HELP_ADD =
   'add <title> [due:YYYY-MM-DD] [at:HH:MM] [#tag ...] [notes:"..."]';
 const HELP_DONE = "done | done @selected | done id:<task-id>";
@@ -13,6 +13,12 @@ const HELP_CHECK =
   'check add @selected "text" | check toggle @selected <index> | check edit @selected <index> "text" | check del @selected <index> | check clear @selected';
 const HELP_BULK =
   "bulk done | bulk tag add #tag... | bulk tag rm #tag... | bulk due YYYY-MM-DD [at:HH:MM] | bulk due clear | bulk priority <P?>|clear | bulk assignee <value|clear> | bulk project <value|clear> | bulk stage <todo|doing|blocked|done> | bulk delete";
+const HELP_NOTE = `NOTES COMMANDS
+- note new "Title"      Create note
+- note open "Query"     Open note
+- note search "Term"    Search notes (supports tag:<x>)
+- note reindex          Rebuild notes index
+- note help             Show this help`;
 
 export function getHelpLine(topic?: HelpTopic): string {
   if (!topic) return HELP_GENERAL;
@@ -21,5 +27,6 @@ export function getHelpLine(topic?: HelpTopic): string {
   if (topic === "recur") return HELP_RECUR;
   if (topic === "check") return HELP_CHECK;
   if (topic === "bulk") return HELP_BULK;
+  if (topic === "note") return HELP_NOTE;
   return HELP_DUE;
 }

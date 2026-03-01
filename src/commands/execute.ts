@@ -735,5 +735,11 @@ export function executeCommand(command: Command, ctx: ExecContext): CommandResul
   if (command.type === "bulk") {
     return executeBulk(command, ctx);
   }
+  if (command.type === "note") {
+    if (command.operation === "help") {
+      return ok([], getHelpLine("note"));
+    }
+    return error("Error: note commands require NotesService context");
+  }
   return ok([], getHelpLine(command.topic));
 }

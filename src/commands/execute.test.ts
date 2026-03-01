@@ -319,6 +319,43 @@ describe("executeCommand", () => {
     });
   });
 
+  it("executes note help without mutations", () => {
+    const result = executeCommand(
+      {
+        type: "note",
+        operation: "help"
+      },
+      {
+        now: Date.now(),
+        state: createState([]),
+        visibleTasks: []
+      }
+    );
+    expect(result.actions).toEqual([]);
+    expect(result.output.kind).toBe("ok");
+    expect(result.output.text).toContain("NOTES COMMANDS");
+    expect(result.output.text).toContain('note new "Title"');
+  });
+
+  it("returns context error for mutating note commands", () => {
+    const result = executeCommand(
+      {
+        type: "note",
+        operation: "reindex"
+      },
+      {
+        now: Date.now(),
+        state: createState([]),
+        visibleTasks: []
+      }
+    );
+    expect(result.actions).toEqual([]);
+    expect(result.output).toEqual({
+      kind: "error",
+      text: "Error: note commands require NotesService context"
+    });
+  });
+
   it("executes recur set and clear", () => {
     const now = new Date(2026, 1, 21, 8, 0).getTime();
     const dueAt = new Date(2026, 2, 5, 9, 0).getTime();

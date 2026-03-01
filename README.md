@@ -69,7 +69,17 @@ Supported commands:
 - `recur <target> clear` / `recur <target> every:day|week|month [interval:N] [on:...]`
 - `check add|toggle|edit|del|clear ...`
 - `bulk done|tag add|tag rm|due|priority|assignee|project|stage|delete ...`
+- `note new|open|search|reindex|root set|help ...`
 - `help` / `help add|done|due|recur|check|bulk`
+
+Notes command examples (in-app TITS or CLI wrapper `tadoi note ...`):
+- `note new "Weekly Review"`
+- `note search "sprint retro tag:inbox"`
+- `note open "Weekly Review"`
+- `note open id:note-dup-primary`
+- `note open "Conflicts/SameTitle1.md"`
+- `note reindex`
+- `note root set "./notes-vault"` (copy-first migration + pre-change backup)
 
 CLI query command:
 - `list [selectors...] [--sort due|updated|created|title] [--limit N]`
