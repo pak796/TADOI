@@ -890,6 +890,9 @@ describe("App modal flow integration", () => {
     const { mockInput } = harness;
 
     try {
+      await openHelpSettingsPage(harness);
+      await selectNavigationHintsMode(harness, "Bottom only");
+      await pressKeyAndRender(mockInput, harness, "?");
       let frame = await waitForText(harness, "Existing task");
       expect(frame).toContain("KEYS");
       expect(frame).toContain("a: add");
@@ -1077,18 +1080,18 @@ describe("App modal flow integration", () => {
 
     try {
       let frame = await waitForText(harness, "Existing task");
-      expect(frame).toContain("KEYS");
-      expect(frame).not.toContain("HINTS");
+      expect(frame).toContain("HINTS");
+      expect(frame).not.toContain("KEYS");
 
       await openHelpSettingsPage(harness);
-      await selectNavigationHintsMode(harness, "Left rail only");
+      await selectNavigationHintsMode(harness, "Bottom only");
       await pressKeyAndRender(mockInput, harness, "?");
       frame = await waitForFrame(
         harness,
-        (next) => next.includes("HINTS") && !next.includes("KEYS")
+        (next) => next.includes("KEYS") && !next.includes("HINTS")
       );
-      expect(frame).toContain("HINTS");
-      expect(frame).not.toContain("KEYS");
+      expect(frame).toContain("KEYS");
+      expect(frame).not.toContain("HINTS");
 
       await openHelpSettingsPage(harness);
       await selectNavigationHintsMode(harness, "Both");

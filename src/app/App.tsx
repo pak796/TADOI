@@ -377,7 +377,7 @@ const DEFAULT_CUSTOM_THEMES: CustomThemes | undefined = getDefaultSettings().cus
 const DEFAULT_KEYMAP_ALIASES = getDefaultSettings().keymapAliases;
 const DEFAULT_GITHUB_BACKUP = getDefaultSettings().githubBackup;
 const DEFAULT_HINT_DISPLAY_MODE: HintDisplayMode =
-  getDefaultSettings().hintDisplayMode ?? "bottom";
+  getDefaultSettings().hintDisplayMode ?? "left_rail";
 const DEFAULT_SHOW_PREFIX_HINT_POPUP =
   getDefaultSettings().showPrefixHintPopup ?? true;
 const DEFAULT_CRT_FX_LITE = getDefaultSettings().crtFxLite === true;
@@ -2062,6 +2062,17 @@ export function App({
   const retroFxMode = settingsState.retroFxMode;
   const isRetroFxActive = retroFxMode !== "off";
   const bottomBarHeight = 3;
+  const showBottomHintSurface =
+    settingsState.hintDisplayMode === "bottom" ||
+    settingsState.hintDisplayMode === "both";
+  const whichKeyHintBarHeightRows = 3;
+  const whichKeyHintBarPaddingTopRows = 1;
+  const whichKeyHintBarPaddingBottomRows = 1;
+  const bottomHintSurfaceReservedRows = showBottomHintSurface
+    ? whichKeyHintBarHeightRows +
+      whichKeyHintBarPaddingTopRows +
+      whichKeyHintBarPaddingBottomRows
+    : 0;
   const retroFxTickIntervalMs = isRetroFxActive
     ? RETRO_FX_TICK_INTERVAL_BY_MODE[retroFxMode]
     : 0;
@@ -2071,7 +2082,8 @@ export function App({
   const activeBanners = [startupBannerMessage, saveFailureBanner, navigationBanner].filter(
     (value): value is string => Boolean(value)
   );
-  const bannerHeight = activeBanners.length;
+  const reservedNotificationBarRows = 1;
+  const bannerHeight = Math.max(reservedNotificationBarRows, activeBanners.length);
   const listPanelBorder = 2;
   const listPanelPadding = 2;
   const searchHeight = uiState.mode === Mode.SEARCH ? 3 : 0;
@@ -2080,6 +2092,7 @@ export function App({
     terminalHeight -
     topBarHeight -
     bottomBarHeight -
+    bottomHintSurfaceReservedRows -
     bannerHeight -
     listHeaderHeight -
     listPanelBorder -
@@ -2092,6 +2105,7 @@ export function App({
     terminalHeight -
       topBarHeight -
       bottomBarHeight -
+      bottomHintSurfaceReservedRows -
       bannerHeight -
       listHeaderHeight -
       listPanelBorder -
@@ -2107,7 +2121,7 @@ export function App({
   const dashboardPaneWidth = Math.max(20, terminalWidth - layout.railWidth - 4);
   const dashboardPaneHeight = Math.max(
     8,
-    terminalHeight - topBarHeight - bottomBarHeight - bannerHeight - 4
+    terminalHeight - topBarHeight - bottomBarHeight - bottomHintSurfaceReservedRows - bannerHeight - 4
   );
   const startOfToday = dayKey;
   const selectedDayDiff =
@@ -2586,9 +2600,6 @@ export function App({
   const showLeftRailHints =
     settingsState.hintDisplayMode === "left_rail" ||
     settingsState.hintDisplayMode === "both";
-  const showBottomHintSurface =
-    settingsState.hintDisplayMode === "bottom" ||
-    settingsState.hintDisplayMode === "both";
   const suppressWhichKeyHints =
     commandActive || viewsOverlayOpen || saveViewPromptOpen || activeEngagementToast !== null;
   const showWhichKeyHintBar =
@@ -2601,8 +2612,11 @@ export function App({
     whichKeyPrefixPopup !== null &&
     uiState.mode === Mode.LIST &&
     uiState.focus === FocusTarget.TASK_LIST;
-  const whichKeyHintBarBottom = bottomBarHeight + activeBanners.length + 1;
-  const whichKeyPopupBottom = whichKeyHintBarBottom + (showWhichKeyHintBar ? 3 : 1);
+  const whichKeyHintBarBottom =
+    bottomBarHeight + bannerHeight + whichKeyHintBarPaddingBottomRows;
+  const whichKeyPopupBottom = whichKeyHintBarBottom + (
+    showWhichKeyHintBar ? whichKeyHintBarHeightRows : whichKeyHintBarPaddingBottomRows
+  );
   const engagementToastLine = activeEngagementToast
     ? fitLineToWidth(
         activeEngagementToast.message,
@@ -9034,6 +9048,10 @@ export function App({
           </box>
         )}
 
+        {bottomHintSurfaceReservedRows > 0 ? (
+          <box style={{ height: bottomHintSurfaceReservedRows }} />
+        ) : null}
+
         {activeBanners.map((message, index) => {
           const isSaveFailure =
             message.startsWith("Save failed:") ||
@@ -9081,6 +9099,25 @@ export function App({
             </box>
           );
         })}
+        {activeBanners.length === 0
+          ? Array.from({ length: reservedNotificationBarRows }).map((_, index) => (
+              <box
+                key={`notification-placeholder-${String(index)}`}
+                style={{
+                  height: 1,
+                  backgroundColor: theme.bg,
+                  paddingLeft: 1,
+                  paddingRight: 1,
+                  justifyContent: "center",
+                  alignItems: "center"
+                }}
+              >
+                {index === 0 ? (
+                  <text style={{ color: theme.muted }}>No Notifications</text>
+                ) : null}
+              </box>
+            ))
+          : null}
 
         <box
           style={{

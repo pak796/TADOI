@@ -10,10 +10,11 @@ import {
   type LoadedData
 } from "./persistence";
 import {
-  acquireTadoiLockOrThrow,
   createDefaultLockPayload,
   getTadoiLockPath,
+  isTadoiLockOwnedByProcess,
   removeTadoiLock,
+  tryAcquireTadoiLock,
   TadoiLockBusyError
 } from "./lockfile";
 import { migratePersistedStateToCurrent } from "./migrations";
@@ -92,6 +93,7 @@ export type BackupImportSummary = {
     path?: string;
     error?: string;
   };
+  warnings?: string[];
 };
 
 export type BackupFileInfo = {
@@ -159,13 +161,46 @@ function formatTimestamp(now: Date): string {
   return `${yyyy}${mm}${dd}-${hh}${mi}${ss}`;
 }
 
-async function withDataFileLock<T>(dataPath: string, task: () => Promise<T>): Promise<T> {
+function buildStaleLockRecoveredWarning(event: {
+  lockPath: string;
+  archivedPath?: string;
+}): string {
+  const archivedSuffix = event.archivedPath
+    ? ` (archived to ${event.archivedPath})`
+    : "";
+  return `Recovered stale lock from previous run at ${event.lockPath}${archivedSuffix}`;
+}
+
+async function withDataFileLock<T>(
+  dataPath: string,
+  task: () => Promise<T>,
+  options: { warnings?: string[] } = {}
+): Promise<T> {
   const lockPath = getTadoiLockPath(dataPath);
-  await acquireTadoiLockOrThrow(lockPath, createDefaultLockPayload(dataPath));
+  const lockOwnedByCurrentProcess = await isTadoiLockOwnedByProcess(
+    lockPath,
+    process.pid,
+    dataPath
+  );
+  if (lockOwnedByCurrentProcess) {
+    return task();
+  }
+
+  const lockAcquired = await tryAcquireTadoiLock(lockPath, createDefaultLockPayload(dataPath), {
+    onStaleLockRecovered: (event) => {
+      const warning = buildStaleLockRecoveredWarning(event);
+      options.warnings?.push(warning);
+    }
+  });
+  if (!lockAcquired) {
+    throw new TadoiLockBusyError(lockPath);
+  }
   try {
     return await task();
   } finally {
-    await removeTadoiLock(lockPath);
+    if (lockAcquired) {
+      await removeTadoiLock(lockPath);
+    }
   }
 }
 
@@ -682,6 +717,7 @@ export async function importBackup(
       : DEFAULT_MAX_IMPORT_BYTES_JSON;
 
   const incoming = await parseIncomingStateFromFile(inPath, maxImportBytes);
+  const lockWarnings: string[] = [];
   const executeImport = async (): Promise<BackupImportSummary> => {
     let currentState: Awaited<ReturnType<typeof loadStateStrict>>;
     let currentSettings: Awaited<ReturnType<typeof loadSettings>>;
@@ -708,7 +744,8 @@ export async function importBackup(
       settings: {
         includedInImport: Boolean(incoming.settings),
         applied: false
-      }
+      },
+      ...(lockWarnings.length > 0 ? { warnings: [...lockWarnings] } : {})
     };
 
     if (opts.dryRun) {
@@ -781,7 +818,9 @@ export async function importBackup(
     }
   }
   try {
-    return await withDataFileLock(resolvedDataPath, executeImport);
+    return await withDataFileLock(resolvedDataPath, executeImport, {
+      warnings: lockWarnings
+    });
   } catch (error: unknown) {
     if (
       error instanceof TadoiLockBusyError ||

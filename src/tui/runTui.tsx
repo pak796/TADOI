@@ -22,8 +22,10 @@ import {
   acquireTadoiLockOrThrow,
   createDefaultLockPayload,
   getTadoiLockPath,
+  refreshTadoiLockHeartbeat,
   removeTadoiLock,
-  removeTadoiLockSync
+  removeTadoiLockSync,
+  TADOI_LOCK_HEARTBEAT_INTERVAL_MS
 } from "../state/lockfile";
 import { applyArchiveAging } from "../state/store";
 import { APP_NAME, PRODUCT_NAME_TM } from "../brand/brand";
@@ -128,12 +130,21 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
   applyThemeWithSettings(settingsResult.settings.themeId, settingsResult.settings);
   const loadResult = await safeLoadState();
   const lockPath = getTadoiLockPath(loadResult.resolvedPath);
+  const lockPayload = createDefaultLockPayload(loadResult.resolvedPath);
   const redactedLockPath = redactStartupPath(lockPath);
+  const lockRecoveryWarnings: string[] = [];
   let lockAcquired = false;
   let lockCleanedUp = false;
+  let heartbeatTimer: ReturnType<typeof setInterval> | undefined;
+  const clearHeartbeatTimer = () => {
+    if (heartbeatTimer === undefined) return;
+    clearInterval(heartbeatTimer);
+    heartbeatTimer = undefined;
+  };
   const cleanupLock = async (sync: boolean): Promise<void> => {
     if (lockCleanedUp || !lockAcquired) return;
     lockCleanedUp = true;
+    clearHeartbeatTimer();
     process.off("exit", onProcessExit);
     try {
       if (sync) {
@@ -161,11 +172,34 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
   };
 
   try {
-    await acquireTadoiLockOrThrow(
-      lockPath,
-      createDefaultLockPayload(loadResult.resolvedPath)
-    );
+    await acquireTadoiLockOrThrow(lockPath, lockPayload, {
+      onStaleLockRecovered: (event) => {
+        const archivedSuffix = event.archivedPath
+          ? ` (archived to ${redactStartupPath(event.archivedPath)})`
+          : "";
+        lockRecoveryWarnings.push(
+          `Recovered stale lock from previous run at ${redactStartupPath(event.lockPath)}${archivedSuffix}`
+        );
+      }
+    });
     lockAcquired = true;
+    heartbeatTimer = setInterval(() => {
+      void refreshTadoiLockHeartbeat(lockPath, {
+        pid: lockPayload.pid,
+        lockId: lockPayload.lockId,
+        expectedDataFile: loadResult.resolvedPath
+      }).catch((error: unknown) => {
+        if (lockCleanedUp) {
+          return;
+        }
+        console.warn(
+          `[${APP_NAME}] failed to refresh lock heartbeat (${redactedLockPath}): ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+      });
+    }, TADOI_LOCK_HEARTBEAT_INTERVAL_MS);
+    heartbeatTimer.unref?.();
   } catch (error: unknown) {
     if (error instanceof Error) {
       console.warn(`[${APP_NAME}] ${error.message} (${redactedLockPath})`);
@@ -177,6 +211,7 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
 
   const loaded = loadResult.data;
   const startupWarnings = [...settingsResult.warnings];
+  startupWarnings.push(...lockRecoveryWarnings);
   if (loadResult.bannerMessage) {
     startupWarnings.push(loadResult.bannerMessage);
   }
@@ -186,6 +221,9 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
   console.log(`[${APP_NAME}] data path: ${redactStartupPath(loadResult.resolvedPath)}`);
   console.log(`[${APP_NAME}] settings path: ${redactStartupPath(settingsResult.resolvedPath)}`);
   for (const warning of settingsResult.warnings) {
+    console.warn(`[${APP_NAME}] ${warning}`);
+  }
+  for (const warning of lockRecoveryWarnings) {
     console.warn(`[${APP_NAME}] ${warning}`);
   }
   if (loadResult.bannerMessage) {

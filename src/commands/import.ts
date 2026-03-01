@@ -50,6 +50,9 @@ function printImportSummary(summary: BackupImportSummary, pretty: boolean): void
   console.log(
     `[import] saved views added=${summary.savedViews.added} updated=${summary.savedViews.updated} unchanged=${summary.savedViews.unchanged}`
   );
+  for (const warning of summary.warnings ?? []) {
+    console.log(`[import] warning: ${warning}`);
+  }
 }
 
 export async function runImportCommand(parsed: ImportCommandOptions): Promise<number> {

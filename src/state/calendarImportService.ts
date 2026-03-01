@@ -35,10 +35,12 @@ import {
 import { recomputeTagIndex } from "./portability";
 import { validatePersistedState } from "./validation";
 import {
-  acquireTadoiLockOrThrow,
   createDefaultLockPayload,
   getTadoiLockPath,
-  removeTadoiLock
+  isTadoiLockOwnedByProcess,
+  removeTadoiLock,
+  TadoiLockBusyError,
+  tryAcquireTadoiLock
 } from "./lockfile";
 
 const HARD_MATERIALIZATION_CAP = 2000;
@@ -144,6 +146,16 @@ type TaskLookup = {
 
 function toErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function buildStaleLockRecoveredWarning(event: {
+  lockPath: string;
+  archivedPath?: string;
+}): string {
+  const archivedSuffix = event.archivedPath
+    ? ` (archived to ${event.archivedPath})`
+    : "";
+  return `Recovered stale lock from previous run at ${event.lockPath}${archivedSuffix}`;
 }
 
 function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
@@ -559,8 +571,26 @@ export async function importCalendarIcs(
   const lockPath = getTadoiLockPath(resolvedDataPath);
   let lockAcquired = false;
   if (!dryRun) {
-    await acquireTadoiLockOrThrow(lockPath, createDefaultLockPayload(resolvedDataPath));
-    lockAcquired = true;
+    const lockOwnedByCurrentProcess = await isTadoiLockOwnedByProcess(
+      lockPath,
+      process.pid,
+      resolvedDataPath
+    );
+    if (!lockOwnedByCurrentProcess) {
+      lockAcquired = await tryAcquireTadoiLock(
+        lockPath,
+        createDefaultLockPayload(resolvedDataPath),
+        {
+          onStaleLockRecovered: (event) => {
+            const warning = buildStaleLockRecoveredWarning(event);
+            warnings.push(warning);
+          }
+        }
+      );
+      if (!lockAcquired) {
+        throw new TadoiLockBusyError(lockPath);
+      }
+    }
   }
 
   try {

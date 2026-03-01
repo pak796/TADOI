@@ -876,6 +876,16 @@ export function BackupCenterScreen({
               {renderImportStats("Updated", dryRun.tasks.updated, theme)}
               {renderImportStats("Overwritten (removed)", dryRun.tasks.removed, theme)}
               {renderImportStats("Unchanged", dryRun.tasks.unchanged, theme)}
+              {dryRun.warnings && dryRun.warnings.length > 0 ? (
+                <box style={{ flexDirection: "column", marginTop: 1 }}>
+                  <text style={{ color: theme.warn, fontWeight: "bold" }}>Warnings</text>
+                  {dryRun.warnings.map((warning) => (
+                    <text key={`dryrun-warning-${warning}`} style={{ color: theme.warn }}>
+                      - {warning}
+                    </text>
+                  ))}
+                </box>
+              ) : null}
               <text style={{ color: theme.muted, marginTop: 1 }}>
                 Enter: commit import   Esc: cancel
               </text>
@@ -907,6 +917,16 @@ export function BackupCenterScreen({
                   <text style={{ color: theme.muted, marginTop: 1 }}>Backup:</text>
                   <text style={{ color: theme.text }}>{committed.backupPath}</text>
                 </>
+              ) : null}
+              {committed.warnings && committed.warnings.length > 0 ? (
+                <box style={{ flexDirection: "column", marginTop: 1 }}>
+                  <text style={{ color: theme.warn, fontWeight: "bold" }}>Warnings</text>
+                  {committed.warnings.map((warning) => (
+                    <text key={`import-warning-${warning}`} style={{ color: theme.warn }}>
+                      - {warning}
+                    </text>
+                  ))}
+                </box>
               ) : null}
             </>
           ) : null}

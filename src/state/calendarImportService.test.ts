@@ -3,6 +3,12 @@ import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
 import { importCalendarIcs } from "./calendarImportService";
+import {
+  createDefaultLockPayload,
+  getTadoiLockPath,
+  isTadoiLockPresent,
+  writeTadoiLock
+} from "./lockfile";
 
 const SIMPLE_ICS = [
   "BEGIN:VCALENDAR",
@@ -219,6 +225,55 @@ describe("calendarImportService import flow", () => {
         expect(report.dryRun).toBe(true);
         expect(report.persisted).toBe(false);
         await expectUnixPrivateFileMode(reportPath);
+      }
+    );
+  });
+
+  it("allows commit import when current process already owns lock", async () => {
+    await withTempImportEnv(
+      {
+        statePayload: { schemaVersion: 4, tasks: [], tagIndex: {}, savedViews: [] },
+        inputIcs: SIMPLE_ICS
+      },
+      async ({ dataPath, inputPath }) => {
+        const lockPath = getTadoiLockPath(dataPath);
+        await writeTadoiLock(lockPath, createDefaultLockPayload(dataPath));
+
+        const result = await importCalendarIcs({
+          inputPath,
+          range: "all",
+          mode: "merge",
+          dryRun: false
+        });
+
+        expect(result.hasErrors).toBe(false);
+        expect(result.summary.created).toBe(1);
+        expect(await isTadoiLockPresent(lockPath)).toBe(true);
+      }
+    );
+  });
+
+  it("rejects commit import when lock belongs to another pid", async () => {
+    await withTempImportEnv(
+      {
+        statePayload: { schemaVersion: 4, tasks: [], tagIndex: {}, savedViews: [] },
+        inputIcs: SIMPLE_ICS
+      },
+      async ({ dataPath, inputPath }) => {
+        const lockPath = getTadoiLockPath(dataPath);
+        await writeTadoiLock(lockPath, {
+          ...createDefaultLockPayload(dataPath),
+          pid: process.pid + 10_000
+        });
+
+        await expect(
+          importCalendarIcs({
+            inputPath,
+            range: "all",
+            mode: "merge",
+            dryRun: false
+          })
+        ).rejects.toThrow("TADOI is running (lock present)");
       }
     );
   });

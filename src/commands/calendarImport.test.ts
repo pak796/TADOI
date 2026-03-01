@@ -193,7 +193,10 @@ describe("calendarImport command", () => {
     await fs.writeFile(inputPath, SIMPLE_ICS, "utf8");
 
     const lockPath = getTadoiLockPath(dataPath);
-    await writeTadoiLock(lockPath, createDefaultLockPayload(dataPath));
+    await writeTadoiLock(lockPath, {
+      ...createDefaultLockPayload(dataPath),
+      pid: process.pid + 10_000
+    });
 
     const previousDataPath = process.env.TADOI_DATA_PATH;
     process.env.TADOI_DATA_PATH = dataPath;

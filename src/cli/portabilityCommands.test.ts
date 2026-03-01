@@ -241,7 +241,10 @@ describe("runPortabilityCommand", () => {
     );
 
     const lockPath = getTadoiLockPath(dataPath);
-    await writeTadoiLock(lockPath, createDefaultLockPayload(dataPath));
+    await writeTadoiLock(lockPath, {
+      ...createDefaultLockPayload(dataPath),
+      pid: process.pid + 10_000
+    });
 
     const originalDataPath = process.env.TADOI_DATA_PATH;
     process.env.TADOI_DATA_PATH = dataPath;
