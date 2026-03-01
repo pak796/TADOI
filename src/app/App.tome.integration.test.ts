@@ -186,6 +186,27 @@ async function pressEscapeAndRender(
   return harness.captureCharFrame();
 }
 
+async function pressCtrlKeyAndRender(
+  mockInput: MockInput,
+  harness: RenderHarness,
+  key: string
+): Promise<string> {
+  mockInput.pressKey(key, { ctrl: true });
+  await Bun.sleep(10);
+  await harness.renderOnce();
+  return harness.captureCharFrame();
+}
+
+async function pressTabAndRender(
+  mockInput: MockInput,
+  harness: RenderHarness
+): Promise<string> {
+  await Promise.resolve(mockInput.pressTab());
+  await Bun.sleep(10);
+  await harness.renderOnce();
+  return harness.captureCharFrame();
+}
+
 async function pressArrowAndRender(
   mockInput: MockInput,
   harness: RenderHarness,
@@ -506,6 +527,82 @@ describe("App TOME integration", () => {
       const viewFrame = await waitForText(harness, "PATH: My Custom Tome Title.md");
       expect(viewFrame).toContain("PATH: My Custom Tome Title.md");
       await waitForFileExists(path.join(notesRoot, "My Custom Tome Title.md"));
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
+  it("edits frontmatter tags in TOME edit context and persists to note metadata", async () => {
+    const session = await createSession({
+      seedNotes: {
+        "Taggable.md": "# Taggable\n\nBody"
+      }
+    });
+    const { harness, notesRoot } = session;
+    const { mockInput } = harness;
+
+    try {
+      await waitForText(harness, "TASK ONE");
+      await pressKeyAndRender(mockInput, harness, "n");
+      await waitForText(harness, "TOME: Terminal Oriented Markdown Environment");
+      await waitForText(harness, "Taggable.md");
+
+      await pressEnterAndRender(mockInput, harness);
+      await waitForText(harness, "PATH: Taggable.md");
+
+      await pressKeyAndRender(mockInput, harness, "e");
+      const editFrame = await waitForText(harness, "FRONTMATTER TAGS");
+      expect(editFrame).toContain("Tab: switch tags/body");
+
+      await pressTabAndRender(mockInput, harness);
+      await mockInput.typeText("work inbox/to-read");
+      await Bun.sleep(20);
+      await harness.renderOnce();
+
+      await pressCtrlKeyAndRender(mockInput, harness, "s");
+      const viewFrame = await waitForText(harness, "PATH: Taggable.md");
+      expect(viewFrame).toContain("#inbox/to-read");
+      expect(viewFrame).toContain("#work");
+
+      await pressEscapeAndRender(mockInput, harness);
+      const listFrame = await waitForText(harness, "Taggable.md");
+      expect(listFrame).toContain("#inbox/to-read");
+      expect(listFrame).toContain("#work");
+
+      const saved = await fs.readFile(path.join(notesRoot, "Taggable.md"), "utf8");
+      expect(saved).toContain("tags: [inbox/to-read, work]");
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
+  it("shows +N overflow chips for TOME tags on narrow widths", async () => {
+    const session = await createSession({
+      width: 104,
+      height: 24,
+      seedNotes: {
+        "Overflow.md": `---
+tags: [one, two, tre, for, fiv]
+---
+
+# Overflow
+
+Body`
+      }
+    });
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      await waitForText(harness, "TASK ONE");
+      await pressKeyAndRender(mockInput, harness, "n");
+      const listFrame = await waitForText(harness, "Overflow.md");
+      expect(listFrame).toContain("+3");
+
+      await pressEnterAndRender(mockInput, harness);
+      const viewFrame = await waitForText(harness, "PATH: Overflow.md");
+      expect(viewFrame).toContain("+3");
+      expect(viewFrame).toContain("+2");
     } finally {
       await cleanupSession(session);
     }

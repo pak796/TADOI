@@ -155,6 +155,7 @@ import {
   normalizePriorityFromTokens,
   resolveTaskPriorityTag
 } from "../domain/priorityTags";
+import { computeVisibleTagPills } from "../domain/tagPills";
 import {
   getSortModeLabel,
   resolveAnalyticsWindowDays,
@@ -234,8 +235,9 @@ import {
   isPathWithin
 } from "../notes/service";
 import { executeNoteCommand, parseNoteSearchQuery } from "../notes/commands";
+import { parseFrontmatter, upsertFrontmatterTags } from "../notes/frontmatter";
 import { renderMarkdownToTerminalLines } from "../notes/markdown";
-import { noteTagMatchesFilter } from "../notes/tags";
+import { noteTagMatchesFilter, parseNoteTags } from "../notes/tags";
 import { resolveNotesRootPath } from "../notes/storage";
 import type { NoteMention } from "../notes/mentions";
 import type { NotePath, NoteRef, NoteWarning } from "../notes/types";
@@ -1241,6 +1243,13 @@ function replaceLastTagToken(tagsText: string, tag: string, appendSpace = false)
   return `${tokens.join(" ")}${appendSpace ? " " : ""}`;
 }
 
+function parseFrontmatterTagInput(input: string): string[] {
+  return input
+    .split(/[\s,]+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 0);
+}
+
 type TagTickerSegment = {
   tag: string;
   total: number;
@@ -1641,8 +1650,11 @@ export function App({
   const [notesLinkedTasks, setNotesLinkedTasks] = useState<string[]>([]);
   const [notesSelectedLinkIndex, setNotesSelectedLinkIndex] = useState(0);
   const [notesEditValue, setNotesEditValue] = useState("");
+  const [notesEditFrontmatterTags, setNotesEditFrontmatterTags] = useState("");
+  const notesEditFrontmatterTagsRef = useRef("");
   const [notesEditDirty, setNotesEditDirty] = useState(false);
   const [notesEditEscGuardArmed, setNotesEditEscGuardArmed] = useState(false);
+  const [notesEditActiveField, setNotesEditActiveField] = useState<"tags" | "body">("body");
   const notesEditTextareaRef = useRef<{ plainText: string; setText?: (value: string) => void } | null>(
     null
   );
@@ -2246,6 +2258,21 @@ export function App({
     notesList.find((note) => note.path === notesOpenPath)?.tags ??
     selectedNotesListItem?.tags ??
     [];
+  const notesEditTagDraft = React.useMemo(
+    () =>
+      parseNoteTags({
+        markdown: "",
+        frontmatterTags: parseFrontmatterTagInput(notesEditFrontmatterTags)
+      }),
+    [notesEditFrontmatterTags]
+  );
+  const notesEditEffectiveTags = React.useMemo(() => {
+    const parsed = parseFrontmatter(notesEditValue);
+    return parseNoteTags({
+      markdown: parsed.body,
+      frontmatterTags: notesEditTagDraft.tags
+    });
+  }, [notesEditTagDraft.tags, notesEditValue]);
   const notesInlinePromptOpen =
     notesCreatePromptOpen || notesRenamePromptOpen || notesRootSettingsOpen;
   const canOperateOnSelectedTome = Boolean(selectedNotesListItem ?? notesOpenPath);
@@ -2318,6 +2345,24 @@ export function App({
   const notesContextPaneMinWidth = Math.max(
     34,
     Math.min(52, notesPaneAvailableWidth - notesListPaneMinWidth)
+  );
+  const notesEstimatedListPaneWidth = Math.max(
+    notesListPaneMinWidth,
+    Math.floor(notesPaneAvailableWidth * 0.4)
+  );
+  const notesEstimatedContextPaneWidth = Math.max(
+    notesContextPaneMinWidth,
+    notesPaneAvailableWidth - notesEstimatedListPaneWidth
+  );
+  const notesListTagPillMaxWidth = Math.max(10, notesEstimatedListPaneWidth - 6);
+  const notesContextTagPillMaxWidth = Math.max(12, notesEstimatedContextPaneWidth - 8);
+  const notesEditTagPillLayout = React.useMemo(
+    () => computeVisibleTagPills(notesEditEffectiveTags.tags, notesContextTagPillMaxWidth),
+    [notesContextTagPillMaxWidth, notesEditEffectiveTags.tags]
+  );
+  const notesViewTagPillLayout = React.useMemo(
+    () => computeVisibleTagPills(selectedNoteTags, notesContextTagPillMaxWidth),
+    [notesContextTagPillMaxWidth, selectedNoteTags]
   );
   const editorPaneHeightLines = Math.max(
     1,
@@ -5754,6 +5799,44 @@ export function App({
     }
 
     if (
+      uiState.mode === Mode.NOTES_EDIT &&
+      !key.ctrl &&
+      !key.meta &&
+      !key.option &&
+      keyName === "tab"
+    ) {
+      setNotesEditActiveField((current) => (current === "body" ? "tags" : "body"));
+      return;
+    }
+
+    if (
+      uiState.mode === Mode.NOTES_EDIT &&
+      notesEditActiveField === "tags" &&
+      !key.ctrl &&
+      !key.meta &&
+      !key.option
+    ) {
+      if (keyName === "return" || keyName === "enter") {
+        setNotesEditActiveField("body");
+        return;
+      }
+      if (keyName === "backspace" || keyName === "delete") {
+        applyNotesEditFrontmatterTags(
+          notesEditFrontmatterTagsRef.current.slice(
+            0,
+            Math.max(0, notesEditFrontmatterTagsRef.current.length - 1)
+          )
+        );
+        return;
+      }
+      const isPrintable = keySequence.length === 1 && keySequence >= " ";
+      if (isPrintable) {
+        applyNotesEditFrontmatterTags(`${notesEditFrontmatterTagsRef.current}${keySequence}`);
+        return;
+      }
+    }
+
+    if (
       saveConflictBannerState &&
       !saveConflictRetryPending &&
       !key.ctrl &&
@@ -6663,6 +6746,18 @@ export function App({
     return service;
   }
 
+  function applyNotesEditFrontmatterTags(nextValue: string): void {
+    notesEditFrontmatterTagsRef.current = nextValue;
+    setNotesEditFrontmatterTags(nextValue);
+    const nextTagDraft = parseNoteTags({
+      markdown: "",
+      frontmatterTags: parseFrontmatterTagInput(nextValue)
+    });
+    const nextContent = upsertFrontmatterTags(notesEditValue, nextTagDraft.tags);
+    setNotesEditDirty(nextContent !== notesViewContent);
+    setNotesEditEscGuardArmed(false);
+  }
+
   function clampNotesSelectionToAvailable() {
     if (filteredNotes.length === 0) {
       setNotesSelectedIndex(0);
@@ -6845,8 +6940,11 @@ export function App({
       setNotesList(service.listNotes());
       setNotesOpenPath(created.path);
       setNotesEditValue(created.content);
+      setNotesEditFrontmatterTags("");
+      notesEditFrontmatterTagsRef.current = "";
       setNotesEditDirty(false);
       setNotesEditEscGuardArmed(false);
+      setNotesEditActiveField("body");
       setNotesCreatePromptOpen(false);
       setNotesCreateTitle("");
       setNotesRenamePromptOpen(false);
@@ -7041,9 +7139,16 @@ export function App({
       showShortNavigationBanner(`Note not found: ${targetPath}`);
       return;
     }
+    const parsed = parseFrontmatter(document.content);
     setNotesEditValue(document.content);
+    const nextFrontmatterTags = (parsed.frontmatter.tags ?? [])
+      .map((tag) => formatTagForDisplay(tag))
+      .join(" ");
+    setNotesEditFrontmatterTags(nextFrontmatterTags);
+    notesEditFrontmatterTagsRef.current = nextFrontmatterTags;
     setNotesEditDirty(false);
     setNotesEditEscGuardArmed(false);
+    setNotesEditActiveField("body");
     uiDispatch({
       type: "captureReturnContext",
       mode: Mode.NOTES_VIEW,
@@ -7061,14 +7166,26 @@ export function App({
     const service = resolveNotesService();
     if (!service) return;
     try {
-      await service.saveNote(notesOpenPath, notesEditValue);
+      const nextContent = upsertFrontmatterTags(notesEditValue, notesEditTagDraft.tags);
+      await service.saveNote(notesOpenPath, nextContent);
+      setNotesEditValue(nextContent);
+      const savedFrontmatterTags = notesEditTagDraft.tags
+        .map((tag) => formatTagForDisplay(tag))
+        .join(" ");
+      setNotesEditFrontmatterTags(savedFrontmatterTags);
+      notesEditFrontmatterTagsRef.current = savedFrontmatterTags;
       setNotesList(service.listNotes());
       await hydrateOpenNote(notesOpenPath);
       setNotesEditDirty(false);
       setNotesEditEscGuardArmed(false);
+      setNotesEditActiveField("body");
       uiDispatch({ type: "setMode", mode: Mode.NOTES_VIEW });
       uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_VIEW });
-      showShortNavigationBanner("Note saved");
+      showShortNavigationBanner(
+        notesEditTagDraft.warnings.length > 0
+          ? "Note saved (some tags normalized)"
+          : "Note saved"
+      );
     } catch (error: unknown) {
       showShortNavigationBanner(`Failed to save note: ${normalizeErrorDetail(error)}`);
     }
@@ -7082,6 +7199,7 @@ export function App({
     }
     setNotesEditEscGuardArmed(false);
     setNotesEditDirty(false);
+    setNotesEditActiveField("body");
     uiDispatch({ type: "setMode", mode: Mode.NOTES_VIEW });
     uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_VIEW });
   }
@@ -10156,6 +10274,10 @@ export function App({
                   <box style={{ flexDirection: "column" }}>
                     {filteredNotes.map((note, index) => {
                       const selected = index === clampedNotesSelectedIndex;
+                      const notesListTagLayout = computeVisibleTagPills(
+                        note.tags,
+                        notesListTagPillMaxWidth
+                      );
                       return (
                         <box
                           key={note.path}
@@ -10179,6 +10301,36 @@ export function App({
                           <text style={{ color: selected ? theme.bg : theme.muted }}>
                             {note.path}
                           </text>
+                          {note.tags.length > 0 ? (
+                            <box style={{ flexDirection: "row", gap: 1 }}>
+                              {notesListTagLayout.visibleTags.map((tag) => (
+                                <box
+                                  key={`${note.path}:${tag}`}
+                                  style={{
+                                    backgroundColor: colorForTag(tag),
+                                    color: theme.bg,
+                                    paddingLeft: 1,
+                                    paddingRight: 1
+                                  }}
+                                >
+                                  <text>{formatTagForReadOnlyDisplay(tag)}</text>
+                                </box>
+                              ))}
+                              {notesListTagLayout.hiddenCount > 0 ? (
+                                <box
+                                  key={`${note.path}:tags-overflow`}
+                                  style={{
+                                    backgroundColor: theme.outline,
+                                    color: theme.bg,
+                                    paddingLeft: 1,
+                                    paddingRight: 1
+                                  }}
+                                >
+                                  <text>{`+${String(notesListTagLayout.hiddenCount)}`}</text>
+                                </box>
+                              ) : null}
+                            </box>
+                          ) : null}
                         </box>
                       );
                     })}
@@ -10406,12 +10558,73 @@ export function App({
               >
                 {uiState.mode === Mode.NOTES_EDIT ? (
                   <box style={{ flexDirection: "column", width: "100%", height: "100%" }}>
-                    <text style={{ color: theme.muted }}>
-                      PATH: {notesOpenPath ?? "(none)"}
-                    </text>
+                    <box style={{ width: "100%" }}>
+                      <text style={{ color: theme.muted }}>
+                        PATH: {notesOpenPath ?? "(none)"}
+                      </text>
+                    </box>
+                    <box style={{ marginTop: 1, flexDirection: "column" }}>
+                      <text style={{ color: theme.muted }}>TAGS</text>
+                      {notesEditTagPillLayout.visibleTags.length > 0 ||
+                      notesEditTagPillLayout.hiddenCount > 0 ? (
+                        <box style={{ flexDirection: "row", gap: 1 }}>
+                          {notesEditTagPillLayout.visibleTags.map((tag) => (
+                            <box
+                              key={`notes-edit-tag-pill-${tag}`}
+                              style={{
+                                backgroundColor: colorForTag(tag),
+                                color: theme.bg,
+                                paddingLeft: 1,
+                                paddingRight: 1
+                              }}
+                            >
+                              <text>{formatTagForReadOnlyDisplay(tag)}</text>
+                            </box>
+                          ))}
+                          {notesEditTagPillLayout.hiddenCount > 0 ? (
+                            <box
+                              key="notes-edit-tag-pill-overflow"
+                              style={{
+                                backgroundColor: theme.outline,
+                                color: theme.bg,
+                                paddingLeft: 1,
+                                paddingRight: 1
+                              }}
+                            >
+                              <text>{`+${String(notesEditTagPillLayout.hiddenCount)}`}</text>
+                            </box>
+                          ) : null}
+                        </box>
+                      ) : (
+                        <text style={{ color: theme.muted }}>(none)</text>
+                      )}
+                    </box>
                     <text style={{ color: notesEditDirty ? theme.warn : theme.muted }}>
                       {notesEditDirty ? "STATUS: UNSAVED CHANGES" : "STATUS: SAVED"}
                     </text>
+                    <box style={{ marginTop: 1 }}>
+                      <text style={{ color: theme.muted }}>FRONTMATTER TAGS</text>
+                    </box>
+                    <box
+                      onMouseDown={(event) => {
+                        if (event.button !== 0) return;
+                        setNotesEditActiveField("tags");
+                      }}
+                    >
+                      <input
+                        value={notesEditFrontmatterTags}
+                        onChange={applyNotesEditFrontmatterTags}
+                        focused={
+                          uiState.focus === FocusTarget.NOTES_EDIT && notesEditActiveField === "tags"
+                        }
+                        placeholder="Type tags (space/comma separated, supports nested e.g. inbox/to-read)"
+                        onSubmit={() => {
+                          setNotesEditActiveField("body");
+                        }}
+                        style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
+                      />
+                    </box>
+                    <text style={{ color: theme.muted }}>Tab: switch tags/body</text>
                     <box style={{ marginTop: 1, marginBottom: 1, flexDirection: "row", gap: 1 }}>
                       {renderTomeActionButton({
                         label: "SAVE [Ctrl+S]",
@@ -10432,32 +10645,79 @@ export function App({
                         borderless: true
                       })}
                     </box>
-                    <textarea
-                      ref={notesEditTextareaRef}
-                      initialValue={notesEditValue}
-                      focused={uiState.focus === FocusTarget.NOTES_EDIT}
-                      placeholder="Write TOME markdown note..."
-                      wrapMode="word"
-                      onContentChange={() => {
-                        const nextValue = notesEditTextareaRef.current?.plainText ?? "";
-                        setNotesEditValue(nextValue);
-                        setNotesEditDirty(nextValue !== notesViewContent);
+                    <box
+                      style={{ flexGrow: 1 }}
+                      onMouseDown={(event) => {
+                        if (event.button !== 0) return;
+                        setNotesEditActiveField("body");
                       }}
-                      style={{
-                        width: "100%",
-                        flexGrow: 1,
-                        minHeight: 8,
-                        backgroundColor: inputTheme.bg,
-                        color: inputTheme.text
-                      }}
-                    />
+                    >
+                      <textarea
+                        ref={notesEditTextareaRef}
+                        initialValue={notesEditValue}
+                        focused={
+                          uiState.focus === FocusTarget.NOTES_EDIT && notesEditActiveField === "body"
+                        }
+                        placeholder="Write TOME markdown note..."
+                        wrapMode="word"
+                        onContentChange={() => {
+                          const nextValue = notesEditTextareaRef.current?.plainText ?? "";
+                          setNotesEditValue(nextValue);
+                          const nextContent = upsertFrontmatterTags(nextValue, notesEditTagDraft.tags);
+                          setNotesEditDirty(nextContent !== notesViewContent);
+                          setNotesEditEscGuardArmed(false);
+                        }}
+                        style={{
+                          width: "100%",
+                          flexGrow: 1,
+                          minHeight: 8,
+                          backgroundColor: inputTheme.bg,
+                          color: inputTheme.text
+                        }}
+                      />
+                    </box>
                   </box>
                 ) : notesOpenPath ? (
                   <box style={{ flexDirection: "column", width: "100%" }}>
-                    <text style={{ color: theme.muted }}>PATH: {notesOpenPath}</text>
-                    <text style={{ color: theme.muted }}>
-                      TAGS: {selectedNoteTags.length > 0 ? selectedNoteTags.join(", ") : "(none)"}
-                    </text>
+                    <box style={{ width: "100%" }}>
+                      <text style={{ color: theme.muted }}>PATH: {notesOpenPath}</text>
+                    </box>
+                    <box style={{ marginTop: 1, flexDirection: "column" }}>
+                      <text style={{ color: theme.muted }}>TAGS</text>
+                      {notesViewTagPillLayout.visibleTags.length > 0 ||
+                      notesViewTagPillLayout.hiddenCount > 0 ? (
+                        <box style={{ flexDirection: "row", gap: 1 }}>
+                          {notesViewTagPillLayout.visibleTags.map((tag) => (
+                            <box
+                              key={`notes-view-tag-pill-${tag}`}
+                              style={{
+                                backgroundColor: colorForTag(tag),
+                                color: theme.bg,
+                                paddingLeft: 1,
+                                paddingRight: 1
+                              }}
+                            >
+                              <text>{formatTagForReadOnlyDisplay(tag)}</text>
+                            </box>
+                          ))}
+                          {notesViewTagPillLayout.hiddenCount > 0 ? (
+                            <box
+                              key="notes-view-tag-pill-overflow"
+                              style={{
+                                backgroundColor: theme.outline,
+                                color: theme.bg,
+                                paddingLeft: 1,
+                                paddingRight: 1
+                              }}
+                            >
+                              <text>{`+${String(notesViewTagPillLayout.hiddenCount)}`}</text>
+                            </box>
+                          ) : null}
+                        </box>
+                      ) : (
+                        <text style={{ color: theme.muted }}>(none)</text>
+                      )}
+                    </box>
                     <box style={{ marginTop: 1 }}>
                       <text style={{ color: theme.muted }}>PREVIEW</text>
                     </box>

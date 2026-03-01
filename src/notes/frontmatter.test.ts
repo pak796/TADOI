@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { parseFrontmatter } from "./frontmatter";
+import { parseFrontmatter, upsertFrontmatterTags } from "./frontmatter";
 
 describe("parseFrontmatter", () => {
   it("parses supported fields and returns body", () => {
@@ -24,5 +24,47 @@ describe("parseFrontmatter", () => {
     expect(result.frontmatter).toEqual({});
     expect(result.body).toBe(input);
     expect(result.warnings.length).toBeGreaterThan(0);
+  });
+});
+
+describe("upsertFrontmatterTags", () => {
+  it("adds frontmatter tags when the note has no frontmatter", () => {
+    const content = "# Title\n\nBody";
+    const updated = upsertFrontmatterTags(content, ["focus", "inbox/to-read"]);
+    expect(updated).toBe("---\ntags: [focus, inbox/to-read]\n---\n\n# Title\n\nBody");
+  });
+
+  it("replaces existing tags and preserves other frontmatter fields", () => {
+    const content = `---
+id: note-1
+title: Inbox
+tags: [old]
+aliases:
+  - Alpha
+---
+
+# Heading
+Body`;
+    const updated = upsertFrontmatterTags(content, ["work", "inbox/to-read"]);
+    expect(updated).toContain("id: note-1");
+    expect(updated).toContain("title: Inbox");
+    expect(updated).toContain("aliases:");
+    expect(updated).toContain("tags: [work, inbox/to-read]");
+    expect(updated).not.toContain("tags: [old]");
+  });
+
+  it("removes tags from frontmatter when an empty tag list is provided", () => {
+    const content = `---
+title: Inbox
+tags: [focus]
+---
+
+Body`;
+    const updated = upsertFrontmatterTags(content, []);
+    expect(updated).toBe(`---
+title: Inbox
+---
+
+Body`);
   });
 });

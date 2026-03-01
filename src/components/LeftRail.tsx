@@ -295,14 +295,14 @@ export function LeftRail({
   const menuItems: LeftRailMenuItem[] = [
     "LIST",
     "DASHBOARD",
+    "NOTES",
     "BACKUP",
     "ADD",
     "EDIT",
     "SEARCH",
-    "NOTES",
     "TAG_PANEL",
-    "HELP",
-    "DELETE"
+    "DELETE",
+    "HELP"
   ];
   const statusLabel = filters.status === "all" ? "ACTIVE" : filters.status.toUpperCase();
   const statusBg =

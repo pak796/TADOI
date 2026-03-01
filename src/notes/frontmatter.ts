@@ -168,3 +168,82 @@ export function parseFrontmatter(content: string): FrontmatterParseResult {
     warnings: parsed.warnings
   };
 }
+
+function findFrontmatterClosingLine(lines: string[]): number {
+  for (let index = 1; index < lines.length; index += 1) {
+    if (lines[index].trim() === "---") {
+      return index;
+    }
+  }
+  return -1;
+}
+
+function removeTagsField(lines: string[]): string[] {
+  const next: string[] = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    const tagLineMatch = line.match(/^\s*tags\s*:\s*(.*)$/i);
+    if (!tagLineMatch) {
+      next.push(line);
+      continue;
+    }
+
+    const rest = (tagLineMatch[1] ?? "").trim();
+    if (rest.length === 0) {
+      let scan = index + 1;
+      while (scan < lines.length && /^\s*-\s+/.test(lines[scan])) {
+        scan += 1;
+      }
+      index = scan - 1;
+    }
+  }
+  return next;
+}
+
+function insertTagsField(lines: string[], tags: string[]): string[] {
+  if (tags.length === 0) return lines;
+  const tagLine = `tags: [${tags.join(", ")}]`;
+
+  const titleIndex = lines.findIndex((line) => /^\s*title\s*:/.test(line));
+  if (titleIndex >= 0) {
+    return [...lines.slice(0, titleIndex + 1), tagLine, ...lines.slice(titleIndex + 1)];
+  }
+
+  const idIndex = lines.findIndex((line) => /^\s*id\s*:/.test(line));
+  if (idIndex >= 0) {
+    return [...lines.slice(0, idIndex + 1), tagLine, ...lines.slice(idIndex + 1)];
+  }
+
+  return [tagLine, ...lines];
+}
+
+export function upsertFrontmatterTags(content: string, tags: string[]): string {
+  const deduped = Array.from(new Set(tags.map((tag) => tag.trim()).filter((tag) => tag.length > 0)));
+  const lines = content.split(/\r?\n/);
+
+  const hasFrontmatterStart =
+    content.startsWith("---\n") ||
+    content.startsWith("---\r\n") ||
+    (lines.length > 0 && lines[0].trim() === "---");
+
+  if (!hasFrontmatterStart) {
+    if (deduped.length === 0) return content;
+    return `---\ntags: [${deduped.join(", ")}]\n---\n\n${content}`;
+  }
+
+  const closingLine = findFrontmatterClosingLine(lines);
+  if (closingLine === -1) {
+    return content;
+  }
+
+  const frontmatterLines = lines.slice(1, closingLine);
+  const bodyLines = lines.slice(closingLine + 1);
+  const strippedFrontmatter = removeTagsField(frontmatterLines);
+  const nextFrontmatter = insertTagsField(strippedFrontmatter, deduped);
+
+  if (nextFrontmatter.length === 0) {
+    return bodyLines.join("\n");
+  }
+
+  return ["---", ...nextFrontmatter, "---", ...bodyLines].join("\n");
+}
