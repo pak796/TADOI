@@ -1,0 +1,4 @@
+interface:
+  display_name: "Host Prereq Preflight"
+  short_description: "Check host blockers before running gates"
+  default_prompt: "Use $host-prereq-preflight to verify this machine has required commands, env vars, and platform prerequisites before running checks."

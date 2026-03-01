@@ -154,8 +154,9 @@ HELP mode:
 - `Enter` / `ArrowRight` on Settings: open settings pages
 - Help root is read-only for direct settings hotkeys (`h` / `m` / `n` / `o` / `l` do not toggle settings in HELP mode)
 - Settings page entries:
-  - `Theme`, `Navigation Hints`, `Prefix Popup`, `Logo`, `Flash Mode`, `CRT FX Lite`, `CRT FX Profile`, `Notifications`, `Overdue Popup`, `Terminal Bell`
-  - `Keymap Aliases` page toggles bounded presets for `list`, `dashboard`, `backup`, and `help` alias contexts
+  - `Theme`, `Keymap Aliases`, `Navigation Hints`, `Prefix Popup`, `Logo`, `Flash Mode`, `CRT FX Lite`, `CRT FX Profile`, `Retro FX Mode`, `Notifications`, `Overdue Popup`, `Terminal Bell`, `Restore TOME Guides`
+  - `Keymap Aliases` opens bounded presets for `list`, `dashboard`, `backup`, and `help` alias contexts
+  - List preset example: `Ctrl+F` opens Search and `n` opens Add
 - In settings pages: `ArrowUp` / `ArrowDown` move, `Enter` / `ArrowRight` apply/select, `ArrowLeft` / `backspace` / `Esc` back
 - `Ctrl+U` / `Ctrl+D` / `page_up` / `page_down`: page help content
 - `Esc` or `?`: close Help
@@ -221,25 +222,38 @@ Supported TITS commands:
 - `bulk delete` (in-app always opens confirm modal, for marked and explicit `id:` targets)
 - `help` / `help add|done|due|recur|check|bulk|note`
 
-NOTES COMMANDS
+TOME COMMANDS (Terminal Oriented Markdown Environment)
 - note new "Title"      Create note
 - note open "Query"     Open note
-- note search "Term"    Search notes (supports tag:<x>)
-- note reindex          Rebuild notes index
+- note search "Term"    Search TOME notes (supports tag:<x>)
+- note delete "Query"   Delete note (same resolver as open)
+- note restore-defaults Restore missing default guide docs
+- note reindex          Rebuild TOME index
+- note root set "Path"  Migrate TOME root (copy-first)
 - note help             Show this help
 
-Notes command examples:
+TOME is TADOI's notes-oriented markdown tool.
+
+TOME command examples:
 - In-app TITS or CLI wrapper: `tadoi note new "Meeting Notes"`
 - Search with tag + text: `tadoi note search "tag:inbox design"`
 - Open by exact title: `tadoi note open "Meeting Notes"`
 - Open by id disambiguation: `tadoi note open id:note-dup-primary`
 - Open by path disambiguation: `tadoi note open "Conflicts/SameTitle1.md"`
+- Delete by query/path: `tadoi note delete "Meeting Notes"`
+- Restore missing built-in guides: `tadoi note restore-defaults`
 - Safe vault migration: `tadoi note root set "./notes-next"` (pre-change backup + copy-first migration)
+
+Built-in TOME guide docs:
+- If the notes vault is empty on first startup, TADOI seeds curated defaults under `TADOI Guides/`.
+- Default files are editable/deletable markdown notes.
+- In TOME list and TOME view, `d` opens note delete confirmation (`y` / `n` / `Esc`).
+- `note restore-defaults` is missing-only and will not overwrite existing files.
 
 CLI query command:
 - `list [selectors...] [--sort due|updated|created|title] [--limit N]`
 
-CLI TITS notes:
+CLI TITS TOME:
 - Wrapper form: `tadoi add ...`, `tadoi done id:<task-id>`, `tadoi due id:<task-id> ...`, `tadoi recur id:<task-id> ...`, `tadoi check:<op> id:<task-id> ...`, `tadoi bulk:<op> id:<task-id> ...`, `tadoi note ...`, `tadoi list ...`
 - Raw DSL form: `tadoi 'recur id:<task-id> every:week on:mon'`
 - Selector mode for CLI `done` and `due`:

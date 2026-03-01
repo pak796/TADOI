@@ -233,6 +233,62 @@ describe("backupService import/export", () => {
     }
   });
 
+  it("repairs local non-normalized task tags for import and reports warning", async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-import-tag-repair-"));
+    const dataPath = path.join(tempDir, "tadoi_data.json");
+    const importPath = path.join(tempDir, "incoming.json");
+    await fs.writeFile(
+      dataPath,
+      JSON.stringify(
+        {
+          schemaVersion: 4,
+          tasks: [
+            {
+              id: "local-1",
+              title: "LOCAL",
+              status: "open",
+              createdAt: 1,
+              updatedAt: 1,
+              tags: ["team", "team", "#p1", "#p2"]
+            }
+          ],
+          tagIndex: {},
+          savedViews: []
+        },
+        null,
+        2
+      ),
+      "utf8"
+    );
+    await fs.writeFile(
+      importPath,
+      JSON.stringify({ schemaVersion: 4, tasks: [], tagIndex: {}, savedViews: [] }, null, 2),
+      "utf8"
+    );
+
+    const originalDataPath = process.env.TADOI_DATA_PATH;
+    process.env.TADOI_DATA_PATH = dataPath;
+    try {
+      const summary = await importBackup({
+        inputPath: importPath,
+        mode: "merge",
+        dryRun: true
+      });
+
+      expect(summary.warnings).toBeDefined();
+      expect(summary.warnings?.[0]).toContain(
+        "Recovered 1 local task tag normalization issue(s) before import."
+      );
+      expect(summary.tasks.unchanged).toBe(1);
+    } finally {
+      if (originalDataPath === undefined) {
+        delete process.env.TADOI_DATA_PATH;
+      } else {
+        process.env.TADOI_DATA_PATH = originalDataPath;
+      }
+    }
+  });
+
   it("enforces JSON import size limits at boundary values", async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-import-size-"));
     const dataPath = path.join(tempDir, "tadoi_data.json");

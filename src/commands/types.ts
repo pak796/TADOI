@@ -151,6 +151,15 @@ export type NoteCommand =
     }
   | {
       type: "note";
+      operation: "delete";
+      query: string;
+    }
+  | {
+      type: "note";
+      operation: "restore_defaults";
+    }
+  | {
+      type: "note";
       operation: "reindex";
     }
   | {

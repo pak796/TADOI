@@ -21,6 +21,7 @@ import { migratePersistedStateToCurrent } from "./migrations";
 import { validatePersistedState } from "./validation";
 import {
   importState,
+  recomputeTagIndex,
   redactStateForExport,
   type ImportMode,
   type RedactMode,
@@ -34,6 +35,7 @@ import {
   saveSettingsStrict,
   type TadoiSettings
 } from "../settings/settings";
+import { normalizePriorityTags } from "../domain/priorityTags";
 import { isThemeId } from "../theme/themes";
 
 type ParseResult<T> =
@@ -136,6 +138,7 @@ export class BackupImportFilesystemError extends Error {
 
 export const DEFAULT_MAX_IMPORT_BYTES_JSON = 25 * 1024 * 1024;
 const BACKUP_FILE_NAME_PATTERN = /^tadoi-backup-\d{8}-\d{6}(?:\.\d+)?\.json$/i;
+const TAG_NORMALIZATION_VALIDATION_FRAGMENT = "task.tags must be normalized/deduped";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -149,6 +152,88 @@ function resolvePathFromCwd(filePath: string, cwd = process.cwd()): string {
 function toSingleLineDetail(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   return message.replace(/\s+/g, " ").trim();
+}
+
+function isTagNormalizationOnlyValidationErrors(errors: string[]): boolean {
+  return (
+    errors.length > 0 &&
+    errors.every((error) => error.includes(TAG_NORMALIZATION_VALIDATION_FRAGMENT))
+  );
+}
+
+async function loadStateStrictForImportWithTagRepair(filePath: string): Promise<{
+  state: Awaited<ReturnType<typeof loadStateStrict>>;
+  warnings: string[];
+}> {
+  try {
+    return {
+      state: await loadStateStrict({
+        filePath,
+        allowTagNormalizationRepair: false
+      }),
+      warnings: []
+    };
+  } catch (originalError: unknown) {
+    let raw = "";
+    try {
+      raw = await fs.readFile(filePath, "utf8");
+    } catch {
+      throw originalError;
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      throw originalError;
+    }
+
+    const preValidation = validatePersistedState(parsed, "minimal");
+    if (!preValidation.ok) {
+      throw originalError;
+    }
+
+    let migrated: LoadedData;
+    try {
+      migrated = migratePersistedStateToCurrent(preValidation.data, CURRENT_SCHEMA_VERSION);
+    } catch {
+      throw originalError;
+    }
+
+    const strictValidation = validatePersistedState(migrated, "strict");
+    if (
+      strictValidation.ok ||
+      !isTagNormalizationOnlyValidationErrors(strictValidation.errors)
+    ) {
+      throw originalError;
+    }
+
+    const normalizedTasks = migrated.tasks.map((task) => ({
+      ...task,
+      tags: normalizePriorityTags(Array.isArray(task.tags) ? task.tags : [])
+    }));
+    const repaired: LoadedData = {
+      ...migrated,
+      tasks: normalizedTasks,
+      tagIndex: recomputeTagIndex(normalizedTasks)
+    };
+    const repairedValidation = validatePersistedState(repaired, "strict");
+    if (!repairedValidation.ok) {
+      throw originalError;
+    }
+
+    const issueCount = strictValidation.errors.length;
+    return {
+      state: {
+        data: repairedValidation.data,
+        resolvedPath: filePath,
+        didMigrate: preValidation.data.schemaVersion !== repairedValidation.data.schemaVersion
+      },
+      warnings: [
+        `Recovered ${String(issueCount)} local task tag normalization issue(s) before import.`
+      ]
+    };
+  }
 }
 
 function formatTimestamp(now: Date): string {
@@ -754,8 +839,11 @@ export async function importBackup(
   const executeImport = async (): Promise<BackupImportSummary> => {
     let currentState: Awaited<ReturnType<typeof loadStateStrict>>;
     let currentSettings: Awaited<ReturnType<typeof loadSettings>>;
+    let loadWarnings: string[] = [];
     try {
-      currentState = await loadStateStrict({ filePath: resolvedDataPath });
+      const loaded = await loadStateStrictForImportWithTagRepair(resolvedDataPath);
+      currentState = loaded.state;
+      loadWarnings = loaded.warnings;
       currentSettings = await loadSettings();
     } catch (error: unknown) {
       throw new BackupImportFilesystemError(toSingleLineDetail(error));
@@ -766,6 +854,7 @@ export async function importBackup(
       now: opts.now ?? Date.now()
     });
 
+    const summaryWarnings = [...lockWarnings, ...loadWarnings];
     const summary: BackupImportSummary = {
       mode: opts.mode,
       dryRun: opts.dryRun,
@@ -778,7 +867,7 @@ export async function importBackup(
         includedInImport: Boolean(incoming.settings),
         applied: false
       },
-      ...(lockWarnings.length > 0 ? { warnings: [...lockWarnings] } : {})
+      ...(summaryWarnings.length > 0 ? { warnings: summaryWarnings } : {})
     };
 
     if (opts.dryRun) {

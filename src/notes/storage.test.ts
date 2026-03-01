@@ -4,9 +4,13 @@ import os from "os";
 import path from "path";
 import {
   createNoteFile,
+  deleteNoteFile,
+  hasDefaultGuideSeedMarker,
   readNoteDocument,
+  renameNoteFile,
   resolveNotesRootPath,
   scanMarkdownFiles,
+  writeDefaultGuideSeedMarker,
   writeNoteDocumentAtomic
 } from "./storage";
 
@@ -53,5 +57,65 @@ describe("notes storage", () => {
 
     const read = await readNoteDocument(notesRoot, created.path);
     expect(read.content).toBe("# Updated");
+  });
+
+  it("writes nested note paths and supports file deletion", async () => {
+    const dir = await makeTempDir("tadoi-notes-storage-");
+    const notesRoot = path.join(dir, "notes");
+    const nestedPath = "TADOI Guides/Test.md";
+
+    await writeNoteDocumentAtomic({
+      notesRoot,
+      notePath: nestedPath,
+      content: "# Test"
+    });
+    await expect(readNoteDocument(notesRoot, nestedPath)).resolves.toMatchObject({
+      path: nestedPath,
+      content: "# Test"
+    });
+
+    await deleteNoteFile({
+      notesRoot,
+      notePath: nestedPath
+    });
+    await expect(readNoteDocument(notesRoot, nestedPath)).rejects.toThrow();
+  });
+
+  it("renames notes with conflict-safe suffixing", async () => {
+    const dir = await makeTempDir("tadoi-notes-storage-");
+    const notesRoot = path.join(dir, "notes");
+
+    await writeNoteDocumentAtomic({
+      notesRoot,
+      notePath: "Renamed.md",
+      content: "# Existing"
+    });
+    await writeNoteDocumentAtomic({
+      notesRoot,
+      notePath: "Draft.md",
+      content: "# Draft"
+    });
+
+    const renamedPath = await renameNoteFile({
+      notesRoot,
+      notePath: "Draft.md",
+      title: "Renamed"
+    });
+
+    expect(renamedPath).toBe("Renamed-2.md");
+    await expect(readNoteDocument(notesRoot, "Draft.md")).rejects.toThrow();
+    await expect(readNoteDocument(notesRoot, "Renamed-2.md")).resolves.toMatchObject({
+      path: "Renamed-2.md",
+      content: "# Draft"
+    });
+  });
+
+  it("reads and writes the default guide seed marker", async () => {
+    const dir = await makeTempDir("tadoi-notes-storage-");
+    const notesRoot = path.join(dir, "notes");
+
+    await expect(hasDefaultGuideSeedMarker(notesRoot)).resolves.toBe(false);
+    await writeDefaultGuideSeedMarker(notesRoot);
+    await expect(hasDefaultGuideSeedMarker(notesRoot)).resolves.toBe(true);
   });
 });

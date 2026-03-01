@@ -30,6 +30,9 @@ export type KeyRouterContext = {
   selectedTaskHasChecklistItems?: boolean;
   resolvedKeymapAliases?: ResolvedKeymapAliases | null;
   notesRootSettingsOpen?: boolean;
+  notesCreatePromptOpen?: boolean;
+  notesRenamePromptOpen?: boolean;
+  notesDeletePromptOpen?: boolean;
   helpPage?:
     | "help"
     | "settings"
@@ -51,7 +54,15 @@ export type KeyRouterAction =
   | { scope: "ui"; type: "CLOSE_NOTES_TAG_FILTER" }
   | { scope: "ui"; type: "NOTES_MOVE_SELECTION"; delta: 1 | -1 }
   | { scope: "ui"; type: "NOTES_OPEN_SELECTED" }
-  | { scope: "ui"; type: "NOTES_NEW" }
+  | { scope: "ui"; type: "NOTES_OPEN_CREATE" }
+  | { scope: "ui"; type: "NOTES_CLOSE_CREATE" }
+  | { scope: "ui"; type: "NOTES_CONFIRM_CREATE" }
+  | { scope: "ui"; type: "NOTES_OPEN_RENAME" }
+  | { scope: "ui"; type: "NOTES_CLOSE_RENAME" }
+  | { scope: "ui"; type: "NOTES_CONFIRM_RENAME" }
+  | { scope: "ui"; type: "NOTES_OPEN_DELETE" }
+  | { scope: "ui"; type: "NOTES_CLOSE_DELETE" }
+  | { scope: "ui"; type: "NOTES_CONFIRM_DELETE" }
   | { scope: "ui"; type: "NOTES_EDIT_SELECTED" }
   | { scope: "ui"; type: "NOTES_REINDEX" }
   | { scope: "ui"; type: "NOTES_OPEN_ROOT_SETTINGS" }
@@ -60,6 +71,7 @@ export type KeyRouterAction =
   | { scope: "ui"; type: "NOTES_VIEW_MOVE_LINK_SELECTION"; delta: 1 | -1 }
   | { scope: "ui"; type: "NOTES_FOLLOW_LINK" }
   | { scope: "ui"; type: "NOTES_BACK_TO_LIST" }
+  | { scope: "ui"; type: "NOTES_EXIT_TO_LIST" }
   | { scope: "ui"; type: "NOTES_SAVE_EDIT" }
   | { scope: "ui"; type: "NOTES_CANCEL_EDIT" }
   | {
@@ -281,6 +293,11 @@ const BACKUP_INPUT_SUBMIT_SCREENS = new Set<BackupCenterScreen>([
   "github_connect_repo_input",
   "github_connect_public_confirm"
 ]);
+
+const BACKUP_PICKER_JUMP_KEYS = {
+  start: "home",
+  end: "end"
+} as const;
 
 function backupScreenSupportsBodyScrollKeys(screen: BackupCenterScreen | null): boolean {
   return (
@@ -651,9 +668,24 @@ function resolveEscapeActions(
     saveViewPromptOpen,
     viewsOverlayOpen,
     helpPage,
-    notesRootSettingsOpen = false
+    notesRootSettingsOpen = false,
+    notesCreatePromptOpen = false,
+    notesRenamePromptOpen = false,
+    notesDeletePromptOpen = false
   } = context;
   const { mode, focus } = uiState;
+
+  if (notesCreatePromptOpen) {
+    return [{ scope: "ui", type: "NOTES_CLOSE_CREATE" }];
+  }
+
+  if (notesRenamePromptOpen) {
+    return [{ scope: "ui", type: "NOTES_CLOSE_RENAME" }];
+  }
+
+  if (notesDeletePromptOpen) {
+    return [{ scope: "ui", type: "NOTES_CLOSE_DELETE" }];
+  }
 
   if (notesRootSettingsOpen) {
     return [{ scope: "ui", type: "NOTES_CLOSE_ROOT_SETTINGS" }];
@@ -664,6 +696,9 @@ function resolveEscapeActions(
   }
   if (mode === Mode.NOTES_VIEW) {
     return [{ scope: "ui", type: "NOTES_BACK_TO_LIST" }];
+  }
+  if (mode === Mode.NOTES_LIST) {
+    return [{ scope: "ui", type: "NOTES_EXIT_TO_LIST" }];
   }
   if (mode === Mode.NOTES_SEARCH) {
     return [{ scope: "ui", type: "CLOSE_NOTES_SEARCH" }];
@@ -818,6 +853,20 @@ function resolveModalModeActions(
         previousMode: uiState.modal.previousMode,
         previousFocus: uiState.modal.previousFocus
       } }];
+    }
+    if (lowerName === "n" || lowerSequence === "n") {
+      return [{ scope: "ui", type: "UNWIND" }];
+    }
+    return [];
+  }
+  if (uiState.modal?.type === "note_delete") {
+    const lowerName = name.toLowerCase();
+    const lowerSequence = sequence.toLowerCase();
+    if (lowerName === "y" || lowerSequence === "y") {
+      return [
+        { scope: "ui", type: "NOTES_CONFIRM_DELETE" },
+        { scope: "ui", type: "NOTES_BACK_TO_LIST" }
+      ];
     }
     if (lowerName === "n" || lowerSequence === "n") {
       return [{ scope: "ui", type: "UNWIND" }];
@@ -1158,10 +1207,10 @@ function resolveBackupCenterModeActions(
     if (isPageDownKey(name, ctrl)) {
       return [{ scope: "ui", type: "BACKUP_PICKER_PAGE_SELECTION", delta: 1 }];
     }
-    if (name === "home") {
+    if (name === BACKUP_PICKER_JUMP_KEYS.start) {
       return [{ scope: "ui", type: "BACKUP_PICKER_JUMP_SELECTION", target: "start" }];
     }
-    if (name === "end") {
+    if (name === BACKUP_PICKER_JUMP_KEYS.end) {
       return [{ scope: "ui", type: "BACKUP_PICKER_JUMP_SELECTION", target: "end" }];
     }
     if (name === "return" || name === "enter") {
@@ -1264,7 +1313,13 @@ function resolveNotesModeActions(
   context: KeyRouterContext
 ): KeyRouterAction[] | null {
   const { name, sequence, ctrl, shift } = key;
-  const { uiState, notesRootSettingsOpen = false } = context;
+  const {
+    uiState,
+    notesRootSettingsOpen = false,
+    notesCreatePromptOpen = false,
+    notesRenamePromptOpen = false,
+    notesDeletePromptOpen = false
+  } = context;
 
   if (
     uiState.mode !== Mode.NOTES_LIST &&
@@ -1282,6 +1337,36 @@ function resolveNotesModeActions(
     }
     if (name === "return" || name === "enter") {
       return [{ scope: "ui", type: "NOTES_CONFIRM_ROOT_SETTINGS" }];
+    }
+    return [];
+  }
+
+  if (notesCreatePromptOpen) {
+    if (name === "escape") {
+      return [{ scope: "ui", type: "NOTES_CLOSE_CREATE" }];
+    }
+    if (name === "return" || name === "enter") {
+      return [{ scope: "ui", type: "NOTES_CONFIRM_CREATE" }];
+    }
+    return [];
+  }
+
+  if (notesRenamePromptOpen) {
+    if (name === "escape") {
+      return [{ scope: "ui", type: "NOTES_CLOSE_RENAME" }];
+    }
+    if (name === "return" || name === "enter") {
+      return [{ scope: "ui", type: "NOTES_CONFIRM_RENAME" }];
+    }
+    return [];
+  }
+
+  if (notesDeletePromptOpen) {
+    if (name === "escape") {
+      return [{ scope: "ui", type: "NOTES_CLOSE_DELETE" }];
+    }
+    if (name === "return" || name === "enter") {
+      return [{ scope: "ui", type: "NOTES_CONFIRM_DELETE" }];
     }
     return [];
   }
@@ -1313,7 +1398,13 @@ function resolveNotesModeActions(
     if (!ctrl && !shift && (name === "e" || sequence === "e")) {
       return [{ scope: "ui", type: "NOTES_EDIT_SELECTED" }];
     }
-    if (!ctrl && !shift && (name === "r" || sequence === "r")) {
+    if (!ctrl && !shift && (name === "d" || sequence === "d")) {
+      return [{ scope: "ui", type: "NOTES_OPEN_DELETE" }];
+    }
+    if (
+      !ctrl &&
+      (name === "i" || name === "I" || sequence === "i" || sequence === "I")
+    ) {
       return [{ scope: "ui", type: "NOTES_REINDEX" }];
     }
     if (name === "tab") {
@@ -1343,10 +1434,19 @@ function resolveNotesModeActions(
       return [{ scope: "ui", type: "NOTES_OPEN_SELECTED" }];
     }
     if (!ctrl && !shift && (name === "a" || sequence === "a")) {
-      return [{ scope: "ui", type: "NOTES_NEW" }];
+      return [{ scope: "ui", type: "NOTES_OPEN_CREATE" }];
+    }
+    if (!ctrl && !shift && (name === "d" || sequence === "d")) {
+      return [{ scope: "ui", type: "NOTES_OPEN_DELETE" }];
     }
     if (!ctrl && !shift && (name === "e" || sequence === "e")) {
       return [{ scope: "ui", type: "NOTES_EDIT_SELECTED" }];
+    }
+    if (
+      !ctrl &&
+      (name === "r" || name === "R" || sequence === "r" || sequence === "R")
+    ) {
+      return [{ scope: "ui", type: "NOTES_OPEN_RENAME" }];
     }
     if (!ctrl && !shift && (name === "/" || sequence === "/")) {
       return [{ scope: "ui", type: "OPEN_NOTES_SEARCH" }];
@@ -1354,7 +1454,10 @@ function resolveNotesModeActions(
     if (!ctrl && !shift && (name === "p" || sequence === "p")) {
       return [{ scope: "ui", type: "OPEN_NOTES_TAG_FILTER" }];
     }
-    if (!ctrl && !shift && (name === "r" || sequence === "r")) {
+    if (
+      !ctrl &&
+      (name === "i" || name === "I" || sequence === "i" || sequence === "I")
+    ) {
       return [{ scope: "ui", type: "NOTES_REINDEX" }];
     }
     if (!ctrl && !shift && (name === "o" || sequence === "o")) {

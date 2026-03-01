@@ -3,15 +3,20 @@ import {
   computeContentHash,
   copyNotesRoot,
   createNoteFile,
+  deleteNoteFile,
   ensureNotesRoot,
+  hasDefaultGuideSeedMarker,
   readNoteDocument,
+  renameNoteFile,
   resolveNotesRootPath,
   scanMarkdownFiles,
   statNoteFile,
+  writeDefaultGuideSeedMarker,
   writeNoteDocumentAtomic
 } from "./storage";
 import { NoteGraphRuntimeIndex } from "./index";
 import { findUnlinkedMentions, type NoteMention } from "./mentions";
+import { DEFAULT_TOME_GUIDE_DOCS } from "./defaultDocs";
 import type {
   NoteDocument,
   NoteGraphIndex,
@@ -33,6 +38,15 @@ export type NotesServiceOptions = {
   dataFilePath: string;
   rootPath: string | null | undefined;
   enabled?: boolean;
+};
+
+export type RestoreDefaultGuideDocsMode = "seed_if_empty" | "restore_missing";
+
+export type RestoreDefaultGuideDocsResult = {
+  mode: RestoreDefaultGuideDocsMode;
+  createdPaths: NotePath[];
+  skippedPaths: NotePath[];
+  skippedReason?: "disabled" | "non_empty" | "already_seeded";
 };
 
 type NoteCacheEntry = {
@@ -137,6 +151,20 @@ export class NotesService {
     return readNoteDocument(this.notesRoot, notePath);
   }
 
+  private cacheDocument(document: NoteDocument): void {
+    this.cacheByPath.set(document.path, {
+      mtimeMs: document.mtimeMs,
+      content: document.content,
+      hash: computeContentHash(document.content)
+    });
+  }
+
+  private upsertDocument(document: NoteDocument): void {
+    this.runtime.upsertDocument(document);
+    this.recordUpsert(document.path);
+    this.cacheDocument(document);
+  }
+
   async reindexAll(): Promise<void> {
     if (!this.enabled) {
       this.runtime.clear();
@@ -152,13 +180,7 @@ export class NotesService {
 
     for (const file of files) {
       const document = await this.loadDocument(file.path);
-      this.runtime.upsertDocument(document);
-      this.recordUpsert(file.path);
-      this.cacheByPath.set(file.path, {
-        mtimeMs: document.mtimeMs,
-        content: document.content,
-        hash: computeContentHash(document.content)
-      });
+      this.upsertDocument(document);
     }
 
     this.initialized = true;
@@ -187,20 +209,10 @@ export class NotesService {
       const hash = computeContentHash(document.content);
       if (cached && cached.hash === hash) {
         this.instrumentation.skippedByHashCount += 1;
-        this.cacheByPath.set(file.path, {
-          mtimeMs: document.mtimeMs,
-          content: document.content,
-          hash
-        });
+        this.cacheDocument(document);
         continue;
       }
-      this.runtime.upsertDocument(document);
-      this.recordUpsert(file.path);
-      this.cacheByPath.set(file.path, {
-        mtimeMs: document.mtimeMs,
-        content: document.content,
-        hash
-      });
+      this.upsertDocument(document);
     }
   }
 
@@ -241,11 +253,7 @@ export class NotesService {
     } else {
       this.instrumentation.skippedByHashCount += 1;
     }
-    this.cacheByPath.set(notePath, {
-      mtimeMs: document.mtimeMs,
-      content: document.content,
-      hash
-    });
+    this.cacheDocument(document);
     return document;
   }
 
@@ -255,13 +263,7 @@ export class NotesService {
       title,
       initialContent
     });
-    this.runtime.upsertDocument(created);
-    this.recordUpsert(created.path);
-    this.cacheByPath.set(created.path, {
-      mtimeMs: created.mtimeMs,
-      content: created.content,
-      hash: computeContentHash(created.content)
-    });
+    this.upsertDocument(created);
     return created;
   }
 
@@ -272,14 +274,121 @@ export class NotesService {
       content
     });
     const saved = await this.loadDocument(notePath);
-    this.runtime.upsertDocument(saved);
-    this.recordUpsert(notePath);
-    this.cacheByPath.set(notePath, {
-      mtimeMs: saved.mtimeMs,
-      content: saved.content,
-      hash: computeContentHash(saved.content)
-    });
+    this.upsertDocument(saved);
     return saved;
+  }
+
+  async renameNote(notePath: NotePath, title: string): Promise<NoteDocument | null> {
+    if (!this.enabled) return null;
+    const nextPath = await renameNoteFile({
+      notesRoot: this.notesRoot,
+      notePath,
+      title
+    });
+    if (nextPath !== notePath) {
+      this.cacheByPath.delete(notePath);
+      this.runtime.removeNote(notePath);
+    }
+    const renamed = await this.loadDocument(nextPath);
+    this.upsertDocument(renamed);
+    return renamed;
+  }
+
+  async deleteNote(notePath: NotePath): Promise<boolean> {
+    if (!this.enabled) return false;
+    try {
+      await deleteNoteFile({
+        notesRoot: this.notesRoot,
+        notePath
+      });
+    } catch (error: unknown) {
+      const maybeErrno = error as NodeJS.ErrnoException;
+      if (maybeErrno?.code === "ENOENT") {
+        return false;
+      }
+      throw error;
+    }
+    this.cacheByPath.delete(notePath);
+    this.runtime.removeNote(notePath);
+    return true;
+  }
+
+  async seedDefaultGuideDocsIfEmpty(): Promise<RestoreDefaultGuideDocsResult> {
+    if (!this.enabled) {
+      return {
+        mode: "seed_if_empty",
+        createdPaths: [],
+        skippedPaths: [],
+        skippedReason: "disabled"
+      };
+    }
+
+    if (await hasDefaultGuideSeedMarker(this.notesRoot)) {
+      return {
+        mode: "seed_if_empty",
+        createdPaths: [],
+        skippedPaths: [],
+        skippedReason: "already_seeded"
+      };
+    }
+
+    const files = await scanMarkdownFiles(this.notesRoot);
+    if (files.length > 0) {
+      await writeDefaultGuideSeedMarker(this.notesRoot);
+      return {
+        mode: "seed_if_empty",
+        createdPaths: [],
+        skippedPaths: [],
+        skippedReason: "non_empty"
+      };
+    }
+
+    const result = await this.restoreDefaultGuideDocs("seed_if_empty");
+    await writeDefaultGuideSeedMarker(this.notesRoot);
+    return result;
+  }
+
+  async restoreDefaultGuideDocs(
+    mode: RestoreDefaultGuideDocsMode = "restore_missing"
+  ): Promise<RestoreDefaultGuideDocsResult> {
+    if (!this.enabled) {
+      return {
+        mode,
+        createdPaths: [],
+        skippedPaths: [],
+        skippedReason: "disabled"
+      };
+    }
+
+    const existing = new Set((await scanMarkdownFiles(this.notesRoot)).map((item) => item.path));
+    const createdPaths: NotePath[] = [];
+    const skippedPaths: NotePath[] = [];
+
+    for (const doc of DEFAULT_TOME_GUIDE_DOCS) {
+      if (existing.has(doc.path)) {
+        skippedPaths.push(doc.path);
+        continue;
+      }
+      await writeNoteDocumentAtomic({
+        notesRoot: this.notesRoot,
+        notePath: doc.path,
+        content: doc.content
+      });
+      const created = await this.loadDocument(doc.path);
+      this.upsertDocument(created);
+      createdPaths.push(doc.path);
+      existing.add(doc.path);
+    }
+
+    if (createdPaths.length > 0) {
+      await writeDefaultGuideSeedMarker(this.notesRoot);
+    }
+
+    return {
+      mode,
+      createdPaths,
+      skippedPaths
+    };
   }
 
   getIndexSnapshot(): NoteGraphIndex {

@@ -4,7 +4,9 @@ import { promises as fs } from "fs";
 import path from "path";
 import { EngagementState, SavedView, TagIndexEntry, Task } from "../domain/models";
 import { createDefaultEngagementState } from "../domain/engagement";
+import { normalizePriorityTags } from "../domain/priorityTags";
 import { migratePersistedStateToCurrent } from "./migrations";
+import { recomputeTagIndex } from "./portability";
 import { validatePersistedState } from "./validation";
 import { BRAND_SLUG, DATA_FILE_NAME, ENV_VARS } from "../brand/brand";
 
@@ -77,6 +79,7 @@ export type SaveStateResultCallback = (result: SaveStateResult) => void;
 export type StrictLoadOptions = {
   filePath?: string;
   fsOps?: PersistenceFsOps;
+  allowTagNormalizationRepair?: boolean;
 };
 
 export type StrictLoadResult = {
@@ -154,6 +157,7 @@ const DEFAULT_FS_OPS: PersistenceFsOps = fs;
 export const CURRENT_SCHEMA_VERSION = 8;
 const PRIVATE_DIR_MODE = 0o700;
 const PRIVATE_FILE_MODE = 0o600;
+const TAG_NORMALIZATION_VALIDATION_FRAGMENT = "task.tags must be normalized/deduped";
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 let lastSuccessfulSaveAt: number | undefined;
 const corruptionRecoveryByPath = new Map<string, string | undefined>();
@@ -200,6 +204,59 @@ function normalizeStateRevision(value: unknown): number {
     return value;
   }
   return 0;
+}
+
+function isTagNormalizationOnlyValidationErrors(errors: string[]): boolean {
+  return (
+    errors.length > 0 &&
+    errors.every((error) => error.includes(TAG_NORMALIZATION_VALIDATION_FRAGMENT))
+  );
+}
+
+function repairTaskTagNormalization(data: LoadedData): LoadedData {
+  const tasks = data.tasks.map((task) => ({
+    ...task,
+    tags: normalizePriorityTags(Array.isArray(task.tags) ? task.tags : [])
+  }));
+  return {
+    ...data,
+    tasks,
+    tagIndex: recomputeTagIndex(tasks)
+  };
+}
+
+function validateStrictWithOptionalTagRepair(
+  data: LoadedData,
+  allowTagNormalizationRepair: boolean
+):
+  | { ok: true; data: LoadedData; repairedIssueCount: number }
+  | { ok: false; errors: string[] } {
+  const strictValidation = validatePersistedState(data, "strict");
+  if (strictValidation.ok) {
+    return {
+      ok: true,
+      data: strictValidation.data,
+      repairedIssueCount: 0
+    };
+  }
+
+  if (
+    !allowTagNormalizationRepair ||
+    !isTagNormalizationOnlyValidationErrors(strictValidation.errors)
+  ) {
+    return { ok: false, errors: strictValidation.errors };
+  }
+
+  const repaired = repairTaskTagNormalization(data);
+  const repairedValidation = validatePersistedState(repaired, "strict");
+  if (!repairedValidation.ok) {
+    return { ok: false, errors: strictValidation.errors };
+  }
+  return {
+    ok: true,
+    data: repairedValidation.data,
+    repairedIssueCount: strictValidation.errors.length
+  };
 }
 
 function formatBackupTimestamp(now: Date): string {
@@ -418,15 +475,23 @@ export async function safeLoadState(options: SafeLoadOptions = {}): Promise<Safe
       preValidation.data,
       CURRENT_SCHEMA_VERSION
     );
-    const postValidation = validatePersistedState(migrated, "strict");
-    if (!postValidation.ok) {
+    const strictValidation = validateStrictWithOptionalTagRepair(migrated, true);
+    if (!strictValidation.ok) {
       return recoverFromCorruption(filePath, now, fsOps);
     }
+    const repairedTagIssues = strictValidation.repairedIssueCount;
     return {
-      data: postValidation.data,
+      data: strictValidation.data,
       resolvedPath: filePath,
+      ...(repairedTagIssues > 0
+        ? {
+            bannerMessage: `Recovered ${String(repairedTagIssues)} legacy task tag normalization issue(s).`
+          }
+        : {}),
       shouldPersistRecoveredState: false,
-      didMigrate: preValidation.data.schemaVersion !== postValidation.data.schemaVersion
+      didMigrate:
+        preValidation.data.schemaVersion !== strictValidation.data.schemaVersion ||
+        repairedTagIssues > 0
     };
   } catch {
     return recoverFromCorruption(filePath, now, fsOps);
@@ -441,6 +506,7 @@ export async function loadState(): Promise<LoadedData> {
 export async function loadStateStrict(options: StrictLoadOptions = {}): Promise<StrictLoadResult> {
   const filePath = options.filePath ?? resolveDefaultDataFilePath();
   const fsOps = options.fsOps ?? DEFAULT_FS_OPS;
+  const allowTagNormalizationRepair = options.allowTagNormalizationRepair !== false;
   let raw = "";
 
   try {
@@ -486,17 +552,22 @@ export async function loadStateStrict(options: StrictLoadOptions = {}): Promise<
     );
   }
 
-  const postValidation = validatePersistedState(migrated, "strict");
-  if (!postValidation.ok) {
+  const strictValidation = validateStrictWithOptionalTagRepair(
+    migrated,
+    allowTagNormalizationRepair
+  );
+  if (!strictValidation.ok) {
     throw new Error(
-      `Strict validation failed for ${filePath}: ${postValidation.errors.join("; ")}`
+      `Strict validation failed for ${filePath}: ${strictValidation.errors.join("; ")}`
     );
   }
 
   return {
-    data: postValidation.data,
+    data: strictValidation.data,
     resolvedPath: filePath,
-    didMigrate: preValidation.data.schemaVersion !== postValidation.data.schemaVersion
+    didMigrate:
+      preValidation.data.schemaVersion !== strictValidation.data.schemaVersion ||
+      strictValidation.repairedIssueCount > 0
   };
 }
 

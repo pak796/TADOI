@@ -3,6 +3,7 @@ import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
 import { createNotesService } from "./service";
+import { DEFAULT_TOME_GUIDE_PATHS } from "./defaultDocs";
 
 const cleanupDirs: string[] = [];
 
@@ -110,5 +111,101 @@ describe("NotesService incremental behavior", () => {
     expect(after.fullReindexCount).toBe(1);
     expect(after.upsertCount).toBe(baseline.upsertCount + 10);
     expect(after.lastUpsertPath).toBe("N0.md");
+  });
+
+  it("renames and deletes a note while keeping the in-memory index in sync", async () => {
+    const dir = await makeTempDir("tadoi-notes-service-");
+    const notesRoot = path.join(dir, "notes");
+    await writeNote(notesRoot, "Alpha.md", "# Alpha\n\nBody");
+
+    const service = createNotesService({
+      dataFilePath: path.join(dir, "data.json"),
+      rootPath: notesRoot,
+      enabled: true
+    });
+    await service.initialize();
+
+    const renamed = await service.renameNote("Alpha.md", "Gamma");
+    expect(renamed?.path).toBe("Gamma.md");
+    expect(service.listNotes().map((note) => note.path)).toEqual(["Gamma.md"]);
+    await expect(service.getNoteContent("Alpha.md")).resolves.toBeNull();
+    await expect(fs.stat(path.join(notesRoot, "Gamma.md"))).resolves.toBeDefined();
+    await expect(fs.stat(path.join(notesRoot, "Alpha.md"))).rejects.toThrow();
+
+    const deleted = await service.deleteNote("Gamma.md");
+    expect(deleted).toBe(true);
+    expect(service.listNotes()).toHaveLength(0);
+    await expect(service.getNoteContent("Gamma.md")).resolves.toBeNull();
+  });
+
+  it("seeds default guide docs exactly once when vault starts empty", async () => {
+    const dir = await makeTempDir("tadoi-notes-service-seed-");
+    const notesRoot = path.join(dir, "notes");
+    const service = createNotesService({
+      dataFilePath: path.join(dir, "data.json"),
+      rootPath: notesRoot,
+      enabled: true
+    });
+
+    await service.initialize();
+    expect(service.listNotes()).toHaveLength(0);
+
+    const firstSeed = await service.seedDefaultGuideDocsIfEmpty();
+    expect(firstSeed.mode).toBe("seed_if_empty");
+    expect(firstSeed.createdPaths).toEqual(DEFAULT_TOME_GUIDE_PATHS);
+    expect(firstSeed.skippedPaths).toEqual([]);
+    expect(firstSeed.skippedReason).toBeUndefined();
+
+    const secondSeed = await service.seedDefaultGuideDocsIfEmpty();
+    expect(secondSeed.mode).toBe("seed_if_empty");
+    expect(secondSeed.createdPaths).toEqual([]);
+    expect(secondSeed.skippedReason).toBe("already_seeded");
+
+    for (const notePath of DEFAULT_TOME_GUIDE_PATHS) {
+      await expect(fs.stat(path.join(notesRoot, notePath))).resolves.toBeDefined();
+    }
+  });
+
+  it("does not seed defaults when vault already contains user notes", async () => {
+    const dir = await makeTempDir("tadoi-notes-service-seed-");
+    const notesRoot = path.join(dir, "notes");
+    await writeNote(notesRoot, "User.md", "# User");
+
+    const service = createNotesService({
+      dataFilePath: path.join(dir, "data.json"),
+      rootPath: notesRoot,
+      enabled: true
+    });
+    await service.initialize();
+
+    const seed = await service.seedDefaultGuideDocsIfEmpty();
+    expect(seed.createdPaths).toEqual([]);
+    expect(seed.skippedReason).toBe("non_empty");
+    expect(service.listNotes().map((note) => note.path)).toEqual(["User.md"]);
+  });
+
+  it("restores only missing default guide docs without overwriting existing notes", async () => {
+    const dir = await makeTempDir("tadoi-notes-service-restore-");
+    const notesRoot = path.join(dir, "notes");
+    const service = createNotesService({
+      dataFilePath: path.join(dir, "data.json"),
+      rootPath: notesRoot,
+      enabled: true
+    });
+    await service.initialize();
+
+    const initialRestore = await service.restoreDefaultGuideDocs();
+    expect(initialRestore.mode).toBe("restore_missing");
+    expect(initialRestore.createdPaths).toEqual(DEFAULT_TOME_GUIDE_PATHS);
+
+    const deletedPath = DEFAULT_TOME_GUIDE_PATHS[1];
+    await service.deleteNote(deletedPath);
+    await expect(fs.stat(path.join(notesRoot, deletedPath))).rejects.toThrow();
+
+    const restoreAfterDelete = await service.restoreDefaultGuideDocs();
+    expect(restoreAfterDelete.createdPaths).toEqual([deletedPath]);
+    expect(restoreAfterDelete.skippedPaths).toEqual(
+      DEFAULT_TOME_GUIDE_PATHS.filter((item) => item !== deletedPath)
+    );
   });
 });

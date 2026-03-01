@@ -2,7 +2,7 @@
 
 ## Scope
 - Reuse `src/commands/*` parser + executor from M1.
-- Add external CLI command path for: `add`, `done`, `due`, `help`.
+- Add external CLI command path for: `add`, `done`, `due`, `note`, `help`.
 - Add lock-file write blocking for CLI mutations while TUI is running.
 - Add atomic save path for CLI state writes.
 - Add parity support for `due id:<task-id> clear`.
@@ -13,6 +13,7 @@
   - `tadoi done id:<task-id>`
   - `tadoi due id:<task-id> ...`
   - `tadoi recur id:<task-id> ...`
+  - `tadoi note ...`
   - `tadoi help ...`
 - Raw DSL passthrough:
   - `tadoi 'add "Task" due:2026-03-05 #tag'`
@@ -22,7 +23,7 @@
   - `tadoi --interactive` -> launch TUI
   - unknown top-level token/flag -> fail fast with usage (`exit 2`, no TUI fallback)
 - Wrapper help and literal delimiter:
-  - `tadoi add --help` / `done --help` / `due --help` / `recur --help` / `help --help` -> topic help, no mutation
+  - `tadoi add --help` / `done --help` / `due --help` / `recur --help` / `note --help` / `help --help` -> topic help, no mutation
   - `tadoi add -- --help` -> literal title token `--help`
 - Scriptability flags (non-interactive commands):
   - `--json` structured output envelope
@@ -42,8 +43,32 @@
   - creates lock on startup (best effort)
   - removes lock on clean exit/destroy
 - CLI behavior:
-  - `add|done|due` refuse write when lock exists (`exit 4`)
+  - `add|done|due|note` refuse write when lock exists (`exit 4`)
   - `help` remains read-only and bypasses lock.
+
+## TOME commands (Slice 5 extension)
+TOME (Terminal Oriented Markdown Environment) is TADOI's notes-oriented markdown tool.
+
+TOME COMMANDS
+- note new "Title"      Create note
+- note open "Query"     Open note
+- note search "Term"    Search TOME notes (supports tag:<x>)
+- note delete "Query"   Delete note (same resolver as open)
+- note restore-defaults Restore missing default guide docs
+- note reindex          Rebuild TOME index
+- note root set "Path"  Migrate TOME root (copy-first)
+- note help             Show this help
+
+TOME command examples:
+- `tadoi note new "Weekly Review"`
+- `tadoi note search "sprint retro tag:inbox"`
+- `tadoi note open "Weekly Review"`
+- `tadoi note open id:note-dup-primary`
+- `tadoi note open "Conflicts/SameTitle1.md"`
+- `tadoi note delete "Weekly Review"`
+- `tadoi note restore-defaults`
+- `tadoi note reindex`
+- `tadoi note root set "./notes-vault"` (copy-first migration + pre-change backup)
 
 ## Command rules in CLI
 - `@selected` is rejected in CLI:
@@ -69,3 +94,4 @@
 3. `tadoi due id:<uuid> clear` removes due date.
 4. `tadoi 'add "X" due:2026-02-29'` returns parse/validation (`2`).
 5. `tadoi done id:not-a-real-id` returns target resolution (`3`).
+6. `tadoi note root set "./notes-next"` creates a data backup and copies notes to the new root without deleting the old root.

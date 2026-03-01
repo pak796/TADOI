@@ -181,19 +181,19 @@ async function pressCtrlKeyAndRender(
 }
 
 async function pressEnterAndRender(mockInput: MockInput, harness: RenderHarness) {
-  mockInput.pressEnter();
+  await Promise.resolve(mockInput.pressEnter());
   await Bun.sleep(10);
   await harness.renderOnce();
 }
 
 async function pressEscapeAndRender(mockInput: MockInput, harness: RenderHarness) {
-  mockInput.pressEscape();
+  await Promise.resolve(mockInput.pressEscape());
   await Bun.sleep(10);
   await harness.renderOnce();
 }
 
 async function pressTabAndRender(mockInput: MockInput, harness: RenderHarness) {
-  mockInput.pressTab();
+  await Promise.resolve(mockInput.pressTab());
   await Bun.sleep(10);
   await harness.renderOnce();
 }
@@ -205,7 +205,7 @@ async function pressArrowAndRender(
   times = 1
 ) {
   for (let index = 0; index < times; index += 1) {
-    mockInput.pressArrow(direction);
+    await Promise.resolve(mockInput.pressArrow(direction));
     await Bun.sleep(10);
     await harness.renderOnce();
   }
@@ -417,9 +417,24 @@ async function openHelpSettingsPage(harness: RenderHarness) {
   const { mockInput } = harness;
   await pressKeyAndRender(mockInput, harness, "?");
   await waitForText(harness, "Getting Started");
-  await pressArrowAndRender(mockInput, harness, "down", 5);
-  await pressArrowAndRender(mockInput, harness, "right");
-  await waitForText(harness, "Theme mode and custom palette settings.");
+  let lastFrame = "";
+  for (let step = 0; step < 16; step += 1) {
+    await harness.renderOnce();
+    let frame = harness.captureCharFrame();
+    lastFrame = frame;
+    if (frame.includes("Help / Settings") && frame.includes("Theme mode:")) {
+      return;
+    }
+    await pressArrowAndRender(mockInput, harness, "right");
+    await harness.renderOnce();
+    frame = harness.captureCharFrame();
+    lastFrame = frame;
+    if (frame.includes("Help / Settings") && frame.includes("Theme mode:")) {
+      return;
+    }
+    await pressArrowAndRender(mockInput, harness, "down");
+  }
+  throw new Error(`Unable to open Help settings page.\nLast frame:\n${lastFrame}`);
 }
 
 async function focusHelpSettingsItem(

@@ -25,11 +25,13 @@ function createStubService(options: {
   getCreatedCount: () => number;
   getReindexCount: () => number;
   getMigratedRoots: () => string[];
+  getDeletedPaths: () => string[];
 } {
   let notes = [...(options.notes ?? [])];
   let createdCount = 0;
   let reindexCount = 0;
   const migratedRoots: string[] = [];
+  const deletedPaths: string[] = [];
   const idsByPath = new Map<string, string | undefined>(
     Object.entries(options.idsByPath ?? {})
   );
@@ -71,6 +73,17 @@ function createStubService(options: {
     reindexAll: async () => {
       reindexCount += 1;
     },
+    deleteNote: async (notePath: string) => {
+      deletedPaths.push(notePath);
+      const before = notes.length;
+      notes = notes.filter((note) => note.path !== notePath);
+      return notes.length < before;
+    },
+    restoreDefaultGuideDocs: async () => ({
+      mode: "restore_missing" as const,
+      createdPaths: [] as string[],
+      skippedPaths: [] as string[]
+    }),
     migrateNotesRootCopyFirst: async (nextRoot: string) => {
       migratedRoots.push(nextRoot);
     },
@@ -83,7 +96,8 @@ function createStubService(options: {
     service,
     getCreatedCount: () => createdCount,
     getReindexCount: () => reindexCount,
-    getMigratedRoots: () => [...migratedRoots]
+    getMigratedRoots: () => [...migratedRoots],
+    getDeletedPaths: () => [...deletedPaths]
   };
 }
 
@@ -215,6 +229,99 @@ describe("executeNoteCommand", () => {
     expect(getReindexCount()).toBe(1);
   });
 
+  it("deletes notes using the same open-query resolver", async () => {
+    const { service, getDeletedPaths } = createStubService({
+      notes: [{ path: "A.md", title: "A", tags: [], mtimeMs: 1 }]
+    });
+    const result = await executeNoteCommand(
+      {
+        type: "note",
+        operation: "delete",
+        query: "A"
+      },
+      {
+        service,
+        dataFilePath: "/tmp/tadoi_data.json",
+        notesSettings: { enabled: true, rootPath: null }
+      }
+    );
+
+    expect(result.output.kind).toBe("ok");
+    expect(result.output.text).toBe("Note deleted: A.md");
+    expect(getDeletedPaths()).toEqual(["A.md"]);
+  });
+
+  it("returns ambiguity errors for delete queries the same way as note open", async () => {
+    const { service, getDeletedPaths } = createStubService({
+      notes: [
+        { path: "Conflicts/SameTitle1.md", title: "Same Title", tags: [], mtimeMs: 1 },
+        { path: "Conflicts/SameTitle2.md", title: "Same Title", tags: [], mtimeMs: 1 }
+      ]
+    });
+
+    const result = await executeNoteCommand(
+      {
+        type: "note",
+        operation: "delete",
+        query: "Same Title"
+      },
+      {
+        service,
+        dataFilePath: "/tmp/tadoi_data.json",
+        notesSettings: { enabled: true, rootPath: null }
+      }
+    );
+
+    expect(result.output.kind).toBe("error");
+    expect(result.output.text).toContain("ambiguous note query");
+    expect(getDeletedPaths()).toEqual([]);
+  });
+
+  it("restores default guide docs without overwriting existing docs", async () => {
+    const { service } = createStubService({ notes: [] });
+    (service as unknown as { restoreDefaultGuideDocs: NotesService["restoreDefaultGuideDocs"] })
+      .restoreDefaultGuideDocs = async () => ({
+      mode: "restore_missing",
+      createdPaths: ["TADOI Guides/Guide - Using TADOI.md"],
+      skippedPaths: ["TADOI Guides/README - TADOI Overview.md"]
+    });
+
+    const result = await executeNoteCommand(
+      {
+        type: "note",
+        operation: "restore_defaults"
+      },
+      {
+        service,
+        dataFilePath: "/tmp/tadoi_data.json",
+        notesSettings: { enabled: true, rootPath: null }
+      }
+    );
+
+    expect(result.output.kind).toBe("ok");
+    expect(result.output.text).toContain("Restored default docs:");
+  });
+
+  it("reports no-op when all default guide docs already exist", async () => {
+    const { service } = createStubService({ notes: [] });
+    const result = await executeNoteCommand(
+      {
+        type: "note",
+        operation: "restore_defaults"
+      },
+      {
+        service,
+        dataFilePath: "/tmp/tadoi_data.json",
+        notesSettings: { enabled: true, rootPath: null }
+      }
+    );
+
+    expect(result.output).toEqual({
+      kind: "ok",
+      text: "Default TOME guide docs already present"
+    });
+  });
+
   it("applies root migration with backup + settings persistence", async () => {
     const { service, getMigratedRoots } = createStubService({
       notes: [{ path: "A.md", title: "A", tags: [], mtimeMs: 1 }]
@@ -266,7 +373,7 @@ describe("executeNoteCommand", () => {
 
     expect(result.output).toEqual({
       kind: "error",
-      text: "Error: notes are disabled in settings"
+      text: "Error: TOME is disabled in settings"
     });
     expect(getCreatedCount()).toBe(0);
   });

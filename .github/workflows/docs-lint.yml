@@ -9,6 +9,7 @@ on:
       - "scripts/docs-lint.ts"
       - "scripts/keybind-sync-audit.py"
       - "scripts/generate-keybind-doc.ts"
+      - "skills/host-prereq-preflight/**"
       - "package.json"
       - ".github/workflows/docs-lint.yml"
   push:
@@ -21,6 +22,7 @@ on:
       - "scripts/docs-lint.ts"
       - "scripts/keybind-sync-audit.py"
       - "scripts/generate-keybind-doc.ts"
+      - "skills/host-prereq-preflight/**"
       - "package.json"
       - ".github/workflows/docs-lint.yml"
 

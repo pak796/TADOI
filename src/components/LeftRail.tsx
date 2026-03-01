@@ -25,6 +25,7 @@ export type LeftRailMenuItem =
   | "ADD"
   | "EDIT"
   | "SEARCH"
+  | "NOTES"
   | "TAG_PANEL"
   | "HELP"
   | "DELETE";
@@ -90,15 +91,15 @@ function getModeLabel(mode: Mode): string {
     case Mode.TAG_FILTER:
       return "TAG FILTER";
     case Mode.NOTES_LIST:
-      return "NOTES";
+      return "TOME";
     case Mode.NOTES_VIEW:
-      return "NOTES VIEW";
+      return "TOME VIEW";
     case Mode.NOTES_EDIT:
-      return "NOTES EDIT";
+      return "TOME EDIT";
     case Mode.NOTES_SEARCH:
-      return "NOTES SEARCH";
+      return "TOME SEARCH";
     case Mode.NOTES_TAG_FILTER:
-      return "NOTES TAGS";
+      return "TOME TAGS";
     case Mode.BACKUP_CENTER:
       return "BACKUP";
     case Mode.HELP:
@@ -123,15 +124,15 @@ function getFocusLabel(focus: FocusTarget): string {
     case FocusTarget.TAG_FILTER_INPUT:
       return "TAG FILTER";
     case FocusTarget.NOTES_LIST:
-      return "NOTES";
+      return "TOME";
     case FocusTarget.NOTES_VIEW:
-      return "NOTE VIEW";
+      return "TOME VIEW";
     case FocusTarget.NOTES_EDIT:
-      return "NOTE EDIT";
+      return "TOME EDIT";
     case FocusTarget.NOTES_SEARCH_INPUT:
-      return "NOTES SEARCH";
+      return "TOME SEARCH";
     case FocusTarget.NOTES_TAG_FILTER_INPUT:
-      return "NOTES TAG FILTER";
+      return "TOME TAG FILTER";
     case FocusTarget.MODAL:
       return "DELETE";
     case FocusTarget.EDITOR_TITLE:
@@ -215,10 +216,21 @@ function formatMenuItemLabel(item: LeftRailMenuItem): string {
   if (item === "ADD") return "ADD (A)";
   if (item === "EDIT") return "EDIT (E)";
   if (item === "SEARCH") return "SEARCH (/)";
+  if (item === "NOTES") return "TOME (N)";
   if (item === "TAG_PANEL") return "TAG PANEL (P)";
   if (item === "HELP") return "SETTINGS & HELP (?)";
   if (item === "DELETE") return "DELETE (D)";
   return item;
+}
+
+function isNotesMode(mode: Mode): boolean {
+  return (
+    mode === Mode.NOTES_LIST ||
+    mode === Mode.NOTES_VIEW ||
+    mode === Mode.NOTES_EDIT ||
+    mode === Mode.NOTES_SEARCH ||
+    mode === Mode.NOTES_TAG_FILTER
+  );
 }
 
 function isLightHexColor(color: string): boolean {
@@ -287,6 +299,7 @@ export function LeftRail({
     "ADD",
     "EDIT",
     "SEARCH",
+    "NOTES",
     "TAG_PANEL",
     "HELP",
     "DELETE"
@@ -387,7 +400,9 @@ export function LeftRail({
         <text style={styles.muted}>MENU</text>
         {menuItems.map((item) => {
           const active =
-            item === modeLabel || (item === "TAG_PANEL" && mode === Mode.TAG_FILTER);
+            item === modeLabel ||
+            (item === "TAG_PANEL" && mode === Mode.TAG_FILTER) ||
+            (item === "NOTES" && isNotesMode(mode));
           return (
             <box
               key={item}

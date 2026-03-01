@@ -103,6 +103,45 @@ describe("safeLoadState", () => {
     expect(result.shouldPersistRecoveredState).toBe(false);
   });
 
+  it("repairs legacy task tag normalization issues without corruption fallback", async () => {
+    const dir = await makeTempDir();
+    const filePath = path.join(dir, "tadoi_data.json");
+    await fs.writeFile(
+      filePath,
+      JSON.stringify(
+        {
+          schemaVersion: 8,
+          tasks: [
+            {
+              id: "legacy-1",
+              title: "Legacy",
+              status: "open",
+              workflowStage: "todo",
+              createdAt: 1,
+              updatedAt: 1,
+              tags: ["team", "team", "#p1", "#p2"]
+            }
+          ],
+          tagIndex: {},
+          savedViews: []
+        },
+        null,
+        2
+      ),
+      "utf8"
+    );
+
+    const result = await safeLoadState({ filePath, now: new Date("2026-02-28T10:00:00") });
+    expect(result.shouldPersistRecoveredState).toBe(false);
+    expect(result.corruptBackupPath).toBeUndefined();
+    expect(result.didMigrate).toBe(true);
+    expect(result.bannerMessage).toContain("Recovered 1 legacy task tag normalization issue(s).");
+    expect(result.data.tasks[0]?.tags).toEqual(["#p2", "team"]);
+
+    const files = await fs.readdir(dir);
+    expect(files.some((name) => name.includes(".corrupt."))).toBe(false);
+  });
+
   it("does not treat non-ENOENT read failures as corruption recovery", async () => {
     const dir = await makeTempDir();
     const filePath = path.join(dir, "tadoi_data.json");
@@ -275,6 +314,72 @@ describe("loadStateStrict", () => {
 
     const result = await loadStateStrict({ filePath });
     expect(result.data.tasks[0]?.tags).toEqual(["#p2", "work", "home"]);
+  });
+
+  it("repairs legacy task tag normalization issues by default", async () => {
+    const dir = await makeTempDir();
+    const filePath = path.join(dir, "tadoi_data.json");
+    await fs.writeFile(
+      filePath,
+      JSON.stringify(
+        {
+          schemaVersion: 8,
+          tasks: [
+            {
+              id: "legacy-1",
+              title: "Legacy",
+              status: "open",
+              workflowStage: "todo",
+              createdAt: 1,
+              updatedAt: 1,
+              tags: ["team", "team", "#p1", "#p2"]
+            }
+          ],
+          tagIndex: {},
+          savedViews: []
+        },
+        null,
+        2
+      ),
+      "utf8"
+    );
+
+    const result = await loadStateStrict({ filePath });
+    expect(result.didMigrate).toBe(true);
+    expect(result.data.tasks[0]?.tags).toEqual(["#p2", "team"]);
+  });
+
+  it("throws when legacy tag repair is disabled", async () => {
+    const dir = await makeTempDir();
+    const filePath = path.join(dir, "tadoi_data.json");
+    await fs.writeFile(
+      filePath,
+      JSON.stringify(
+        {
+          schemaVersion: 8,
+          tasks: [
+            {
+              id: "legacy-1",
+              title: "Legacy",
+              status: "open",
+              workflowStage: "todo",
+              createdAt: 1,
+              updatedAt: 1,
+              tags: ["team", "team", "#p1", "#p2"]
+            }
+          ],
+          tagIndex: {},
+          savedViews: []
+        },
+        null,
+        2
+      ),
+      "utf8"
+    );
+
+    await expect(
+      loadStateStrict({ filePath, allowTagNormalizationRepair: false })
+    ).rejects.toThrow("task.tags must be normalized/deduped");
   });
 
   it("throws on malformed json without mutating files", async () => {

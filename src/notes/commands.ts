@@ -271,7 +271,7 @@ function formatOpenResultText(options: {
     );
   }
   if (brokenOutCount > 0) {
-    lines.push("Broken links present. Use NOTES_VIEW warnings for details.");
+    lines.push("Broken links present. Use TOME view warnings for details.");
   }
   return lines.join("\n");
 }
@@ -296,7 +296,7 @@ function formatSearchResultText(options: {
   snapshot: NoteGraphIndex;
 }): string {
   const { rawQuery, matches, noteLookup, snapshot } = options;
-  const lines = [`Notes search matches (${String(matches.length)}) for "${rawQuery}":`];
+  const lines = [`TOME search matches (${String(matches.length)}) for "${rawQuery}":`];
   const previewLimit = 8;
   const preview = matches.slice(0, previewLimit);
   for (let index = 0; index < preview.length; index += 1) {
@@ -348,7 +348,7 @@ export async function executeNoteCommand(
   }
 
   if (!context.notesSettings.enabled && command.operation !== "root_set") {
-    return error("Error: notes are disabled in settings");
+    return error("Error: TOME is disabled in settings");
   }
 
   if (command.operation === "new") {
@@ -418,7 +418,7 @@ export async function executeNoteCommand(
     const parsedQuery = parseNoteSearchQuery(rawQuery);
     const matches = findNoteSearchMatches(notes, parsedQuery);
     if (matches.length === 0) {
-      return ok(`No notes match "${rawQuery}"`, { matches: [] });
+      return ok(`No TOME notes match "${rawQuery}"`, { matches: [] });
     }
     return ok(
       formatSearchResultText({
@@ -431,10 +431,33 @@ export async function executeNoteCommand(
     );
   }
 
+  if (command.operation === "delete") {
+    const notes = context.service.listNotes();
+    const snapshot = context.service.getIndexSnapshot();
+    const resolved = resolveOpenQuery(notes, snapshot, command.query);
+    if (!resolved.ok) {
+      return error(resolved.text);
+    }
+
+    const deleted = await context.service.deleteNote(resolved.path);
+    if (!deleted) {
+      return error(`Error: note not found for query "${command.query}"`);
+    }
+    return ok(`Note deleted: ${resolved.path}`, { notePath: resolved.path });
+  }
+
+  if (command.operation === "restore_defaults") {
+    const restored = await context.service.restoreDefaultGuideDocs("restore_missing");
+    if (restored.createdPaths.length === 0) {
+      return ok("Default TOME guide docs already present");
+    }
+    return ok(`Restored default docs: ${restored.createdPaths.join(", ")}`);
+  }
+
   if (command.operation === "reindex") {
     await context.service.reindexAll();
     const total = context.service.listNotes().length;
-    return ok(`Notes reindex complete (${String(total)} notes)`);
+    return ok(`TOME reindex complete (${String(total)} notes)`);
   }
 
   if (!context.createBackup || !context.persistNotesSettings) {
@@ -454,5 +477,5 @@ export async function executeNoteCommand(
     rootPath: nextRoot
   };
   await context.persistNotesSettings(nextSettings);
-  return ok(`Notes root migrated to ${nextRoot}`, { notesRoot: nextRoot });
+  return ok(`TOME root migrated to ${nextRoot}`, { notesRoot: nextRoot });
 }

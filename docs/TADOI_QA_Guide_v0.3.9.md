@@ -296,10 +296,10 @@ Smoke pass criteria:
 
 ### J) Theme, CRT FX, and Custom Theme Behavior
 
-- [ ] `QA-040` Theme rotation includes `crtGreen`, `crtAmber`, and `custom1` without token regressions.
+- [ ] `QA-040` Theme rotation includes `crtGreen`, `crtAmber`, `kitty`, `corpo`, `strikefitron`, and `custom1` without token regressions.
   - Preconditions: app running.
   - Steps: cycle themes through full order.
-  - Expected: `crtGreen`, `crtAmber`, and `custom1` appear in rotation and render readable tokens.
+  - Expected: `crtGreen`, `crtAmber`, `kitty`, `corpo`, `strikefitron`, and `custom1` appear in rotation and render readable tokens.
 - [ ] `QA-041` Custom1 + CRT FX settings persist and normalize correctly.
   - Preconditions: settings paths writable.
   - Steps: set global/object custom1 values, enable CRT FX Lite, cycle CRT FX Profile away from default, restart, then inspect resolved settings behavior.

@@ -333,7 +333,7 @@ describe("executeCommand", () => {
     );
     expect(result.actions).toEqual([]);
     expect(result.output.kind).toBe("ok");
-    expect(result.output.text).toContain("NOTES COMMANDS");
+    expect(result.output.text).toContain("TOME COMMANDS");
     expect(result.output.text).toContain('note new "Title"');
   });
 

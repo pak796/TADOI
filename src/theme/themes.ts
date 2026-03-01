@@ -32,6 +32,9 @@ export type ThemeId =
   | "gundam"
   | "crtGreen"
   | "crtAmber"
+  | "kitty"
+  | "corpo"
+  | "strikefitron"
   | "custom1"
   | "rotating";
 
@@ -418,6 +421,48 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     selectionBg: "#4A2D12",
     selectionText: "#FFEBCB"
   },
+  kitty: {
+    bg: "#FFF4FB",
+    panel: "#FFE3F4",
+    text: "#2C1624",
+    mutedText: "#6F4F65",
+    border: "#F4B6D6",
+    accent: "#FF4FA0",
+    accent2: "#FF8CC8",
+    ok: "#58B87B",
+    warn: "#E5A63A",
+    danger: "#D94A6A",
+    selectionBg: "#E86AB1",
+    selectionText: "#2C1624"
+  },
+  corpo: {
+    bg: "#070707",
+    panel: "#120B0B",
+    text: "#F1D7D7",
+    mutedText: "#B08B8B",
+    border: "#5F1A1F",
+    accent: "#D10F1D",
+    accent2: "#8A1E2B",
+    ok: "#5BAF70",
+    warn: "#E0A63D",
+    danger: "#FF3B3B",
+    selectionBg: "#8A1017",
+    selectionText: "#FDEDEE"
+  },
+  strikefitron: {
+    bg: "#020704",
+    panel: "#06110A",
+    text: "#9DFF8A",
+    mutedText: "#5AAE65",
+    border: "#1F5A2E",
+    accent: "#43DB63",
+    accent2: "#2DAF55",
+    ok: "#74E56F",
+    warn: "#C7D94A",
+    danger: "#E06F54",
+    selectionBg: "#1A3F24",
+    selectionText: "#CCFFB8"
+  },
   custom1: {
     bg: "#0b0f14",
     panel: "#1a202c",
@@ -477,6 +522,9 @@ export const THEME_ORDER: ThemeId[] = [
   "gundam",
   "crtGreen",
   "crtAmber",
+  "kitty",
+  "corpo",
+  "strikefitron",
   "custom1",
   "rotating"
 ];
@@ -507,7 +555,10 @@ export const ROTATING_THEME_ORDER: RotatingThemeId[] = [
   "zeke",
   "gundam",
   "crtGreen",
-  "crtAmber"
+  "crtAmber",
+  "kitty",
+  "corpo",
+  "strikefitron"
 ];
 
 export function cycleTheme(current: ThemeId): ThemeId {
@@ -522,6 +573,9 @@ export function formatThemeDisplayName(themeId: ThemeId | RotatingThemeId): stri
   if (themeId === "gundam") return "GUNDAM";
   if (themeId === "crtGreen") return "CRT Green";
   if (themeId === "crtAmber") return "CRT Amber";
+  if (themeId === "kitty") return "KITTY";
+  if (themeId === "corpo") return "CORPO";
+  if (themeId === "strikefitron") return "STRIKEFITRON";
   const spaced = themeId
     .replace(/([a-z])([A-Z])/g, "$1 $2")
     .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
@@ -607,6 +661,9 @@ export function isThemeId(value: unknown): value is ThemeId {
       value === "gundam" ||
       value === "crtGreen" ||
       value === "crtAmber" ||
+      value === "kitty" ||
+      value === "corpo" ||
+      value === "strikefitron" ||
       value === "custom1" ||
       value === "rotating")
   );

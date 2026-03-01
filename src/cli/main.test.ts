@@ -77,7 +77,7 @@ function createDeps(options: {
       if (command.operation === "help") {
         return {
           kind: "ok",
-          text: "NOTES COMMANDS\n- note new \"Title\"      Create note"
+          text: "TOME COMMANDS\n- note new \"Title\"      Create note"
         };
       }
       return {
@@ -437,7 +437,7 @@ describe("runTitsCommandCliWithDeps", () => {
     expect(errors).toHaveLength(0);
     expect(saved).toHaveLength(0);
     expect(noteRuns).toEqual([]);
-    expect(logs[0]).toContain("NOTES COMMANDS");
+    expect(logs[0]).toContain("TOME COMMANDS");
     expect(logs[0]).toContain('note new "Title"');
   });
 
@@ -455,6 +455,29 @@ describe("runTitsCommandCliWithDeps", () => {
       }
     ]);
     expect(logs).toEqual(["note command ok"]);
+  });
+
+  it("routes note delete and restore-defaults through shared notes runner", async () => {
+    const { deps, errors, saved, noteRuns } = createDeps();
+
+    const deleteResult = await runTitsCommandCliWithDeps(["note", "delete", "Design"], deps);
+    const restoreResult = await runTitsCommandCliWithDeps(["note", "restore-defaults"], deps);
+
+    expect(deleteResult).toEqual({ handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS });
+    expect(restoreResult).toEqual({ handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS });
+    expect(errors).toHaveLength(0);
+    expect(saved).toHaveLength(0);
+    expect(noteRuns).toEqual([
+      {
+        type: "note",
+        operation: "delete",
+        query: "Design"
+      },
+      {
+        type: "note",
+        operation: "restore_defaults"
+      }
+    ]);
   });
 
   it("preserves multiline output for non-help note commands", async () => {

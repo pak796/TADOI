@@ -179,6 +179,21 @@ describe("parseCommand", () => {
         query: "tag:inbox"
       }
     });
+    expect(parseCommand('note delete "Design notes"')).toEqual({
+      ok: true,
+      command: {
+        type: "note",
+        operation: "delete",
+        query: "Design notes"
+      }
+    });
+    expect(parseCommand("note restore-defaults")).toEqual({
+      ok: true,
+      command: {
+        type: "note",
+        operation: "restore_defaults"
+      }
+    });
     expect(parseCommand("note reindex")).toEqual({
       ok: true,
       command: {
@@ -200,6 +215,10 @@ describe("parseCommand", () => {
         operation: "root_set",
         path: "./vault notes"
       }
+    });
+    expect(parseCommand("note restore-defaults now")).toEqual({
+      ok: false,
+      error: "Error: note restore-defaults takes no extra tokens"
     });
   });
 

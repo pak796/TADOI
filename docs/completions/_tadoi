@@ -19,7 +19,7 @@ commands=(
   'done:Mark task done by id via TITS command engine'
   'due:Set or clear due date via TITS command engine'
   'recur:Set or clear recurrence by id via TITS command engine'
-  'note:Notes commands (new/open/search/reindex/help)'
+  'note:TOME commands (new/open/search/delete/restore-defaults/reindex/root/help)'
   'list:List tasks via selector grammar'
   'help:Show TITS help topics'
   'check:add:Add checklist item by id'

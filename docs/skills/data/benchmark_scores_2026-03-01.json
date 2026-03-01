@@ -1,0 +1,77 @@
+{
+  "date": "2026-03-01",
+  "baseline_source": "/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/docs/skills/data/benchmark_scores_2026-02-11.json",
+  "scored_skills": [
+    {
+      "skill": "host-prereq-preflight",
+      "path": "/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/skills/host-prereq-preflight",
+      "line_count": 66,
+      "has_scripts": true,
+      "has_references": false,
+      "has_assets": false,
+      "has_openai": true,
+      "scores": {
+        "trigger_precision": 20,
+        "workflow_completeness": 20,
+        "determinism_automation": 20,
+        "safety_guardrails": 20,
+        "reusability_maintainability": 16,
+        "total": 96
+      }
+    },
+    {
+      "skill": "find-skills",
+      "path": "/Users/patrickkazar/.codex/skills/find-skills",
+      "line_count": 56,
+      "has_scripts": true,
+      "has_references": false,
+      "has_assets": false,
+      "has_openai": true,
+      "scores": {
+        "trigger_precision": 20,
+        "workflow_completeness": 20,
+        "determinism_automation": 20,
+        "safety_guardrails": 16,
+        "reusability_maintainability": 16,
+        "total": 92
+      }
+    },
+    {
+      "skill": "writing-clearly-and-concisely",
+      "path": "/Users/patrickkazar/.codex/skills/writing-clearly-and-concisely",
+      "line_count": 71,
+      "has_scripts": true,
+      "has_references": false,
+      "has_assets": false,
+      "has_openai": true,
+      "scores": {
+        "trigger_precision": 14,
+        "workflow_completeness": 12,
+        "determinism_automation": 20,
+        "safety_guardrails": 16,
+        "reusability_maintainability": 16,
+        "total": 78
+      }
+    }
+  ],
+  "deltas": [
+    {
+      "skill": "host-prereq-preflight",
+      "before_total": null,
+      "after_total": 96,
+      "delta_total": null
+    },
+    {
+      "skill": "find-skills",
+      "before_total": 26,
+      "after_total": 92,
+      "delta_total": 66
+    },
+    {
+      "skill": "writing-clearly-and-concisely",
+      "before_total": 42,
+      "after_total": 78,
+      "delta_total": 36
+    }
+  ]
+}

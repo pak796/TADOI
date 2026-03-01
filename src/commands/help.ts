@@ -13,11 +13,14 @@ const HELP_CHECK =
   'check add @selected "text" | check toggle @selected <index> | check edit @selected <index> "text" | check del @selected <index> | check clear @selected';
 const HELP_BULK =
   "bulk done | bulk tag add #tag... | bulk tag rm #tag... | bulk due YYYY-MM-DD [at:HH:MM] | bulk due clear | bulk priority <P?>|clear | bulk assignee <value|clear> | bulk project <value|clear> | bulk stage <todo|doing|blocked|done> | bulk delete";
-const HELP_NOTE = `NOTES COMMANDS
+const HELP_NOTE = `TOME COMMANDS (Terminal Oriented Markdown Environment)
 - note new "Title"      Create note
 - note open "Query"     Open note
-- note search "Term"    Search notes (supports tag:<x>)
-- note reindex          Rebuild notes index
+- note search "Term"    Search TOME notes (supports tag:<x>)
+- note delete "Query"   Delete note (same resolver as open)
+- note restore-defaults Restore missing default guide docs
+- note reindex          Rebuild TOME index
+- note root set "Path"  Migrate TOME root (copy-first)
 - note help             Show this help`;
 
 export function getHelpLine(topic?: HelpTopic): string {

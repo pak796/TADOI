@@ -231,7 +231,6 @@ import { isEditorMode } from "../ui/modeFocus";
 import {
   buildTaskSeededNoteContent,
   createNotesService,
-  deriveDefaultNoteTitleFromTaskTitle,
   isPathWithin
 } from "../notes/service";
 import { executeNoteCommand, parseNoteSearchQuery } from "../notes/commands";
@@ -384,7 +383,7 @@ const HELP_PANEL_CHROME_ROWS = HELP_HEADER_ROWS + HELP_DIVIDER_ROWS + HELP_FOOTE
 const HELP_SECTION_SCROLL_PADDING = 1;
 const HELP_NAV_ITEM_ROW_COUNT = 2;
 const EDITOR_CHECKLIST_MODAL_ROW_ID = "__editor_checklist__";
-const HELP_SETTINGS_STATUS_ROW_COUNT = 11;
+const HELP_SETTINGS_STATUS_ROW_COUNT = 12;
 const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings =
   getDefaultSettings().notifications;
 const DEFAULT_SECURITY_SETTINGS: SecuritySettings = getDefaultSettings().security;
@@ -533,6 +532,11 @@ const HELP_SETTINGS_NAV_ITEMS: HelpNavItem[] = [
   {
     title: "Terminal Bell",
     description: "Enable or disable terminal bell on overdue."
+  },
+  {
+    title: "Restore TOME Guides",
+    description:
+      "Recover deleted default guide notes. Existing notes are never overwritten."
   }
 ];
 
@@ -771,6 +775,11 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
           "Open Settings submenu",
           "Press Enter/Right to change settings."
         ]
+      },
+      {
+        title: "TOME guide recovery",
+        description:
+          "Use Settings > Restore TOME Guides (or `note restore-defaults`) to recover missing defaults safely."
       }
     ]
   },
@@ -834,6 +843,9 @@ const HELP_SETTINGS_OVERDUE_POPUP_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
 );
 const HELP_SETTINGS_TERMINAL_BELL_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
   (item) => item.title === "Terminal Bell"
+);
+const HELP_SETTINGS_RESTORE_TOME_GUIDES_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
+  (item) => item.title === "Restore TOME Guides"
 );
 const HELP_KEYMAP_ALIAS_RESET_NAV_INDEX = HELP_KEYMAP_ALIAS_NAV_ITEMS.findIndex(
   (item) => item.title === "Reset all aliases"
@@ -1637,6 +1649,15 @@ export function App({
   const [notesRootSettingsOpen, setNotesRootSettingsOpen] = useState(false);
   const [notesRootInput, setNotesRootInput] = useState("");
   const [notesRootApplying, setNotesRootApplying] = useState(false);
+  const [notesCreatePromptOpen, setNotesCreatePromptOpen] = useState(false);
+  const [notesCreateTitle, setNotesCreateTitle] = useState("");
+  const [notesCreateApplying, setNotesCreateApplying] = useState(false);
+  const [notesRenamePromptOpen, setNotesRenamePromptOpen] = useState(false);
+  const [notesRenameTitle, setNotesRenameTitle] = useState("");
+  const [notesRenameApplying, setNotesRenameApplying] = useState(false);
+  const [notesDeletePromptOpen, setNotesDeletePromptOpen] = useState(false);
+  const [notesDeleteApplying, setNotesDeleteApplying] = useState(false);
+  const notesDeleteTargetRef = useRef<{ path: NotePath; title: string } | null>(null);
   const [helpExpandedBySection, setHelpExpandedBySection] = useState<boolean[]>(
     createDefaultHelpExpandedState
   );
@@ -1752,6 +1773,7 @@ export function App({
     void (async () => {
       try {
         await notesService.initialize();
+        await notesService.seedDefaultGuideDocsIfEmpty();
         if (cancelled) return;
         const status = notesService.getStatus();
         setNotesRuntime({
@@ -1770,7 +1792,7 @@ export function App({
           notesRoot: resolveNotesRootPath(getDataFilePath(), settingsState.notes.rootPath),
           error: detail
         });
-        showShortNavigationBannerIfIdle(`Notes disabled: ${detail}`);
+        showShortNavigationBannerIfIdle(`TOME disabled: ${detail}`);
       }
     })();
 
@@ -2219,11 +2241,14 @@ export function App({
   const activeNoteTitle =
     (notesOpenPath
       ? notesList.find((note) => note.path === notesOpenPath)?.title
-      : selectedNotesListItem?.title) ?? "Notes";
+      : selectedNotesListItem?.title) ?? "TOME";
   const selectedNoteTags =
     notesList.find((note) => note.path === notesOpenPath)?.tags ??
     selectedNotesListItem?.tags ??
     [];
+  const notesInlinePromptOpen =
+    notesCreatePromptOpen || notesRenamePromptOpen || notesRootSettingsOpen;
+  const canOperateOnSelectedTome = Boolean(selectedNotesListItem ?? notesOpenPath);
 
   useEffect(() => {
     if (filteredNotes.length === 0) {
@@ -2236,14 +2261,6 @@ export function App({
       setNotesSelectedIndex(filteredNotes.length - 1);
     }
   }, [filteredNotes.length, notesSelectedIndex]);
-
-  useEffect(() => {
-    if (!notesOpenPath) return;
-    const index = filteredNotes.findIndex((note) => note.path === notesOpenPath);
-    if (index >= 0 && index !== notesSelectedIndex) {
-      setNotesSelectedIndex(index);
-    }
-  }, [filteredNotes, notesOpenPath, notesSelectedIndex]);
 
   const selectedTaskLinkedNotes = React.useMemo(() => {
     const taskId = selectedPersistedTask?.id;
@@ -2292,6 +2309,7 @@ export function App({
   const visibleLines = Math.max(1, listContentHeight);
   const visibleRows = Math.max(1, Math.floor(visibleLines / taskRowHeight));
   const notesPreviewLineLimit = Math.max(8, visibleLines - 10);
+  const tomeActionRowGap = 1;
   const editorPaneHeightLines = Math.max(
     1,
     terminalHeight -
@@ -2691,6 +2709,10 @@ export function App({
     `    Terminal bell: ${settingsState.notifications.terminalBellOnOverdue ? "on" : "off"}`,
     helpContentLineWidth
   );
+  const helpRestoreTomeGuidesStatusLine = fitLineToWidth(
+    `    Recover default guides: ${notesRuntime.enabled ? "ready" : "unavailable (TOME disabled)"}`,
+    helpContentLineWidth
+  );
   const helpSettingsStatusLines = [
     helpThemeStatusLine.trim(),
     helpNavigationHintsStatusLine.trim(),
@@ -2702,7 +2724,8 @@ export function App({
     helpRetroFxModeStatusLine.trim(),
     helpNotificationsEnabledStatusLine.trim(),
     helpInAppBannerStatusLine.trim(),
-    helpTerminalBellStatusLine.trim()
+    helpTerminalBellStatusLine.trim(),
+    helpRestoreTomeGuidesStatusLine.trim()
   ];
   const helpKeymapAliasPresetStates = {
     list: resolveKeymapAliasPresetState("list", settingsState.keymapAliases),
@@ -2727,6 +2750,11 @@ export function App({
     }
     if (activeHelpPage === "settings" && index === HELP_SETTINGS_RETRO_FX_MODE_NAV_INDEX) {
       return `Retro FX Mode: ${formatRetroFxModeLabel(settingsState.retroFxMode)}`;
+    }
+    if (activeHelpPage === "settings" && index === HELP_SETTINGS_RESTORE_TOME_GUIDES_NAV_INDEX) {
+      return notesRuntime.enabled
+        ? "Restore TOME Guides"
+        : "Restore TOME Guides (TOME disabled)";
     }
     if (activeHelpPage === "keymapAliases") {
       if (index === 0) {
@@ -3809,6 +3837,9 @@ export function App({
       case "open_backup_center":
         openBackupCenter({ bypassUnsavedGuard: true });
         return;
+      case "open_notes":
+        openNotesMode();
+        return;
       case "open_search":
         openSearchMode({ bypassUnsavedGuard: true });
         return;
@@ -4825,8 +4856,32 @@ export function App({
       case "NOTES_OPEN_SELECTED":
         openSelectedNoteFromList();
         return;
-      case "NOTES_NEW":
-        createNewNote();
+      case "NOTES_OPEN_CREATE":
+        openNotesCreatePrompt();
+        return;
+      case "NOTES_CLOSE_CREATE":
+        closeNotesCreatePrompt();
+        return;
+      case "NOTES_CONFIRM_CREATE":
+        void confirmNotesCreatePrompt();
+        return;
+      case "NOTES_OPEN_RENAME":
+        openNotesRenamePrompt();
+        return;
+      case "NOTES_CLOSE_RENAME":
+        closeNotesRenamePrompt();
+        return;
+      case "NOTES_CONFIRM_RENAME":
+        void confirmNotesRenamePrompt();
+        return;
+      case "NOTES_OPEN_DELETE":
+        openNotesDeletePrompt();
+        return;
+      case "NOTES_CLOSE_DELETE":
+        closeNotesDeletePrompt();
+        return;
+      case "NOTES_CONFIRM_DELETE":
+        void confirmNotesDeletePrompt();
         return;
       case "NOTES_EDIT_SELECTED":
         openCurrentNoteForEdit();
@@ -4851,6 +4906,9 @@ export function App({
         return;
       case "NOTES_BACK_TO_LIST":
         backToNotesList();
+        return;
+      case "NOTES_EXIT_TO_LIST":
+        exitNotesToTaskList();
         return;
       case "NOTES_SAVE_EDIT":
         void saveCurrentNoteEdit();
@@ -5649,6 +5707,43 @@ export function App({
       return;
     }
 
+    if (notesCreatePromptOpen || notesRenamePromptOpen) {
+      const isPlainInput = !key.ctrl && !key.meta && !key.option;
+      if (keyName === "escape") {
+        if (notesCreatePromptOpen) {
+          closeNotesCreatePrompt();
+        } else {
+          closeNotesRenamePrompt();
+        }
+        return;
+      }
+      if (keyName === "return" || keyName === "enter") {
+        if (notesCreatePromptOpen) {
+          void confirmNotesCreatePrompt();
+        } else {
+          void confirmNotesRenamePrompt();
+        }
+        return;
+      }
+      if (isPlainInput && (keyName === "backspace" || keyName === "delete")) {
+        if (notesCreatePromptOpen) {
+          setNotesCreateTitle((current) => current.slice(0, Math.max(0, current.length - 1)));
+        } else {
+          setNotesRenameTitle((current) => current.slice(0, Math.max(0, current.length - 1)));
+        }
+        return;
+      }
+      const isPrintable = isPlainInput && keySequence.length === 1 && keySequence >= " ";
+      if (isPrintable) {
+        if (notesCreatePromptOpen) {
+          setNotesCreateTitle((current) => `${current}${keySequence}`);
+        } else {
+          setNotesRenameTitle((current) => `${current}${keySequence}`);
+        }
+      }
+      return;
+    }
+
     if (
       saveConflictBannerState &&
       !saveConflictRetryPending &&
@@ -5665,7 +5760,12 @@ export function App({
       uiState.mode === Mode.LIST &&
       !viewsOverlayOpen &&
       !saveViewPromptOpen &&
-      (keySequence === "`" || keyName === "`")
+      (
+        keySequence === "`" ||
+        keyName === "`" ||
+        keyName === "backtick" ||
+        keyName === "grave"
+      )
     ) {
       setCommandActive(true);
       setCommandTextValue("");
@@ -5731,6 +5831,9 @@ export function App({
         backupScreen: uiState.mode === Mode.BACKUP_CENTER ? backupState.screen : null,
         selectedTaskHasChecklistItems: (selectedTask?.checklist?.length ?? 0) > 0,
         notesRootSettingsOpen,
+        notesCreatePromptOpen,
+        notesRenamePromptOpen,
+        notesDeletePromptOpen,
         resolvedKeymapAliases,
         helpPage: activeHelpPage
       }
@@ -6074,6 +6177,34 @@ export function App({
     showShortNavigationBanner(`Terminal bell: ${nextEnabled ? "on" : "off"}`);
   }
 
+  async function restoreTomeGuidesFromHelpSettings(): Promise<void> {
+    const service = resolveNotesService();
+    if (!service) return;
+    try {
+      const restored = await service.restoreDefaultGuideDocs("restore_missing");
+      if (restored.skippedReason === "disabled") {
+        showShortNavigationBanner("TOME is disabled in settings.");
+        return;
+      }
+      setNotesList(service.listNotes());
+      clampNotesSelectionToAvailable();
+      if (restored.createdPaths.length === 0) {
+        showShortNavigationBanner("All default guide notes are already present.");
+        return;
+      }
+      const count = restored.createdPaths.length;
+      showShortNavigationBanner(
+        count === 1
+          ? "Recovered 1 default guide note (existing notes unchanged)."
+          : `Recovered ${String(count)} default guide notes (existing notes unchanged).`
+      );
+    } catch (error: unknown) {
+      showShortNavigationBanner(
+        `Failed to restore TOME guides: ${normalizeErrorDetail(error)}`
+      );
+    }
+  }
+
   function setContextKeymapAliasPreset(context: KeymapAliasPresetContext, enabled: boolean) {
     const nextAliases = cloneKeymapAliases(settingsState.keymapAliases) ?? {};
     if (enabled) {
@@ -6389,6 +6520,9 @@ export function App({
         switchInAppOverduePopupSetting();
       }
       if (targetIndex === HELP_SETTINGS_TERMINAL_BELL_NAV_INDEX) switchTerminalBellSetting();
+      if (targetIndex === HELP_SETTINGS_RESTORE_TOME_GUIDES_NAV_INDEX) {
+        void restoreTomeGuidesFromHelpSettings();
+      }
       return;
     }
     if (activeHelpPage === "keymapAliases") {
@@ -6514,7 +6648,7 @@ export function App({
   function resolveNotesService(): ReturnType<typeof createNotesService> | null {
     const service = notesServiceRef.current;
     if (!service) {
-      showShortNavigationBanner("Notes service unavailable");
+      showShortNavigationBanner("TOME service unavailable");
       return null;
     }
     return service;
@@ -6528,6 +6662,19 @@ export function App({
     setNotesSelectedIndex((current) =>
       Math.max(0, Math.min(current, filteredNotes.length - 1))
     );
+  }
+
+  function syncNotesSelectionToPath(pathValue: NotePath | null): void {
+    if (!pathValue) {
+      clampNotesSelectionToAvailable();
+      return;
+    }
+    const index = filteredNotes.findIndex((note) => note.path === pathValue);
+    if (index >= 0) {
+      setNotesSelectedIndex(index);
+      return;
+    }
+    clampNotesSelectionToAvailable();
   }
 
   async function hydrateOpenNote(pathValue: NotePath): Promise<void> {
@@ -6551,7 +6698,7 @@ export function App({
 
   function openNotesMode() {
     if (!settingsState.notes.enabled || !notesRuntime.enabled) {
-      showShortNavigationBanner(notesRuntime.error ?? "Notes are disabled in settings.");
+      showShortNavigationBanner(notesRuntime.error ?? "TOME is disabled in settings.");
       return;
     }
     clearPendingGPrefix();
@@ -6561,12 +6708,28 @@ export function App({
       mode: uiState.mode,
       focus: uiState.focus
     });
+    setNotesRootSettingsOpen(false);
+    setNotesCreatePromptOpen(false);
+    setNotesCreateApplying(false);
+    setNotesRenamePromptOpen(false);
+    setNotesRenameTitle("");
+    setNotesRenameApplying(false);
+    setNotesDeletePromptOpen(false);
+    setNotesDeleteApplying(false);
     uiDispatch({ type: "setMode", mode: Mode.NOTES_LIST });
     uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_LIST });
     clampNotesSelectionToAvailable();
   }
 
   function openNotesSearchMode() {
+    setNotesRootSettingsOpen(false);
+    setNotesCreatePromptOpen(false);
+    setNotesCreateApplying(false);
+    setNotesRenamePromptOpen(false);
+    setNotesRenameTitle("");
+    setNotesRenameApplying(false);
+    setNotesDeletePromptOpen(false);
+    setNotesDeleteApplying(false);
     uiDispatch({
       type: "captureReturnContext",
       mode: Mode.NOTES_LIST,
@@ -6583,6 +6746,14 @@ export function App({
   }
 
   function openNotesTagFilterMode() {
+    setNotesRootSettingsOpen(false);
+    setNotesCreatePromptOpen(false);
+    setNotesCreateApplying(false);
+    setNotesRenamePromptOpen(false);
+    setNotesRenameTitle("");
+    setNotesRenameApplying(false);
+    setNotesDeletePromptOpen(false);
+    setNotesDeleteApplying(false);
     uiDispatch({
       type: "captureReturnContext",
       mode: Mode.NOTES_LIST,
@@ -6612,9 +6783,16 @@ export function App({
   async function openSelectedNoteFromList(): Promise<void> {
     const selected = selectedNotesListItem;
     if (!selected) {
-      showShortNavigationBanner("No notes available");
+      showShortNavigationBanner("No TOME notes available");
       return;
     }
+    setNotesCreatePromptOpen(false);
+    setNotesCreateApplying(false);
+    setNotesRenamePromptOpen(false);
+    setNotesRenameTitle("");
+    setNotesRenameApplying(false);
+    setNotesDeletePromptOpen(false);
+    setNotesDeleteApplying(false);
     await hydrateOpenNote(selected.path);
     uiDispatch({
       type: "captureReturnContext",
@@ -6625,21 +6803,49 @@ export function App({
     uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_VIEW });
   }
 
-  async function createNewNote(): Promise<void> {
+  function openNotesCreatePrompt(): void {
+    setNotesRootSettingsOpen(false);
+    setNotesRenamePromptOpen(false);
+    setNotesRenameTitle("");
+    setNotesRenameApplying(false);
+    setNotesDeletePromptOpen(false);
+    setNotesDeleteApplying(false);
+    setNotesCreatePromptOpen(true);
+    setNotesCreateTitle("");
+    setNotesCreateApplying(false);
+  }
+
+  function closeNotesCreatePrompt(): void {
+    setNotesCreatePromptOpen(false);
+    setNotesCreateApplying(false);
+    setNotesCreateTitle("");
+  }
+
+  async function confirmNotesCreatePrompt(): Promise<void> {
+    if (notesCreateApplying) return;
+    const title = notesCreateTitle.trim();
+    if (title.length === 0) {
+      showShortNavigationBanner("Enter a title to create a TOME note");
+      return;
+    }
     const service = resolveNotesService();
     if (!service) return;
-    const seedTitle =
-      notesSearchQuery.trim() ||
-      deriveDefaultNoteTitleFromTaskTitle(selectedPersistedTask?.title ?? "New Note");
+    setNotesCreateApplying(true);
     try {
-      const created = await service.createNote(seedTitle, `# ${seedTitle}\\n\\n`);
+      const created = await service.createNote(title, `# ${title}\n\n`);
       setNotesList(service.listNotes());
-      const index = filteredNotes.findIndex((note) => note.path === created.path);
-      setNotesSelectedIndex(index >= 0 ? index : 0);
       setNotesOpenPath(created.path);
       setNotesEditValue(created.content);
       setNotesEditDirty(false);
       setNotesEditEscGuardArmed(false);
+      setNotesCreatePromptOpen(false);
+      setNotesCreateTitle("");
+      setNotesRenamePromptOpen(false);
+      setNotesRenameTitle("");
+      setNotesRenameApplying(false);
+      setNotesDeletePromptOpen(false);
+      setNotesDeleteApplying(false);
+      syncNotesSelectionToPath(created.path);
       await hydrateOpenNote(created.path);
       uiDispatch({
         type: "captureReturnContext",
@@ -6650,6 +6856,162 @@ export function App({
       uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_EDIT });
     } catch (error: unknown) {
       showShortNavigationBanner(`Failed to create note: ${normalizeErrorDetail(error)}`);
+    } finally {
+      setNotesCreateApplying(false);
+    }
+  }
+
+  function openNotesRenamePrompt(): void {
+    const selected = selectedNotesListItem;
+    if (!selected) {
+      showShortNavigationBanner("No TOME note selected");
+      return;
+    }
+    setNotesRootSettingsOpen(false);
+    setNotesCreatePromptOpen(false);
+    setNotesCreateTitle("");
+    setNotesCreateApplying(false);
+    setNotesDeletePromptOpen(false);
+    setNotesDeleteApplying(false);
+    setNotesRenamePromptOpen(true);
+    setNotesRenameTitle("");
+    setNotesRenameApplying(false);
+  }
+
+  function closeNotesRenamePrompt(): void {
+    setNotesRenamePromptOpen(false);
+    setNotesRenameApplying(false);
+    setNotesRenameTitle("");
+  }
+
+  async function confirmNotesRenamePrompt(): Promise<void> {
+    if (notesRenameApplying) return;
+    const selected = selectedNotesListItem;
+    if (!selected) {
+      showShortNavigationBanner("No TOME note selected");
+      return;
+    }
+    const title = notesRenameTitle.trim();
+    if (title.length === 0) {
+      showShortNavigationBanner("Enter a title to rename this TOME note");
+      return;
+    }
+    const service = resolveNotesService();
+    if (!service) return;
+    setNotesRenameApplying(true);
+    try {
+      const renamed = await service.renameNote(selected.path, title);
+      if (!renamed) {
+        showShortNavigationBanner("TOME service unavailable");
+        return;
+      }
+      setNotesList(service.listNotes());
+      setNotesRenamePromptOpen(false);
+      setNotesRenameTitle("");
+      syncNotesSelectionToPath(renamed.path);
+      if (notesOpenPath === selected.path) {
+        await hydrateOpenNote(renamed.path);
+      }
+      showShortNavigationBanner(`Renamed TOME note to ${renamed.path}`);
+    } catch (error: unknown) {
+      showShortNavigationBanner(`Failed to rename note: ${normalizeErrorDetail(error)}`);
+    } finally {
+      setNotesRenameApplying(false);
+    }
+  }
+
+  function openNotesDeletePrompt(): void {
+    const selectedFromList = selectedNotesListItem;
+    const selectedPathFromView = notesOpenPath;
+    const selected =
+      uiState.mode === Mode.NOTES_VIEW && selectedPathFromView
+        ? {
+            path: selectedPathFromView,
+            title:
+              notesList.find((note) => note.path === selectedPathFromView)?.title ??
+              path.posix.basename(selectedPathFromView, ".md")
+          }
+        : selectedFromList;
+    if (!selected?.path) {
+      showShortNavigationBanner("No TOME note selected");
+      return;
+    }
+    notesDeleteTargetRef.current = {
+      path: selected.path,
+      title: selected.title
+    };
+    setNotesRootSettingsOpen(false);
+    setNotesCreatePromptOpen(false);
+    setNotesCreateTitle("");
+    setNotesCreateApplying(false);
+    setNotesRenamePromptOpen(false);
+    setNotesRenameTitle("");
+    setNotesRenameApplying(false);
+    setNotesDeletePromptOpen(false);
+    setNotesDeleteApplying(false);
+    closeViewsOverlay();
+    uiDispatch({
+      type: "setModal",
+      modal: {
+        type: "note_delete",
+        notePath: selected.path,
+        noteTitle: selected.title,
+        previousMode: Mode.NOTES_LIST,
+        previousFocus: FocusTarget.NOTES_LIST
+      }
+    });
+    uiDispatch({ type: "setMode", mode: Mode.MODAL_CONFIRM });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.MODAL });
+  }
+
+  function closeNotesDeletePrompt(): void {
+    notesDeleteTargetRef.current = null;
+    const modal = uiState.modal;
+    if (modal?.type === "note_delete") {
+      uiDispatch({ type: "setModal", modal: null });
+      uiDispatch({ type: "setMode", mode: modal.previousMode });
+      uiDispatch({ type: "setFocus", focus: modal.previousFocus });
+    }
+    setNotesDeletePromptOpen(false);
+    setNotesDeleteApplying(false);
+  }
+
+  async function confirmNotesDeletePrompt(): Promise<void> {
+    if (notesDeleteApplying) return;
+    const selected = notesDeleteTargetRef.current;
+    if (!selected) {
+      showShortNavigationBanner("No TOME note selected");
+      return;
+    }
+    const service = resolveNotesService();
+    if (!service) return;
+    setNotesDeleteApplying(true);
+    try {
+      const deleted = await service.deleteNote(selected.path);
+      if (!deleted) {
+        showShortNavigationBanner("TOME note already removed");
+      } else {
+        showShortNavigationBanner(`Deleted TOME note: ${selected.title}`);
+      }
+      setNotesList(service.listNotes());
+      setNotesDeletePromptOpen(false);
+      notesDeleteTargetRef.current = null;
+      setNotesOpenPath(null);
+      setNotesViewContent("");
+      setNotesViewLines([]);
+      setNotesOutgoingRefs([]);
+      setNotesWarnings([]);
+      setNotesBacklinks([]);
+      setNotesUnlinkedMentions([]);
+      setNotesLinkedTasks([]);
+      uiDispatch({ type: "setModal", modal: null });
+      uiDispatch({ type: "setMode", mode: Mode.NOTES_LIST });
+      uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_LIST });
+      clampNotesSelectionToAvailable();
+    } catch (error: unknown) {
+      showShortNavigationBanner(`Failed to delete note: ${normalizeErrorDetail(error)}`);
+    } finally {
+      setNotesDeleteApplying(false);
     }
   }
 
@@ -6717,10 +7079,30 @@ export function App({
 
   function backToNotesList(): void {
     setNotesRootSettingsOpen(false);
+    setNotesCreatePromptOpen(false);
+    setNotesCreateApplying(false);
+    setNotesRenamePromptOpen(false);
+    setNotesRenameTitle("");
+    setNotesRenameApplying(false);
+    setNotesDeletePromptOpen(false);
+    setNotesDeleteApplying(false);
     setNotesEditEscGuardArmed(false);
     uiDispatch({ type: "setMode", mode: Mode.NOTES_LIST });
     uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_LIST });
-    clampNotesSelectionToAvailable();
+    syncNotesSelectionToPath(notesOpenPath);
+  }
+
+  function exitNotesToTaskList(): void {
+    setNotesRootSettingsOpen(false);
+    setNotesCreatePromptOpen(false);
+    setNotesCreateApplying(false);
+    setNotesRenamePromptOpen(false);
+    setNotesRenameTitle("");
+    setNotesRenameApplying(false);
+    setNotesDeletePromptOpen(false);
+    setNotesDeleteApplying(false);
+    setNotesEditEscGuardArmed(false);
+    openListMode({ bypassUnsavedGuard: true });
   }
 
   function moveNotesLinkSelection(delta: 1 | -1): void {
@@ -6762,6 +7144,47 @@ export function App({
     uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_VIEW });
   }
 
+  function openTaskFromTomeLinkedTask(taskId: string): void {
+    const task = findTaskById(taskId);
+    if (!task) {
+      showShortNavigationBanner(`Linked task not found: ${taskId}`);
+      return;
+    }
+
+    openListMode({ bypassUnsavedGuard: true });
+    dispatch({
+      type: "setFilters",
+      filters: {
+        status: "all",
+        due: "any",
+        priority: undefined,
+        tag: undefined,
+        tagFilter: undefined,
+        searchText: undefined
+      }
+    });
+
+    const revealRows = buildVisibleTaskRows(
+      state.tasks,
+      {
+        status: "all",
+        due: "any",
+        priority: undefined,
+        tag: undefined,
+        tagFilter: undefined,
+        searchText: undefined
+      },
+      state.sortMode,
+      Date.now()
+    );
+
+    const selectedRow = revealRows.find((row) => row.id === task.id) ?? revealRows[0];
+    if (selectedRow) {
+      dispatch({ type: "setSelected", id: selectedRow.id });
+    }
+    showShortNavigationBanner(`Jumped to task: ${task.title}`);
+  }
+
   async function reindexNotes(): Promise<void> {
     const service = resolveNotesService();
     if (!service) return;
@@ -6771,13 +7194,21 @@ export function App({
       if (notesOpenPath) {
         await hydrateOpenNote(notesOpenPath);
       }
-      showShortNavigationBanner("Notes reindex complete");
+      showShortNavigationBanner("TOME reindex complete");
     } catch (error: unknown) {
-      showShortNavigationBanner(`Notes reindex failed: ${normalizeErrorDetail(error)}`);
+      showShortNavigationBanner(`TOME reindex failed: ${normalizeErrorDetail(error)}`);
     }
   }
 
   function openNotesRootSettings(): void {
+    setNotesCreatePromptOpen(false);
+    setNotesCreateTitle("");
+    setNotesCreateApplying(false);
+    setNotesRenamePromptOpen(false);
+    setNotesRenameTitle("");
+    setNotesRenameApplying(false);
+    setNotesDeletePromptOpen(false);
+    setNotesDeleteApplying(false);
     setNotesRootInput(notesRuntime.notesRoot);
     setNotesRootSettingsOpen(true);
   }
@@ -6798,7 +7229,7 @@ export function App({
         ? path.resolve(rawInput)
         : resolveNotesRootPath(getDataFilePath(), null);
     if (!isPathWithin(path.dirname(nextRoot), nextRoot)) {
-      showShortNavigationBanner("Invalid notes root path");
+      showShortNavigationBanner("Invalid TOME root path");
       return;
     }
 
@@ -6824,12 +7255,66 @@ export function App({
       if (notesOpenPath) {
         await hydrateOpenNote(notesOpenPath);
       }
-      showShortNavigationBanner(`Notes root migrated to ${redactPathForDisplay(nextRoot)}`);
+      showShortNavigationBanner(`TOME root migrated to ${redactPathForDisplay(nextRoot)}`);
     } catch (error: unknown) {
-      showShortNavigationBanner(`Notes root change failed: ${normalizeErrorDetail(error)}`);
+      showShortNavigationBanner(`TOME root change failed: ${normalizeErrorDetail(error)}`);
     } finally {
       setNotesRootApplying(false);
     }
+  }
+
+  function renderTomeActionButton(options: {
+    label: string;
+    onPress: () => void;
+    tone?: "neutral" | "primary" | "danger";
+    disabled?: boolean;
+    compact?: boolean;
+    fill?: boolean;
+    borderless?: boolean;
+  }): React.ReactNode {
+    const tone = options.tone ?? "neutral";
+    const disabled = options.disabled === true;
+    const backgroundColor = disabled
+      ? theme.bg
+      : tone === "primary"
+        ? theme.accentBlue
+        : tone === "danger"
+          ? theme.warn
+          : theme.panel;
+    const borderColor = disabled
+      ? theme.outline
+      : tone === "primary"
+        ? theme.accentBlue
+        : tone === "danger"
+          ? theme.warn
+          : theme.outline;
+    const textColor = disabled
+      ? theme.muted
+      : tone === "primary" || tone === "danger"
+        ? theme.bg
+        : theme.text;
+    const paddingX = options.compact ? 0 : 1;
+    const showBorder = options.borderless === true ? false : true;
+
+    return (
+      <box
+        style={{
+          flexGrow: options.fill ? 1 : undefined,
+          border: showBorder,
+          borderStyle: "single",
+          borderColor,
+          backgroundColor,
+          paddingLeft: paddingX,
+          paddingRight: paddingX
+        }}
+        onMouseDown={(event) => {
+          if (event.button !== 0 || disabled) return;
+          options.onPress();
+        }}
+      >
+        <text style={{ color: textColor, fontWeight: "bold" }}>{options.label}</text>
+      </box>
+    );
   }
 
   function openTagFilterPanel() {
@@ -6992,6 +7477,9 @@ export function App({
         return;
       case "SEARCH":
         openSearchMode();
+        return;
+      case "NOTES":
+        openNotesMode();
         return;
       case "TAG_PANEL":
         if (isEditorMode(uiState.mode)) {
@@ -8728,6 +9216,14 @@ export function App({
     modalFlow.cancelDeleteSelectedFromModal();
   }
 
+  function confirmDeleteNoteFromModal() {
+    void confirmNotesDeletePrompt();
+  }
+
+  function cancelDeleteNoteFromModal() {
+    closeNotesDeletePrompt();
+  }
+
   function openEmptyNuxModal(options?: {
     step?: EmptyNuxStep;
     startedFromNux?: boolean;
@@ -9501,7 +9997,7 @@ export function App({
                 : isBackupMode
                   ? "BACKUP CENTER"
                 : isNotesMode
-                  ? activeNoteTitle.toUpperCase()
+                  ? "TOME: Terminal Oriented Markdown Environment"
                 : selectedTask
                   ? selectedTask.title.toUpperCase()
                   : "NO TASK SELECTED"}
@@ -9519,7 +10015,7 @@ export function App({
                 : isBackupMode
                   ? "SAFE IMPORT / EXPORT FLOW"
                 : isNotesMode
-                  ? `NOTES: ${String(filteredNotes.length)} · ROOT: ${redactPathForDisplay(notesRuntime.notesRoot)}`
+                  ? activeNoteTitle.toUpperCase()
                 : bulkActive
                   ? `BULK MARKED: ${String(bulkMarkedTaskIds.length)} · \` bulk ... · Esc clear`
                 : selectedTask
@@ -9597,7 +10093,9 @@ export function App({
                   paddingTop: 1
                 }}
               >
-                <text style={{ color: taskListTheme.muted }}>NOTES LIST</text>
+                <text style={{ color: taskListTheme.muted }}>
+                  TOME: Terminal Oriented Markdown Environment
+                </text>
               </box>
               <box
                 style={{
@@ -9611,19 +10109,19 @@ export function App({
               >
                 {uiState.mode === Mode.NOTES_SEARCH ? (
                   <box style={{ flexDirection: "column", marginBottom: 1 }}>
-                    <text style={{ color: taskListTheme.muted }}>NOTES SEARCH</text>
+                    <text style={{ color: taskListTheme.muted }}>TOME SEARCH</text>
                     <input
                       value={notesSearchQuery}
                       onChange={setNotesSearchQuery}
                       focused={uiState.focus === FocusTarget.NOTES_SEARCH_INPUT}
-                      placeholder="Search notes by title/path"
+                      placeholder="Search TOME notes by title/path"
                       style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
                     />
                   </box>
                 ) : null}
                 {uiState.mode === Mode.NOTES_TAG_FILTER ? (
                   <box style={{ flexDirection: "column", marginBottom: 1 }}>
-                    <text style={{ color: taskListTheme.muted }}>NOTES TAG FILTER</text>
+                    <text style={{ color: taskListTheme.muted }}>TOME TAG FILTER</text>
                     <input
                       value={notesTagFilterQuery}
                       onChange={setNotesTagFilterQuery}
@@ -9635,10 +10133,10 @@ export function App({
                 ) : null}
                 {!notesRuntime.enabled ? (
                   <text style={{ color: theme.warn }}>
-                    {notesRuntime.error ?? "Notes unavailable for current root path."}
+                    {notesRuntime.error ?? "TOME unavailable for current root path."}
                   </text>
                 ) : filteredNotes.length === 0 ? (
-                  <text style={{ color: theme.muted }}>No notes found. Press a to create one.</text>
+                  <text style={{ color: theme.muted }}>No TOME notes found. Press a to create one.</text>
                 ) : (
                   <box style={{ flexDirection: "column" }}>
                     {filteredNotes.map((note, index) => {
@@ -9672,7 +10170,109 @@ export function App({
                   </box>
                 )}
               </box>
-              {notesRootSettingsOpen ? (
+              {!notesInlinePromptOpen && notesRuntime.enabled && showBottomHintSurface ? (
+                <box
+                  style={{
+                    marginTop: 1,
+                    flexDirection: "column",
+                    paddingLeft: 1,
+                    paddingRight: 1
+                  }}
+                >
+                  <text style={{ color: theme.muted }}>TOME ACTIONS</text>
+                  <box style={{ marginTop: 1, flexDirection: "column" }}>
+                    <box style={{ flexDirection: "row", gap: tomeActionRowGap }}>
+                      {renderTomeActionButton({
+                        label:
+                          uiState.mode === Mode.NOTES_VIEW || uiState.mode === Mode.NOTES_EDIT
+                            ? "LIST[Esc]"
+                            : "OPEN[Ent]",
+                        onPress:
+                          uiState.mode === Mode.NOTES_VIEW || uiState.mode === Mode.NOTES_EDIT
+                            ? backToNotesList
+                            : () => {
+                                void openSelectedNoteFromList();
+                              },
+                        disabled:
+                          uiState.mode === Mode.NOTES_VIEW || uiState.mode === Mode.NOTES_EDIT
+                            ? false
+                            : !canOperateOnSelectedTome,
+                        compact: true,
+                        fill: true,
+                        borderless: true
+                      })}
+                      {renderTomeActionButton({
+                        label: "NEW[a]",
+                        tone: "primary",
+                        onPress: openNotesCreatePrompt,
+                        compact: true,
+                        fill: true,
+                        borderless: true
+                      })}
+                      {renderTomeActionButton({
+                        label: "EDIT[e]",
+                        onPress: () => {
+                          void openCurrentNoteForEdit();
+                        },
+                        disabled: !canOperateOnSelectedTome,
+                        compact: true,
+                        fill: true,
+                        borderless: true
+                      })}
+                      {renderTomeActionButton({
+                        label: "RENAME[R]",
+                        onPress: openNotesRenamePrompt,
+                        disabled: !canOperateOnSelectedTome,
+                        compact: true,
+                        fill: true,
+                        borderless: true
+                      })}
+                      {renderTomeActionButton({
+                        label: "DEL[d]",
+                        tone: "danger",
+                        onPress: openNotesDeletePrompt,
+                        disabled: !canOperateOnSelectedTome,
+                        compact: true,
+                        fill: true,
+                        borderless: true
+                      })}
+                    </box>
+                    <box style={{ flexDirection: "row", gap: tomeActionRowGap }}>
+                      {renderTomeActionButton({
+                        label: "REINDEX[i]",
+                        onPress: () => {
+                          void reindexNotes();
+                        },
+                        compact: true,
+                        fill: true,
+                        borderless: true
+                      })}
+                      {renderTomeActionButton({
+                        label: "SRCH[/]",
+                        onPress: openNotesSearchMode,
+                        compact: true,
+                        fill: true,
+                        borderless: true
+                      })}
+                      {renderTomeActionButton({
+                        label: "TAG[p]",
+                        onPress: openNotesTagFilterMode,
+                        compact: true,
+                        fill: true,
+                        borderless: true
+                      })}
+                      {renderTomeActionButton({
+                        label: "ROOT[o]",
+                        onPress: openNotesRootSettings,
+                        compact: true,
+                        fill: true,
+                        borderless: true
+                      })}
+                    </box>
+                  </box>
+                </box>
+              ) : null}
+              {notesCreatePromptOpen ? (
                 <box
                   style={{
                     marginTop: 1,
@@ -9686,12 +10286,70 @@ export function App({
                     flexDirection: "column"
                   }}
                 >
-                  <text style={{ color: theme.muted }}>NOTES ROOT SETTINGS</text>
+                  <text style={{ color: theme.muted }}>NEW TOME NOTE</text>
+                  <input
+                    value={notesCreateTitle}
+                    onChange={setNotesCreateTitle}
+                    focused={false}
+                    placeholder="Type TOME title"
+                    style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
+                  />
+                  <text style={{ color: theme.muted }}>
+                    Enter: create · Esc: cancel
+                  </text>
+                  {notesCreateApplying ? (
+                    <text style={{ color: theme.muted }}>Creating note...</text>
+                  ) : null}
+                </box>
+              ) : notesRenamePromptOpen ? (
+                <box
+                  style={{
+                    marginTop: 1,
+                    border: true,
+                    borderStyle: "single",
+                    borderColor: theme.accentBlue,
+                    paddingLeft: 1,
+                    paddingRight: 1,
+                    paddingTop: 1,
+                    paddingBottom: 1,
+                    flexDirection: "column"
+                  }}
+                >
+                  <text style={{ color: theme.muted }}>RENAME TOME NOTE</text>
+                  <input
+                    value={notesRenameTitle}
+                    onChange={setNotesRenameTitle}
+                    focused={false}
+                    placeholder="Type new TOME title"
+                    style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
+                  />
+                  <text style={{ color: theme.muted }}>
+                    Enter: rename · Esc: cancel
+                  </text>
+                  {notesRenameApplying ? (
+                    <text style={{ color: theme.muted }}>Renaming note...</text>
+                  ) : null}
+                </box>
+              ) : notesRootSettingsOpen ? (
+                <box
+                  style={{
+                    marginTop: 1,
+                    border: true,
+                    borderStyle: "single",
+                    borderColor: theme.accentBlue,
+                    paddingLeft: 1,
+                    paddingRight: 1,
+                    paddingTop: 1,
+                    paddingBottom: 1,
+                    flexDirection: "column"
+                  }}
+                >
+                  <text style={{ color: theme.muted }}>TOME ROOT SETTINGS</text>
                   <input
                     value={notesRootInput}
                     onChange={setNotesRootInput}
                     focused
-                    placeholder="Absolute path to notes root"
+                    placeholder="Absolute path to TOME root"
                     onSubmit={() => {
                       void confirmNotesRootSettings();
                     }}
@@ -9712,7 +10370,7 @@ export function App({
                 }}
               >
                 <text style={{ color: theme.muted }}>
-                  {uiState.mode === Mode.NOTES_EDIT ? "EDIT NOTE" : "NOTE CONTEXT"}
+                  {uiState.mode === Mode.NOTES_EDIT ? "EDIT TOME NOTE" : "TOME CONTEXT"}
                 </text>
               </box>
               <box
@@ -9726,25 +10384,53 @@ export function App({
                 }}
               >
                 {uiState.mode === Mode.NOTES_EDIT ? (
-                  <textarea
-                    ref={notesEditTextareaRef}
-                    initialValue={notesEditValue}
-                    focused={uiState.focus === FocusTarget.NOTES_EDIT}
-                    placeholder="Write markdown note..."
-                    wrapMode="word"
-                    onContentChange={() => {
-                      const nextValue = notesEditTextareaRef.current?.plainText ?? "";
-                      setNotesEditValue(nextValue);
-                      setNotesEditDirty(nextValue !== notesViewContent);
-                    }}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      minHeight: 8,
-                      backgroundColor: inputTheme.bg,
-                      color: inputTheme.text
-                    }}
-                  />
+                  <box style={{ flexDirection: "column", width: "100%", height: "100%" }}>
+                    <text style={{ color: theme.muted }}>
+                      PATH: {notesOpenPath ?? "(none)"}
+                    </text>
+                    <text style={{ color: notesEditDirty ? theme.warn : theme.muted }}>
+                      {notesEditDirty ? "STATUS: UNSAVED CHANGES" : "STATUS: SAVED"}
+                    </text>
+                    <box style={{ marginTop: 1, marginBottom: 1, flexDirection: "row", gap: 1 }}>
+                      {renderTomeActionButton({
+                        label: "SAVE [Ctrl+S]",
+                        tone: "primary",
+                        onPress: () => {
+                          void saveCurrentNoteEdit();
+                        },
+                        disabled: !notesOpenPath,
+                        compact: true,
+                        fill: true,
+                        borderless: true
+                      })}
+                      {renderTomeActionButton({
+                        label: "CANCEL [Esc]",
+                        onPress: cancelCurrentNoteEdit,
+                        compact: true,
+                        fill: true,
+                        borderless: true
+                      })}
+                    </box>
+                    <textarea
+                      ref={notesEditTextareaRef}
+                      initialValue={notesEditValue}
+                      focused={uiState.focus === FocusTarget.NOTES_EDIT}
+                      placeholder="Write TOME markdown note..."
+                      wrapMode="word"
+                      onContentChange={() => {
+                        const nextValue = notesEditTextareaRef.current?.plainText ?? "";
+                        setNotesEditValue(nextValue);
+                        setNotesEditDirty(nextValue !== notesViewContent);
+                      }}
+                      style={{
+                        width: "100%",
+                        flexGrow: 1,
+                        minHeight: 8,
+                        backgroundColor: inputTheme.bg,
+                        color: inputTheme.text
+                      }}
+                    />
+                  </box>
                 ) : notesOpenPath ? (
                   <box style={{ flexDirection: "column", width: "100%" }}>
                     <text style={{ color: theme.muted }}>PATH: {notesOpenPath}</text>
@@ -9783,12 +10469,20 @@ export function App({
                               ? " (broken)"
                               : "";
                         return (
-                          <text
+                          <box
                             key={`note-link-${index}`}
-                            style={{ color: selected ? theme.accentBlue : theme.text }}
+                            onMouseDown={(event) => {
+                              if (event.button !== 0) return;
+                              setNotesSelectedLinkIndex(index);
+                              if (selected) {
+                                void followSelectedNoteLink();
+                              }
+                            }}
                           >
-                            {`${selected ? ">" : " "} ${target}${status}`}
-                          </text>
+                            <text style={{ color: selected ? theme.accentBlue : theme.text }}>
+                              {`${selected ? ">" : " "} ${target}${status}`}
+                            </text>
+                          </box>
                         );
                       })
                     )}
@@ -9801,9 +10495,15 @@ export function App({
                       <text style={{ color: theme.muted }}>(none)</text>
                     ) : (
                       notesBacklinks.map((pathValue) => (
-                        <text key={`note-backlink-${pathValue}`} style={{ color: theme.text }}>
-                          {pathValue}
-                        </text>
+                        <box
+                          key={`note-backlink-${pathValue}`}
+                          onMouseDown={(event) => {
+                            if (event.button !== 0) return;
+                            void openNoteFromTaskLinkedNotes(pathValue);
+                          }}
+                        >
+                          <text style={{ color: theme.text }}>{pathValue}</text>
+                        </box>
                       ))
                     )}
                     <box style={{ marginTop: 1 }}>
@@ -9815,9 +10515,17 @@ export function App({
                       <text style={{ color: theme.muted }}>(none)</text>
                     ) : (
                       notesUnlinkedMentions.slice(0, 5).map((mention, index) => (
-                        <text key={`note-mention-${index}`} style={{ color: theme.text }}>
-                          {`${mention.from}:${String(mention.line)} ${mention.excerpt}`}
-                        </text>
+                        <box
+                          key={`note-mention-${index}`}
+                          onMouseDown={(event) => {
+                            if (event.button !== 0) return;
+                            void openNoteFromTaskLinkedNotes(mention.from);
+                          }}
+                        >
+                          <text style={{ color: theme.text }}>
+                            {`${mention.from}:${String(mention.line)} ${mention.excerpt}`}
+                          </text>
+                        </box>
                       ))
                     )}
                     <box style={{ marginTop: 1 }}>
@@ -9828,11 +10536,22 @@ export function App({
                     {notesLinkedTasks.length === 0 ? (
                       <text style={{ color: theme.muted }}>(none)</text>
                     ) : (
-                      notesLinkedTasks.map((taskId) => (
-                        <text key={`note-task-${taskId}`} style={{ color: theme.text }}>
-                          {taskId}
-                        </text>
-                      ))
+                      notesLinkedTasks.map((taskId) => {
+                        const linkedTask = findTaskById(taskId);
+                        return (
+                          <box
+                            key={`note-task-${taskId}`}
+                            onMouseDown={(event) => {
+                              if (event.button !== 0) return;
+                              openTaskFromTomeLinkedTask(taskId);
+                            }}
+                          >
+                            <text style={{ color: linkedTask ? theme.text : theme.warn }}>
+                              {linkedTask ? `${linkedTask.title} [${taskId}]` : taskId}
+                            </text>
+                          </box>
+                        );
+                      })
                     )}
                     {notesWarnings.length > 0 ? (
                       <box style={{ marginTop: 1, flexDirection: "column" }}>
@@ -9849,7 +10568,7 @@ export function App({
                   </box>
                 ) : (
                   <text style={{ color: theme.muted }}>
-                    Select a note and press Enter to open it.
+                    Select a TOME note and press Enter to open it.
                   </text>
                 )}
               </box>
@@ -10351,6 +11070,8 @@ export function App({
         confirmDeleteSelectedFromModal={confirmDeleteSelectedFromModal}
         confirmDeleteSelectedAndFutureFromModal={confirmDeleteSelectedAndFutureFromModal}
         cancelDeleteSelectedFromModal={cancelDeleteSelectedFromModal}
+        confirmDeleteNoteFromModal={confirmDeleteNoteFromModal}
+        cancelDeleteNoteFromModal={cancelDeleteNoteFromModal}
         handleRecurringDeleteFutureCheckpointConfirm={handleRecurringDeleteFutureCheckpointConfirm}
         cancelRecurringDeleteFutureCheckpoint={cancelRecurringDeleteFutureCheckpoint}
         handleUnsavedChangesSaveAndContinue={handleUnsavedChangesSaveAndContinue}

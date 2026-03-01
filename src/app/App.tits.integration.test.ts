@@ -147,7 +147,11 @@ async function pressKeyAndRender(
   harness: RenderHarness,
   key: string
 ): Promise<string> {
-  await mockInput.pressKeys([key]);
+  if (key === "`") {
+    await Promise.resolve(mockInput.pressKey("`"));
+  } else {
+    await mockInput.pressKeys([key]);
+  }
   await Bun.sleep(10);
   await harness.renderOnce();
   return harness.captureCharFrame();
@@ -157,7 +161,7 @@ async function pressEscapeAndRender(
   mockInput: MockInput,
   harness: RenderHarness
 ): Promise<string> {
-  mockInput.pressEscape();
+  await Promise.resolve(mockInput.pressEscape());
   await Bun.sleep(10);
   await harness.renderOnce();
   return harness.captureCharFrame();
@@ -167,7 +171,7 @@ async function pressTabAndRender(
   mockInput: MockInput,
   harness: RenderHarness
 ): Promise<string> {
-  mockInput.pressTab();
+  await Promise.resolve(mockInput.pressTab());
   await Bun.sleep(10);
   await harness.renderOnce();
   return harness.captureCharFrame();
@@ -178,7 +182,7 @@ async function pressArrowAndRender(
   harness: RenderHarness,
   direction: "up" | "down" | "left" | "right"
 ): Promise<string> {
-  mockInput.pressArrow(direction);
+  await Promise.resolve(mockInput.pressArrow(direction));
   await Bun.sleep(10);
   await harness.renderOnce();
   return harness.captureCharFrame();

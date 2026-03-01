@@ -606,7 +606,9 @@ function parseHelpCommand(tokens: string[]): ParseCommandResult {
 
 function parseNoteCommand(tokens: string[]): ParseCommandResult {
   if (tokens.length === 0) {
-    return error("Error: note requires subcommand new|open|search|reindex|help|root set");
+    return error(
+      "Error: note requires subcommand new|open|search|delete|restore-defaults|reindex|help|root set"
+    );
   }
 
   const operation = tokens[0]?.toLowerCase();
@@ -670,6 +672,34 @@ function parseNoteCommand(tokens: string[]): ParseCommandResult {
     };
   }
 
+  if (operation === "delete") {
+    const query = rest.join(" ").trim();
+    if (!query) {
+      return error('Error: note delete requires a query (example: note delete "Query")');
+    }
+    return {
+      ok: true,
+      command: {
+        type: "note",
+        operation: "delete",
+        query
+      }
+    };
+  }
+
+  if (operation === "restore-defaults") {
+    if (rest.length > 0) {
+      return error("Error: note restore-defaults takes no extra tokens");
+    }
+    return {
+      ok: true,
+      command: {
+        type: "note",
+        operation: "restore_defaults"
+      }
+    };
+  }
+
   if (operation === "reindex") {
     if (rest.length > 0) {
       return error("Error: note reindex takes no extra tokens");
@@ -702,7 +732,9 @@ function parseNoteCommand(tokens: string[]): ParseCommandResult {
     };
   }
 
-  return error("Error: note requires subcommand new|open|search|reindex|help|root set");
+  return error(
+    "Error: note requires subcommand new|open|search|delete|restore-defaults|reindex|help|root set"
+  );
 }
 
 const WEEKDAYS = new Set(["mon", "tue", "wed", "thu", "fri", "sat", "sun"]);

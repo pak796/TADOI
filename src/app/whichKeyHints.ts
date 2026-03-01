@@ -36,6 +36,7 @@ type HintSpec = {
 
 const LIST_HINTS: HintSpec[] = [
   { key: "a", label: "add", actionId: "list_open_add" },
+  { key: "`", label: "TITS" },
   { key: "e", label: "edit", actionId: "list_open_edit" },
   { key: "Space", label: "toggle", actionId: "list_toggle_selected" },
   { key: "/", label: "search", actionId: "list_open_search" },
@@ -106,18 +107,21 @@ const TAG_FILTER_HINTS: HintSpec[] = [
 
 const NOTES_HINTS: HintSpec[] = [
   { key: "Enter", label: "open" },
-  { key: "a", label: "new note" },
+  { key: "a", label: "new tome" },
+  { key: "r/R", label: "rename tome" },
+  { key: "d", label: "delete tome" },
   { key: "e", label: "edit" },
   { key: "/", label: "search" },
   { key: "p", label: "tag filter" },
-  { key: "r", label: "reindex" },
-  { key: "o", label: "notes root" },
+  { key: "i", label: "reindex" },
+  { key: "o", label: "tome root" },
   { key: "Esc", label: "back" }
 ];
 
 const NOTES_VIEW_HINTS: HintSpec[] = [
   { key: "j/k", label: "select link" },
   { key: "Enter", label: "follow link" },
+  { key: "d", label: "delete note" },
   { key: "e", label: "edit note" },
   { key: "Esc", label: "back" }
 ];
@@ -225,12 +229,21 @@ export function buildLeftRailHintLines(params: {
 
   if (context === "notes" || context === "notes_view" || context === "notes_edit") {
     if (context === "notes_view") {
-      return ["j/k: LINKS", "Enter: FOLLOW", "e: EDIT", "Esc: BACK", "r: REINDEX"];
+      return ["j/k: LINKS", "Enter: FOLLOW", "d: DELETE TOME", "e: EDIT", "Esc: BACK"];
     }
     if (context === "notes_edit") {
-      return ["Ctrl+S: SAVE", "Esc: CANCEL", "j/k: TYPE NAV", "r: REINDEX", "n: EXIT NOTES"];
+      return ["Ctrl+S: SAVE", "Esc: CANCEL", "j/k: TYPE NAV", "i: REINDEX", "n: EXIT TOME"];
     }
-    return ["j/k: MOVE", "a: NEW NOTE", "e: EDIT", "/: SEARCH", "p: TAG FILTER"];
+    return [
+      "j/k: MOVE",
+      "Enter: OPEN",
+      "a: NEW TOME",
+      "r/R: RENAME TOME",
+      "i: REINDEX",
+      "o: ROOT SETTINGS",
+      "d: DELETE TOME",
+      "/: SEARCH"
+    ];
   }
 
   return [
@@ -238,7 +251,8 @@ export function buildLeftRailHintLines(params: {
     `${resolveAliasBackedKey("list", "list_open_tag_panel", "p", resolvedAliases)}: TAG PANEL`,
     `${resolveAliasBackedKey("list", "list_cycle_priority", "r", resolvedAliases)}: PRIORITY`,
     `${resolveAliasBackedKey("list", "list_open_search", "/", resolvedAliases)}: SEARCH`,
-    `${resolveAliasBackedKey("list", "list_toggle_selected", "Space", resolvedAliases)}: TOGGLE`
+    `${resolveAliasBackedKey("list", "list_toggle_selected", "Space", resolvedAliases)}: TOGGLE`,
+    "`: TITS"
   ];
 }
 

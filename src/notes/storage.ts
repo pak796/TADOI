@@ -5,6 +5,7 @@ import type { NoteDocument, NoteListItem, NotePath } from "./types";
 
 const PRIVATE_DIR_MODE = 0o700;
 const PRIVATE_FILE_MODE = 0o600;
+const DEFAULT_GUIDE_SEED_MARKER_FILENAME = ".tadoi-default-guides-seeded";
 const writeQueueByPath = new Map<string, Promise<void>>();
 
 function queueKey(filePath: string): string {
@@ -34,6 +35,10 @@ function toNotePath(notesRoot: string, fullPath: string): NotePath {
 function toAbsolutePath(notesRoot: string, notePath: NotePath): string {
   const normalized = notePath.split(path.posix.sep).join(path.sep);
   return path.join(notesRoot, normalized);
+}
+
+function getDefaultGuideSeedMarkerPath(notesRoot: string): string {
+  return path.join(notesRoot, DEFAULT_GUIDE_SEED_MARKER_FILENAME);
 }
 
 async function pathExists(filePath: string): Promise<boolean> {
@@ -87,6 +92,18 @@ export function resolveNotesRootPath(dataFilePath: string, rootPath: string | nu
 
 export async function ensureNotesRoot(notesRoot: string): Promise<void> {
   await fs.mkdir(notesRoot, { recursive: true, mode: PRIVATE_DIR_MODE });
+}
+
+export async function hasDefaultGuideSeedMarker(notesRoot: string): Promise<boolean> {
+  return pathExists(getDefaultGuideSeedMarkerPath(notesRoot));
+}
+
+export async function writeDefaultGuideSeedMarker(notesRoot: string): Promise<void> {
+  await ensureNotesRoot(notesRoot);
+  await fs.writeFile(getDefaultGuideSeedMarkerPath(notesRoot), "seeded\n", {
+    encoding: "utf8",
+    mode: PRIVATE_FILE_MODE
+  });
 }
 
 export async function scanMarkdownFiles(notesRoot: string): Promise<NoteListItem[]> {
@@ -175,6 +192,58 @@ export async function createNoteFile(options: {
   });
 
   return readNoteDocument(options.notesRoot, candidate);
+}
+
+function pathComparisonKey(filePath: string): string {
+  const resolved = path.resolve(filePath);
+  if (process.platform === "win32" || process.platform === "darwin") {
+    return resolved.toLowerCase();
+  }
+  return resolved;
+}
+
+export async function renameNoteFile(options: {
+  notesRoot: string;
+  notePath: NotePath;
+  title: string;
+}): Promise<NotePath> {
+  const sourcePath = toAbsolutePath(options.notesRoot, options.notePath);
+  const sourceDir = path.posix.dirname(options.notePath);
+  const sourcePrefix = sourceDir === "." ? "" : `${sourceDir}/`;
+  const base = sanitizeTitleToFilename(options.title);
+  let candidatePath = `${sourcePrefix}${base}.md`;
+  let suffix = 2;
+  const sourceKey = pathComparisonKey(sourcePath);
+
+  while (true) {
+    const candidateFullPath = toAbsolutePath(options.notesRoot, candidatePath);
+    const candidateKey = pathComparisonKey(candidateFullPath);
+    if (candidateKey === sourceKey) {
+      break;
+    }
+    if (!(await pathExists(candidateFullPath))) {
+      break;
+    }
+    candidatePath = `${sourcePrefix}${base}-${suffix}.md`;
+    suffix += 1;
+  }
+
+  if (candidatePath === options.notePath) {
+    return candidatePath;
+  }
+
+  const candidateFullPath = toAbsolutePath(options.notesRoot, candidatePath);
+  const candidateKey = pathComparisonKey(candidateFullPath);
+  const requiresCaseOnlyRename = candidateKey === sourceKey;
+  if (requiresCaseOnlyRename) {
+    const tempPath = await nextAtomicTempPath(sourcePath);
+    await fs.rename(sourcePath, tempPath);
+    await fs.rename(tempPath, candidateFullPath);
+    return candidatePath;
+  }
+
+  await fs.rename(sourcePath, candidateFullPath);
+  return candidatePath;
 }
 
 export async function deleteNoteFile(options: {

@@ -62,7 +62,10 @@ describe("theme registry", () => {
     expect(cycleTheme("zeke")).toBe("gundam");
     expect(cycleTheme("gundam")).toBe("crtGreen");
     expect(cycleTheme("crtGreen")).toBe("crtAmber");
-    expect(cycleTheme("crtAmber")).toBe("custom1");
+    expect(cycleTheme("crtAmber")).toBe("kitty");
+    expect(cycleTheme("kitty")).toBe("corpo");
+    expect(cycleTheme("corpo")).toBe("strikefitron");
+    expect(cycleTheme("strikefitron")).toBe("custom1");
     expect(cycleTheme("custom1")).toBe("rotating");
     expect(cycleTheme("rotating")).toBe("default");
   });
@@ -95,6 +98,9 @@ describe("theme registry", () => {
       "gundam",
       "crtGreen",
       "crtAmber",
+      "kitty",
+      "corpo",
+      "strikefitron",
       "custom1",
       "rotating"
     ]);
@@ -127,7 +133,10 @@ describe("theme registry", () => {
       "zeke",
       "gundam",
       "crtGreen",
-      "crtAmber"
+      "crtAmber",
+      "kitty",
+      "corpo",
+      "strikefitron"
     ]);
   });
 
@@ -536,6 +545,57 @@ describe("theme registry", () => {
     });
   });
 
+  it("defines kitty palette tokens", () => {
+    expect(THEMES.kitty).toMatchObject({
+      bg: "#FFF4FB",
+      panel: "#FFE3F4",
+      text: "#2C1624",
+      mutedText: "#6F4F65",
+      border: "#F4B6D6",
+      accent: "#FF4FA0",
+      accent2: "#FF8CC8",
+      ok: "#58B87B",
+      warn: "#E5A63A",
+      danger: "#D94A6A",
+      selectionBg: "#E86AB1",
+      selectionText: "#2C1624"
+    });
+  });
+
+  it("defines corpo palette tokens", () => {
+    expect(THEMES.corpo).toMatchObject({
+      bg: "#070707",
+      panel: "#120B0B",
+      text: "#F1D7D7",
+      mutedText: "#B08B8B",
+      border: "#5F1A1F",
+      accent: "#D10F1D",
+      accent2: "#8A1E2B",
+      ok: "#5BAF70",
+      warn: "#E0A63D",
+      danger: "#FF3B3B",
+      selectionBg: "#8A1017",
+      selectionText: "#FDEDEE"
+    });
+  });
+
+  it("defines strikefitron palette tokens", () => {
+    expect(THEMES.strikefitron).toMatchObject({
+      bg: "#020704",
+      panel: "#06110A",
+      text: "#9DFF8A",
+      mutedText: "#5AAE65",
+      border: "#1F5A2E",
+      accent: "#43DB63",
+      accent2: "#2DAF55",
+      ok: "#74E56F",
+      warn: "#C7D94A",
+      danger: "#E06F54",
+      selectionBg: "#1A3F24",
+      selectionText: "#CCFFB8"
+    });
+  });
+
   it("keeps niners/mcrn/zeke/gundam text and selection contrast readable", () => {
     for (const themeId of ["niners", "mcrn", "zeke", "gundam"] as const) {
       const tokens = THEMES[themeId];
@@ -564,11 +624,26 @@ describe("theme registry", () => {
     expect(contrastRatio(tokens.selectionText, tokens.selectionBg)).toBeGreaterThanOrEqual(4.5);
   });
 
+  it("keeps kitty/corpo/strikefitron text and selection contrast readable", () => {
+    for (const themeId of ["kitty", "corpo", "strikefitron"] as const) {
+      const tokens = THEMES[themeId];
+      expect(tokens.text).not.toBe(tokens.bg);
+      expect(tokens.selectionText).not.toBe(tokens.selectionBg);
+      expect(contrastRatio(tokens.text, tokens.bg)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(tokens.selectionText, tokens.selectionBg)).toBeGreaterThanOrEqual(
+        4.5
+      );
+    }
+  });
+
   it("formats special display names for selected themes", () => {
     expect(formatThemeDisplayName("mcrn")).toBe("MCRN");
     expect(formatThemeDisplayName("gundam")).toBe("GUNDAM");
     expect(formatThemeDisplayName("msdos")).toBe("MS-DOS");
     expect(formatThemeDisplayName("crtGreen")).toBe("CRT Green");
     expect(formatThemeDisplayName("crtAmber")).toBe("CRT Amber");
+    expect(formatThemeDisplayName("kitty")).toBe("KITTY");
+    expect(formatThemeDisplayName("corpo")).toBe("CORPO");
+    expect(formatThemeDisplayName("strikefitron")).toBe("STRIKEFITRON");
   });
 });

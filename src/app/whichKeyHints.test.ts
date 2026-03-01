@@ -60,6 +60,7 @@ describe("whichKeyHints", () => {
     const keysByLabel = Object.fromEntries(items.map((item) => [item.label, item.key]));
     expect(keysByLabel.search).toBe("Ctrl+F");
     expect(keysByLabel.add).toBe("n");
+    expect(keysByLabel.TITS).toBe("`");
   });
 
   it("builds left-rail hint lines from shared model with alias substitution", () => {
@@ -75,12 +76,54 @@ describe("whichKeyHints", () => {
     );
     const lines = buildLeftRailHintLines({ context: "list", resolvedAliases: resolved });
     expect(lines.some((line) => line.includes("x: TAG PANEL"))).toBe(true);
+    expect(lines).toContain("`: TITS");
     const backupLines = buildLeftRailHintLines({
       context: "backup",
       resolvedAliases: resolved
     });
     expect(backupLines).toContain("Ctrl+B: BACK");
     expect(backupLines).toContain("1..4: MENU");
+  });
+
+  it("includes note delete hints for notes list and notes view contexts", () => {
+    const noteListItems = buildWhichKeyHintItems({
+      context: "notes",
+      resolvedAliases: null
+    });
+    expect(noteListItems.some((item) => item.key === "d" && item.label === "delete tome")).toBe(
+      true
+    );
+
+    const noteViewItems = buildWhichKeyHintItems({
+      context: "notes_view",
+      resolvedAliases: null
+    });
+    expect(noteViewItems.some((item) => item.key === "d" && item.label === "delete note")).toBe(
+      true
+    );
+
+    const noteViewLines = buildLeftRailHintLines({
+      context: "notes_view",
+      resolvedAliases: null
+    });
+    expect(noteViewLines.some((line) => line.includes("d: DELETE TOME"))).toBe(true);
+  });
+
+  it("includes tome rename/delete hints in notes surfaces", () => {
+    const items = buildWhichKeyHintItems({ context: "notes", resolvedAliases: null });
+    expect(items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "r/R", label: "rename tome" }),
+        expect.objectContaining({ key: "i", label: "reindex" }),
+        expect.objectContaining({ key: "d", label: "delete tome" })
+      ])
+    );
+
+    const lines = buildLeftRailHintLines({ context: "notes", resolvedAliases: null });
+    expect(lines).toContain("r/R: RENAME TOME");
+    expect(lines).toContain("i: REINDEX");
+    expect(lines).toContain("o: ROOT SETTINGS");
+    expect(lines).toContain("d: DELETE TOME");
   });
 
   it("builds prefix popup for pending Ctrl+g/Ctrl+p/Ctrl+y prefix and resolves alias-aware targets", () => {

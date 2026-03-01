@@ -7,6 +7,8 @@ This checklist is required before daily build smoke tests and any tagged release
 ## 1) Dependencies
 - [ ] `bun install`
 - [ ] `bun --version` matches `package.json` requirement
+- [ ] `bun run preflight:host:docs`
+- [ ] `bun run preflight:host:release`
 
 ## 2) Quality Gates
 - [ ] `bun run test`

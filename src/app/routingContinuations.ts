@@ -11,6 +11,8 @@ export function resolveTaskEditorContinuationForLeftRail(
       return "open_dashboard";
     case "BACKUP":
       return "open_backup_center";
+    case "NOTES":
+      return "open_notes";
     case "ADD":
       return "open_add";
     case "EDIT":
@@ -39,6 +41,8 @@ export function describeTaskEditorContinuation(
       return "open dashboard";
     case "open_backup_center":
       return "open Backup Center";
+    case "open_notes":
+      return "open TOME";
     case "open_search":
       return "open search";
     case "open_help":

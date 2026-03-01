@@ -1,4 +1,4 @@
-# Notes Feature Verification Report (Slices 1–4)
+# TOME (Notes-Oriented Markdown) Feature Verification Report (Slices 1–4)
 Date: 2026-02-28
 Commit/Branch: 2a702b3 / master
 Tester: Codex
@@ -7,7 +7,7 @@ OS: Darwin 25.3.0 arm64
 ## Commands run (exact)
 - `bun run typecheck`  ✅  (`tsc --noEmit -p tsconfig.typecheck.json` passed)
 - `bun run keybind:canonical:check`  ✅  (`canonical=65 missing_in_docs=0 missing_in_code=0`)
-- `bun test "$PWD/src/notes/frontmatter.test.ts" "$PWD/src/notes/tags.test.ts" "$PWD/src/notes/links.test.ts" "$PWD/src/notes/index.test.ts" "$PWD/src/notes/mentions.test.ts" "$PWD/src/notes/taskRefs.test.ts" "$PWD/src/notes/storage.test.ts" "$PWD/src/notes/service.test.ts" "$PWD/src/notes/index.fixture.test.ts"`  ✅  (notes suite pass)
+- `bun test "$PWD/src/notes/frontmatter.test.ts" "$PWD/src/notes/tags.test.ts" "$PWD/src/notes/links.test.ts" "$PWD/src/notes/index.test.ts" "$PWD/src/notes/mentions.test.ts" "$PWD/src/notes/taskRefs.test.ts" "$PWD/src/notes/storage.test.ts" "$PWD/src/notes/service.test.ts" "$PWD/src/notes/index.fixture.test.ts"`  ✅  (TOME notes suite pass)
 - `bun test "$PWD/src/notes/service.test.ts"`  ✅  (includes 100-note incremental edit guard; full reindex count remains stable)
 - `bun test "$PWD/src/app/App.bulk.integration.test.ts" "$PWD/src/app/App.modalFlow.integration.test.ts" "$PWD/src/app/App.tits.integration.test.ts"`  ✅  (app integration contracts pass)
 - `bun test`  ❌  (fails in this workspace due `dist/pack-smoke-*` artifact test discovery, unrelated to source changes)
@@ -15,7 +15,7 @@ OS: Darwin 25.3.0 arm64
 ## Slice Status Summary
 | Slice | Pass/Fail | Evidence | Fixes made |
 |------|-----------|----------|------------|
-| 1 | Pass | Notes storage/service tests + app modal/bulk integration tests pass | Fixed notes banner race to avoid clobbering in-flight navigation banners during async notes init |
+| 1 | Pass | TOME storage/service tests + app modal/bulk integration tests pass | Fixed TOME banner race to avoid clobbering in-flight navigation banners during async notes init |
 | 2 | Pass | `tags.test.ts` + fixture vault assertions (`tagToNotes` nested keys) pass | Added deterministic fixture vault with nested inline/frontmatter tags |
 | 3 | Pass | `links.test.ts`, `index.test.ts`, `index.fixture.test.ts` pass for wikilink/mdlink/backlinks/unlinked mentions | Added ambiguity/id-preference fixture assertions (`[[Duplicate]]` ambiguous vs `[[id:...]]` resolved) |
 | 4 | Pass | `taskRefs.test.ts`, `index.fixture.test.ts`, `DetailsPane` integration tests pass | Fixed `@task:<id>` parsing to trim trailing punctuation (`@task:task-id.`); added incremental/perf guard tests for 100-note vault |
@@ -23,7 +23,7 @@ OS: Darwin 25.3.0 arm64
 ## Manual QA Evidence (step-by-step)
 ### Slice 1
 1. Verified create/read/write/scan paths in `storage.test.ts` with real temp note files.
-2. Verified notes mode behavior stability through app integration tests (`App.modalFlow.integration`, `App.bulk.integration`).
+2. Verified TOME mode behavior stability through app integration tests (`App.modalFlow.integration`, `App.bulk.integration`).
 
 ### Slice 2
 1. Verified inline + frontmatter tag parsing and normalization warnings (`tags.test.ts`).

@@ -36,6 +36,8 @@ type AppModalLayerProps = {
   confirmDeleteSelectedFromModal: () => void;
   confirmDeleteSelectedAndFutureFromModal: () => void;
   cancelDeleteSelectedFromModal: () => void;
+  confirmDeleteNoteFromModal: () => void;
+  cancelDeleteNoteFromModal: () => void;
   handleRecurringDeleteFutureCheckpointConfirm: () => void;
   cancelRecurringDeleteFutureCheckpoint: () => void;
   handleUnsavedChangesSaveAndContinue: () => void;
@@ -92,6 +94,8 @@ export function AppModalLayer({
   confirmDeleteSelectedFromModal,
   confirmDeleteSelectedAndFutureFromModal,
   cancelDeleteSelectedFromModal,
+  confirmDeleteNoteFromModal,
+  cancelDeleteNoteFromModal,
   handleRecurringDeleteFutureCheckpointConfirm,
   cancelRecurringDeleteFutureCheckpoint,
   handleUnsavedChangesSaveAndContinue,
@@ -196,6 +200,26 @@ export function AppModalLayer({
                 </ModalActionRow>
               </ModalContainer>
             )
+          ) : uiState.modal.type === "note_delete" ? (
+            <ModalContainer theme={modalTheme} tone="warning" minWidth={MODAL_STANDARD_WIDTH}>
+              <text style={{ fontWeight: "bold" }}>DELETE TOME NOTE? [Y/N/ESC]</text>
+              <text>Note: {uiState.modal.noteTitle}</text>
+              <text>Path: {uiState.modal.notePath}</text>
+              <ModalActionRow marginTop={1}>
+                <ModalActionButton
+                  theme={modalTheme}
+                  tone="warning"
+                  label="CONFIRM DELETE [Y]"
+                  onPress={confirmDeleteNoteFromModal}
+                />
+                <ModalActionButton
+                  theme={modalTheme}
+                  tone="warning"
+                  label="CANCEL [N/ESC]"
+                  onPress={cancelDeleteNoteFromModal}
+                />
+              </ModalActionRow>
+            </ModalContainer>
           ) : uiState.modal.type === "recurring_delete_future_checkpoint" ? (
             <ModalContainer theme={modalTheme} tone="warning" minWidth={MODAL_STANDARD_WIDTH}>
               <text style={{ fontWeight: "bold" }}>DELETE THIS + FUTURE OCCURRENCES? [Y/N/ESC]</text>

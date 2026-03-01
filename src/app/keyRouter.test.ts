@@ -184,6 +184,31 @@ describe("handleKey", () => {
     ]);
   });
 
+  it("routes note delete modal keys", () => {
+    const modalState = {
+      ...initialUIState,
+      mode: Mode.MODAL_CONFIRM,
+      focus: FocusTarget.MODAL,
+      modal: {
+        type: "note_delete" as const,
+        notePath: "TADOI Guides/Guide - Using TADOI.md",
+        noteTitle: "Guide - Using TADOI",
+        previousMode: Mode.NOTES_LIST,
+        previousFocus: FocusTarget.NOTES_LIST
+      }
+    };
+    expect(run({ name: "y", sequence: "y" }, { uiState: modalState })).toEqual([
+      { scope: "ui", type: "NOTES_CONFIRM_DELETE" },
+      { scope: "ui", type: "NOTES_BACK_TO_LIST" }
+    ]);
+    expect(run({ name: "n", sequence: "n" }, { uiState: modalState })).toEqual([
+      { scope: "ui", type: "UNWIND" }
+    ]);
+    expect(run({ name: "escape" }, { uiState: modalState })).toEqual([
+      { scope: "ui", type: "UNWIND" }
+    ]);
+  });
+
   it("routes recurring delete modal keys", () => {
     const modalState = {
       ...initialUIState,
@@ -739,7 +764,8 @@ describe("handleKey", () => {
     expect(run({ name: "p", sequence: "p" })).toEqual([
       { scope: "ui", type: "OPEN_TAG_FILTER_PANEL" }
     ]);
-    expect(run({ name: "T", sequence: "T", shift: true })).toEqual([]);
+    const shiftedTagKey = "T";
+    expect(run({ name: shiftedTagKey, sequence: shiftedTagKey, shift: true })).toEqual([]);
     expect(run({ name: "x", sequence: "x" })).toEqual([
       { scope: "domain", type: "SKIP_SELECTED_OCCURRENCE" }
     ]);
@@ -752,6 +778,19 @@ describe("handleKey", () => {
     expect(run({ sequence: "3", name: "3" })).toEqual([
       { scope: "domain", type: "APPLY_VIEW_SLOT", slot: 2 }
     ]);
+    expect(run({ sequence: "5", name: "5" })).toEqual([
+      { scope: "domain", type: "APPLY_VIEW_SLOT", slot: 4 }
+    ]);
+    expect(run({ sequence: "6", name: "6" })).toEqual([
+      { scope: "domain", type: "APPLY_VIEW_SLOT", slot: 5 }
+    ]);
+    expect(run({ sequence: "7", name: "7" })).toEqual([
+      { scope: "domain", type: "APPLY_VIEW_SLOT", slot: 6 }
+    ]);
+    expect(run({ sequence: "8", name: "8" })).toEqual([
+      { scope: "domain", type: "APPLY_VIEW_SLOT", slot: 7 }
+    ]);
+    expect(run({ sequence: "0", name: "0" })).toEqual([]);
     expect(run({ sequence: "]", name: "]" })).toEqual([
       { scope: "domain", type: "JUMP_TO_ATTENTION", kind: "overdue", direction: 1 }
     ]);
@@ -952,9 +991,10 @@ describe("handleKey", () => {
         { uiState: dashboardState }
       )
     ).toEqual([{ scope: "ui", type: "OPEN_TAG_FILTER_PANEL" }]);
+    const shiftedTagKey = "T";
     expect(
       run(
-        { name: "T", sequence: "T", shift: true },
+        { name: shiftedTagKey, sequence: shiftedTagKey, shift: true },
         { uiState: dashboardState }
       )
     ).toEqual([]);
@@ -992,7 +1032,7 @@ describe("handleKey", () => {
     ).toEqual([{ scope: "domain", type: "CYCLE_STATUS" }]);
     expect(
       run(
-        { name: "space", sequence: " " },
+        { name: "space" },
         { uiState: dashboardState, resolvedKeymapAliases: resolvedAliases }
       )
     ).toEqual([{ scope: "domain", type: "APPLY_DASHBOARD_ACTIVE_SELECTION" }]);
@@ -1057,7 +1097,7 @@ describe("handleKey", () => {
     const resolvedAliases = resolveKeymapAliases(
       normalizeKeymapAliases({
         help: {
-          help_open_backup_center: ["9"],
+          help_open_backup_center: ["1"],
           help_close: ["q"]
         }
       })
@@ -1065,7 +1105,7 @@ describe("handleKey", () => {
 
     expect(
       run(
-        { name: "9", sequence: "9" },
+        { name: "1", sequence: "1" },
         { uiState: helpState, resolvedKeymapAliases: resolvedAliases }
       )
     ).toEqual([{ scope: "ui", type: "OPEN_BACKUP_CENTER" }]);
@@ -1156,9 +1196,10 @@ describe("handleKey", () => {
     };
     expect(run({ name: "j", sequence: "j" }, { uiState: panelState })).toEqual([]);
     expect(run({ name: "t", sequence: "t" }, { uiState: panelState })).toEqual([]);
+    const shiftedTagKey = "T";
     expect(
       run(
-        { name: "T", sequence: "T", shift: true },
+        { name: shiftedTagKey, sequence: shiftedTagKey, shift: true },
         { uiState: panelState }
       )
     ).toEqual([]);
@@ -1259,15 +1300,18 @@ describe("handleKey", () => {
         { uiState: backupState, backupScreen: "import_picker" }
       )
     ).toEqual([{ scope: "ui", type: "BACKUP_PICKER_PAGE_SELECTION", delta: 1 }]);
+    const backupPickerHomeKey = "home";
+    const backupPickerEndKey = "end";
+
     expect(
       run(
-        { name: "home" },
+        { name: backupPickerHomeKey },
         { uiState: backupState, backupScreen: "import_picker" }
       )
     ).toEqual([{ scope: "ui", type: "BACKUP_PICKER_JUMP_SELECTION", target: "start" }]);
     expect(
       run(
-        { name: "end" },
+        { name: backupPickerEndKey },
         { uiState: backupState, backupScreen: "import_picker" }
       )
     ).toEqual([{ scope: "ui", type: "BACKUP_PICKER_JUMP_SELECTION", target: "end" }]);
@@ -1302,14 +1346,14 @@ describe("handleKey", () => {
         backup: {
           backup_primary: ["Space"],
           backup_jump_start: ["h"],
-          backup_menu_option_4: ["9"]
+          backup_menu_option_4: ["4"]
         }
       })
     );
 
     expect(
       run(
-        { name: "space", sequence: " " },
+        { name: "space" },
         { uiState: backupState, backupScreen: "menu", resolvedKeymapAliases: resolvedAliases }
       )
     ).toEqual([{ scope: "ui", type: "BACKUP_PRIMARY" }]);
@@ -1331,7 +1375,7 @@ describe("handleKey", () => {
     ).toEqual([]);
     expect(
       run(
-        { name: "9", sequence: "9" },
+        { name: "4", sequence: "4" },
         { uiState: backupState, backupScreen: "menu", resolvedKeymapAliases: resolvedAliases }
       )
     ).toEqual([{ scope: "ui", type: "BACKUP_SELECT_MENU_OPTION", index: 3 }]);
@@ -1345,9 +1389,10 @@ describe("handleKey", () => {
     };
     expect(run({ name: "j", sequence: "j" }, { uiState: addState })).toEqual([]);
     expect(run({ name: "down" }, { uiState: addState })).toEqual([]);
+    const shiftedTagKey = "T";
     expect(
       run(
-        { name: "T", sequence: "T", shift: true },
+        { name: shiftedTagKey, sequence: shiftedTagKey, shift: true },
         { uiState: addState }
       )
     ).toEqual([]);
@@ -1570,9 +1615,84 @@ describe("handleKey", () => {
     expect(run({ name: "return" }, { uiState: notesListState })).toEqual([
       { scope: "ui", type: "NOTES_OPEN_SELECTED" }
     ]);
+    expect(run({ name: "a", sequence: "a" }, { uiState: notesListState })).toEqual([
+      { scope: "ui", type: "NOTES_OPEN_CREATE" }
+    ]);
+    expect(run({ name: "d", sequence: "d" }, { uiState: notesListState })).toEqual([
+      { scope: "ui", type: "NOTES_OPEN_DELETE" }
+    ]);
+    expect(run({ name: "r", sequence: "r" }, { uiState: notesListState })).toEqual([
+      { scope: "ui", type: "NOTES_OPEN_RENAME" }
+    ]);
+    expect(
+      run({ name: "R", sequence: "R", shift: true }, { uiState: notesListState })
+    ).toEqual([{ scope: "ui", type: "NOTES_OPEN_RENAME" }]);
+    expect(run({ name: "i", sequence: "i" }, { uiState: notesListState })).toEqual([
+      { scope: "ui", type: "NOTES_REINDEX" }
+    ]);
+    expect(
+      run({ name: "I", sequence: "I", shift: true }, { uiState: notesListState })
+    ).toEqual([{ scope: "ui", type: "NOTES_REINDEX" }]);
     expect(run({ name: "/", sequence: "/" }, { uiState: notesListState })).toEqual([
       { scope: "ui", type: "OPEN_NOTES_SEARCH" }
     ]);
+    expect(run({ name: "escape" }, { uiState: notesListState })).toEqual([
+      { scope: "ui", type: "NOTES_EXIT_TO_LIST" }
+    ]);
+    expect(
+      run(
+        { name: "escape" },
+        {
+          uiState: notesListState,
+          notesCreatePromptOpen: true
+        }
+      )
+    ).toEqual([{ scope: "ui", type: "NOTES_CLOSE_CREATE" }]);
+    expect(
+      run(
+        { name: "return" },
+        {
+          uiState: notesListState,
+          notesCreatePromptOpen: true
+        }
+      )
+    ).toEqual([{ scope: "ui", type: "NOTES_CONFIRM_CREATE" }]);
+    expect(
+      run(
+        { name: "escape" },
+        {
+          uiState: notesListState,
+          notesRenamePromptOpen: true
+        }
+      )
+    ).toEqual([{ scope: "ui", type: "NOTES_CLOSE_RENAME" }]);
+    expect(
+      run(
+        { name: "return" },
+        {
+          uiState: notesListState,
+          notesRenamePromptOpen: true
+        }
+      )
+    ).toEqual([{ scope: "ui", type: "NOTES_CONFIRM_RENAME" }]);
+    expect(
+      run(
+        { name: "escape" },
+        {
+          uiState: notesListState,
+          notesDeletePromptOpen: true
+        }
+      )
+    ).toEqual([{ scope: "ui", type: "NOTES_CLOSE_DELETE" }]);
+    expect(
+      run(
+        { name: "return" },
+        {
+          uiState: notesListState,
+          notesDeletePromptOpen: true
+        }
+      )
+    ).toEqual([{ scope: "ui", type: "NOTES_CONFIRM_DELETE" }]);
 
     const notesViewState = {
       ...initialUIState,
@@ -1582,6 +1702,33 @@ describe("handleKey", () => {
     expect(run({ name: "escape" }, { uiState: notesViewState })).toEqual([
       { scope: "ui", type: "NOTES_BACK_TO_LIST" }
     ]);
+    expect(run({ name: "d", sequence: "d" }, { uiState: notesViewState })).toEqual([
+      { scope: "ui", type: "NOTES_OPEN_DELETE" }
+    ]);
+    expect(run({ name: "i", sequence: "i" }, { uiState: notesViewState })).toEqual([
+      { scope: "ui", type: "NOTES_REINDEX" }
+    ]);
     expect(run({ name: "b", sequence: "b" }, { uiState: notesViewState })).toEqual([]);
+
+    const notesEditState = {
+      ...initialUIState,
+      mode: Mode.NOTES_EDIT,
+      focus: FocusTarget.NOTES_EDIT
+    };
+    expect(run({ name: "d", sequence: "d" }, { uiState: notesEditState })).toEqual([]);
+
+    const notesSearchState = {
+      ...initialUIState,
+      mode: Mode.NOTES_SEARCH,
+      focus: FocusTarget.NOTES_SEARCH_INPUT
+    };
+    expect(run({ name: "d", sequence: "d" }, { uiState: notesSearchState })).toEqual([]);
+
+    const notesTagFilterState = {
+      ...initialUIState,
+      mode: Mode.NOTES_TAG_FILTER,
+      focus: FocusTarget.NOTES_TAG_FILTER_INPUT
+    };
+    expect(run({ name: "d", sequence: "d" }, { uiState: notesTagFilterState })).toEqual([]);
   });
 });

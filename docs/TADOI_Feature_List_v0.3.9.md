@@ -92,7 +92,7 @@ This list reflects current runtime behavior as of **2026-02-27**.
 - Overdue modal queue with actions: snooze, done, go-to, dismiss.
 - Optional terminal bell with cooldown.
 - Non-interactive engagement toast milestones in the bottom bar (queued, priority-ordered, auto-dismissed).
-- Theme registry includes `crtGreen` and `crtAmber` in addition to existing palettes and `rotating` mode.
+- Theme registry includes `crtGreen`, `crtAmber`, `kitty`, `corpo`, and `strikefitron` in addition to existing palettes and `rotating` mode.
 - Help Settings page includes: `Theme`, `Logo`, `Flash Mode`, `CRT FX Lite`, `CRT FX Profile`, `Notifications`, `Overdue Popup`, `Terminal Bell`.
 - CRT FX Lite applies profile-based tint/flicker treatment to primary panel surfaces (left rail, task list panel, details panel).
 - Persisted settings include theme/logo/flash/CRT FX/notification/security values.

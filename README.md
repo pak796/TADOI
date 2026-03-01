@@ -69,17 +69,27 @@ Supported commands:
 - `recur <target> clear` / `recur <target> every:day|week|month [interval:N] [on:...]`
 - `check add|toggle|edit|del|clear ...`
 - `bulk done|tag add|tag rm|due|priority|assignee|project|stage|delete ...`
-- `note new|open|search|reindex|root set|help ...`
-- `help` / `help add|done|due|recur|check|bulk`
+- `note new|open|search|delete|restore-defaults|reindex|root set|help ...`
+- `help` / `help add|done|due|recur|check|bulk|note`
 
-Notes command examples (in-app TITS or CLI wrapper `tadoi note ...`):
+TOME (Terminal Oriented Markdown Environment) is TADOI's notes-oriented markdown tool.
+
+TOME command examples (in-app TITS or CLI wrapper `tadoi note ...`):
 - `note new "Weekly Review"`
 - `note search "sprint retro tag:inbox"`
 - `note open "Weekly Review"`
 - `note open id:note-dup-primary`
 - `note open "Conflicts/SameTitle1.md"`
+- `note delete "Weekly Review"`
+- `note restore-defaults`
 - `note reindex`
 - `note root set "./notes-vault"` (copy-first migration + pre-change backup)
+
+Built-in TOME guides:
+- On first boot with an empty notes vault, TADOI seeds curated markdown notes under `TADOI Guides/`.
+- These default notes are normal files and can be edited or deleted.
+- In TOME list and TOME view, `d` opens delete confirmation (`y` / `n` / `Esc`).
+- `note restore-defaults` recreates only missing default guide notes and never overwrites existing files.
 
 CLI query command:
 - `list [selectors...] [--sort due|updated|created|title] [--limit N]`
@@ -387,8 +397,9 @@ Canonical router keys (audit-complete):
   - `Enter` / `Space`: toggle selected section
   - `Enter` / `right` on the `Settings` section: open settings pages
   - In settings pages: `up` / `down` move, `Enter` / `right` apply/select, `left` / `Backspace` / `Esc` back
-  - Settings page rows include `Theme`, `Navigation Hints`, `Prefix Popup`, `Logo`, `Flash Mode`, `CRT FX Lite`, `CRT FX Profile`, `Notifications`, `Overdue Popup`, `Terminal Bell`
-  - Settings include a `Keymap Aliases` page for bounded preset toggles (`list`, `dashboard`, `backup`, `help`)
+  - Settings page rows include `Theme`, `Keymap Aliases`, `Navigation Hints`, `Prefix Popup`, `Logo`, `Flash Mode`, `CRT FX Lite`, `CRT FX Profile`, `Retro FX Mode`, `Notifications`, `Overdue Popup`, `Terminal Bell`, `Restore TOME Guides`
+  - `Keymap Aliases` opens a bounded preset page for `list`, `dashboard`, `backup`, and `help` alias contexts
+  - List preset example: `Ctrl+F` opens Search and `n` opens Add
   - `ctrl+u` / `PageUp`: page Help content up
   - `ctrl+d` / `PageDown`: page Help content down
   - `Esc` or `?`: close help
@@ -482,7 +493,7 @@ Theme IDs:
 - `default`, `retro`, `highContrast`, `neonHacker`, `lightSlate`, `paperWhite`, `midnightBlack`
 - `jester`, `sonora`, `tigers`, `tech`, `deuteranopia`, `protanopia`, `tritanopia`
 - `blueAngels`, `southwest`, `rams`, `trooper`, `twilight`, `msdos`, `niners`, `mcrn`
-- `zeke`, `gundam`, `crtGreen`, `crtAmber`, `custom1`, `rotating` (auto-cycles concrete themes)
+- `zeke`, `gundam`, `crtGreen`, `crtAmber`, `kitty`, `corpo`, `strikefitron`, `custom1`, `rotating` (auto-cycles concrete themes)
 
 Notification defaults:
 - `notifications.enabled`: `true`

@@ -31,6 +31,12 @@ export type UIRecurringOccurrenceDeleteModal = UIDeleteModalBase & {
 
 export type UIDeleteModal = UIRegularTaskDeleteModal | UIRecurringOccurrenceDeleteModal;
 
+export type UINoteDeleteModal = {
+  type: "note_delete";
+  notePath: string;
+  noteTitle: string;
+} & UIModalReturnContext;
+
 export type UIOverdueModal = {
   type: "overdue";
   event: TaskOverdueEvent;
@@ -117,6 +123,7 @@ export type UITaskEditorUnsavedContinuation =
   | "open_list"
   | "open_dashboard"
   | "open_backup_center"
+  | "open_notes"
   | "open_search"
   | "open_help"
   | "open_add"
@@ -163,6 +170,7 @@ export type EmptyNuxState = {
 
 export type UIConfirmModal =
   | UIDeleteModal
+  | UINoteDeleteModal
   | UIOverdueModal
   | UIReminderModal
   | UIEmptyNuxModal

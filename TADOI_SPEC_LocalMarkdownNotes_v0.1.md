@@ -43,7 +43,7 @@ This spec is broken into **4 implementation slices** (low-risk order), each with
 2) **Link formats**
 - Support both:
   - **Wikilinks**: `[[Note Title]]`, `[[Note Title|Alias]]`
-  - **Markdown links**: `[text](path/to/note.md)`  
+  - **Markdown links**: `text -> path/to/note.md`  
 Obsidian supports both formats; this keeps portability and user preference. citeturn0search5turn0search1
 
 3) **Markdown rendering approach**
@@ -154,7 +154,7 @@ Support both formats:
 - Optional (later): `[[Note#Heading]]`, `[[#Heading]]` (defer until after Slice 3)
 
 **Markdown links**
-- `[Text](Relative%20Path.md)` (do not require `%20` input; accept raw spaces when parsing, but canonicalize when generating). citeturn0search5turn0search1
+- `Text -> Relative Path.md` (do not require `%20` input; accept raw spaces when parsing, but canonicalize when generating). citeturn0search5turn0search1
 
 **Resolution strategy**
 1. If link target includes an explicit id token format you define (optional future), resolve by id.
