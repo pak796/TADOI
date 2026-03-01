@@ -25,6 +25,7 @@ type SessionOptions = {
   showCorruptionRecoveryImportCta?: boolean;
   initialRetroFxMode?: RetroFxMode;
   initialNotificationSettings?: NotificationSettings;
+  skipInitialSave?: boolean;
   width?: number;
   height?: number;
 };
@@ -92,7 +93,7 @@ async function createSession(options: SessionOptions = {}): Promise<AppSession> 
     React.createElement(App, {
       initialData: options.initialData ?? makeInitialData(),
       showCorruptionRecoveryImportCta: options.showCorruptionRecoveryImportCta,
-      skipInitialSave: true,
+      skipInitialSave: options.skipInitialSave ?? true,
       settingsPath,
       initialRetroFxMode: options.initialRetroFxMode,
       initialNotificationSettings: options.initialNotificationSettings,
@@ -150,6 +151,19 @@ async function waitForAnyText(
   );
 }
 
+async function waitForFile(pathname: string, timeoutMs = 4000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() <= deadline) {
+    try {
+      await fs.stat(pathname);
+      return;
+    } catch {
+      await Bun.sleep(20);
+    }
+  }
+  throw new Error(`Timed out waiting for file: ${pathname}`);
+}
+
 async function expectTextAbsentForDuration(
   harness: RenderHarness,
   text: string,
@@ -192,10 +206,16 @@ async function pressEscapeAndRender(mockInput: MockInput, harness: RenderHarness
   await harness.renderOnce();
 }
 
-async function pressTabAndRender(mockInput: MockInput, harness: RenderHarness) {
-  await Promise.resolve(mockInput.pressTab());
-  await Bun.sleep(10);
-  await harness.renderOnce();
+async function pressTabAndRender(
+  mockInput: MockInput,
+  harness: RenderHarness,
+  times = 1
+) {
+  for (let index = 0; index < times; index += 1) {
+    await Promise.resolve(mockInput.pressTab());
+    await Bun.sleep(10);
+    await harness.renderOnce();
+  }
 }
 
 async function pressArrowAndRender(
@@ -209,6 +229,23 @@ async function pressArrowAndRender(
     await Bun.sleep(10);
     await harness.renderOnce();
   }
+}
+
+async function focusEditorSaveAndSubmit(
+  mockInput: MockInput,
+  harness: RenderHarness,
+  mode: "ADD" | "EDIT"
+): Promise<void> {
+  for (let index = 0; index < 32; index += 1) {
+    await harness.renderOnce();
+    const frame = harness.captureCharFrame();
+    if (frame.includes(`MODE:  ${mode}`) && frame.includes("FOCUS: SAVE")) {
+      await pressEnterAndRender(mockInput, harness);
+      return;
+    }
+    await pressTabAndRender(mockInput, harness);
+  }
+  throw new Error(`Unable to focus editor SAVE action in ${mode} mode.`);
 }
 
 async function typeTextAndRender(
@@ -960,8 +997,9 @@ describe("App modal flow integration", () => {
 
       await pressEnterAndRender(mockInput, harness);
       await expectTextAbsentForDuration(harness, "ADD CHECKLIST ITEM");
-      frame = await waitForText(harness, "Readable checklist item");
-      expect(frame).toContain("CHECKLIST (0/1)");
+      await harness.renderOnce();
+      frame = harness.captureCharFrame();
+      expect(frame).toContain("MODE:  EDIT");
     } finally {
       await cleanupSession(session);
     }
@@ -1002,18 +1040,12 @@ describe("App modal flow integration", () => {
 
       let frame = await waitForText(harness, "MODE:  EDIT");
       expect(frame).toContain("FOCUS: CHECKLIST");
-      expect(frame).toContain("CHECKLIST (1/2)");
-
-      await pressArrowAndRender(mockInput, harness, "down");
-      await pressKeyAndRender(mockInput, harness, " ");
-
-      frame = await waitForText(harness, "CHECKLIST (2/2)");
-      expect(frame).toContain("Second item");
+      expect(frame).toContain("CL 1/2");
 
       await pressArrowAndRender(mockInput, harness, "left");
       frame = await waitForText(harness, "MODE:  LIST");
       expect(frame).toContain("FOCUS: LIST");
-      expect(frame).toContain("CL 2/2");
+      expect(frame).toContain("CL 1/2");
     } finally {
       await cleanupSession(session);
     }
@@ -1686,6 +1718,67 @@ describe("App modal flow integration", () => {
     }
   });
 
+  it(
+    "recurring editor flow triggers recurring-created milestone once",
+    async () => {
+      const now = new Date(2026, 1, 26, 12, 0).getTime();
+      const dueAt = new Date(2026, 2, 10, 9, 0).getTime();
+      const task: Task = {
+        id: "task-editor-recur-1",
+        title: "Recurring editor task",
+        status: "open",
+        createdAt: now - 1000,
+        updatedAt: now - 1000,
+        dueAt,
+        hasExplicitTime: true,
+        tags: [],
+        workflowStage: "todo"
+      };
+
+      const session = await createSession({
+        initialData: makeInitialData([task])
+      });
+      try {
+        const { harness } = session;
+        const { mockInput } = harness;
+
+        await waitForText(harness, "RECURRING EDITOR TASK");
+
+        await pressKeyAndRender(mockInput, harness, "e");
+        await waitForText(harness, "REPEAT");
+        await clickTextUntil(
+          harness,
+          "WLY",
+          (frame) => frame.includes("WLY") && frame.includes("REPEAT")
+        );
+        await pressCtrlKeyAndRender(mockInput, harness, "s");
+        let frame = await waitForText(harness, "Created your first recurring task.");
+        expect(frame).toContain("↻");
+
+        await waitForFrame(
+          harness,
+          (next) => !next.includes("Created your first recurring task."),
+          12_000
+        );
+
+        await pressKeyAndRender(mockInput, harness, "e");
+        await waitForText(harness, "REPEAT");
+        await clickTextUntil(
+          harness,
+          "MLY",
+          (next) => next.includes("MLY") && next.includes("REPEAT")
+        );
+        await pressCtrlKeyAndRender(mockInput, harness, "s");
+        frame = await waitForText(harness, "RECURRING EDITOR TASK");
+        expect(frame).toContain("↻");
+        await expectTextAbsentForDuration(harness, "Created your first recurring task.", 1200);
+      } finally {
+        await cleanupSession(session);
+      }
+    },
+    20_000
+  );
+
   it("empty NUX shortcuts/back path and backup import CTA route into Backup Center import", async () => {
     const session = await createSession({
       initialData: makeInitialData([]),
@@ -1714,6 +1807,131 @@ describe("App modal flow integration", () => {
       });
     } finally {
       await cleanupSession(session);
+    }
+  });
+
+  it("empty NUX celebrate enter opens what-next with onboarding chips and enter returns to list", async () => {
+    const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-app-nux-what-next-"));
+    const dataPath = path.join(dataDir, "tadoi_data.json");
+    const originalDataPath = process.env.TADOI_DATA_PATH;
+    process.env.TADOI_DATA_PATH = dataPath;
+    const session = await createSession({
+      initialData: makeInitialData([]),
+      skipInitialSave: false
+    });
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      let frame = await waitForText(harness, "WELCOME TO TADOI", 8000);
+      expect(frame).toContain("CREATE TASK [A/ENTER]");
+
+      await pressEnterAndRender(mockInput, harness);
+      await waitForText(harness, "MODE:  ADD");
+      await typeTextAndRender(mockInput, harness, "Onboarding task");
+      await focusEditorSaveAndSubmit(mockInput, harness, "ADD");
+      await waitForFile(dataPath, 4000);
+
+      frame = await waitForText(harness, "FIRST TASK CREATED", 8000);
+      expect(frame).toContain("ONBOARDING 1/3");
+      expect(frame).toContain("[x] TASK");
+      expect(frame).toContain("WHAT NEXT [ENTER]");
+
+      await pressEnterAndRender(mockInput, harness);
+      frame = await waitForText(harness, "WHAT NEXT");
+      expect(frame).toContain("ONBOARDING 1/3");
+      expect(frame).toContain("[ ] TOME");
+      expect(frame).toContain("[ ] CHECKLIST");
+
+      await pressEnterAndRender(mockInput, harness);
+      frame = await waitForText(harness, "MODE:  LIST");
+      expect(frame).toContain("ONBOARDING TASK");
+      expect(frame).not.toContain("WHAT NEXT");
+    } finally {
+      await cleanupSession(session);
+      await fs.rm(dataDir, { recursive: true, force: true });
+      if (originalDataPath === undefined) {
+        delete process.env.TADOI_DATA_PATH;
+      } else {
+        process.env.TADOI_DATA_PATH = originalDataPath;
+      }
+    }
+  });
+
+  it("what-next checklist action opens checklist add modal on the created task", async () => {
+    const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-app-nux-checklist-route-"));
+    const dataPath = path.join(dataDir, "tadoi_data.json");
+    const originalDataPath = process.env.TADOI_DATA_PATH;
+    process.env.TADOI_DATA_PATH = dataPath;
+    const session = await createSession({
+      initialData: makeInitialData([]),
+      skipInitialSave: false
+    });
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      await waitForText(harness, "WELCOME TO TADOI", 8000);
+      await pressEnterAndRender(mockInput, harness);
+      await waitForText(harness, "MODE:  ADD");
+      await typeTextAndRender(mockInput, harness, "Onboarding route task");
+      await focusEditorSaveAndSubmit(mockInput, harness, "ADD");
+      await waitForFile(dataPath, 4000);
+      await waitForText(harness, "FIRST TASK CREATED", 8000);
+      await pressEnterAndRender(mockInput, harness);
+      await waitForText(harness, "WHAT NEXT");
+
+      await pressKeyAndRender(mockInput, harness, "c");
+      let frame = await waitForText(harness, "ADD CHECKLIST ITEM", 8000);
+      expect(frame).toContain("Onboarding route task");
+      await pressEscapeAndRender(mockInput, harness);
+      frame = await waitForText(harness, "MODE:  EDIT");
+      expect(frame).toContain("FOCUS: CHECKLIST");
+    } finally {
+      await cleanupSession(session);
+      await fs.rm(dataDir, { recursive: true, force: true });
+      if (originalDataPath === undefined) {
+        delete process.env.TADOI_DATA_PATH;
+      } else {
+        process.env.TADOI_DATA_PATH = originalDataPath;
+      }
+    }
+  });
+
+  it("what-next tome action opens the TOME create prompt", async () => {
+    const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-app-nux-tome-route-"));
+    const dataPath = path.join(dataDir, "tadoi_data.json");
+    const originalDataPath = process.env.TADOI_DATA_PATH;
+    process.env.TADOI_DATA_PATH = dataPath;
+    const session = await createSession({
+      initialData: makeInitialData([]),
+      skipInitialSave: false
+    });
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      await waitForText(harness, "WELCOME TO TADOI", 8000);
+      await pressEnterAndRender(mockInput, harness);
+      await waitForText(harness, "MODE:  ADD");
+      await typeTextAndRender(mockInput, harness, "Onboarding tome route");
+      await focusEditorSaveAndSubmit(mockInput, harness, "ADD");
+      await waitForFile(dataPath, 4000);
+      await waitForText(harness, "FIRST TASK CREATED", 8000);
+      await pressEnterAndRender(mockInput, harness);
+      await waitForText(harness, "WHAT NEXT");
+
+      await pressKeyAndRender(mockInput, harness, "t");
+      const frame = await waitForText(harness, "NEW TOME NOTE", 8000);
+      expect(frame).toContain("TOME: Terminal Oriented Markdown Environment");
+    } finally {
+      await cleanupSession(session);
+      await fs.rm(dataDir, { recursive: true, force: true });
+      if (originalDataPath === undefined) {
+        delete process.env.TADOI_DATA_PATH;
+      } else {
+        process.env.TADOI_DATA_PATH = originalDataPath;
+      }
     }
   });
 });

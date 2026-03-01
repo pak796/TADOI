@@ -191,4 +191,70 @@ describe("engagement reducer actions", () => {
     expect(withRecurringRepeatDone.engagement.achievements.FIRST_RECURRING_REPEAT_DONE).toBeDefined();
     expect(withRecurringRepeatDone.engagementToastQueue).toHaveLength(2);
   });
+
+  it("dedupes onboarding milestones and preserves first unlock timestamp", () => {
+    const now = Date.now();
+    const withFirstChecklistCreated = reducer(initialState, {
+      type: "triggerEngagementMilestone",
+      achievementKey: "FIRST_CHECKLIST_CREATED",
+      achievementId: "FIRST_CHECKLIST_CREATED",
+      at: now,
+      meta: { taskId: "task-1", total: 1 },
+      toast: {
+        message: "Created your first checklist.",
+        priority: 3,
+        durationMs: 10_000
+      }
+    });
+
+    const repeatedChecklistCreated = reducer(withFirstChecklistCreated, {
+      type: "triggerEngagementMilestone",
+      achievementKey: "FIRST_CHECKLIST_CREATED",
+      achievementId: "FIRST_CHECKLIST_CREATED",
+      at: now + 1200,
+      meta: { taskId: "task-1", total: 2 },
+      toast: {
+        message: "Created your first checklist.",
+        priority: 3,
+        durationMs: 10_000
+      }
+    });
+
+    expect(
+      repeatedChecklistCreated.engagement.achievements.FIRST_CHECKLIST_CREATED?.unlockedAt
+    ).toBe(now);
+    expect(repeatedChecklistCreated.engagementToastQueue).toHaveLength(1);
+
+    const withRemainingOnboardingMilestones = reducer(repeatedChecklistCreated, {
+      type: "triggerEngagementMilestone",
+      achievementKey: "FIRST_TOME_CREATED",
+      achievementId: "FIRST_TOME_CREATED",
+      at: now + 2400,
+      meta: { notePath: "First Tome Milestone.md" },
+      toast: {
+        message: "Created your first TOME note.",
+        priority: 3,
+        durationMs: 10_000
+      }
+    });
+
+    const withChecklistCompleted = reducer(withRemainingOnboardingMilestones, {
+      type: "triggerEngagementMilestone",
+      achievementKey: "FIRST_CHECKLIST_FULLY_COMPLETED",
+      achievementId: "FIRST_CHECKLIST_FULLY_COMPLETED",
+      at: now + 3600,
+      meta: { taskId: "task-1", total: 1 },
+      toast: {
+        message: "Completed your first checklist.",
+        priority: 2,
+        durationMs: 10_000
+      }
+    });
+
+    expect(withChecklistCompleted.engagement.achievements.FIRST_TOME_CREATED).toBeDefined();
+    expect(
+      withChecklistCompleted.engagement.achievements.FIRST_CHECKLIST_FULLY_COMPLETED
+    ).toBeDefined();
+    expect(withChecklistCompleted.engagementToastQueue).toHaveLength(3);
+  });
 });

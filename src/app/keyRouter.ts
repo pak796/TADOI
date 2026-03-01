@@ -88,6 +88,8 @@ export type KeyRouterAction =
   | { scope: "ui"; type: "OPEN_HELP" }
   | { scope: "ui"; type: "OPEN_BACKUP_CENTER" }
   | { scope: "ui"; type: "OPEN_BACKUP_CENTER_IMPORT" }
+  | { scope: "ui"; type: "OPEN_EMPTY_NUX_TOME_CREATE" }
+  | { scope: "ui"; type: "OPEN_EMPTY_NUX_CHECKLIST_ADD" }
   | { scope: "ui"; type: "OPEN_TAG_FILTER_PANEL" }
   | { scope: "ui"; type: "CLOSE_HELP" }
   | { scope: "ui"; type: "OPEN_SEARCH" }
@@ -818,10 +820,32 @@ function resolveModalModeActions(
 
     if (step === "celebrate") {
       if (name === "return" || name === "enter") {
+        return [{ scope: "ui", type: "OPEN_EMPTY_NUX", step: "what_next" }];
+      }
+      if (lowerName === "a" || lowerSequence === "a") {
+        return createActions;
+      }
+      if (lowerName === "h" || lowerSequence === "h") {
+        return [{ scope: "ui", type: "OPEN_EMPTY_NUX", step: "shortcuts" }];
+      }
+      if (name === "escape") {
+        return [{ scope: "ui", type: "CLEAR_EMPTY_NUX" }];
+      }
+      return [];
+    }
+
+    if (step === "what_next") {
+      if (name === "return" || name === "enter" || lowerName === "l" || lowerSequence === "l") {
         return [
           { scope: "ui", type: "CLEAR_EMPTY_NUX" },
           { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.TASK_LIST }
         ];
+      }
+      if (lowerName === "t" || lowerSequence === "t") {
+        return [{ scope: "ui", type: "OPEN_EMPTY_NUX_TOME_CREATE" }];
+      }
+      if (lowerName === "c" || lowerSequence === "c") {
+        return [{ scope: "ui", type: "OPEN_EMPTY_NUX_CHECKLIST_ADD" }];
       }
       if (lowerName === "a" || lowerSequence === "a") {
         return createActions;

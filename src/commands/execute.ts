@@ -50,6 +50,8 @@ const ALLOWED_ACTION_TYPES = new Set([
   "setTagIndex"
 ] as const);
 
+const FIRST_RECURRING_TASK_TOAST_MS = 10_000;
+
 function error(text: string): CommandResult {
   return {
     actions: [],
@@ -302,6 +304,7 @@ function executeRecur(command: RecurCommand, ctx: ExecContext): CommandResult {
 
   let nextTask: Task;
   let output: string;
+  let createdRecurringSeriesId: string | null = null;
   if (command.clear) {
     nextTask = {
       ...task,
@@ -349,21 +352,36 @@ function executeRecur(command: RecurCommand, ctx: ExecContext): CommandResult {
       recurrence,
       updatedAt: ctx.now
     };
+    if (!task.recurrence) {
+      createdRecurringSeriesId = recurrence.series_id;
+    }
     output = `Recurrence set: ${task.title} -> every ${command.every}`;
   }
 
-  return ok(
-    [
-      {
-        type: "setTasks",
-        tasks: ctx.state.tasks.map((candidate) =>
-          candidate.id === task.id ? nextTask : candidate
-        )
-      },
-      { type: "setSelected", id: task.id }
-    ],
-    output
-  );
+  const actions: CommandResult["actions"] = [
+    {
+      type: "setTasks",
+      tasks: ctx.state.tasks.map((candidate) =>
+        candidate.id === task.id ? nextTask : candidate
+      )
+    },
+    { type: "setSelected", id: task.id }
+  ];
+  if (createdRecurringSeriesId) {
+    actions.push({
+      type: "triggerEngagementMilestone",
+      achievementKey: "FIRST_RECURRING_TASK_CREATED",
+      achievementId: "FIRST_RECURRING_TASK_CREATED",
+      at: ctx.now,
+      meta: { seriesId: createdRecurringSeriesId },
+      toast: {
+        message: "Created your first recurring task.",
+        priority: 3,
+        durationMs: FIRST_RECURRING_TASK_TOAST_MS
+      }
+    });
+  }
+  return ok(actions, output);
 }
 
 function executeCheck(command: CheckCommand, ctx: ExecContext): CommandResult {

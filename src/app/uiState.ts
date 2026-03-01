@@ -13,6 +13,9 @@ const EDITOR_BASE_FOCUS_ORDER: FocusTarget[] = [
   FocusTarget.EDITOR_DUE_TIME,
   FocusTarget.EDITOR_REMINDER_KIND,
   FocusTarget.EDITOR_REPEAT_MODE,
+  FocusTarget.EDITOR_ASSIGNEE,
+  FocusTarget.EDITOR_PROJECT,
+  FocusTarget.EDITOR_WORKFLOW_STAGE,
   FocusTarget.EDITOR_TAGS,
   FocusTarget.EDITOR_CHECKLIST,
   FocusTarget.EDITOR_NOTES,
@@ -101,6 +104,9 @@ export function getVisibleEditorFocusOrder(
   }
 
   order.push(
+    FocusTarget.EDITOR_ASSIGNEE,
+    FocusTarget.EDITOR_PROJECT,
+    FocusTarget.EDITOR_WORKFLOW_STAGE,
     FocusTarget.EDITOR_TAGS,
     FocusTarget.EDITOR_CHECKLIST,
     FocusTarget.EDITOR_NOTES,
@@ -151,6 +157,12 @@ export function toFocusTarget(editorFocus: EditorFocus): FocusTarget {
       return FocusTarget.EDITOR_REPEAT_COUNT;
     case "repeat_custom":
       return FocusTarget.EDITOR_REPEAT_CUSTOM;
+    case "assignee":
+      return FocusTarget.EDITOR_ASSIGNEE;
+    case "project":
+      return FocusTarget.EDITOR_PROJECT;
+    case "workflow_stage":
+      return FocusTarget.EDITOR_WORKFLOW_STAGE;
     case "tags":
       return FocusTarget.EDITOR_TAGS;
     case "checklist":
@@ -200,6 +212,12 @@ export function toEditorFocus(focus: FocusTarget): EditorFocus {
       return "repeat_count";
     case FocusTarget.EDITOR_REPEAT_CUSTOM:
       return "repeat_custom";
+    case FocusTarget.EDITOR_ASSIGNEE:
+      return "assignee";
+    case FocusTarget.EDITOR_PROJECT:
+      return "project";
+    case FocusTarget.EDITOR_WORKFLOW_STAGE:
+      return "workflow_stage";
     case FocusTarget.EDITOR_TAGS:
       return "tags";
     case FocusTarget.EDITOR_CHECKLIST:

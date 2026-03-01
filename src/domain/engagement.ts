@@ -19,6 +19,12 @@ export const ENGAGEMENT_TOAST_DURATIONS_MS = {
   DONE_3_TODAY: 8_000
 } as const;
 
+export const ONBOARDING_ENGAGEMENT_ACHIEVEMENTS = {
+  FIRST_TOME_CREATED: "FIRST_TOME_CREATED",
+  FIRST_CHECKLIST_CREATED: "FIRST_CHECKLIST_CREATED",
+  FIRST_CHECKLIST_FULLY_COMPLETED: "FIRST_CHECKLIST_FULLY_COMPLETED"
+} as const;
+
 export function createDefaultEngagementState(): EngagementState {
   return {
     completionLog: [],

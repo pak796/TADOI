@@ -8,10 +8,22 @@ type EmptyNuxModalProps = {
   onOpenBackupImport: () => void;
   onShowShortcuts: () => void;
   onBackToWelcome: () => void;
+  onOpenWhatNext: () => void;
+  onOpenFirstTome: () => void;
+  onOpenChecklistAdd: () => void;
   onDismissSession: () => void;
   onClearWalkthrough: () => void;
   onGoToList: () => void;
+  onboardingProgress: EmptyNuxOnboardingProgress;
   showImportBackupAction?: boolean;
+};
+
+export type EmptyNuxOnboardingProgress = {
+  firstTask: boolean;
+  firstTome: boolean;
+  firstChecklistComplete: boolean;
+  completed: number;
+  total: 3;
 };
 
 export type EmptyNuxModalMeta = {
@@ -26,7 +38,24 @@ export function resolveEmptyNuxModalMeta(step: EmptyNuxStep): EmptyNuxModalMeta 
   if (step === "celebrate") {
     return { title: "FIRST TASK CREATED", closeAction: "clear_walkthrough" };
   }
+  if (step === "what_next") {
+    return { title: "WHAT NEXT", closeAction: "clear_walkthrough" };
+  }
   return { title: "WELCOME TO TADOI", closeAction: "dismiss_session" };
+}
+
+export function describeOnboardingProgress(progress: EmptyNuxOnboardingProgress): {
+  label: string;
+  chips: string[];
+} {
+  return {
+    label: `ONBOARDING ${String(progress.completed)}/${String(progress.total)}`,
+    chips: [
+      `${progress.firstTask ? "[x]" : "[ ]"} TASK`,
+      `${progress.firstTome ? "[x]" : "[ ]"} TOME`,
+      `${progress.firstChecklistComplete ? "[x]" : "[ ]"} CHECKLIST`
+    ]
+  };
 }
 
 export function EmptyNuxModal({
@@ -35,9 +64,13 @@ export function EmptyNuxModal({
   onOpenBackupImport,
   onShowShortcuts,
   onBackToWelcome,
+  onOpenWhatNext,
+  onOpenFirstTome,
+  onOpenChecklistAdd,
   onDismissSession,
   onClearWalkthrough,
   onGoToList,
+  onboardingProgress,
   showImportBackupAction = false
 }: EmptyNuxModalProps) {
   const theme = themeForObject("modal");
@@ -45,6 +78,8 @@ export function EmptyNuxModal({
   const meta = resolveEmptyNuxModalMeta(step);
   const closeAction =
     meta.closeAction === "dismiss_session" ? onDismissSession : onClearWalkthrough;
+  const showOnboardingProgress = step === "celebrate" || step === "what_next";
+  const onboardingDisplay = describeOnboardingProgress(onboardingProgress);
 
   return (
     <ModalContainer theme={theme} minWidth={modalWidth}>
@@ -52,6 +87,13 @@ export function EmptyNuxModal({
         <text style={{ fontWeight: "bold" }}>{meta.title}</text>
         <ModalActionButton theme={theme} label="CLOSE" onPress={closeAction} paddingX={2} />
       </box>
+
+      {showOnboardingProgress ? (
+        <box style={{ marginTop: 1, flexDirection: "column" }}>
+          <text style={{ color: theme.text, fontWeight: "bold" }}>{onboardingDisplay.label}</text>
+          <text style={{ color: theme.muted }}>{onboardingDisplay.chips.join("  ")}</text>
+        </box>
+      ) : null}
 
       {step === "welcome" ? (
         <>
@@ -121,13 +163,65 @@ export function EmptyNuxModal({
         <>
           <text style={{ marginTop: 1 }}>Nice start. Your first task is saved.</text>
           <text style={{ color: theme.muted }}>
-            Press Enter to return to list, or press A to create another task.
+            Press Enter for next steps, or press A to create another task.
           </text>
           <ModalActionRow marginTop={1}>
             <ModalActionButton
               theme={theme}
-              label="GO TO LIST [ENTER]"
+              label="WHAT NEXT [ENTER]"
               primary
+              onPress={onOpenWhatNext}
+              paddingX={2}
+            />
+            <ModalActionButton
+              theme={theme}
+              label="ADD ANOTHER [A]"
+              onPress={onCreateTask}
+              paddingX={2}
+            />
+          </ModalActionRow>
+          <ModalActionRow>
+            <ModalActionButton
+              theme={theme}
+              label="SHORTCUTS [H]"
+              onPress={onShowShortcuts}
+              paddingX={2}
+            />
+            <ModalActionButton
+              theme={theme}
+              label="CLOSE [ESC]"
+              onPress={onClearWalkthrough}
+              paddingX={2}
+            />
+          </ModalActionRow>
+        </>
+      ) : null}
+
+      {step === "what_next" ? (
+        <>
+          <text style={{ marginTop: 1 }}>Complete onboarding with these quick actions.</text>
+          <text style={{ color: theme.muted }}>
+            Build your first TOME note, add checklist items, then return to list.
+          </text>
+          <ModalActionRow marginTop={1}>
+            <ModalActionButton
+              theme={theme}
+              label="FIRST TOME [T]"
+              primary
+              onPress={onOpenFirstTome}
+              paddingX={2}
+            />
+            <ModalActionButton
+              theme={theme}
+              label="CHECKLIST [C]"
+              onPress={onOpenChecklistAdd}
+              paddingX={2}
+            />
+          </ModalActionRow>
+          <ModalActionRow>
+            <ModalActionButton
+              theme={theme}
+              label="GO TO LIST [ENTER]"
               onPress={onGoToList}
               paddingX={2}
             />

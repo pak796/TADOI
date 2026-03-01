@@ -61,6 +61,14 @@ const REPEAT_MODES = [
 const END_MODES = ["never", "until", "count"] as const;
 const REMINDER_KIND_OPTIONS = ["none", "absolute", "before_due"] as const;
 const REMINDER_OFFSET_UNIT_OPTIONS = ["minutes", "hours", "days"] as const;
+const WORKFLOW_STAGE_OPTIONS = [
+  { value: "backlog", label: "BACKLOG" },
+  { value: "todo", label: "TODO" },
+  { value: "in_progress", label: "IN PROGRESS" },
+  { value: "blocked", label: "BLOCKED" },
+  { value: "review", label: "REVIEW" },
+  { value: "done", label: "DONE" }
+] as const satisfies Array<{ value: NonNullable<EditorDraft["workflowStage"]>; label: string }>;
 const NOTES_VISIBLE_ROWS = 6;
 
 function normalizeRepeatMode(input: string): EditorDraft["repeatMode"] {
@@ -89,6 +97,36 @@ function normalizeReminderKind(input: string): EditorDraft["reminderKind"] {
 
 function normalizeReminderOffsetUnitInput(input: string): EditorDraft["reminderOffsetUnit"] {
   return normalizeReminderOffsetUnit(input.trim().toLowerCase());
+}
+
+function normalizeWorkflowStageInput(input: string): EditorDraft["workflowStage"] {
+  const value = input.trim().toLowerCase();
+  if (value.length === 0 || value === "none" || value === "clear") {
+    return undefined;
+  }
+  if (value === "doing" || value === "in-progress") {
+    return "in_progress";
+  }
+  if (WORKFLOW_STAGE_OPTIONS.some((option) => option.value === value)) {
+    return value as EditorDraft["workflowStage"];
+  }
+  return undefined;
+}
+
+function cycleWorkflowStage(
+  current: EditorDraft["workflowStage"],
+  direction: 1 | -1
+): EditorDraft["workflowStage"] {
+  const size = WORKFLOW_STAGE_OPTIONS.length;
+  if (size === 0) return current;
+  const currentIndex = WORKFLOW_STAGE_OPTIONS.findIndex((option) => option.value === current);
+  if (currentIndex === -1) {
+    return direction === 1
+      ? WORKFLOW_STAGE_OPTIONS[1]?.value ?? WORKFLOW_STAGE_OPTIONS[0].value
+      : WORKFLOW_STAGE_OPTIONS[size - 1]?.value ?? WORKFLOW_STAGE_OPTIONS[0].value;
+  }
+  const nextIndex = (currentIndex + direction + size) % size;
+  return WORKFLOW_STAGE_OPTIONS[nextIndex]?.value ?? current;
 }
 
 function parseWeekdaysInput(value: string): string[] {
@@ -217,6 +255,7 @@ export function EditorPane({
   const repeatIntervalInputRef = useRef<InputRenderable | null>(null);
   const notesTextareaRef = useRef<TextareaRenderable | null>(null);
   const [notesScrollVersion, setNotesScrollVersion] = useState(0);
+  const [workflowStageInput, setWorkflowStageInput] = useState(draft.workflowStage ?? "");
   const clampedOffsetRef = useRef(clampedOffset);
   const focusInFooter = focus === "save" || focus === "cancel";
   const footerTopPadding = Math.max(
@@ -284,6 +323,11 @@ export function EditorPane({
       textarea.setText(draft.notes);
     }
   }, [draft.notes, focus]);
+
+  useEffect(() => {
+    if (focus === "workflow_stage") return;
+    setWorkflowStageInput(draft.workflowStage ?? "");
+  }, [draft.workflowStage, focus]);
 
   function fieldLabelColor(active: boolean): string {
     return active ? theme.muted : theme.outline;
@@ -377,6 +421,16 @@ export function EditorPane({
     if (nextRepeatMode !== draft.repeatMode) {
       onUpdate({ repeatMode: nextRepeatMode });
     }
+  }
+
+  function handleWorkflowStageInputKey(key: KeyEvent): void {
+    if (key.name !== "left" && key.name !== "right") return;
+    key.preventDefault();
+    key.stopPropagation();
+    const direction: 1 | -1 = key.name === "right" ? 1 : -1;
+    const nextStage = cycleWorkflowStage(draft.workflowStage, direction);
+    setWorkflowStageInput(nextStage ?? "");
+    onUpdate({ workflowStage: nextStage });
   }
 
   return (
@@ -811,6 +865,74 @@ export function EditorPane({
           )}
         </box>
       ) : null}
+
+      <box style={{ flexDirection: "column", marginTop: 1 }}>
+        <text style={{ color: theme.muted }}>ASSIGNEE</text>
+        <input
+          value={draft.assigneeText}
+          onChange={(value) => onUpdate({ assigneeText: value })}
+          focused={focus === "assignee"}
+          placeholder="alex"
+          style={{ backgroundColor: theme.bg, color: theme.text, width: "100%" }}
+        />
+      </box>
+
+      <box style={{ flexDirection: "column", marginTop: 1 }}>
+        <text style={{ color: theme.muted }}>PROJECT</text>
+        <input
+          value={draft.projectText}
+          onChange={(value) => onUpdate({ projectText: value })}
+          focused={focus === "project"}
+          placeholder="phoenix"
+          style={{ backgroundColor: theme.bg, color: theme.text, width: "100%" }}
+        />
+      </box>
+
+      <box style={{ flexDirection: "column", marginTop: 1 }}>
+        <text style={{ color: theme.muted }}>STAGE</text>
+        <input
+          value={workflowStageInput}
+          onChange={(value) => {
+            setWorkflowStageInput(value);
+            const normalized = normalizeWorkflowStageInput(value);
+            if (normalized !== undefined || value.trim().length === 0) {
+              onUpdate({ workflowStage: normalized });
+            }
+          }}
+          onKeyDown={handleWorkflowStageInputKey}
+          focused={focus === "workflow_stage"}
+          placeholder="todo"
+          style={{ backgroundColor: theme.bg, color: theme.text, width: "100%" }}
+        />
+        <text style={{ color: theme.muted, marginTop: 1 }}>
+          valid: backlog|todo|doing|blocked|review|done
+        </text>
+        <box style={{ flexDirection: "row", gap: 0, marginTop: 1, flexWrap: "wrap" }}>
+          {WORKFLOW_STAGE_OPTIONS.map((option) => {
+            const selected = draft.workflowStage === option.value;
+            return (
+              <box
+                key={option.value}
+                style={{
+                  backgroundColor: selected ? theme.accentBlue : theme.panel,
+                  paddingLeft: 1,
+                  paddingRight: 1
+                }}
+                onMouseDown={(event) =>
+                  runPrimaryMouseDownAction(event.button, () => {
+                    setWorkflowStageInput(option.value);
+                    onUpdate({ workflowStage: option.value });
+                  })
+                }
+              >
+                <text style={{ color: selected ? theme.bg : theme.text, fontWeight: "bold" }}>
+                  {option.label}
+                </text>
+              </box>
+            );
+          })}
+        </box>
+      </box>
 
       <box style={{ flexDirection: "column", marginTop: 1 }}>
         <text style={{ color: theme.muted }}>TAGS (#TAG)</text>

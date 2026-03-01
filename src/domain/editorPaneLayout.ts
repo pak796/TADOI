@@ -311,6 +311,25 @@ function buildEditorLineModel(options: NormalizedEstimateOptions): {
   anchors.repeat_until ??= repeatEndFallbackAnchor;
   anchors.repeat_count ??= repeatEndFallbackAnchor;
 
+  // ASSIGNEE
+  line += 1; // section margin
+  line += 1; // label
+  anchors.assignee = line; // input line
+  line += 1; // input
+
+  // PROJECT
+  line += 1; // section margin
+  line += 1; // label
+  anchors.project = line; // input line
+  line += 1; // input
+
+  // WORKFLOW STAGE
+  line += 1; // section margin
+  line += 1; // label
+  anchors.workflow_stage = line; // input line
+  line += 1; // input
+  line += 1; // chip row
+
   // TAGS
   line += 1; // section margin
   line += 1; // label

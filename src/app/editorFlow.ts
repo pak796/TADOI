@@ -96,6 +96,11 @@ type EditorFlowDeps = {
   ) => Task[];
   parseTagsInput: (input: string) => string[];
   triggerFirstRecurringTaskCreated: (at: number, seriesId: string) => void;
+  triggerChecklistMilestonesForTaskTransition: (
+    previousTask: Task | undefined,
+    nextTask: Task | undefined,
+    at: number
+  ) => void;
   selectTaskById: (taskId: string) => void;
 };
 
@@ -488,6 +493,7 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
         type: "setTagIndex",
         tagIndex: updateTagIndex(deps.state.tagIndex, tags, nowMs)
       });
+      deps.triggerChecklistMilestonesForTaskTransition(undefined, newTask, nowMs);
       if (recurrenceBuild.recurrence) {
         deps.triggerFirstRecurringTaskCreated(nowMs, recurrenceBuild.recurrence.series_id);
       }
@@ -566,6 +572,11 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
           type: "setTagIndex",
           tagIndex: updateTagIndex(deps.state.tagIndex, tags, nowMs)
         });
+        deps.triggerChecklistMilestonesForTaskTransition(
+          existingInstance ?? seriesTask,
+          instance,
+          nowMs
+        );
         deps.dispatch({ type: "setSelected", id: instanceId });
       } else if (draft.editKind === "series") {
         const seriesTask =
@@ -638,6 +649,8 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
           type: "setTagIndex",
           tagIndex: updateTagIndex(deps.state.tagIndex, tags, nowMs)
         });
+        const updatedSeriesTask = updatedTasks.find((task) => task.id === seriesTask.id);
+        deps.triggerChecklistMilestonesForTaskTransition(seriesTask, updatedSeriesTask, nowMs);
         deps.dispatch({ type: "setSelected", id: seriesTask.id });
       } else {
         const targetTask = draft.id ? deps.findTaskById(draft.id) : undefined;
@@ -687,6 +700,12 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
           type: "setTagIndex",
           tagIndex: updateTagIndex(deps.state.tagIndex, tags, nowMs)
         });
+        const updatedTargetTask = updatedTasks.find((task) => task.id === targetTask.id);
+        deps.triggerChecklistMilestonesForTaskTransition(
+          targetTask,
+          updatedTargetTask,
+          nowMs
+        );
         if (!targetTask.recurrence && recurrenceBuild.recurrence) {
           deps.triggerFirstRecurringTaskCreated(nowMs, recurrenceBuild.recurrence.series_id);
         }

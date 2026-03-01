@@ -361,6 +361,9 @@ const REMINDER_TIMEOUT_FALLBACK_MS = 30_000;
 const ENGAGEMENT_TOAST_TICK_INTERVAL_MS = 350;
 const FIRST_RECURRING_TASK_TOAST_MS = 10_000;
 const FIRST_RECURRING_REPEAT_DONE_TOAST_MS = 10_000;
+const FIRST_TOME_CREATED_TOAST_MS = 10_000;
+const FIRST_CHECKLIST_CREATED_TOAST_MS = 10_000;
+const FIRST_CHECKLIST_FULLY_COMPLETED_TOAST_MS = 10_000;
 const ROTATING_THEME_INTERVAL_MS = 15000;
 const G_PREFIX_RELEASE_TIMEOUT_MS = 1500;
 const CORRUPTION_STARTUP_BANNER_AUTO_DISMISS_MS = 60_000;
@@ -2876,6 +2879,21 @@ export function App({
     uiState.notificationModalQueue.length === 0 &&
     uiState.mode === Mode.LIST;
   const activeEmptyNuxStep: EmptyNuxStep = uiState.emptyNux?.step ?? "welcome";
+  const emptyNuxOnboardingProgress = (() => {
+    const firstTask = state.tasks.length > 0;
+    const firstTome = Boolean(state.engagement.achievements.FIRST_TOME_CREATED);
+    const firstChecklistComplete = Boolean(
+      state.engagement.achievements.FIRST_CHECKLIST_FULLY_COMPLETED
+    );
+    const completed = [firstTask, firstTome, firstChecklistComplete].filter(Boolean).length;
+    return {
+      firstTask,
+      firstTome,
+      firstChecklistComplete,
+      completed,
+      total: 3 as const
+    };
+  })();
   const blockingOverlayOpen = isBlockingOverlayOpen(uiState);
   const activeEngagementToast =
     !commandActive && !blockingOverlayOpen && state.engagementToastActive
@@ -4998,6 +5016,12 @@ export function App({
       case "OPEN_BACKUP_CENTER_IMPORT":
         openBackupImportFromEmptyNux();
         return;
+      case "OPEN_EMPTY_NUX_TOME_CREATE":
+        openTomeCreateFromEmptyNux();
+        return;
+      case "OPEN_EMPTY_NUX_CHECKLIST_ADD":
+        openChecklistAddFromEmptyNux();
+        return;
       case "OPEN_TAG_FILTER_PANEL":
         openTagFilterPanel();
         return;
@@ -5500,6 +5524,9 @@ export function App({
           });
           setNotesRootInput(result.notesRoot);
         }
+        if (parsed.command.operation === "new" && result.notePath) {
+          triggerFirstTomeCreated(Date.now(), result.notePath);
+        }
 
         if (parsed.command.operation === "search") {
           const parsedQuery = parseNoteSearchQuery(parsed.command.query);
@@ -5678,6 +5705,18 @@ export function App({
       selectedTaskId: state.selectedId ?? visibleTasks[0]?.id,
       bulkMarkedTaskIds
     });
+    if (parsed.command.type === "check") {
+      const targetTaskId =
+        parsed.command.target.type === "id"
+          ? parsed.command.target.id
+          : state.selectedId ?? visibleTasks[0]?.id;
+      const setTasksAction = result.actions.find((action) => action.type === "setTasks");
+      if (targetTaskId && setTasksAction && setTasksAction.type === "setTasks") {
+        const previousTask = state.tasks.find((task) => task.id === targetTaskId);
+        const nextTask = setTasksAction.tasks.find((task) => task.id === targetTaskId);
+        triggerChecklistMilestonesForTaskTransition(previousTask, nextTask, nowMs);
+      }
+    }
     for (const action of result.actions) {
       dispatch(action);
     }
@@ -6936,7 +6975,9 @@ export function App({
     if (!service) return;
     setNotesCreateApplying(true);
     try {
+      const nowMs = Date.now();
       const created = await service.createNote(title, `# ${title}\n\n`);
+      triggerFirstTomeCreated(nowMs, created.path);
       setNotesList(service.listNotes());
       setNotesOpenPath(created.path);
       setNotesEditValue(created.content);
@@ -7762,6 +7803,11 @@ export function App({
       }
       dispatch({ type: "setTasks", tasks: materialized.tasks });
       dispatch({ type: "setSelected", id: materialized.instance.id });
+      triggerChecklistMilestonesForTaskTransition(
+        source,
+        materialized.instance,
+        nowMs
+      );
       return {
         ok: true,
         checklist: mutation.checklist,
@@ -7787,6 +7833,7 @@ export function App({
       tasks: state.tasks.map((task) => (task.id === updatedTask.id ? updatedTask : task))
     });
     dispatch({ type: "setSelected", id: updatedTask.id });
+    triggerChecklistMilestonesForTaskTransition(persisted, updatedTask, nowMs);
     return {
       ok: true,
       checklist: mutation.checklist,
@@ -8506,6 +8553,7 @@ export function App({
     removeMaterializedOccurrenceInstance,
     parseTagsInput,
     triggerFirstRecurringTaskCreated,
+    triggerChecklistMilestonesForTaskTransition,
     selectTaskById
   });
 
@@ -8877,6 +8925,83 @@ export function App({
         durationMs: FIRST_RECURRING_TASK_TOAST_MS
       }
     });
+  }
+
+  function triggerFirstTomeCreated(at: number, notePath: string) {
+    dispatch({
+      type: "triggerEngagementMilestone",
+      achievementKey: "FIRST_TOME_CREATED",
+      achievementId: "FIRST_TOME_CREATED",
+      at,
+      meta: { notePath },
+      toast: {
+        message: "Created your first TOME note.",
+        priority: 3,
+        durationMs: FIRST_TOME_CREATED_TOAST_MS
+      }
+    });
+  }
+
+  function triggerFirstChecklistCreated(at: number, taskId: string, total: number) {
+    dispatch({
+      type: "triggerEngagementMilestone",
+      achievementKey: "FIRST_CHECKLIST_CREATED",
+      achievementId: "FIRST_CHECKLIST_CREATED",
+      at,
+      meta: { taskId, total },
+      toast: {
+        message: "Created your first checklist.",
+        priority: 3,
+        durationMs: FIRST_CHECKLIST_CREATED_TOAST_MS
+      }
+    });
+  }
+
+  function triggerFirstChecklistFullyCompleted(at: number, taskId: string, total: number) {
+    dispatch({
+      type: "triggerEngagementMilestone",
+      achievementKey: "FIRST_CHECKLIST_FULLY_COMPLETED",
+      achievementId: "FIRST_CHECKLIST_FULLY_COMPLETED",
+      at,
+      meta: { taskId, total },
+      toast: {
+        message: "Completed your first checklist.",
+        priority: 2,
+        durationMs: FIRST_CHECKLIST_FULLY_COMPLETED_TOAST_MS
+      }
+    });
+  }
+
+  function summarizeChecklistMilestoneState(checklist: Task["checklist"] | undefined): {
+    total: number;
+    allDone: boolean;
+  } {
+    const items = sortChecklistItems(checklist ?? []);
+    const total = items.length;
+    if (total === 0) {
+      return { total, allDone: false };
+    }
+    return {
+      total,
+      allDone: items.every((item) => item.isDone)
+    };
+  }
+
+  function triggerChecklistMilestonesForTaskTransition(
+    previousTask: Task | undefined,
+    nextTask: Task | undefined,
+    at: number
+  ) {
+    if (!nextTask) return;
+    const previousState = summarizeChecklistMilestoneState(previousTask?.checklist);
+    const nextState = summarizeChecklistMilestoneState(nextTask.checklist);
+
+    if (previousState.total === 0 && nextState.total > 0) {
+      triggerFirstChecklistCreated(at, nextTask.id, nextState.total);
+    }
+    if (!previousState.allDone && nextState.allDone && nextState.total > 0) {
+      triggerFirstChecklistFullyCompleted(at, nextTask.id, nextState.total);
+    }
   }
 
   function triggerFirstRecurringRepeatDone(at: number, seriesId: string, occurrenceIso: string) {
@@ -9253,6 +9378,39 @@ export function App({
     return editorFlow.saveEditor(options);
   }
 
+  function openChecklistAddFromEmptyNux() {
+    const createdTaskId = uiState.emptyNux?.createdTaskId;
+    if (!createdTaskId) {
+      closeCelebrateToList();
+      showShortNavigationBanner("No onboarding task selected");
+      return;
+    }
+    const createdTask = state.tasks.find((task) => task.id === createdTaskId);
+    if (!createdTask) {
+      closeCelebrateToList();
+      showShortNavigationBanner("Onboarding task is no longer available");
+      return;
+    }
+
+    uiDispatch(clearEmptyNux());
+    clearPendingGPrefix();
+    closeViewsOverlay();
+    dispatch({ type: "setSelected", id: createdTask.id });
+    dispatch({ type: "setEditor", editor: createDraftFromTask(createdTask) });
+    uiDispatch({ type: "setMode", mode: Mode.EDIT });
+    uiDispatch({ type: "setFocus", focus: FocusTarget.EDITOR_CHECKLIST });
+    uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
+    openModalWithContext({
+      type: "checklist_input",
+      mode: "add",
+      rowId: EDITOR_CHECKLIST_MODAL_ROW_ID,
+      taskTitle: createdTask.title,
+      value: "",
+      previousMode: Mode.EDIT,
+      previousFocus: FocusTarget.EDITOR_CHECKLIST
+    });
+  }
+
   const modalFlow = useModalOrchestration({
     uiState,
     state,
@@ -9279,7 +9437,10 @@ export function App({
     closeViewsOverlay,
     openListMode,
     showShortNavigationBanner,
-    emitCompletionFromDiff
+    emitCompletionFromDiff,
+    openNotesMode,
+    openNotesCreatePrompt,
+    openChecklistAddFromEmptyNux
   });
 
   function finishDeleteModalAction(
@@ -9373,6 +9534,14 @@ export function App({
 
   function returnToEmptyNuxWelcomeModal() {
     modalFlow.returnToEmptyNuxWelcomeModal();
+  }
+
+  function openWhatNextFromCelebrate() {
+    modalFlow.openWhatNextFromCelebrate();
+  }
+
+  function openTomeCreateFromEmptyNux() {
+    modalFlow.openTomeCreateFromEmptyNux();
   }
 
   function clearEmptyNuxWalkthrough() {
@@ -11338,6 +11507,7 @@ export function App({
         inputTheme={inputTheme}
         MODAL_STANDARD_WIDTH={MODAL_STANDARD_WIDTH}
         activeEmptyNuxStep={activeEmptyNuxStep}
+        emptyNuxOnboardingProgress={emptyNuxOnboardingProgress}
         showCorruptionRecoveryImportCta={showCorruptionRecoveryImportCta}
         activeOverdueModal={activeOverdueModal}
         activeOverdueTask={activeOverdueTask}
@@ -11378,6 +11548,9 @@ export function App({
         openBackupImportFromEmptyNux={openBackupImportFromEmptyNux}
         showEmptyNuxShortcutsModal={showEmptyNuxShortcutsModal}
         returnToEmptyNuxWelcomeModal={returnToEmptyNuxWelcomeModal}
+        openWhatNextFromCelebrate={openWhatNextFromCelebrate}
+        openTomeCreateFromEmptyNux={openTomeCreateFromEmptyNux}
+        openChecklistAddFromEmptyNux={openChecklistAddFromEmptyNux}
         closeCelebrateToList={closeCelebrateToList}
         handleOverdueModalSnooze={handleOverdueModalSnooze}
         handleOverdueModalDone={handleOverdueModalDone}

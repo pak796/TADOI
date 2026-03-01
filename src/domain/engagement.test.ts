@@ -6,6 +6,7 @@ import {
   enqueueToastsWithCap,
   evaluateMilestones,
   mergeEngagementStates,
+  ONBOARDING_ENGAGEMENT_ACHIEVEMENTS,
   suppressActiveToastWithCap,
   updateStreak
 } from "./engagement";
@@ -151,5 +152,13 @@ describe("engagement helpers", () => {
     };
     const merged = mergeEngagementStates(left, right, now);
     expect(merged.achievements.FIRST_TASK_DONE?.unlockedAt).toBe(now);
+  });
+
+  it("exposes onboarding achievement keys", () => {
+    expect(ONBOARDING_ENGAGEMENT_ACHIEVEMENTS).toEqual({
+      FIRST_TOME_CREATED: "FIRST_TOME_CREATED",
+      FIRST_CHECKLIST_CREATED: "FIRST_CHECKLIST_CREATED",
+      FIRST_CHECKLIST_FULLY_COMPLETED: "FIRST_CHECKLIST_FULLY_COMPLETED"
+    });
   });
 });

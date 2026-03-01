@@ -292,7 +292,7 @@ export function createEmptyDraft(): EditorDraft {
     repeatCustomRRuleText: "",
     assigneeText: "",
     projectText: "",
-    workflowStage: undefined
+    workflowStage: "todo"
   };
 }
 

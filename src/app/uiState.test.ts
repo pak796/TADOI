@@ -35,6 +35,9 @@ function makeDraft(patch: Partial<EditorDraft> = {}): EditorDraft {
     repeatUntilText: "",
     repeatCountText: "",
     repeatCustomRRuleText: "",
+    assigneeText: "",
+    projectText: "",
+    workflowStage: "todo",
     ...patch
   };
 }
@@ -67,6 +70,9 @@ describe("uiState editor focus mapping", () => {
     expect(toEditorFocus(FocusTarget.EDITOR_REMINDER_OFFSET_UNIT)).toBe("reminder_offset_unit");
     expect(toFocusTarget("repeat_mode")).toBe(FocusTarget.EDITOR_REPEAT_MODE);
     expect(toEditorFocus(FocusTarget.EDITOR_REPEAT_CUSTOM)).toBe("repeat_custom");
+    expect(toFocusTarget("assignee")).toBe(FocusTarget.EDITOR_ASSIGNEE);
+    expect(toEditorFocus(FocusTarget.EDITOR_PROJECT)).toBe("project");
+    expect(toFocusTarget("workflow_stage")).toBe(FocusTarget.EDITOR_WORKFLOW_STAGE);
     expect(toFocusTarget("checklist")).toBe(FocusTarget.EDITOR_CHECKLIST);
     expect(toEditorFocus(FocusTarget.EDITOR_CHECKLIST)).toBe("checklist");
   });
@@ -88,6 +94,9 @@ describe("uiState editor focus mapping", () => {
       FocusTarget.EDITOR_DUE_TIME,
       FocusTarget.EDITOR_REMINDER_KIND,
       FocusTarget.EDITOR_REPEAT_MODE,
+      FocusTarget.EDITOR_ASSIGNEE,
+      FocusTarget.EDITOR_PROJECT,
+      FocusTarget.EDITOR_WORKFLOW_STAGE,
       FocusTarget.EDITOR_TAGS,
       FocusTarget.EDITOR_CHECKLIST,
       FocusTarget.EDITOR_NOTES,
@@ -106,6 +115,9 @@ describe("uiState editor focus mapping", () => {
       FocusTarget.EDITOR_REPEAT_MODE,
       FocusTarget.EDITOR_REPEAT_INTERVAL,
       FocusTarget.EDITOR_REPEAT_END_MODE,
+      FocusTarget.EDITOR_ASSIGNEE,
+      FocusTarget.EDITOR_PROJECT,
+      FocusTarget.EDITOR_WORKFLOW_STAGE,
       FocusTarget.EDITOR_TAGS,
       FocusTarget.EDITOR_CHECKLIST,
       FocusTarget.EDITOR_NOTES,
@@ -126,6 +138,9 @@ describe("uiState editor focus mapping", () => {
       FocusTarget.EDITOR_REPEAT_WEEKDAYS,
       FocusTarget.EDITOR_REPEAT_END_MODE,
       FocusTarget.EDITOR_REPEAT_UNTIL,
+      FocusTarget.EDITOR_ASSIGNEE,
+      FocusTarget.EDITOR_PROJECT,
+      FocusTarget.EDITOR_WORKFLOW_STAGE,
       FocusTarget.EDITOR_TAGS,
       FocusTarget.EDITOR_CHECKLIST,
       FocusTarget.EDITOR_NOTES,
@@ -146,6 +161,9 @@ describe("uiState editor focus mapping", () => {
       FocusTarget.EDITOR_REPEAT_MONTHDAY,
       FocusTarget.EDITOR_REPEAT_END_MODE,
       FocusTarget.EDITOR_REPEAT_COUNT,
+      FocusTarget.EDITOR_ASSIGNEE,
+      FocusTarget.EDITOR_PROJECT,
+      FocusTarget.EDITOR_WORKFLOW_STAGE,
       FocusTarget.EDITOR_TAGS,
       FocusTarget.EDITOR_CHECKLIST,
       FocusTarget.EDITOR_NOTES,
@@ -163,6 +181,9 @@ describe("uiState editor focus mapping", () => {
       FocusTarget.EDITOR_REMINDER_KIND,
       FocusTarget.EDITOR_REPEAT_MODE,
       FocusTarget.EDITOR_REPEAT_CUSTOM,
+      FocusTarget.EDITOR_ASSIGNEE,
+      FocusTarget.EDITOR_PROJECT,
+      FocusTarget.EDITOR_WORKFLOW_STAGE,
       FocusTarget.EDITOR_TAGS,
       FocusTarget.EDITOR_CHECKLIST,
       FocusTarget.EDITOR_NOTES,

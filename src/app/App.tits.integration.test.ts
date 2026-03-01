@@ -17,6 +17,8 @@ type AppSession = {
   tempDir: string;
 };
 
+const TITS_HEADER_TEXT = "Terminal in Terminal System";
+
 function makeTask(id: string, title: string, nowMs = Date.now()): Task {
   return {
     id,
@@ -147,11 +149,7 @@ async function pressKeyAndRender(
   harness: RenderHarness,
   key: string
 ): Promise<string> {
-  if (key === "`") {
-    await Promise.resolve(mockInput.pressKey("`"));
-  } else {
-    await mockInput.pressKeys([key]);
-  }
+  await mockInput.pressKeys([key]);
   await Bun.sleep(10);
   await harness.renderOnce();
   return harness.captureCharFrame();
@@ -163,6 +161,27 @@ async function pressEscapeAndRender(
 ): Promise<string> {
   await Promise.resolve(mockInput.pressEscape());
   await Bun.sleep(10);
+  await harness.renderOnce();
+  return harness.captureCharFrame();
+}
+
+async function pressEnterAndRender(
+  mockInput: MockInput,
+  harness: RenderHarness
+): Promise<string> {
+  await Promise.resolve(mockInput.pressEnter());
+  await Bun.sleep(10);
+  await harness.renderOnce();
+  return harness.captureCharFrame();
+}
+
+async function typeTextAndRender(
+  mockInput: MockInput,
+  harness: RenderHarness,
+  text: string
+): Promise<string> {
+  await mockInput.typeText(text);
+  await Bun.sleep(20);
   await harness.renderOnce();
   return harness.captureCharFrame();
 }
@@ -222,32 +241,32 @@ describe("App TITS integration", () => {
       expect(frame).toContain("Task One");
 
       await pressKeyAndRender(mockInput, harness, "`");
-      frame = await waitForText(harness, "TITS");
+      frame = await waitForText(harness, TITS_HEADER_TEXT);
       expect(frame).toContain("TASK ONE");
 
       frame = await pressKeyAndRender(mockInput, harness, "j");
-      expect(frame).toContain("TITS");
+      expect(frame).toContain(TITS_HEADER_TEXT);
       expect(frame).toContain(": j");
       expect(frame).toContain("TASK ONE");
 
       await pressEscapeAndRender(mockInput, harness);
-      await waitForTextAbsent(harness, "TITS");
+      await waitForTextAbsent(harness, TITS_HEADER_TEXT);
 
       await pressKeyAndRender(mockInput, harness, "j");
       frame = await waitForText(harness, "TASK TWO");
       expect(frame).toContain("Task Two");
 
       await pressKeyAndRender(mockInput, harness, "`");
-      frame = await waitForText(harness, "TITS");
+      frame = await waitForText(harness, TITS_HEADER_TEXT);
       expect(frame).toContain("TASK TWO");
 
       frame = await pressKeyAndRender(mockInput, harness, "k");
-      expect(frame).toContain("TITS");
+      expect(frame).toContain(TITS_HEADER_TEXT);
       expect(frame).toContain(": k");
       expect(frame).toContain("TASK TWO");
 
       await pressEscapeAndRender(mockInput, harness);
-      await waitForTextAbsent(harness, "TITS");
+      await waitForTextAbsent(harness, TITS_HEADER_TEXT);
 
       await pressKeyAndRender(mockInput, harness, "k");
       frame = await waitForText(harness, "TASK ONE");
@@ -256,6 +275,154 @@ describe("App TITS integration", () => {
       await cleanupSession(session);
     }
   });
+
+  it("emits recurring-created milestone once via TITS recur command", async () => {
+    const now = new Date(2026, 1, 26, 12, 0).getTime();
+    const dueAt = new Date(2026, 2, 10, 9, 0).getTime();
+    const task: Task = {
+      id: "task-recur-tits-1",
+      title: "Plan recurring from TITS",
+      status: "open",
+      workflowStage: "todo",
+      createdAt: now - 1000,
+      updatedAt: now - 1000,
+      dueAt,
+      hasExplicitTime: true,
+      tags: []
+    };
+
+    const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-app-tits-recur-"));
+    const dataPath = path.join(dataDir, "tadoi_data.json");
+    const originalDataPath = process.env.TADOI_DATA_PATH;
+    process.env.TADOI_DATA_PATH = dataPath;
+
+    const session = await createSession(makeInitialData([task]), { skipInitialSave: false });
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      await waitForText(harness, "PLAN RECURRING FROM TITS");
+
+      await pressKeyAndRender(mockInput, harness, "`");
+      await waitForText(harness, TITS_HEADER_TEXT);
+      await typeTextAndRender(
+        mockInput,
+        harness,
+        "recur id:task-recur-tits-1 every:week interval:1 on:mon"
+      );
+      await pressEnterAndRender(mockInput, harness);
+      await waitForText(harness, "Recurrence set: Plan recurring from TITS -> every week");
+
+      await typeTextAndRender(
+        mockInput,
+        harness,
+        "recur id:task-recur-tits-1 every:week interval:2 on:mon"
+      );
+      await pressEnterAndRender(mockInput, harness);
+      await waitForText(harness, "Recurrence set: Plan recurring from TITS -> every week");
+
+      await pressEscapeAndRender(mockInput, harness);
+      await waitForTextAbsent(harness, TITS_HEADER_TEXT);
+
+      await waitForFile(dataPath, 4000);
+      await Bun.sleep(1400);
+      const raw = await fs.readFile(dataPath, "utf8");
+      const savedJson = JSON.parse(raw) as LoadedData;
+      const updatedTask = savedJson.tasks.find((candidate) => candidate.id === task.id);
+      expect(updatedTask?.recurrence?.interval).toBe(2);
+      expect(savedJson.engagement.achievements.FIRST_RECURRING_TASK_CREATED).toBeDefined();
+      expect(
+        savedJson.engagement.achievements.FIRST_RECURRING_TASK_CREATED?.meta?.seriesId
+      ).toBe("series:task-recur-tits-1");
+    } finally {
+      await cleanupSession(session);
+      await fs.rm(dataDir, { recursive: true, force: true });
+      if (originalDataPath === undefined) {
+        delete process.env.TADOI_DATA_PATH;
+      } else {
+        process.env.TADOI_DATA_PATH = originalDataPath;
+      }
+    }
+  });
+
+  it(
+    "emits checklist-created and checklist-fully-completed milestones once via TITS check commands",
+    async () => {
+      const now = new Date(2026, 1, 26, 12, 0).getTime();
+      const task: Task = {
+        id: "task-check-milestone-1",
+        title: "Checklist milestone from TITS",
+        status: "open",
+        workflowStage: "todo",
+        createdAt: now - 1000,
+        updatedAt: now - 1000,
+        tags: []
+      };
+
+      const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-app-tits-check-"));
+      const dataPath = path.join(dataDir, "tadoi_data.json");
+      const originalDataPath = process.env.TADOI_DATA_PATH;
+      process.env.TADOI_DATA_PATH = dataPath;
+
+      const session = await createSession(makeInitialData([task]), { skipInitialSave: false });
+      const { harness } = session;
+      const { mockInput } = harness;
+
+      try {
+        await waitForText(harness, "CHECKLIST MILESTONE FROM TITS");
+
+        await pressKeyAndRender(mockInput, harness, "`");
+        await waitForText(harness, TITS_HEADER_TEXT);
+        await typeTextAndRender(mockInput, harness, 'check add @selected "Milestone item one"');
+        await pressEnterAndRender(mockInput, harness);
+        await waitForText(harness, "Checklist added: Checklist milestone from TITS");
+
+        await typeTextAndRender(mockInput, harness, "check toggle @selected 1");
+        await pressEnterAndRender(mockInput, harness);
+        await waitForText(harness, "Checklist toggled: Checklist milestone from TITS (#1)");
+
+        await waitForFile(dataPath, 4000);
+        await Bun.sleep(1400);
+        let raw = await fs.readFile(dataPath, "utf8");
+        const afterFirstCompletion = JSON.parse(raw) as LoadedData;
+        const firstCreatedAt =
+          afterFirstCompletion.engagement.achievements.FIRST_CHECKLIST_CREATED?.unlockedAt;
+        const firstCompletedAt =
+          afterFirstCompletion.engagement.achievements.FIRST_CHECKLIST_FULLY_COMPLETED
+            ?.unlockedAt;
+        expect(firstCreatedAt).toBeDefined();
+        expect(firstCompletedAt).toBeDefined();
+
+        await typeTextAndRender(mockInput, harness, "check toggle @selected 1");
+        await pressEnterAndRender(mockInput, harness);
+        await waitForText(harness, "Checklist toggled: Checklist milestone from TITS (#1)");
+        await typeTextAndRender(mockInput, harness, "check toggle @selected 1");
+        await pressEnterAndRender(mockInput, harness);
+        await waitForText(harness, "Checklist toggled: Checklist milestone from TITS (#1)");
+        await pressEscapeAndRender(mockInput, harness);
+        await waitForTextAbsent(harness, TITS_HEADER_TEXT);
+
+        await Bun.sleep(1400);
+        raw = await fs.readFile(dataPath, "utf8");
+        const finalSaved = JSON.parse(raw) as LoadedData;
+        expect(finalSaved.engagement.achievements.FIRST_CHECKLIST_CREATED?.unlockedAt).toBe(
+          firstCreatedAt
+        );
+        expect(
+          finalSaved.engagement.achievements.FIRST_CHECKLIST_FULLY_COMPLETED?.unlockedAt
+        ).toBe(firstCompletedAt);
+      } finally {
+        await cleanupSession(session);
+        await fs.rm(dataDir, { recursive: true, force: true });
+        if (originalDataPath === undefined) {
+          delete process.env.TADOI_DATA_PATH;
+        } else {
+          process.env.TADOI_DATA_PATH = originalDataPath;
+        }
+      }
+    },
+    20_000
+  );
 
   it("toggles checklist on a virtual occurrence by materializing an override without EXDATE", async () => {
     const now = Date.now();

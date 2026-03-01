@@ -467,6 +467,22 @@ Smoke pass criteria:
   - Preconditions: marked rows exist; app closed for CLI checks.
   - Steps: run in-app `check add/toggle/edit/del/clear @selected ...` and `bulk done/tag/due/priority/assignee/project/stage/delete`; run CLI `check:* id:<id> ...` and `bulk:* id:<id> ...`.
   - Expected: in-app `bulk` requires marked set and fails when empty; CLI rejects `@selected`; bulk operations apply atomically with deterministic ordering; `bulk delete` blocks recurring occurrence targets requiring this-vs-future choice.
+- [ ] `QA-089 [SMOKE]` Recurring-created milestone trigger is one-time.
+  - Preconditions: one non-recurring task with due date; engagement unlocks empty for recurring-created.
+  - Steps: set recurrence once (editor or TITS `recur @selected ...`), then update recurrence again.
+  - Expected: `FIRST_RECURRING_TASK_CREATED` unlocks once; second recurrence update does not create duplicate unlock/toast.
+- [ ] `QA-090` First TOME created milestone (in-app).
+  - Preconditions: TOME enabled; no `FIRST_TOME_CREATED` unlock.
+  - Steps: create first note via in-app TOME create flow; then create a second note.
+  - Expected: `FIRST_TOME_CREATED` unlocks on first create only.
+- [ ] `QA-091` First checklist created + fully completed milestones.
+  - Preconditions: task with no checklist; no checklist onboarding unlocks.
+  - Steps: add first checklist item; complete checklist to all-done; then toggle back/open and all-done again.
+  - Expected: `FIRST_CHECKLIST_CREATED` and `FIRST_CHECKLIST_FULLY_COMPLETED` each unlock once with no duplicate unlock on repeats.
+- [ ] `QA-092` Empty NUX `what_next` onboarding routing and progress chips.
+  - Preconditions: empty workspace, NUX enabled.
+  - Steps: `welcome -> adding -> celebrate`; press `Enter` in celebrate; verify `what_next`; trigger `t`, `c`, and `Enter` routes.
+  - Expected: celebrate `Enter` opens `what_next`; `t` opens TOME create path; `c` opens checklist add on created task; `Enter` returns to list. `ONBOARDING X/3` chips render in celebrate/what_next.
 
 ## 7) Automated Coverage Mapping
 
@@ -489,7 +505,7 @@ Smoke pass criteria:
 
 ## 8) Known Issues in Current Workspace
 
-No known automated failures in targeted checklist/bulk validation (`2026-02-27`):
+No known automated failures in targeted checklist/bulk/onboarding validation (`2026-03-01`):
 - `bun test src/commands/parse.test.ts src/commands/execute.test.ts src/cli/main.test.ts src/app/keyRouter.test.ts src/app/App.tits.integration.test.ts src/state/migrations.test.ts src/state/portability.test.ts`: passing.
 - `bun run typecheck`: passing.
 

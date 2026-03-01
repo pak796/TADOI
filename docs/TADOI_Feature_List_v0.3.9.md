@@ -92,6 +92,14 @@ This list reflects current runtime behavior as of **2026-02-27**.
 - Overdue modal queue with actions: snooze, done, go-to, dismiss.
 - Optional terminal bell with cooldown.
 - Non-interactive engagement toast milestones in the bottom bar (queued, priority-ordered, auto-dismissed).
+- Engagement milestone coverage includes:
+  - first task completed, daily/weekly momentum, streak milestones
+  - first recurring task created
+  - first recurring repeat occurrence completed
+  - first TOME created (in-app)
+  - first checklist created
+  - first checklist fully completed
+- Empty-state onboarding walkthrough includes `what_next` after celebrate with direct routes to first TOME and checklist setup, plus `ONBOARDING X/3` progress chips.
 - Theme registry includes `crtGreen`, `crtAmber`, `kitty`, `corpo`, and `strikefitron` in addition to existing palettes and `rotating` mode.
 - Help Settings page includes: `Theme`, `Logo`, `Flash Mode`, `CRT FX Lite`, `CRT FX Profile`, `Notifications`, `Overdue Popup`, `Terminal Bell`.
 - CRT FX Lite applies profile-based tint/flicker treatment to primary panel surfaces (left rail, task list panel, details panel).

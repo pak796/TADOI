@@ -160,7 +160,12 @@ export type UIEmptyNuxModal = {
   type: "emptyNux";
 };
 
-export type EmptyNuxStep = "welcome" | "shortcuts" | "adding" | "celebrate";
+export type EmptyNuxStep =
+  | "welcome"
+  | "shortcuts"
+  | "adding"
+  | "celebrate"
+  | "what_next";
 
 export type EmptyNuxState = {
   step: EmptyNuxStep;

@@ -92,6 +92,11 @@ describe("editorPaneLayout", () => {
     const repeatWeekdays = getEditorFocusAnchorLine("repeat_weekdays", {
       repeatMode: "weekly"
     });
+    const assignee = getEditorFocusAnchorLine("assignee", { repeatMode: "weekly" });
+    const project = getEditorFocusAnchorLine("project", { repeatMode: "weekly" });
+    const workflowStage = getEditorFocusAnchorLine("workflow_stage", {
+      repeatMode: "weekly"
+    });
     const tags = getEditorFocusAnchorLine("tags", { repeatMode: "weekly" });
     const checklist = getEditorFocusAnchorLine("checklist", { repeatMode: "weekly" });
     const notes = getEditorFocusAnchorLine("notes", { repeatMode: "weekly" });
@@ -99,7 +104,10 @@ describe("editorPaneLayout", () => {
     expect(title).toBeLessThan(due);
     expect(due).toBeLessThan(repeatMode);
     expect(repeatMode).toBeLessThan(repeatWeekdays);
-    expect(repeatWeekdays).toBeLessThan(tags);
+    expect(repeatWeekdays).toBeLessThan(assignee);
+    expect(assignee).toBeLessThan(project);
+    expect(project).toBeLessThan(workflowStage);
+    expect(workflowStage).toBeLessThan(tags);
     expect(tags).toBeLessThan(checklist);
     expect(tags).toBeLessThan(notes);
     expect(checklist).toBeLessThan(notes);

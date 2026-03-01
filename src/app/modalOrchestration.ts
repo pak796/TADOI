@@ -70,6 +70,9 @@ type ModalOrchestrationDeps = {
   openListMode: (options?: { bypassUnsavedGuard?: boolean }) => void;
   showShortNavigationBanner: (message: string) => void;
   emitCompletionFromDiff: (previousTasks: Task[], nextTasks: Task[], at: number) => void;
+  openNotesMode: () => void;
+  openNotesCreatePrompt: () => void;
+  openChecklistAddFromEmptyNux: () => void;
 };
 
 type ModalHandlers = {
@@ -103,7 +106,10 @@ type ModalHandlers = {
   dismissEmptyNuxModal: () => void;
   showEmptyNuxShortcutsModal: () => void;
   returnToEmptyNuxWelcomeModal: () => void;
+  openWhatNextFromCelebrate: () => void;
   clearEmptyNuxWalkthrough: () => void;
+  openTomeCreateFromEmptyNux: () => void;
+  openChecklistAddFromEmptyNux: () => void;
   closeCelebrateToList: () => void;
   createTaskFromEmptyNuxModal: () => void;
   handleOverdueModalSnooze: () => void;
@@ -335,8 +341,26 @@ export function useModalOrchestration(deps: ModalOrchestrationDeps): ModalHandle
     openEmptyNuxModal({ step: "welcome" });
   }
 
+  function openWhatNextFromCelebrate() {
+    openEmptyNuxModal({
+      step: "what_next",
+      startedFromNux: deps.uiState.emptyNux?.startedFromNux,
+      createdTaskId: deps.uiState.emptyNux?.createdTaskId
+    });
+  }
+
   function clearEmptyNuxWalkthrough() {
     deps.uiDispatch(clearEmptyNux());
+  }
+
+  function openTomeCreateFromEmptyNux() {
+    deps.uiDispatch(clearEmptyNux());
+    deps.openNotesMode();
+    deps.openNotesCreatePrompt();
+  }
+
+  function openChecklistAddFromEmptyNux() {
+    deps.openChecklistAddFromEmptyNux();
   }
 
   function closeCelebrateToList() {
@@ -502,7 +526,10 @@ export function useModalOrchestration(deps: ModalOrchestrationDeps): ModalHandle
     dismissEmptyNuxModal,
     showEmptyNuxShortcutsModal,
     returnToEmptyNuxWelcomeModal,
+    openWhatNextFromCelebrate,
     clearEmptyNuxWalkthrough,
+    openTomeCreateFromEmptyNux,
+    openChecklistAddFromEmptyNux,
     closeCelebrateToList,
     createTaskFromEmptyNuxModal,
     handleOverdueModalSnooze,

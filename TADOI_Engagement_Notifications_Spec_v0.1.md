@@ -1,11 +1,11 @@
 # TADOI™ Engagement Notifications (NUX Stickiness) — Spec v0.1
 
-Updated: 2026-02-12  
-Runtime baseline: `v0.3.5`  
-Package baseline: `0.3.5`  
-Persistence schema baseline: `5`
+Updated: 2026-03-01  
+Runtime baseline: `v0.3.9`  
+Package baseline: `0.3.9`  
+Persistence schema baseline: `8`
 
-Status: Implemented baseline (v0.3.5)
+Status: Implemented baseline + onboarding/recurrence extensions (v0.3.9)
 
 ---
 
@@ -17,6 +17,13 @@ Add **non-interactive, bottom-bar “engagement toasts”** triggered by task-co
 - Daily momentum (“🔥 3 tasks completed today.”)
 - Weekly tag momentum (“🏷 5 #work tasks completed this week.”)
 - Streak milestones (“✅ 3-day streak …”)
+- Recurrence milestones:
+  - first recurring task created
+  - first recurring repeat occurrence completed
+- Onboarding milestones (in-app only):
+  - first TOME created
+  - first checklist created
+  - first checklist fully completed
 
 **Design constraint (v0.1):**
 - Toasts are **not modal** and **have no interaction** (no hotkeys, no routing presets, no dismiss key).
@@ -193,6 +200,21 @@ type UIState = {
 - Duration: 10s
 - Persist unlock: `engagement.achievements["STREAK_3_DAYS"]`
 
+### 5.5 Direct Trigger Milestones (non-evaluate path)
+These milestones are dispatched through `triggerEngagementMilestone` at runtime call sites and still use the same queue/suppression/dedupe reducer contract:
+
+- `FIRST_RECURRING_TASK_CREATED`
+  - Trigger: recurrence transitions from undefined to defined.
+  - Dedupe: unlock once per workspace state.
+- `FIRST_RECURRING_REPEAT_DONE`
+  - Trigger: first completed recurring repeat occurrence.
+- `FIRST_TOME_CREATED` (in-app only in this pass)
+  - Trigger: first successful in-app note creation.
+- `FIRST_CHECKLIST_CREATED`
+  - Trigger: checklist transitions from empty to non-empty.
+- `FIRST_CHECKLIST_FULLY_COMPLETED`
+  - Trigger: checklist transitions from not-all-done to all-done (`total > 0`).
+
 ---
 
 ## 6) Algorithms
@@ -355,6 +377,8 @@ Engagement toast rendering is suppressed when any of these are active:
   - Expect: **no** completion logged; no milestone evaluation.
 - [ ] Complete recurring occurrence (if applicable):
   - Expect: completion logged once per occurrence completion path.
+- [ ] Apply recurrence first time, then re-apply recurrence:
+  - Expect: `FIRST_RECURRING_TASK_CREATED` unlocks once and does not duplicate.
 
 ### C) Toast Queue + Priority
 - [ ] On first-ever completion that also happens to be “3rd today”:
@@ -376,6 +400,14 @@ Engagement toast rendering is suppressed when any of these are active:
 - [ ] Complete 5 tasks with `#work` over rolling 7 days:
   - Expect: weekly tag toast fires once per tag per 7 days.
 
+### H) Onboarding Milestones (in-app)
+- [ ] Create first TOME note in-app:
+  - Expect: `FIRST_TOME_CREATED` unlocks once.
+- [ ] Add first checklist item to any task:
+  - Expect: `FIRST_CHECKLIST_CREATED` unlocks once.
+- [ ] Move checklist from partial/incomplete to all done:
+  - Expect: `FIRST_CHECKLIST_FULLY_COMPLETED` unlocks once.
+
 ### F) Visual / Layout Regression
 - [ ] Minimum terminal size guard still works (`104x24`) and the toast does not render on the “too small” screen.
 - [ ] Bottom bar content does not clip/overlap with existing bottom surfaces.
@@ -390,9 +422,10 @@ Engagement toast rendering is suppressed when any of these are active:
 ## 11) Release Notes Snapshot (Shipped)
 Added:
 - NUX engagement notifications in bottom bar: first completion, daily momentum, weekly tag momentum, and streak milestones.
+- Direct-trigger milestones for recurring-created, recurring-repeat-done, first TOME, first checklist created, and first checklist fully completed.
 
 Changed:
-- Persistence schema bump `4 → 5` to store engagement state.
+- Runtime baseline advanced to `v0.3.9`; engagement uses existing schema `8` state shape (no additional schema bump in this pass).
 
 ---
 

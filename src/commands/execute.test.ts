@@ -390,11 +390,48 @@ describe("executeCommand", () => {
       kind: "ok",
       text: "Recurrence set: Plan sprint -> every week"
     });
+    expect(setResult.actions.map((action) => action.type)).toEqual([
+      "setTasks",
+      "setSelected",
+      "triggerEngagementMilestone"
+    ]);
     const setTasksAction = setResult.actions[0];
     if (setTasksAction.type !== "setTasks") return;
     expect(setTasksAction.tasks[0]?.recurrence?.freq).toBe("weekly");
     expect(setTasksAction.tasks[0]?.recurrence?.interval).toBe(2);
     expect(setTasksAction.tasks[0]?.recurrence?.byDay).toEqual(["mon"]);
+    const recurringCreatedAction = setResult.actions[2];
+    if (recurringCreatedAction.type !== "triggerEngagementMilestone") return;
+    expect(recurringCreatedAction.achievementKey).toBe("FIRST_RECURRING_TASK_CREATED");
+    expect(recurringCreatedAction.meta).toEqual({ seriesId: "series:task-recur-1" });
+
+    const updateResult = executeCommand(
+      {
+        type: "recur",
+        target: { type: "id", id: task.id },
+        clear: false,
+        every: "week",
+        interval: 3,
+        onDays: ["mon"]
+      },
+      {
+        now,
+        state: createState(setTasksAction.tasks, task.id),
+        visibleTasks: setTasksAction.tasks,
+        selectedTaskId: task.id
+      }
+    );
+    expect(updateResult.output).toEqual({
+      kind: "ok",
+      text: "Recurrence set: Plan sprint -> every week"
+    });
+    expect(updateResult.actions.map((action) => action.type)).toEqual([
+      "setTasks",
+      "setSelected"
+    ]);
+    const updateTasksAction = updateResult.actions[0];
+    if (updateTasksAction.type !== "setTasks") return;
+    expect(updateTasksAction.tasks[0]?.recurrence?.interval).toBe(3);
 
     const clearResult = executeCommand(
       {
@@ -404,8 +441,8 @@ describe("executeCommand", () => {
       },
       {
         now,
-        state: createState(setTasksAction.tasks, task.id),
-        visibleTasks: setTasksAction.tasks,
+        state: createState(updateTasksAction.tasks, task.id),
+        visibleTasks: updateTasksAction.tasks,
         selectedTaskId: task.id
       }
     );

@@ -104,6 +104,12 @@ describe("ui state", () => {
       startedFromNux: true,
       createdTaskId: "task-123"
     });
+
+    const movedToWhatNext = uiReducer(merged, {
+      type: "OPEN_EMPTY_NUX",
+      step: "what_next"
+    });
+    expect(movedToWhatNext.emptyNux?.step).toBe("what_next");
   });
 
   it("dismisses empty NUX and marks session dismissed", () => {

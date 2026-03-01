@@ -219,6 +219,9 @@ Import:
   - first task completed
   - first recurring task created
   - first recurring repeat occurrence completed
+  - first TOME created (in-app)
+  - first checklist created
+  - first checklist fully completed
   - 3 completed today
   - 5 completions for a tag in the last 7 days
   - 3-day completion streak
@@ -241,7 +244,14 @@ Supported TITS commands:
 - `due @selected clear` / `due id:<task-id> clear`
 - `recur <target> clear`
 - `recur <target> every:day|week|month [interval:N] [on:mon,wed|1,15]`
-- `help` / `help add|done|due|recur`
+- `check add @selected <text>`
+- `check toggle @selected <index>`
+- `check edit @selected <index> <text>`
+- `check del @selected <index>`
+- `check clear @selected`
+- `bulk done|tag|due|priority|assignee|project|stage|delete`
+- `note new|open|search|delete|restore-defaults|reindex|root set`
+- `help` / `help add|done|due|recur|check|bulk|note`
 
 Validation and mutation rules:
 - `due` date must be a real calendar date.
@@ -249,6 +259,22 @@ Validation and mutation rules:
 - `at` requires `due`.
 - `recur` requires a due date on the target task.
 - `done` remains deterministic (`status="done"`) and uses recurrence completion helper for spawn-on-done behavior.
+
+### 2.16 Empty NUX Onboarding Contract
+- Empty-state walkthrough flow is step-driven:
+  - `welcome -> shortcuts (optional) -> adding -> celebrate -> what_next`
+- `celebrate` Enter opens `what_next` (not direct close-to-list).
+- `what_next` routes:
+  - `t`: first TOME create path
+  - `c`: checklist add path for walkthrough-created task
+  - `Enter`: return to list and clear walkthrough
+  - `a`: add another task
+  - `h`: shortcuts
+  - `Esc`: clear walkthrough
+- `celebrate` and `what_next` show onboarding progress chips as `ONBOARDING X/3`:
+  - first task
+  - first TOME
+  - first checklist fully completed
 
 CLI parity and safety:
 - CLI wrapper and raw DSL forms are both supported (`src/cli/main.ts`).

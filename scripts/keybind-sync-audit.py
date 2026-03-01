@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 
 NOISE_DOC_ONLY_KEYS = {"0", "5"}
+TEST_CANONICAL_KEY_ALLOWLIST = {"Ctrl+F"}
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Audit keybinding consistency between code and docs.")
@@ -187,6 +188,23 @@ def extract_code_bindings(path: Path) -> dict[str, list[str]]:
             line = text.count("\n", 0, match.start()) + 1
             evidence.setdefault(token, []).append(f"{path}:{line}")
 
+    # Capture const-indirected key maps (e.g., *_KEYS objects) so keys such as
+    # home/end are included even when routed through constants.
+    key_object_pattern = re.compile(
+        r"const\s+[A-Z0-9_]*KEYS\s*=\s*\{(?P<body>.*?)\}\s*as\s+const;",
+        re.DOTALL,
+    )
+    for object_match in key_object_pattern.finditer(text):
+        body = object_match.group("body")
+        body_start = object_match.start("body")
+        for value_match in re.finditer(r":\s*\"([^\"]+)\"|:\s*'([^']+)'", body):
+            raw_token = value_match.group(1) or value_match.group(2)
+            if not raw_token or not looks_like_key_token(raw_token):
+                continue
+            token = normalize_key(raw_token)
+            line = text.count("\n", 0, body_start + value_match.start()) + 1
+            evidence.setdefault(token, []).append(f"{path}:{line}")
+
     return evidence
 
 
@@ -195,7 +213,7 @@ def extract_action_bearing_test_bindings(path: Path) -> dict[str, list[str]]:
     evidence: dict[str, list[str]] = {}
 
     action_assert_pattern = re.compile(
-        r"expect\(\s*run\((?P<input>\{.*?\})(?:\s*,\s*\{.*?\})?\s*\)\s*\)\s*\.toEqual\(\s*\[(?P<actions>.*?)\]\s*\)",
+        r"expect\(\s*run\(\s*(?P<input>\{.*?\})(?:\s*,\s*\{.*?\})?\s*\)\s*\)\s*\.toEqual\(\s*\[(?P<actions>.*?)\]\s*\)",
         re.DOTALL,
     )
 
@@ -317,8 +335,8 @@ def main() -> int:
     if sibling_test.exists():
         test_evidence = extract_action_bearing_test_bindings(sibling_test)
         for key, values in test_evidence.items():
-            if key in code_evidence:
-                code_evidence[key].extend(values)
+            if key in code_evidence or key in TEST_CANONICAL_KEY_ALLOWLIST:
+                code_evidence.setdefault(key, []).extend(values)
 
     doc_files = [
         doc for doc in gather_docs(repo, args.docs_glob) if doc.resolve() != out_md_abs
@@ -329,7 +347,7 @@ def main() -> int:
         for key, values in extracted.items():
             doc_evidence.setdefault(key, []).extend(values)
 
-    canonical_code_keys = set(router_evidence.keys())
+    canonical_code_keys = set(code_evidence.keys())
     doc_keys = set(doc_evidence.keys())
 
     missing_in_docs = sorted(canonical_code_keys - doc_keys)

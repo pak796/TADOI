@@ -22,6 +22,7 @@ type AppSession = {
 type CreateSessionOptions = {
   seedNotes?: Record<string, string>;
   tasks?: Task[];
+  skipInitialSave?: boolean;
   width?: number;
   height?: number;
   hintDisplayMode?: "bottom" | "left_rail" | "both" | "none";
@@ -61,6 +62,7 @@ async function createSession(options: CreateSessionOptions = {}): Promise<AppSes
   const {
     seedNotes = {},
     tasks,
+    skipInitialSave = true,
     width = 150,
     height = 44,
     hintDisplayMode = "left_rail"
@@ -100,7 +102,7 @@ async function createSession(options: CreateSessionOptions = {}): Promise<AppSes
   const harness = await testRender(
     React.createElement(App, {
       initialData: makeInitialData(initialTasks),
-      skipInitialSave: true,
+      skipInitialSave,
       showLogo: false,
       initialNotesSettings: {
         enabled: true,
@@ -529,6 +531,52 @@ describe("App TOME integration", () => {
       await waitForFileExists(path.join(notesRoot, "My Custom Tome Title.md"));
     } finally {
       await cleanupSession(session);
+    }
+  });
+
+  it("records FIRST_TOME_CREATED when the first in-app note is created", async () => {
+    const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-app-tome-milestone-"));
+    const dataPath = path.join(dataDir, "tadoi_data.json");
+    const originalDataPath = process.env.TADOI_DATA_PATH;
+    process.env.TADOI_DATA_PATH = dataPath;
+
+    const session = await createSession({
+      skipInitialSave: false,
+      hintDisplayMode: "both"
+    });
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      await waitForText(harness, "TASK ONE");
+      await pressKeyAndRender(mockInput, harness, "n");
+      await waitForText(harness, "TOME: Terminal Oriented Markdown Environment");
+
+      await pressKeyAndRender(mockInput, harness, "a");
+      await waitForText(harness, "NEW TOME NOTE");
+      await mockInput.typeText("First Tome Milestone");
+      await Bun.sleep(20);
+      await harness.renderOnce();
+      await pressEnterAndRender(mockInput, harness);
+      await waitForText(harness, "EDIT TOME NOTE");
+      await waitForText(harness, "Created your first TOME note.");
+
+      await waitForFileExists(dataPath, 4000);
+      await Bun.sleep(1400);
+      const raw = await fs.readFile(dataPath, "utf8");
+      const savedJson = JSON.parse(raw) as LoadedData;
+      expect(savedJson.engagement.achievements.FIRST_TOME_CREATED).toBeDefined();
+      expect(savedJson.engagement.achievements.FIRST_TOME_CREATED?.meta?.notePath).toBe(
+        "First Tome Milestone.md"
+      );
+    } finally {
+      await cleanupSession(session);
+      await fs.rm(dataDir, { recursive: true, force: true });
+      if (originalDataPath === undefined) {
+        delete process.env.TADOI_DATA_PATH;
+      } else {
+        process.env.TADOI_DATA_PATH = originalDataPath;
+      }
     }
   });
 

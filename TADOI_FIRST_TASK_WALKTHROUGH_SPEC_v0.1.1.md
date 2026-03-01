@@ -8,7 +8,7 @@
 
 ## Goals
 - Upgrade “empty state NUX” into a **guided first-task walkthrough**:
-  - `welcome` → optional `shortcuts` → `adding` (reuse existing OPEN_ADD) → `celebrate`
+  - `welcome` → optional `shortcuts` → `adding` (reuse existing OPEN_ADD) → `celebrate` → `what_next`
 - **Reuse existing add-task flow** (no duplicated add logic).
 - Preserve **modal precedence** and **keyRouter patterns**.
 - Keep it **incremental + shippable** (session-only dismissal in v0.1).
@@ -30,7 +30,8 @@ We keep `modal.type === 'emptyNux'` and render step-specific content inside `Emp
 | `welcome` | Modal | Startup when empty + idle + not dismissed | Create → `adding` + OPEN_ADD; Shortcuts → `shortcuts`; Skip → session-dismiss |
 | `shortcuts` | Modal | From welcome | Back → `welcome`; Create → `adding` + OPEN_ADD |
 | `adding` | Non-modal | When user chooses Create | Task saved (0→>0) → `celebrate`; Add canceled (still 0) → `welcome` unless session-dismissed |
-| `celebrate` | Modal | After first task created *during* walkthrough | Go to list; Add another; Shortcuts; Close |
+| `celebrate` | Modal | After first task created *during* walkthrough | Enter → `what_next`; Add another; Shortcuts; Close |
+| `what_next` | Modal | Enter from celebrate | First TOME (`t`), checklist add (`c`), go to list (`Enter`), add another (`a`), shortcuts (`h`), close (`Esc`) |
 
 ### Global gating / deferral rules
 - Walkthrough **never preempts** existing modal/queue:
@@ -46,7 +47,7 @@ We keep `modal.type === 'emptyNux'` and render step-specific content inside `Emp
 Keep existing session flag `emptyNuxDismissed`. Add step state + pending flag.
 
 ```ts
-export type EmptyNuxStep = 'welcome' | 'shortcuts' | 'adding' | 'celebrate';
+export type EmptyNuxStep = 'welcome' | 'shortcuts' | 'adding' | 'celebrate' | 'what_next';
 
 export type EmptyNuxState = {
   step: EmptyNuxStep;
@@ -93,7 +94,7 @@ We add **two** UI actions:
 export type OpenEmptyNuxAction = {
   type: 'OPEN_EMPTY_NUX';
   // NEW optional payload; default to 'welcome' in reducer if omitted
-  step?: 'welcome' | 'shortcuts' | 'celebrate';
+  step?: 'welcome' | 'shortcuts' | 'celebrate' | 'what_next';
   // Allow step transitions to carry metadata (optional)
   startedFromNux?: boolean;
   createdTaskId?: string;
@@ -121,7 +122,7 @@ Match your existing export style for action creators (same file as current `OPEN
 
 ```ts
 export const openEmptyNux = (opts?: {
-  step?: 'welcome' | 'shortcuts' | 'celebrate';
+  step?: 'welcome' | 'shortcuts' | 'celebrate' | 'what_next';
   startedFromNux?: boolean;
   createdTaskId?: string;
 }): OpenEmptyNuxAction => ({
@@ -253,12 +254,23 @@ case 'SET_EMPTY_NUX_CELEBRATE_PENDING': {
 
 ### `celebrate` (modal)
 - Keys:
-  - `Enter`: Go to list → `CLEAR_EMPTY_NUX` + dispatch existing “focus list/select” action (best effort)
+  - `Enter`: `OPEN_EMPTY_NUX({ step: 'what_next' })`
   - `A/a`: Add another → close modal via `setModal(null)` + mark `adding` + dispatch OPEN_ADD
   - `H/h`: `OPEN_EMPTY_NUX({ step: 'shortcuts' })`
   - `Esc`: `CLEAR_EMPTY_NUX`
 - Mouse:
-  - “Go to list” / “Add another” / “Shortcuts” / “Close”
+  - “What next” / “Add another” / “Shortcuts” / “Close”
+
+### `what_next` (modal)
+- Keys:
+  - `Enter`: go to list (`CLEAR_EMPTY_NUX`)
+  - `T/t`: open TOME create path
+  - `C/c`: open checklist add path for the walkthrough-created task
+  - `A/a`: add another task (re-enter add flow)
+  - `H/h`: show shortcuts step
+  - `Esc`: close walkthrough (`CLEAR_EMPTY_NUX`)
+- UX note:
+  - Show onboarding progress chips (`ONBOARDING X/3`) for Task/TOME/Checklist completion.
 
 ---
 
@@ -333,13 +345,13 @@ On `Enter` / `A` / `a`:
 3) `dispatch(OPEN_ADD /* existing */)`
 
 #### Step transitions
-- `H/h` (welcome/celebrate): `dispatch(openEmptyNux({ step: 'shortcuts' }))`
+- `H/h` (welcome/celebrate/what_next): `dispatch(openEmptyNux({ step: 'shortcuts' }))`
 - `Esc` in shortcuts: `dispatch(openEmptyNux({ step: 'welcome' }))`
 
 #### Dismiss vs clear
 - `Esc` in welcome: `dispatch(dismissEmptyNux())` (sets session dismissal)
-- `Esc` in celebrate: `dispatch(clearEmptyNux())` (no session dismissal needed)
-- Clicking X in welcome should call `dismissEmptyNux()`; clicking Close in celebrate calls `clearEmptyNux()`.
+- `Esc` in celebrate/what_next: `dispatch(clearEmptyNux())` (no session dismissal needed)
+- Clicking X in welcome should call `dismissEmptyNux()`; clicking Close in celebrate/what_next calls `clearEmptyNux()`.
 
 > This preserves your existing pattern: `DISMISS_EMPTY_NUX` is the dedicated modal dismissal action used by keyRouter for session dismissal behavior.
 
@@ -351,7 +363,8 @@ On `Enter` / `A` / `a`:
 Render content based on `uiState.emptyNux?.step`:
 - `welcome`: CTA + skip + shortcuts
 - `shortcuts`: cheat sheet + back + create
-- `celebrate`: go to list / add another / shortcuts / close
+- `celebrate`: what next / add another / shortcuts / close
+- `what_next`: first TOME / checklist / go to list / add another / shortcuts / close
 
 Button handlers:
 - Create → same as keyRouter create path (dispatch `openEmptyNux({step:'adding', startedFromNux:true})`, `setModal(null)`, OPEN_ADD)
@@ -399,7 +412,14 @@ Add key handling tests for modal `emptyNux`:
 - `a` dispatches create path (same as welcome)
 
 **celebrate**
+- `enter` dispatches `OPEN_EMPTY_NUX({step:'what_next'})`
+- `a` dispatches create path
+- `esc` dispatches `CLEAR_EMPTY_NUX`
+
+**what_next**
 - `enter` dispatches `CLEAR_EMPTY_NUX` + your “focus list” action
+- `t` dispatches open TOME create path
+- `c` dispatches open checklist add path for walkthrough-created task
 - `a` dispatches create path
 - `esc` dispatches `CLEAR_EMPTY_NUX`
 
@@ -408,6 +428,11 @@ Add key handling tests for modal `emptyNux`:
 - Skip (Esc/X/S) → does not re-open during same session.
 - Create (Enter/A/click) → opens add pane; cancel add (still empty) → welcome returns.
 - Save first task → celebrate appears (or deferred until idle).
+- Celebrate Enter opens What Next.
+- What Next routes:
+  - `t` opens TOME create prompt
+  - `c` opens checklist add prompt on the created task
+  - `Enter` returns to list and clears walkthrough
 - Celebrate close (Esc/X) ends walkthrough.
 - No regression: other modals and notification queue preempt NUX.
 

@@ -141,6 +141,10 @@ ADD/EDIT mode:
 - `Ctrl+U` / `Ctrl+D` / `page_up` / `page_down`: scroll editor form
 - `ArrowRight`: accept inline suggestions when present
 - Checklist editor field: `j` / `k` / arrows move item, `Space` toggle, `a` add, `e` edit, `d`/`backspace` delete
+- Task metadata fields are available directly in the editor:
+  - `ASSIGNEE` (free text)
+  - `PROJECT` (free text)
+  - `STAGE` (token or chip select): `backlog|todo|doing|blocked|review|done` (`doing` maps to `in_progress`)
 
 SEARCH mode:
 - Type to filter
@@ -178,10 +182,24 @@ Overdue modal:
 - `Esc`: dismiss
 
 Empty-state NUX modal:
-- `a` / `Enter`: create first task flow
-- `h`: open shortcuts step
-- `s` / `Esc`: dismiss
+- `welcome` step:
+  - `a` / `Enter`: create first task flow
+  - `h`: open shortcuts step
+  - `s` / `Esc`: dismiss for current session
 - `i`: open recovery import flow (only when recovery import CTA is available)
+- `celebrate` step:
+  - `Enter`: open `WHAT NEXT`
+  - `a`: add another task
+  - `h`: open shortcuts
+  - `Esc`: close walkthrough
+- `what_next` step:
+  - `t`: open first TOME create prompt
+  - `c`: open checklist add prompt on the walkthrough-created task
+  - `Enter`: go to list and close walkthrough
+  - `a`: add another task
+  - `h`: shortcuts
+  - `Esc`: close walkthrough
+- `celebrate` and `what_next` display onboarding progress chips as `ONBOARDING X/3` for first task, first TOME, and first checklist fully completed.
 
 ## TITS Command Layer (M1-M3)
 

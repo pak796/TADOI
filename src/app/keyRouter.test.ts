@@ -564,8 +564,7 @@ describe("handleKey", () => {
       emptyNux: { step: "celebrate" as const, startedFromNux: true, createdTaskId: "task-1" }
     };
     expect(run({ name: "enter" }, { uiState: celebrateModalState })).toEqual([
-      { scope: "ui", type: "CLEAR_EMPTY_NUX" },
-      { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.TASK_LIST }
+      { scope: "ui", type: "OPEN_EMPTY_NUX", step: "what_next" }
     ]);
     expect(run({ name: "a", sequence: "a" }, { uiState: celebrateModalState })).toEqual(
       createFromWelcome
@@ -580,6 +579,34 @@ describe("handleKey", () => {
       )
     ).toEqual([]);
     expect(run({ name: "escape" }, { uiState: celebrateModalState })).toEqual([
+      { scope: "ui", type: "CLEAR_EMPTY_NUX" }
+    ]);
+
+    const whatNextModalState = {
+      ...welcomeModalState,
+      emptyNux: { step: "what_next" as const, startedFromNux: true, createdTaskId: "task-1" }
+    };
+    expect(run({ name: "enter" }, { uiState: whatNextModalState })).toEqual([
+      { scope: "ui", type: "CLEAR_EMPTY_NUX" },
+      { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.TASK_LIST }
+    ]);
+    expect(run({ name: "l", sequence: "l" }, { uiState: whatNextModalState })).toEqual([
+      { scope: "ui", type: "CLEAR_EMPTY_NUX" },
+      { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.TASK_LIST }
+    ]);
+    expect(run({ name: "t", sequence: "t" }, { uiState: whatNextModalState })).toEqual([
+      { scope: "ui", type: "OPEN_EMPTY_NUX_TOME_CREATE" }
+    ]);
+    expect(run({ name: "c", sequence: "c" }, { uiState: whatNextModalState })).toEqual([
+      { scope: "ui", type: "OPEN_EMPTY_NUX_CHECKLIST_ADD" }
+    ]);
+    expect(run({ name: "a", sequence: "a" }, { uiState: whatNextModalState })).toEqual(
+      createFromWelcome
+    );
+    expect(run({ name: "h", sequence: "h" }, { uiState: whatNextModalState })).toEqual([
+      { scope: "ui", type: "OPEN_EMPTY_NUX", step: "shortcuts" }
+    ]);
+    expect(run({ name: "escape" }, { uiState: whatNextModalState })).toEqual([
       { scope: "ui", type: "CLEAR_EMPTY_NUX" }
     ]);
   });

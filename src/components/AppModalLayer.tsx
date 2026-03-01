@@ -1,7 +1,10 @@
 import React from "react";
 import type { RuntimeTheme } from "../app/theme";
 import { Mode, type Task } from "../domain/models";
-import { EmptyNuxModal } from "./EmptyNuxModal";
+import {
+  EmptyNuxModal,
+  type EmptyNuxOnboardingProgress
+} from "./EmptyNuxModal";
 import { ModalActionButton, ModalActionRow, ModalContainer } from "./ModalPrimitives";
 import { OverdueNotificationModal } from "./OverdueNotificationModal";
 import { ReminderNotificationModal } from "./ReminderNotificationModal";
@@ -23,6 +26,7 @@ type AppModalLayerProps = {
   inputTheme: RuntimeTheme;
   MODAL_STANDARD_WIDTH: number;
   activeEmptyNuxStep: EmptyNuxStep;
+  emptyNuxOnboardingProgress: EmptyNuxOnboardingProgress;
   showCorruptionRecoveryImportCta: boolean;
   activeOverdueModal: UIOverdueModal | null;
   activeOverdueTask: Task | undefined;
@@ -63,6 +67,9 @@ type AppModalLayerProps = {
   openBackupImportFromEmptyNux: () => void;
   showEmptyNuxShortcutsModal: () => void;
   returnToEmptyNuxWelcomeModal: () => void;
+  openWhatNextFromCelebrate: () => void;
+  openTomeCreateFromEmptyNux: () => void;
+  openChecklistAddFromEmptyNux: () => void;
   closeCelebrateToList: () => void;
   handleOverdueModalSnooze: () => void;
   handleOverdueModalDone: () => void;
@@ -81,6 +88,7 @@ export function AppModalLayer({
   inputTheme,
   MODAL_STANDARD_WIDTH,
   activeEmptyNuxStep,
+  emptyNuxOnboardingProgress,
   showCorruptionRecoveryImportCta,
   activeOverdueModal,
   activeOverdueTask,
@@ -121,6 +129,9 @@ export function AppModalLayer({
   openBackupImportFromEmptyNux,
   showEmptyNuxShortcutsModal,
   returnToEmptyNuxWelcomeModal,
+  openWhatNextFromCelebrate,
+  openTomeCreateFromEmptyNux,
+  openChecklistAddFromEmptyNux,
   closeCelebrateToList,
   handleOverdueModalSnooze,
   handleOverdueModalDone,
@@ -564,7 +575,11 @@ export function AppModalLayer({
               onOpenBackupImport={openBackupImportFromEmptyNux}
               onShowShortcuts={showEmptyNuxShortcutsModal}
               onBackToWelcome={returnToEmptyNuxWelcomeModal}
+              onOpenWhatNext={openWhatNextFromCelebrate}
+              onOpenFirstTome={openTomeCreateFromEmptyNux}
+              onOpenChecklistAdd={openChecklistAddFromEmptyNux}
               onGoToList={closeCelebrateToList}
+              onboardingProgress={emptyNuxOnboardingProgress}
               showImportBackupAction={
                 showCorruptionRecoveryImportCta && activeEmptyNuxStep === "welcome"
               }
