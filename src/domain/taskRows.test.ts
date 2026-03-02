@@ -27,9 +27,10 @@ function buildRows(
   tasks: Task[],
   filters: Filters,
   now: number,
-  sortMode: SortMode = "due"
+  sortMode: SortMode = "due",
+  aliases: Record<string, string> = {}
 ) {
-  return buildVisibleTaskRows(tasks, filters, sortMode, now);
+  return buildVisibleTaskRows(tasks, filters, sortMode, now, aliases);
 }
 
 describe("taskRows row-id helpers", () => {
@@ -147,6 +148,42 @@ describe("buildVisibleTaskRows recurring expansion", () => {
       now
     );
     expect(excludedRows).toHaveLength(0);
+  });
+
+  it("resolves aliases for recurring virtual row tag filtering and search", () => {
+    const aliases = { wrk: "work" };
+    const tasks: Task[] = [
+      makeTask({
+        id: "series-task-alias",
+        title: "daily alias",
+        status: "open",
+        hasExplicitTime: true,
+        tags: ["work"],
+        recurrence: {
+          dtstart: "2026-02-10T09:00:00",
+          rrule: "FREQ=DAILY;INTERVAL=1;COUNT=2",
+          series_id: "series:daily-alias"
+        }
+      })
+    ];
+
+    const tagRows = buildRows(
+      tasks,
+      { status: "all", due: "today", tagFilter: { all: ["wrk"] } },
+      now,
+      "due",
+      aliases
+    );
+    expect(tagRows).toHaveLength(1);
+
+    const searchRows = buildRows(
+      tasks,
+      { status: "all", due: "today", searchText: "wrk" },
+      now,
+      "due",
+      aliases
+    );
+    expect(searchRows).toHaveLength(1);
   });
 
   it("normalizes priority tags for regular rows with last-token precedence", () => {

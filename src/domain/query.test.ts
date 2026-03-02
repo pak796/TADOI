@@ -172,6 +172,29 @@ describe("filterTasks tagFilter boolean semantics", () => {
     };
     expect(filterTasks(tasks, filters, now).map((task) => task.id)).toEqual(["c"]);
   });
+
+  it("resolves alias tags for boolean filters and search", () => {
+    const aliases = { wrk: "work" };
+    const aliasFilters: Filters = {
+      status: "all",
+      due: "any",
+      tagFilter: { all: ["wrk"] }
+    };
+    expect(filterTasks(tasks, aliasFilters, now, aliases).map((task) => task.id)).toEqual([
+      "a",
+      "b"
+    ]);
+
+    const searchFilters: Filters = {
+      status: "all",
+      due: "any",
+      searchText: "wrk"
+    };
+    expect(filterTasks(tasks, searchFilters, now, aliases).map((task) => task.id)).toEqual([
+      "a",
+      "b"
+    ]);
+  });
 });
 
 describe("filterTasks priority filter semantics", () => {

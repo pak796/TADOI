@@ -163,6 +163,15 @@ describe("computeTopTagsOpen", () => {
     ];
     expect(computeTopTagsOpen(tasks, 5)).toEqual([]);
   });
+
+  it("resolves aliases and dedupes per task when counting top tags", () => {
+    const tasks: Task[] = [
+      baseTask({ id: "a", status: "open", tags: ["work", "wrk"] }),
+      baseTask({ id: "b", status: "open", tags: ["wrk"] })
+    ];
+    const aliases = { wrk: "work" };
+    expect(computeTopTagsOpen(tasks, 5, aliases)).toEqual([{ tag: "work", count: 2 }]);
+  });
 });
 
 describe("computePriorityBucketBreakdown", () => {

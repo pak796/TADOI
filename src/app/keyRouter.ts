@@ -215,6 +215,7 @@ export type KeyRouterAction =
   | { scope: "domain"; type: "MODAL_CONFIRM_CHECKLIST_DELETE" }
   | { scope: "domain"; type: "MODAL_SUBMIT_CHECKLIST_INPUT" }
   | { scope: "domain"; type: "MODAL_CONFIRM_BULK_DELETE" }
+  | { scope: "domain"; type: "MODAL_CONFIRM_TAG_LIFECYCLE" }
   | { scope: "domain"; type: "MODAL_CONFIRM_TASK_LINK_DELETE" }
   | { scope: "domain"; type: "MODAL_CONFIRM_TASK_LINK_OPEN_EXTERNAL" }
   | { scope: "domain"; type: "MODAL_EDIT_SWITCH_SAVE" }
@@ -926,6 +927,17 @@ function resolveModalModeActions(
     const lowerSequence = sequence.toLowerCase();
     if (lowerName === "y" || lowerSequence === "y") {
       return [{ scope: "domain", type: "MODAL_CONFIRM_BULK_DELETE" }];
+    }
+    if (lowerName === "n" || lowerSequence === "n") {
+      return [{ scope: "ui", type: "UNWIND" }];
+    }
+    return [];
+  }
+  if (uiState.modal?.type === "tag_lifecycle") {
+    const lowerName = name.toLowerCase();
+    const lowerSequence = sequence.toLowerCase();
+    if (lowerName === "y" || lowerSequence === "y") {
+      return [{ scope: "domain", type: "MODAL_CONFIRM_TAG_LIFECYCLE" }];
     }
     if (lowerName === "n" || lowerSequence === "n") {
       return [{ scope: "ui", type: "UNWIND" }];

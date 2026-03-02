@@ -53,6 +53,7 @@ type AppModalLayerProps = {
   submitChecklistInputModal: () => void;
   handleDeleteChecklistItemFromModal: () => void;
   handleConfirmBulkDeleteFromModal: () => void;
+  handleConfirmTagLifecycleModal: () => void;
   patchTaskLinkFormModal: (patch: Partial<UITaskLinkFormModal>) => void;
   submitTaskLinkFormModal: () => void;
   applyEscUnwind: () => void;
@@ -115,6 +116,7 @@ export function AppModalLayer({
   submitChecklistInputModal,
   handleDeleteChecklistItemFromModal,
   handleConfirmBulkDeleteFromModal,
+  handleConfirmTagLifecycleModal,
   patchTaskLinkFormModal,
   submitTaskLinkFormModal,
   applyEscUnwind,
@@ -329,6 +331,30 @@ export function AppModalLayer({
                   tone="warning"
                   label="CONFIRM DELETE [Y]"
                   onPress={handleConfirmBulkDeleteFromModal}
+                />
+                <ModalActionButton
+                  theme={modalTheme}
+                  tone="warning"
+                  label="CANCEL [N/ESC]"
+                  onPress={applyEscUnwind}
+                />
+              </ModalActionRow>
+            </ModalContainer>
+          ) : uiState.modal.type === "tag_lifecycle" ? (
+            <ModalContainer theme={modalTheme} tone="warning" minWidth={MODAL_STANDARD_WIDTH}>
+              <text style={{ fontWeight: "bold" }}>
+                {`APPLY TAG ${uiState.modal.operation.toUpperCase()}? [Y/N/ESC]`}
+              </text>
+              <text>{uiState.modal.summary}</text>
+              {uiState.modal.detailLines.slice(0, 8).map((line, index) => (
+                <text key={`tag-lifecycle-detail-${String(index)}`}>{line}</text>
+              ))}
+              <ModalActionRow>
+                <ModalActionButton
+                  theme={modalTheme}
+                  tone="warning"
+                  label="APPLY [Y]"
+                  onPress={handleConfirmTagLifecycleModal}
                 />
                 <ModalActionButton
                   theme={modalTheme}

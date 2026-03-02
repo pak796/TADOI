@@ -35,6 +35,7 @@ import {
 } from "../domain/models";
 import { normalizePriorityTags } from "../domain/priorityTags";
 import { normalizeChecklist } from "../domain/checklist";
+import { normalizeTagAliases } from "../domain/tagAliases";
 import type { LoadedData } from "./persistence";
 
 export type Action =
@@ -63,11 +64,13 @@ export type Action =
   | { type: "setTasks"; tasks: Task[] }
   | { type: "setSavedViews"; savedViews: SavedView[] }
   | { type: "setSortMode"; sortMode: SortMode }
-  | { type: "setTagIndex"; tagIndex: Record<string, TagIndexEntry> };
+  | { type: "setTagIndex"; tagIndex: Record<string, TagIndexEntry> }
+  | { type: "setTagAliases"; tagAliases: Record<string, string> };
 
 export const initialState: AppState = {
   tasks: [],
   tagIndex: {},
+  tagAliases: {},
   savedViews: [],
   engagement: createDefaultEngagementState(),
   engagementToastQueue: [],
@@ -130,6 +133,7 @@ export function reducer(state: AppState, action: Action): AppState {
         ...state,
         tasks: action.data.tasks.map(normalizeTaskForRuntime),
         tagIndex: action.data.tagIndex,
+        tagAliases: normalizeTagAliases(action.data.tagAliases),
         savedViews: action.data.savedViews,
         engagement: normalizeEngagementState(action.data.engagement),
         engagementToastQueue: [],
@@ -262,13 +266,15 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, sortMode: action.sortMode };
     case "setTagIndex":
       return { ...state, tagIndex: action.tagIndex };
+    case "setTagAliases":
+      return { ...state, tagAliases: normalizeTagAliases(action.tagAliases) };
     default:
       return state;
   }
 }
 
 export function getVisibleTasks(state: AppState, now: number): Task[] {
-  const filtered = filterTasks(state.tasks, state.filters, now);
+  const filtered = filterTasks(state.tasks, state.filters, now, state.tagAliases);
   return sortTasks(filtered, now, state.sortMode);
 }
 

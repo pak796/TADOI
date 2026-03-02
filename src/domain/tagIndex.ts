@@ -1,6 +1,7 @@
 import { TagIndexEntry, Task } from "./models";
 
 export const MAX_TAG_LENGTH = 24;
+const MAX_ALIAS_DEPTH = 16;
 
 export function normalizeTag(raw: string): string | null {
   const trimmed = raw.trim();
@@ -130,9 +131,25 @@ export function rankTags(
 
 export function mergeTagIndexWithTaskHistory(
   tagIndex: Record<string, TagIndexEntry>,
-  tasks: Array<Pick<Task, "tags" | "createdAt" | "updatedAt">>
+  tasks: Array<Pick<Task, "tags" | "createdAt" | "updatedAt">>,
+  aliases: Record<string, string> = {}
 ): Record<string, TagIndexEntry> {
   const merged: Record<string, TagIndexEntry> = {};
+
+  const resolveAliasTag = (rawTag: string): string | null => {
+    const normalized = normalizeTag(rawTag);
+    if (!normalized) return null;
+    const seen = new Set<string>([normalized]);
+    let current = normalized;
+    for (let depth = 0; depth < MAX_ALIAS_DEPTH; depth += 1) {
+      const next = aliases[current];
+      if (!next) return current;
+      if (seen.has(next)) return current;
+      current = next;
+      seen.add(next);
+    }
+    return current;
+  };
 
   const mergeEntry = (
     tagName: string,
@@ -157,17 +174,17 @@ export function mergeTagIndexWithTaskHistory(
   };
 
   for (const entry of Object.values(tagIndex)) {
-    const normalized = normalizeTag(entry.tagName);
-    if (!normalized) continue;
-    mergeEntry(normalized, Math.max(0, entry.usageCount), entry.lastUsedAt);
+    const canonical = resolveAliasTag(entry.tagName);
+    if (!canonical) continue;
+    mergeEntry(canonical, Math.max(0, entry.usageCount), entry.lastUsedAt);
   }
 
   for (const task of tasks) {
     const stamp = Math.max(task.updatedAt, task.createdAt);
     for (const rawTag of task.tags) {
-      const normalized = normalizeTag(rawTag);
-      if (!normalized) continue;
-      mergeEntry(normalized, 1, stamp);
+      const canonical = resolveAliasTag(rawTag);
+      if (!canonical) continue;
+      mergeEntry(canonical, 1, stamp);
     }
   }
 

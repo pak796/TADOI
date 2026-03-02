@@ -1,15 +1,16 @@
 import { Filters, TagFilter } from "./models";
 import { formatTagForReadOnlyDisplay, isPriorityToken } from "./priorityTags";
 import { normalizeTag, normalizeTags } from "./tagIndex";
+import { resolveTag, type TagAliases } from "./tagAliases";
 
 export type TagFilterBucket = "all" | "any" | "none";
 
-export function normalizeTagToken(tag: string): string | undefined {
+export function normalizeTagToken(tag: string, aliases: TagAliases = {}): string | undefined {
   const normalized = normalizeTag(tag);
   if (!normalized || isPriorityToken(normalized)) {
     return undefined;
   }
-  return normalized;
+  return resolveTag(normalized, aliases) ?? normalized;
 }
 
 function normalizeBucket(tags: string[] | undefined): string[] | undefined {
@@ -57,20 +58,40 @@ export function stripPriorityTokensFromTagFilter(tagFilter?: TagFilter): TagFilt
  * 2) Else if filters.tag exists, treat it as boolean ALL for compatibility.
  * 3) Else there is no tag constraint.
  */
-export function resolveEffectiveTagFilter(filters: Filters): TagFilter | undefined {
+export function resolveEffectiveTagFilter(
+  filters: Filters,
+  aliases: TagAliases = {}
+): TagFilter | undefined {
   const normalizedBoolean = stripPriorityTokensFromTagFilter(filters.tagFilter);
   if (normalizedBoolean) {
-    return normalizedBoolean;
+    const all = normalizedBoolean.all
+      ?.map((tag) => normalizeTagToken(tag, aliases))
+      .filter((tag): tag is string => Boolean(tag));
+    const any = normalizedBoolean.any
+      ?.map((tag) => normalizeTagToken(tag, aliases))
+      .filter((tag): tag is string => Boolean(tag));
+    const none = normalizedBoolean.none
+      ?.map((tag) => normalizeTagToken(tag, aliases))
+      .filter((tag): tag is string => Boolean(tag));
+    return normalizeTagFilter({ all, any, none });
   }
-  const legacyTag = filters.tag ? normalizeTagToken(filters.tag) : undefined;
+  const legacyTag = filters.tag ? normalizeTagToken(filters.tag, aliases) : undefined;
   return legacyTag ? { all: [legacyTag] } : undefined;
 }
 
-export function matchesTagFilter(taskTags: string[], filters: Filters): boolean {
-  const activeFilter = resolveEffectiveTagFilter(filters);
+export function matchesTagFilter(
+  taskTags: string[],
+  filters: Filters,
+  aliases: TagAliases = {}
+): boolean {
+  const activeFilter = resolveEffectiveTagFilter(filters, aliases);
   if (!activeFilter) return true;
 
-  const tags = new Set(normalizeTags(taskTags));
+  const tags = new Set(
+    normalizeTags(taskTags)
+      .map((tag) => resolveTag(tag, aliases) ?? tag)
+      .filter((tag) => !isPriorityToken(tag))
+  );
 
   const none = activeFilter.none ?? [];
   if (none.some((tag) => tags.has(tag))) {

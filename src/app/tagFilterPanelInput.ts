@@ -89,9 +89,10 @@ export function resolveTagFilterInputCandidateValue(
 export function addTagToTagFilterDraftBucket(
   current: TagFilter | undefined,
   rawTag: string,
-  bucket: TagFilterBucket
+  bucket: TagFilterBucket,
+  aliases: Record<string, string> = {}
 ): TagFilter | undefined {
-  const normalizedTag = normalizeTagToken(rawTag);
+  const normalizedTag = normalizeTagToken(rawTag, aliases);
   if (!normalizedTag) return normalizeTagFilter(current);
 
   const next: TagFilter = {
@@ -111,11 +112,13 @@ export function resolveTagFilterDraftForApplyFromInput(params: {
   inputValue: string;
   inlineSuggestion: TagFilterInlineSuggestion;
   bucket: TagFilterBucket;
+  aliases?: Record<string, string>;
 }): TagFilter | undefined {
   if (!params.includeInputCandidate) return params.draft;
   return addTagToTagFilterDraftBucket(
     params.draft,
     resolveTagFilterInputCandidateValue(params.inputValue, params.inlineSuggestion),
-    params.bucket
+    params.bucket,
+    params.aliases
   );
 }

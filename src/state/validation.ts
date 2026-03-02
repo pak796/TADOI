@@ -4,6 +4,7 @@ import {
 } from "../domain/priorityTags";
 import { normalizeTagFilter } from "../domain/tagFilter";
 import { normalizeEngagementState } from "../domain/engagement";
+import { normalizeTagAliases } from "../domain/tagAliases";
 import {
   formatDateToLocalIso,
   parseLocalIsoToDate
@@ -56,6 +57,24 @@ function areStringArraysEqual(left: string[], right: string[]): boolean {
   return true;
 }
 
+function areAliasMapsEqual(
+  left: Record<string, string>,
+  right: Record<string, string>
+): boolean {
+  const leftEntries = Object.entries(left).sort(([a], [b]) => a.localeCompare(b));
+  const rightEntries = Object.entries(right).sort(([a], [b]) => a.localeCompare(b));
+  if (leftEntries.length !== rightEntries.length) return false;
+  for (let i = 0; i < leftEntries.length; i += 1) {
+    if (
+      leftEntries[i]?.[0] !== rightEntries[i]?.[0] ||
+      leftEntries[i]?.[1] !== rightEntries[i]?.[1]
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function normalizeLocalIso(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
   const parsed = parseLocalIsoToDate(value);
@@ -99,6 +118,10 @@ export function validatePersistedState(
   if (tagIndex !== undefined && !isRecord(tagIndex)) {
     errors.push("tagIndex must be an object when present");
   }
+  const tagAliases = input.tagAliases;
+  if (tagAliases !== undefined && !isRecord(tagAliases)) {
+    errors.push("tagAliases must be an object when present");
+  }
 
   const savedViews = input.savedViews;
   if (savedViews !== undefined && !Array.isArray(savedViews)) {
@@ -125,6 +148,9 @@ export function validatePersistedState(
         : 0,
     tasks: tasks as LoadedData["tasks"],
     tagIndex: (tagIndex as LoadedData["tagIndex"]) ?? {},
+    tagAliases: normalizeTagAliases(
+      isRecord(tagAliases) ? (tagAliases as Record<string, string>) : undefined
+    ),
     savedViews: Array.isArray(savedViews) ? (savedViews as LoadedData["savedViews"]) : [],
     engagement: normalizeEngagementState(engagement)
   };
@@ -586,6 +612,25 @@ export function validatePersistedState(
 
   const engagementRecord =
     engagement !== undefined && isRecord(engagement) ? engagement : undefined;
+
+  if (tagAliases !== undefined) {
+    if (!isRecord(tagAliases)) {
+      errors.push("tagAliases must be an object when present");
+    } else {
+      const rawAliases: Record<string, string> = {};
+      for (const [source, target] of Object.entries(tagAliases)) {
+        if (typeof target !== "string") {
+          errors.push(`tagAliases.${source} must be a string`);
+          continue;
+        }
+        rawAliases[source] = target;
+      }
+      const normalizedAliases = normalizeTagAliases(rawAliases);
+      if (!areAliasMapsEqual(rawAliases, normalizedAliases)) {
+        errors.push("tagAliases must be normalized, canonicalized, and cycle-compressed");
+      }
+    }
+  }
 
   if (inputSchemaVersion >= 6) {
     if (

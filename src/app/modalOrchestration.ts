@@ -32,7 +32,7 @@ import { isEditorMode } from "../ui/modeFocus";
 
 type ModalOrchestrationDeps = {
   uiState: UIState;
-  state: Pick<AppState, "tasks" | "sortMode">;
+  state: Pick<AppState, "tasks" | "sortMode" | "tagAliases">;
   dispatch: (action: any) => void;
   uiDispatch: (action: any) => void;
   backupDispatch: (action: any) => void;
@@ -438,7 +438,8 @@ export function useModalOrchestration(deps: ModalOrchestrationDeps): ModalHandle
         searchText: undefined
       },
       deps.state.sortMode,
-      Date.now()
+      Date.now(),
+      deps.state.tagAliases
     );
     const selectedRow =
       revealRows.find((row) => row.id === goToTarget.preferredTaskId) ??

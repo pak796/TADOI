@@ -25,6 +25,30 @@ describe("validatePersistedState", () => {
     expect(result.ok).toBe(true);
   });
 
+  it("validates tagAliases normalization in strict mode", () => {
+    const good = validatePersistedState(
+      {
+        ...BASE_STATE,
+        tagAliases: {
+          legacy: "work"
+        }
+      },
+      "strict"
+    );
+    expect(good.ok).toBe(true);
+
+    const bad = validatePersistedState(
+      {
+        ...BASE_STATE,
+        tagAliases: {
+          " Legacy Tag ": "work"
+        }
+      },
+      "strict"
+    );
+    expect(bad.ok).toBe(false);
+  });
+
   it("requires engagement for schema v5 payloads", () => {
     const result = validatePersistedState(
       {

@@ -148,9 +148,75 @@ describe("parseCommand", () => {
       ok: true,
       command: { type: "help", topic: "note" }
     });
+    expect(parseCommand("help tag")).toEqual({
+      ok: true,
+      command: { type: "help", topic: "tag" }
+    });
     expect(parseCommand("wat")).toEqual({
       ok: false,
       error: 'Error: unknown command "wat"'
+    });
+  });
+
+  it("parses tag lifecycle commands", () => {
+    expect(parseCommand('tag rename " Work " work --dry-run')).toEqual({
+      ok: true,
+      command: {
+        type: "tag",
+        operation: "rename",
+        oldTag: " Work ",
+        newTag: "work",
+        dryRun: true
+      }
+    });
+    expect(parseCommand("tag merge work,work-project -> project")).toEqual({
+      ok: true,
+      command: {
+        type: "tag",
+        operation: "merge",
+        sources: ["work", "work-project"],
+        target: "project",
+        dryRun: false
+      }
+    });
+    expect(parseCommand("tag hygiene")).toEqual({
+      ok: true,
+      command: {
+        type: "tag",
+        operation: "hygiene",
+        dryRun: false
+      }
+    });
+    expect(parseCommand("tag cleanup --dry-run")).toEqual({
+      ok: true,
+      command: {
+        type: "tag",
+        operation: "cleanup",
+        dryRun: true
+      }
+    });
+  });
+
+  it("rejects malformed tag lifecycle command forms", () => {
+    expect(parseCommand("tag rename old")).toEqual({
+      ok: false,
+      error: "Error: tag rename requires <old> <new>"
+    });
+    expect(parseCommand("tag merge a,b c")).toEqual({
+      ok: false,
+      error: "Error: tag merge requires <src1,src2,...> -> <target>"
+    });
+    expect(parseCommand("tag hygiene now")).toEqual({
+      ok: false,
+      error: "Error: tag hygiene takes no extra tokens"
+    });
+    expect(parseCommand("tag cleanup now")).toEqual({
+      ok: false,
+      error: "Error: tag cleanup takes no extra tokens"
+    });
+    expect(parseCommand("tag cleanup --dry-run now")).toEqual({
+      ok: false,
+      error: "Error: --dry-run must be the last token"
     });
   });
 

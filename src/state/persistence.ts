@@ -5,6 +5,7 @@ import path from "path";
 import { EngagementState, SavedView, TagIndexEntry, Task } from "../domain/models";
 import { createDefaultEngagementState } from "../domain/engagement";
 import { normalizePriorityTags } from "../domain/priorityTags";
+import { normalizeTagAliases } from "../domain/tagAliases";
 import { migratePersistedStateToCurrent } from "./migrations";
 import { recomputeTagIndex } from "./portability";
 import { validatePersistedState } from "./validation";
@@ -15,6 +16,7 @@ export type LoadedData = {
   stateRevision?: number;
   tasks: Task[];
   tagIndex: Record<string, TagIndexEntry>;
+  tagAliases?: Record<string, string>;
   savedViews: SavedView[];
   engagement?: EngagementState;
 };
@@ -169,6 +171,7 @@ function emptyData(): LoadedData {
     stateRevision: 0,
     tasks: [],
     tagIndex: {},
+    tagAliases: {},
     savedViews: [],
     engagement: createDefaultEngagementState()
   };
@@ -221,7 +224,8 @@ function repairTaskTagNormalization(data: LoadedData): LoadedData {
   return {
     ...data,
     tasks,
-    tagIndex: recomputeTagIndex(tasks)
+    tagIndex: recomputeTagIndex(tasks),
+    tagAliases: normalizeTagAliases(data.tagAliases)
   };
 }
 

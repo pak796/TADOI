@@ -1,5 +1,6 @@
 import { normalizeTagIndex, normalizeTags } from "../domain/tagIndex";
 import { normalizeChecklist } from "../domain/checklist";
+import { normalizeTagAliases } from "../domain/tagAliases";
 import {
   createDefaultEngagementState,
   normalizeEngagementState
@@ -41,6 +42,7 @@ function migrateV0ToV1(state: LoadedData): LoadedData {
     schemaVersion: 1,
     tasks: Array.isArray(state.tasks) ? state.tasks : [],
     tagIndex: normalizeTagIndex(state.tagIndex ?? {}),
+    tagAliases: normalizeTagAliases(state.tagAliases),
     savedViews: [],
     engagement: createDefaultEngagementState()
   };
@@ -63,6 +65,7 @@ function migrateV1ToV2(state: LoadedData): LoadedData {
     schemaVersion: 2,
     tasks,
     tagIndex: normalizeTagIndex(state.tagIndex ?? {}),
+    tagAliases: normalizeTagAliases(state.tagAliases),
     savedViews: [],
     engagement: createDefaultEngagementState()
   };
@@ -73,6 +76,7 @@ function migrateV2ToV3(state: LoadedData): LoadedData {
     schemaVersion: 3,
     tasks: state.tasks,
     tagIndex: normalizeTagIndex(state.tagIndex ?? {}),
+    tagAliases: normalizeTagAliases(state.tagAliases),
     savedViews: [],
     engagement: createDefaultEngagementState()
   };
@@ -176,6 +180,7 @@ function migrateV3ToV4(state: LoadedData): LoadedData {
     schemaVersion: 4,
     tasks,
     tagIndex: normalizeTagIndex(state.tagIndex ?? {}),
+    tagAliases: normalizeTagAliases(state.tagAliases),
     savedViews: Array.isArray(state.savedViews) ? state.savedViews : [],
     engagement: createDefaultEngagementState()
   };
@@ -187,6 +192,7 @@ function migrateV4ToV5(state: LoadedData): LoadedData {
     stateRevision: normalizeStateRevision(state.stateRevision),
     tasks: state.tasks,
     tagIndex: normalizeTagIndex(state.tagIndex ?? {}),
+    tagAliases: normalizeTagAliases(state.tagAliases),
     savedViews: Array.isArray(state.savedViews) ? state.savedViews : [],
     engagement: normalizeEngagementState(state.engagement)
   };
@@ -198,6 +204,7 @@ function migrateV5ToV6(state: LoadedData): LoadedData {
     stateRevision: normalizeStateRevision(state.stateRevision),
     tasks: state.tasks,
     tagIndex: normalizeTagIndex(state.tagIndex ?? {}),
+    tagAliases: normalizeTagAliases(state.tagAliases),
     savedViews: Array.isArray(state.savedViews) ? state.savedViews : [],
     engagement: normalizeEngagementState(state.engagement)
   };
@@ -225,6 +232,7 @@ function migrateV6ToV7(state: LoadedData): LoadedData {
     stateRevision: normalizeStateRevision(state.stateRevision),
     tasks,
     tagIndex: normalizeTagIndex(state.tagIndex ?? {}),
+    tagAliases: normalizeTagAliases(state.tagAliases),
     savedViews: Array.isArray(state.savedViews) ? state.savedViews : [],
     engagement: normalizeEngagementState(state.engagement)
   };
@@ -247,6 +255,7 @@ function migrateV7ToV8(state: LoadedData): LoadedData {
     stateRevision: normalizeStateRevision(state.stateRevision),
     tasks,
     tagIndex: normalizeTagIndex(state.tagIndex ?? {}),
+    tagAliases: normalizeTagAliases(state.tagAliases),
     savedViews: Array.isArray(state.savedViews) ? state.savedViews : [],
     engagement: normalizeEngagementState(state.engagement)
   };
@@ -267,6 +276,7 @@ export function migratePersistedStateToCurrent(
     stateRevision: normalizeStateRevision(input.stateRevision),
     tasks: Array.isArray(input.tasks) ? input.tasks : [],
     tagIndex: input.tagIndex ?? {},
+    tagAliases: normalizeTagAliases(input.tagAliases),
     savedViews: Array.isArray(input.savedViews) ? input.savedViews : [],
     engagement: normalizeEngagementState(input.engagement)
   };

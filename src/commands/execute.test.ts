@@ -7,6 +7,7 @@ function createState(tasks: Task[], selectedId?: string): AppState {
   return {
     tasks,
     tagIndex: {},
+    tagAliases: {},
     savedViews: [],
     engagement: createDefaultEngagementState(),
     engagementToastQueue: [],
@@ -353,6 +354,26 @@ describe("executeCommand", () => {
     expect(result.output).toEqual({
       kind: "error",
       text: "Error: note commands require NotesService context"
+    });
+  });
+
+  it("returns context error for tag lifecycle commands", () => {
+    const result = executeCommand(
+      {
+        type: "tag",
+        operation: "cleanup",
+        dryRun: false
+      },
+      {
+        now: Date.now(),
+        state: createState([]),
+        visibleTasks: []
+      }
+    );
+    expect(result.actions).toEqual([]);
+    expect(result.output).toEqual({
+      kind: "error",
+      text: "Error: tag commands require App orchestration context"
     });
   });
 

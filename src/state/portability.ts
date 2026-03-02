@@ -14,6 +14,7 @@ import {
   normalizeTagToken,
   stripPriorityTokensFromTagFilter
 } from "../domain/tagFilter";
+import { compressTagAliases, normalizeTagAliases } from "../domain/tagAliases";
 import type { SavedView, TagIndexEntry, Task } from "../domain/models";
 import { getDefaultSettings, type TadoiSettings } from "../settings/settings";
 import type { LoadedData } from "./persistence";
@@ -76,6 +77,16 @@ function asTimestamp(value: unknown, fallback = 0): number {
     return fallback;
   }
   return value;
+}
+
+function mergeTagAliasesForImport(
+  currentAliases: Record<string, string> | undefined,
+  incomingAliases: Record<string, string> | undefined
+): Record<string, string> {
+  return compressTagAliases({
+    ...normalizeTagAliases(currentAliases),
+    ...normalizeTagAliases(incomingAliases)
+  });
 }
 
 function normalizeTask(task: Task): Task {
@@ -496,6 +507,7 @@ export function importState(
       schemaVersion: incomingState.schemaVersion,
       tasks: normalizedTasks,
       tagIndex: recomputeTagIndex(normalizedTasks, now),
+      tagAliases: normalizeTagAliases(incomingState.tagAliases),
       savedViews: incomingState.savedViews.map((view) => ({ ...view })),
       engagement: normalizeEngagementState(incomingState.engagement, now)
     };
@@ -525,6 +537,7 @@ export function importState(
     schemaVersion: incomingState.schemaVersion,
     tasks: mergedTasks.merged,
     tagIndex: recomputeTagIndex(mergedTasks.merged, now),
+    tagAliases: mergeTagAliasesForImport(currentState.tagAliases, incomingState.tagAliases),
     savedViews: mergedViews.merged,
     engagement: mergeEngagementStates(
       normalizeEngagementState(currentState.engagement, now),

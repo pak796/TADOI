@@ -156,6 +156,13 @@ export type UIRecurringDeleteFutureCheckpointModal = {
   deleteModal: UIRecurringOccurrenceDeleteModal;
 } & UIModalReturnContext;
 
+export type UITagLifecycleModal = {
+  type: "tag_lifecycle";
+  operation: "rename" | "merge" | "cleanup";
+  summary: string;
+  detailLines: string[];
+} & UIModalReturnContext;
+
 export type UIEmptyNuxModal = {
   type: "emptyNux";
 };
@@ -188,7 +195,8 @@ export type UIConfirmModal =
   | UIBulkDeleteModal
   | UIUnsavedChangesModal
   | UIBackupFinalCheckpointModal
-  | UIRecurringDeleteFutureCheckpointModal;
+  | UIRecurringDeleteFutureCheckpointModal
+  | UITagLifecycleModal;
 
 export type UIState = {
   mode: ModeType;

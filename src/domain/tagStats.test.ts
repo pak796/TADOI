@@ -83,4 +83,17 @@ describe("tag stats", () => {
       { priorityTag: "#p5", displayPriority: "P5", total: 1 }
     ]);
   });
+
+  it("resolves aliases when computing top tag stats", () => {
+    const now = new Date(2026, 1, 9, 9, 0, 0).getTime();
+    const aliases = { wrk: "work" };
+    const tasks: Task[] = [
+      makeTask({ id: "1", tags: ["work", "wrk"] }),
+      makeTask({ id: "2", tags: ["wrk"] })
+    ];
+
+    expect(computeTopTagStats(tasks, now, 10, aliases)).toEqual([
+      { tag: "work", total: 2, dueThisWeek: 0 }
+    ]);
+  });
 });

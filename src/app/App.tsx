@@ -139,6 +139,14 @@ import {
   resolveEffectiveTagFilter,
   type TagFilterBucket
 } from "../domain/tagFilter";
+import { computeTagStats } from "../domain/tagAliases";
+import {
+  planTagCleanup,
+  planTagMerge,
+  planTagRename,
+  reportTagHygiene,
+  type TagOperationPreview
+} from "../domain/tagLifecycle";
 import {
   formatTagForDisplay,
   getTagCompletion,
@@ -284,6 +292,7 @@ import {
   importBackup,
   listBackupFiles
 } from "../state/backupService";
+import { recomputeTagIndex } from "../state/portability";
 import { NotificationManager } from "../notifications/notificationManager";
 import { InAppModalNotifier } from "../notifications/notifiers/inAppModalNotifier";
 import { OSNotifier } from "../notifications/notifiers/osNotifier";
@@ -865,6 +874,10 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
       {
         title: "TAG PANEL (p)",
         description: "Open boolean tag filter panel (ALL/ANY/NONE)."
+      },
+      {
+        title: "TITS tag lifecycle commands",
+        description: "Use `tag rename`, `tag merge`, `tag hygiene`, and `tag cleanup` in command bar."
       },
       {
         title: "Bottom quick filters are clickable",
@@ -1683,6 +1696,7 @@ function initState(data?: LoadedData): AppState {
     ...initialState,
     tasks: data?.tasks ?? [],
     tagIndex: data?.tagIndex ?? {},
+    tagAliases: data?.tagAliases ?? {},
     savedViews: data?.savedViews ?? [],
     engagement: data?.engagement ?? initialState.engagement,
     engagementToastQueue: [],
@@ -1774,6 +1788,7 @@ export function App({
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
   const [commandHistoryIndex, setCommandHistoryIndex] = useState<number | null>(null);
   const [commandOutput, setCommandOutput] = useState<CommandOutput | null>(null);
+  const pendingTagLifecyclePreviewRef = useRef<TagOperationPreview | null>(null);
   const [dashboardTagSelection, setDashboardTagSelection] = useState(0);
   const [dashboardDueBucketSelection, setDashboardDueBucketSelection] = useState(0);
   const [dashboardPrioritySelection, setDashboardPrioritySelection] = useState(0);
@@ -2055,7 +2070,8 @@ export function App({
     state.tasks,
     state.filters,
     state.sortMode,
-    now
+    now,
+    state.tagAliases
   );
   const selectedTask =
     visibleTaskRows.find((task) => task.id === state.selectedId) ?? visibleTaskRows[0];
@@ -2664,20 +2680,48 @@ export function App({
               : theme.accentOrange;
 
   const summaryOverdueRows = React.useMemo(
-    () => buildVisibleTaskRows(state.tasks, { status: "open", due: "overdue" }, state.sortMode, now),
-    [state.tasks, state.sortMode, now]
+    () =>
+      buildVisibleTaskRows(
+        state.tasks,
+        { status: "open", due: "overdue" },
+        state.sortMode,
+        now,
+        state.tagAliases
+      ),
+    [state.tasks, state.sortMode, now, state.tagAliases]
   );
   const summaryTodayRows = React.useMemo(
-    () => buildVisibleTaskRows(state.tasks, { status: "open", due: "today" }, state.sortMode, now),
-    [state.tasks, state.sortMode, now]
+    () =>
+      buildVisibleTaskRows(
+        state.tasks,
+        { status: "open", due: "today" },
+        state.sortMode,
+        now,
+        state.tagAliases
+      ),
+    [state.tasks, state.sortMode, now, state.tagAliases]
   );
   const summaryNext7Rows = React.useMemo(
-    () => buildVisibleTaskRows(state.tasks, { status: "open", due: "next7" }, state.sortMode, now),
-    [state.tasks, state.sortMode, now]
+    () =>
+      buildVisibleTaskRows(
+        state.tasks,
+        { status: "open", due: "next7" },
+        state.sortMode,
+        now,
+        state.tagAliases
+      ),
+    [state.tasks, state.sortMode, now, state.tagAliases]
   );
   const summaryDoneRows = React.useMemo(
-    () => buildVisibleTaskRows(state.tasks, { status: "done", due: "any" }, state.sortMode, now),
-    [state.tasks, state.sortMode, now]
+    () =>
+      buildVisibleTaskRows(
+        state.tasks,
+        { status: "done", due: "any" },
+        state.sortMode,
+        now,
+        state.tagAliases
+      ),
+    [state.tasks, state.sortMode, now, state.tagAliases]
   );
   const summary = summaryDoneRows.reduce(
     (acc, task) => {
@@ -2697,13 +2741,20 @@ export function App({
   );
 
   const summaryTagRows = React.useMemo(
-    () => buildVisibleTaskRows(state.tasks, { status: "all", due: "any" }, state.sortMode, now),
-    [state.tasks, state.sortMode, now]
+    () =>
+      buildVisibleTaskRows(
+        state.tasks,
+        { status: "all", due: "any" },
+        state.sortMode,
+        now,
+        state.tagAliases
+      ),
+    [state.tasks, state.sortMode, now, state.tagAliases]
   );
 
   const tagStats = React.useMemo(
-    () => computeTopTagStats(summaryTagRows, dayKey, 5),
-    [summaryTagRows, dayKey]
+    () => computeTopTagStats(summaryTagRows, dayKey, 5, state.tagAliases),
+    [summaryTagRows, dayKey, state.tagAliases]
   );
   const openPriorityStats = React.useMemo(
     () => computeOpenPriorityStats(state.tasks),
@@ -2727,8 +2778,8 @@ export function App({
     [dashboardPaneHeight]
   );
   const dashboardTopTags = React.useMemo(
-    () => computeTopTagsOpen(visibleTaskRows, dashboardTopTagLimit),
-    [visibleTaskRows, dashboardTopTagLimit]
+    () => computeTopTagsOpen(visibleTaskRows, dashboardTopTagLimit, state.tagAliases),
+    [visibleTaskRows, dashboardTopTagLimit, state.tagAliases]
   );
   const clampedDashboardTagSelection =
     dashboardTopTags.length === 0
@@ -2796,8 +2847,8 @@ export function App({
     ? getTitleCompletion(titleQuery, titleSuggestions)
     : null;
   const predictiveTagIndex = React.useMemo(
-    () => mergeTagIndexWithTaskHistory(state.tagIndex, state.tasks),
-    [state.tagIndex, state.tasks]
+    () => mergeTagIndexWithTaskHistory(state.tagIndex, state.tasks, state.tagAliases),
+    [state.tagIndex, state.tasks, state.tagAliases]
   );
   const tagQuery = state.editor ? getTagQuery(state.editor.tagsText) : null;
   const tagSuggestions = tagQuery ? rankTags(predictiveTagIndex, tagQuery) : [];
@@ -2813,6 +2864,26 @@ export function App({
   const tagFilterInlineSuggestion = tagFilterQuery
     ? getTagCompletion(tagFilterQuery, tagFilterSuggestions)
     : null;
+  const tagFilterInputCandidateValue = resolveTagFilterInputCandidateValue(
+    tagFilterInput,
+    tagFilterInlineSuggestion
+  );
+  const tagFilterInputCandidateCanonical = normalizeTagToken(
+    tagFilterInputCandidateValue,
+    state.tagAliases
+  );
+  const tagFilterActiveBucketTags = tagFilterDraft?.[activeTagFilterBucket] ?? [];
+  const tagFilterFallbackTag =
+    tagFilterActiveBucketTags.length > 0
+      ? tagFilterActiveBucketTags[tagFilterActiveBucketTags.length - 1]
+      : undefined;
+  const tagFilterInsightSourceTag = tagFilterInputCandidateCanonical
+    ? tagFilterInputCandidateValue
+    : tagFilterFallbackTag;
+  const tagFilterInsights = React.useMemo(
+    () => computeTagStats(state.tasks, state.tagAliases, tagFilterInsightSourceTag),
+    [state.tasks, state.tagAliases, tagFilterInsightSourceTag]
+  );
   const selectedThemeMode = helpPreviewThemeMode ?? settingsState.themeId;
   const activeThemeId =
     selectedThemeMode === "rotating"
@@ -3257,6 +3328,9 @@ export function App({
           schemaVersion: CURRENT_SCHEMA_VERSION,
           tasks: state.tasks,
           tagIndex: state.tagIndex,
+          ...(state.tagAliases && Object.keys(state.tagAliases).length > 0
+            ? { tagAliases: state.tagAliases }
+            : {}),
           savedViews: state.savedViews,
           engagement: state.engagement
         },
@@ -3267,7 +3341,7 @@ export function App({
       }
     }, 60 * 60 * 1000);
     return () => clearInterval(id);
-  }, [state.tasks, state.tagIndex, state.engagement, state.savedViews]);
+  }, [state.tasks, state.tagIndex, state.tagAliases, state.engagement, state.savedViews]);
 
   useEffect(() => {
     if (isStaticFlashMode) {
@@ -3715,6 +3789,9 @@ export function App({
         schemaVersion: CURRENT_SCHEMA_VERSION,
         tasks: state.tasks,
         tagIndex: state.tagIndex,
+        ...(state.tagAliases && Object.keys(state.tagAliases).length > 0
+          ? { tagAliases: state.tagAliases }
+          : {}),
         savedViews: state.savedViews,
         engagement: state.engagement
       },
@@ -3724,7 +3801,7 @@ export function App({
       handleSaveResult,
       { expectedStateRevision: expectedStateRevisionRef.current }
     );
-  }, [state.tasks, state.tagIndex, state.savedViews, state.engagement]);
+  }, [state.tasks, state.tagIndex, state.tagAliases, state.savedViews, state.engagement]);
 
   useEffect(() => {
     if (!PERF_DEBUG_ENABLED) return;
@@ -4354,6 +4431,9 @@ export function App({
       schemaVersion: CURRENT_SCHEMA_VERSION,
       tasks: state.tasks,
       tagIndex: state.tagIndex,
+      ...(state.tagAliases && Object.keys(state.tagAliases).length > 0
+        ? { tagAliases: state.tagAliases }
+        : {}),
       savedViews: state.savedViews,
       engagement: state.engagement
     };
@@ -5104,7 +5184,8 @@ export function App({
       "MODAL_CYCLE_TASK_LINK_FORM_TYPE",
       "MODAL_CONFIRM_CHECKLIST_DELETE",
       "MODAL_SUBMIT_CHECKLIST_INPUT",
-      "MODAL_CONFIRM_BULK_DELETE"
+      "MODAL_CONFIRM_BULK_DELETE",
+      "MODAL_CONFIRM_TAG_LIFECYCLE"
     ]);
 
     if (
@@ -5588,6 +5669,9 @@ export function App({
       case "MODAL_CONFIRM_BULK_DELETE":
         handleConfirmBulkDeleteFromModal();
         return;
+      case "MODAL_CONFIRM_TAG_LIFECYCLE":
+        void handleConfirmTagLifecycleFromModal();
+        return;
       case "MODAL_CONFIRM_TASK_LINK_DELETE":
         handleDeleteTaskLinkFromModal();
         return;
@@ -5732,6 +5816,117 @@ export function App({
     setCommandTextValue(commandHistory[nextIndex]);
   }
 
+  function hasTagLifecycleMutations(preview: TagOperationPreview): boolean {
+    return (
+      preview.tasksAffected > 0 ||
+      preview.aliasesAdded.length > 0 ||
+      preview.aliasesRemoved.length > 0
+    );
+  }
+
+  function buildTagLifecycleDetailLines(preview: TagOperationPreview): string[] {
+    const detailLines: string[] = [
+      `Tasks affected: ${String(preview.tasksAffected)}`,
+      `Aliases add: ${String(preview.aliasesAdded.length)} | remove: ${String(preview.aliasesRemoved.length)}`
+    ];
+    if (preview.deltas.length > 0) {
+      for (const delta of preview.deltas.slice(0, 5)) {
+        detailLines.push(
+          `${formatTagForReadOnlyDisplay(delta.from)} -> ${formatTagForReadOnlyDisplay(delta.to)}: ${String(delta.beforeCount)} -> ${String(delta.afterCount)}`
+        );
+      }
+      if (preview.deltas.length > 5) {
+        detailLines.push(`... +${String(preview.deltas.length - 5)} more deltas`);
+      }
+    }
+    if (preview.warnings.length > 0) {
+      detailLines.push(...preview.warnings.slice(0, 3));
+    }
+    return detailLines;
+  }
+
+  function formatTagLifecyclePreviewOutput(
+    preview: TagOperationPreview,
+    dryRun: boolean
+  ): CommandOutput {
+    const detail = buildTagLifecycleDetailLines(preview).join(" | ");
+    const text = `${dryRun ? "Dry run: " : ""}${preview.summary}${detail.length > 0 ? ` | ${detail}` : ""}`;
+    if (preview.summary.startsWith("Error:")) {
+      return { kind: "error", text };
+    }
+    return { kind: "ok", text };
+  }
+
+  function formatTagHygieneOutput(): CommandOutput {
+    const report = reportTagHygiene({
+      tasks: state.tasks,
+      aliases: state.tagAliases
+    });
+    const collisions = report.normalizationCollisions.length;
+    const chains = report.aliasChains.length;
+    const cycles = report.cycles.length;
+    const collisionExample = report.normalizationCollisions[0];
+    const chainExample = report.aliasChains[0];
+    const cycleExample = report.cycles[0];
+    const extra: string[] = [];
+    if (collisionExample) {
+      extra.push(
+        `collision ${formatTagForReadOnlyDisplay(collisionExample.canonical)} <= ${collisionExample.raws.slice(0, 3).join(",")}`
+      );
+    }
+    if (chainExample) {
+      extra.push(`chain ${chainExample.chain.join("->")}`);
+    }
+    if (cycleExample) {
+      extra.push(`cycle ${cycleExample.join("->")}`);
+    }
+    if (report.warnings.length > 0) {
+      extra.push(...report.warnings.slice(0, 2));
+    }
+    return {
+      kind: "ok",
+      text: `${report.summary}${extra.length > 0 ? ` | ${extra.join(" | ")}` : ""}`
+    };
+  }
+
+  async function handleConfirmTagLifecycleFromModal(): Promise<void> {
+    const modal = uiState.modal;
+    if (!modal || modal.type !== "tag_lifecycle") return;
+    const preview = pendingTagLifecyclePreviewRef.current;
+    if (!preview || preview.operation !== modal.operation) {
+      setCommandOutput({
+        kind: "error",
+        text: `Error: tag ${modal.operation} confirmation context expired; rerun command`
+      });
+      showShortNavigationBanner(`Tag ${modal.operation} confirmation expired`);
+      closeModalWithPreviousContext(modal);
+      return;
+    }
+
+    try {
+      await createDataBackup(getDataFilePath());
+    } catch (error: unknown) {
+      const detail = normalizeErrorDetail(error);
+      setCommandOutput({
+        kind: "error",
+        text: `Error: backup failed before tag ${modal.operation} (${detail})`
+      });
+      showShortNavigationBanner(`Tag ${modal.operation} blocked: backup failed`);
+      return;
+    }
+
+    dispatch({ type: "setTasks", tasks: preview.nextTasks });
+    dispatch({ type: "setTagAliases", tagAliases: preview.nextAliases });
+    dispatch({ type: "setTagIndex", tagIndex: recomputeTagIndex(preview.nextTasks, Date.now()) });
+    pendingTagLifecyclePreviewRef.current = null;
+    closeModalWithPreviousContext(modal);
+    setCommandOutput({
+      kind: "ok",
+      text: `${preview.summary} applied`
+    });
+    showShortNavigationBanner(`${preview.summary} applied`);
+  }
+
   async function executeCommandBar() {
     const raw = commandTextRef.current;
     const trimmed = raw.trim();
@@ -5743,6 +5938,71 @@ export function App({
     const parsed = parseCommand(trimmed);
     if (!parsed.ok) {
       setCommandOutput({ kind: "error", text: parsed.error });
+      return;
+    }
+
+    if (parsed.command.type === "tag") {
+      const nowMs = Date.now();
+      if (parsed.command.operation === "hygiene") {
+        setCommandOutput(formatTagHygieneOutput());
+        setCommandHistory((previous) => [...previous, raw]);
+        setCommandHistoryIndex(null);
+        setCommandTextValue("");
+        return;
+      }
+
+      const preview =
+        parsed.command.operation === "rename"
+          ? planTagRename({
+              tasks: state.tasks,
+              aliases: state.tagAliases,
+              oldTag: parsed.command.oldTag,
+              newTag: parsed.command.newTag,
+              now: nowMs
+            })
+          : parsed.command.operation === "merge"
+            ? planTagMerge({
+                tasks: state.tasks,
+                aliases: state.tagAliases,
+                sources: parsed.command.sources,
+                target: parsed.command.target,
+                now: nowMs
+              })
+            : planTagCleanup({
+                tasks: state.tasks,
+                aliases: state.tagAliases
+              });
+
+      const previewOutput = formatTagLifecyclePreviewOutput(
+        preview,
+        parsed.command.dryRun
+      );
+      const requiresConfirm =
+        !parsed.command.dryRun &&
+        !preview.summary.startsWith("Error:") &&
+        hasTagLifecycleMutations(preview);
+
+      if (!requiresConfirm) {
+        setCommandOutput(previewOutput);
+      } else {
+        pendingTagLifecyclePreviewRef.current = preview;
+        openModalWithContext({
+          type: "tag_lifecycle",
+          operation: preview.operation,
+          summary: preview.summary,
+          detailLines: buildTagLifecycleDetailLines(preview),
+          previousMode: Mode.LIST,
+          previousFocus: uiState.focus
+        });
+        setCommandOutput({
+          kind: "ok",
+          text: `${preview.summary} pending confirmation`
+        });
+      }
+
+      setCommandHistory((previous) => [...previous, raw]);
+      setCommandHistoryIndex(null);
+      setCommandTextValue("");
       return;
     }
 
@@ -8045,7 +8305,8 @@ export function App({
         searchText: undefined
       },
       state.sortMode,
-      Date.now()
+      Date.now(),
+      state.tagAliases
     );
 
     const selectedRow = revealRows.find((row) => row.id === task.id) ?? revealRows[0];
@@ -8191,7 +8452,7 @@ export function App({
     if (uiState.mode !== Mode.LIST && uiState.mode !== Mode.DASHBOARD) return;
     clearPendingGPrefix();
     closeViewsOverlay();
-    const seedFilter = resolveEffectiveTagFilter(state.filters);
+    const seedFilter = resolveEffectiveTagFilter(state.filters, state.tagAliases);
     setTagFilterDraft(normalizeTagFilter(seedFilter));
     setTagFilterInputValue("");
     setActiveTagFilterBucket("all");
@@ -8244,7 +8505,8 @@ export function App({
         includeInputCandidate,
         inputValue: tagFilterInputRef.current,
         inlineSuggestion: tagFilterInlineSuggestion,
-        bucket: activeTagFilterBucket
+        bucket: activeTagFilterBucket,
+        aliases: state.tagAliases
       })
     );
     if (nextTagFilter) {
@@ -8269,11 +8531,16 @@ export function App({
         tagFilterInputRef.current,
         tagFilterInlineSuggestion
       );
-    const normalizedCandidate = normalizeTagToken(candidate);
+    const normalizedCandidate = normalizeTagToken(candidate, state.tagAliases);
     if (!normalizedCandidate) return false;
 
     setTagFilterDraft((current) =>
-      addTagToTagFilterDraftBucket(current, normalizedCandidate, activeTagFilterBucket)
+      addTagToTagFilterDraftBucket(
+        current,
+        normalizedCandidate,
+        activeTagFilterBucket,
+        state.tagAliases
+      )
     );
     setTagFilterInputValue("");
     return true;
@@ -10307,7 +10574,7 @@ export function App({
     rawTag: string,
     bucket: TagFilterBucket
   ): TagFilter | undefined {
-    const normalizedTag = normalizeTagToken(rawTag);
+    const normalizedTag = normalizeTagToken(rawTag, state.tagAliases);
     if (!normalizedTag) return normalizeTagFilter(current);
 
     const next: TagFilter = {
@@ -10344,7 +10611,7 @@ export function App({
     bucket: TagFilterBucket,
     rawTag: string
   ): TagFilter | undefined {
-    const normalizedTag = normalizeTagToken(rawTag);
+    const normalizedTag = normalizeTagToken(rawTag, state.tagAliases);
     if (!normalizedTag) return normalizeTagFilter(current);
     const next: TagFilter = {
       all: [...(current?.all ?? [])],
@@ -12236,6 +12503,9 @@ export function App({
         submitChecklistInputModal={submitChecklistInputModal}
         handleDeleteChecklistItemFromModal={handleDeleteChecklistItemFromModal}
         handleConfirmBulkDeleteFromModal={handleConfirmBulkDeleteFromModal}
+        handleConfirmTagLifecycleModal={() => {
+          void handleConfirmTagLifecycleFromModal();
+        }}
         patchTaskLinkFormModal={patchTaskLinkFormModal}
         submitTaskLinkFormModal={submitTaskLinkFormModal}
         applyEscUnwind={applyEscUnwind}
@@ -12347,6 +12617,8 @@ export function App({
             activeBucket={activeTagFilterBucket}
             inlineSuggestion={tagFilterInlineSuggestion}
             suggestions={tagFilterSuggestions}
+            insights={tagFilterInsights}
+            availableWidth={Math.max(64, terminalWidth - 8)}
             onInputChange={setTagFilterInputValue}
             onInputKeyDown={handleTagFilterPanelInputKeyDown}
             onInputSubmit={(value) => addTagFilterDraftCandidateFromInput(value)}

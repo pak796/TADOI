@@ -11,4 +11,11 @@ describe("getHelpLine note copy", () => {
     expect(help).toContain("note restore-defaults");
     expect(help).not.toContain("NOTES COMMANDS");
   });
+
+  it("includes tag lifecycle command help", () => {
+    const help = getHelpLine("tag");
+    expect(help).toContain("tag rename");
+    expect(help).toContain("tag merge");
+    expect(help).toContain("--dry-run");
+  });
 });

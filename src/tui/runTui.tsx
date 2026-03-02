@@ -7,6 +7,7 @@ import { startOfLocalDayMs } from "../domain/dates";
 import { normalizeEngagementState } from "../domain/engagement";
 import { normalizeTaskReminder } from "../domain/reminders";
 import { normalizeTagIndex, normalizeTags } from "../domain/tagIndex";
+import { normalizeTagAliases } from "../domain/tagAliases";
 import {
   DEFAULT_CRT_FX_LITE_COLOR,
   DEFAULT_CRT_FX_LITE_PRESET,
@@ -100,6 +101,7 @@ export function normalizeLoadedDataForStartup(
       schemaVersion: CURRENT_SCHEMA_VERSION,
       tasks: normalizedTasks,
       tagIndex: normalizedTagIndex,
+      tagAliases: normalizeTagAliases(loaded.tagAliases),
       savedViews: Array.isArray(loaded.savedViews) ? loaded.savedViews : [],
       engagement: normalizeEngagementState(loaded.engagement)
     },

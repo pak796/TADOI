@@ -233,6 +233,7 @@ export type ConfirmModal = UIConfirmModal;
 export type AppState = {
   tasks: Task[];
   tagIndex: Record<string, TagIndexEntry>;
+  tagAliases: Record<string, string>;
   savedViews: SavedView[];
   engagement: EngagementState;
   engagementToastQueue: EngagementToast[];

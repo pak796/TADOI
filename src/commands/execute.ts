@@ -112,7 +112,7 @@ function toRRuleLine(command: Exclude<RecurCommand, { clear: true }>): string {
 }
 
 function isTaskVisible(task: Task, ctx: ExecContext): boolean {
-  return filterTasks([task], ctx.state.filters, ctx.now).length > 0;
+  return filterTasks([task], ctx.state.filters, ctx.now, ctx.state.tagAliases).length > 0;
 }
 
 function buildDueParts(
@@ -758,6 +758,9 @@ export function executeCommand(command: Command, ctx: ExecContext): CommandResul
       return ok([], getHelpLine("note"));
     }
     return error("Error: note commands require NotesService context");
+  }
+  if (command.type === "tag") {
+    return error("Error: tag commands require App orchestration context");
   }
   return ok([], getHelpLine(command.topic));
 }

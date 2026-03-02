@@ -144,6 +144,11 @@ async function waitForFile(pathname: string, timeoutMs = 4000): Promise<void> {
   throw new Error(`Timed out waiting for file: ${pathname}`);
 }
 
+async function readSavedData(pathname: string): Promise<LoadedData> {
+  const raw = await fs.readFile(pathname, "utf8");
+  return JSON.parse(raw) as LoadedData;
+}
+
 async function pressKeyAndRender(
   mockInput: MockInput,
   harness: RenderHarness,
@@ -273,6 +278,170 @@ describe("App TITS integration", () => {
       expect(frame).toContain("Task One");
     } finally {
       await cleanupSession(session);
+    }
+  });
+
+  it("runs tag rename dry-run without mutating persisted tasks or aliases", async () => {
+    const now = new Date(2026, 1, 26, 12, 0).getTime();
+    const task: Task = {
+      id: "task-tag-dry-run-1",
+      title: "Tag rename dry run",
+      status: "open",
+      workflowStage: "todo",
+      createdAt: now - 1000,
+      updatedAt: now - 1000,
+      tags: ["work"]
+    };
+
+    const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-app-tits-tag-dry-run-"));
+    const dataPath = path.join(dataDir, "tadoi_data.json");
+    const originalDataPath = process.env.TADOI_DATA_PATH;
+    process.env.TADOI_DATA_PATH = dataPath;
+
+    const session = await createSession(makeInitialData([task]), { skipInitialSave: false });
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      await waitForText(harness, "TAG RENAME DRY RUN");
+      await waitForFile(dataPath, 4000);
+      await Bun.sleep(900);
+
+      await pressKeyAndRender(mockInput, harness, "`");
+      await waitForText(harness, TITS_HEADER_TEXT);
+      await typeTextAndRender(mockInput, harness, "tag rename work project --dry-run");
+      await pressEnterAndRender(mockInput, harness);
+      await waitForText(harness, "Dry run: Rename work -> project");
+
+      await Bun.sleep(1100);
+      const savedJson = await readSavedData(dataPath);
+      const persistedTask = savedJson.tasks.find((candidate) => candidate.id === task.id);
+      expect(persistedTask?.tags).toEqual(["work"]);
+      expect(savedJson.tagAliases ?? {}).toEqual({});
+
+      const entries = await fs.readdir(dataDir);
+      const backupPrefix = `${path.basename(dataPath)}.backup.`;
+      expect(entries.some((entry) => entry.startsWith(backupPrefix))).toBe(false);
+    } finally {
+      await cleanupSession(session);
+      await fs.rm(dataDir, { recursive: true, force: true });
+      if (originalDataPath === undefined) {
+        delete process.env.TADOI_DATA_PATH;
+      } else {
+        process.env.TADOI_DATA_PATH = originalDataPath;
+      }
+    }
+  });
+
+  it("opens tag lifecycle confirm modal and cancels without mutation", async () => {
+    const now = new Date(2026, 1, 26, 12, 0).getTime();
+    const task: Task = {
+      id: "task-tag-cancel-1",
+      title: "Tag rename cancel",
+      status: "open",
+      workflowStage: "todo",
+      createdAt: now - 1000,
+      updatedAt: now - 1000,
+      tags: ["work"]
+    };
+
+    const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-app-tits-tag-cancel-"));
+    const dataPath = path.join(dataDir, "tadoi_data.json");
+    const originalDataPath = process.env.TADOI_DATA_PATH;
+    process.env.TADOI_DATA_PATH = dataPath;
+
+    const session = await createSession(makeInitialData([task]), { skipInitialSave: false });
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      await waitForText(harness, "TAG RENAME CANCEL");
+      await waitForFile(dataPath, 4000);
+      await Bun.sleep(900);
+
+      await pressKeyAndRender(mockInput, harness, "`");
+      await waitForText(harness, TITS_HEADER_TEXT);
+      await typeTextAndRender(mockInput, harness, "tag rename work project");
+      await pressEnterAndRender(mockInput, harness);
+      await waitForText(harness, "APPLY TAG RENAME? [Y/N/ESC]");
+
+      await pressKeyAndRender(mockInput, harness, "n");
+      await waitForTextAbsent(harness, "APPLY TAG RENAME? [Y/N/ESC]");
+
+      await Bun.sleep(1100);
+      const savedJson = await readSavedData(dataPath);
+      const persistedTask = savedJson.tasks.find((candidate) => candidate.id === task.id);
+      expect(persistedTask?.tags).toEqual(["work"]);
+      expect(savedJson.tagAliases ?? {}).toEqual({});
+
+      const entries = await fs.readdir(dataDir);
+      const backupPrefix = `${path.basename(dataPath)}.backup.`;
+      expect(entries.some((entry) => entry.startsWith(backupPrefix))).toBe(false);
+    } finally {
+      await cleanupSession(session);
+      await fs.rm(dataDir, { recursive: true, force: true });
+      if (originalDataPath === undefined) {
+        delete process.env.TADOI_DATA_PATH;
+      } else {
+        process.env.TADOI_DATA_PATH = originalDataPath;
+      }
+    }
+  });
+
+  it("applies tag rename after confirm with backup, rewrite, and alias persistence", async () => {
+    const now = new Date(2026, 1, 26, 12, 0).getTime();
+    const tasks: Task[] = [
+      {
+        id: "task-tag-apply-1",
+        title: "Tag rename apply one",
+        status: "open",
+        workflowStage: "todo",
+        createdAt: now - 2000,
+        updatedAt: now - 2000,
+        tags: ["Work", "work"]
+      }
+    ];
+
+    const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-app-tits-tag-apply-"));
+    const dataPath = path.join(dataDir, "tadoi_data.json");
+    const originalDataPath = process.env.TADOI_DATA_PATH;
+    process.env.TADOI_DATA_PATH = dataPath;
+
+    const session = await createSession(makeInitialData(tasks), { skipInitialSave: false });
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      await waitForText(harness, "TAG RENAME APPLY ONE");
+      await waitForFile(dataPath, 4000);
+      await Bun.sleep(900);
+
+      await pressKeyAndRender(mockInput, harness, "`");
+      await waitForText(harness, TITS_HEADER_TEXT);
+      await typeTextAndRender(mockInput, harness, "tag rename work focus");
+      await pressEnterAndRender(mockInput, harness);
+      await waitForText(harness, "APPLY TAG RENAME? [Y/N/ESC]");
+
+      await pressKeyAndRender(mockInput, harness, "y");
+      await Bun.sleep(80);
+      await pressKeyAndRender(mockInput, harness, "y");
+      await Bun.sleep(1300);
+      const savedJson = await readSavedData(dataPath);
+      const firstTask = savedJson.tasks.find((candidate) => candidate.id === "task-tag-apply-1");
+      expect(firstTask?.tags).toEqual(["focus"]);
+      expect(savedJson.tagAliases).toEqual({ work: "focus" });
+
+      const entries = await fs.readdir(dataDir);
+      const backupPrefix = `${path.basename(dataPath)}.backup.`;
+      expect(entries.some((entry) => entry.startsWith(backupPrefix))).toBe(true);
+    } finally {
+      await cleanupSession(session);
+      await fs.rm(dataDir, { recursive: true, force: true });
+      if (originalDataPath === undefined) {
+        delete process.env.TADOI_DATA_PATH;
+      } else {
+        process.env.TADOI_DATA_PATH = originalDataPath;
+      }
     }
   });
 

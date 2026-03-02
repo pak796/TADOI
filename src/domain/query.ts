@@ -2,6 +2,8 @@ import { diffLocalDays, getLocalDayNumber, startOfLocalDayMs } from "./dates";
 import { Filters, SortMode, Task } from "./models";
 import { normalizePriorityFilterValue, resolveTaskPriorityTag } from "./priorityTags";
 import { matchesTagFilter } from "./tagFilter";
+import { resolveTag, type TagAliases } from "./tagAliases";
+import { normalizeTag } from "./tagIndex";
 
 export const SORT_MODE_ORDER: SortMode[] = ["due", "updated", "created", "title"];
 export const ANALYTICS_WINDOWS = ["7d", "14d", "30d"] as const;
@@ -89,9 +91,18 @@ function compareByTitle(a: Task, b: Task): number {
   return compareStableFallback(a, b);
 }
 
-export function filterTasks(tasks: Task[], filters: Filters, now: number): Task[] {
+export function filterTasks(
+  tasks: Task[],
+  filters: Filters,
+  now: number,
+  aliases: TagAliases = {}
+): Task[] {
   const start = startOfLocalDayMs(now);
   const search = (filters.searchText ?? "").trim().toLowerCase();
+  const normalizedSearchTag = search ? normalizeTag(search) : null;
+  const canonicalSearchTag = normalizedSearchTag
+    ? resolveTag(normalizedSearchTag, aliases)
+    : null;
   const priorityFilter = normalizePriorityFilterValue(filters.priority);
 
   return tasks.filter((task) => {
@@ -101,7 +112,7 @@ export function filterTasks(tasks: Task[], filters: Filters, now: number): Task[
       return false;
     }
 
-    if (!matchesTagFilter(task.tags, filters)) {
+    if (!matchesTagFilter(task.tags, filters, aliases)) {
       return false;
     }
 
@@ -110,7 +121,17 @@ export function filterTasks(tasks: Task[], filters: Filters, now: number): Task[
     }
 
     const matchesTitle = task.title.toLowerCase().includes(search);
-    const matchesTags = task.tags.some((tag) => tag.toLowerCase().includes(search));
+    const matchesTags = task.tags.some((tag) => {
+      if (tag.toLowerCase().includes(search)) {
+        return true;
+      }
+      const canonical = resolveTag(tag, aliases);
+      if (!canonical) return false;
+      if (canonical.includes(search)) {
+        return true;
+      }
+      return canonicalSearchTag ? canonical === canonicalSearchTag : false;
+    });
     if (search && !(matchesTitle || matchesTags)) {
       return false;
     }

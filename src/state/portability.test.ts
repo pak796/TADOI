@@ -249,6 +249,32 @@ describe("importState", () => {
     expect(result.nextState.tasks).toHaveLength(1);
   });
 
+  it("merges tagAliases in merge mode with incoming source-key precedence", () => {
+    const current = baseState([{ ...BASE_LOCAL_TASK }]);
+    current.tagAliases = { legacy: "work", shared: "alpha" };
+    const incoming = baseState([{ ...BASE_INCOMING_TASK }]);
+    incoming.tagAliases = { shared: "beta", incoming: "work" };
+
+    const result = importState(current, incoming, { mode: "merge", now: 1 });
+
+    expect(result.nextState.tagAliases).toEqual({
+      incoming: "work",
+      legacy: "work",
+      shared: "beta"
+    });
+  });
+
+  it("replaces tagAliases in replace mode", () => {
+    const current = baseState([{ ...BASE_LOCAL_TASK }]);
+    current.tagAliases = { legacy: "work" };
+    const incoming = baseState([{ ...BASE_INCOMING_TASK }]);
+    incoming.tagAliases = { fresh: "project" };
+
+    const result = importState(current, incoming, { mode: "replace", now: 1 });
+
+    expect(result.nextState.tagAliases).toEqual({ fresh: "project" });
+  });
+
   it("treats saved-view tagFilter differences as updates", () => {
     const current = baseState([{ ...BASE_LOCAL_TASK }]);
     current.savedViews = [

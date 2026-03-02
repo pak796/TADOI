@@ -7,6 +7,8 @@ import {
 } from "./priorityTags";
 import { sortTasks } from "./query";
 import { matchesTagFilter } from "./tagFilter";
+import { resolveTag, type TagAliases } from "./tagAliases";
+import { normalizeTag } from "./tagIndex";
 import {
   getOccurrences,
   latestOverdueOccurrence,
@@ -80,12 +82,27 @@ function matchesStatusFilter(status: TaskStatus, filterStatus: Filters["status"]
 
 function matchesSearchFilter(
   task: Pick<Task, "title" | "tags">,
-  search: string
+  search: string,
+  aliases: TagAliases
 ): boolean {
   if (!search) return true;
   const titleMatches = task.title.toLowerCase().includes(search);
   if (titleMatches) return true;
-  return task.tags.some((tag) => tag.toLowerCase().includes(search));
+  const normalizedSearchTag = normalizeTag(search);
+  const canonicalSearchTag = normalizedSearchTag
+    ? resolveTag(normalizedSearchTag, aliases)
+    : null;
+  return task.tags.some((tag) => {
+    if (tag.toLowerCase().includes(search)) {
+      return true;
+    }
+    const canonical = resolveTag(tag, aliases);
+    if (!canonical) return false;
+    if (canonical.includes(search)) {
+      return true;
+    }
+    return canonicalSearchTag ? canonical === canonicalSearchTag : false;
+  });
 }
 
 function matchesPriorityFilter(
@@ -120,18 +137,19 @@ function matchesCommonFilters(
   task: Pick<Task, "title" | "tags" | "status" | "dueAt" | "hasExplicitTime">,
   filters: Filters,
   search: string,
-  now: number
+  now: number,
+  aliases: TagAliases
 ): boolean {
   if (!matchesStatusFilter(task.status, filters.status)) {
     return false;
   }
-  if (!matchesTagFilter(task.tags, filters)) {
+  if (!matchesTagFilter(task.tags, filters, aliases)) {
     return false;
   }
   if (!matchesPriorityFilter(task, filters.priority)) {
     return false;
   }
-  if (!matchesSearchFilter(task, search)) {
+  if (!matchesSearchFilter(task, search, aliases)) {
     return false;
   }
   if (!matchesDueFilter(task, filters.due, now)) {
@@ -164,7 +182,8 @@ function buildSeriesVirtualRows(
   seriesTask: Task,
   now: number,
   filters: Filters,
-  materializedKeys: Set<string>
+  materializedKeys: Set<string>,
+  aliases: TagAliases
 ): VisibleTaskRow[] {
   const recurrence = seriesTask.recurrence;
   if (!recurrence || seriesTask.status !== "open") {
@@ -240,7 +259,8 @@ export function buildVisibleTaskRows(
   tasks: Task[],
   filters: Filters,
   sortMode: SortMode,
-  now: number
+  now: number,
+  aliases: TagAliases = {}
 ): VisibleTaskRow[] {
   const search = (filters.searchText ?? "").trim().toLowerCase();
   const rows: VisibleTaskRow[] = [];
@@ -257,21 +277,24 @@ export function buildVisibleTaskRows(
     const recurrence = task.recurrence;
 
     if (task.instance_of) {
-      if (matchesCommonFilters(task, filters, search, now)) {
+      if (matchesCommonFilters(task, filters, search, now, aliases)) {
         rows.push(toRegularRow(task));
       }
       continue;
     }
 
     if (recurrence && task.status === "open") {
-      if (!matchesTagFilter(task.tags, filters) || !matchesSearchFilter(task, search)) {
+      if (
+        !matchesTagFilter(task.tags, filters, aliases) ||
+        !matchesSearchFilter(task, search, aliases)
+      ) {
         continue;
       }
-      rows.push(...buildSeriesVirtualRows(task, now, filters, materializedKeys));
+      rows.push(...buildSeriesVirtualRows(task, now, filters, materializedKeys, aliases));
       continue;
     }
 
-    if (matchesCommonFilters(task, filters, search, now)) {
+    if (matchesCommonFilters(task, filters, search, now, aliases)) {
       rows.push(toRegularRow(task));
     }
   }

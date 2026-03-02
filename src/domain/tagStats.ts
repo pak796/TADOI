@@ -5,6 +5,7 @@ import {
   isPriorityToken,
   resolveTaskPriorityTag
 } from "./priorityTags";
+import { resolveTag, type TagAliases } from "./tagAliases";
 
 export type TagStat = {
   tag: string;
@@ -34,7 +35,12 @@ function comparePriorityDigits(left: string, right: string): number {
   return left.localeCompare(right);
 }
 
-export function computeTopTagStats(tasks: Task[], now: number, limit = 5): TagStat[] {
+export function computeTopTagStats(
+  tasks: Task[],
+  now: number,
+  limit = 5,
+  aliases: TagAliases = {}
+): TagStat[] {
   const startOfToday = startOfLocalDayMs(now);
   const counts = new Map<string, TagStat>();
 
@@ -44,8 +50,15 @@ export function computeTopTagStats(tasks: Task[], now: number, limit = 5): TagSt
       task.dueAt !== undefined ? diffLocalDays(task.dueAt, startOfToday) : null;
     const dueThisWeek = dayDiff !== null && dayDiff >= 0 && dayDiff <= 7;
 
-    for (const tag of task.tags) {
-      if (isPriorityToken(tag)) continue;
+    const perTask = new Set<string>();
+    for (const rawTag of task.tags) {
+      if (isPriorityToken(rawTag)) continue;
+      const canonical = resolveTag(rawTag, aliases);
+      if (!canonical) continue;
+      perTask.add(canonical);
+    }
+
+    for (const tag of perTask) {
       const existing = counts.get(tag);
       if (existing) {
         existing.total += 1;

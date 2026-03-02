@@ -1,6 +1,7 @@
 import { addLocalDaysMs, diffLocalDays, startOfLocalDayMs } from "./dates";
 import { Task } from "./models";
 import { isPriorityToken, resolveTaskPriorityTag } from "./priorityTags";
+import { resolveTag, type TagAliases } from "./tagAliases";
 
 export type DueBuckets8 = [
   number,
@@ -171,16 +172,26 @@ export function computeBacklogTrendWindow(
   return trend;
 }
 
-export function computeTopTagsOpen(tasks: Task[], limit: number): TopTagCount[] {
+export function computeTopTagsOpen(
+  tasks: Task[],
+  limit: number,
+  aliases: TagAliases = {}
+): TopTagCount[] {
   if (limit <= 0) return [];
 
   const counts = new Map<string, number>();
 
   for (const task of tasks) {
     if (task.status !== "open") continue;
+    const perTask = new Set<string>();
     for (const tag of task.tags) {
       if (isPriorityToken(tag)) continue;
-      counts.set(tag, (counts.get(tag) ?? 0) + 1);
+      const canonical = resolveTag(tag, aliases);
+      if (!canonical) continue;
+      perTask.add(canonical);
+    }
+    for (const canonical of perTask) {
+      counts.set(canonical, (counts.get(canonical) ?? 0) + 1);
     }
   }
 

@@ -591,10 +591,11 @@ function parseHelpCommand(tokens: string[]): ParseCommandResult {
     topic !== "recur" &&
     topic !== "check" &&
     topic !== "bulk" &&
-    topic !== "note"
+    topic !== "note" &&
+    topic !== "tag"
   ) {
     return error(
-      'Error: help topics are "add", "done", "due", "recur", "check", "bulk", or "note"'
+      'Error: help topics are "add", "done", "due", "recur", "check", "bulk", "note", or "tag"'
     );
   }
 
@@ -602,6 +603,105 @@ function parseHelpCommand(tokens: string[]): ParseCommandResult {
     ok: true,
     command: { type: "help", topic }
   };
+}
+
+type SplitTagDryRunResult =
+  | { ok: true; args: string[]; dryRun: boolean }
+  | { ok: false; error: string };
+
+function splitTagDryRun(tokens: string[]): SplitTagDryRunResult {
+  const dryRunIndexes = tokens
+    .map((token, index) => (token === "--dry-run" ? index : -1))
+    .filter((index) => index >= 0);
+  if (dryRunIndexes.length === 0) {
+    return { ok: true, args: tokens, dryRun: false };
+  }
+  if (dryRunIndexes.length > 1) {
+    return { ok: false, error: "Error: --dry-run can be provided only once" };
+  }
+  const dryRunIndex = dryRunIndexes[0] as number;
+  if (dryRunIndex !== tokens.length - 1) {
+    return { ok: false, error: "Error: --dry-run must be the last token" };
+  }
+  return {
+    ok: true,
+    args: tokens.slice(0, -1),
+    dryRun: true
+  };
+}
+
+function parseTagCommand(tokens: string[]): ParseCommandResult {
+  const operation = tokens[0]?.toLowerCase();
+  const rest = tokens.slice(1);
+
+  if (!operation) {
+    return error("Error: tag requires subcommand rename|merge|hygiene|cleanup");
+  }
+
+  if (operation === "rename") {
+    const parsedDryRun = splitTagDryRun(rest);
+    if (!parsedDryRun.ok) return error(parsedDryRun.error);
+    const { args, dryRun } = parsedDryRun;
+    if (args.length !== 2) {
+      return error("Error: tag rename requires <old> <new>");
+    }
+    return {
+      ok: true,
+      command: {
+        type: "tag",
+        operation: "rename",
+        oldTag: args[0] as string,
+        newTag: args[1] as string,
+        dryRun
+      }
+    };
+  }
+
+  if (operation === "merge") {
+    const parsedDryRun = splitTagDryRun(rest);
+    if (!parsedDryRun.ok) return error(parsedDryRun.error);
+    const { args, dryRun } = parsedDryRun;
+    if (args.length !== 3 || args[1] !== "->") {
+      return error("Error: tag merge requires <src1,src2,...> -> <target>");
+    }
+    const sourceList = (args[0] as string)
+      .split(",")
+      .map((source) => source.trim())
+      .filter((source) => source.length > 0);
+    const target = (args[2] as string).trim();
+    if (sourceList.length === 0 || target.length === 0) {
+      return error("Error: tag merge requires at least one source and a target");
+    }
+    return {
+      ok: true,
+      command: {
+        type: "tag",
+        operation: "merge",
+        sources: sourceList,
+        target,
+        dryRun
+      }
+    };
+  }
+
+  if (operation === "hygiene" || operation === "cleanup") {
+    const parsedDryRun = splitTagDryRun(rest);
+    if (!parsedDryRun.ok) return error(parsedDryRun.error);
+    const { args, dryRun } = parsedDryRun;
+    if (args.length > 0) {
+      return error(`Error: tag ${operation} takes no extra tokens`);
+    }
+    return {
+      ok: true,
+      command: {
+        type: "tag",
+        operation,
+        dryRun
+      }
+    };
+  }
+
+  return error("Error: tag requires subcommand rename|merge|hygiene|cleanup");
 }
 
 function parseNoteCommand(tokens: string[]): ParseCommandResult {
@@ -930,6 +1030,12 @@ export function parseCommand(input: string): ParseCommandResult {
   }
   if (commandName.startsWith("note:")) {
     return parseNoteCommand([commandName.slice("note:".length), ...args]);
+  }
+  if (commandName === "tag") {
+    return parseTagCommand(args);
+  }
+  if (commandName.startsWith("tag:")) {
+    return parseTagCommand([commandName.slice("tag:".length), ...args]);
   }
   return error(`Error: unknown command "${commandToken}"`);
 }

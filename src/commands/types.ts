@@ -126,7 +126,36 @@ export type BulkCommand =
       stage: "todo" | "doing" | "blocked" | "done";
     };
 
-export type HelpTopic = "add" | "done" | "due" | "recur" | "check" | "bulk" | "note";
+export type TagCommand =
+  | {
+      type: "tag";
+      operation: "rename";
+      oldTag: string;
+      newTag: string;
+      dryRun: boolean;
+    }
+  | {
+      type: "tag";
+      operation: "merge";
+      sources: string[];
+      target: string;
+      dryRun: boolean;
+    }
+  | {
+      type: "tag";
+      operation: "hygiene" | "cleanup";
+      dryRun: boolean;
+    };
+
+export type HelpTopic =
+  | "add"
+  | "done"
+  | "due"
+  | "recur"
+  | "check"
+  | "bulk"
+  | "note"
+  | "tag";
 
 export type HelpCommand = {
   type: "help";
@@ -179,6 +208,7 @@ export type Command =
   | RecurCommand
   | CheckCommand
   | BulkCommand
+  | TagCommand
   | HelpCommand
   | NoteCommand;
 

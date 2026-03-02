@@ -1,7 +1,7 @@
 import type { HelpTopic } from "./types";
 
 const HELP_GENERAL =
-  "Commands: add, done, due, recur, check, bulk, note, help. Try: help note";
+  "Commands: add, done, due, recur, check, bulk, note, tag, help. Try: help tag";
 const HELP_ADD =
   'add <title> [due:YYYY-MM-DD] [at:HH:MM] [#tag ...] [notes:"..."]';
 const HELP_DONE = "done | done @selected | done id:<task-id>";
@@ -22,6 +22,8 @@ const HELP_NOTE = `TOME COMMANDS (Terminal Oriented Markdown Environment)
 - note reindex          Rebuild TOME index
 - note root set "Path"  Migrate TOME root (copy-first)
 - note help             Show this help`;
+const HELP_TAG =
+  "tag rename <old> <new> [--dry-run] | tag merge <src1,src2,...> -> <target> [--dry-run] | tag hygiene [--dry-run] | tag cleanup [--dry-run]";
 
 export function getHelpLine(topic?: HelpTopic): string {
   if (!topic) return HELP_GENERAL;
@@ -31,5 +33,6 @@ export function getHelpLine(topic?: HelpTopic): string {
   if (topic === "check") return HELP_CHECK;
   if (topic === "bulk") return HELP_BULK;
   if (topic === "note") return HELP_NOTE;
+  if (topic === "tag") return HELP_TAG;
   return HELP_DUE;
 }

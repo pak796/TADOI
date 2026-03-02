@@ -48,5 +48,10 @@ PY
 ```
 
 ## Policy
-- For Help/Settings drift checks, do not call `$CODEX_HOME/skills/spec-task-drift-guard/scripts/doc_drift_scan.py` directly.
+- For Help/Settings drift checks, do not call external skill-scanner paths directly.
 - Use `scripts/doc-drift-scan.py` (or the package alias) to ensure matcher parity with current Help/Settings audit workflow.
+
+## CI Enforcement
+- Workflow: `.github/workflows/docs-lint.yml`
+- Job: `doc-drift-help-settings`
+- Gate command: `bun run doc:drift:help-settings`

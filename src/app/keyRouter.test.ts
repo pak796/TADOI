@@ -280,6 +280,31 @@ describe("handleKey", () => {
     ]);
   });
 
+  it("routes tag lifecycle modal keys", () => {
+    const modalState = {
+      ...initialUIState,
+      mode: Mode.MODAL_CONFIRM,
+      focus: FocusTarget.MODAL,
+      modal: {
+        type: "tag_lifecycle" as const,
+        operation: "rename" as const,
+        summary: "Rename work -> project",
+        detailLines: ["Tasks affected: 3"],
+        previousMode: Mode.LIST,
+        previousFocus: FocusTarget.TASK_LIST
+      }
+    };
+    expect(run({ name: "y", sequence: "y" }, { uiState: modalState })).toEqual([
+      { scope: "domain", type: "MODAL_CONFIRM_TAG_LIFECYCLE" }
+    ]);
+    expect(run({ name: "n", sequence: "n" }, { uiState: modalState })).toEqual([
+      { scope: "ui", type: "UNWIND" }
+    ]);
+    expect(run({ name: "escape" }, { uiState: modalState })).toEqual([
+      { scope: "ui", type: "UNWIND" }
+    ]);
+  });
+
   it("routes overdue modal keys", () => {
     const modalState = {
       ...initialUIState,
