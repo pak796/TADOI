@@ -120,6 +120,8 @@ function getFocusLabel(focus: FocusTarget): string {
       return "BACKUP";
     case FocusTarget.TASK_LIST:
       return "LIST";
+    case FocusTarget.DETAILS_NOTES:
+      return "NOTES";
     case FocusTarget.SEARCH_INPUT:
       return "SEARCH";
     case FocusTarget.TAG_FILTER_INPUT:

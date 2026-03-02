@@ -13,7 +13,7 @@ Run on macOS, Windows, Linux.
 - [ ] `QA-001` App launches and renders at `>=104x24`
 - [ ] `QA-002` Resize below `104x24` shows blocking guard; resizing back resumes
 - [ ] `QA-008` `a` opens Add; `Ctrl+S` saves a task; task appears in list
-- [ ] `QA-013` `/` opens Search; `Enter` or `Esc` exits Search
+- [ ] `QA-013` `/` opens Search; `Tab` focuses results; `Enter` in input exits while `Enter` in results opens selection
 - [ ] `QA-029` `b` toggles Dashboard; `b` returns to list
 - [ ] `QA-032` Backup Center opens from Help and returns via `Esc`
 - [ ] `QA-052` Calendar submenu opens from Backup Center and supports key navigation

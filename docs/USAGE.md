@@ -100,12 +100,19 @@ LIST mode actions:
 
 Details pane focus (Tab from list):
 - `Tab` / `Shift+Tab`: toggle focus list <-> details (default subpane: links)
-- While focused in details: `ArrowLeft` / `ArrowRight` switches `LINKS` <-> `CHECKLIST`
+- While focused in details: `ArrowLeft` / `ArrowRight` switches `LINKS` <-> `NOTES` <-> `CHECKLIST`
 - `ArrowUp` / `ArrowDown` / `j` / `k`: move selection
 - `Enter` / `o`: open selected link/path
 - `c`: copy selected link
 - `l`: add link, `e`: edit link, `d` / `backspace`: remove link
 - `Esc`: return focus to list
+
+Details notes subpane:
+- `Enter` / `o`: open selected linked/referencing note
+- `c`: create and link a note for the selected task
+- `l` / `r`: link or relink from picker
+- `u`: unlink task-note reference (two-step confirm)
+- Picker mode: `j` / `k` move, `Enter` confirm, `Esc` cancel
 
 Details checklist subpane:
 - `ArrowUp` / `ArrowDown` / `j` / `k`: move checklist selection
@@ -118,6 +125,7 @@ Details checklist subpane:
 
 DASHBOARD mode:
 - `b` / `B`: return to list
+- `u` / `U`: open Backup Center
 - `f` / `g` / `r` / `t` / `p`: same filter cycling as list
 - `w`: cycle analytics window (`7d -> 14d -> 30d -> 7d`)
 - `Tab` / `Shift+Tab`: move active dashboard focus group
@@ -147,8 +155,11 @@ ADD/EDIT mode:
   - `STAGE` (token or chip select): `backlog|todo|doing|blocked|review|done` (`doing` maps to `in_progress`)
 
 SEARCH mode:
-- Type to filter
-- `Enter` or `Esc`: return to list
+- Type one query for unified task+note search
+- Scope chips: `All` / `Tasks` / `Notes` (mouse-select)
+- `Tab`: toggle input/results focus
+- Input focus: `Enter` or `Esc` returns to list
+- Results focus: `Enter` opens selected result, `Esc` returns to list
 
 HELP mode:
 - `1`: open Backup Center

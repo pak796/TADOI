@@ -20,6 +20,7 @@ export type Mode = (typeof Mode)[keyof typeof Mode];
 export const FocusTarget = {
   TASK_LIST: "task_list",
   DETAILS_LINKS: "details_links",
+  DETAILS_NOTES: "details_notes",
   DETAILS_CHECKLIST: "details_checklist",
   DASHBOARD: "dashboard",
   BACKUP_CENTER: "backup_center",

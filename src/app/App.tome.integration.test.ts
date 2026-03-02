@@ -104,6 +104,7 @@ async function createSession(options: CreateSessionOptions = {}): Promise<AppSes
       initialData: makeInitialData(initialTasks),
       skipInitialSave,
       showLogo: false,
+      initialHintDisplayMode: hintDisplayMode,
       initialNotesSettings: {
         enabled: true,
         rootPath: notesRoot
@@ -216,6 +217,17 @@ async function pressArrowAndRender(
 ): Promise<string> {
   await Promise.resolve(mockInput.pressArrow(direction));
   await Bun.sleep(10);
+  await harness.renderOnce();
+  return harness.captureCharFrame();
+}
+
+async function typeTextAndRender(
+  mockInput: MockInput,
+  harness: RenderHarness,
+  text: string
+): Promise<string> {
+  await mockInput.typeText(text);
+  await Bun.sleep(20);
   await harness.renderOnce();
   return harness.captureCharFrame();
 }
@@ -359,20 +371,30 @@ async function openHelpSettingsFromList(
 ): Promise<void> {
   await pressKeyAndRender(mockInput, harness, "?");
   await waitForText(harness, "Getting Started");
+  const isHelpSettingsRootFrame = (frame: string) =>
+    frame.includes("Help / Settings") && !frame.includes("Help / Settings /");
   let lastFrame = "";
-  for (let step = 0; step < 16; step += 1) {
+  for (let step = 0; step < 24; step += 1) {
     await harness.renderOnce();
     let frame = harness.captureCharFrame();
     lastFrame = frame;
-    if (frame.includes("Help / Settings") && frame.includes("Theme mode:")) {
+    if (isHelpSettingsRootFrame(frame)) {
       return;
+    }
+    if (frame.includes("Help / Settings /")) {
+      await pressArrowAndRender(mockInput, harness, "left");
+      continue;
     }
     await pressArrowAndRender(mockInput, harness, "right");
     await harness.renderOnce();
     frame = harness.captureCharFrame();
     lastFrame = frame;
-    if (frame.includes("Help / Settings") && frame.includes("Theme mode:")) {
+    if (isHelpSettingsRootFrame(frame)) {
       return;
+    }
+    if (frame.includes("Help / Settings /")) {
+      await pressArrowAndRender(mockInput, harness, "left");
+      continue;
     }
     await pressArrowAndRender(mockInput, harness, "down");
   }
@@ -644,7 +666,7 @@ Body`
     try {
       await waitForText(harness, "TASK ONE");
       await pressKeyAndRender(mockInput, harness, "n");
-      const listFrame = await waitForText(harness, "Overflow.md");
+      const listFrame = await waitForText(harness, "OVERFLOW");
       expect(listFrame).toContain("+3");
 
       await pressEnterAndRender(mockInput, harness);
@@ -670,10 +692,11 @@ Body`
       await waitForText(harness, "TASK ONE");
       await pressKeyAndRender(mockInput, harness, "n");
       await waitForText(harness, "TOME: Terminal Oriented Markdown Environment");
-      const listFrame = await waitForText(harness, "d: DELETE TOME");
-      expect(listFrame).toContain("r/R: RENAME TOME");
-      expect(listFrame).toContain("i: REINDEX");
-      expect(listFrame).toContain("o: ROOT SETTINGS");
+      const listFrame = await waitForText(harness, "TOME ACTIONS");
+      expect(listFrame).toContain("RENAME[R]");
+      expect(listFrame).toContain("DEL[d]");
+      expect(listFrame).toContain("REINDEX[i]");
+      expect(listFrame).toContain("ROOT[o]");
 
       await pressKeyAndRender(mockInput, harness, "R");
       await waitForText(harness, "RENAME TOME NOTE");
@@ -784,7 +807,7 @@ Body`
     try {
       await waitForText(harness, "TASK ONE");
       await pressKeyAndRender(mockInput, harness, "n");
-      const frame = await waitForText(harness, "d: DELETE TOME");
+      const frame = await waitForText(harness, "Compact.md");
       expect(frame).not.toContain("TOME ACTIONS");
     } finally {
       await cleanupSession(session);
@@ -804,7 +827,7 @@ Body`
     try {
       await waitForText(harness, "TASK ONE");
       await pressKeyAndRender(mockInput, harness, "n");
-      const frame = await waitForText(harness, "d: DELETE TOME");
+      const frame = await waitForText(harness, "OnlyHints.md");
       expect(frame).not.toContain("TOME ACTIONS");
     } finally {
       await cleanupSession(session);
@@ -843,17 +866,156 @@ Body`
         (frame) => frame.includes("PATH: LinkedSource.md")
       );
 
-      await pressEscapeAndRender(mockInput, harness);
-      await waitForText(harness, "TOME: Terminal Oriented Markdown Environment");
-      await pressEnterAndRender(mockInput, harness);
-      await waitForText(harness, "PATH: Target.md");
-      await waitForFrame(harness, (frame) => frame.includes("UNLINKED MENTIONS ("));
-
       await clickTextUntil(
         harness,
-        "MentionSource.md",
-        (frame) => frame.includes("PATH: MentionSource.md")
+        "Target => Target.md",
+        (frame) => frame.includes("PATH: Target.md")
       );
+      await waitForFrame(harness, (frame) => frame.includes("UNLINKED MENTIONS ("));
+
+      try {
+        await clickTextUntil(
+          harness,
+          "MentionSource.md",
+          (frame) => frame.includes("PATH: MentionSource.md")
+        );
+      } catch {
+        await clickTextUntil(
+          harness,
+          "Mention Source",
+          (frame) => frame.includes("PATH: MentionSource.md")
+        );
+      }
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
+  it("creates and links a note from task details notes focus", async () => {
+    const session = await createSession({
+      seedNotes: {
+        "Seed.md": "# Seed\n\nExisting note."
+      }
+    });
+    const { harness, notesRoot } = session;
+    const { mockInput } = harness;
+
+    try {
+      await waitForText(harness, "TASK LIST");
+      await pressTabAndRender(mockInput, harness);
+      await pressArrowAndRender(mockInput, harness, "right");
+      await waitForText(harness, "NOTES CONTEXT (FOCUSED)");
+
+      await pressKeyAndRender(mockInput, harness, "c");
+      await waitForMarkdownCount(notesRoot, 2);
+      const linkedFrame = await waitForFrame(
+        harness,
+        (frame) => frame.includes("Linked:")
+      );
+      expect(linkedFrame).toContain("NOTES");
+      expect(linkedFrame).toContain("Linked:");
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
+  it("links an existing note from task details and returns to details after viewing", async () => {
+    const session = await createSession({
+      seedNotes: {
+        "Alpha.md": "---\nid: note-alpha\n---\n# Alpha\n\nLinked note."
+      }
+    });
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      await waitForText(harness, "TASK LIST");
+      await pressTabAndRender(mockInput, harness);
+      await pressArrowAndRender(mockInput, harness, "right");
+      await waitForText(harness, "NOTES CONTEXT (FOCUSED)");
+
+      await pressKeyAndRender(mockInput, harness, "l");
+      await waitForText(harness, "LINK NOTE PICKER");
+      await pressEnterAndRender(mockInput, harness);
+      await waitForFrame(
+        harness,
+        (frame) => frame.includes("Linked:") && frame.includes("Alpha.md") && frame.includes("note-alpha")
+      );
+
+      await pressEnterAndRender(mockInput, harness);
+      await waitForText(harness, "PATH: Alpha.md");
+      await pressEscapeAndRender(mockInput, harness);
+      const returned = await waitForFrame(
+        harness,
+        (frame) => frame.includes("MODE:  LIST") && frame.includes("FOCUS: NOTES")
+      );
+      expect(returned).toContain("Alpha.md");
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
+  it("opens unified search note results from results focus and preserves search return context", async () => {
+    const session = await createSession({
+      seedNotes: {
+        "Alpha.md": "# Alpha\n\nalpha-token in note body"
+      },
+      tasks: [makeTask("task-1", "Beta task")]
+    });
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      await waitForText(harness, "TASK LIST");
+      await pressKeyAndRender(mockInput, harness, "/");
+      await waitForText(harness, "UNIFIED SEARCH");
+      await typeTextAndRender(mockInput, harness, "alpha");
+      await waitForFrame(
+        harness,
+        (frame) => frame.includes("[NOTE]") && /Results:\s+[1-9]/.test(frame)
+      );
+      await pressTabAndRender(mockInput, harness);
+      await waitForFrame(harness, (frame) => frame.includes("results focus"));
+      await pressEnterAndRender(mockInput, harness);
+      await waitForText(harness, "PATH: Alpha.md");
+
+      await pressEscapeAndRender(mockInput, harness);
+      const searchReturn = await waitForFrame(
+        harness,
+        (frame) => frame.includes("MODE:  SEARCH") && frame.includes("UNIFIED SEARCH")
+      );
+      expect(searchReturn).toContain("Results:");
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
+  it("opens unified search task results from results focus", async () => {
+    const session = await createSession({
+      seedNotes: {
+        "Alpha.md": "# Alpha\n\nnote body"
+      },
+      tasks: [makeTask("task-1", "Beta task")]
+    });
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      await waitForText(harness, "TASK LIST");
+      await pressKeyAndRender(mockInput, harness, "/");
+      await waitForText(harness, "UNIFIED SEARCH");
+      await typeTextAndRender(mockInput, harness, "beta");
+      await waitForFrame(
+        harness,
+        (frame) => frame.includes("[TASK]") && /Results:\s+[1-9]/.test(frame)
+      );
+      await pressTabAndRender(mockInput, harness);
+      await pressEnterAndRender(mockInput, harness);
+      const listFrame = await waitForFrame(
+        harness,
+        (frame) => frame.includes("MODE:  LIST") && frame.includes("Beta task")
+      );
+      expect(listFrame).toContain("TASK LIST");
     } finally {
       await cleanupSession(session);
     }
@@ -873,6 +1035,8 @@ Body`
       await waitForMarkdownCount(notesRoot, DEFAULT_TOME_GUIDE_PATHS.length - 1);
 
       await openHelpSettingsFromList(mockInput, harness);
+      await focusHelpSettingsItem(mockInput, harness, "▶ TOME Notes");
+      await pressEnterAndRender(mockInput, harness);
       await focusHelpSettingsItem(mockInput, harness, "▶ Restore TOME Guides");
       await pressEnterAndRender(mockInput, harness);
 

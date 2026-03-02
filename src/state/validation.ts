@@ -30,6 +30,7 @@ const VALID_WORKFLOW_STAGES = new Set([
 const VALID_ANALYTICS_WINDOWS = new Set(["7d", "14d", "30d"]);
 const VALID_TASK_LINK_KINDS = new Set<TaskLinkKind>(["url", "path"]);
 const VALID_TASK_LINK_SOURCES = new Set<TaskLinkSource>(["manual", "calendar_import"]);
+const VALID_TASK_NOTE_REF_TYPES = new Set(["id", "filename"]);
 const VALID_REMINDER_KINDS = new Set(["none", "absolute", "before_due"]);
 const ASCII_CONTROL_CHARS_RE = /[\u0000-\u001F\u007F]/;
 
@@ -442,6 +443,23 @@ export function validatePersistedState(
               `task.links[].source must be manual|calendar_import when present (${String(task.id)})`
             );
           }
+        }
+      }
+    }
+
+    if (task.noteRef !== undefined) {
+      if (!isRecord(task.noteRef)) {
+        errors.push(`task.noteRef must be an object when present (${String(task.id)})`);
+      } else {
+        if (!VALID_TASK_NOTE_REF_TYPES.has(String(task.noteRef.type))) {
+          errors.push(`task.noteRef.type must be id|filename (${String(task.id)})`);
+        }
+        if (!isNonEmptyString(task.noteRef.value)) {
+          errors.push(`task.noteRef.value must be a non-empty string (${String(task.id)})`);
+        } else if (hasAsciiControlChars(task.noteRef.value)) {
+          errors.push(
+            `task.noteRef.value must not contain ASCII control characters (${String(task.id)})`
+          );
         }
       }
     }

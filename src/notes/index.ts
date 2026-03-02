@@ -142,6 +142,7 @@ export class NoteGraphRuntimeIndex {
   private tagToNotes = new Map<string, Set<NotePath>>();
   private outgoingNoteRefs = new Map<NotePath, NoteRef[]>();
   private outgoingTaskRefs = new Map<NotePath, TaskRef[]>();
+  private taskToNotes = new Map<string, Set<NotePath>>();
   private backlinks = new Map<NotePath, Set<NotePath>>();
   private warningsByPath = new Map<NotePath, NoteWarning[]>();
   private lastResolvedPaths: NotePath[] = [];
@@ -154,6 +155,7 @@ export class NoteGraphRuntimeIndex {
     this.tagToNotes.clear();
     this.outgoingNoteRefs.clear();
     this.outgoingTaskRefs.clear();
+    this.taskToNotes.clear();
     this.backlinks.clear();
     this.warningsByPath.clear();
     this.lastResolvedPaths = [];
@@ -212,6 +214,8 @@ export class NoteGraphRuntimeIndex {
     this.notesById = new Map();
     this.notesByTitle = new Map();
     this.tagToNotes = new Map();
+    this.outgoingTaskRefs = new Map();
+    this.taskToNotes = new Map();
 
     const duplicateIdWarnings = new Map<NotePath, NoteWarning[]>();
     const duplicateTitleWarnings = new Map<NotePath, NoteWarning[]>();
@@ -255,6 +259,14 @@ export class NoteGraphRuntimeIndex {
           this.tagToNotes.set(key, bucket);
         }
       }
+
+      const taskRefs = parsed.outgoingTaskRefs.map((ref) => ({ ...ref }));
+      this.outgoingTaskRefs.set(pathValue, taskRefs);
+      for (const ref of taskRefs) {
+        const notes = this.taskToNotes.get(ref.taskId) ?? new Set<NotePath>();
+        notes.add(pathValue);
+        this.taskToNotes.set(ref.taskId, notes);
+      }
     }
 
     for (const [id, paths] of idToPaths.entries()) {
@@ -292,7 +304,6 @@ export class NoteGraphRuntimeIndex {
         ...(duplicateTitleWarnings.get(pathValue) ?? [])
       ];
       this.warningsByPath.set(pathValue, mergedWarnings);
-      this.outgoingTaskRefs.set(pathValue, parsed.outgoingTaskRefs.map((ref) => ({ ...ref })));
     }
   }
 
@@ -425,11 +436,8 @@ export class NoteGraphRuntimeIndex {
   }
 
   linkedNotesForTask(taskId: string): NotePath[] {
-    const linked = Array.from(this.outgoingTaskRefs.entries())
-      .filter(([, refs]) => refs.some((ref) => ref.taskId === taskId))
-      .map(([pathValue]) => pathValue)
-      .sort((left, right) => left.localeCompare(right));
-    return linked;
+    const linked = this.taskToNotes.get(taskId) ?? new Set<NotePath>();
+    return Array.from(linked).sort((left, right) => left.localeCompare(right));
   }
 
   linkedTasksForNote(notePath: NotePath): string[] {

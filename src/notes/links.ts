@@ -3,6 +3,8 @@ import type { NotePath, NoteRef } from "./types";
 
 const WIKILINK_PATTERN = /\[\[([^\]]+?)\]\]/g;
 const MDLINK_PATTERN = /(!?)\[([^\]]+)\]\(([^)]+)\)/g;
+const TASK_WIKILINK_PREFIX = /^task:/i;
+const TASK_URL_PREFIX = /^tadoi:\/\/task\//i;
 
 export type NoteReferenceTarget = {
   rawTarget: string;
@@ -79,6 +81,10 @@ export function parseOutgoingNoteRefs(fromPath: NotePath, markdown: string): Not
     const value = wikiMatch[1]?.trim() ?? "";
     if (value.length > 0) {
       const [target, alias] = value.split("|", 2);
+      if (TASK_WIKILINK_PREFIX.test(target.trim())) {
+        wikiMatch = WIKILINK_PATTERN.exec(markdown);
+        continue;
+      }
       refs.push({
         from: fromPath,
         kind: "wikilink",
@@ -99,6 +105,10 @@ export function parseOutgoingNoteRefs(fromPath: NotePath, markdown: string): Not
     const text = mdMatch[2]?.trim() ?? "";
     const target = mdMatch[3]?.trim() ?? "";
     if (target.length > 0) {
+      if (TASK_URL_PREFIX.test(target)) {
+        mdMatch = MDLINK_PATTERN.exec(markdown);
+        continue;
+      }
       refs.push({
         from: fromPath,
         kind: "mdlink",

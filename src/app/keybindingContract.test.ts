@@ -35,7 +35,9 @@ describe("link keybinding contract", () => {
   it("keeps help copy and key router behavior aligned for details links", async () => {
     const appPath = fileURLToPath(new URL("./App.tsx", import.meta.url).href);
     const appSource = await fs.readFile(appPath, "utf8");
-    expect(appSource).toContain("Tab links focus: Enter/o open, c copy, l/e/d manage links");
+    expect(appSource).toContain(
+      "Tab links focus, Right notes focus, Right checklist focus"
+    );
 
     const detailsState = {
       ...initialUIState,

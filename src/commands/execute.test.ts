@@ -316,7 +316,7 @@ describe("executeCommand", () => {
     expect(result.actions).toEqual([]);
     expect(result.output).toEqual({
       kind: "ok",
-      text: 'add <title> [due:YYYY-MM-DD] [at:HH:MM] [#tag ...] [notes:"..."]'
+      text: 'add <title> [due:<date|mini>] [at:<time>] [#tag ...] [notes:"..."]'
     });
   });
 

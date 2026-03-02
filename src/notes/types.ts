@@ -29,6 +29,7 @@ export type NoteRef = {
 export type TaskRef = {
   from: NoteKey;
   taskId: string;
+  kind: "mention" | "wikilink" | "url";
 };
 
 export type NoteWarningCode =

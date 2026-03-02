@@ -25,6 +25,59 @@ describe("validatePersistedState", () => {
     expect(result.ok).toBe(true);
   });
 
+  it("validates optional task.noteRef shape", () => {
+    const valid = validatePersistedState(
+      {
+        ...BASE_STATE,
+        tasks: [
+          {
+            ...BASE_STATE.tasks[0],
+            noteRef: {
+              type: "filename",
+              value: "Task One.md"
+            }
+          }
+        ]
+      },
+      "strict"
+    );
+    expect(valid.ok).toBe(true);
+
+    const invalidType = validatePersistedState(
+      {
+        ...BASE_STATE,
+        tasks: [
+          {
+            ...BASE_STATE.tasks[0],
+            noteRef: {
+              type: "bad",
+              value: "x"
+            }
+          }
+        ]
+      },
+      "strict"
+    );
+    expect(invalidType.ok).toBe(false);
+
+    const invalidValue = validatePersistedState(
+      {
+        ...BASE_STATE,
+        tasks: [
+          {
+            ...BASE_STATE.tasks[0],
+            noteRef: {
+              type: "id",
+              value: " "
+            }
+          }
+        ]
+      },
+      "strict"
+    );
+    expect(invalidValue.ok).toBe(false);
+  });
+
   it("validates tagAliases normalization in strict mode", () => {
     const good = validatePersistedState(
       {

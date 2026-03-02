@@ -1061,7 +1061,7 @@ describe("App modal flow integration", () => {
       await waitForText(harness, "Existing task");
 
       await pressCtrlKeyAndRender(mockInput, harness, "f");
-      frame = await waitForText(harness, "Type to filter tasks and tags; Enter/Esc closes");
+      frame = await waitForText(harness, "UNIFIED SEARCH");
       expect(frame).toContain("FOCUS: SEARCH");
       await pressEscapeAndRender(mockInput, harness);
       await waitForText(harness, "FOCUS: LIST");
@@ -1085,7 +1085,7 @@ describe("App modal flow integration", () => {
       await pressCtrlKeyAndRender(mockInput, harness, "f");
       frame = harness.captureCharFrame();
       expect(frame).toContain("FOCUS: LIST");
-      expect(frame).not.toContain("Type to filter tasks and tags; Enter/Esc closes");
+      expect(frame).not.toContain("UNIFIED SEARCH");
     } finally {
       await cleanupSession(session);
     }
@@ -1378,7 +1378,7 @@ describe("App modal flow integration", () => {
       await pressKeyAndRender(mockInput, harness, "/");
       frame = await waitForText(harness, "SEARCH");
       expect(frame).toContain("KEYS");
-      expect(frame).toContain("type: filter");
+      expect(frame).toContain("type: query");
 
       await pressEscapeAndRender(mockInput, harness);
       await waitForText(harness, "Existing task");

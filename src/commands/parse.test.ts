@@ -1,6 +1,16 @@
 import { describe, expect, it } from "bun:test";
 import { parseCommand, tokenize } from "./parse";
 
+const MINI_OPTIONS_10 = {
+  now: Date.parse("2026-03-02T10:00:00-06:00"),
+  tz: "America/Chicago"
+} as const;
+
+const MINI_OPTIONS_16 = {
+  now: Date.parse("2026-03-02T16:00:00-06:00"),
+  tz: "America/Chicago"
+} as const;
+
 describe("tokenize", () => {
   it("tokenizes whitespace while keeping quoted segments together", () => {
     expect(tokenize('add "Buy milk" notes:"hello world" #errands')).toEqual([
@@ -120,6 +130,64 @@ describe("parseCommand", () => {
         dueDate: "2026-03-05",
         atTime: "09:00"
       }
+    });
+  });
+
+  it("parses mini due/time forms deterministically", () => {
+    expect(parseCommand('add "X" due:"tomorrow 3pm"', MINI_OPTIONS_10)).toEqual({
+      ok: true,
+      command: {
+        type: "add",
+        title: "X",
+        dueDate: "2026-03-03",
+        atTime: "15:00",
+        tags: []
+      }
+    });
+
+    expect(parseCommand("due id:abc 3pm", MINI_OPTIONS_10)).toEqual({
+      ok: true,
+      command: {
+        type: "due",
+        target: { type: "id", id: "abc" },
+        clear: false,
+        dueDate: "2026-03-02",
+        atTime: "15:00"
+      }
+    });
+
+    expect(parseCommand("due id:abc 3pm", MINI_OPTIONS_16)).toEqual({
+      ok: true,
+      command: {
+        type: "due",
+        target: { type: "id", id: "abc" },
+        clear: false,
+        dueDate: "2026-03-03",
+        atTime: "15:00"
+      }
+    });
+
+    expect(parseCommand("due id:abc mon 3pm", MINI_OPTIONS_16)).toEqual({
+      ok: true,
+      command: {
+        type: "due",
+        target: { type: "id", id: "abc" },
+        clear: false,
+        dueDate: "2026-03-09",
+        atTime: "15:00"
+      }
+    });
+  });
+
+  it("rejects unknown/ambiguous tokens in due parsing", () => {
+    expect(parseCommand("due id:abc next mon", MINI_OPTIONS_10)).toEqual({
+      ok: false,
+      error: 'Error: invalid due date "next mon"'
+    });
+
+    expect(parseCommand("due id:abc 3", MINI_OPTIONS_10)).toEqual({
+      ok: false,
+      error: 'Error: ambiguous time "3"'
     });
   });
 
@@ -428,6 +496,17 @@ describe("parseCommand", () => {
         clear: false,
         dueDate: "2026-03-05",
         atTime: "09:00"
+      }
+    });
+    expect(parseCommand("bulk due tomorrow 3pm", MINI_OPTIONS_10)).toEqual({
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "due",
+        target: { type: "marked" },
+        clear: false,
+        dueDate: "2026-03-03",
+        atTime: "15:00"
       }
     });
     expect(parseCommand("bulk:due:clear id:alpha id:beta")).toEqual({

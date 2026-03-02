@@ -80,8 +80,9 @@ const HELP_HINTS: HintSpec[] = [
 ];
 
 const SEARCH_HINTS: HintSpec[] = [
-  { key: "type", label: "filter" },
-  { key: "Enter", label: "close" },
+  { key: "type", label: "query" },
+  { key: "Tab", label: "results" },
+  { key: "Enter", label: "close/open" },
   { key: "Esc", label: "cancel" }
 ];
 

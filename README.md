@@ -323,7 +323,7 @@ Canonical router keys (audit-complete):
   - `[` / `]`: previous/next overdue task
   - `{` / `}`: previous/next due-today task
 - LIST mode task actions:
-  - `Tab` / `Shift+Tab`: toggle focus between task list and details links section
+  - `Tab` / `Shift+Tab`: toggle focus between task list and details section
   - `b` / `B`: toggle Dashboard mode (ignored in SEARCH/ADD/EDIT and save-view name prompt)
   - `a`: add task
   - `l`: add link/attachment to selected task
@@ -334,6 +334,7 @@ Canonical router keys (audit-complete):
   - `x`: skip selected recurring occurrence
   - `z`: snooze selected recurring occurrence by `+1 day`
   - `d`: delete selected task (regular modal: `y` / `n` / `Esc`; recurring occurrence modal: `y` this event, `f` this + future, `n` / `Esc` cancel)
+  - `u` / `U`: open Backup Center
   - `/`: open search
   - `f`: cycle status filter
   - `s`: cycle sort mode (`DUE` default keeps open tasks with due dates at the top)
@@ -342,11 +343,18 @@ Canonical router keys (audit-complete):
   - `t`: cycle tag filter across non-priority tags on all active (open) tasks
   - `p`: open boolean tag filter panel (`ALL` / `ANY` / `NONE`)
   - Details links focus (`Tab` from task list):
+    - `left` / `right`: switch `LINKS` <-> `NOTES` <-> `CHECKLIST`
     - `up`/`down` or `j`/`k`: select previous/next link
     - `Enter` / `o`: open selected link/path
     - `c`: copy selected link target
     - `l`: add link, `e`: edit link, `d`/`Backspace`: remove link
     - `Esc`: return focus to task list
+  - Details notes focus:
+    - `Enter` / `o`: open selected linked/referencing note
+    - `c`: create+link note for selected task
+    - `l` / `r`: link/relink from picker
+    - `u`: unlink selected task-note reference (two-step confirm)
+    - picker mode: `j`/`k` move, `Enter` confirm, `Esc` cancel
 - Dashboard mode:
   - `b` / `B`: return to list mode
   - `f`: cycle status filter (shared with list)
@@ -388,8 +396,10 @@ Canonical router keys (audit-complete):
     - End mode: `never|until|count`
     - Custom `RRULE` text and next-3-occurrence preview
 - Search mode:
-  - Type to filter task titles/tags
-  - `Enter` or `Esc`: return to list
+  - Unified search covers task titles/tags and note title/path/content
+  - `Tab` toggles input/results focus
+  - input focus: `Enter` or `Esc` returns to list
+  - results focus: `Enter` opens selected task/note, `Esc` returns to list
 - Help mode:
   - `1`: open Backup Center (`DATA: Backup / Export / Import`)
   - `up` / `down`: move selected Help section

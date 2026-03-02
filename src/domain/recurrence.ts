@@ -197,6 +197,7 @@ export function completeTaskWithRecurrence(
       hasExplicitTime: task.hasExplicitTime,
       tags: [...task.tags],
       ...(task.notes !== undefined ? { notes: task.notes } : {}),
+      ...(task.noteRef !== undefined ? { noteRef: { ...task.noteRef } } : {}),
       ...(reminder ? { reminder } : {}),
       recurrence
     };

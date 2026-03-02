@@ -256,6 +256,7 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
       initialThemeId={settingsResult.settings.themeId}
       initialLogoMode={settingsResult.settings.logoMode}
       initialFlashMode={settingsResult.settings.flashMode}
+      initialHintDisplayMode={settingsResult.settings.hintDisplayMode}
       initialCrtFxLite={settingsResult.settings.crtFxLite === true}
       initialCrtFxColor={settingsResult.settings.crtFxColor ?? DEFAULT_CRT_FX_LITE_COLOR}
       initialCrtFxPreset={settingsResult.settings.crtFxPreset ?? DEFAULT_CRT_FX_LITE_PRESET}

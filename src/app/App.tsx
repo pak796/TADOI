@@ -91,6 +91,7 @@ import { decideTaskLinkOpen } from "./linkOpenFlow";
 import { executeCommand } from "../commands/execute";
 import { parseCommand } from "../commands/parse";
 import type { CommandOutput } from "../commands/types";
+import { MINI_DEFAULT_TIMEZONE } from "../lib/datetime/mini_datetime_parser";
 import {
   addTagToTagFilterDraftBucket,
   resolveTagFilterDraftForApplyFromInput,
@@ -117,7 +118,6 @@ import {
   getDueInLabel,
   getVisibleTasks,
   initialState,
-  parseDueTime,
   reducer
 } from "../state/store";
 import {
@@ -243,6 +243,7 @@ import { isEditorMode } from "../ui/modeFocus";
 import {
   buildTaskSeededNoteContent,
   createNotesService,
+  deriveDefaultNoteTitleFromTaskTitle,
   isPathWithin
 } from "../notes/service";
 import { executeNoteCommand, parseNoteSearchQuery } from "../notes/commands";
@@ -252,6 +253,11 @@ import { noteTagMatchesFilter, parseNoteTags } from "../notes/tags";
 import { resolveNotesRootPath } from "../notes/storage";
 import type { NoteMention } from "../notes/mentions";
 import type { NotePath, NoteRef, NoteWarning } from "../notes/types";
+import { createTaskNoteRefFromNote, resolveTaskNoteRef } from "../notes/taskNoteRef";
+import {
+  runUnifiedSearch,
+  type UnifiedSearchScope
+} from "../search/unifiedSearch";
 import {
   clearEmptyNux,
   dismissEmptyNux,
@@ -381,6 +387,8 @@ const G_PREFIX_RELEASE_TIMEOUT_MS = 1500;
 const CORRUPTION_STARTUP_BANNER_AUTO_DISMISS_MS = 60_000;
 const NAV_BANNER_TIMEOUT_MS = 1800;
 const NOTES_REFRESH_INTERVAL_MS = 2500;
+const DETAILS_NOTE_PREVIEW_ROWS = 3;
+const SEARCH_RESULT_LIMIT = 60;
 const VIEW_NAME_MAX_LENGTH = 40;
 const DASHBOARD_TOP_TAG_MIN = 5;
 const DASHBOARD_TOP_TAG_MAX = 8;
@@ -839,8 +847,9 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
         description: "Cycle overdue and due-today tasks."
       },
       {
-        title: "Search: / open, Enter/Esc close",
-        description: "Type to filter by task title and tags while Search is open."
+        title: "Search: / open, Enter/Esc close input, Tab focuses results",
+        description:
+          "Unified search supports tasks + TOME notes; Enter opens only when results are focused."
       }
     ]
   },
@@ -849,7 +858,8 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
     items: [
       { title: "a add, l add link, e edit, E edit series, c copy" },
       { title: "Space toggle done/open, d delete" },
-      { title: "Tab links focus: Enter/o open, c copy, l/e/d manage links" },
+      { title: "Tab links focus, Right notes focus, Right checklist focus" },
+      { title: "Notes focus: Enter/o open, c create+link, l/r link, u unlink" },
       {
         title: "Recurring controls: x skip, z snooze",
         description: "Skip or push the selected recurring occurrence by one day."
@@ -1660,6 +1670,7 @@ type AppProps = {
   initialThemeId?: ThemeId;
   initialLogoMode?: LogoMode;
   initialFlashMode?: FlashMode;
+  initialHintDisplayMode?: HintDisplayMode;
   initialCrtFxLite?: boolean;
   initialCrtFxColor?: CrtFxLiteColor;
   initialCrtFxPreset?: CrtFxLitePreset;
@@ -1712,6 +1723,7 @@ export function App({
   initialThemeId = "default",
   initialLogoMode = DEFAULT_LOGO_MODE,
   initialFlashMode = "slow",
+  initialHintDisplayMode = DEFAULT_HINT_DISPLAY_MODE,
   initialCrtFxLite = DEFAULT_CRT_FX_LITE,
   initialCrtFxColor = DEFAULT_CRT_FX_COLOR,
   initialCrtFxPreset = DEFAULT_CRT_FX_PRESET,
@@ -1730,7 +1742,7 @@ export function App({
     themeId: initialThemeId,
     logoMode: initialLogoMode,
     flashMode: initialFlashMode,
-    hintDisplayMode: DEFAULT_HINT_DISPLAY_MODE,
+    hintDisplayMode: initialHintDisplayMode,
     showPrefixHintPopup: DEFAULT_SHOW_PREFIX_HINT_POPUP,
     crtFxLite: initialCrtFxLite,
     crtFxColor: initialCrtFxColor,
@@ -1805,6 +1817,15 @@ export function App({
     string | undefined
   >(undefined);
   const [checklistScrollOffset, setChecklistScrollOffset] = useState(0);
+  const [detailsNotesSelectionIndex, setDetailsNotesSelectionIndex] = useState(0);
+  const [detailsNotesLinkPickerOpen, setDetailsNotesLinkPickerOpen] = useState(false);
+  const [detailsNotesLinkPickerIndex, setDetailsNotesLinkPickerIndex] = useState(0);
+  const [detailsNotesUnlinkArmed, setDetailsNotesUnlinkArmed] = useState(false);
+  const [detailsNotesPreviewOffset, setDetailsNotesPreviewOffset] = useState(0);
+  const [searchScope, setSearchScope] = useState<UnifiedSearchScope>("all");
+  const [searchResultsFocused, setSearchResultsFocused] = useState(false);
+  const [searchSelectedResultIndex, setSearchSelectedResultIndex] = useState(0);
+  const searchQueryRef = useRef("");
   const [bulkMarkedTaskIds, setBulkMarkedTaskIds] = useState<string[]>([]);
   const [tagFilterDraft, setTagFilterDraft] = useState<TagFilter | undefined>(undefined);
   const [tagFilterInput, setTagFilterInput] = useState("");
@@ -1824,6 +1845,8 @@ export function App({
   const [notesSearchQuery, setNotesSearchQuery] = useState("");
   const [notesTagFilterQuery, setNotesTagFilterQuery] = useState("");
   const [notesOpenPath, setNotesOpenPath] = useState<NotePath | null>(null);
+  const [notesViewReturnToCapturedContext, setNotesViewReturnToCapturedContext] =
+    useState(false);
   const [notesViewContent, setNotesViewContent] = useState("");
   const [notesViewLines, setNotesViewLines] = useState<string[]>([]);
   const [notesOutgoingRefs, setNotesOutgoingRefs] = useState<NoteRef[]>([]);
@@ -2529,11 +2552,87 @@ export function App({
     }
   }, [filteredNotes.length, notesSelectedIndex]);
 
+  const notesIndexSnapshot = React.useMemo(
+    () => notesServiceRef.current?.getIndexSnapshot() ?? null,
+    [notesList, notesRuntime.ready]
+  );
   const selectedTaskLinkedNotes = React.useMemo(() => {
     const taskId = selectedPersistedTask?.id;
     if (!taskId) return [] as NotePath[];
     return notesServiceRef.current?.getLinkedNotesForTask(taskId) ?? [];
   }, [notesList, notesRuntime.ready, selectedPersistedTask?.id]);
+  const selectedTaskNoteResolution = React.useMemo(() => {
+    if (!selectedPersistedTask?.noteRef || !notesIndexSnapshot) {
+      return null;
+    }
+    return resolveTaskNoteRef(selectedPersistedTask.noteRef, notesIndexSnapshot);
+  }, [notesIndexSnapshot, selectedPersistedTask?.noteRef]);
+  const selectedTaskLinkedNotePath =
+    selectedTaskNoteResolution?.status === "resolved"
+      ? selectedTaskNoteResolution.notePath
+      : undefined;
+  const selectedTaskLinkedNoteId =
+    selectedTaskNoteResolution?.status === "resolved"
+      ? selectedTaskNoteResolution.note.id
+      : undefined;
+  const selectedTaskLinkedNotePreviewLines = React.useMemo(() => {
+    if (!selectedTaskLinkedNotePath) return [] as string[];
+    const parsed = notesServiceRef.current?.getParsedNote(selectedTaskLinkedNotePath);
+    if (!parsed) return [] as string[];
+    return renderMarkdownToTerminalLines(parsed.content);
+  }, [notesList, notesRuntime.ready, selectedTaskLinkedNotePath]);
+  const selectedTaskLinkedNoteReferencedTaskCount = React.useMemo(() => {
+    if (!selectedTaskLinkedNotePath) return 0;
+    return notesServiceRef.current?.getLinkedTasksForNote(selectedTaskLinkedNotePath).length ?? 0;
+  }, [notesList, notesRuntime.ready, selectedTaskLinkedNotePath]);
+  const selectedTaskNoteContextWarning = React.useMemo(() => {
+    if (!selectedPersistedTask?.noteRef || !selectedTaskNoteResolution) return undefined;
+    if (selectedTaskNoteResolution.status === "resolved") return undefined;
+    if (selectedTaskNoteResolution.status === "ambiguous") {
+      return `${selectedTaskNoteResolution.message}. Fix link with l/r.`;
+    }
+    return `${selectedTaskNoteResolution.message}. Fix link with l/r.`;
+  }, [selectedPersistedTask?.noteRef, selectedTaskNoteResolution]);
+  const detailsNotesSelectablePaths = React.useMemo(() => {
+    const next: NotePath[] = [];
+    if (selectedTaskLinkedNotePath) {
+      next.push(selectedTaskLinkedNotePath);
+    }
+    for (const notePath of selectedTaskLinkedNotes) {
+      if (!next.includes(notePath)) {
+        next.push(notePath);
+      }
+    }
+    return next;
+  }, [selectedTaskLinkedNotePath, selectedTaskLinkedNotes]);
+  const clampedDetailsNotesSelectionIndex =
+    detailsNotesSelectablePaths.length === 0
+      ? 0
+      : Math.max(0, Math.min(detailsNotesSelectionIndex, detailsNotesSelectablePaths.length - 1));
+  const selectedDetailsNotesPath =
+    detailsNotesSelectablePaths[clampedDetailsNotesSelectionIndex] ?? selectedTaskLinkedNotePath;
+  const notesLinkPickerEntries = React.useMemo(
+    () =>
+      notesList.map((note) => ({
+        path: note.path,
+        title: note.title,
+        id: notesServiceRef.current?.getParsedNote(note.path)?.note.id
+      })),
+    [notesList, notesRuntime.ready]
+  );
+  const clampedDetailsNotesLinkPickerIndex =
+    notesLinkPickerEntries.length === 0
+      ? 0
+      : Math.max(0, Math.min(detailsNotesLinkPickerIndex, notesLinkPickerEntries.length - 1));
+  const selectedTaskLinkedNotePreviewWindow = React.useMemo(() => {
+    const lines = selectedTaskLinkedNotePreviewLines;
+    if (lines.length <= DETAILS_NOTE_PREVIEW_ROWS) {
+      return lines;
+    }
+    const maxStart = Math.max(0, lines.length - DETAILS_NOTE_PREVIEW_ROWS);
+    const start = Math.max(0, Math.min(detailsNotesPreviewOffset, maxStart));
+    return lines.slice(start, start + DETAILS_NOTE_PREVIEW_ROWS);
+  }, [detailsNotesPreviewOffset, selectedTaskLinkedNotePreviewLines]);
   const retroFxMode = settingsState.retroFxMode;
   const isRetroFxActive = retroFxMode !== "off";
   const bottomBarHeight = 3;
@@ -2576,6 +2675,42 @@ export function App({
   const visibleLines = Math.max(1, listContentHeight);
   const visibleRows = Math.max(1, Math.floor(visibleLines / taskRowHeight));
   const notesPreviewLineLimit = Math.max(8, visibleLines - 10);
+  const searchQuery = state.filters.searchText ?? "";
+  searchQueryRef.current = searchQuery;
+  const searchableNotes = React.useMemo(
+    () =>
+      notesList.map((note) => ({
+        path: note.path,
+        title: note.title,
+        tags: note.tags,
+        content: notesServiceRef.current?.getParsedNote(note.path)?.content ?? ""
+      })),
+    [notesList, notesRuntime.ready]
+  );
+  const unifiedSearchResults = React.useMemo(
+    () =>
+      runUnifiedSearch({
+        query: searchQuery,
+        scope: searchScope,
+        tasks: state.tasks,
+        notes: searchableNotes
+      }).slice(0, SEARCH_RESULT_LIMIT),
+    [searchQuery, searchScope, state.tasks, searchableNotes]
+  );
+  const clampedSearchSelectedResultIndex =
+    unifiedSearchResults.length === 0
+      ? 0
+      : Math.max(0, Math.min(searchSelectedResultIndex, unifiedSearchResults.length - 1));
+  const selectedUnifiedSearchResult =
+    unifiedSearchResults[clampedSearchSelectedResultIndex];
+  const visibleUnifiedSearchResults = unifiedSearchResults.slice(
+    0,
+    Math.max(1, visibleRows - 4)
+  );
+  const unifiedSearchTaskCount = unifiedSearchResults.filter((result) => result.kind === "task")
+    .length;
+  const unifiedSearchNoteCount = unifiedSearchResults.filter((result) => result.kind === "note")
+    .length;
   const tomeActionRowGap = 1;
   const notesPaneAvailableWidth = Math.max(0, terminalWidth - layout.railWidth - 4);
   const notesListPaneMinWidth = Math.max(
@@ -3943,6 +4078,53 @@ export function App({
   ]);
 
   useEffect(() => {
+    if (detailsNotesSelectablePaths.length === 0) {
+      if (detailsNotesSelectionIndex !== 0) {
+        setDetailsNotesSelectionIndex(0);
+      }
+      return;
+    }
+    if (detailsNotesSelectionIndex > detailsNotesSelectablePaths.length - 1) {
+      setDetailsNotesSelectionIndex(detailsNotesSelectablePaths.length - 1);
+    }
+  }, [detailsNotesSelectablePaths.length, detailsNotesSelectionIndex]);
+
+  useEffect(() => {
+    if (notesLinkPickerEntries.length === 0) {
+      if (detailsNotesLinkPickerIndex !== 0) {
+        setDetailsNotesLinkPickerIndex(0);
+      }
+      return;
+    }
+    if (detailsNotesLinkPickerIndex > notesLinkPickerEntries.length - 1) {
+      setDetailsNotesLinkPickerIndex(notesLinkPickerEntries.length - 1);
+    }
+  }, [detailsNotesLinkPickerIndex, notesLinkPickerEntries.length]);
+
+  useEffect(() => {
+    setDetailsNotesSelectionIndex(0);
+    setDetailsNotesLinkPickerOpen(false);
+    setDetailsNotesLinkPickerIndex(0);
+    setDetailsNotesUnlinkArmed(false);
+    setDetailsNotesPreviewOffset(0);
+  }, [selectedPersistedTask?.id]);
+
+  useEffect(() => {
+    if (unifiedSearchResults.length === 0) {
+      if (searchSelectedResultIndex !== 0) {
+        setSearchSelectedResultIndex(0);
+      }
+      if (searchResultsFocused) {
+        setSearchResultsFocused(false);
+      }
+      return;
+    }
+    if (searchSelectedResultIndex > unifiedSearchResults.length - 1) {
+      setSearchSelectedResultIndex(unifiedSearchResults.length - 1);
+    }
+  }, [searchResultsFocused, searchSelectedResultIndex, unifiedSearchResults.length]);
+
+  useEffect(() => {
     if (!bulkActive) return;
     const visibleIds = new Set(visibleTaskRows.map((row) => row.id));
     setBulkMarkedTaskIds((previous) => {
@@ -5176,6 +5358,15 @@ export function App({
       "OPEN_EDIT_CHECKLIST_ITEM_MODAL",
       "OPEN_DELETE_CHECKLIST_ITEM_MODAL"
     ]);
+    const detailsNotesFocusOnly = new Set<KeyRouterAction["type"]>([
+      "DETAILS_NOTES_MOVE_SELECTION",
+      "DETAILS_NOTES_OPEN_SELECTED",
+      "DETAILS_NOTES_CREATE_LINKED",
+      "DETAILS_NOTES_OPEN_LINK_PICKER",
+      "DETAILS_NOTES_CONFIRM_LINK_PICKER",
+      "DETAILS_NOTES_CLOSE_LINK_PICKER",
+      "DETAILS_NOTES_UNLINK"
+    ]);
     const modalOnly = new Set<KeyRouterAction["type"]>([
       "MODAL_CONFIRM_TASK_LINK_DELETE",
       "MODAL_CONFIRM_TASK_LINK_OPEN_EXTERNAL",
@@ -5208,6 +5399,15 @@ export function App({
     ) {
       throw new Error(
         `Checklist action ${action.type} requires LIST+DETAILS_CHECKLIST or EDITOR_CHECKLIST (got ${uiState.mode}/${uiState.focus})`
+      );
+    }
+
+    if (
+      detailsNotesFocusOnly.has(action.type) &&
+      (uiState.mode !== Mode.LIST || uiState.focus !== FocusTarget.DETAILS_NOTES)
+    ) {
+      throw new Error(
+        `Notes action ${action.type} requires LIST + DETAILS_NOTES (got ${uiState.mode}/${uiState.focus})`
       );
     }
 
@@ -5461,6 +5661,18 @@ export function App({
       case "CLOSE_SEARCH":
         closeSearch();
         return;
+      case "SEARCH_SET_RESULTS_FOCUS":
+        if (action.focused && unifiedSearchResults.length === 0) {
+          return;
+        }
+        setSearchResultsFocused(action.focused);
+        return;
+      case "SEARCH_MOVE_RESULT_SELECTION":
+        moveSearchResultSelection(action.delta);
+        return;
+      case "SEARCH_OPEN_SELECTED_RESULT":
+        void openSelectedSearchResult();
+        return;
       case "MOVE_EDITOR_FOCUS":
         uiDispatch({
           type: "setFocus",
@@ -5469,7 +5681,33 @@ export function App({
         return;
       case "SET_LIST_FOCUS":
         clearPendingGPrefix();
+        if (action.focus !== FocusTarget.DETAILS_NOTES) {
+          setDetailsNotesLinkPickerOpen(false);
+          setDetailsNotesUnlinkArmed(false);
+        }
         uiDispatch({ type: "setFocus", focus: action.focus });
+        return;
+      case "DETAILS_NOTES_MOVE_SELECTION":
+        moveDetailsNotesSelection(action.delta);
+        return;
+      case "DETAILS_NOTES_OPEN_SELECTED":
+        openSelectedDetailsNote();
+        return;
+      case "DETAILS_NOTES_CREATE_LINKED":
+        void createAndLinkNoteForSelectedTask();
+        return;
+      case "DETAILS_NOTES_OPEN_LINK_PICKER":
+        openDetailsNoteLinkPicker();
+        return;
+      case "DETAILS_NOTES_CONFIRM_LINK_PICKER":
+        confirmDetailsNoteLinkPicker();
+        return;
+      case "DETAILS_NOTES_CLOSE_LINK_PICKER":
+        closeDetailsNoteLinkPicker();
+        setDetailsNotesUnlinkArmed(false);
+        return;
+      case "DETAILS_NOTES_UNLINK":
+        unlinkSelectedTaskNoteRef();
         return;
       case "CLEAR_BULK_MARKS":
         clearBulkMarks();
@@ -5930,12 +6168,16 @@ export function App({
   async function executeCommandBar() {
     const raw = commandTextRef.current;
     const trimmed = raw.trim();
+    const nowMs = Date.now();
     if (!trimmed) {
       setCommandOutput({ kind: "error", text: "Error: command is empty" });
       return;
     }
 
-    const parsed = parseCommand(trimmed);
+    const parsed = parseCommand(trimmed, {
+      now: nowMs,
+      tz: MINI_DEFAULT_TIMEZONE
+    });
     if (!parsed.ok) {
       setCommandOutput({ kind: "error", text: parsed.error });
       return;
@@ -6087,7 +6329,6 @@ export function App({
       return;
     }
 
-    const nowMs = Date.now();
     const visibleTasks = getVisibleTasks(state, nowMs);
 
     if (
@@ -6391,6 +6632,37 @@ export function App({
     }
 
     if (
+      uiState.mode === Mode.SEARCH &&
+      uiState.focus === FocusTarget.SEARCH_INPUT &&
+      !searchResultsFocused &&
+      !key.ctrl &&
+      !key.meta &&
+      !key.option
+    ) {
+      const typedChar =
+        keySequence.length === 1 && keySequence >= " "
+          ? keySequence
+          : keyName.length === 1 && keyName >= " "
+            ? keyName
+            : "";
+      if (keyName === "backspace" || keyName === "delete") {
+        const current = searchQueryRef.current;
+        updateSearch(current.slice(0, Math.max(0, current.length - 1)));
+        return;
+      }
+      if (
+        typedChar.length === 1 &&
+        keyName !== "return" &&
+        keyName !== "enter" &&
+        keyName !== "escape" &&
+        keyName !== "tab"
+      ) {
+        updateSearch(`${searchQueryRef.current}${typedChar}`);
+        return;
+      }
+    }
+
+    if (
       saveConflictBannerState &&
       !saveConflictRetryPending &&
       !key.ctrl &&
@@ -6480,6 +6752,9 @@ export function App({
         notesCreatePromptOpen,
         notesRenamePromptOpen,
         notesDeletePromptOpen,
+        detailsNotesLinkPickerOpen,
+        searchHasUnifiedResults: unifiedSearchResults.length > 0,
+        searchResultsFocused,
         resolvedKeymapAliases,
         helpPage: activeHelpPage
       }
@@ -7734,6 +8009,8 @@ export function App({
       dispatch({ type: "setEditor", editor: null });
       uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
     }
+    setSearchResultsFocused(false);
+    setSearchSelectedResultIndex(0);
     uiDispatch({ type: "setMode", mode: Mode.SEARCH });
     uiDispatch({ type: "setFocus", focus: FocusTarget.SEARCH_INPUT });
   }
@@ -7821,6 +8098,7 @@ export function App({
     setNotesRenameApplying(false);
     setNotesDeletePromptOpen(false);
     setNotesDeleteApplying(false);
+    setNotesViewReturnToCapturedContext(false);
     uiDispatch({ type: "setMode", mode: Mode.NOTES_LIST });
     uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_LIST });
     clampNotesSelectionToAvailable();
@@ -7898,6 +8176,7 @@ export function App({
     setNotesRenameApplying(false);
     setNotesDeletePromptOpen(false);
     setNotesDeleteApplying(false);
+    setNotesViewReturnToCapturedContext(false);
     await hydrateOpenNote(selected.path);
     uiDispatch({
       type: "captureReturnContext",
@@ -8217,6 +8496,22 @@ export function App({
     setNotesDeletePromptOpen(false);
     setNotesDeleteApplying(false);
     setNotesEditEscGuardArmed(false);
+    const returnMode = uiState.previousMode;
+    const returnFocus = uiState.previousFocus;
+    const returnToCapturedContext =
+      notesViewReturnToCapturedContext &&
+      returnMode !== Mode.NOTES_LIST &&
+      returnMode !== Mode.NOTES_VIEW &&
+      returnMode !== Mode.NOTES_EDIT &&
+      returnMode !== Mode.NOTES_SEARCH &&
+      returnMode !== Mode.NOTES_TAG_FILTER;
+    if (returnToCapturedContext) {
+      setNotesViewReturnToCapturedContext(false);
+      uiDispatch({ type: "setMode", mode: returnMode });
+      uiDispatch({ type: "setFocus", focus: returnFocus });
+      return;
+    }
+    setNotesViewReturnToCapturedContext(false);
     uiDispatch({ type: "setMode", mode: Mode.NOTES_LIST });
     uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_LIST });
     syncNotesSelectionToPath(notesOpenPath);
@@ -8256,6 +8551,7 @@ export function App({
       showShortNavigationBanner(`Unresolved link: ${selectedRef.toRaw}`);
       return;
     }
+    setNotesViewReturnToCapturedContext(false);
     await hydrateOpenNote(selectedRef.toResolved);
     uiDispatch({ type: "setMode", mode: Mode.NOTES_VIEW });
     uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_VIEW });
@@ -8270,8 +8566,218 @@ export function App({
       mode: uiState.mode,
       focus: uiState.focus
     });
+    setNotesViewReturnToCapturedContext(true);
     uiDispatch({ type: "setMode", mode: Mode.NOTES_VIEW });
     uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_VIEW });
+  }
+
+  function updateSelectedTaskNoteRef(noteRef: Task["noteRef"] | undefined): boolean {
+    if (!selectedPersistedTask) {
+      showShortNavigationBanner("No task selected");
+      return false;
+    }
+    const updated = applyTaskLinkMutation(selectedPersistedTask.id, (task) => ({
+      ...task,
+      noteRef
+    }));
+    return Boolean(updated);
+  }
+
+  async function createAndLinkNoteForSelectedTask(): Promise<void> {
+    const service = resolveNotesService();
+    if (!service || !selectedPersistedTask) return;
+    try {
+      const title = deriveDefaultNoteTitleFromTaskTitle(selectedPersistedTask.title);
+      const seeded = buildTaskSeededNoteContent(
+        selectedPersistedTask.id,
+        selectedPersistedTask.title
+      );
+      const created = await service.createNote(title, seeded);
+      setNotesList(service.listNotes());
+
+      const parsedNote = service.getParsedNote(created.path)?.note;
+      const noteRef = parsedNote
+        ? createTaskNoteRefFromNote(parsedNote)
+        : {
+            type: "filename" as const,
+            value: path.posix.basename(created.path)
+          };
+      const linked = updateSelectedTaskNoteRef(noteRef);
+      if (!linked) return;
+      setDetailsNotesLinkPickerOpen(false);
+      setDetailsNotesLinkPickerIndex(0);
+      setDetailsNotesSelectionIndex(0);
+      setDetailsNotesUnlinkArmed(false);
+      setDetailsNotesPreviewOffset(0);
+      showShortNavigationBanner(`Created and linked note: ${created.path}`);
+    } catch (error: unknown) {
+      showShortNavigationBanner(`Create note failed: ${normalizeErrorDetail(error)}`);
+    }
+  }
+
+  function openDetailsNoteLinkPicker(): void {
+    if (!selectedPersistedTask) {
+      showShortNavigationBanner("No task selected");
+      return;
+    }
+    if (!notesRuntime.enabled) {
+      showShortNavigationBanner(notesRuntime.error ?? "TOME is disabled in settings.");
+      return;
+    }
+    if (notesLinkPickerEntries.length === 0) {
+      showShortNavigationBanner("No notes available to link");
+      return;
+    }
+    const linkedIndex = selectedTaskLinkedNotePath
+      ? notesLinkPickerEntries.findIndex((entry) => entry.path === selectedTaskLinkedNotePath)
+      : -1;
+    setDetailsNotesLinkPickerIndex(linkedIndex >= 0 ? linkedIndex : 0);
+    setDetailsNotesLinkPickerOpen(true);
+    setDetailsNotesUnlinkArmed(false);
+  }
+
+  function closeDetailsNoteLinkPicker(): void {
+    setDetailsNotesLinkPickerOpen(false);
+  }
+
+  function selectDetailsNoteLinkPickerItem(notePath: NotePath): void {
+    const index = notesLinkPickerEntries.findIndex((entry) => entry.path === notePath);
+    if (index >= 0) {
+      setDetailsNotesLinkPickerIndex(index);
+    }
+  }
+
+  function confirmDetailsNoteLinkPicker(): void {
+    if (!selectedPersistedTask) {
+      showShortNavigationBanner("No task selected");
+      return;
+    }
+    if (notesLinkPickerEntries.length === 0) {
+      showShortNavigationBanner("No notes available to link");
+      return;
+    }
+    const selected = notesLinkPickerEntries[clampedDetailsNotesLinkPickerIndex];
+    if (!selected) {
+      showShortNavigationBanner("No note selected");
+      return;
+    }
+    const parsedNote = notesServiceRef.current?.getParsedNote(selected.path)?.note;
+    const noteRef = parsedNote
+      ? createTaskNoteRefFromNote(parsedNote)
+      : {
+          type: "filename" as const,
+          value: path.posix.basename(selected.path)
+        };
+    const linked = updateSelectedTaskNoteRef(noteRef);
+    if (!linked) return;
+    setDetailsNotesLinkPickerOpen(false);
+    setDetailsNotesSelectionIndex(0);
+    setDetailsNotesUnlinkArmed(false);
+    setDetailsNotesPreviewOffset(0);
+    showShortNavigationBanner(`Linked note: ${selected.path}`);
+  }
+
+  function unlinkSelectedTaskNoteRef(): void {
+    if (!selectedPersistedTask?.noteRef) {
+      showShortNavigationBanner("No linked note to unlink");
+      return;
+    }
+    if (!detailsNotesUnlinkArmed) {
+      setDetailsNotesUnlinkArmed(true);
+      showShortNavigationBanner("Press u again to unlink note");
+      return;
+    }
+    const unlinked = updateSelectedTaskNoteRef(undefined);
+    if (!unlinked) return;
+    setDetailsNotesUnlinkArmed(false);
+    setDetailsNotesPreviewOffset(0);
+    showShortNavigationBanner("Note unlinked");
+  }
+
+  function moveDetailsNotesSelection(delta: 1 | -1): void {
+    setDetailsNotesUnlinkArmed(false);
+    if (detailsNotesLinkPickerOpen) {
+      if (notesLinkPickerEntries.length === 0) {
+        setDetailsNotesLinkPickerIndex(0);
+        return;
+      }
+      setDetailsNotesLinkPickerIndex((current) => {
+        const safe = Math.max(0, Math.min(current, notesLinkPickerEntries.length - 1));
+        return (safe + delta + notesLinkPickerEntries.length) % notesLinkPickerEntries.length;
+      });
+      return;
+    }
+
+    if (detailsNotesSelectablePaths.length > 0) {
+      setDetailsNotesSelectionIndex((current) => {
+        const safe = Math.max(0, Math.min(current, detailsNotesSelectablePaths.length - 1));
+        return (safe + delta + detailsNotesSelectablePaths.length) % detailsNotesSelectablePaths.length;
+      });
+      return;
+    }
+
+    const maxStart = Math.max(
+      0,
+      selectedTaskLinkedNotePreviewLines.length - DETAILS_NOTE_PREVIEW_ROWS
+    );
+    if (maxStart > 0) {
+      setDetailsNotesPreviewOffset((current) =>
+        Math.max(0, Math.min(maxStart, current + delta))
+      );
+    }
+  }
+
+  function selectDetailsNotesPath(notePath: NotePath): void {
+    setDetailsNotesUnlinkArmed(false);
+    const index = detailsNotesSelectablePaths.findIndex((pathValue) => pathValue === notePath);
+    if (index >= 0) {
+      setDetailsNotesSelectionIndex(index);
+    }
+  }
+
+  function openSelectedDetailsNote(): void {
+    if (detailsNotesLinkPickerOpen) {
+      confirmDetailsNoteLinkPicker();
+      return;
+    }
+    const notePath = selectedDetailsNotesPath ?? selectedTaskLinkedNotePath;
+    if (!notePath) {
+      showShortNavigationBanner("No linked note selected");
+      return;
+    }
+    setDetailsNotesUnlinkArmed(false);
+    void openNoteFromTaskLinkedNotes(notePath);
+  }
+
+  function setUnifiedSearchScope(scope: UnifiedSearchScope): void {
+    setSearchScope(scope);
+    setSearchSelectedResultIndex(0);
+    setSearchResultsFocused(false);
+  }
+
+  function moveSearchResultSelection(delta: 1 | -1): void {
+    if (unifiedSearchResults.length === 0) {
+      setSearchSelectedResultIndex(0);
+      return;
+    }
+    setSearchSelectedResultIndex((current) => {
+      const safe = Math.max(0, Math.min(current, unifiedSearchResults.length - 1));
+      return (safe + delta + unifiedSearchResults.length) % unifiedSearchResults.length;
+    });
+  }
+
+  async function openSelectedSearchResult(): Promise<void> {
+    if (!selectedUnifiedSearchResult) {
+      showShortNavigationBanner("No search result selected");
+      return;
+    }
+    if (selectedUnifiedSearchResult.kind === "task") {
+      openListMode({ bypassUnsavedGuard: true });
+      dispatch({ type: "setSelected", id: selectedUnifiedSearchResult.taskId });
+      return;
+    }
+    setSearchResultsFocused(false);
+    await openNoteFromTaskLinkedNotes(selectedUnifiedSearchResult.notePath as NotePath);
   }
 
   function openTaskFromTomeLinkedTask(taskId: string): void {
@@ -8638,6 +9144,8 @@ export function App({
 
   function closeSearch() {
     clearPendingGPrefix();
+    setSearchResultsFocused(false);
+    setSearchSelectedResultIndex(0);
     uiDispatch({ type: "setMode", mode: Mode.LIST });
     uiDispatch({ type: "setFocus", focus: FocusTarget.TASK_LIST });
   }
@@ -11155,7 +11663,10 @@ export function App({
   }
 
   function updateSearch(value: string) {
+    searchQueryRef.current = value;
     dispatch({ type: "setFilters", filters: { searchText: value } });
+    setSearchResultsFocused(false);
+    setSearchSelectedResultIndex(0);
   }
 
   function handlePickTag(tag: string) {
@@ -11949,7 +12460,7 @@ export function App({
                     )}
                     <box style={{ marginTop: 1 }}>
                       <text style={{ color: theme.muted }}>
-                        LINKED TASKS ({String(notesLinkedTasks.length)})
+                        TASKS REFERENCED HERE ({String(notesLinkedTasks.length)})
                       </text>
                     </box>
                     {notesLinkedTasks.length === 0 ? (
@@ -12020,31 +12531,120 @@ export function App({
               >
                 <box style={{ flexDirection: "column", flexGrow: 1 }}>
                   {uiState.mode === Mode.SEARCH ? (
-                    <box style={{ flexDirection: "column", marginBottom: 1 }}>
-                      <text style={{ color: taskListTheme.muted }}>SEARCH</text>
+                    <box style={{ flexDirection: "column", flexGrow: 1 }}>
+                      <text style={{ color: taskListTheme.muted }}>UNIFIED SEARCH</text>
                       <input
-                        value={state.filters.searchText ?? ""}
+                        value={searchQuery}
                         onChange={updateSearch}
-                        focused={uiState.focus === FocusTarget.SEARCH_INPUT}
-                        placeholder="Type to filter tasks and tags; Enter/Esc closes"
+                        focused={false}
+                        placeholder="Type to search tasks + notes; Enter/Esc closes, Tab focuses results"
                         style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
                       />
+                      <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
+                        {([
+                          { scope: "all" as const, label: "All" },
+                          { scope: "tasks" as const, label: "Tasks" },
+                          { scope: "notes" as const, label: "Notes" }
+                        ]).map((chip) => {
+                          const selected = searchScope === chip.scope;
+                          return (
+                            <box
+                              key={`search-scope-${chip.scope}`}
+                              style={{
+                                backgroundColor: selected ? theme.accentBlue : theme.outline,
+                                paddingLeft: 1,
+                                paddingRight: 1
+                              }}
+                              onMouseDown={(event) => {
+                                if (event.button !== 0) return;
+                                setUnifiedSearchScope(chip.scope);
+                              }}
+                            >
+                              <text style={{ color: selected ? theme.bg : theme.text }}>
+                                {chip.label}
+                              </text>
+                            </box>
+                          );
+                        })}
+                      </box>
+                      <text style={{ color: taskListTheme.muted }}>
+                        {`Results: ${String(unifiedSearchResults.length)} (${String(unifiedSearchTaskCount)} tasks, ${String(unifiedSearchNoteCount)} notes)`}
+                        {searchResultsFocused ? " · results focus" : " · input focus"}
+                      </text>
+                      <box style={{ flexDirection: "column", marginTop: 1 }}>
+                        {visibleUnifiedSearchResults.length === 0 ? (
+                          <text style={{ color: theme.muted }}>(no matches)</text>
+                        ) : (
+                          (() => {
+                            let taskHeaderShown = false;
+                            let noteHeaderShown = false;
+                            const rows: React.ReactNode[] = [];
+                            for (let index = 0; index < visibleUnifiedSearchResults.length; index += 1) {
+                              const result = visibleUnifiedSearchResults[index];
+                              if (result.kind === "task" && !taskHeaderShown) {
+                                rows.push(
+                                  <text key="search-header-task" style={{ color: theme.muted }}>
+                                    TASKS
+                                  </text>
+                                );
+                                taskHeaderShown = true;
+                              }
+                              if (result.kind === "note" && !noteHeaderShown) {
+                                rows.push(
+                                  <text key="search-header-note" style={{ color: theme.muted }}>
+                                    NOTES
+                                  </text>
+                                );
+                                noteHeaderShown = true;
+                              }
+                              const selected = index === clampedSearchSelectedResultIndex;
+                              rows.push(
+                                <box
+                                  key={`search-result-${result.kind}-${result.kind === "task" ? result.taskId : result.notePath}`}
+                                  style={{
+                                    flexDirection: "column",
+                                    backgroundColor: selected ? theme.accentBlue : "transparent",
+                                    paddingLeft: 1,
+                                    paddingRight: 1
+                                  }}
+                                  onMouseDown={(event) => {
+                                    if (event.button !== 0) return;
+                                    setSearchSelectedResultIndex(index);
+                                    if (selected) {
+                                      void openSelectedSearchResult();
+                                    }
+                                  }}
+                                >
+                                  <text style={{ color: selected ? theme.bg : theme.text }}>
+                                    {`${result.kind === "task" ? "[TASK]" : "[NOTE]"} ${result.title}`}
+                                  </text>
+                                  <text style={{ color: selected ? theme.bg : theme.muted }}>
+                                    {result.secondary}
+                                  </text>
+                                </box>
+                              );
+                            }
+                            return rows;
+                          })()
+                        )}
+                      </box>
                     </box>
-                  ) : null}
-                  <TaskList
-                    tasks={visibleTaskRows}
-                    markedTaskIds={bulkMarkedTaskIdSet}
-                    selectedId={state.selectedId}
-                    now={now}
-                    pulseOn={pulseOn}
-                    fastPulseOn={fastPulseOn}
-                    flashMode={settingsState.flashMode}
-                    onTaskRowClick={handleTaskRowClick}
-                    onWheelScroll={handleTaskListWheelScroll}
-                    scrollOffset={uiState.scrollOffset}
-                    visibleRows={visibleRows}
-                    visibleLines={visibleLines}
-                  />
+                  ) : (
+                    <TaskList
+                      tasks={visibleTaskRows}
+                      markedTaskIds={bulkMarkedTaskIdSet}
+                      selectedId={state.selectedId}
+                      now={now}
+                      pulseOn={pulseOn}
+                      fastPulseOn={fastPulseOn}
+                      flashMode={settingsState.flashMode}
+                      onTaskRowClick={handleTaskRowClick}
+                      onWheelScroll={handleTaskListWheelScroll}
+                      scrollOffset={uiState.scrollOffset}
+                      visibleRows={visibleRows}
+                      visibleLines={visibleLines}
+                    />
+                  )}
                 </box>
               </box>
             </box>
@@ -12119,16 +12719,31 @@ export function App({
                     selectedLinkId={selectedLinkId}
                     linksFocused={uiState.focus === FocusTarget.DETAILS_LINKS}
                     selectedChecklistItemId={selectedChecklistItemId}
+                    notesFocused={uiState.focus === FocusTarget.DETAILS_NOTES}
                     checklistFocused={uiState.focus === FocusTarget.DETAILS_CHECKLIST}
                     checklistWindowStart={checklistScrollOffset}
                     checklistWindowSize={checklistViewportRows}
                     linkedNotes={selectedTaskLinkedNotes}
+                    linkedTaskNotePath={selectedTaskLinkedNotePath}
+                    linkedTaskNoteId={selectedTaskLinkedNoteId}
+                    linkedTaskNotePreviewLines={selectedTaskLinkedNotePreviewWindow}
+                    notesReferencingTask={selectedTaskLinkedNotes}
+                    selectedNotesReferencingPath={selectedDetailsNotesPath}
+                    linkedTaskReferencedTaskCount={selectedTaskLinkedNoteReferencedTaskCount}
+                    noteContextWarning={selectedTaskNoteContextWarning}
+                    noteLinkPickerOpen={detailsNotesLinkPickerOpen}
+                    noteLinkPickerItems={notesLinkPickerEntries.map((entry, index) => ({
+                      ...entry,
+                      selected: index === clampedDetailsNotesLinkPickerIndex
+                    }))}
                     onSelectLink={selectDetailsLink}
                     onOpenLink={openDetailsLink}
                     onSelectChecklistItem={setSelectedChecklistItemId}
                     onOpenLinkedNote={(notePath) => {
                       void openNoteFromTaskLinkedNotes(notePath);
                     }}
+                    onSelectNotesReferencing={selectDetailsNotesPath}
+                    onSelectNoteLinkPickerItem={selectDetailsNoteLinkPickerItem}
                   />
                 )}
               </box>

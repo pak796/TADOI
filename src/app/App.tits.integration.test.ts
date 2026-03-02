@@ -640,6 +640,7 @@ describe("App TITS integration", () => {
       await waitForText(harness, "DAILY SERIES");
       await pressTabAndRender(mockInput, harness);
       await pressArrowAndRender(mockInput, harness, "right");
+      await pressArrowAndRender(mockInput, harness, "right");
       await waitForText(harness, "CHECKLIST");
       await pressKeyAndRender(mockInput, harness, " ");
       await waitForText(harness, "CL 1/1");

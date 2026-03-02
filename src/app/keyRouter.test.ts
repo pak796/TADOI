@@ -681,16 +681,27 @@ describe("handleKey", () => {
       mode: Mode.LIST,
       focus: FocusTarget.DETAILS_LINKS
     };
+    const notesState = {
+      ...initialUIState,
+      mode: Mode.LIST,
+      focus: FocusTarget.DETAILS_NOTES
+    };
     const checklistState = {
       ...initialUIState,
       mode: Mode.LIST,
       focus: FocusTarget.DETAILS_CHECKLIST
     };
     expect(run({ name: "right" }, { uiState: linksState })).toEqual([
+      { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.DETAILS_NOTES }
+    ]);
+    expect(run({ name: "right" }, { uiState: notesState })).toEqual([
       { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.DETAILS_CHECKLIST }
     ]);
-    expect(run({ name: "left" }, { uiState: checklistState })).toEqual([
+    expect(run({ name: "left" }, { uiState: notesState })).toEqual([
       { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.DETAILS_LINKS }
+    ]);
+    expect(run({ name: "left" }, { uiState: checklistState })).toEqual([
+      { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.DETAILS_NOTES }
     ]);
   });
 
@@ -756,6 +767,42 @@ describe("handleKey", () => {
       { scope: "domain", type: "OPEN_DELETE_CHECKLIST_ITEM_MODAL" }
     ]);
     expect(run({ name: "enter" }, { uiState: checklistState })).toEqual([]);
+  });
+
+  it("routes details-notes actions and picker semantics", () => {
+    const notesState = {
+      ...initialUIState,
+      mode: Mode.LIST,
+      focus: FocusTarget.DETAILS_NOTES
+    };
+    expect(run({ name: "j", sequence: "j" }, { uiState: notesState })).toEqual([
+      { scope: "ui", type: "DETAILS_NOTES_MOVE_SELECTION", delta: 1 }
+    ]);
+    expect(run({ name: "k", sequence: "k" }, { uiState: notesState })).toEqual([
+      { scope: "ui", type: "DETAILS_NOTES_MOVE_SELECTION", delta: -1 }
+    ]);
+    expect(run({ name: "enter" }, { uiState: notesState })).toEqual([
+      { scope: "ui", type: "DETAILS_NOTES_OPEN_SELECTED" }
+    ]);
+    expect(run({ name: "c", sequence: "c" }, { uiState: notesState })).toEqual([
+      { scope: "ui", type: "DETAILS_NOTES_CREATE_LINKED" }
+    ]);
+    expect(run({ name: "l", sequence: "l" }, { uiState: notesState })).toEqual([
+      { scope: "ui", type: "DETAILS_NOTES_OPEN_LINK_PICKER" }
+    ]);
+    expect(run({ name: "u", sequence: "u" }, { uiState: notesState })).toEqual([
+      { scope: "ui", type: "DETAILS_NOTES_UNLINK" }
+    ]);
+
+    expect(
+      run(
+        { name: "enter" },
+        {
+          uiState: notesState,
+          detailsNotesLinkPickerOpen: true
+        }
+      )
+    ).toEqual([{ scope: "ui", type: "DETAILS_NOTES_CONFIRM_LINK_PICKER" }]);
   });
 
   it("routes jump and paging keys in list mode", () => {
@@ -997,6 +1044,44 @@ describe("handleKey", () => {
     expect(run({ name: "enter" }, { uiState: searchState })).toEqual([
       { scope: "ui", type: "CLOSE_SEARCH" }
     ]);
+  });
+
+  it("routes search result focus actions without leaking list movement", () => {
+    const searchState = {
+      ...initialUIState,
+      mode: Mode.SEARCH,
+      focus: FocusTarget.SEARCH_INPUT
+    };
+    expect(
+      run(
+        { name: "tab" },
+        {
+          uiState: searchState,
+          searchHasUnifiedResults: true,
+          searchResultsFocused: false
+        }
+      )
+    ).toEqual([{ scope: "ui", type: "SEARCH_SET_RESULTS_FOCUS", focused: true }]);
+    expect(
+      run(
+        { name: "j", sequence: "j" },
+        {
+          uiState: searchState,
+          searchHasUnifiedResults: true,
+          searchResultsFocused: true
+        }
+      )
+    ).toEqual([{ scope: "ui", type: "SEARCH_MOVE_RESULT_SELECTION", delta: 1 }]);
+    expect(
+      run(
+        { name: "enter" },
+        {
+          uiState: searchState,
+          searchHasUnifiedResults: true,
+          searchResultsFocused: true
+        }
+      )
+    ).toEqual([{ scope: "ui", type: "SEARCH_OPEN_SELECTED_RESULT" }]);
   });
 
   it("routes dashboard mode keys and blocks list navigation leakage", () => {

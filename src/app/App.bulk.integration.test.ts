@@ -268,7 +268,7 @@ describe("App bulk integration", () => {
       await waitForText(harness, "BULK MARKED: 1 · ` bulk ... · Esc clear");
 
       await pressKeyAndRender(mockInput, harness, "/");
-      await waitForText(harness, "Type to filter tasks and tags; Enter/Esc closes");
+      await waitForText(harness, "UNIFIED SEARCH");
       await typeTextAndRender(mockInput, harness, "beta");
       await pressEnterAndRender(mockInput, harness);
 

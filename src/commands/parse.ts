@@ -5,7 +5,20 @@ import type {
   RecurEvery,
   ParseCommandResult
 } from "./types";
-import { parseStrictLocalDate, parseStrictTime } from "./validate";
+import {
+  MINI_DEFAULT_TIMEZONE,
+  canonicalizeDueAtInput
+} from "../lib/datetime/due_at_canonicalizer";
+
+export type ParseCommandOptions = {
+  now?: number;
+  tz?: string;
+};
+
+type ParseContext = {
+  now: number;
+  tz: string;
+};
 
 function error(message: string): ParseCommandResult {
   return { ok: false, error: message };
@@ -74,7 +87,11 @@ function parseBulkTarget(tokens: string[]): { target: BulkTarget; rest: string[]
   };
 }
 
-function parseAddCommand(tokens: string[], firstTokenQuoted: boolean): ParseCommandResult {
+function parseAddCommand(
+  tokens: string[],
+  firstTokenQuoted: boolean,
+  context: ParseContext
+): ParseCommandResult {
   if (tokens.length === 0) {
     return error("Error: add requires a title");
   }
@@ -119,9 +136,6 @@ function parseAddCommand(tokens: string[], firstTokenQuoted: boolean): ParseComm
       }
       const value = token.slice(4).trim();
       if (!value) return error("Error: due: value is required");
-      if (!parseStrictLocalDate(value)) {
-        return error(`Error: invalid due date "${value}"`);
-      }
       dueDate = value;
       continue;
     }
@@ -131,9 +145,6 @@ function parseAddCommand(tokens: string[], firstTokenQuoted: boolean): ParseComm
       }
       const value = token.slice(3).trim();
       if (!value) return error("Error: at: value is required");
-      if (!parseStrictTime(value)) {
-        return error(`Error: invalid time "${value}"`);
-      }
       atTime = value;
       continue;
     }
@@ -150,6 +161,18 @@ function parseAddCommand(tokens: string[], firstTokenQuoted: boolean): ParseComm
 
   if (atTime && !dueDate) {
     return error("Error: at: requires due:");
+  }
+
+  if (dueDate) {
+    const canonicalized = canonicalizeDueAtInput(dueDate, atTime, {
+      now: context.now,
+      tz: context.tz
+    });
+    if (!canonicalized.ok) {
+      return error(canonicalized.message);
+    }
+    dueDate = canonicalized.dueDate;
+    atTime = canonicalized.atTime;
   }
 
   return {
@@ -186,7 +209,7 @@ function parseDoneCommand(tokens: string[]): ParseCommandResult {
   };
 }
 
-function parseDueCommand(tokens: string[]): ParseCommandResult {
+function parseDueCommand(tokens: string[], context: ParseContext): ParseCommandResult {
   if (tokens.length < 2) {
     return error("Error: due requires target and date/clear");
   }
@@ -196,8 +219,9 @@ function parseDueCommand(tokens: string[]): ParseCommandResult {
     return error('Error: due target must be "@selected" or "id:<task-id>"');
   }
 
-  const second = tokens[1];
-  if (second === "clear") {
+  const dueTokens = tokens.slice(1);
+  const firstDueToken = dueTokens[0] ?? "";
+  if (firstDueToken === "clear") {
     if (tokens.length !== 2) {
       return error("Error: due clear takes no extra tokens");
     }
@@ -207,37 +231,31 @@ function parseDueCommand(tokens: string[]): ParseCommandResult {
     };
   }
 
-  if (!parseStrictLocalDate(second)) {
-    return error(`Error: invalid due date "${second}"`);
+  let atInput: string | undefined;
+  if ((dueTokens[dueTokens.length - 1] ?? "").startsWith("at:")) {
+    const atToken = dueTokens.pop() ?? "";
+    const parsedAt = atToken.slice(3).trim();
+    if (!parsedAt) {
+      return error("Error: at: value is required");
+    }
+    atInput = parsedAt;
   }
 
-  if (tokens.length === 2) {
-    return {
-      ok: true,
-      command: {
-        type: "due",
-        target,
-        clear: false,
-        dueDate: second
-      }
-    };
+  if (dueTokens.length === 0) {
+    return error("Error: due requires target and date/clear");
   }
 
-  if (tokens.length > 3) {
+  if (dueTokens.length > 2) {
     return error("Error: due accepts only one optional at: token");
   }
 
-  const timeToken = tokens[2];
-  if (!timeToken.startsWith("at:")) {
-    return error('Error: due optional token must be "at:HH:MM"');
-  }
-
-  const atTime = timeToken.slice(3).trim();
-  if (!atTime) {
-    return error("Error: at: value is required");
-  }
-  if (!parseStrictTime(atTime)) {
-    return error(`Error: invalid time "${atTime}"`);
+  const dueInput = dueTokens.join(" ").trim();
+  const canonicalized = canonicalizeDueAtInput(dueInput, atInput, {
+    now: context.now,
+    tz: context.tz
+  });
+  if (!canonicalized.ok) {
+    return error(canonicalized.message);
   }
 
   return {
@@ -246,8 +264,8 @@ function parseDueCommand(tokens: string[]): ParseCommandResult {
       type: "due",
       target,
       clear: false,
-      dueDate: second,
-      atTime
+      dueDate: canonicalized.dueDate,
+      ...(canonicalized.atTime ? { atTime: canonicalized.atTime } : {})
     }
   };
 }
@@ -345,7 +363,8 @@ function parseCheckCommand(
 
 function parseBulkCommand(
   operationToken: string | undefined,
-  tokens: string[]
+  tokens: string[],
+  context: ParseContext
 ): ParseCommandResult {
   const operationRaw = operationToken?.toLowerCase().trim();
   if (!operationRaw) {
@@ -447,32 +466,34 @@ function parseBulkCommand(
         }
       };
     }
-    const dueDate = rest[0];
-    if (!parseStrictLocalDate(dueDate)) {
-      return error(`Error: invalid due date "${dueDate}"`);
+    const dueTokens = [...rest];
+    let atInput: string | undefined;
+    if ((dueTokens[dueTokens.length - 1] ?? "").startsWith("at:")) {
+      const atToken = dueTokens.pop() ?? "";
+      const parsedAt = atToken.slice(3).trim();
+      if (!parsedAt) {
+        return error("Error: at: value is required");
+      }
+      atInput = parsedAt;
     }
-    if (rest.length === 1) {
-      return {
-        ok: true,
-        command: {
-          type: "bulk",
-          operation: "due",
-          target,
-          clear: false,
-          dueDate
-        }
-      };
+
+    if (dueTokens.length === 0) {
+      return error("Error: bulk due requires date or clear");
     }
-    if (rest.length !== 2 || !rest[1].startsWith("at:")) {
-      return error('Error: bulk due optional token must be "at:HH:MM"');
+
+    if (dueTokens.length > 2) {
+      return error("Error: bulk due accepts only one optional at: token");
     }
-    const atTime = rest[1].slice(3).trim();
-    if (!atTime) {
-      return error("Error: at: value is required");
+
+    const dueInput = dueTokens.join(" ").trim();
+    const canonicalized = canonicalizeDueAtInput(dueInput, atInput, {
+      now: context.now,
+      tz: context.tz
+    });
+    if (!canonicalized.ok) {
+      return error(canonicalized.message);
     }
-    if (!parseStrictTime(atTime)) {
-      return error(`Error: invalid time "${atTime}"`);
-    }
+
     return {
       ok: true,
       command: {
@@ -480,8 +501,8 @@ function parseBulkCommand(
         operation: "due",
         target,
         clear: false,
-        dueDate,
-        atTime
+        dueDate: canonicalized.dueDate,
+        ...(canonicalized.atTime ? { atTime: canonicalized.atTime } : {})
       }
     };
   }
@@ -980,7 +1001,10 @@ export function tokenize(input: string): string[] {
   return tokens;
 }
 
-export function parseCommand(input: string): ParseCommandResult {
+export function parseCommand(
+  input: string,
+  options: ParseCommandOptions = {}
+): ParseCommandResult {
   const trimmed = input.trim();
   if (!trimmed) return error("Error: command is empty");
 
@@ -997,15 +1021,19 @@ export function parseCommand(input: string): ParseCommandResult {
   const args = tokens.slice(1);
   const remainder = trimmed.slice(commandToken.length).trimStart();
   const firstTokenQuoted = remainder.startsWith('"');
+  const context: ParseContext = {
+    now: options.now ?? Date.now(),
+    tz: options.tz ?? MINI_DEFAULT_TIMEZONE
+  };
 
   if (commandName === "add") {
-    return parseAddCommand(args, firstTokenQuoted);
+    return parseAddCommand(args, firstTokenQuoted, context);
   }
   if (commandName === "done") {
     return parseDoneCommand(args);
   }
   if (commandName === "due") {
-    return parseDueCommand(args);
+    return parseDueCommand(args, context);
   }
   if (commandName === "help") {
     return parseHelpCommand(args);
@@ -1020,10 +1048,10 @@ export function parseCommand(input: string): ParseCommandResult {
     return parseCheckCommand(commandName.slice("check:".length), args);
   }
   if (commandName === "bulk") {
-    return parseBulkCommand(args[0], args.slice(1));
+    return parseBulkCommand(args[0], args.slice(1), context);
   }
   if (commandName.startsWith("bulk:")) {
-    return parseBulkCommand(commandName.slice("bulk:".length), args);
+    return parseBulkCommand(commandName.slice("bulk:".length), args, context);
   }
   if (commandName === "note") {
     return parseNoteCommand(args);

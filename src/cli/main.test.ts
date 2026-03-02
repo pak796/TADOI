@@ -350,6 +350,62 @@ describe("runTitsCommandCliWithDeps", () => {
     expect(saved[0]?.tasks[0]?.hasExplicitTime).toBe(true);
   });
 
+  it("supports due selector mode with mini datetime tokens", async () => {
+    const { deps, logs, errors, saved } = createDeps({
+      loadedData: createLoadedData({
+        tasks: [
+          {
+            id: "task-open-work",
+            title: "Work task",
+            status: "open",
+            createdAt: 1,
+            updatedAt: 1,
+            tags: ["work"]
+          }
+        ]
+      })
+    });
+
+    const result = await runTitsCommandCliWithDeps(
+      ["due", "+work", "tomorrow", "3pm"],
+      deps
+    );
+    expect(result).toEqual({ handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS });
+    expect(errors).toHaveLength(0);
+    expect(logs).toEqual(["Bulk due set (1 tasks)"]);
+    expect(saved).toHaveLength(1);
+    expect(saved[0]?.tasks[0]?.dueAt).toBe(new Date(2026, 1, 21, 15, 0).getTime());
+    expect(saved[0]?.tasks[0]?.hasExplicitTime).toBe(true);
+  });
+
+  it("supports due selector mode with mini at: tokens", async () => {
+    const { deps, logs, errors, saved } = createDeps({
+      loadedData: createLoadedData({
+        tasks: [
+          {
+            id: "task-open-work",
+            title: "Work task",
+            status: "open",
+            createdAt: 1,
+            updatedAt: 1,
+            tags: ["work"]
+          }
+        ]
+      })
+    });
+
+    const result = await runTitsCommandCliWithDeps(
+      ["due", "+work", "tomorrow", "at:3pm"],
+      deps
+    );
+    expect(result).toEqual({ handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS });
+    expect(errors).toHaveLength(0);
+    expect(logs).toEqual(["Bulk due set (1 tasks)"]);
+    expect(saved).toHaveLength(1);
+    expect(saved[0]?.tasks[0]?.dueAt).toBe(new Date(2026, 1, 21, 15, 0).getTime());
+    expect(saved[0]?.tasks[0]?.hasExplicitTime).toBe(true);
+  });
+
   it("supports due selector mode clear with selector due filter", async () => {
     const { deps, logs, errors, saved } = createDeps({
       loadedData: createLoadedData({
@@ -424,7 +480,7 @@ describe("runTitsCommandCliWithDeps", () => {
 
     expect(result).toEqual({ handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS });
     expect(logs).toEqual([
-      "Commands: add, done, due, recur, check, bulk, note, help. Try: help note"
+      "Commands: add, done, due, recur, check, bulk, note, tag, help. Try: help tag"
     ]);
     expect(saved).toHaveLength(0);
   });

@@ -33,6 +33,9 @@ export type KeyRouterContext = {
   notesCreatePromptOpen?: boolean;
   notesRenamePromptOpen?: boolean;
   notesDeletePromptOpen?: boolean;
+  detailsNotesLinkPickerOpen?: boolean;
+  searchHasUnifiedResults?: boolean;
+  searchResultsFocused?: boolean;
   helpPage?:
     | "help"
     | "settings"
@@ -101,6 +104,9 @@ export type KeyRouterAction =
   | { scope: "ui"; type: "CLOSE_HELP" }
   | { scope: "ui"; type: "OPEN_SEARCH" }
   | { scope: "ui"; type: "CLOSE_SEARCH" }
+  | { scope: "ui"; type: "SEARCH_SET_RESULTS_FOCUS"; focused: boolean }
+  | { scope: "ui"; type: "SEARCH_MOVE_RESULT_SELECTION"; delta: 1 | -1 }
+  | { scope: "ui"; type: "SEARCH_OPEN_SELECTED_RESULT" }
   | { scope: "ui"; type: "BACKUP_PRIMARY" }
   | { scope: "ui"; type: "BACKUP_BACK" }
   | { scope: "ui"; type: "BACKUP_MOVE_MENU_SELECTION"; delta: 1 | -1 }
@@ -120,8 +126,16 @@ export type KeyRouterAction =
       focus:
         | typeof FocusTarget.TASK_LIST
         | typeof FocusTarget.DETAILS_LINKS
+        | typeof FocusTarget.DETAILS_NOTES
         | typeof FocusTarget.DETAILS_CHECKLIST;
     }
+  | { scope: "ui"; type: "DETAILS_NOTES_MOVE_SELECTION"; delta: 1 | -1 }
+  | { scope: "ui"; type: "DETAILS_NOTES_OPEN_SELECTED" }
+  | { scope: "ui"; type: "DETAILS_NOTES_CREATE_LINKED" }
+  | { scope: "ui"; type: "DETAILS_NOTES_OPEN_LINK_PICKER" }
+  | { scope: "ui"; type: "DETAILS_NOTES_CONFIRM_LINK_PICKER" }
+  | { scope: "ui"; type: "DETAILS_NOTES_CLOSE_LINK_PICKER" }
+  | { scope: "ui"; type: "DETAILS_NOTES_UNLINK" }
   | { scope: "ui"; type: "CLEAR_BULK_MARKS" }
   | { scope: "ui"; type: "SET_G_PREFIX"; active: boolean }
   | { scope: "ui"; type: "TOGGLE_VIEWS_OVERLAY" }
@@ -681,7 +695,8 @@ function resolveEscapeActions(
     notesRootSettingsOpen = false,
     notesCreatePromptOpen = false,
     notesRenamePromptOpen = false,
-    notesDeletePromptOpen = false
+    notesDeletePromptOpen = false,
+    detailsNotesLinkPickerOpen = false
   } = context;
   const { mode, focus } = uiState;
 
@@ -745,6 +760,13 @@ function resolveEscapeActions(
   if (mode === Mode.LIST && bulkActive) {
     return [{ scope: "ui", type: "CLEAR_BULK_MARKS" }];
   }
+  if (
+    mode === Mode.LIST &&
+    focus === FocusTarget.DETAILS_NOTES &&
+    detailsNotesLinkPickerOpen
+  ) {
+    return [{ scope: "ui", type: "DETAILS_NOTES_CLOSE_LINK_PICKER" }];
+  }
   if (mode === Mode.LIST && saveViewPromptOpen) {
     return [{ scope: "ui", type: "CANCEL_SAVE_VIEW_PROMPT" }];
   }
@@ -753,7 +775,9 @@ function resolveEscapeActions(
   }
   if (
     mode === Mode.LIST &&
-    (focus === FocusTarget.DETAILS_LINKS || focus === FocusTarget.DETAILS_CHECKLIST)
+    (focus === FocusTarget.DETAILS_LINKS ||
+      focus === FocusTarget.DETAILS_NOTES ||
+      focus === FocusTarget.DETAILS_CHECKLIST)
   ) {
     return [{ scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.TASK_LIST }];
   }
@@ -1527,9 +1551,37 @@ function resolveSearchModeActions(
   key: KeyInput,
   context: KeyRouterContext
 ): KeyRouterAction[] | null {
-  const { name } = key;
-  const { uiState } = context;
+  const { name, shift } = key;
+  const {
+    uiState,
+    searchHasUnifiedResults = false,
+    searchResultsFocused = false
+  } = context;
   if (uiState.mode !== Mode.SEARCH) return null;
+
+  if (name === "tab") {
+    if (!searchHasUnifiedResults) return [];
+    return [{ scope: "ui", type: "SEARCH_SET_RESULTS_FOCUS", focused: !searchResultsFocused }];
+  }
+
+  if (searchResultsFocused) {
+    if (name === "j" || name === "down") {
+      return [{ scope: "ui", type: "SEARCH_MOVE_RESULT_SELECTION", delta: 1 }];
+    }
+    if (name === "k" || name === "up") {
+      return [{ scope: "ui", type: "SEARCH_MOVE_RESULT_SELECTION", delta: -1 }];
+    }
+    if (name === "return" || name === "enter") {
+      return [{ scope: "ui", type: "SEARCH_OPEN_SELECTED_RESULT" }];
+    }
+    if (name === "escape") {
+      return [{ scope: "ui", type: "CLOSE_SEARCH" }];
+    }
+    if (shift) {
+      return [];
+    }
+    return [];
+  }
 
   if (isSearchCloseKey(name)) {
     return [{ scope: "ui", type: "CLOSE_SEARCH" }];
@@ -1701,23 +1753,32 @@ function resolveListModeActions(
 
   if (
     focus === FocusTarget.DETAILS_LINKS ||
+    focus === FocusTarget.DETAILS_NOTES ||
     focus === FocusTarget.DETAILS_CHECKLIST
   ) {
     if (name === "left") {
+      const nextFocus =
+        focus === FocusTarget.DETAILS_CHECKLIST
+          ? FocusTarget.DETAILS_NOTES
+          : FocusTarget.DETAILS_LINKS;
       return [
         {
           scope: "ui",
           type: "SET_LIST_FOCUS",
-          focus: FocusTarget.DETAILS_LINKS
+          focus: nextFocus
         }
       ];
     }
     if (name === "right") {
+      const nextFocus =
+        focus === FocusTarget.DETAILS_LINKS
+          ? FocusTarget.DETAILS_NOTES
+          : FocusTarget.DETAILS_CHECKLIST;
       return [
         {
           scope: "ui",
           type: "SET_LIST_FOCUS",
-          focus: FocusTarget.DETAILS_CHECKLIST
+          focus: nextFocus
         }
       ];
     }
@@ -1757,6 +1818,51 @@ function resolveListModeActions(
       name === "backspace"
     ) {
       return [{ scope: "domain", type: "OPEN_DELETE_TASK_LINK_MODAL" }];
+    }
+    return [];
+  }
+
+  if (focus === FocusTarget.DETAILS_NOTES) {
+    if (context.detailsNotesLinkPickerOpen) {
+      if (name === "j" || name === "down") {
+        return [{ scope: "ui", type: "DETAILS_NOTES_MOVE_SELECTION", delta: 1 }];
+      }
+      if (name === "k" || name === "up") {
+        return [{ scope: "ui", type: "DETAILS_NOTES_MOVE_SELECTION", delta: -1 }];
+      }
+      if (name === "return" || name === "enter") {
+        return [{ scope: "ui", type: "DETAILS_NOTES_CONFIRM_LINK_PICKER" }];
+      }
+      return [];
+    }
+
+    if (name === "j" || name === "down") {
+      return [{ scope: "ui", type: "DETAILS_NOTES_MOVE_SELECTION", delta: 1 }];
+    }
+    if (name === "k" || name === "up") {
+      return [{ scope: "ui", type: "DETAILS_NOTES_MOVE_SELECTION", delta: -1 }];
+    }
+    if (
+      name === "return" ||
+      name === "enter" ||
+      name === "o" ||
+      name === "O" ||
+      sequence === "o" ||
+      sequence === "O"
+    ) {
+      return [{ scope: "ui", type: "DETAILS_NOTES_OPEN_SELECTED" }];
+    }
+    if (name === "c" || name === "C" || sequence === "c" || sequence === "C") {
+      return [{ scope: "ui", type: "DETAILS_NOTES_CREATE_LINKED" }];
+    }
+    if (name === "l" || name === "L" || sequence === "l" || sequence === "L") {
+      return [{ scope: "ui", type: "DETAILS_NOTES_OPEN_LINK_PICKER" }];
+    }
+    if (name === "r" || name === "R" || sequence === "r" || sequence === "R") {
+      return [{ scope: "ui", type: "DETAILS_NOTES_OPEN_LINK_PICKER" }];
+    }
+    if (name === "u" || name === "U" || sequence === "u" || sequence === "U") {
+      return [{ scope: "ui", type: "DETAILS_NOTES_UNLINK" }];
     }
     return [];
   }

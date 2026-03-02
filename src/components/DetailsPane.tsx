@@ -50,13 +50,30 @@ type DetailsPaneProps = {
   linksFocused: boolean;
   selectedChecklistItemId?: string;
   checklistFocused: boolean;
+  notesFocused: boolean;
   checklistWindowStart?: number;
   checklistWindowSize?: number;
   linkedNotes?: string[];
+  linkedTaskNotePath?: string;
+  linkedTaskNoteId?: string;
+  linkedTaskNotePreviewLines?: string[];
+  notesReferencingTask?: string[];
+  selectedNotesReferencingPath?: string;
+  linkedTaskReferencedTaskCount?: number;
+  noteContextWarning?: string;
+  noteLinkPickerOpen?: boolean;
+  noteLinkPickerItems?: Array<{
+    path: string;
+    title: string;
+    id?: string;
+    selected: boolean;
+  }>;
   onSelectLink?: (linkId: string) => void;
   onOpenLink?: (linkId: string) => void;
   onSelectChecklistItem?: (itemId: string) => void;
   onOpenLinkedNote?: (notePath: string) => void;
+  onSelectNotesReferencing?: (notePath: string) => void;
+  onSelectNoteLinkPickerItem?: (notePath: string) => void;
 };
 
 export function DetailsPane({
@@ -69,13 +86,25 @@ export function DetailsPane({
   linksFocused,
   selectedChecklistItemId,
   checklistFocused,
+  notesFocused,
   checklistWindowStart = 0,
   checklistWindowSize = 6,
   linkedNotes = [],
+  linkedTaskNotePath,
+  linkedTaskNoteId,
+  linkedTaskNotePreviewLines = [],
+  notesReferencingTask = [],
+  selectedNotesReferencingPath,
+  linkedTaskReferencedTaskCount = 0,
+  noteContextWarning,
+  noteLinkPickerOpen = false,
+  noteLinkPickerItems = [],
   onSelectLink,
   onOpenLink,
   onSelectChecklistItem,
-  onOpenLinkedNote
+  onOpenLinkedNote,
+  onSelectNotesReferencing,
+  onSelectNoteLinkPickerItem
 }: DetailsPaneProps) {
   if (!task) {
     return <text style={{ color: theme.muted }}>Select a task to view details.</text>;
@@ -237,23 +266,103 @@ export function DetailsPane({
       </box>
       <text style={{ color: theme.text }}>{task.notes || "(no notes)"}</text>
       <box style={{ flexDirection: "column", marginTop: 1 }}>
-        <text style={{ color: theme.muted }}>LINKED NOTES ({linkedNotes.length})</text>
-        {linkedNotes.length === 0 ? (
-          <text style={{ color: theme.muted }}>No linked notes (@task:&lt;id&gt; in notes)</text>
+        <text style={{ color: theme.muted }}>
+          NOTES CONTEXT {notesFocused ? "(FOCUSED)" : ""}
+        </text>
+        {linkedTaskNotePath ? (
+          <text style={{ color: theme.accentBlue }}>
+            Linked: {linkedTaskNotePath}
+            {linkedTaskNoteId ? ` [id:${linkedTaskNoteId}]` : ""}
+          </text>
+        ) : (
+          <text style={{ color: theme.muted }}>Linked: (none)</text>
+        )}
+        {!linkedTaskNotePath ? (
+          <text style={{ color: theme.muted }}>Actions: c create note · l link existing</text>
+        ) : (
+          <text style={{ color: theme.muted }}>
+            Actions: Enter/o open · l/r relink · u unlink
+          </text>
+        )}
+        {linkedTaskNotePreviewLines.length > 0 ? (
+          <box style={{ flexDirection: "column" }}>
+            {linkedTaskNotePreviewLines.slice(0, 3).map((line, index) => (
+              <text key={`note-preview-${index}`} style={{ color: theme.muted }}>
+                {line || " "}
+              </text>
+            ))}
+          </box>
+        ) : null}
+        <text style={{ color: theme.muted }}>Notes linking here: {String(linkedNotes.length)}</text>
+        <text style={{ color: theme.muted }}>
+          Tasks referenced by linked note: {String(linkedTaskReferencedTaskCount)}
+        </text>
+        {noteContextWarning ? (
+          <text style={{ color: theme.warn }}>{noteContextWarning}</text>
+        ) : null}
+        {noteLinkPickerOpen ? (
+          <box style={{ flexDirection: "column", marginTop: 1 }}>
+            <text style={{ color: theme.muted }}>
+              LINK NOTE PICKER ({String(noteLinkPickerItems.length)})
+            </text>
+            {noteLinkPickerItems.length === 0 ? (
+              <text style={{ color: theme.muted }}>(no notes)</text>
+            ) : (
+              noteLinkPickerItems.slice(0, 8).map((item) => (
+                <box
+                  key={`picker-${item.path}`}
+                  style={{
+                    flexDirection: "column",
+                    backgroundColor: item.selected ? theme.accentBlue : "transparent",
+                    paddingLeft: 1,
+                    paddingRight: 1
+                  }}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    onSelectNoteLinkPickerItem?.(item.path);
+                  }}
+                >
+                  <text style={{ color: item.selected ? theme.bg : theme.text }}>{item.title}</text>
+                  <text style={{ color: item.selected ? theme.bg : theme.muted }}>
+                    {item.path}
+                    {item.id ? ` [id:${item.id}]` : ""}
+                  </text>
+                </box>
+              ))
+            )}
+          </box>
         ) : (
           <box style={{ flexDirection: "column", marginTop: 1 }}>
-            {linkedNotes.map((notePath) => (
-              <box
-                key={notePath}
-                style={{ paddingLeft: 1, paddingRight: 1 }}
-                onMouseDown={(event) => {
-                  if (event.button !== 0) return;
-                  onOpenLinkedNote?.(notePath);
-                }}
-              >
-                <text style={{ color: theme.accentBlue }}>{notePath}</text>
-              </box>
-            ))}
+            <text style={{ color: theme.muted }}>
+              NOTES REFERENCING THIS TASK ({String(notesReferencingTask.length)})
+            </text>
+            {notesReferencingTask.length === 0 ? (
+              <text style={{ color: theme.muted }}>(none)</text>
+            ) : (
+              notesReferencingTask.slice(0, 6).map((notePath) => {
+                const selected = selectedNotesReferencingPath === notePath;
+                return (
+                  <box
+                    key={`note-ref-${notePath}`}
+                    style={{
+                      backgroundColor: selected ? theme.accentBlue : "transparent",
+                      paddingLeft: 1,
+                      paddingRight: 1
+                    }}
+                    onMouseDown={(event) => {
+                      if (event.button !== 0) return;
+                      if (selected) {
+                        onOpenLinkedNote?.(notePath);
+                        return;
+                      }
+                      onSelectNotesReferencing?.(notePath);
+                    }}
+                  >
+                    <text style={{ color: selected ? theme.bg : theme.text }}>{notePath}</text>
+                  </box>
+                );
+              })
+            )}
           </box>
         )}
       </box>

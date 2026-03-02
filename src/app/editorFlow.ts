@@ -12,11 +12,15 @@ import {
 import { buildReminderFromDraft, stripReminderRuntimeState } from "../domain/reminders";
 import { getSuggestedTime, type SuggestedTime } from "../domain/timeAutocomplete";
 import {
+  MINI_DEFAULT_TIMEZONE,
+  canonicalizeDueAtInput,
+  canonicalizeTimeOnlyInput
+} from "../lib/datetime/due_at_canonicalizer";
+import {
   combineDueDateTime,
   createDraftFromTask,
   createEmptyDraft,
-  formatDate,
-  parseDueTime
+  formatDate
 } from "../state/store";
 import { updateTagIndex } from "../domain/tagIndex";
 import {
@@ -434,14 +438,36 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
     if (!title) return false;
 
     const nowMs = Date.now();
+    const dueText = draft.dueText.trim();
     const timeText = draft.timeText.trim();
-    const timeMinutes = timeText ? parseDueTime(timeText) : undefined;
-    if (timeText && timeMinutes === undefined) {
-      deps.showShortNavigationBanner("Invalid time format (HH:mm)");
-      return false;
+    let normalizedDueText = dueText;
+    let normalizedTimeText = timeText;
+
+    if (dueText) {
+      const canonicalizedDue = canonicalizeDueAtInput(dueText, timeText || undefined, {
+        now: nowMs,
+        tz: MINI_DEFAULT_TIMEZONE
+      });
+      if (!canonicalizedDue.ok) {
+        deps.showShortNavigationBanner(canonicalizedDue.message.replace(/^Error:\s*/, ""));
+        return false;
+      }
+      normalizedDueText = canonicalizedDue.dueDate;
+      normalizedTimeText = canonicalizedDue.atTime ?? "";
+    } else if (timeText) {
+      const canonicalizedTime = canonicalizeTimeOnlyInput(timeText, {
+        now: nowMs,
+        tz: MINI_DEFAULT_TIMEZONE
+      });
+      if (!canonicalizedTime.ok) {
+        deps.showShortNavigationBanner(canonicalizedTime.message.replace(/^Error:\s*/, ""));
+        return false;
+      }
     }
 
-    const { dueAt, hasExplicitTime } = combineDueDateTime(draft.dueText, timeText);
+    const { dueAt, hasExplicitTime } = normalizedDueText
+      ? combineDueDateTime(normalizedDueText, normalizedTimeText)
+      : { dueAt: undefined, hasExplicitTime: false };
     const tags = deps.parseTagsInput(draft.tagsText);
     const notes = draft.notes.length > 0 ? draft.notes : undefined;
     const assignee = draft.assigneeText.trim().length > 0 ? draft.assigneeText.trim() : undefined;

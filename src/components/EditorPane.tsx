@@ -482,12 +482,12 @@ export function EditorPane({
       </box>
 
       <box style={{ flexDirection: "column", marginTop: 1 }}>
-        <text style={{ color: theme.muted }}>DATE (YYYY-MM-DD)</text>
+        <text style={{ color: theme.muted }}>DATE (ISO or mini)</text>
         <input
           value={draft.dueText}
           onChange={(value) => onUpdate({ dueText: value })}
           focused={focus === "due"}
-          placeholder="2026-02-08"
+          placeholder="today | tomorrow | mon | +3d | 3pm | tomorrow 3pm"
           style={{ backgroundColor: theme.bg, color: theme.text, width: "100%" }}
         />
         {dueSuggestionHint ? (
@@ -496,14 +496,14 @@ export function EditorPane({
       </box>
 
       <box style={{ flexDirection: "column", marginTop: 1 }}>
-        <text style={{ color: theme.muted }}>TIME (HH:mm optional)</text>
+        <text style={{ color: theme.muted }}>TIME (HH:mm / 3pm optional)</text>
         <input
           ref={timeInputRef}
           value={draft.timeText}
           onChange={(value) => onUpdate({ timeText: normalizeTimeTextInput(value) })}
           onKeyDown={(key) => handleRepeatCycleFromInputKey(key, "time")}
           focused={focus === "time"}
-          placeholder="14:30"
+          placeholder="3pm | 15:30"
           style={{ backgroundColor: theme.bg, color: theme.text, width: "100%" }}
         />
         {timeSuggestionHint ? (

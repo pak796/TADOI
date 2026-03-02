@@ -73,6 +73,11 @@ export type TaskExternalMetadata = {
   calendar?: TaskExternalCalendarMetadata;
 };
 
+export type TaskNoteRef = {
+  type: "id" | "filename";
+  value: string;
+};
+
 export type ChecklistItem = {
   id: string;
   text: string;
@@ -93,6 +98,7 @@ export type Task = {
   hasExplicitTime?: boolean;
   closedAt?: number;
   notes?: string;
+  noteRef?: TaskNoteRef;
   tags: string[];
   links?: TaskLink[];
   recurrence?: TaskRecurrence;

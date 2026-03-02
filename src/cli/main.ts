@@ -1,4 +1,4 @@
-import { parseCommand } from "../commands/parse";
+import { parseCommand, type ParseCommandOptions } from "../commands/parse";
 import { executeCommand } from "../commands/execute";
 import type {
   BulkCommand,
@@ -9,8 +9,11 @@ import type {
   NoteCommand,
   ParseCommandResult
 } from "../commands/types";
-import { parseStrictLocalDate, parseStrictTime } from "../commands/validate";
 import { filterTasks } from "../domain/query";
+import {
+  MINI_DEFAULT_TIMEZONE,
+  canonicalizeDueAtInput
+} from "../lib/datetime/due_at_canonicalizer";
 import { getVisibleTasks, initialState, reducer } from "../state/store";
 import {
   CURRENT_SCHEMA_VERSION,
@@ -63,7 +66,7 @@ type SaveDataOptions = {
 
 type TitsCliDeps = {
   now: () => number;
-  parseCommand: (input: string) => ParseCommandResult;
+  parseCommand: (input: string, options?: ParseCommandOptions) => ParseCommandResult;
   executeCommand: (
     command: Command,
     ctx: Parameters<typeof executeCommand>[1]
@@ -271,7 +274,11 @@ type SelectorCommandIntent =
       atTime?: string;
     };
 
-function parseSelectorIntent(argv: string[]): {
+function parseSelectorIntent(
+  argv: string[],
+  now: number,
+  tz: string
+): {
   ok: true;
   intent: SelectorCommandIntent;
 } | {
@@ -326,14 +333,14 @@ function parseSelectorIntent(argv: string[]): {
   }
 
   const tail = [...args];
-  let atTime: string | undefined;
+  let atInput: string | undefined;
   const maybeAt = tail[tail.length - 1] ?? "";
   if (maybeAt.startsWith("at:")) {
     const value = maybeAt.slice(3).trim();
-    if (!value || !parseStrictTime(value)) {
-      return { ok: false, error: `Error: invalid time "${value}"` };
+    if (!value) {
+      return { ok: false, error: "Error: at: value is required" };
     }
-    atTime = value;
+    atInput = value;
     tail.pop();
   }
 
@@ -346,7 +353,7 @@ function parseSelectorIntent(argv: string[]): {
 
   const dueArg = tail.pop() ?? "";
   if (dueArg === "clear") {
-    if (atTime) {
+    if (atInput) {
       return { ok: false, error: "Error: due clear takes no at: token" };
     }
     return {
@@ -359,19 +366,64 @@ function parseSelectorIntent(argv: string[]): {
     };
   }
 
-  if (!parseStrictLocalDate(dueArg)) {
-    return { ok: false, error: `Error: invalid due date "${dueArg}"` };
+  const dueCandidates = [
+    { selectorTokens: tail, dueInput: dueArg },
+    ...(tail.length > 0
+      ? [{ selectorTokens: tail.slice(0, -1), dueInput: `${tail[tail.length - 1]} ${dueArg}` }]
+      : [])
+  ];
+
+  let firstSelectorError: string | undefined;
+  let firstDueError: string | undefined;
+  for (const candidate of dueCandidates) {
+    if (candidate.selectorTokens.length === 0) {
+      continue;
+    }
+
+    const selectorCheck = parseSelectorTokens(candidate.selectorTokens, {
+      status: "open",
+      due: "any"
+    });
+    if (!selectorCheck.ok) {
+      if (!firstSelectorError) {
+        firstSelectorError = selectorCheck.error;
+      }
+      continue;
+    }
+
+    const canonicalized = canonicalizeDueAtInput(candidate.dueInput, atInput, {
+      now,
+      tz
+    });
+    if (!canonicalized.ok) {
+      if (!firstDueError) {
+        firstDueError = canonicalized.message;
+      }
+      continue;
+    }
+
+    return {
+      ok: true,
+      intent: {
+        kind: "due",
+        selectorTokens: candidate.selectorTokens,
+        clear: false,
+        dueDate: canonicalized.dueDate,
+        ...(canonicalized.atTime ? { atTime: canonicalized.atTime } : {})
+      }
+    };
+  }
+
+  if (firstDueError) {
+    return { ok: false, error: firstDueError };
+  }
+  if (firstSelectorError) {
+    return { ok: false, error: firstSelectorError };
   }
 
   return {
-    ok: true,
-    intent: {
-      kind: "due",
-      selectorTokens: tail,
-      clear: false,
-      dueDate: dueArg,
-      ...(atTime ? { atTime } : {})
-    }
+    ok: false,
+    error: "Error: due selector mode requires selectors and date/clear."
   };
 }
 
@@ -443,10 +495,11 @@ export async function runTitsCommandCliWithDeps(
   argv: string[],
   deps: TitsCliDeps
 ): Promise<{ handled: boolean; exitCode?: number }> {
+  const invocationNow = deps.now();
   const wrapperHelpCommand = resolveWrapperHelpCommand(argv);
   if (wrapperHelpCommand) {
     const result = deps.executeCommand(wrapperHelpCommand, {
-      now: deps.now(),
+      now: invocationNow,
       state: initialState,
       visibleTasks: [],
       selectedTaskId: undefined
@@ -463,7 +516,11 @@ export async function runTitsCommandCliWithDeps(
     return { handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS };
   }
 
-  const selectorIntentResult = parseSelectorIntent(argv);
+  const selectorIntentResult = parseSelectorIntent(
+    argv,
+    invocationNow,
+    MINI_DEFAULT_TIMEZONE
+  );
   if (selectorIntentResult && !selectorIntentResult.ok) {
     deps.error(selectorIntentResult.error);
     return { handled: true, exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION };
@@ -477,7 +534,10 @@ export async function runTitsCommandCliWithDeps(
     if (!resolved) {
       return { handled: false };
     }
-    const parsed = deps.parseCommand(resolved.dsl);
+    const parsed = deps.parseCommand(resolved.dsl, {
+      now: invocationNow,
+      tz: MINI_DEFAULT_TIMEZONE
+    });
     if (!parsed.ok) {
       deps.error(toSingleLine(parsed.error));
       return { handled: true, exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION };
@@ -495,7 +555,7 @@ export async function runTitsCommandCliWithDeps(
 
     if (parsedCommand.type === "help") {
       const result = deps.executeCommand(parsedCommand, {
-        now: deps.now(),
+        now: invocationNow,
         state: initialState,
         visibleTasks: [],
         selectedTaskId: undefined
@@ -552,7 +612,7 @@ export async function runTitsCommandCliWithDeps(
         ? loaded.stateRevision
         : 0;
     let state = reducer(initialState, { type: "load", data: loaded });
-    const now = deps.now();
+    const now = invocationNow;
     const command = (() => {
       if (!selectorIntent) {
         return parsedCommand as Command;

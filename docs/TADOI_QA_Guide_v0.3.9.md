@@ -130,10 +130,10 @@ Smoke pass criteria:
 
 ### D) Search, Tags, Filters, and Saved Views
 
-- [ ] `QA-013 [SMOKE]` Search open/filter/close with `Enter`.
-  - Preconditions: multiple tasks present.
-  - Steps: press `/`, type query, press `Enter`.
-  - Expected: search closes and filter remains applied.
+- [ ] `QA-013 [SMOKE]` Unified search open/filter/results behavior.
+  - Preconditions: at least one task and one note match distinct queries.
+  - Steps: press `/`, type query, press `Tab`, then `Enter`; repeat with `Enter` while input is focused.
+  - Expected: `Enter` on results opens selected destination; `Enter` in input closes Search.
 - [ ] `QA-014` Search close with `Esc` and filter retention.
   - Preconditions: search open with query entered.
   - Steps: press `Esc`.
@@ -449,8 +449,8 @@ Smoke pass criteria:
 
 - [ ] `QA-083 [SMOKE]` Details subpane routing and checklist key isolation.
   - Preconditions: selected task has at least two links and checklist items.
-  - Steps: `Tab` into details; verify default links focus; press `ArrowRight` to checklist; run `j/k`, `Space`, `a`, `e`, `d`, `Enter`, `Esc`.
-  - Expected: left/right swaps links/checklist focus, checklist keys only affect checklist, `Enter` is no-op in checklist, `Esc` returns to list focus in one step.
+  - Steps: `Tab` into details; verify default links focus; press `ArrowRight` to notes, then `ArrowRight` to checklist; run `j/k`, `Space`, `a`, `e`, `d`, `Enter`, `Esc`.
+  - Expected: left/right swaps links/notes/checklist focus, checklist keys only affect checklist, `Enter` is no-op in checklist, `Esc` returns to list focus in one step.
 - [ ] `QA-084` List row and details rendering for checklist progress.
   - Preconditions: one task with checklist and one without checklist.
   - Steps: toggle checklist items and observe list/details.

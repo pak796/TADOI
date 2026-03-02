@@ -9,7 +9,7 @@ describe("parseOutgoingNoteRefs", () => {
   it("parses wikilinks and markdown links", () => {
     const refs = parseOutgoingNoteRefs(
       "A.md",
-      "[[Note B|B]] and [B path](./B.md) and ![img](a.png)"
+      "[[Note B|B]] and [B path](./B.md) and ![img](a.png) and [[task:abc-123]] and [task](tadoi://task/abc-123)"
     );
 
     expect(refs).toEqual([
