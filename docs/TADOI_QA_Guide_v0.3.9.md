@@ -185,6 +185,10 @@ Smoke pass criteria:
   - Preconditions: settings JSON can be edited between launches.
   - Steps: configure non-conflicting aliases for list/dashboard/backup/help actions, then configure an intentional token conflict in one context.
   - Expected: aliased actions route in their declared context; conflict keeps first assignment and ignores later conflicting mapping.
+- [ ] `QA-083` Sectioned settings parity coverage.
+  - Preconditions: Help settings available.
+  - Steps: from `Help / Settings`, open `Appearance`, `Navigation & Keymaps`, `Notifications`, `Security`, `TOME Notes`, and `Cloud Backup`; verify each page has actionable rows and value state in titles.
+  - Expected: all persisted settings families are reachable from the sectioned settings flow; cloud operations deep-link opens Backup Center cloud status.
 
 ### F) Recurrence and Occurrence Workflows
 

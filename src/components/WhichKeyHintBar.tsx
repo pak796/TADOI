@@ -10,7 +10,7 @@ function formatHintSegment(item: WhichKeyHintItem): string {
   return `${item.key}: ${item.label}`;
 }
 
-function fitHintLine(items: WhichKeyHintItem[], width: number): string {
+export function fitHintLine(items: WhichKeyHintItem[], width: number): string {
   const safeWidth = Math.max(8, width);
   let built = "KEYS ";
 

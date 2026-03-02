@@ -33,7 +33,7 @@ const DEFAULT_SECURITY = {
 const DEFAULT_LOGO_MODE = getDefaultSettings().logoMode;
 const DEFAULT_CUSTOM_THEMES = getDefaultSettings().customThemes;
 const DEFAULT_GITHUB_BACKUP = getDefaultSettings().githubBackup;
-const DEFAULT_HINT_DISPLAY_MODE = getDefaultSettings().hintDisplayMode ?? "left_rail";
+const DEFAULT_HINT_DISPLAY_MODE = getDefaultSettings().hintDisplayMode ?? "bottom";
 const DEFAULT_SHOW_PREFIX_HINT_POPUP =
   getDefaultSettings().showPrefixHintPopup ?? true;
 const DEFAULT_NOTES = getDefaultSettings().notes ?? {

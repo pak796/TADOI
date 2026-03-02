@@ -210,6 +210,8 @@ import {
   DEFAULT_CRT_FX_LITE_PRESET,
   DEFAULT_RETRO_FX_MODE,
   cycleLogoMode,
+  DEFAULT_GITHUB_AUTO_PUSH_POLICY,
+  DEFAULT_GITHUB_BACKUP_BRANCH,
   getDefaultSettings,
   loadSettings,
   saveSettingsDebounced,
@@ -218,6 +220,7 @@ import {
   type CustomThemeConfig,
   type CustomThemes,
   type FlashMode,
+  type GitHubAutoPushPolicy,
   type GitHubBackupSettings,
   type HintDisplayMode,
   type LogoMode,
@@ -388,7 +391,6 @@ const HELP_PANEL_CHROME_ROWS = HELP_HEADER_ROWS + HELP_DIVIDER_ROWS + HELP_FOOTE
 const HELP_SECTION_SCROLL_PADDING = 1;
 const HELP_NAV_ITEM_ROW_COUNT = 2;
 const EDITOR_CHECKLIST_MODAL_ROW_ID = "__editor_checklist__";
-const HELP_SETTINGS_STATUS_ROW_COUNT = 12;
 const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings =
   getDefaultSettings().notifications;
 const DEFAULT_SECURITY_SETTINGS: SecuritySettings = getDefaultSettings().security;
@@ -399,7 +401,7 @@ const DEFAULT_GITHUB_BACKUP = getDefaultSettings().githubBackup;
 const DEFAULT_NOTES_SETTINGS: NotesSettings =
   getDefaultSettings().notes ?? { enabled: true, rootPath: null };
 const DEFAULT_HINT_DISPLAY_MODE: HintDisplayMode =
-  getDefaultSettings().hintDisplayMode ?? "left_rail";
+  getDefaultSettings().hintDisplayMode ?? "bottom";
 const DEFAULT_SHOW_PREFIX_HINT_POPUP =
   getDefaultSettings().showPrefixHintPopup ?? true;
 const DEFAULT_CRT_FX_LITE = getDefaultSettings().crtFxLite === true;
@@ -465,6 +467,13 @@ type HelpScrollbarThumb = {
 type HelpPage =
   | "help"
   | "settings"
+  | "settingsAppearance"
+  | "settingsNavigation"
+  | "settingsNotifications"
+  | "settingsSecurity"
+  | "settingsNotes"
+  | "settingsCloud"
+  | "settingsInput"
   | "keymapAliases"
   | "theme"
   | "custom1"
@@ -475,6 +484,12 @@ type HelpPage =
 
 type HelpNavSelectionByPage = {
   settings: number;
+  settingsAppearance: number;
+  settingsNavigation: number;
+  settingsNotifications: number;
+  settingsSecurity: number;
+  settingsNotes: number;
+  settingsCloud: number;
   keymapAliases: number;
   theme: number;
   custom1: number;
@@ -488,23 +503,46 @@ type HelpNavItem = {
 };
 
 type HelpThemeEditorSource = "help_custom1_editor" | "help_text_tuning_editor";
+type HelpSettingsInputField =
+  | "notificationsBannerDurationMs"
+  | "notificationsBellCooldownMs"
+  | "notesRootPath"
+  | "cloudOwnerRepo"
+  | "cloudBranch"
+  | "cloudDeviceId"
+  | "cloudPathPrefix";
 
 const HELP_SETTINGS_NAV_ITEMS: HelpNavItem[] = [
   {
+    title: "Appearance",
+    description: "Theme, logo, flash, CRT FX, and retro visual settings."
+  },
+  {
+    title: "Navigation & Keymaps",
+    description: "Hints surface, prefix popup, and keymap alias presets."
+  },
+  {
+    title: "Notifications",
+    description: "Overdue notifications plus duration/cooldown controls."
+  },
+  {
+    title: "Security",
+    description: "Link-open policy controls for non-http/https targets."
+  },
+  {
+    title: "TOME Notes",
+    description: "Enable/disable notes, root path migration, and guide restore."
+  },
+  {
+    title: "Cloud Backup",
+    description: "GitHub backup config; operations are linked in Backup Center."
+  }
+];
+
+const HELP_SETTINGS_APPEARANCE_NAV_ITEMS: HelpNavItem[] = [
+  {
     title: "Theme",
     description: "Theme mode and custom palette settings."
-  },
-  {
-    title: "Keymap Aliases",
-    description: "Configure alias presets for list, dashboard, backup, and help actions."
-  },
-  {
-    title: "Navigation Hints",
-    description: "Set hints surface: bottom only, left rail only, both, or none."
-  },
-  {
-    title: "Prefix Popup",
-    description: "Toggle the transient Ctrl+g / Ctrl+p / Ctrl+y prefix popup."
   },
   {
     title: "Logo",
@@ -525,7 +563,25 @@ const HELP_SETTINGS_NAV_ITEMS: HelpNavItem[] = [
   {
     title: "Retro FX Mode",
     description: "Set vibe pack mode: Off, Classic, or Broadcast."
+  }
+];
+
+const HELP_SETTINGS_NAVIGATION_NAV_ITEMS: HelpNavItem[] = [
+  {
+    title: "Keymap Aliases",
+    description: "Configure alias presets for list, dashboard, backup, and help actions."
   },
+  {
+    title: "Navigation Hints",
+    description: "Set hints surface: bottom only, left rail only, both, or none."
+  },
+  {
+    title: "Prefix Popup",
+    description: "Toggle the transient Ctrl+g / Ctrl+p / Ctrl+y prefix popup."
+  }
+];
+
+const HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS: HelpNavItem[] = [
   {
     title: "Notifications",
     description: "Enable or disable overdue notifications."
@@ -539,9 +595,66 @@ const HELP_SETTINGS_NAV_ITEMS: HelpNavItem[] = [
     description: "Enable or disable terminal bell on overdue."
   },
   {
+    title: "Banner Duration",
+    description: "Notification banner visibility duration in milliseconds."
+  },
+  {
+    title: "Bell Cooldown",
+    description: "Minimum milliseconds between overdue terminal bell alerts."
+  }
+];
+
+const HELP_SETTINGS_SECURITY_NAV_ITEMS: HelpNavItem[] = [
+  {
+    title: "Non-HTTP Link Policy",
+    description: "Choose prompt vs block behavior for non-http/https links."
+  }
+];
+
+const HELP_SETTINGS_NOTES_NAV_ITEMS: HelpNavItem[] = [
+  {
+    title: "TOME Enabled",
+    description: "Enable or disable notes runtime and note commands."
+  },
+  {
+    title: "TOME Root Path",
+    description: "Set notes root with copy-first migration safety."
+  },
+  {
     title: "Restore TOME Guides",
     description:
       "Recover deleted default guide notes. Existing notes are never overwritten."
+  }
+];
+
+const HELP_SETTINGS_CLOUD_NAV_ITEMS: HelpNavItem[] = [
+  {
+    title: "Cloud Backup Enabled",
+    description: "Enable or disable GitHub cloud backup configuration."
+  },
+  {
+    title: "Owner/Repo",
+    description: "Set configured repository (owner/repo) for cloud snapshots."
+  },
+  {
+    title: "Branch",
+    description: "Set target branch for cloud snapshots."
+  },
+  {
+    title: "Auto Push Policy",
+    description: "Cycle cloud auto-push policy."
+  },
+  {
+    title: "Device ID",
+    description: "Set device identity used in snapshot path metadata."
+  },
+  {
+    title: "Path Prefix",
+    description: "Set remote path prefix where snapshots are written."
+  },
+  {
+    title: "Open Cloud Operations",
+    description: "Open Backup Center directly to Cloud/GitHub operations."
   }
 ];
 
@@ -654,6 +767,29 @@ function formatHintDisplayModeStatusLabel(mode: HintDisplayMode): string {
   return "bottom only";
 }
 
+const GITHUB_AUTO_PUSH_POLICY_ORDER = [
+  "off",
+  "onExit",
+  "interval15m"
+] as const satisfies readonly GitHubAutoPushPolicy[];
+
+function formatGitHubAutoPushPolicyLabel(policy: GitHubAutoPushPolicy): string {
+  if (policy === "onExit") return "On exit";
+  if (policy === "interval15m") return "Every 15m";
+  return "Off";
+}
+
+function cycleGitHubAutoPushPolicy(policy: GitHubAutoPushPolicy): GitHubAutoPushPolicy {
+  const index = GITHUB_AUTO_PUSH_POLICY_ORDER.indexOf(policy);
+  const safeIndex = index >= 0 ? index : 0;
+  const nextIndex = (safeIndex + 1) % GITHUB_AUTO_PUSH_POLICY_ORDER.length;
+  return GITHUB_AUTO_PUSH_POLICY_ORDER[nextIndex];
+}
+
+function formatNonHttpLinkPolicyLabel(policy: "prompt" | "block"): string {
+  return policy === "block" ? "Block" : "Prompt";
+}
+
 /*
  * Help menu structure:
  * - Edit HELP_MENU_SECTIONS to add/remove categories and items.
@@ -669,7 +805,8 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
       },
       {
         title: "Move around with arrows",
-        description: "Use Up/Down to focus sections and Enter/Space to toggle."
+        description:
+          "Use Up/Down to focus sections; Enter/Space toggles sections, and Settings opens pages."
       },
       {
         title: "Close with Esc",
@@ -777,8 +914,8 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
       {
         title: "Settings",
         description: [
-          "Open Settings submenu",
-          "Press Enter/Right to change settings."
+          "Opens Settings pages (this section does not expand/collapse).",
+          "Use Enter/Right or mouse click to open."
         ]
       },
       {
@@ -813,44 +950,76 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
 const HELP_SETTINGS_NAV_SECTION_INDEX = HELP_MENU_SECTIONS.findIndex(
   (section) => section.title === "Settings & Themes"
 );
-const HELP_SETTINGS_THEME_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
-  (item) => item.title === "Theme"
+const HELP_SETTINGS_APPEARANCE_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
+  (item) => item.title === "Appearance"
 );
-const HELP_SETTINGS_KEYMAP_ALIASES_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
-  (item) => item.title === "Keymap Aliases"
-);
-const HELP_SETTINGS_NAVIGATION_HINTS_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
-  (item) => item.title === "Navigation Hints"
-);
-const HELP_SETTINGS_PREFIX_POPUP_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
-  (item) => item.title === "Prefix Popup"
-);
-const HELP_SETTINGS_LOGO_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
-  (item) => item.title === "Logo"
-);
-const HELP_SETTINGS_FLASH_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
-  (item) => item.title === "Flash Mode"
-);
-const HELP_SETTINGS_CRT_FX_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
-  (item) => item.title === "CRT FX Lite"
-);
-const HELP_SETTINGS_CRT_FX_PROFILE_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
-  (item) => item.title === "CRT FX Profile"
-);
-const HELP_SETTINGS_RETRO_FX_MODE_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
-  (item) => item.title === "Retro FX Mode"
+const HELP_SETTINGS_NAVIGATION_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
+  (item) => item.title === "Navigation & Keymaps"
 );
 const HELP_SETTINGS_NOTIFICATIONS_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
   (item) => item.title === "Notifications"
 );
-const HELP_SETTINGS_OVERDUE_POPUP_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
-  (item) => item.title === "Overdue Popup"
+const HELP_SETTINGS_SECURITY_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
+  (item) => item.title === "Security"
 );
-const HELP_SETTINGS_TERMINAL_BELL_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
-  (item) => item.title === "Terminal Bell"
+const HELP_SETTINGS_NOTES_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
+  (item) => item.title === "TOME Notes"
 );
-const HELP_SETTINGS_RESTORE_TOME_GUIDES_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
-  (item) => item.title === "Restore TOME Guides"
+const HELP_SETTINGS_CLOUD_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
+  (item) => item.title === "Cloud Backup"
+);
+const HELP_SETTINGS_APPEARANCE_THEME_NAV_INDEX =
+  HELP_SETTINGS_APPEARANCE_NAV_ITEMS.findIndex((item) => item.title === "Theme");
+const HELP_SETTINGS_APPEARANCE_LOGO_NAV_INDEX =
+  HELP_SETTINGS_APPEARANCE_NAV_ITEMS.findIndex((item) => item.title === "Logo");
+const HELP_SETTINGS_APPEARANCE_FLASH_NAV_INDEX =
+  HELP_SETTINGS_APPEARANCE_NAV_ITEMS.findIndex((item) => item.title === "Flash Mode");
+const HELP_SETTINGS_APPEARANCE_CRT_FX_NAV_INDEX =
+  HELP_SETTINGS_APPEARANCE_NAV_ITEMS.findIndex((item) => item.title === "CRT FX Lite");
+const HELP_SETTINGS_APPEARANCE_CRT_FX_PROFILE_NAV_INDEX =
+  HELP_SETTINGS_APPEARANCE_NAV_ITEMS.findIndex((item) => item.title === "CRT FX Profile");
+const HELP_SETTINGS_APPEARANCE_RETRO_FX_MODE_NAV_INDEX =
+  HELP_SETTINGS_APPEARANCE_NAV_ITEMS.findIndex((item) => item.title === "Retro FX Mode");
+const HELP_SETTINGS_NAVIGATION_KEYMAP_ALIASES_NAV_INDEX =
+  HELP_SETTINGS_NAVIGATION_NAV_ITEMS.findIndex((item) => item.title === "Keymap Aliases");
+const HELP_SETTINGS_NAVIGATION_HINTS_NAV_INDEX =
+  HELP_SETTINGS_NAVIGATION_NAV_ITEMS.findIndex((item) => item.title === "Navigation Hints");
+const HELP_SETTINGS_NAVIGATION_PREFIX_POPUP_NAV_INDEX =
+  HELP_SETTINGS_NAVIGATION_NAV_ITEMS.findIndex((item) => item.title === "Prefix Popup");
+const HELP_SETTINGS_NOTIFICATIONS_ENABLED_NAV_INDEX =
+  HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex((item) => item.title === "Notifications");
+const HELP_SETTINGS_NOTIFICATIONS_OVERDUE_POPUP_NAV_INDEX =
+  HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex((item) => item.title === "Overdue Popup");
+const HELP_SETTINGS_NOTIFICATIONS_TERMINAL_BELL_NAV_INDEX =
+  HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex((item) => item.title === "Terminal Bell");
+const HELP_SETTINGS_NOTIFICATIONS_BANNER_DURATION_NAV_INDEX =
+  HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex((item) => item.title === "Banner Duration");
+const HELP_SETTINGS_NOTIFICATIONS_BELL_COOLDOWN_NAV_INDEX =
+  HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex((item) => item.title === "Bell Cooldown");
+const HELP_SETTINGS_SECURITY_NON_HTTP_POLICY_NAV_INDEX =
+  HELP_SETTINGS_SECURITY_NAV_ITEMS.findIndex((item) => item.title === "Non-HTTP Link Policy");
+const HELP_SETTINGS_NOTES_ENABLED_NAV_INDEX =
+  HELP_SETTINGS_NOTES_NAV_ITEMS.findIndex((item) => item.title === "TOME Enabled");
+const HELP_SETTINGS_NOTES_ROOT_NAV_INDEX =
+  HELP_SETTINGS_NOTES_NAV_ITEMS.findIndex((item) => item.title === "TOME Root Path");
+const HELP_SETTINGS_NOTES_RESTORE_GUIDES_NAV_INDEX =
+  HELP_SETTINGS_NOTES_NAV_ITEMS.findIndex((item) => item.title === "Restore TOME Guides");
+const HELP_SETTINGS_CLOUD_ENABLED_NAV_INDEX =
+  HELP_SETTINGS_CLOUD_NAV_ITEMS.findIndex((item) => item.title === "Cloud Backup Enabled");
+const HELP_SETTINGS_CLOUD_OWNER_REPO_NAV_INDEX =
+  HELP_SETTINGS_CLOUD_NAV_ITEMS.findIndex((item) => item.title === "Owner/Repo");
+const HELP_SETTINGS_CLOUD_BRANCH_NAV_INDEX =
+  HELP_SETTINGS_CLOUD_NAV_ITEMS.findIndex((item) => item.title === "Branch");
+const HELP_SETTINGS_CLOUD_AUTO_PUSH_POLICY_NAV_INDEX =
+  HELP_SETTINGS_CLOUD_NAV_ITEMS.findIndex((item) => item.title === "Auto Push Policy");
+const HELP_SETTINGS_CLOUD_DEVICE_ID_NAV_INDEX =
+  HELP_SETTINGS_CLOUD_NAV_ITEMS.findIndex((item) => item.title === "Device ID");
+const HELP_SETTINGS_CLOUD_PATH_PREFIX_NAV_INDEX =
+  HELP_SETTINGS_CLOUD_NAV_ITEMS.findIndex((item) => item.title === "Path Prefix");
+const HELP_SETTINGS_CLOUD_OPEN_OPERATIONS_NAV_INDEX =
+  HELP_SETTINGS_CLOUD_NAV_ITEMS.findIndex((item) => item.title === "Open Cloud Operations");
+const HELP_THEME_NAV_THEME_MODE_INDEX = HELP_THEME_NAV_ITEMS.findIndex(
+  (item) => item.title === "Current Theme"
 );
 const HELP_KEYMAP_ALIAS_RESET_NAV_INDEX = HELP_KEYMAP_ALIAS_NAV_ITEMS.findIndex(
   (item) => item.title === "Reset all aliases"
@@ -994,17 +1163,13 @@ function ensureHelpSectionVisible(params: {
   return clampScrollOffset(nextOffset, safeVisibleRows, itemCount);
 }
 
-function getHelpNavStatusRowCount(page: HelpPage): number {
-  return page === "settings" ? HELP_SETTINGS_STATUS_ROW_COUNT : 0;
-}
-
-function getHelpNavLineCount(page: HelpPage, navItemCount: number): number {
+function getHelpNavLineCount(statusRowCount: number, navItemCount: number): number {
   const clampedCount = Math.max(0, navItemCount);
-  return getHelpNavStatusRowCount(page) + clampedCount * HELP_NAV_ITEM_ROW_COUNT;
+  return Math.max(0, statusRowCount) + clampedCount * HELP_NAV_ITEM_ROW_COUNT;
 }
 
-function getHelpNavSelectionAnchorRow(page: HelpPage, selectionIndex: number): number {
-  return getHelpNavStatusRowCount(page) + Math.max(0, selectionIndex) * HELP_NAV_ITEM_ROW_COUNT;
+function getHelpNavSelectionAnchorRow(statusRowCount: number, selectionIndex: number): number {
+  return Math.max(0, statusRowCount) + Math.max(0, selectionIndex) * HELP_NAV_ITEM_ROW_COUNT;
 }
 
 function computeHelpScrollbarThumb(params: {
@@ -1682,12 +1847,23 @@ export function App({
   const [helpNavStack, setHelpNavStack] = useState<HelpPage[]>(["help"]);
   const [helpNavSelection, setHelpNavSelection] = useState<HelpNavSelectionByPage>({
     settings: 0,
+    settingsAppearance: 0,
+    settingsNavigation: 0,
+    settingsNotifications: 0,
+    settingsSecurity: 0,
+    settingsNotes: 0,
+    settingsCloud: 0,
     keymapAliases: 0,
     theme: 0,
     custom1: 0,
     textTuning: 0,
     textTuningTheme: 0
   });
+  const [helpSettingsInputField, setHelpSettingsInputField] =
+    useState<HelpSettingsInputField | null>(null);
+  const [helpSettingsInputValue, setHelpSettingsInputValue] = useState("");
+  const [helpSettingsInputApplying, setHelpSettingsInputApplying] = useState(false);
+  const [helpSettingsInputError, setHelpSettingsInputError] = useState<string | null>(null);
   const [helpPreviewThemeMode, setHelpPreviewThemeMode] = useState<ThemeId | null>(null);
   const [helpDraftLogoMode, setHelpDraftLogoMode] = useState<LogoMode | null>(null);
   const [helpTextTuningThemeId, setHelpTextTuningThemeId] = useState<RotatingThemeId>(
@@ -1973,6 +2149,18 @@ export function App({
   const helpNavItems =
     activeHelpPage === "settings"
       ? HELP_SETTINGS_NAV_ITEMS
+      : activeHelpPage === "settingsAppearance"
+        ? HELP_SETTINGS_APPEARANCE_NAV_ITEMS
+      : activeHelpPage === "settingsNavigation"
+        ? HELP_SETTINGS_NAVIGATION_NAV_ITEMS
+      : activeHelpPage === "settingsNotifications"
+        ? HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS
+      : activeHelpPage === "settingsSecurity"
+        ? HELP_SETTINGS_SECURITY_NAV_ITEMS
+      : activeHelpPage === "settingsNotes"
+        ? HELP_SETTINGS_NOTES_NAV_ITEMS
+      : activeHelpPage === "settingsCloud"
+        ? HELP_SETTINGS_CLOUD_NAV_ITEMS
       : activeHelpPage === "keymapAliases"
         ? HELP_KEYMAP_ALIAS_NAV_ITEMS
       : activeHelpPage === "theme"
@@ -1987,6 +2175,18 @@ export function App({
   const helpNavSelectionIndex =
     activeHelpPage === "settings"
       ? helpNavSelection.settings
+      : activeHelpPage === "settingsAppearance"
+        ? helpNavSelection.settingsAppearance
+      : activeHelpPage === "settingsNavigation"
+        ? helpNavSelection.settingsNavigation
+      : activeHelpPage === "settingsNotifications"
+        ? helpNavSelection.settingsNotifications
+      : activeHelpPage === "settingsSecurity"
+        ? helpNavSelection.settingsSecurity
+      : activeHelpPage === "settingsNotes"
+        ? helpNavSelection.settingsNotes
+      : activeHelpPage === "settingsCloud"
+        ? helpNavSelection.settingsCloud
       : activeHelpPage === "keymapAliases"
         ? helpNavSelection.keymapAliases
       : activeHelpPage === "theme"
@@ -2002,11 +2202,14 @@ export function App({
     helpNavItems.length === 0
       ? 0
       : Math.max(0, Math.min(helpNavSelectionIndex, helpNavItems.length - 1));
-  const helpNavLineCount = getHelpNavLineCount(activeHelpPage, helpNavItems.length);
+  const helpNavStatusLineCount = 0;
+  const helpNavLineCount = getHelpNavLineCount(helpNavStatusLineCount, helpNavItems.length);
   const helpBodyLineCount =
     activeHelpPage === "help"
       ? helpRows.length
-      : activeHelpPage === "custom1Edit" || activeHelpPage === "textTuningEdit"
+      : activeHelpPage === "custom1Edit" ||
+          activeHelpPage === "textTuningEdit" ||
+          activeHelpPage === "settingsInput"
         ? 22
         : Math.max(4, helpNavLineCount);
   const helpPanelMaxWidth = Math.max(20, terminalWidth - HELP_PANEL_HORIZONTAL_MARGIN * 2);
@@ -2068,7 +2271,8 @@ export function App({
   const helpNavVisibleRowCount =
     activeHelpPage === "help" ||
     activeHelpPage === "custom1Edit" ||
-    activeHelpPage === "textTuningEdit"
+    activeHelpPage === "textTuningEdit" ||
+    activeHelpPage === "settingsInput"
       ? 0
       : Math.max(
           0,
@@ -2077,7 +2281,8 @@ export function App({
   const helpNavScrollbarThumb =
     activeHelpPage !== "help" &&
     activeHelpPage !== "custom1Edit" &&
-    activeHelpPage !== "textTuningEdit"
+    activeHelpPage !== "textTuningEdit" &&
+    activeHelpPage !== "settingsInput"
       ? computeHelpScrollbarThumb({
           scrollOffset: clampedHelpNavScrollOffset,
           visibleRows: helpContentVisibleRows,
@@ -2091,8 +2296,10 @@ export function App({
         : "1 Backup Center | Enter/Right on Settings opens Settings pages | Up/Down focus | Enter/Space expand | Left collapse | Esc close"
       : activeHelpPage === "custom1Edit" || activeHelpPage === "textTuningEdit"
         ? "S save | C/Esc cancel | R reset token | Tab next focus | Arrows adjust/jump | Enter commit"
-        : activeHelpPage === "settings" &&
-            clampedHelpNavSelectionIndex === HELP_SETTINGS_LOGO_NAV_INDEX
+        : activeHelpPage === "settingsInput"
+          ? "Type value | Enter apply | Esc back"
+        : activeHelpPage === "settingsAppearance" &&
+            clampedHelpNavSelectionIndex === HELP_SETTINGS_APPEARANCE_LOGO_NAV_INDEX
           ? "Left/Right preview logo | Enter commit | Esc/Backspace back"
         : "Up/Down move | Enter/Right select | Left/Backspace/Esc back";
   const helpFooterHintsLine = fitLineToWidth(
@@ -2108,6 +2315,20 @@ export function App({
       ? "Help"
       : activeHelpPage === "settings"
         ? "Help / Settings"
+      : activeHelpPage === "settingsAppearance"
+        ? "Help / Settings / Appearance"
+      : activeHelpPage === "settingsNavigation"
+        ? "Help / Settings / Navigation & Keymaps"
+      : activeHelpPage === "settingsNotifications"
+        ? "Help / Settings / Notifications"
+      : activeHelpPage === "settingsSecurity"
+        ? "Help / Settings / Security"
+      : activeHelpPage === "settingsNotes"
+        ? "Help / Settings / TOME Notes"
+      : activeHelpPage === "settingsCloud"
+        ? "Help / Settings / Cloud Backup"
+      : activeHelpPage === "settingsInput"
+        ? "Help / Settings / Edit Value"
         : activeHelpPage === "keymapAliases"
           ? "Help / Settings / Keymap Aliases"
         : activeHelpPage === "theme"
@@ -2717,101 +2938,136 @@ export function App({
     helpDraftLogoMode && helpDraftLogoMode !== settingsState.logoMode
       ? `Logo: ${formatLogoModeLabel(settingsState.logoMode)} (preview: ${formatLogoModeLabel(helpDraftLogoMode)})`
       : `Logo: ${formatLogoModeLabel(settingsState.logoMode)}`;
-  const helpThemeStatusLine = fitLineToWidth(
-    `    ${helpThemeStatusLineRaw}`,
-    helpContentLineWidth
-  );
-  const helpLogoStatusLine = fitLineToWidth(
-    `    ${helpLogoStatusLineRaw}`,
-    helpContentLineWidth
-  );
-  const helpNavigationHintsStatusLine = fitLineToWidth(
-    `    Navigation hints: ${formatHintDisplayModeStatusLabel(settingsState.hintDisplayMode)}`,
-    helpContentLineWidth
-  );
-  const helpPrefixPopupStatusLine = fitLineToWidth(
-    `    Prefix popup: ${settingsState.showPrefixHintPopup ? "on" : "off"}`,
-    helpContentLineWidth
-  );
-  const helpFlashStatusLine = fitLineToWidth(
-    `    Flash mode: ${settingsState.flashMode}`,
-    helpContentLineWidth
-  );
-  const helpCrtFxLiteState = settingsState.crtFxLite ? "on" : "off";
-  const helpCrtFxLiteStatusLine = fitLineToWidth(
-    `    CRT FX Lite: ${helpCrtFxLiteState}`,
-    helpContentLineWidth
-  );
-  const helpCrtFxProfileLabel = formatCrtFxLiteProfileLabel(
-    settingsState.crtFxColor,
-    settingsState.crtFxPreset
-  );
-  const helpCrtFxProfileStatusLine = fitLineToWidth(
-    `    CRT FX Profile: ${helpCrtFxProfileLabel}`,
-    helpContentLineWidth
-  );
-  const helpRetroFxModeStatusLine = fitLineToWidth(
-    `    Retro FX Mode: ${formatRetroFxModeLabel(settingsState.retroFxMode)}`,
-    helpContentLineWidth
-  );
-  const helpNotificationsEnabledStatusLine = fitLineToWidth(
-    `    Notifications: ${settingsState.notifications.enabled ? "on" : "off"}`,
-    helpContentLineWidth
-  );
-  const helpInAppBannerStatusLine = fitLineToWidth(
-    `    Overdue popup: ${settingsState.notifications.inAppOverdueBanner ? "on" : "off"}`,
-    helpContentLineWidth
-  );
-  const helpTerminalBellStatusLine = fitLineToWidth(
-    `    Terminal bell: ${settingsState.notifications.terminalBellOnOverdue ? "on" : "off"}`,
-    helpContentLineWidth
-  );
-  const helpRestoreTomeGuidesStatusLine = fitLineToWidth(
-    `    Recover default guides: ${notesRuntime.enabled ? "ready" : "unavailable (TOME disabled)"}`,
-    helpContentLineWidth
-  );
-  const helpSettingsStatusLines = [
-    helpThemeStatusLine.trim(),
-    helpNavigationHintsStatusLine.trim(),
-    helpPrefixPopupStatusLine.trim(),
-    helpLogoStatusLine.trim(),
-    helpFlashStatusLine.trim(),
-    helpCrtFxLiteStatusLine.trim(),
-    helpCrtFxProfileStatusLine.trim(),
-    helpRetroFxModeStatusLine.trim(),
-    helpNotificationsEnabledStatusLine.trim(),
-    helpInAppBannerStatusLine.trim(),
-    helpTerminalBellStatusLine.trim(),
-    helpRestoreTomeGuidesStatusLine.trim()
-  ];
+  const helpCloudSettings = resolveGitHubSettings() ?? DEFAULT_GITHUB_BACKUP;
+  const helpSettingsInputTitle = helpSettingsInputField
+    ? resolveHelpSettingsInputTitle(helpSettingsInputField)
+    : "Settings Value";
+  const helpSettingsInputPlaceholder = helpSettingsInputField
+    ? resolveHelpSettingsInputPlaceholder(helpSettingsInputField)
+    : "Type value";
+  const helpSettingsStatusLines: string[] = [];
   const helpKeymapAliasPresetStates = {
     list: resolveKeymapAliasPresetState("list", settingsState.keymapAliases),
     dashboard: resolveKeymapAliasPresetState("dashboard", settingsState.keymapAliases),
     backup: resolveKeymapAliasPresetState("backup", settingsState.keymapAliases),
     help: resolveKeymapAliasPresetState("help", settingsState.keymapAliases)
   } as const;
-  const helpNavStatusLineCount =
-    activeHelpPage === "settings" ? helpSettingsStatusLines.length : 0;
   function resolveHelpNavItemTitle(item: HelpNavItem, index: number): string {
-    if (activeHelpPage === "theme" && index === 0) {
+    if (activeHelpPage === "theme" && index === HELP_THEME_NAV_THEME_MODE_INDEX) {
       return helpThemeStatusLineRaw;
     }
-    if (activeHelpPage === "settings" && index === HELP_SETTINGS_LOGO_NAV_INDEX) {
+    if (activeHelpPage === "settings" && index === HELP_SETTINGS_APPEARANCE_NAV_INDEX) {
+      return `Appearance (${formatThemeDisplayName(settingsState.themeId)})`;
+    }
+    if (activeHelpPage === "settings" && index === HELP_SETTINGS_NAVIGATION_NAV_INDEX) {
+      return `Navigation & Keymaps (${formatHintDisplayModeLabel(settingsState.hintDisplayMode)})`;
+    }
+    if (activeHelpPage === "settings" && index === HELP_SETTINGS_NOTIFICATIONS_NAV_INDEX) {
+      return `Notifications (${settingsState.notifications.enabled ? "on" : "off"})`;
+    }
+    if (activeHelpPage === "settings" && index === HELP_SETTINGS_SECURITY_NAV_INDEX) {
+      return `Security (${formatNonHttpLinkPolicyLabel(settingsState.security.nonHttpLinkPolicy)})`;
+    }
+    if (activeHelpPage === "settings" && index === HELP_SETTINGS_NOTES_NAV_INDEX) {
+      return `TOME Notes (${settingsState.notes.enabled ? "enabled" : "disabled"})`;
+    }
+    if (activeHelpPage === "settings" && index === HELP_SETTINGS_CLOUD_NAV_INDEX) {
+      const repoLabel = helpCloudSettings?.ownerRepo ?? "unconfigured";
+      return `Cloud Backup (${repoLabel})`;
+    }
+    if (
+      activeHelpPage === "settingsAppearance" &&
+      index === HELP_SETTINGS_APPEARANCE_LOGO_NAV_INDEX
+    ) {
       return `Logo: ${formatLogoModeLabel(effectiveLogoModeForHelp)}`;
     }
-    if (activeHelpPage === "settings" && index === HELP_SETTINGS_NAVIGATION_HINTS_NAV_INDEX) {
+    if (
+      activeHelpPage === "settingsNavigation" &&
+      index === HELP_SETTINGS_NAVIGATION_HINTS_NAV_INDEX
+    ) {
       return `Navigation Hints: ${formatHintDisplayModeLabel(settingsState.hintDisplayMode)}`;
     }
-    if (activeHelpPage === "settings" && index === HELP_SETTINGS_PREFIX_POPUP_NAV_INDEX) {
+    if (
+      activeHelpPage === "settingsNavigation" &&
+      index === HELP_SETTINGS_NAVIGATION_PREFIX_POPUP_NAV_INDEX
+    ) {
       return `Prefix Popup: ${settingsState.showPrefixHintPopup ? "on" : "off"}`;
     }
-    if (activeHelpPage === "settings" && index === HELP_SETTINGS_RETRO_FX_MODE_NAV_INDEX) {
+    if (
+      activeHelpPage === "settingsAppearance" &&
+      index === HELP_SETTINGS_APPEARANCE_RETRO_FX_MODE_NAV_INDEX
+    ) {
       return `Retro FX Mode: ${formatRetroFxModeLabel(settingsState.retroFxMode)}`;
     }
-    if (activeHelpPage === "settings" && index === HELP_SETTINGS_RESTORE_TOME_GUIDES_NAV_INDEX) {
+    if (
+      activeHelpPage === "settingsNotifications" &&
+      index === HELP_SETTINGS_NOTIFICATIONS_BANNER_DURATION_NAV_INDEX
+    ) {
+      return `Banner Duration: ${String(settingsState.notifications.bannerDurationMs)} ms`;
+    }
+    if (
+      activeHelpPage === "settingsNotifications" &&
+      index === HELP_SETTINGS_NOTIFICATIONS_BELL_COOLDOWN_NAV_INDEX
+    ) {
+      return `Bell Cooldown: ${String(settingsState.notifications.bellCooldownMs)} ms`;
+    }
+    if (
+      activeHelpPage === "settingsSecurity" &&
+      index === HELP_SETTINGS_SECURITY_NON_HTTP_POLICY_NAV_INDEX
+    ) {
+      return `Non-HTTP Link Policy: ${formatNonHttpLinkPolicyLabel(
+        settingsState.security.nonHttpLinkPolicy
+      )}`;
+    }
+    if (
+      activeHelpPage === "settingsNotes" &&
+      index === HELP_SETTINGS_NOTES_ENABLED_NAV_INDEX
+    ) {
+      return `TOME Enabled: ${settingsState.notes.enabled ? "on" : "off"}`;
+    }
+    if (activeHelpPage === "settingsNotes" && index === HELP_SETTINGS_NOTES_ROOT_NAV_INDEX) {
+      const rootPath = settingsState.notes.rootPath ?? notesRuntime.notesRoot;
+      return `TOME Root Path: ${redactPathForDisplay(rootPath)}`;
+    }
+    if (
+      activeHelpPage === "settingsNotes" &&
+      index === HELP_SETTINGS_NOTES_RESTORE_GUIDES_NAV_INDEX
+    ) {
       return notesRuntime.enabled
         ? "Restore TOME Guides"
         : "Restore TOME Guides (TOME disabled)";
+    }
+    if (
+      activeHelpPage === "settingsCloud" &&
+      index === HELP_SETTINGS_CLOUD_ENABLED_NAV_INDEX
+    ) {
+      return `Cloud Backup Enabled: ${helpCloudSettings?.enabled ? "on" : "off"}`;
+    }
+    if (
+      activeHelpPage === "settingsCloud" &&
+      index === HELP_SETTINGS_CLOUD_OWNER_REPO_NAV_INDEX
+    ) {
+      return `Owner/Repo: ${helpCloudSettings?.ownerRepo ?? "(not configured)"}`;
+    }
+    if (activeHelpPage === "settingsCloud" && index === HELP_SETTINGS_CLOUD_BRANCH_NAV_INDEX) {
+      return `Branch: ${helpCloudSettings?.branch ?? DEFAULT_GITHUB_BACKUP_BRANCH}`;
+    }
+    if (
+      activeHelpPage === "settingsCloud" &&
+      index === HELP_SETTINGS_CLOUD_AUTO_PUSH_POLICY_NAV_INDEX
+    ) {
+      return `Auto Push Policy: ${formatGitHubAutoPushPolicyLabel(
+        helpCloudSettings?.autoPushPolicy ?? DEFAULT_GITHUB_AUTO_PUSH_POLICY
+      )}`;
+    }
+    if (activeHelpPage === "settingsCloud" && index === HELP_SETTINGS_CLOUD_DEVICE_ID_NAV_INDEX) {
+      return `Device ID: ${helpCloudSettings?.deviceId ?? "(none)"}`;
+    }
+    if (
+      activeHelpPage === "settingsCloud" &&
+      index === HELP_SETTINGS_CLOUD_PATH_PREFIX_NAV_INDEX
+    ) {
+      return `Path Prefix: ${helpCloudSettings?.pathPrefix ?? "(none)"}`;
     }
     if (activeHelpPage === "keymapAliases") {
       if (index === 0) {
@@ -2919,6 +3175,7 @@ export function App({
   const whichKeyPopupBottom = whichKeyHintBarBottom + (
     showWhichKeyHintBar ? whichKeyHintBarHeightRows : whichKeyHintBarPaddingBottomRows
   );
+  const whichKeyPopupLineWidth = Math.max(18, Math.min(40, bottomBarWidth - 12));
   const engagementToastLine = activeEngagementToast
     ? fitLineToWidth(
         activeEngagementToast.message,
@@ -3369,8 +3626,8 @@ export function App({
 
   useEffect(() => {
     if (
-      activeHelpPage !== "settings" ||
-      clampedHelpNavSelectionIndex !== HELP_SETTINGS_LOGO_NAV_INDEX
+      activeHelpPage !== "settingsAppearance" ||
+      clampedHelpNavSelectionIndex !== HELP_SETTINGS_APPEARANCE_LOGO_NAV_INDEX
     ) {
       setHelpDraftLogoMode(null);
     }
@@ -3756,7 +4013,8 @@ export function App({
     if (
       activeHelpPage === "help" ||
       activeHelpPage === "custom1Edit" ||
-      activeHelpPage === "textTuningEdit"
+      activeHelpPage === "textTuningEdit" ||
+      activeHelpPage === "settingsInput"
     ) {
       return;
     }
@@ -3766,10 +4024,7 @@ export function App({
     const currentOffset = getCurrentHelpNavScrollTop();
 
     const nextOffset = ensureSelectedVisible({
-      selectedIndex: getHelpNavSelectionAnchorRow(
-        activeHelpPage,
-        clampedHelpNavSelectionIndex
-      ),
+      selectedIndex: getHelpNavSelectionAnchorRow(helpNavStatusLineCount, clampedHelpNavSelectionIndex),
       scrollOffset: currentOffset,
       visibleRows: helpContentVisibleRows,
       itemCount: helpNavLineCount
@@ -5919,8 +6174,8 @@ export function App({
 
     if (
       uiState.mode === Mode.HELP &&
-      activeHelpPage === "settings" &&
-      clampedHelpNavSelectionIndex === HELP_SETTINGS_LOGO_NAV_INDEX
+      activeHelpPage === "settingsAppearance" &&
+      clampedHelpNavSelectionIndex === HELP_SETTINGS_APPEARANCE_LOGO_NAV_INDEX
     ) {
       if (keyName === "left") {
         cycleLogoModeSetting(-1, false);
@@ -5995,6 +6250,12 @@ export function App({
     setHelpNavStack(["help"]);
     setHelpNavSelection({
       settings: 0,
+      settingsAppearance: 0,
+      settingsNavigation: 0,
+      settingsNotifications: 0,
+      settingsSecurity: 0,
+      settingsNotes: 0,
+      settingsCloud: 0,
       keymapAliases: 0,
       theme: 0,
       custom1: 0,
@@ -6004,6 +6265,10 @@ export function App({
     setHelpTextTuningThemeId(HELP_TEXT_TUNING_THEMES[0] ?? "default");
     setHelpPreviewThemeMode(null);
     setHelpDraftLogoMode(null);
+    setHelpSettingsInputField(null);
+    setHelpSettingsInputValue("");
+    setHelpSettingsInputApplying(false);
+    setHelpSettingsInputError(null);
     setBuiltInTextDraftGlobal({});
     setBuiltInTextDraftObjects({});
     helpPreviewRestoreThemeRef.current = null;
@@ -6308,6 +6573,274 @@ export function App({
     showShortNavigationBanner(`Terminal bell: ${nextEnabled ? "on" : "off"}`);
   }
 
+  function cycleSecurityNonHttpLinkPolicySetting() {
+    const nextPolicy = settingsState.security.nonHttpLinkPolicy === "prompt" ? "block" : "prompt";
+    settingsDispatch({
+      type: "setSecurity",
+      security: {
+        ...settingsState.security,
+        nonHttpLinkPolicy: nextPolicy
+      }
+    });
+    showShortNavigationBanner(
+      `Non-http links: ${nextPolicy === "block" ? "block" : "prompt"}`
+    );
+  }
+
+  function switchNotesEnabledSetting() {
+    const nextEnabled = !settingsState.notes.enabled;
+    settingsDispatch({
+      type: "setNotes",
+      notes: {
+        ...settingsState.notes,
+        enabled: nextEnabled
+      }
+    });
+    showShortNavigationBanner(`TOME: ${nextEnabled ? "enabled" : "disabled"}`);
+  }
+
+  function resolveHelpSettingsInputSeedValue(field: HelpSettingsInputField): string {
+    const github = resolveGitHubSettings();
+    if (field === "notificationsBannerDurationMs") {
+      return String(settingsState.notifications.bannerDurationMs);
+    }
+    if (field === "notificationsBellCooldownMs") {
+      return String(settingsState.notifications.bellCooldownMs);
+    }
+    if (field === "notesRootPath") {
+      return settingsState.notes.rootPath ?? notesRuntime.notesRoot;
+    }
+    if (field === "cloudOwnerRepo") {
+      return github?.ownerRepo ?? "";
+    }
+    if (field === "cloudBranch") {
+      return github?.branch ?? DEFAULT_GITHUB_BACKUP_BRANCH;
+    }
+    if (field === "cloudDeviceId") {
+      return github?.deviceId ?? DEFAULT_GITHUB_BACKUP?.deviceId ?? "";
+    }
+    return github?.pathPrefix ?? "";
+  }
+
+  function resolveHelpSettingsInputTitle(field: HelpSettingsInputField): string {
+    if (field === "notificationsBannerDurationMs") return "Notification Banner Duration (ms)";
+    if (field === "notificationsBellCooldownMs") return "Terminal Bell Cooldown (ms)";
+    if (field === "notesRootPath") return "TOME Root Path";
+    if (field === "cloudOwnerRepo") return "Cloud Owner/Repo";
+    if (field === "cloudBranch") return "Cloud Branch";
+    if (field === "cloudDeviceId") return "Cloud Device ID";
+    return "Cloud Path Prefix";
+  }
+
+  function resolveHelpSettingsInputPlaceholder(field: HelpSettingsInputField): string {
+    if (field === "notificationsBannerDurationMs") return "e.g. 5000";
+    if (field === "notificationsBellCooldownMs") return "e.g. 2000";
+    if (field === "notesRootPath") return "Absolute path (blank = default under data root)";
+    if (field === "cloudOwnerRepo") return "owner/repo";
+    if (field === "cloudBranch") return "main";
+    if (field === "cloudDeviceId") return "dev_local";
+    return "tadoi/devices/<device-id>";
+  }
+
+  function openHelpSettingsInput(field: HelpSettingsInputField) {
+    setHelpSettingsInputField(field);
+    setHelpSettingsInputValue(resolveHelpSettingsInputSeedValue(field));
+    setHelpSettingsInputApplying(false);
+    setHelpSettingsInputError(null);
+    pushHelpPage("settingsInput");
+  }
+
+  function closeHelpSettingsInput() {
+    if (helpSettingsInputApplying) {
+      return;
+    }
+    setHelpSettingsInputField(null);
+    setHelpSettingsInputValue("");
+    setHelpSettingsInputError(null);
+    popHelpPage();
+  }
+
+  function updateGitHubBackupSettings(patch: Partial<GitHubBackupSettings>) {
+    const defaults = getDefaultSettings().githubBackup ?? DEFAULT_GITHUB_BACKUP;
+    const current = resolveGitHubSettings() ?? defaults;
+    if (!current || !defaults) return;
+
+    const deviceId = (patch.deviceId ?? current.deviceId ?? defaults.deviceId).trim();
+    const safeDeviceId = deviceId.length > 0 ? deviceId : defaults.deviceId;
+    const inferredPathPrefix = `tadoi/devices/${safeDeviceId}`;
+    const nextPathPrefixCandidate = patch.pathPrefix ?? current.pathPrefix ?? inferredPathPrefix;
+    const nextPathPrefix =
+      nextPathPrefixCandidate.trim().length > 0
+        ? nextPathPrefixCandidate.trim()
+        : inferredPathPrefix;
+    const hasOwnerRepoPatch = Object.prototype.hasOwnProperty.call(patch, "ownerRepo");
+    const nextOwnerRepoRaw = hasOwnerRepoPatch ? patch.ownerRepo : current.ownerRepo;
+    const nextOwnerRepo =
+      typeof nextOwnerRepoRaw === "string" && nextOwnerRepoRaw.trim().length > 0
+        ? nextOwnerRepoRaw.trim()
+        : null;
+    const nextBranchRaw = patch.branch ?? current.branch ?? DEFAULT_GITHUB_BACKUP_BRANCH;
+    const nextBranch =
+      typeof nextBranchRaw === "string" && nextBranchRaw.trim().length > 0
+        ? nextBranchRaw.trim()
+        : DEFAULT_GITHUB_BACKUP_BRANCH;
+
+    settingsDispatch({
+      type: "setGitHubBackup",
+      githubBackup: {
+        ...current,
+        enabled: patch.enabled ?? current.enabled,
+        ownerRepo: nextOwnerRepo,
+        branch: nextBranch,
+        deviceId: safeDeviceId,
+        pathPrefix: nextPathPrefix,
+        autoPushPolicy:
+          patch.autoPushPolicy ??
+          current.autoPushPolicy ??
+          DEFAULT_GITHUB_AUTO_PUSH_POLICY
+      }
+    });
+  }
+
+  function switchCloudBackupEnabledSetting() {
+    const current = resolveGitHubSettings() ?? DEFAULT_GITHUB_BACKUP;
+    const nextEnabled = !(current?.enabled === true);
+    updateGitHubBackupSettings({ enabled: nextEnabled });
+    showShortNavigationBanner(`Cloud backup: ${nextEnabled ? "on" : "off"}`);
+  }
+
+  function cycleCloudAutoPushPolicySetting() {
+    const currentPolicy =
+      resolveGitHubSettings()?.autoPushPolicy ?? DEFAULT_GITHUB_AUTO_PUSH_POLICY;
+    const nextPolicy = cycleGitHubAutoPushPolicy(currentPolicy);
+    updateGitHubBackupSettings({ autoPushPolicy: nextPolicy });
+    showShortNavigationBanner(
+      `Cloud auto-push: ${formatGitHubAutoPushPolicyLabel(nextPolicy)}`
+    );
+  }
+
+  function openCloudBackupOperationsFromSettings() {
+    openBackupCenter();
+    openGitHubCloudStatus();
+  }
+
+  async function submitHelpSettingsInput(submittedValue?: string): Promise<void> {
+    const field = helpSettingsInputField;
+    if (!field || helpSettingsInputApplying) return;
+    const rawValue = (submittedValue ?? helpSettingsInputValue).trim();
+    setHelpSettingsInputError(null);
+
+    if (field === "notificationsBannerDurationMs" || field === "notificationsBellCooldownMs") {
+      const parsed = Number.parseInt(rawValue, 10);
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        setHelpSettingsInputError("Value must be a positive integer (milliseconds).");
+        return;
+      }
+      if (field === "notificationsBannerDurationMs") {
+        settingsDispatch({
+          type: "setNotifications",
+          notifications: {
+            ...settingsState.notifications,
+            bannerDurationMs: Math.floor(parsed)
+          }
+        });
+        showShortNavigationBanner(`Banner duration: ${String(Math.floor(parsed))}ms`);
+      } else {
+        settingsDispatch({
+          type: "setNotifications",
+          notifications: {
+            ...settingsState.notifications,
+            bellCooldownMs: Math.floor(parsed)
+          }
+        });
+        showShortNavigationBanner(`Bell cooldown: ${String(Math.floor(parsed))}ms`);
+      }
+      setHelpSettingsInputField(null);
+      setHelpSettingsInputError(null);
+      setHelpSettingsInputValue("");
+      popHelpPage();
+      return;
+    }
+
+    if (field === "notesRootPath") {
+      const service = resolveNotesService();
+      if (!service) {
+        setHelpSettingsInputError("Notes service unavailable.");
+        return;
+      }
+      const nextRoot =
+        rawValue.length > 0
+          ? path.resolve(rawValue)
+          : resolveNotesRootPath(getDataFilePath(), null);
+      if (!isPathWithin(path.dirname(nextRoot), nextRoot)) {
+        setHelpSettingsInputError("Invalid absolute root path.");
+        return;
+      }
+
+      setHelpSettingsInputApplying(true);
+      try {
+        await createDataBackup(getDataFilePath());
+        await service.migrateNotesRootCopyFirst(nextRoot);
+        settingsDispatch({
+          type: "setNotes",
+          notes: {
+            enabled: true,
+            rootPath: nextRoot
+          }
+        });
+        setNotesList(service.listNotes());
+        setNotesRuntime({
+          ready: true,
+          enabled: true,
+          notesRoot: nextRoot
+        });
+        if (notesOpenPath) {
+          await hydrateOpenNote(notesOpenPath);
+        }
+        showShortNavigationBanner(`TOME root migrated to ${redactPathForDisplay(nextRoot)}`);
+        setHelpSettingsInputField(null);
+        setHelpSettingsInputValue("");
+        setHelpSettingsInputError(null);
+        popHelpPage();
+      } catch (error: unknown) {
+        setHelpSettingsInputError(normalizeErrorDetail(error));
+      } finally {
+        setHelpSettingsInputApplying(false);
+      }
+      return;
+    }
+
+    if (field === "cloudOwnerRepo") {
+      updateGitHubBackupSettings({ ownerRepo: rawValue.length > 0 ? rawValue : null });
+      showShortNavigationBanner(
+        rawValue.length > 0 ? `Cloud repo: ${rawValue}` : "Cloud repo cleared"
+      );
+    } else if (field === "cloudBranch") {
+      const nextBranch = rawValue.length > 0 ? rawValue : DEFAULT_GITHUB_BACKUP_BRANCH;
+      updateGitHubBackupSettings({ branch: nextBranch });
+      showShortNavigationBanner(`Cloud branch: ${nextBranch}`);
+    } else if (field === "cloudDeviceId") {
+      if (rawValue.length === 0) {
+        setHelpSettingsInputError("Device ID cannot be blank.");
+        return;
+      }
+      updateGitHubBackupSettings({ deviceId: rawValue });
+      showShortNavigationBanner(`Cloud device ID: ${rawValue}`);
+    } else if (field === "cloudPathPrefix") {
+      if (rawValue.length === 0) {
+        setHelpSettingsInputError("Path prefix cannot be blank.");
+        return;
+      }
+      updateGitHubBackupSettings({ pathPrefix: rawValue });
+      showShortNavigationBanner(`Cloud path prefix: ${rawValue}`);
+    }
+
+    setHelpSettingsInputField(null);
+    setHelpSettingsInputValue("");
+    setHelpSettingsInputError(null);
+    popHelpPage();
+  }
+
   async function restoreTomeGuidesFromHelpSettings(): Promise<void> {
     const service = resolveNotesService();
     if (!service) return;
@@ -6450,6 +6983,10 @@ export function App({
     if (helpNavStack[helpNavStack.length - 1] === "textTuningEdit") {
       closeBuiltInTextEditorCancel();
     }
+    setHelpSettingsInputField(null);
+    setHelpSettingsInputValue("");
+    setHelpSettingsInputApplying(false);
+    setHelpSettingsInputError(null);
     cancelLogoModeSetting();
     const { mode: returnMode, focus: returnFocus } = normalizeHelpReturnContext(
       helpReturnContextRef.current.mode,
@@ -6461,12 +6998,66 @@ export function App({
 
   function moveHelpSectionFocus(delta: 1 | -1) {
     if (activeHelpPage !== "help") {
+      if (activeHelpPage === "settingsInput") {
+        return;
+      }
       if (activeHelpPage === "settings") {
         setHelpNavSelection((prev) => ({
           ...prev,
           settings: Math.max(
             0,
             Math.min(prev.settings + delta, HELP_SETTINGS_NAV_ITEMS.length - 1)
+          )
+        }));
+      } else if (activeHelpPage === "settingsAppearance") {
+        setHelpNavSelection((prev) => ({
+          ...prev,
+          settingsAppearance: Math.max(
+            0,
+            Math.min(prev.settingsAppearance + delta, HELP_SETTINGS_APPEARANCE_NAV_ITEMS.length - 1)
+          )
+        }));
+      } else if (activeHelpPage === "settingsNavigation") {
+        setHelpNavSelection((prev) => ({
+          ...prev,
+          settingsNavigation: Math.max(
+            0,
+            Math.min(prev.settingsNavigation + delta, HELP_SETTINGS_NAVIGATION_NAV_ITEMS.length - 1)
+          )
+        }));
+      } else if (activeHelpPage === "settingsNotifications") {
+        setHelpNavSelection((prev) => ({
+          ...prev,
+          settingsNotifications: Math.max(
+            0,
+            Math.min(
+              prev.settingsNotifications + delta,
+              HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.length - 1
+            )
+          )
+        }));
+      } else if (activeHelpPage === "settingsSecurity") {
+        setHelpNavSelection((prev) => ({
+          ...prev,
+          settingsSecurity: Math.max(
+            0,
+            Math.min(prev.settingsSecurity + delta, HELP_SETTINGS_SECURITY_NAV_ITEMS.length - 1)
+          )
+        }));
+      } else if (activeHelpPage === "settingsNotes") {
+        setHelpNavSelection((prev) => ({
+          ...prev,
+          settingsNotes: Math.max(
+            0,
+            Math.min(prev.settingsNotes + delta, HELP_SETTINGS_NOTES_NAV_ITEMS.length - 1)
+          )
+        }));
+      } else if (activeHelpPage === "settingsCloud") {
+        setHelpNavSelection((prev) => ({
+          ...prev,
+          settingsCloud: Math.max(
+            0,
+            Math.min(prev.settingsCloud + delta, HELP_SETTINGS_CLOUD_NAV_ITEMS.length - 1)
           )
         }));
       } else if (activeHelpPage === "keymapAliases") {
@@ -6601,6 +7192,30 @@ export function App({
       setHelpNavSelection((prev) => ({ ...prev, settings: index }));
       return;
     }
+    if (activeHelpPage === "settingsAppearance") {
+      setHelpNavSelection((prev) => ({ ...prev, settingsAppearance: index }));
+      return;
+    }
+    if (activeHelpPage === "settingsNavigation") {
+      setHelpNavSelection((prev) => ({ ...prev, settingsNavigation: index }));
+      return;
+    }
+    if (activeHelpPage === "settingsNotifications") {
+      setHelpNavSelection((prev) => ({ ...prev, settingsNotifications: index }));
+      return;
+    }
+    if (activeHelpPage === "settingsSecurity") {
+      setHelpNavSelection((prev) => ({ ...prev, settingsSecurity: index }));
+      return;
+    }
+    if (activeHelpPage === "settingsNotes") {
+      setHelpNavSelection((prev) => ({ ...prev, settingsNotes: index }));
+      return;
+    }
+    if (activeHelpPage === "settingsCloud") {
+      setHelpNavSelection((prev) => ({ ...prev, settingsCloud: index }));
+      return;
+    }
     if (activeHelpPage === "keymapAliases") {
       setHelpNavSelection((prev) => ({ ...prev, keymapAliases: index }));
       return;
@@ -6624,36 +7239,119 @@ export function App({
 
   function handleHelpNavForward(targetIndex = clampedHelpNavSelectionIndex) {
     if (activeHelpPage === "settings") {
-      if (targetIndex === HELP_SETTINGS_THEME_NAV_INDEX) {
+      if (targetIndex === HELP_SETTINGS_APPEARANCE_NAV_INDEX) {
+        cancelLogoModeSetting();
+        pushHelpPage("settingsAppearance");
+      }
+      if (targetIndex === HELP_SETTINGS_NAVIGATION_NAV_INDEX) {
+        pushHelpPage("settingsNavigation");
+      }
+      if (targetIndex === HELP_SETTINGS_NOTIFICATIONS_NAV_INDEX) {
+        pushHelpPage("settingsNotifications");
+      }
+      if (targetIndex === HELP_SETTINGS_SECURITY_NAV_INDEX) {
+        pushHelpPage("settingsSecurity");
+      }
+      if (targetIndex === HELP_SETTINGS_NOTES_NAV_INDEX) {
+        pushHelpPage("settingsNotes");
+      }
+      if (targetIndex === HELP_SETTINGS_CLOUD_NAV_INDEX) {
+        pushHelpPage("settingsCloud");
+      }
+      return;
+    }
+    if (activeHelpPage === "settingsAppearance") {
+      if (targetIndex === HELP_SETTINGS_APPEARANCE_THEME_NAV_INDEX) {
         cancelLogoModeSetting();
         pushHelpPage("theme");
       }
-      if (targetIndex === HELP_SETTINGS_KEYMAP_ALIASES_NAV_INDEX) {
+      if (targetIndex === HELP_SETTINGS_APPEARANCE_LOGO_NAV_INDEX) {
+        cycleLogoModeSetting(1, true);
+      }
+      if (targetIndex === HELP_SETTINGS_APPEARANCE_FLASH_NAV_INDEX) switchFlashModeSetting();
+      if (targetIndex === HELP_SETTINGS_APPEARANCE_CRT_FX_NAV_INDEX) switchCrtFxLiteSetting();
+      if (targetIndex === HELP_SETTINGS_APPEARANCE_CRT_FX_PROFILE_NAV_INDEX) {
+        cycleCrtFxProfileSetting();
+      }
+      if (targetIndex === HELP_SETTINGS_APPEARANCE_RETRO_FX_MODE_NAV_INDEX) {
+        cycleRetroFxModeSetting();
+      }
+      return;
+    }
+    if (activeHelpPage === "settingsNavigation") {
+      if (targetIndex === HELP_SETTINGS_NAVIGATION_KEYMAP_ALIASES_NAV_INDEX) {
         pushHelpPage("keymapAliases");
       }
       if (targetIndex === HELP_SETTINGS_NAVIGATION_HINTS_NAV_INDEX) {
         cycleHintDisplayModeSetting();
       }
-      if (targetIndex === HELP_SETTINGS_PREFIX_POPUP_NAV_INDEX) {
+      if (targetIndex === HELP_SETTINGS_NAVIGATION_PREFIX_POPUP_NAV_INDEX) {
         switchPrefixPopupSetting();
       }
-      if (targetIndex === HELP_SETTINGS_LOGO_NAV_INDEX) {
-        cycleLogoModeSetting(1, true);
-      }
-      if (targetIndex === HELP_SETTINGS_FLASH_NAV_INDEX) switchFlashModeSetting();
-      if (targetIndex === HELP_SETTINGS_CRT_FX_NAV_INDEX) switchCrtFxLiteSetting();
-      if (targetIndex === HELP_SETTINGS_CRT_FX_PROFILE_NAV_INDEX) cycleCrtFxProfileSetting();
-      if (targetIndex === HELP_SETTINGS_RETRO_FX_MODE_NAV_INDEX) cycleRetroFxModeSetting();
-      if (targetIndex === HELP_SETTINGS_NOTIFICATIONS_NAV_INDEX) {
+      return;
+    }
+    if (activeHelpPage === "settingsNotifications") {
+      if (targetIndex === HELP_SETTINGS_NOTIFICATIONS_ENABLED_NAV_INDEX) {
         switchNotificationsEnabledSetting();
       }
-      if (targetIndex === HELP_SETTINGS_OVERDUE_POPUP_NAV_INDEX) {
+      if (targetIndex === HELP_SETTINGS_NOTIFICATIONS_OVERDUE_POPUP_NAV_INDEX) {
         switchInAppOverduePopupSetting();
       }
-      if (targetIndex === HELP_SETTINGS_TERMINAL_BELL_NAV_INDEX) switchTerminalBellSetting();
-      if (targetIndex === HELP_SETTINGS_RESTORE_TOME_GUIDES_NAV_INDEX) {
+      if (targetIndex === HELP_SETTINGS_NOTIFICATIONS_TERMINAL_BELL_NAV_INDEX) {
+        switchTerminalBellSetting();
+      }
+      if (targetIndex === HELP_SETTINGS_NOTIFICATIONS_BANNER_DURATION_NAV_INDEX) {
+        openHelpSettingsInput("notificationsBannerDurationMs");
+      }
+      if (targetIndex === HELP_SETTINGS_NOTIFICATIONS_BELL_COOLDOWN_NAV_INDEX) {
+        openHelpSettingsInput("notificationsBellCooldownMs");
+      }
+      return;
+    }
+    if (activeHelpPage === "settingsSecurity") {
+      if (targetIndex === HELP_SETTINGS_SECURITY_NON_HTTP_POLICY_NAV_INDEX) {
+        cycleSecurityNonHttpLinkPolicySetting();
+      }
+      return;
+    }
+    if (activeHelpPage === "settingsNotes") {
+      if (targetIndex === HELP_SETTINGS_NOTES_ENABLED_NAV_INDEX) {
+        switchNotesEnabledSetting();
+      }
+      if (targetIndex === HELP_SETTINGS_NOTES_ROOT_NAV_INDEX) {
+        openHelpSettingsInput("notesRootPath");
+      }
+      if (targetIndex === HELP_SETTINGS_NOTES_RESTORE_GUIDES_NAV_INDEX) {
         void restoreTomeGuidesFromHelpSettings();
       }
+      return;
+    }
+    if (activeHelpPage === "settingsCloud") {
+      if (targetIndex === HELP_SETTINGS_CLOUD_ENABLED_NAV_INDEX) {
+        switchCloudBackupEnabledSetting();
+      }
+      if (targetIndex === HELP_SETTINGS_CLOUD_OWNER_REPO_NAV_INDEX) {
+        openHelpSettingsInput("cloudOwnerRepo");
+      }
+      if (targetIndex === HELP_SETTINGS_CLOUD_BRANCH_NAV_INDEX) {
+        openHelpSettingsInput("cloudBranch");
+      }
+      if (targetIndex === HELP_SETTINGS_CLOUD_AUTO_PUSH_POLICY_NAV_INDEX) {
+        cycleCloudAutoPushPolicySetting();
+      }
+      if (targetIndex === HELP_SETTINGS_CLOUD_DEVICE_ID_NAV_INDEX) {
+        openHelpSettingsInput("cloudDeviceId");
+      }
+      if (targetIndex === HELP_SETTINGS_CLOUD_PATH_PREFIX_NAV_INDEX) {
+        openHelpSettingsInput("cloudPathPrefix");
+      }
+      if (targetIndex === HELP_SETTINGS_CLOUD_OPEN_OPERATIONS_NAV_INDEX) {
+        openCloudBackupOperationsFromSettings();
+      }
+      return;
+    }
+    if (activeHelpPage === "settingsInput") {
+      void submitHelpSettingsInput();
       return;
     }
     if (activeHelpPage === "keymapAliases") {
@@ -6694,6 +7392,10 @@ export function App({
   }
 
   function handleHelpNavBack() {
+    if (activeHelpPage === "settingsInput") {
+      closeHelpSettingsInput();
+      return;
+    }
     if (activeHelpPage === "custom1Edit") {
       if (requestHelpThemeEditorUnsavedGuard("help_custom1_editor", "close_editor")) {
         return;
@@ -6708,7 +7410,7 @@ export function App({
       closeBuiltInTextEditorCancel();
       return;
     }
-    if (activeHelpPage === "settings") {
+    if (activeHelpPage === "settingsAppearance") {
       cancelLogoModeSetting();
     }
     popHelpPage();
@@ -11890,6 +12592,50 @@ export function App({
                     closeBuiltInTextEditorCancel();
                   }}
                 />
+              ) : activeHelpPage === "settingsInput" ? (
+                <box
+                  style={{
+                    height: "100%",
+                    minHeight: 0,
+                    maxHeight: "100%",
+                    flexDirection: "column",
+                    gap: 1
+                  }}
+                >
+                  <text style={{ color: helpTheme.text, fontWeight: "bold" }}>
+                    {helpSettingsInputTitle}
+                  </text>
+                  <input
+                    value={helpSettingsInputValue}
+                    onChange={(value) => {
+                      setHelpSettingsInputValue(value);
+                      if (helpSettingsInputError) {
+                        setHelpSettingsInputError(null);
+                      }
+                    }}
+                    focused
+                    placeholder={helpSettingsInputPlaceholder}
+                    onSubmit={(value) => {
+                      setHelpSettingsInputValue(value);
+                      void submitHelpSettingsInput(value);
+                    }}
+                    style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
+                  />
+                  <text style={{ color: helpTheme.muted }}>
+                    Enter: apply · Esc: back
+                  </text>
+                  {helpSettingsInputApplying ? (
+                    <text style={{ color: helpTheme.muted }}>Applying setting...</text>
+                  ) : null}
+                  {helpSettingsInputError ? (
+                    <text style={{ color: helpTheme.warn }}>
+                      {fitLineToWidth(
+                        `Error: ${helpSettingsInputError}`,
+                        Math.max(1, helpContentLineWidth)
+                      )}
+                    </text>
+                  ) : null}
+                </box>
               ) : activeHelpPage === "help" ? (
                 <box
                   style={{
@@ -12241,7 +12987,7 @@ export function App({
             bottom: whichKeyPopupBottom
           }}
         >
-          <WhichKeyPopup model={whichKeyPrefixPopup} />
+          <WhichKeyPopup model={whichKeyPrefixPopup} maxLineWidth={whichKeyPopupLineWidth} />
         </box>
       ) : null}
     </box>

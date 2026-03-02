@@ -36,6 +36,13 @@ export type KeyRouterContext = {
   helpPage?:
     | "help"
     | "settings"
+    | "settingsAppearance"
+    | "settingsNavigation"
+    | "settingsNotifications"
+    | "settingsSecurity"
+    | "settingsNotes"
+    | "settingsCloud"
+    | "settingsInput"
     | "keymapAliases"
     | "theme"
     | "custom1"
@@ -1109,6 +1116,17 @@ function resolveHelpModeActions(
     if (isHelpCloseKey(name, sequence)) {
       return [{ scope: "ui", type: "CLOSE_HELP" }];
     }
+    return [];
+  }
+
+  if (activeHelpPage === "settingsInput") {
+    if (name === "escape") {
+      return [{ scope: "ui", type: "HELP_NAV_BACK" }];
+    }
+    if (isHelpCloseKey(name, sequence)) {
+      return [{ scope: "ui", type: "CLOSE_HELP" }];
+    }
+    // Keep text input keys unbound so the focused input can own editing.
     return [];
   }
 

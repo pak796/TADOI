@@ -17,6 +17,7 @@ import {
 import type { FlashMode, LogoMode } from "../settings/settings";
 import { formatThemeDisplayName, type ThemeId } from "../theme/themes";
 import { centerLogoInBox } from "./logoLayout";
+import { truncateToWidth } from "../app/renderingComposition";
 
 export type LeftRailMenuItem =
   | "LIST"
@@ -204,10 +205,14 @@ function wrapWords(text: string, maxWidth: number): string[] {
   return lines;
 }
 
+export function fitLeftRailHintLine(line: string, width = HINT_LINE_WIDTH): string {
+  const safeWidth = Math.max(4, width);
+  const truncated = truncateToWidth(line.trim(), safeWidth);
+  return truncated.padEnd(safeWidth, " ");
+}
+
 function formatHintLine(line: string): string {
-  return line.length > HINT_LINE_WIDTH
-    ? line.slice(0, HINT_LINE_WIDTH)
-    : line.padEnd(HINT_LINE_WIDTH, " ");
+  return fitLeftRailHintLine(line, HINT_LINE_WIDTH);
 }
 
 function formatMenuItemLabel(item: LeftRailMenuItem): string {

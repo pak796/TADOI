@@ -198,8 +198,19 @@ Import:
   - `zeke`, `gundam`, `crtGreen`, `crtAmber`, `custom1`, `rotating`
 - Theme rotation and rotating-mode order include both CRT themes (`crtGreen`, `crtAmber`).
 - Help root is read-only for direct settings hotkeys; settings changes are applied through the Help `Settings & Themes` page flow.
-- Settings page rows include:
-  - `Theme`, `Navigation Hints`, `Prefix Popup`, `Logo`, `Flash Mode`, `CRT FX Lite`, `CRT FX Profile`, `Notifications`, `Overdue Popup`, `Terminal Bell`
+- Settings IA includes sectioned pages:
+  - `Appearance`:
+    - `Theme`, `Logo`, `Flash Mode`, `CRT FX Lite`, `CRT FX Profile`, `Retro FX Mode`
+  - `Navigation & Keymaps`:
+    - `Keymap Aliases`, `Navigation Hints`, `Prefix Popup`
+  - `Notifications`:
+    - `Notifications`, `Overdue Popup`, `Terminal Bell`, `Banner Duration`, `Bell Cooldown`
+  - `Security`:
+    - `Non-HTTP Link Policy`
+  - `TOME Notes`:
+    - `TOME Enabled`, `TOME Root Path`, `Restore TOME Guides`
+  - `Cloud Backup`:
+    - `Cloud Backup Enabled`, `Owner/Repo`, `Branch`, `Auto Push Policy`, `Device ID`, `Path Prefix`, `Open Cloud Operations`
 - CRT FX runtime contract:
   - `CRT FX Lite` toggles effect on/off.
   - `CRT FX Profile` cycles color+strength pairs in this order:

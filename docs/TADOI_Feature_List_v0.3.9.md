@@ -101,7 +101,13 @@ This list reflects current runtime behavior as of **2026-02-27**.
   - first checklist fully completed
 - Empty-state onboarding walkthrough includes `what_next` after celebrate with direct routes to first TOME and checklist setup, plus `ONBOARDING X/3` progress chips.
 - Theme registry includes `crtGreen`, `crtAmber`, `kitty`, `corpo`, and `strikefitron` in addition to existing palettes and `rotating` mode.
-- Help Settings page includes: `Theme`, `Logo`, `Flash Mode`, `CRT FX Lite`, `CRT FX Profile`, `Notifications`, `Overdue Popup`, `Terminal Bell`.
+- Help Settings uses sectioned IA:
+  - `Appearance`: `Theme`, `Logo`, `Flash Mode`, `CRT FX Lite`, `CRT FX Profile`, `Retro FX Mode`
+  - `Navigation & Keymaps`: `Keymap Aliases`, `Navigation Hints`, `Prefix Popup`
+  - `Notifications`: `Notifications`, `Overdue Popup`, `Terminal Bell`, `Banner Duration`, `Bell Cooldown`
+  - `Security`: `Non-HTTP Link Policy`
+  - `TOME Notes`: `TOME Enabled`, `TOME Root Path`, `Restore TOME Guides`
+  - `Cloud Backup`: `Cloud Backup Enabled`, `Owner/Repo`, `Branch`, `Auto Push Policy`, `Device ID`, `Path Prefix`, `Open Cloud Operations`
 - CRT FX Lite applies profile-based tint/flicker treatment to primary panel surfaces (left rail, task list panel, details panel).
 - Persisted settings include theme/logo/flash/CRT FX/notification/security values.
 - `crtFxLite` persists only when enabled; default CRT profile (`green` + `normal`) is omitted from `settings.json`.

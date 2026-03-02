@@ -74,7 +74,7 @@ export const initialSettingsState: SettingsState = {
   themeId: "default",
   logoMode: getDefaultSettings().logoMode,
   flashMode: "slow",
-  hintDisplayMode: getDefaultSettings().hintDisplayMode ?? "left_rail",
+  hintDisplayMode: getDefaultSettings().hintDisplayMode ?? "bottom",
   showPrefixHintPopup: getDefaultSettings().showPrefixHintPopup ?? true,
   crtFxLite: getDefaultSettings().crtFxLite === true,
   crtFxColor: getDefaultSettings().crtFxColor ?? DEFAULT_CRT_FX_LITE_COLOR,

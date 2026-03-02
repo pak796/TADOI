@@ -1180,6 +1180,64 @@ describe("handleKey", () => {
     ).toEqual([{ scope: "ui", type: "HELP_NAV_BACK" }]);
   });
 
+  it("keeps settings subpages on consistent forward/back key semantics", () => {
+    const helpState = {
+      ...initialUIState,
+      mode: Mode.HELP,
+      focus: FocusTarget.TASK_LIST
+    };
+    const settingsSubpages = [
+      "settingsAppearance",
+      "settingsNavigation",
+      "settingsNotifications",
+      "settingsSecurity",
+      "settingsNotes",
+      "settingsCloud"
+    ] as const;
+
+    for (const page of settingsSubpages) {
+      expect(run({ name: "enter" }, { uiState: helpState, helpPage: page })).toEqual([
+        { scope: "ui", type: "HELP_NAV_FORWARD" }
+      ]);
+      expect(run({ name: "right" }, { uiState: helpState, helpPage: page })).toEqual([
+        { scope: "ui", type: "HELP_NAV_FORWARD" }
+      ]);
+      expect(run({ name: "left" }, { uiState: helpState, helpPage: page })).toEqual([
+        { scope: "ui", type: "HELP_NAV_BACK" }
+      ]);
+      expect(run({ name: "backspace" }, { uiState: helpState, helpPage: page })).toEqual([
+        { scope: "ui", type: "HELP_NAV_BACK" }
+      ]);
+      expect(run({ name: "escape" }, { uiState: helpState, helpPage: page })).toEqual([
+        { scope: "ui", type: "HELP_NAV_BACK" }
+      ]);
+    }
+  });
+
+  it("keeps settings input page text-edit keys unbound while preserving enter/esc", () => {
+    const helpState = {
+      ...initialUIState,
+      mode: Mode.HELP,
+      focus: FocusTarget.TASK_LIST
+    };
+
+    expect(
+      run({ name: "backspace" }, { uiState: helpState, helpPage: "settingsInput" })
+    ).toEqual([]);
+    expect(
+      run({ name: "left" }, { uiState: helpState, helpPage: "settingsInput" })
+    ).toEqual([]);
+    expect(
+      run({ name: "a", sequence: "a" }, { uiState: helpState, helpPage: "settingsInput" })
+    ).toEqual([]);
+    expect(
+      run({ name: "enter" }, { uiState: helpState, helpPage: "settingsInput" })
+    ).toEqual([]);
+    expect(
+      run({ name: "escape" }, { uiState: helpState, helpPage: "settingsInput" })
+    ).toEqual([{ scope: "ui", type: "HELP_NAV_BACK" }]);
+  });
+
   it("does not consume editor navigation keys on custom1 edit page", () => {
     const helpState = {
       ...initialUIState,

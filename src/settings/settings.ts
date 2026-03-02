@@ -108,7 +108,7 @@ export type CrtFxLiteProfile = {
 export const DEFAULT_CRT_FX_LITE_COLOR: CrtFxLiteColor = "green";
 export const DEFAULT_CRT_FX_LITE_PRESET: CrtFxLitePreset = "normal";
 export const DEFAULT_RETRO_FX_MODE: RetroFxMode = "off";
-export const DEFAULT_HINT_DISPLAY_MODE: HintDisplayMode = "left_rail";
+export const DEFAULT_HINT_DISPLAY_MODE: HintDisplayMode = "bottom";
 export const DEFAULT_SHOW_PREFIX_HINT_POPUP = true;
 export const CRT_FX_LITE_COLOR_ORDER: CrtFxLiteColor[] = [
   "green",

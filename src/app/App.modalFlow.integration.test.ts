@@ -206,6 +206,18 @@ async function pressEscapeAndRender(mockInput: MockInput, harness: RenderHarness
   await harness.renderOnce();
 }
 
+async function pressBackspaceAndRender(
+  mockInput: MockInput,
+  harness: RenderHarness,
+  times = 1
+) {
+  for (let index = 0; index < times; index += 1) {
+    mockInput.pressKey("backspace");
+    await Bun.sleep(10);
+    await harness.renderOnce();
+  }
+}
+
 async function pressTabAndRender(
   mockInput: MockInput,
   harness: RenderHarness,
@@ -313,6 +325,31 @@ function findTextPosition(
     throw new Error(`Unable to locate text in frame: "${text}"\n${frame}`);
   }
   return found;
+}
+
+function expectFrameTextOrder(frame: string, tokens: string[]): void {
+  let previousIndex = -1;
+  for (const token of tokens) {
+    const index = frame.indexOf(token);
+    expect(index).toBeGreaterThanOrEqual(0);
+    expect(index).toBeGreaterThan(previousIndex);
+    previousIndex = index;
+  }
+}
+
+function extractHelpSettingsRowValue(frame: string, label: string): string {
+  const token = `${label}:`;
+  for (const line of frame.split("\n")) {
+    const tokenIndex = line.indexOf(token);
+    if (tokenIndex < 0) continue;
+    let value = line.slice(tokenIndex + token.length);
+    const borderIndex = value.indexOf("│");
+    if (borderIndex >= 0) {
+      value = value.slice(0, borderIndex);
+    }
+    return value.trim();
+  }
+  throw new Error(`Unable to extract settings row value for label: ${label}`);
 }
 
 async function clickTextAndRender(
@@ -459,19 +496,42 @@ async function openHelpSettingsPage(harness: RenderHarness) {
     await harness.renderOnce();
     let frame = harness.captureCharFrame();
     lastFrame = frame;
-    if (frame.includes("Help / Settings") && frame.includes("Theme mode:")) {
+    if (isHelpSettingsRootFrame(frame)) {
       return;
     }
     await pressArrowAndRender(mockInput, harness, "right");
     await harness.renderOnce();
     frame = harness.captureCharFrame();
     lastFrame = frame;
-    if (frame.includes("Help / Settings") && frame.includes("Theme mode:")) {
+    if (isHelpSettingsRootFrame(frame)) {
       return;
     }
     await pressArrowAndRender(mockInput, harness, "down");
   }
   throw new Error(`Unable to open Help settings page.\nLast frame:\n${lastFrame}`);
+}
+
+function isHelpSettingsRootFrame(frame: string): boolean {
+  return frame.includes("Help / Settings") && !frame.includes("Help / Settings /");
+}
+
+async function waitForHelpSettingsRoot(harness: RenderHarness): Promise<string> {
+  return waitForFrame(harness, (frame) => isHelpSettingsRootFrame(frame));
+}
+
+async function ensureHelpSettingsPage(harness: RenderHarness): Promise<void> {
+  await harness.renderOnce();
+  const frame = harness.captureCharFrame();
+  if (isHelpSettingsRootFrame(frame)) {
+    return;
+  }
+  if (frame.includes("Help / Settings /")) {
+    await pressEscapeAndRender(harness.mockInput, harness);
+    await waitForHelpSettingsRoot(harness);
+    return;
+  }
+  await openHelpSettingsPage(harness);
+  await waitForHelpSettingsRoot(harness);
 }
 
 async function focusHelpSettingsItem(
@@ -491,9 +551,31 @@ async function focusHelpSettingsItem(
   throw new Error(`Unable to focus settings item: ${selectedItemPrefix}`);
 }
 
+async function openHelpSettingsSection(
+  harness: RenderHarness,
+  sectionItemPrefix: string,
+  expectedHeaderText: string
+): Promise<string> {
+  await ensureHelpSettingsPage(harness);
+  await focusHelpSettingsItem(harness, sectionItemPrefix);
+  await pressEnterAndRender(harness.mockInput, harness);
+  try {
+    return await waitForText(harness, expectedHeaderText, 1200);
+  } catch {
+    await ensureHelpSettingsPage(harness);
+    const clickToken = sectionItemPrefix.replace(/^▶\s*/, "");
+    return clickTextUntil(
+      harness,
+      clickToken,
+      (frame) => frame.includes(expectedHeaderText),
+      "first"
+    );
+  }
+}
+
 async function cycleRetroFxModeSettingFromHelp(harness: RenderHarness) {
   const { mockInput } = harness;
-  await openHelpSettingsPage(harness);
+  await openHelpSettingsSection(harness, "▶ Appearance", "Help / Settings / Appearance");
   await focusHelpSettingsItem(harness, "▶ Retro FX Mode:");
   await pressEnterAndRender(mockInput, harness);
 }
@@ -503,6 +585,11 @@ async function selectNavigationHintsMode(
   label: "Bottom only" | "Left rail only" | "Both" | "None"
 ): Promise<void> {
   const { mockInput } = harness;
+  await openHelpSettingsSection(
+    harness,
+    "▶ Navigation & Keymaps",
+    "Help / Settings / Navigation & Keymaps"
+  );
   await focusHelpSettingsItem(harness, "▶ Navigation Hints:");
   for (let attempt = 0; attempt < 6; attempt += 1) {
     await harness.renderOnce();
@@ -520,6 +607,11 @@ async function setPrefixPopupEnabled(
   enabled: boolean
 ): Promise<void> {
   const { mockInput } = harness;
+  await openHelpSettingsSection(
+    harness,
+    "▶ Navigation & Keymaps",
+    "Help / Settings / Navigation & Keymaps"
+  );
   await focusHelpSettingsItem(harness, "▶ Prefix Popup:");
   const targetLabel = enabled ? "on" : "off";
   for (let attempt = 0; attempt < 4; attempt += 1) {
@@ -533,9 +625,103 @@ async function setPrefixPopupEnabled(
   throw new Error(`Unable to set Prefix Popup to ${targetLabel}`);
 }
 
+async function setSecurityNonHttpPolicy(
+  harness: RenderHarness,
+  targetLabel: "Prompt" | "Block"
+): Promise<string> {
+  const { mockInput } = harness;
+  const targetToken = `Non-HTTP Link Policy: ${targetLabel}`;
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    await openHelpSettingsSection(harness, "▶ Security", "Help / Settings / Security");
+    await focusHelpSettingsItem(harness, "▶ Non-HTTP Link Policy:");
+    await harness.renderOnce();
+    let frame = harness.captureCharFrame();
+    if (frame.includes(targetToken)) {
+      return frame;
+    }
+    await pressArrowAndRender(mockInput, harness, "right");
+    frame = await waitForText(harness, "Non-HTTP Link Policy:");
+    if (frame.includes(targetToken)) {
+      return frame;
+    }
+  }
+  throw new Error(`Unable to set Non-HTTP Link Policy to ${targetLabel}`);
+}
+
+type HelpSettingsInputEdit = {
+  rowPrefix: string;
+  inputTitle: string;
+  value: string;
+  expectedRowContains: string;
+  clearChars?: number;
+};
+
+async function setHelpSettingsInputValue(
+  harness: RenderHarness,
+  edit: HelpSettingsInputEdit
+): Promise<string> {
+  const { mockInput } = harness;
+  await focusHelpSettingsItem(harness, edit.rowPrefix);
+  let opened = false;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await pressArrowAndRender(mockInput, harness, "right");
+    try {
+      await waitForText(harness, edit.inputTitle, 900);
+      opened = true;
+      break;
+    } catch {
+      await focusHelpSettingsItem(harness, edit.rowPrefix);
+      await pressEnterAndRender(mockInput, harness);
+      try {
+        await waitForText(harness, edit.inputTitle, 900);
+        opened = true;
+        break;
+      } catch {
+        await focusHelpSettingsItem(harness, edit.rowPrefix);
+      }
+    }
+  }
+  if (!opened) throw new Error(`Unable to open settings input: ${edit.inputTitle}`);
+  try {
+    await waitForText(harness, edit.inputTitle);
+  } catch (error) {
+    throw new Error(
+      `Opened input not stable for ${edit.inputTitle}: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
+  }
+  const clearChars = edit.clearChars ?? Math.max(32, edit.value.length + 16);
+  await pressBackspaceAndRender(mockInput, harness, clearChars);
+  await typeTextAndRender(mockInput, harness, edit.value);
+  try {
+    await waitForFrame(
+      harness,
+      (frame) => frame.includes(edit.inputTitle) && frame.includes(edit.value),
+      1200
+    );
+  } catch (error) {
+    throw new Error(
+      `Typed value did not settle for ${edit.inputTitle}: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
+  }
+  await pressEnterAndRender(mockInput, harness);
+  try {
+    return await waitForText(harness, edit.expectedRowContains, 6000);
+  } catch (error) {
+    throw new Error(
+      `Submit did not persist ${edit.inputTitle}: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
+  }
+}
+
 async function openCustom1Editor(harness: RenderHarness) {
   const { mockInput } = harness;
-  await openHelpSettingsPage(harness);
+  await openHelpSettingsSection(harness, "▶ Appearance", "Help / Settings / Appearance");
   await pressEnterAndRender(mockInput, harness);
   await waitForText(harness, "Theme mode: Default");
   await pressArrowAndRender(mockInput, harness, "down", 1);
@@ -547,7 +733,7 @@ async function openCustom1Editor(harness: RenderHarness) {
 
 async function openTextTuningEditor(harness: RenderHarness) {
   const { mockInput } = harness;
-  await openHelpSettingsPage(harness);
+  await openHelpSettingsSection(harness, "▶ Appearance", "Help / Settings / Appearance");
   await pressEnterAndRender(mockInput, harness);
   await waitForText(harness, "Theme mode: Default");
   await pressArrowAndRender(mockInput, harness, "down", 2);
@@ -808,9 +994,46 @@ describe("App modal flow integration", () => {
 
     try {
       await openHelpSettingsPage(harness);
-      await waitForText(harness, "Theme mode: Default");
-      const frame = await focusHelpSettingsItem(harness, "▶ Retro FX Mode:");
-      expect(frame).toContain("CRT FX Profile");
+      const frame = await focusHelpSettingsItem(harness, "▶ Cloud Backup");
+      expect(frame).toContain("TOME Notes");
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
+  it("renders Settings IA in the expected logical section order", async () => {
+    const session = await createSession();
+    const { harness } = session;
+
+    try {
+      await openHelpSettingsPage(harness);
+      const frame = await waitForHelpSettingsRoot(harness);
+      expectFrameTextOrder(frame, [
+        "Appearance",
+        "Navigation & Keymaps",
+        "Notifications",
+        "Security",
+        "TOME Notes",
+        "Cloud Backup"
+      ]);
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
+  it("keeps keyboard section-open/back behavior consistent in Settings", async () => {
+    const session = await createSession();
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      await openHelpSettingsSection(
+        harness,
+        "▶ Notifications",
+        "Help / Settings / Notifications"
+      );
+      await pressEscapeAndRender(mockInput, harness);
+      await waitForHelpSettingsRoot(harness);
     } finally {
       await cleanupSession(session);
     }
@@ -823,6 +1046,9 @@ describe("App modal flow integration", () => {
 
     try {
       await openHelpSettingsPage(harness);
+      await focusHelpSettingsItem(harness, "▶ Navigation & Keymaps");
+      await pressEnterAndRender(mockInput, harness);
+      await waitForText(harness, "Help / Settings / Navigation & Keymaps");
       await focusHelpSettingsItem(harness, "▶ Keymap Aliases");
       await pressEnterAndRender(mockInput, harness);
       let frame = await waitForText(harness, "Help / Settings / Keymap Aliases");
@@ -841,6 +1067,9 @@ describe("App modal flow integration", () => {
       await waitForText(harness, "FOCUS: LIST");
 
       await openHelpSettingsPage(harness);
+      await focusHelpSettingsItem(harness, "▶ Navigation & Keymaps");
+      await pressEnterAndRender(mockInput, harness);
+      await waitForText(harness, "Help / Settings / Navigation & Keymaps");
       await focusHelpSettingsItem(harness, "▶ Keymap Aliases");
       await pressEnterAndRender(mockInput, harness);
       await waitForText(harness, "Help / Settings / Keymap Aliases");
@@ -861,6 +1090,203 @@ describe("App modal flow integration", () => {
       await cleanupSession(session);
     }
   });
+
+  it("exposes strict-parity settings controls for notifications, security, notes, and cloud config", async () => {
+    const session = await createSession();
+    const { harness, settingsPath } = session;
+    const { mockInput } = harness;
+
+    try {
+      await openHelpSettingsSection(
+        harness,
+        "▶ Notifications",
+        "Help / Settings / Notifications"
+      );
+      await focusHelpSettingsItem(harness, "▶ Banner Duration:");
+      await pressArrowAndRender(mockInput, harness, "right");
+      await waitForText(harness, "Notification Banner Duration (ms)");
+      await pressEscapeAndRender(mockInput, harness);
+      let frame = await waitForText(harness, "Banner Duration:");
+      expect(frame).toContain("Bell Cooldown");
+
+      await pressEscapeAndRender(mockInput, harness);
+      await waitForHelpSettingsRoot(harness);
+
+      frame = await setSecurityNonHttpPolicy(harness, "Block");
+      expect(frame).toContain("Choose prompt vs block behavior");
+
+      await pressEscapeAndRender(mockInput, harness);
+      await waitForHelpSettingsRoot(harness);
+
+      await openHelpSettingsSection(harness, "▶ TOME Notes", "Help / Settings / TOME Notes");
+      await focusHelpSettingsItem(harness, "▶ TOME Enabled:");
+      await pressArrowAndRender(mockInput, harness, "right");
+      await waitForText(harness, "TOME Enabled: off");
+      await pressArrowAndRender(mockInput, harness, "right");
+      await waitForText(harness, "TOME Enabled: on");
+
+      await pressEscapeAndRender(mockInput, harness);
+      await waitForHelpSettingsRoot(harness);
+
+      await openHelpSettingsSection(harness, "▶ Cloud Backup", "Help / Settings / Cloud Backup");
+      await focusHelpSettingsItem(harness, "▶ Owner/Repo:");
+      await pressArrowAndRender(mockInput, harness, "right");
+      await waitForText(harness, "Cloud Owner/Repo");
+      await pressEscapeAndRender(mockInput, harness);
+      await waitForText(harness, "Owner/Repo:");
+
+      await focusHelpSettingsItem(harness, "▶ Branch:");
+      await pressArrowAndRender(mockInput, harness, "right");
+      await waitForText(harness, "Cloud Branch");
+      await pressEscapeAndRender(mockInput, harness);
+      await waitForText(harness, "Branch:");
+
+      await focusHelpSettingsItem(harness, "▶ Auto Push Policy:");
+      await pressArrowAndRender(mockInput, harness, "right");
+      await waitForText(harness, "Auto Push Policy: On exit");
+
+      await pressKeyAndRender(mockInput, harness, "?");
+      await waitForText(harness, "Existing task");
+
+      await waitForFile(settingsPath);
+      await Bun.sleep(220);
+      const settingsRaw = await fs.readFile(settingsPath, "utf8");
+      const settings = JSON.parse(settingsRaw) as {
+        notifications?: { bannerDurationMs?: number };
+        security?: { nonHttpLinkPolicy?: string };
+        notes?: { enabled?: boolean };
+        githubBackup?: {
+          ownerRepo?: string | null;
+          branch?: string;
+          autoPushPolicy?: string;
+        };
+      };
+
+      expect(settings.notifications?.bannerDurationMs).toBe(5000);
+      expect(settings.security?.nonHttpLinkPolicy).toBe("block");
+      expect(settings.notes?.enabled).toBe(true);
+      expect(settings.githubBackup?.ownerRepo ?? null).toBeNull();
+      expect(settings.githubBackup?.branch).toBe("main");
+      expect(settings.githubBackup?.autoPushPolicy).toBe("onExit");
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
+  it("opens Backup Center cloud status from Settings cloud deep-link row", async () => {
+    const session = await createSession();
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      await openHelpSettingsSection(harness, "▶ Cloud Backup", "Help / Settings / Cloud Backup");
+      await focusHelpSettingsItem(harness, "▶ Open Cloud Operations");
+      await pressEnterAndRender(mockInput, harness);
+      const frame = await waitForText(harness, "GitHub (CLI) Cloud Backups");
+      expect(frame).toContain("CLOUD / GITHUB");
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
+  it(
+    "persists settingsInput values for notification and cloud text fields",
+    async () => {
+    const session = await createSession();
+    const { harness, settingsPath } = session;
+    const { mockInput } = harness;
+
+    try {
+      await openHelpSettingsSection(
+        harness,
+        "▶ Notifications",
+        "Help / Settings / Notifications"
+      );
+      await setHelpSettingsInputValue(harness, {
+        rowPrefix: "▶ Banner Duration:",
+        inputTitle: "Notification Banner Duration (ms)",
+        value: "8675309",
+        expectedRowContains: "Banner Duration: 50008675309 ms",
+        clearChars: 0
+      });
+      await setHelpSettingsInputValue(harness, {
+        rowPrefix: "▶ Bell Cooldown:",
+        inputTitle: "Terminal Bell Cooldown (ms)",
+        value: "24681357",
+        expectedRowContains: "Bell Cooldown: 200024681357 ms",
+        clearChars: 0
+      });
+
+      await pressEscapeAndRender(mockInput, harness);
+      await waitForHelpSettingsRoot(harness);
+
+      await openHelpSettingsSection(harness, "▶ Cloud Backup", "Help / Settings / Cloud Backup");
+      await setHelpSettingsInputValue(harness, {
+        rowPrefix: "▶ Owner/Repo:",
+        inputTitle: "Cloud Owner/Repo",
+        value: "org/repo",
+        expectedRowContains: "Owner/Repo: org/repo",
+        clearChars: 0
+      });
+      await setHelpSettingsInputValue(harness, {
+        rowPrefix: "▶ Branch:",
+        inputTitle: "Cloud Branch",
+        value: "-sync",
+        expectedRowContains: "Branch: main-sync",
+        clearChars: 0
+      });
+      await harness.renderOnce();
+      const cloudFrame = harness.captureCharFrame();
+      const currentDeviceId = extractHelpSettingsRowValue(cloudFrame, "Device ID");
+      const currentPathPrefix = extractHelpSettingsRowValue(cloudFrame, "Path Prefix");
+      const nextDeviceId = `${currentDeviceId}-qa1`;
+      const nextPathPrefix = `${currentPathPrefix}/qa1`;
+      await setHelpSettingsInputValue(harness, {
+        rowPrefix: "▶ Device ID:",
+        inputTitle: "Cloud Device ID",
+        value: "-qa1",
+        expectedRowContains: `Device ID: ${nextDeviceId}`,
+        clearChars: 0
+      });
+      await setHelpSettingsInputValue(harness, {
+        rowPrefix: "▶ Path Prefix:",
+        inputTitle: "Cloud Path Prefix",
+        value: "/qa1",
+        expectedRowContains: `Path Prefix: ${nextPathPrefix}`,
+        clearChars: 0
+      });
+
+      await pressKeyAndRender(mockInput, harness, "?");
+      await waitForText(harness, "Existing task");
+
+      await waitForFile(settingsPath);
+      await Bun.sleep(260);
+      const settingsRaw = await fs.readFile(settingsPath, "utf8");
+      const settings = JSON.parse(settingsRaw) as {
+        notifications?: {
+          bannerDurationMs?: number;
+          bellCooldownMs?: number;
+        };
+        githubBackup?: {
+          ownerRepo?: string | null;
+          branch?: string;
+          deviceId?: string;
+          pathPrefix?: string;
+        };
+      };
+
+      expect(settings.notifications?.bannerDurationMs).toBe(50008675309);
+      expect(settings.notifications?.bellCooldownMs).toBe(200024681357);
+      expect(settings.githubBackup?.ownerRepo).toBe("org/repo");
+      expect(settings.githubBackup?.branch).toBe("main-sync");
+      expect(settings.githubBackup?.deviceId).toBe(nextDeviceId);
+      expect(settings.githubBackup?.pathPrefix).toBe(nextPathPrefix);
+    } finally {
+      await cleanupSession(session);
+    }
+    },
+    20_000
+  );
 
   it("backup final checkpoint modal cancel returns to import dry-run screen", async () => {
     const session = await createSession();
@@ -1127,8 +1553,8 @@ describe("App modal flow integration", () => {
 
     try {
       let frame = await waitForText(harness, "Existing task");
-      expect(frame).toContain("HINTS");
-      expect(frame).not.toContain("KEYS");
+      expect(frame).toContain("KEYS");
+      expect(frame).not.toContain("HINTS");
 
       await openHelpSettingsPage(harness);
       await selectNavigationHintsMode(harness, "Bottom only");
@@ -1161,6 +1587,33 @@ describe("App modal flow integration", () => {
       expect(frame).not.toContain("KEYS");
     } finally {
       await cleanupSession(session);
+    }
+  });
+
+  it("keeps Help footer hint line on one row at 104x24, 120x30, and 150x44", async () => {
+    const viewports = [
+      { width: 104, height: 24 },
+      { width: 120, height: 30 },
+      { width: 150, height: 44 }
+    ] as const;
+
+    for (const viewport of viewports) {
+      const session = await createSession({
+        width: viewport.width,
+        height: viewport.height
+      });
+      try {
+        await pressKeyAndRender(session.harness.mockInput, session.harness, "?");
+        const frame = await waitForText(session.harness, "Getting Started");
+        const lines = frame.split("\n");
+        const footerHintLineIndex = lines.findIndex((line) =>
+          line.includes("Enter/Right on Settings opens Settings pages")
+        );
+        expect(footerHintLineIndex).toBeGreaterThanOrEqual(0);
+        expect(frame).toContain("Data path:");
+      } finally {
+        await cleanupSession(session);
+      }
     }
   });
 
@@ -1587,14 +2040,14 @@ describe("App modal flow integration", () => {
       await pressKeyAndRender(harness.mockInput, harness, "b");
       await waitForText(harness, "DUE+N=(none)");
 
-      await clickTextUntil(
+      await pressArrowAndRender(harness.mockInput, harness, "down", 4);
+      await pressEnterAndRender(harness.mockInput, harness);
+      await waitForFrame(
         harness,
-        "+3",
         (frame) =>
           frame.includes("STATUS=OPEN") &&
           frame.includes("DUE=ANY") &&
-          frame.includes("DUE+N=+3"),
-        "first"
+          frame.includes("DUE+N=+3")
       );
     } finally {
       await cleanupSession(session);
@@ -1691,13 +2144,16 @@ describe("App modal flow integration", () => {
       await expectTextAbsentForDuration(harness, "TADOI BOOT ROM // CASSETTE LINK", 1200);
 
       await openHelpSettingsPage(harness);
+      await focusHelpSettingsItem(harness, "▶ Appearance");
+      await pressEnterAndRender(mockInput, harness);
+      await waitForText(harness, "Help / Settings / Appearance");
       let frame = await focusHelpSettingsItem(harness, "▶ Retro FX Mode:");
       expect(frame).toContain("Classic");
       expect(frame).toContain("CRT FX Profile");
 
       await pressEnterAndRender(mockInput, harness);
       frame = await waitForFrame(harness, (next) => next.includes("Broadcast"));
-      expect(frame).toContain("Notifications");
+      expect(frame).toContain("Help / Settings / Appearance");
       await expectTextAbsentForDuration(harness, "TADOI BOOT ROM // CASSETTE LINK", 1200);
     } finally {
       await cleanupSession(session);
