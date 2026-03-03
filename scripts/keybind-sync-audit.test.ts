@@ -138,6 +138,58 @@ export function handleKey(key: { name: string; sequence: string; ctrl: boolean }
     }
   });
 
+  it("extracts ctrl combos when router compares name/sequence via toLowerCase()", () => {
+    const tempDir = createTempDir("tadoi-keybind-audit-ctrl-tolower-");
+    try {
+      write(
+        tempDir,
+        "src/app/keyRouter.ts",
+        `
+export function handleKey(key: { name: string; sequence: string; ctrl: boolean; shift: boolean }) {
+  if (key.ctrl && !key.shift && (key.name.toLowerCase() === "n" || key.sequence.toLowerCase() === "n")) {
+    return [{ scope: "ui", type: "OPEN_QUICK_CAPTURE" }];
+  }
+  return [];
+}
+`
+      );
+      write(tempDir, "README.md", "- quick capture: \\`Ctrl+N\\`");
+
+      const outJson = path.join(tempDir, "keybind-audit.json");
+      const outMd = path.join(tempDir, "keybind-audit.md");
+      const result = spawnSync(
+        "python3",
+        [
+          SCRIPT_PATH,
+          "--repo-root",
+          tempDir,
+          "--router-path",
+          "src/app/keyRouter.ts",
+          "--docs-glob",
+          "README.md",
+          "--out-json",
+          outJson,
+          "--out-md",
+          outMd
+        ],
+        { encoding: "utf8" }
+      );
+
+      expect(result.status).toBe(0);
+
+      const payload = JSON.parse(readFileSync(outJson, "utf8")) as {
+        canonical_keybinds: string[];
+        missing_in_code: string[];
+        semantic_mismatch: string[];
+      };
+      expect(payload.canonical_keybinds).toContain("Ctrl+N");
+      expect(payload.missing_in_code).not.toContain("Ctrl+N");
+      expect(payload.semantic_mismatch).toEqual([]);
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it("ignores numeric version tokens in docs while keeping non-version keys", () => {
     const tempDir = createTempDir("tadoi-keybind-audit-version-numeric-");
     try {

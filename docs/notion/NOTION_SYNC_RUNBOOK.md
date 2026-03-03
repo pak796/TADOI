@@ -1,7 +1,7 @@
 # Notion Sync Runbook
 
 Generated: 2026-03-03
-Mode: offline payload staging (deferred apply)
+Mode: Notion MCP apply completed
 
 ## Inputs
 - `docs/notion/NOTION_SYNC_PAYLOAD.json`
@@ -11,17 +11,19 @@ Mode: offline payload staging (deferred apply)
 ## Steps
 1. Validate payload integrity:
    - `bun run notion:sync:validate`
-2. Dry-run deterministic sync (no remote write):
+2. Dry-run deterministic sync (optional, token path):
    - `bun run notion:sync:full:dry`
-3. Apply sync (only when explicitly approved):
-   - `bun run notion:sync:full`
+3. Apply sync via MCP (this run used this path):
+   - For each mapped `page_id`, run `replace_content` from payload markdown.
+   - Update properties: `Name`, `date:Date:start`, `date:Date:is_datetime`, `Notes`.
+   - Append audit token if missing.
 4. Verify TITS coverage on Notion pages:
    - Usage + install pages include TITS command layer quick checks
    - QA pages include `QA-065`..`QA-072`
    - Spec/tasks pages include TITS M1-M3 narrative
 
 5. Verify notes/audit token and metadata:
-   - Confirm `Notes` includes `[AUDIT 2026-03-03] Full docs pass + implementation/spec drift reconciliation staged for deferred apply` on all mapped pages.
+   - Confirm `Notes` includes `[AUDIT 2026-03-03] Full docs pass + implementation/spec drift reconciliation applied via MCP` on all mapped pages.
    - Review `docs/notion/NOTION_SYNC_VERIFY_2026-03-03.json` for title/date/heading/version/notes summary.
    - Validate `bun run notion:sync:validate` returns PASS for payload.
 ## Fallback (No Notion Write Access)

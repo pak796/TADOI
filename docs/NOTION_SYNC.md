@@ -3,14 +3,14 @@
 Date: 2026-03-03
 Target workspace area: `Patrick's Projects > TADOI`
 Primary documents data source: `collection://3035aa1e-f93f-80a3-ba35-000b3b596866`
-Sync status: `Payload refreshed after full docs pass for deferred apply`
+Sync status: `Applied via Notion MCP (full 14-page pass)`
 
 ## 1) Sync Policy
 - Keep Notion guide content aligned to runtime `v0.3.9` and package `0.3.9`.
 - Keep first prominent mention per page as `TADOI™`.
 - Use repository docs as canonical source for technical behavior contracts.
 - Keep TITS coverage aligned to canonical `*TITS*.md` source set.
-- Notes/audit token staged for this pass: `[AUDIT 2026-03-03] Full docs pass + implementation/spec drift reconciliation staged for deferred apply`.
+- Notes/audit token applied for this pass: `[AUDIT 2026-03-03] Full docs pass + implementation/spec drift reconciliation applied via MCP`.
 
 ## 2) Repo -> Notion Page Mapping
 
@@ -44,8 +44,11 @@ Sync status: `Payload refreshed after full docs pass for deferred apply`
 - `docs/ops/NOTION_DEPLOY_PACKAGE_2026-03-03.md`
 
 ## 5) Execution Note
-- This pass is payload/runbook only (no direct Notion write).
-- Use `bun run notion:sync:validate` before applying sync via MCP or n8n.
+- This pass included direct Notion MCP apply for all 14 mapped pages.
+- Content and properties were read back after apply:
+  - `Name` aligned to payload titles
+  - `date:Date:start` set to `2026-03-03` with `date:Date:is_datetime=0`
+  - `Notes` includes audit token
 
 ## Trademark Notice
 TADOI™ is a trademark of <OWNER>. Other names may be trademarks of their respective owners.
