@@ -21,6 +21,7 @@
     "postinstall": "bun run completions:install:user",
     "test": "bun scripts/test-sharded.ts",
     "test:full": "bun scripts/test-sharded.ts --shards 1",
+    "test:reminders": "bun test src/cli/remindersCommands.test.ts src/reminders/helperState.test.ts src/reminders/indexer.test.ts src/reminders/invocation.test.ts src/reminders/isRunning.test.ts src/reminders/remindCommand.test.ts src/reminders/scheduler.test.ts src/reminders/terminalLauncher.test.ts",
     "test:coverage": "bun scripts/test-coverage-app-shell.ts",
     "coverage:app-shell:check": "bun scripts/check-app-shell-coverage.ts --lcov-file coverage/lcov.info --file src/app/App.tsx --min-lines 45 --min-functions 40",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",

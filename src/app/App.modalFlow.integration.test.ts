@@ -94,6 +94,22 @@ function makeInitialData(tasks: Task[] = [makeTask("task-1", "Existing task")]):
   };
 }
 
+function makeReminderDueTask(
+  id: string,
+  title: string,
+  nowMs = Date.now()
+): Task {
+  return {
+    ...makeTask(id, title, nowMs),
+    dueAt: nowMs + 60 * 60_000,
+    hasExplicitTime: true,
+    reminder: {
+      kind: "absolute",
+      at: nowMs - 2 * 60_000
+    }
+  };
+}
+
 async function createSession(options: SessionOptions = {}): Promise<AppSession> {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-app-modal-flow-"));
   const settingsPath = path.join(tempDir, "settings.json");
@@ -1821,6 +1837,85 @@ describe("App modal flow integration", () => {
       await cleanupSession(session);
     }
   });
+
+  it(
+    "reminder modal key path applies snooze actions for 1/2/3 and exits for Enter/Esc",
+    async () => {
+      const cases: Array<{
+        label: string;
+        key: "1" | "2" | "3" | "enter" | "escape";
+        expectedSnoozeMs?: number;
+      }> = [
+        { label: "snooze +10m", key: "1", expectedSnoozeMs: 10 * 60_000 },
+        { label: "snooze +1h", key: "2", expectedSnoozeMs: 60 * 60_000 },
+        { label: "snooze +1d", key: "3", expectedSnoozeMs: 24 * 60 * 60_000 },
+        { label: "dismiss enter", key: "enter" },
+        { label: "dismiss esc", key: "escape" }
+      ];
+
+      for (const testCase of cases) {
+        const nowMs = Date.now();
+        const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-app-reminder-modal-"));
+        const dataPath = path.join(dataDir, "tadoi_data.json");
+        const taskId = `task-reminder-${testCase.key}`;
+        const task = makeReminderDueTask(taskId, `Reminder ${testCase.label}`, nowMs);
+        let session: AppSession | undefined;
+
+        try {
+          await withDataPath(dataPath, async () => {
+            session = await createSession({
+              initialData: makeInitialData([task]),
+              skipInitialSave: false
+            });
+            const { harness } = session;
+            const { mockInput } = harness;
+
+            let frame = await waitForText(harness, "REMINDER [ENTER/ESC/1/2/3/G]", 8000);
+            expect(frame).toContain("SNOOZE +10M [1]");
+            expect(frame).toContain("SNOOZE +1H [2]");
+            expect(frame).toContain("SNOOZE +1D [3]");
+
+            if (testCase.key === "enter") {
+              await pressEnterAndRender(mockInput, harness);
+            } else if (testCase.key === "escape") {
+              await pressEscapeAndRender(mockInput, harness);
+            } else {
+              await pressKeyAndRender(mockInput, harness, testCase.key);
+            }
+
+            frame = await waitForFrame(
+              harness,
+              (next) => next.includes("MODE:  LIST") && !next.includes("REMINDER [ENTER/ESC/1/2/3/G]"),
+              8000
+            );
+            expect(frame).toContain("MODE:  LIST");
+
+            await waitForFile(dataPath, 4000);
+            await Bun.sleep(320);
+            const savedRaw = await fs.readFile(dataPath, "utf8");
+            const saved = JSON.parse(savedRaw) as { tasks?: Array<{ id: string; reminder?: any }> };
+            const savedTask = saved.tasks?.find((candidate) => candidate.id === taskId);
+            expect(savedTask).toBeDefined();
+            expect(savedTask?.reminder?.kind).toBe("absolute");
+
+            if (typeof testCase.expectedSnoozeMs === "number") {
+              const snoozedUntilAt = Number(savedTask?.reminder?.snoozedUntilAt);
+              expect(Number.isFinite(snoozedUntilAt)).toBe(true);
+              expect(snoozedUntilAt).toBeGreaterThanOrEqual(nowMs + testCase.expectedSnoozeMs - 2 * 60_000);
+            } else {
+              expect(savedTask?.reminder?.snoozedUntilAt).toBeUndefined();
+            }
+          });
+        } finally {
+          if (session) {
+            await cleanupSession(session);
+          }
+          await fs.rm(dataDir, { recursive: true, force: true });
+        }
+      }
+    },
+    40_000
+  );
 
   it("shows Ctrl+g prefix popup and clears it after non-prefix continuation without side effects", async () => {
     const session = await createSession();

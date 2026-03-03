@@ -132,7 +132,7 @@ function applyActionToTasks(
   return tasks;
 }
 
-async function mutateReminderAction(
+export async function mutateReminderAction(
   event: ReminderIndexEvent,
   action: OutOfAppReminderActionId,
   dataFilePath: string
@@ -223,11 +223,7 @@ export function cycleReminderAction(
 function ReminderModalApp(props: {
   event: ReminderIndexEvent;
   notesSnippet?: string;
-  invocation: {
-    command: string;
-    baseArgs: string[];
-  };
-  onClose: (exitCode?: number) => Promise<void>;
+  onAction: (action: OutOfAppReminderActionId) => Promise<void>;
   onError: (message: string) => void;
 }) {
   const [selectedAction, setSelectedAction] = React.useState<OutOfAppReminderActionId>("complete");
@@ -238,18 +234,7 @@ function ReminderModalApp(props: {
       if (busy) return;
       setBusy(true);
       try {
-        if (action === "close") {
-          await props.onClose(CLI_EXIT_CODE.SUCCESS);
-          return;
-        }
-        if (action === "open") {
-          await openMainTadoiApp(props.invocation);
-          await props.onClose(CLI_EXIT_CODE.SUCCESS);
-          return;
-        }
-
-        await mutateReminderAction(props.event, action, getDataFilePath());
-        await props.onClose(CLI_EXIT_CODE.SUCCESS);
+        await props.onAction(action);
       } catch (error: unknown) {
         props.onError(error instanceof Error ? error.message : String(error));
         setBusy(false);
@@ -321,33 +306,69 @@ function ReminderModalApp(props: {
   );
 }
 
-export async function runRemindCommand(args: string[]): Promise<number> {
+export type RunRemindCommandDeps = {
+  getDataFilePath: typeof getDataFilePath;
+  loadReminderIndexForDataFile: typeof loadReminderIndexForDataFile;
+  loadStateStrict: typeof loadStateStrict;
+  resolveCurrentTadoiInvocation: typeof resolveCurrentTadoiInvocation;
+  createCliRenderer: typeof createCliRenderer;
+  createRoot: (renderer: Awaited<ReturnType<typeof createCliRenderer>>) => {
+    render: (node: React.ReactElement) => void;
+  };
+  openMainTadoiApp: typeof openMainTadoiApp;
+  mutateReminderAction: typeof mutateReminderAction;
+  log: (line: string) => void;
+  error: (line: string) => void;
+};
+
+const DEFAULT_DEPS: RunRemindCommandDeps = {
+  getDataFilePath,
+  loadReminderIndexForDataFile,
+  loadStateStrict,
+  resolveCurrentTadoiInvocation,
+  createCliRenderer,
+  createRoot: (renderer) => createRoot(renderer),
+  openMainTadoiApp,
+  mutateReminderAction,
+  log: (line) => redactedLogger.log(line),
+  error: (line) => redactedLogger.error(line)
+};
+
+export async function runRemindCommandWithDeps(
+  args: string[],
+  depsOverrides: Partial<RunRemindCommandDeps> = {}
+): Promise<number> {
+  const deps: RunRemindCommandDeps = {
+    ...DEFAULT_DEPS,
+    ...depsOverrides
+  };
+
   if (args.includes("--help") || args.includes("-h")) {
-    redactedLogger.log("Usage:");
-    redactedLogger.log("  tadoi remind --event <eventId>");
+    deps.log("Usage:");
+    deps.log("  tadoi remind --event <eventId>");
     return CLI_EXIT_CODE.SUCCESS;
   }
 
   const parsed = parseRemindArgs(args);
   if (!parsed.eventId) {
-    redactedLogger.error("Error: remind requires --event <eventId>");
+    deps.error("Error: remind requires --event <eventId>");
     return CLI_EXIT_CODE.PARSE_OR_VALIDATION;
   }
 
-  const dataFilePath = getDataFilePath();
-  const index = await loadReminderIndexForDataFile({ dataFilePath });
+  const dataFilePath = deps.getDataFilePath();
+  const index = await deps.loadReminderIndexForDataFile({ dataFilePath });
   const event = index.events.find((item) => item.eventId === parsed.eventId);
   if (!event) {
-    redactedLogger.error(`Error: reminder event '${parsed.eventId}' not found in index`);
+    deps.error(`Error: reminder event '${parsed.eventId}' not found in index`);
     return CLI_EXIT_CODE.TARGET_RESOLUTION;
   }
 
-  const loaded = await loadStateStrict({ filePath: dataFilePath });
+  const loaded = await deps.loadStateStrict({ filePath: dataFilePath });
   const task = findTaskForReminderEvent(loaded.data.tasks, event);
   const notesSnippet = notesSnippetFromTask(task);
-  const invocation = resolveCurrentTadoiInvocation(process.argv, process.execPath);
+  const invocation = deps.resolveCurrentTadoiInvocation(process.argv, process.execPath);
 
-  const renderer = await createCliRenderer({
+  const renderer = await deps.createCliRenderer({
     exitOnCtrlC: true,
     useAlternateScreen: true,
     useMouse: true
@@ -364,15 +385,29 @@ export async function runRemindCommand(args: string[]): Promise<number> {
       };
 
       const reportError = (message: string) => {
-        redactedLogger.error(`Reminder action failed: ${message}`);
+        deps.error(`Reminder action failed: ${message}`);
       };
 
-      createRoot(renderer).render(
+      const onAction = async (action: OutOfAppReminderActionId) => {
+        if (action === "close") {
+          await close(CLI_EXIT_CODE.SUCCESS);
+          return;
+        }
+        if (action === "open") {
+          await deps.openMainTadoiApp(invocation);
+          await close(CLI_EXIT_CODE.SUCCESS);
+          return;
+        }
+
+        await deps.mutateReminderAction(event, action, dataFilePath);
+        await close(CLI_EXIT_CODE.SUCCESS);
+      };
+
+      deps.createRoot(renderer).render(
         <ReminderModalApp
           event={event}
-          invocation={invocation}
           notesSnippet={notesSnippet}
-          onClose={close}
+          onAction={onAction}
           onError={reportError}
         />
       );
@@ -380,11 +415,15 @@ export async function runRemindCommand(args: string[]): Promise<number> {
 
     return exitCode;
   } catch (error: unknown) {
-    redactedLogger.error(
+    deps.error(
       `Error: failed to run reminder modal (${error instanceof Error ? error.message : String(error)})`
     );
     return CLI_EXIT_CODE.IO_ERROR;
   } finally {
     await renderer.destroy().catch(() => undefined);
   }
+}
+
+export async function runRemindCommand(args: string[]): Promise<number> {
+  return runRemindCommandWithDeps(args);
 }

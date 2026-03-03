@@ -519,6 +519,7 @@ Smoke pass criteria:
 | Backup/import/export + portability | `src/state/backupCenterFlow.test.ts`, `src/state/backupService.test.ts`, `src/state/portability.test.ts` |
 | Calendar ICS export/import (CLI + Backup Center + services) | `src/cli/calendarCommands.test.ts`, `src/commands/calendarImport.test.ts`, `src/cli.test.ts`, `src/state/backupCenterFlow.test.ts`, `src/state/backupCenterCalendarController.test.ts`, `src/calendar/icsWriter.test.ts`, `src/calendar/icsParser.test.ts`, `src/calendar/importMapper.test.ts`, `src/calendar/calendarMapper.test.ts`, `src/calendar/range.test.ts`, `src/calendar/rrule.test.ts`, `src/state/calendarExportService.test.ts`, `src/state/calendarImportService.test.ts`, `src/state/calendarRoundTrip.test.ts` |
 | TITS command layer (M1-M3 + check/bulk) | `src/commands/parse.test.ts`, `src/commands/execute.test.ts`, `src/commands/help.test.ts`, `src/cli/main.test.ts`, `src/app/keyRouter.test.ts`, `src/app/App.tits.integration.test.ts`, `src/state/store.test.ts` |
+| Out-of-app reminders helper + modal command action flows | `src/cli/remindersCommands.test.ts`, `src/reminders/helperState.test.ts`, `src/reminders/indexer.test.ts`, `src/reminders/invocation.test.ts`, `src/reminders/isRunning.test.ts`, `src/reminders/remindCommand.test.ts`, `src/reminders/scheduler.test.ts`, `src/reminders/terminalLauncher.test.ts` |
 | Checklist migration + persistence | `src/state/migrations.test.ts`, `src/state/validation.test.ts`, `src/state/store.test.ts`, `src/state/portability.test.ts`, `src/state/persistence.test.ts` |
 | Notifications + engagement toasts | `src/notifications/notificationManager.test.ts`, `src/notifications/overdueTaskActions.test.ts`, `src/notifications/notifiers/inAppModalNotifier.test.ts`, `src/notifications/notifiers/terminalBellNotifier.test.ts`, `src/state/store.test.ts` |
 | Settings/theme/custom1/CRT FX | `src/settings/settings.test.ts`, `src/theme/themes.test.ts`, `src/theme/resolveThemeTokens.test.ts`, `src/theme/custom1ColorUtils.test.ts`, `src/components/CrtFxLite.test.ts` |
@@ -531,6 +532,8 @@ Smoke pass criteria:
 No known automated failures in targeted checklist/bulk/onboarding validation (`2026-03-01`):
 - `bun test src/commands/parse.test.ts src/commands/execute.test.ts src/cli/main.test.ts src/app/keyRouter.test.ts src/app/App.tits.integration.test.ts src/state/migrations.test.ts src/state/portability.test.ts`: passing.
 - `bun run typecheck`: passing.
+- Reminder hardening regression snapshot (`2026-03-03`):
+  - `bun test src/cli/remindersCommands.test.ts src/reminders/helperState.test.ts src/reminders/indexer.test.ts src/reminders/invocation.test.ts src/reminders/isRunning.test.ts src/reminders/remindCommand.test.ts src/reminders/scheduler.test.ts src/reminders/terminalLauncher.test.ts`: passing.
 
 Residual risk still covered by manual QA:
 - cross-platform terminal rendering differences

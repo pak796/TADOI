@@ -7,9 +7,12 @@ import {
   cycleReminderAction,
   openMainTadoiApp,
   parseRemindArgs,
-  runRemindCommand
+  runRemindCommand,
+  runRemindCommandWithDeps,
+  type RunRemindCommandDeps
 } from "./remindCommand";
 import type { TadoiInvocation } from "./invocation";
+import type { ReminderIndexEvent } from "./types";
 
 type MockSpawnCall = {
   command: string;
@@ -49,6 +52,106 @@ function makeMockSpawn(outcome: "ok" | "error"): {
       });
       return child;
     }
+  };
+}
+
+function createReminderEvent(overrides: Partial<ReminderIndexEvent> = {}): ReminderIndexEvent {
+  return {
+    eventId: "event-1",
+    taskId: "task-1",
+    occurrenceKey: "task:task-1",
+    remindAt: "2026-03-03T01:00:00.000Z",
+    dueAt: "2026-03-03T01:10:00.000Z",
+    title: "Reminder",
+    priority: "",
+    tags: [],
+    ...overrides
+  };
+}
+
+function createRunRemindHarness(options: {
+  actions: Array<"complete" | "open" | "close">;
+  mutateError?: Error;
+}) {
+  const logs: string[] = [];
+  const errors: string[] = [];
+  const openInvocations: Array<{ command: string; baseArgs: string[] }> = [];
+  const mutateCalls: Array<{ eventId: string; action: string; dataFilePath: string }> = [];
+  const event = createReminderEvent();
+  let rootRenderCount = 0;
+  let rendererDestroyCount = 0;
+
+  const deps: Partial<RunRemindCommandDeps> = {
+    getDataFilePath: () => "/tmp/tadoi_data.json",
+    loadReminderIndexForDataFile: async () => ({
+      version: 1,
+      generatedAt: "2026-03-03T00:00:00.000Z",
+      events: [event]
+    }),
+    loadStateStrict: async () =>
+      ({
+        data: {
+          tasks: [
+            {
+              id: "task-1",
+              title: "Reminder task",
+              notes: "",
+              status: "open",
+              tags: []
+            }
+          ],
+          stateRevision: 0
+        }
+      }) as any,
+    resolveCurrentTadoiInvocation: () => ({
+      command: "tadoi",
+      baseArgs: ["--dev"]
+    }),
+    createCliRenderer: async () =>
+      ({
+        destroy: async () => {
+          rendererDestroyCount += 1;
+        }
+      }) as any,
+    createRoot: () => ({
+      render: (node: any) => {
+        rootRenderCount += 1;
+        void (async () => {
+          for (const action of options.actions) {
+            try {
+              await node.props.onAction(action);
+            } catch (error: unknown) {
+              node.props.onError(error instanceof Error ? error.message : String(error));
+            }
+          }
+        })();
+      }
+    }),
+    openMainTadoiApp: async (invocation) => {
+      openInvocations.push(invocation);
+    },
+    mutateReminderAction: async (currentEvent, action, dataFilePath) => {
+      mutateCalls.push({
+        eventId: currentEvent.eventId,
+        action,
+        dataFilePath
+      });
+      if (options.mutateError) {
+        throw options.mutateError;
+      }
+    },
+    log: (line) => logs.push(line),
+    error: (line) => errors.push(line)
+  };
+
+  return {
+    deps,
+    logs,
+    errors,
+    openInvocations,
+    mutateCalls,
+    getRootRenderCount: () => rootRenderCount,
+    getRendererDestroyCount: () => rendererDestroyCount
   };
 }
 
@@ -141,5 +244,71 @@ describe("runRemindCommand", () => {
     );
     const exitCode = await runRemindCommand(["--event", "missing-event"]);
     expect(exitCode).toBe(CLI_EXIT_CODE.TARGET_RESOLUTION);
+  });
+
+  it("drives complete action through injected renderer/root harness", async () => {
+    const harness = createRunRemindHarness({
+      actions: ["complete"]
+    });
+
+    const exitCode = await runRemindCommandWithDeps(["--event", "event-1"], harness.deps);
+
+    expect(exitCode).toBe(CLI_EXIT_CODE.SUCCESS);
+    expect(harness.getRootRenderCount()).toBe(1);
+    expect(harness.mutateCalls).toEqual([
+      {
+        eventId: "event-1",
+        action: "complete",
+        dataFilePath: "/tmp/tadoi_data.json"
+      }
+    ]);
+    expect(harness.openInvocations).toHaveLength(0);
+    expect(harness.getRendererDestroyCount()).toBeGreaterThan(0);
+  });
+
+  it("drives open action through injected renderer/root harness", async () => {
+    const harness = createRunRemindHarness({
+      actions: ["open"]
+    });
+
+    const exitCode = await runRemindCommandWithDeps(["--event", "event-1"], harness.deps);
+
+    expect(exitCode).toBe(CLI_EXIT_CODE.SUCCESS);
+    expect(harness.getRootRenderCount()).toBe(1);
+    expect(harness.mutateCalls).toHaveLength(0);
+    expect(harness.openInvocations).toEqual([
+      {
+        command: "tadoi",
+        baseArgs: ["--dev"]
+      }
+    ]);
+  });
+
+  it("drives close action through injected renderer/root harness", async () => {
+    const harness = createRunRemindHarness({
+      actions: ["close"]
+    });
+
+    const exitCode = await runRemindCommandWithDeps(["--event", "event-1"], harness.deps);
+
+    expect(exitCode).toBe(CLI_EXIT_CODE.SUCCESS);
+    expect(harness.getRootRenderCount()).toBe(1);
+    expect(harness.mutateCalls).toHaveLength(0);
+    expect(harness.openInvocations).toHaveLength(0);
+  });
+
+  it("reports action error and exits when subsequent close action succeeds", async () => {
+    const harness = createRunRemindHarness({
+      actions: ["complete", "close"],
+      mutateError: new Error("write failed")
+    });
+
+    const exitCode = await runRemindCommandWithDeps(["--event", "event-1"], harness.deps);
+
+    expect(exitCode).toBe(CLI_EXIT_CODE.SUCCESS);
+    expect(harness.mutateCalls).toHaveLength(1);
+    expect(
+      harness.errors.some((line) => line.includes("Reminder action failed: write failed"))
+    ).toBe(true);
   });
 });

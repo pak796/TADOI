@@ -65,6 +65,7 @@ Package baseline: `0.3.9`
 - `TA-080` Schema bump `6 -> 7` landed with `workflowStage` migration backfill (`open -> todo`, `done|archived -> done`) and strict validation. (`Complete`)
 - `TA-081` Task/editor/filter schema expanded with analytics dimensions (`assignee`, `project`, `workflowStage`) and dashboard analytics fields (`analyticsWindow`, `dueDayOffset`). (`Complete`)
 - `TA-082` Schema bump `7 -> 8` landed with checklist-array normalization backfill and strict persisted-state parity. (`Complete`)
+- `TA-083` Out-of-app reminder reliability + interaction hardening landed with reminder CLI dispatch/tick tests, cross-platform launcher matrix tests, dependency-injected `runRemindCommand` action harness coverage, and CI/release reminder regression gates. (`Complete`)
 
 ### A9) TITS Command Layer
 - `TA-061` TITS M1 command bar overlay landed in LIST mode with history + routing suppression. (`Complete`)

@@ -6,6 +6,8 @@ Package baseline: `0.3.9`
 Persistence schema baseline: `8`
 
 Status: Implemented baseline + onboarding/recurrence extensions (v0.3.9)
+Automation hardening status (`2026-03-03`): reminder CLI/launcher/remind command coverage expanded with dependency-injected harness tests; reminder-focused regression gates added to both CI and release workflows.
+Manual-only residual remains: terminal emulator rendering/input variance and packaging/install verification on real hosts.
 
 ---
 
