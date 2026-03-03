@@ -169,7 +169,7 @@ HELP mode:
 - `Enter` / `ArrowRight` on Settings: open settings pages
 - Help root is read-only for direct settings hotkeys (`h` / `m` / `n` / `o` / `l` do not toggle settings in HELP mode)
 - Settings page entries:
-  - `Theme`, `Keymap Aliases`, `Navigation Hints`, `Prefix Popup`, `Logo`, `Flash Mode`, `CRT FX Lite`, `CRT FX Profile`, `Retro FX Mode`, `Notifications`, `Overdue Popup`, `Terminal Bell`, `Restore TOME Guides`
+  - `Theme`, `Keymap Aliases`, `Navigation Hints`, `Prefix Popup`, `Logo`, `Flash Mode`, `CRT FX Lite`, `CRT FX Profile`, `Retro FX Mode`, `Notifications`, `Overdue Popup`, `Terminal Bell`, `Out-of-App Reminders`, `Reminder Helper Install/Status/Test/Uninstall`, `Reminder Helper Installed`, `Reminder Helper Next Event`, `Restore TOME Guides`
   - `Keymap Aliases` opens bounded presets for `list`, `dashboard`, `backup`, and `help` alias contexts
   - List preset example: `Ctrl+F` opens Search and `n` opens Add
 - In settings pages: `ArrowUp` / `ArrowDown` move, `Enter` / `ArrowRight` apply/select, `ArrowLeft` / `backspace` / `Esc` back
@@ -249,6 +249,8 @@ Supported TITS commands:
 - `bulk project <value|clear>`
 - `bulk stage <todo|doing|blocked|done>`
 - `bulk delete` (in-app always opens confirm modal, for marked and explicit `id:` targets)
+- `reminders install|uninstall|status|test|tick`
+- `remind --event <eventId>`
 - `help` / `help add|done|due|recur|check|bulk|note`
 
 TOME COMMANDS (Terminal Oriented Markdown Environment)
@@ -313,6 +315,8 @@ CLI TITS TOME:
   - `tadoi bulk:project --help`
   - `tadoi bulk:stage --help`
   - `tadoi bulk:delete --help`
+  - `tadoi reminders --help`
+  - `tadoi remind --help`
   - `tadoi help --help`
 - `@selected` is rejected in CLI context (use `id:<task-id>`, including `check:*` and `bulk:*`)
 - Exit codes: `0` success, `2` parse/validation, `3` target resolution, `4` lock present, `5` IO error
@@ -324,6 +328,20 @@ CLI TITS TOME:
 - Checklist toggle on a virtual occurrence: materialize/update override checklist instance (no `EXDATE`).
 - Delete occurrence modal: `y` this event, `f` this+future, `n` / `Esc` cancel.
 - `E` edits the series definition, not a single occurrence.
+
+## Optional Out-of-App Reminder Helper (Offline)
+- Feature is OFF by default and requires explicit user opt-in + helper install.
+- Core commands:
+  - `tadoi reminders install`
+  - `tadoi reminders status`
+  - `tadoi reminders test`
+  - `tadoi reminders tick` (scheduler invokes every 60s)
+  - `tadoi reminders uninstall`
+  - `tadoi remind --event <eventId>` (modal-only runner)
+- OS verification commands:
+  - macOS: `launchctl print gui/$UID | grep -i tadoi`
+  - Windows: `schtasks /Query | findstr /I tadoi`
+  - Linux: `systemctl --user status tadoi-reminders.timer`
 
 ## Backup/Import Safety (Behavioral Contract)
 - Pre-import backup on commit flows.

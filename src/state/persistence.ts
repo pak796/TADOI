@@ -675,6 +675,16 @@ export async function saveStateAtomic(
       throw error;
     }
   });
+  try {
+    const reminders = await import("../reminders/indexer");
+    await reminders.writeReminderIndexForDataFile({
+      dataFilePath: filePath,
+      tasks: data.tasks,
+      fsOps
+    });
+  } catch {
+    // Reminder index writes are best-effort; state persistence should still succeed.
+  }
   return nextStateRevision;
 }
 

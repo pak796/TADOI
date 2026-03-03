@@ -10,6 +10,8 @@ import { runPortabilityCommand } from "./cli/portabilityCommands";
 import { runCalendarCommand } from "./cli/calendarCommands";
 import { runTitsCommandCli, TITS_CLI_EXIT_CODE } from "./cli/main";
 import { runListCommand } from "./cli/listCommand";
+import { runRemindersCommand } from "./cli/remindersCommands";
+import { runRemindCommand } from "./reminders/remindCommand";
 import { runTui, runTuiSmoke, type RunTuiOptions } from "./tui/runTui";
 import { TadoiLockBusyError } from "./state/lockfile";
 
@@ -32,6 +34,8 @@ export type CliRoute =
   | { kind: "version" }
   | { kind: "smoke_tui" }
   | { kind: "list"; args: string[] }
+  | { kind: "reminders"; args: string[] }
+  | { kind: "remind"; args: string[] }
   | { kind: "portability"; command: "export" | "import"; args: string[] }
   | { kind: "calendar"; command: "export" | "import"; args: string[] }
   | { kind: "unknown"; token: string }
@@ -51,6 +55,8 @@ export type CliRunDeps = {
   ) => Promise<number>;
   runCalendar: (command: "export" | "import", args: string[]) => Promise<number>;
   runList: (args: string[], options: { json: boolean }) => Promise<StructuredRunResult>;
+  runReminders: (args: string[]) => Promise<number>;
+  runRemind: (args: string[]) => Promise<number>;
   runInteractiveTui: (options: RunTuiOptions) => Promise<void>;
   runSmokeTui: () => Promise<number>;
   printHelp: (showLogo: boolean) => void;
@@ -312,6 +318,8 @@ export function printHelp(showLogo: boolean): void {
   console.log("  recur           Set/clear recurrence by id via TITS command engine");
   console.log("  note            TOME commands (new/open/search/reindex/help)");
   console.log("  list            List tasks with selector filters");
+  console.log("  reminders       Out-of-app reminder helper commands");
+  console.log("  remind          Open reminder modal by event id");
   console.log("  check:*         Checklist commands (add/toggle/edit/del/clear)");
   console.log("  bulk:*          Bulk commands (done/tag/due/priority/assignee/project/stage/delete)");
   console.log("  help            Show TITS command help topics");
@@ -336,6 +344,8 @@ const DEFAULT_DEPS: CliRunDeps = {
   runPortability: runPortabilityCommand,
   runCalendar: runCalendarCommand,
   runList: runListCommand,
+  runReminders: runRemindersCommand,
+  runRemind: runRemindCommand,
   runInteractiveTui: runTui,
   runSmokeTui: runTuiSmoke,
   printHelp,
@@ -347,6 +357,18 @@ export function resolveCliRoute(argv: string[]): CliRoute {
   if (command === "list") {
     return {
       kind: "list",
+      args: argv.slice(1)
+    };
+  }
+  if (command === "reminders") {
+    return {
+      kind: "reminders",
+      args: argv.slice(1)
+    };
+  }
+  if (command === "remind") {
+    return {
+      kind: "remind",
       args: argv.slice(1)
     };
   }
@@ -428,6 +450,16 @@ export async function runCli(
       }
       if (route.kind === "list") {
         return deps.runList(route.args, { json: runtime.json });
+      }
+      if (route.kind === "reminders") {
+        return deps.runReminders(route.args);
+      }
+      if (route.kind === "remind") {
+        if (runtime.json || runtime.quiet) {
+          console.error("Error: --json and --quiet are not supported for reminder modal commands.");
+          return TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION;
+        }
+        return deps.runRemind(route.args);
       }
 
       const titsResult = await runTitsCommandCli(runtimeArgv);

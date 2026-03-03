@@ -10,6 +10,20 @@ describe("resolveCliRoute", () => {
     expect(route.args).toEqual(["+work", "--sort", "updated"]);
   });
 
+  it("routes reminders before global flags", () => {
+    const route = resolveCliRoute(["reminders", "status"]);
+    expect(route.kind).toBe("reminders");
+    if (route.kind !== "reminders") return;
+    expect(route.args).toEqual(["status"]);
+  });
+
+  it("routes remind before global flags", () => {
+    const route = resolveCliRoute(["remind", "--event", "abc"]);
+    expect(route.kind).toBe("remind");
+    if (route.kind !== "remind") return;
+    expect(route.args).toEqual(["--event", "abc"]);
+  });
+
   it("routes portability commands before global flags", () => {
     const route = resolveCliRoute(["export", "--help"]);
     expect(route.kind).toBe("portability");
@@ -67,6 +81,12 @@ describe("runCli", () => {
       async runList() {
         calls.list += 1;
         return { exitCode: 0 };
+      },
+      async runReminders() {
+        return 0;
+      },
+      async runRemind() {
+        return 0;
       },
       async runPortability() {
         calls.portability += 1;

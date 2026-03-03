@@ -585,6 +585,43 @@ describe("loadSettings", () => {
     expect(result.settings.notifications.bellCooldownMs).toBe(2000);
   });
 
+  it("keeps out-of-app reminder toggle off by default and honors explicit boolean", async () => {
+    const homeDir = await makeTempDir();
+    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    await fs.mkdir(path.dirname(primary), { recursive: true });
+    await fs.writeFile(
+      primary,
+      JSON.stringify({
+        themeId: "retro",
+        notifications: {
+          enabled: true,
+          inAppOverdueBanner: true,
+          terminalBellOnOverdue: false
+        }
+      }),
+      "utf8"
+    );
+
+    const defaults = await loadSettings({ homeDir, platform: "linux" });
+    expect(defaults.settings.notifications.outOfAppRemindersEnabled).toBeUndefined();
+
+    await fs.writeFile(
+      primary,
+      JSON.stringify({
+        themeId: "retro",
+        notifications: {
+          enabled: true,
+          inAppOverdueBanner: true,
+          terminalBellOnOverdue: false,
+          outOfAppRemindersEnabled: true
+        }
+      }),
+      "utf8"
+    );
+    const explicit = await loadSettings({ homeDir, platform: "linux" });
+    expect(explicit.settings.notifications.outOfAppRemindersEnabled).toBe(true);
+  });
+
   it("normalizes security policy values to prompt|block", async () => {
     const homeDir = await makeTempDir();
     const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });

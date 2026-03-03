@@ -70,6 +70,8 @@ Supported commands:
 - `check add|toggle|edit|del|clear ...`
 - `bulk done|tag add|tag rm|due|priority|assignee|project|stage|delete ...`
 - `note new|open|search|delete|restore-defaults|reindex|root set|help ...`
+- `reminders install|uninstall|status|test|tick`
+- `remind --event <eventId>`
 - `help` / `help add|done|due|recur|check|bulk|note`
 
 TOME (Terminal Oriented Markdown Environment) is TADOI's notes-oriented markdown tool.
@@ -127,6 +129,8 @@ CLI parity and safety:
   - `tadoi bulk:project --help`
   - `tadoi bulk:stage --help`
   - `tadoi bulk:delete --help`
+  - `tadoi reminders --help`
+  - `tadoi remind --help`
   - `tadoi help --help`
 - Use `--` delimiter to pass literal dash-prefixed tokens:
   - `tadoi add -- --help` creates a task titled `--help`
@@ -490,6 +494,10 @@ Help Settings pages expose:
 - `Notifications`
 - `Overdue Popup`
 - `Terminal Bell`
+- `Out-of-App Reminders`
+- `Reminder Helper Install/Status/Test/Uninstall`
+- `Reminder Helper Installed`
+- `Reminder Helper Next Event`
 
 Hint defaults:
 - `hintDisplayMode`: `bottom`
@@ -509,8 +517,22 @@ Notification defaults:
 - `notifications.enabled`: `true`
 - `notifications.inAppOverdueBanner`: `true` (controls in-app overdue popup modal behavior)
 - `notifications.terminalBellOnOverdue`: `false`
+- `notifications.outOfAppRemindersEnabled`: `false` (optional helper; OFF by default)
 - `notifications.bannerDurationMs`: `5000` (retained compatibility field; currently not used by modal UX)
 - `notifications.bellCooldownMs`: `2000`
+
+Out-of-app reminder helper workflow (offline/local-only):
+- Enable `Out-of-App Reminders` in Help → Settings → Notifications.
+- Install scheduler helper:
+  - macOS: `tadoi reminders install`
+  - Windows: `tadoi reminders install`
+  - Linux: `tadoi reminders install`
+- Verify helper install:
+  - macOS: `launchctl print gui/$UID | grep -i tadoi`
+  - Windows: `schtasks /Query | findstr /I tadoi`
+  - Linux: `systemctl --user status tadoi-reminders.timer`
+- Run one-minute helper test: `tadoi reminders test`
+- Remove helper: `tadoi reminders uninstall`
 
 CRT FX defaults and persistence:
 - `crtFxLite`: `false` by default; only persisted when enabled (`true`)

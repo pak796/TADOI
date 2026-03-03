@@ -68,7 +68,8 @@ export type SettingsAction =
   | { type: "setNotes"; notes: NotesSettings }
   | { type: "toggleNotificationsEnabled" }
   | { type: "toggleInAppOverdueBanner" }
-  | { type: "toggleTerminalBellOnOverdue" };
+  | { type: "toggleTerminalBellOnOverdue" }
+  | { type: "toggleOutOfAppRemindersEnabled" };
 
 export const initialSettingsState: SettingsState = {
   themeId: "default",
@@ -84,6 +85,7 @@ export const initialSettingsState: SettingsState = {
     enabled: true,
     inAppOverdueBanner: true,
     terminalBellOnOverdue: false,
+    outOfAppRemindersEnabled: false,
     bannerDurationMs: 5000,
     bellCooldownMs: 2000
   },
@@ -199,6 +201,14 @@ export function settingsReducer(
         notifications: {
           ...state.notifications,
           terminalBellOnOverdue: !state.notifications.terminalBellOnOverdue
+        }
+      };
+    case "toggleOutOfAppRemindersEnabled":
+      return {
+        ...state,
+        notifications: {
+          ...state.notifications,
+          outOfAppRemindersEnabled: !state.notifications.outOfAppRemindersEnabled
         }
       };
     default:

@@ -247,6 +247,7 @@ export type NotificationSettings = {
   enabled: boolean;
   inAppOverdueBanner: boolean;
   terminalBellOnOverdue: boolean;
+  outOfAppRemindersEnabled?: boolean;
   bannerDurationMs: number;
   bellCooldownMs: number;
 };
@@ -553,12 +554,14 @@ function normalizeNotifications(input: unknown): NotificationSettings {
   const maybeInAppOverdueBanner = (input as { inAppOverdueBanner?: unknown }).inAppOverdueBanner;
   const maybeTerminalBellOnOverdue =
     (input as { terminalBellOnOverdue?: unknown }).terminalBellOnOverdue;
+  const maybeOutOfAppRemindersEnabled =
+    (input as { outOfAppRemindersEnabled?: unknown }).outOfAppRemindersEnabled;
   const maybeBannerDurationMs =
     (input as { bannerDurationMs?: unknown }).bannerDurationMs;
   const maybeBellCooldownMs =
     (input as { bellCooldownMs?: unknown }).bellCooldownMs;
 
-  return {
+  const normalized: NotificationSettings = {
     enabled:
       typeof maybeEnabled === "boolean"
         ? maybeEnabled
@@ -580,6 +583,10 @@ function normalizeNotifications(input: unknown): NotificationSettings {
       DEFAULT_NOTIFICATION_SETTINGS.bellCooldownMs
     )
   };
+  if (typeof maybeOutOfAppRemindersEnabled === "boolean") {
+    normalized.outOfAppRemindersEnabled = maybeOutOfAppRemindersEnabled;
+  }
+  return normalized;
 }
 
 function normalizeSecurity(input: unknown): SecuritySettings {

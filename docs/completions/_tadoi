@@ -21,6 +21,8 @@ commands=(
   'recur:Set or clear recurrence by id via TITS command engine'
   'note:TOME commands (new/open/search/delete/restore-defaults/reindex/root/help)'
   'list:List tasks via selector grammar'
+  'reminders:Out-of-app reminder helper commands'
+  'remind:Open reminder modal by event id'
   'help:Show TITS help topics'
   'check:add:Add checklist item by id'
   'check:toggle:Toggle checklist item by id'
@@ -62,6 +64,18 @@ case "${words[2]}" in
       '--json[Emit machine-readable output]' \
       '--quiet[Suppress non-essential output]' \
       '--data-file[Override data file path]:path:_files'
+    ;;
+  reminders)
+    _arguments \
+      '--help[Show reminders helper help]' \
+      '-h[Show reminders helper help]' \
+      '1:subcommand:(install uninstall status test tick)'
+    ;;
+  remind)
+    _arguments \
+      '--help[Show remind help]' \
+      '-h[Show remind help]' \
+      '--event[Reminder event id]:event_id:'
     ;;
   check:add|check:toggle|check:edit|check:del|check:clear|bulk:done|bulk:tag:add|bulk:tag:rm|bulk:due|bulk:due:clear|bulk:priority|bulk:assignee|bulk:project|bulk:stage|bulk:delete)
     _arguments '*:arg: '

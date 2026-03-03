@@ -55,15 +55,27 @@ import {
   applyReminderFired,
   isReminderPendingForEffectiveAt,
   nextPendingReminderAt,
-  resolveEffectiveReminderAt,
-  stripReminderRuntimeState
+  resolveEffectiveReminderAt
 } from "../domain/reminders";
 import { isRepeatOccurrenceAfterSeriesStart } from "../domain/recurrence/repeatOccurrence";
 import {
   deleteRecurringOccurrence,
   deleteRecurringOccurrenceAndFuture
 } from "../domain/recurrence/delete";
+import {
+  completeRecurringOccurrenceInTasks,
+  removeMaterializedOccurrenceInstance as removeMaterializedOccurrenceInstanceInTasks,
+  skipRecurringOccurrenceInTasks,
+  snoozeRecurringOccurrenceInTasks,
+  withSeriesOccurrenceExcluded as withSeriesOccurrenceExcludedInTasks
+} from "../domain/recurrence/occurrenceMutations";
 import { materializeChecklistOccurrenceOverride } from "../domain/recurrence/checklistOccurrence";
+import { loadReminderIndexForDataFile } from "../reminders/indexer";
+import { resolveCurrentTadoiInvocation } from "../reminders/invocation";
+import {
+  getReminderInstallCommandsForPlatform,
+  getReminderSchedulerStatus
+} from "../reminders/scheduler";
 import {
   findNextMatchingIndex,
   isTaskDueToday,
@@ -612,6 +624,34 @@ const HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS: HelpNavItem[] = [
     description: "Enable or disable terminal bell on overdue."
   },
   {
+    title: "Out-of-App Reminders",
+    description: "Enable optional reminder helper when TADOI is closed."
+  },
+  {
+    title: "Reminder Helper Install",
+    description: "Copy-first install command for out-of-app reminders."
+  },
+  {
+    title: "Reminder Helper Status",
+    description: "Copy-first helper status command."
+  },
+  {
+    title: "Reminder Helper Test",
+    description: "Copy-first test reminder command (+1 minute)."
+  },
+  {
+    title: "Reminder Helper Uninstall",
+    description: "Copy-first uninstall command."
+  },
+  {
+    title: "Reminder Helper Installed",
+    description: "Best-effort local scheduler install detection."
+  },
+  {
+    title: "Reminder Helper Next Event",
+    description: "Next indexed out-of-app reminder event."
+  },
+  {
     title: "Banner Duration",
     description: "Notification banner visibility duration in milliseconds."
   },
@@ -1015,6 +1055,34 @@ const HELP_SETTINGS_NOTIFICATIONS_OVERDUE_POPUP_NAV_INDEX =
   HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex((item) => item.title === "Overdue Popup");
 const HELP_SETTINGS_NOTIFICATIONS_TERMINAL_BELL_NAV_INDEX =
   HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex((item) => item.title === "Terminal Bell");
+const HELP_SETTINGS_NOTIFICATIONS_OUT_OF_APP_REMINDERS_NAV_INDEX =
+  HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex(
+    (item) => item.title === "Out-of-App Reminders"
+  );
+const HELP_SETTINGS_NOTIFICATIONS_HELPER_INSTALL_NAV_INDEX =
+  HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex(
+    (item) => item.title === "Reminder Helper Install"
+  );
+const HELP_SETTINGS_NOTIFICATIONS_HELPER_STATUS_NAV_INDEX =
+  HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex(
+    (item) => item.title === "Reminder Helper Status"
+  );
+const HELP_SETTINGS_NOTIFICATIONS_HELPER_TEST_NAV_INDEX =
+  HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex(
+    (item) => item.title === "Reminder Helper Test"
+  );
+const HELP_SETTINGS_NOTIFICATIONS_HELPER_UNINSTALL_NAV_INDEX =
+  HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex(
+    (item) => item.title === "Reminder Helper Uninstall"
+  );
+const HELP_SETTINGS_NOTIFICATIONS_HELPER_INSTALLED_NAV_INDEX =
+  HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex(
+    (item) => item.title === "Reminder Helper Installed"
+  );
+const HELP_SETTINGS_NOTIFICATIONS_HELPER_NEXT_EVENT_NAV_INDEX =
+  HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex(
+    (item) => item.title === "Reminder Helper Next Event"
+  );
 const HELP_SETTINGS_NOTIFICATIONS_BANNER_DURATION_NAV_INDEX =
   HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex((item) => item.title === "Banner Duration");
 const HELP_SETTINGS_NOTIFICATIONS_BELL_COOLDOWN_NAV_INDEX =
@@ -1748,7 +1816,10 @@ export function App({
     crtFxColor: initialCrtFxColor,
     crtFxPreset: initialCrtFxPreset,
     retroFxMode: initialRetroFxMode,
-    notifications: initialNotificationSettings,
+    notifications: {
+      ...DEFAULT_NOTIFICATION_SETTINGS,
+      ...initialNotificationSettings
+    },
     security: initialSecuritySettings,
     customThemes: initialCustomThemes,
     keymapAliases: DEFAULT_KEYMAP_ALIASES,
@@ -1908,6 +1979,15 @@ export function App({
     HELP_TEXT_TUNING_THEMES[0] ?? "default"
   );
   const [reminderSchedulerTick, setReminderSchedulerTick] = useState(0);
+  const [outOfAppReminderHelperInstalled, setOutOfAppReminderHelperInstalled] = useState<
+    boolean | null
+  >(null);
+  const [outOfAppReminderNextEventLabel, setOutOfAppReminderNextEventLabel] =
+    useState<string>("none");
+  const reminderHelperCommands = React.useMemo(
+    () => getReminderInstallCommandsForPlatform({ platform: process.platform }),
+    []
+  );
   const [custom1DraftGlobal, setCustom1DraftGlobal] = useState<ThemeTokens>(() =>
     resolveCustom1Config(initialCustomThemes).global
   );
@@ -3207,6 +3287,54 @@ export function App({
     }
     if (
       activeHelpPage === "settingsNotifications" &&
+      index === HELP_SETTINGS_NOTIFICATIONS_OUT_OF_APP_REMINDERS_NAV_INDEX
+    ) {
+      return `Out-of-App Reminders: ${settingsState.notifications.outOfAppRemindersEnabled ? "on" : "off"}`;
+    }
+    if (
+      activeHelpPage === "settingsNotifications" &&
+      index === HELP_SETTINGS_NOTIFICATIONS_HELPER_INSTALL_NAV_INDEX
+    ) {
+      return `Install: ${reminderHelperCommands[0] ?? "tadoi reminders install"}`;
+    }
+    if (
+      activeHelpPage === "settingsNotifications" &&
+      index === HELP_SETTINGS_NOTIFICATIONS_HELPER_STATUS_NAV_INDEX
+    ) {
+      return `Status: ${reminderHelperCommands[1] ?? "tadoi reminders status"}`;
+    }
+    if (
+      activeHelpPage === "settingsNotifications" &&
+      index === HELP_SETTINGS_NOTIFICATIONS_HELPER_TEST_NAV_INDEX
+    ) {
+      return "Test: tadoi reminders test";
+    }
+    if (
+      activeHelpPage === "settingsNotifications" &&
+      index === HELP_SETTINGS_NOTIFICATIONS_HELPER_UNINSTALL_NAV_INDEX
+    ) {
+      return "Uninstall: tadoi reminders uninstall";
+    }
+    if (
+      activeHelpPage === "settingsNotifications" &&
+      index === HELP_SETTINGS_NOTIFICATIONS_HELPER_INSTALLED_NAV_INDEX
+    ) {
+      const status =
+        outOfAppReminderHelperInstalled === null
+          ? "unknown"
+          : outOfAppReminderHelperInstalled
+            ? "installed"
+            : "not installed";
+      return `Helper Installed: ${status}`;
+    }
+    if (
+      activeHelpPage === "settingsNotifications" &&
+      index === HELP_SETTINGS_NOTIFICATIONS_HELPER_NEXT_EVENT_NAV_INDEX
+    ) {
+      return `Next Event: ${outOfAppReminderNextEventLabel}`;
+    }
+    if (
+      activeHelpPage === "settingsNotifications" &&
       index === HELP_SETTINGS_NOTIFICATIONS_BANNER_DURATION_NAV_INDEX
     ) {
       return `Banner Duration: ${String(settingsState.notifications.bannerDurationMs)} ms`;
@@ -3604,6 +3732,58 @@ export function App({
       }
     };
   }, [state.tasks, reminderSchedulerTick]);
+
+  useEffect(() => {
+    if (activeHelpPage !== "settingsNotifications") {
+      return;
+    }
+
+    let cancelled = false;
+    const dataFilePath = getDataFilePath();
+    const invocation = resolveCurrentTadoiInvocation();
+
+    void (async () => {
+      try {
+        const schedulerStatus = await getReminderSchedulerStatus({ invocation });
+        if (!cancelled) {
+          setOutOfAppReminderHelperInstalled(schedulerStatus.installed);
+        }
+      } catch {
+        if (!cancelled) {
+          setOutOfAppReminderHelperInstalled(null);
+        }
+      }
+
+      try {
+        const index = await loadReminderIndexForDataFile({ dataFilePath });
+        const nowMs = Date.now();
+        const nextEvent =
+          index.events.find((event) => Date.parse(event.remindAt) >= nowMs) ?? index.events[0];
+        if (!cancelled) {
+          if (nextEvent) {
+            setOutOfAppReminderNextEventLabel(
+              `${nextEvent.title} @ ${nextEvent.remindAt}`
+            );
+          } else {
+            setOutOfAppReminderNextEventLabel("none");
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setOutOfAppReminderNextEventLabel("unavailable");
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    activeHelpPage,
+    reminderSchedulerTick,
+    state.tasks.length,
+    settingsState.notifications.outOfAppRemindersEnabled
+  ]);
 
   useEffect(() => {
     if (state.tasks.length !== 0) return;
@@ -7108,6 +7288,16 @@ export function App({
     showShortNavigationBanner(`Terminal bell: ${nextEnabled ? "on" : "off"}`);
   }
 
+  function switchOutOfAppRemindersSetting() {
+    const nextEnabled = !settingsState.notifications.outOfAppRemindersEnabled;
+    settingsDispatch({ type: "toggleOutOfAppRemindersEnabled" });
+    showShortNavigationBanner(`Out-of-app reminders: ${nextEnabled ? "on" : "off"}`);
+  }
+
+  function showReminderHelperCommand(command: string) {
+    showShortNavigationBanner(command);
+  }
+
   function cycleSecurityNonHttpLinkPolicySetting() {
     const nextPolicy = settingsState.security.nonHttpLinkPolicy === "prompt" ? "block" : "prompt";
     settingsDispatch({
@@ -7834,6 +8024,21 @@ export function App({
       }
       if (targetIndex === HELP_SETTINGS_NOTIFICATIONS_TERMINAL_BELL_NAV_INDEX) {
         switchTerminalBellSetting();
+      }
+      if (targetIndex === HELP_SETTINGS_NOTIFICATIONS_OUT_OF_APP_REMINDERS_NAV_INDEX) {
+        switchOutOfAppRemindersSetting();
+      }
+      if (targetIndex === HELP_SETTINGS_NOTIFICATIONS_HELPER_INSTALL_NAV_INDEX) {
+        showReminderHelperCommand(reminderHelperCommands[0] ?? "tadoi reminders install");
+      }
+      if (targetIndex === HELP_SETTINGS_NOTIFICATIONS_HELPER_STATUS_NAV_INDEX) {
+        showReminderHelperCommand(reminderHelperCommands[1] ?? "tadoi reminders status");
+      }
+      if (targetIndex === HELP_SETTINGS_NOTIFICATIONS_HELPER_TEST_NAV_INDEX) {
+        showReminderHelperCommand("tadoi reminders test");
+      }
+      if (targetIndex === HELP_SETTINGS_NOTIFICATIONS_HELPER_UNINSTALL_NAV_INDEX) {
+        showReminderHelperCommand("tadoi reminders uninstall");
       }
       if (targetIndex === HELP_SETTINGS_NOTIFICATIONS_BANNER_DURATION_NAV_INDEX) {
         openHelpSettingsInput("notificationsBannerDurationMs");
@@ -10303,22 +10508,7 @@ export function App({
     occurrenceIso: string,
     nowMs: number
   ): Task[] {
-    return tasks.map((task) => {
-      if (task.id !== seriesTaskId || !task.recurrence) {
-        return task;
-      }
-      const nextExdates = Array.from(
-        new Set([...(task.recurrence.exdates ?? []), occurrenceIso])
-      ).sort((left, right) => left.localeCompare(right));
-      return {
-        ...task,
-        updatedAt: nowMs,
-        recurrence: {
-          ...task.recurrence,
-          exdates: nextExdates
-        }
-      };
-    });
+    return withSeriesOccurrenceExcludedInTasks(tasks, seriesTaskId, occurrenceIso, nowMs);
   }
 
   function removeMaterializedOccurrenceInstance(
@@ -10326,13 +10516,7 @@ export function App({
     seriesId: string,
     occurrenceIso: string
   ): Task[] {
-    return tasks.filter(
-      (task) =>
-        !(
-          task.instance_of?.series_id === seriesId &&
-          task.instance_of?.occurrence === occurrenceIso
-        )
-    );
+    return removeMaterializedOccurrenceInstanceInTasks(tasks, seriesId, occurrenceIso);
   }
 
   function resolveOccurrenceContextForRow(row: VisibleTaskRow | undefined): {
@@ -10604,40 +10788,26 @@ export function App({
       return;
     }
 
-    const dueAt = occurrenceDate.getTime();
-    const instanceId = crypto.randomUUID();
-    const reminder = stripReminderRuntimeState(context.seriesTask.reminder);
-    const doneInstance: Task = {
-      id: instanceId,
-      title: context.seriesTask.title,
-      status: "done",
-      createdAt: nowMs,
-      updatedAt: nowMs,
-      closedAt: nowMs,
-      dueAt,
-      hasExplicitTime: context.seriesTask.hasExplicitTime,
-      notes: context.seriesTask.notes,
-      tags: context.seriesTask.tags,
-      ...(reminder ? { reminder } : {}),
-      instance_of: {
-        series_id: context.seriesId,
-        occurrence: context.occurrenceIso
-      }
-    };
-
-    const withExdate = withSeriesOccurrenceExcluded(
-      state.tasks,
-      context.seriesTask.id,
-      context.occurrenceIso,
+    const updatedTasks = completeRecurringOccurrenceInTasks(state.tasks, {
+      seriesId: context.seriesId,
+      occurrenceIso: context.occurrenceIso,
       nowMs
+    });
+    const doneInstance = updatedTasks.find(
+      (task) =>
+        task.instance_of?.series_id === context.seriesId &&
+        task.instance_of?.occurrence === context.occurrenceIso &&
+        task.status === "done"
     );
-    const updatedTasks = [...withExdate, doneInstance];
+    if (!doneInstance) {
+      return;
+    }
     dispatch({ type: "setTasks", tasks: updatedTasks });
     dispatch({
       type: "setTagIndex",
       tagIndex: updateTagIndex(state.tagIndex, doneInstance.tags, nowMs)
     });
-    dispatch({ type: "setSelected", id: instanceId });
+    dispatch({ type: "setSelected", id: doneInstance.id });
     const recurringRepeat = isRepeatOccurrenceAfterSeriesStart(
       context.seriesTask.recurrence?.dtstart,
       context.occurrenceIso
@@ -10648,7 +10818,7 @@ export function App({
         }
       : undefined;
     emitCompletionForTransition({
-      taskId: instanceId,
+      taskId: doneInstance.id,
       previousStatus: "open",
       nextStatus: "done",
       tags: doneInstance.tags,
@@ -10665,17 +10835,11 @@ export function App({
     }
 
     const nowMs = Date.now();
-    const withExdate = withSeriesOccurrenceExcluded(
-      state.tasks,
-      context.seriesTask.id,
-      context.occurrenceIso,
+    const updatedTasks = skipRecurringOccurrenceInTasks(state.tasks, {
+      seriesId: context.seriesId,
+      occurrenceIso: context.occurrenceIso,
       nowMs
-    );
-    const updatedTasks = removeMaterializedOccurrenceInstance(
-      withExdate,
-      context.seriesId,
-      context.occurrenceIso
-    );
+    });
     dispatch({ type: "setTasks", tasks: updatedTasks });
     showShortNavigationBanner("Skipped selected occurrence");
   }
@@ -10688,61 +10852,24 @@ export function App({
     }
 
     const nowMs = Date.now();
-    const occurrenceDate = parseLocalIsoToDate(context.occurrenceIso);
-    if (!occurrenceDate) {
-      showShortNavigationBanner("Invalid occurrence timestamp");
-      return;
-    }
-
-    const snoozedDate = new Date(
-      occurrenceDate.getFullYear(),
-      occurrenceDate.getMonth(),
-      occurrenceDate.getDate() + 1,
-      occurrenceDate.getHours(),
-      occurrenceDate.getMinutes(),
-      occurrenceDate.getSeconds()
-    );
-
-    const source = context.instanceTask ?? context.seriesTask;
-    const instanceId = context.instanceTask?.id ?? crypto.randomUUID();
-    const reminder = context.instanceTask
-      ? context.instanceTask.reminder
-      : stripReminderRuntimeState(source.reminder);
-    const snoozedInstance: Task = {
-      id: instanceId,
-      title: source.title,
-      status: "open",
-      createdAt: context.instanceTask?.createdAt ?? nowMs,
-      updatedAt: nowMs,
-      dueAt: snoozedDate.getTime(),
-      hasExplicitTime: source.hasExplicitTime,
-      notes: source.notes,
-      tags: source.tags,
-      ...(reminder ? { reminder } : {}),
-      instance_of: {
-        series_id: context.seriesId,
-        occurrence: context.occurrenceIso
-      }
-    };
-
-    const withExdate = withSeriesOccurrenceExcluded(
-      state.tasks,
-      context.seriesTask.id,
-      context.occurrenceIso,
+    const updatedTasks = snoozeRecurringOccurrenceInTasks(state.tasks, {
+      seriesId: context.seriesId,
+      occurrenceIso: context.occurrenceIso,
       nowMs
-    );
-    const withoutPreviousInstance = removeMaterializedOccurrenceInstance(
-      withExdate,
-      context.seriesId,
-      context.occurrenceIso
-    );
-    const updatedTasks = [...withoutPreviousInstance, snoozedInstance];
-    dispatch({ type: "setTasks", tasks: updatedTasks });
-    dispatch({
-      type: "setTagIndex",
-      tagIndex: updateTagIndex(state.tagIndex, snoozedInstance.tags, nowMs)
     });
-    dispatch({ type: "setSelected", id: instanceId });
+    dispatch({ type: "setTasks", tasks: updatedTasks });
+    const nextInstance = updatedTasks.find(
+      (task) =>
+        task.instance_of?.series_id === context.seriesId &&
+        task.instance_of?.occurrence === context.occurrenceIso
+    );
+    if (nextInstance) {
+      dispatch({
+        type: "setTagIndex",
+        tagIndex: updateTagIndex(state.tagIndex, nextInstance.tags, nowMs)
+      });
+      dispatch({ type: "setSelected", id: nextInstance.id });
+    }
     showShortNavigationBanner("Snoozed occurrence by +1 day");
   }
 

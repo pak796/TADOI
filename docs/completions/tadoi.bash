@@ -12,7 +12,7 @@ _tadoi_completions() {
 
   command="${COMP_WORDS[1]}"
   if [[ -z "$command" || "$command" == -* ]]; then
-    local roots="add done due recur note list help check:add check:toggle check:edit check:del check:clear bulk:done bulk:tag:add bulk:tag:rm bulk:due bulk:due:clear bulk:priority bulk:assignee bulk:project bulk:stage bulk:delete export import calendar:export calendar:import --help -h --version --smoke-tui --interactive --json --quiet --data-file --no-logo"
+    local roots="add done due recur note list reminders remind help check:add check:toggle check:edit check:del check:clear bulk:done bulk:tag:add bulk:tag:rm bulk:due bulk:due:clear bulk:priority bulk:assignee bulk:project bulk:stage bulk:delete export import calendar:export calendar:import --help -h --version --smoke-tui --interactive --json --quiet --data-file --no-logo"
     COMPREPLY=( $(compgen -W "$roots" -- "$cur") )
     return 0
   fi
@@ -23,6 +23,12 @@ _tadoi_completions() {
       ;;
     list)
       COMPREPLY=( $(compgen -W "--help -h --sort --limit --json --quiet --data-file" -- "$cur") )
+      ;;
+    reminders)
+      COMPREPLY=( $(compgen -W "--help -h install uninstall status test tick" -- "$cur") )
+      ;;
+    remind)
+      COMPREPLY=( $(compgen -W "--event --help -h" -- "$cur") )
       ;;
     check:add|check:toggle|check:edit|check:del|check:clear|bulk:done|bulk:tag:add|bulk:tag:rm|bulk:due|bulk:due:clear|bulk:priority|bulk:assignee|bulk:project|bulk:stage|bulk:delete)
       COMPREPLY=( $(compgen -W "--help -h --" -- "$cur") )
