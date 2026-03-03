@@ -4,7 +4,7 @@
   "package_version_baseline": "0.3.9",
   "audit_token": "[AUDIT 2026-03-03] Full docs pass + implementation/spec drift reconciliation applied via MCP",
   "apply_mode": "notion-mcp-per-page",
-  "generated_at_utc": "2026-03-03T19:08:47Z",
+  "generated_at_utc": "2026-03-03T19:28:38Z",
   "sources": {
     "payload": "docs/notion/NOTION_SYNC_PAYLOAD.json"
   },
@@ -187,5 +187,19 @@
       "notes_token_ok": true,
       "content_replace_applied": true
     }
-  ]
+  ],
+  "single_page_resync": {
+    "page_id": "3065aa1e-f93f-819b-a606-e8337a7ca1d5",
+    "title": "TADOI Release Checklist (v0.3.9)",
+    "source_file": "docs/RELEASE_CHECKLIST.md",
+    "resynced_at_utc": "2026-03-03T19:28:38Z",
+    "verification": {
+      "heading_ok": true,
+      "version_date_ok": true,
+      "apply_completed_phrase_found": true,
+      "name_property_ok": true,
+      "date_property_ok": true,
+      "notes_token_ok": true
+    }
+  }
 }

@@ -1,6 +1,6 @@
 # TADOI™ Release Checklist
 
-Verified as of 2026-02-27 (v0.3.9).
+Verified as of 2026-03-03 (v0.3.9).
 
 This checklist is required before daily build smoke tests and any tagged release.
 
@@ -40,10 +40,10 @@ This checklist is required before daily build smoke tests and any tagged release
 - [ ] Update `CHANGELOG.md` (root) or the release notes document
 - [ ] Record any behavior changes to mode boundaries or recurrence
 
-## 8) Notion Staging (Offline)
-- [ ] `bun run notion:sync:validate`
-- [ ] Ensure `docs/notion/NOTION_SYNC_PAYLOAD.json` reflects current `source_file` markdown
-- [ ] Keep apply mode deferred unless explicitly requested (`--dry-run`/local staging only)
+## 8) Notion Apply (Completed)
+- [x] `bun run notion:sync:validate`
+- [x] `docs/notion/NOTION_SYNC_PAYLOAD.json` reflects current `source_file` markdown
+- [x] Apply completed via Notion MCP on `2026-03-03`
 
 ## 9) Final Review
 - [ ] Ensure docs and QA guides match current behavior
