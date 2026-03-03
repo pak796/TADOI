@@ -1,0 +1,8 @@
+export const CLI_EXIT_CODE = {
+  SUCCESS: 0,
+  PARSE_OR_VALIDATION: 2,
+  TARGET_RESOLUTION: 3,
+  LOCKED: 4,
+  IO_ERROR: 5
+} as const;
+

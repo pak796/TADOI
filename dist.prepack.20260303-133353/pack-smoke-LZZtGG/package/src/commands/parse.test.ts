@@ -1,0 +1,360 @@
+import { describe, expect, it } from "bun:test";
+import { parseCommand, tokenize } from "./parse";
+
+describe("tokenize", () => {
+  it("tokenizes whitespace while keeping quoted segments together", () => {
+    expect(tokenize('add "Buy milk" notes:"hello world" #errands')).toEqual([
+      "add",
+      "Buy milk",
+      "notes:hello world",
+      "#errands"
+    ]);
+  });
+
+  it("throws for unmatched quotes", () => {
+    expect(() => tokenize('add "Buy milk')).toThrow("Error: unmatched quote");
+  });
+});
+
+describe("parseCommand", () => {
+  it("parses add with unquoted multi-word title and options", () => {
+    const parsed = parseCommand('add Buy milk due:2026-02-28 at:17:30 #errands notes:"2%"');
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.command).toEqual({
+      type: "add",
+      title: "Buy milk",
+      dueDate: "2026-02-28",
+      atTime: "17:30",
+      tags: ["#errands"],
+      notes: "2%"
+    });
+  });
+
+  it("requires quoted title when first token is option-like", () => {
+    const parsed = parseCommand("add due:2026-02-28 #errands");
+    expect(parsed).toEqual({
+      ok: false,
+      error:
+        'Error: add title is required before options (quote titles starting with #, due:, at:, or notes:)'
+    });
+  });
+
+  it("allows quoted option-like add title", () => {
+    const parsed = parseCommand('add "due:watchlist" #work');
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.command).toEqual({
+      type: "add",
+      title: "due:watchlist",
+      tags: ["#work"]
+    });
+  });
+
+  it("accepts dash-prefixed literal add titles", () => {
+    expect(parseCommand("add --help")).toEqual({
+      ok: true,
+      command: {
+        type: "add",
+        title: "--help",
+        tags: []
+      }
+    });
+  });
+
+  it("rejects invalid add date/time and at without due", () => {
+    expect(parseCommand('add "X" due:2026-02-29')).toEqual({
+      ok: false,
+      error: 'Error: invalid due date "2026-02-29"'
+    });
+    expect(parseCommand('add "X" due:2026-02-28 at:24:00')).toEqual({
+      ok: false,
+      error: 'Error: invalid time "24:00"'
+    });
+    expect(parseCommand('add "X" at:09:00')).toEqual({
+      ok: false,
+      error: "Error: at: requires due:"
+    });
+  });
+
+  it("parses done targets", () => {
+    expect(parseCommand("done")).toEqual({
+      ok: true,
+      command: {
+        type: "done",
+        target: { type: "selected" }
+      }
+    });
+    expect(parseCommand("done id:abc-123")).toEqual({
+      ok: true,
+      command: {
+        type: "done",
+        target: { type: "id", id: "abc-123" }
+      }
+    });
+  });
+
+  it("parses due forms", () => {
+    expect(parseCommand("due @selected clear")).toEqual({
+      ok: true,
+      command: {
+        type: "due",
+        target: { type: "selected" },
+        clear: true
+      }
+    });
+    expect(parseCommand("due id:abc clear")).toEqual({
+      ok: true,
+      command: {
+        type: "due",
+        target: { type: "id", id: "abc" },
+        clear: true
+      }
+    });
+    expect(parseCommand("due id:abc 2026-03-05 at:09:00")).toEqual({
+      ok: true,
+      command: {
+        type: "due",
+        target: { type: "id", id: "abc" },
+        clear: false,
+        dueDate: "2026-03-05",
+        atTime: "09:00"
+      }
+    });
+  });
+
+  it("parses help topics and rejects unknown commands", () => {
+    expect(parseCommand("help")).toEqual({
+      ok: true,
+      command: { type: "help" }
+    });
+    expect(parseCommand("help add")).toEqual({
+      ok: true,
+      command: { type: "help", topic: "add" }
+    });
+    expect(parseCommand("help recur")).toEqual({
+      ok: true,
+      command: { type: "help", topic: "recur" }
+    });
+    expect(parseCommand("help check")).toEqual({
+      ok: true,
+      command: { type: "help", topic: "check" }
+    });
+    expect(parseCommand("help bulk")).toEqual({
+      ok: true,
+      command: { type: "help", topic: "bulk" }
+    });
+    expect(parseCommand("wat")).toEqual({
+      ok: false,
+      error: 'Error: unknown command "wat"'
+    });
+  });
+
+  it("parses recur clear and recur rule forms", () => {
+    expect(parseCommand("recur id:abc clear")).toEqual({
+      ok: true,
+      command: {
+        type: "recur",
+        target: { type: "id", id: "abc" },
+        clear: true
+      }
+    });
+    expect(parseCommand("recur @selected every:week interval:2 on:mon,wed")).toEqual({
+      ok: true,
+      command: {
+        type: "recur",
+        target: { type: "selected" },
+        clear: false,
+        every: "week",
+        interval: 2,
+        onDays: ["mon", "wed"]
+      }
+    });
+    expect(parseCommand("recur id:abc every:month on:1,31")).toEqual({
+      ok: true,
+      command: {
+        type: "recur",
+        target: { type: "id", id: "abc" },
+        clear: false,
+        every: "month",
+        interval: 1,
+        onMonthDays: [1, 31]
+      }
+    });
+  });
+
+  it("rejects invalid recur forms", () => {
+    expect(parseCommand("recur @selected every:day on:mon")).toEqual({
+      ok: false,
+      error: "Error: on: is not supported for every:day"
+    });
+    expect(parseCommand("recur id:abc every:week on:mo")).toEqual({
+      ok: false,
+      error: 'Error: invalid weekly on value "mo"'
+    });
+    expect(parseCommand("recur id:abc every:month on:0")).toEqual({
+      ok: false,
+      error: 'Error: invalid monthly on value "0"'
+    });
+  });
+
+  it("parses check command families", () => {
+    expect(parseCommand('check add @selected "Buy milk"')).toEqual({
+      ok: true,
+      command: {
+        type: "check",
+        operation: "add",
+        target: { type: "selected" },
+        text: "Buy milk"
+      }
+    });
+    expect(parseCommand("check:toggle id:abc 2")).toEqual({
+      ok: true,
+      command: {
+        type: "check",
+        operation: "toggle",
+        target: { type: "id", id: "abc" },
+        index: 2
+      }
+    });
+    expect(parseCommand('check edit @selected 1 "new text"')).toEqual({
+      ok: true,
+      command: {
+        type: "check",
+        operation: "edit",
+        target: { type: "selected" },
+        index: 1,
+        text: "new text"
+      }
+    });
+    expect(parseCommand("check:del id:abc 3")).toEqual({
+      ok: true,
+      command: {
+        type: "check",
+        operation: "del",
+        target: { type: "id", id: "abc" },
+        index: 3
+      }
+    });
+    expect(parseCommand("check clear @selected")).toEqual({
+      ok: true,
+      command: {
+        type: "check",
+        operation: "clear",
+        target: { type: "selected" }
+      }
+    });
+  });
+
+  it("parses bulk command families", () => {
+    expect(parseCommand("bulk done")).toEqual({
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "done",
+        target: { type: "marked" }
+      }
+    });
+    expect(parseCommand("bulk:done id:alpha id:beta")).toEqual({
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "done",
+        target: { type: "ids", ids: ["alpha", "beta"] }
+      }
+    });
+    expect(parseCommand("bulk tag add #home #errands")).toEqual({
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "tag_add",
+        target: { type: "marked" },
+        tags: ["#home", "#errands"]
+      }
+    });
+    expect(parseCommand("bulk:tag:rm id:alpha #home")).toEqual({
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "tag_rm",
+        target: { type: "ids", ids: ["alpha"] },
+        tags: ["#home"]
+      }
+    });
+    expect(parseCommand("bulk due 2026-03-05 at:09:00")).toEqual({
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "due",
+        target: { type: "marked" },
+        clear: false,
+        dueDate: "2026-03-05",
+        atTime: "09:00"
+      }
+    });
+    expect(parseCommand("bulk:due:clear id:alpha id:beta")).toEqual({
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "due",
+        target: { type: "ids", ids: ["alpha", "beta"] },
+        clear: true
+      }
+    });
+    expect(parseCommand("bulk priority clear")).toEqual({
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "priority",
+        target: { type: "marked" },
+        clear: true
+      }
+    });
+    expect(parseCommand("bulk priority #p2")).toEqual({
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "priority",
+        target: { type: "marked" },
+        clear: false,
+        value: "#p2"
+      }
+    });
+    expect(parseCommand("bulk assignee clear")).toEqual({
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "assignee",
+        target: { type: "marked" },
+        clear: true
+      }
+    });
+    expect(parseCommand("bulk project Apollo")).toEqual({
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "project",
+        target: { type: "marked" },
+        clear: false,
+        value: "Apollo"
+      }
+    });
+    expect(parseCommand("bulk stage doing")).toEqual({
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "stage",
+        target: { type: "marked" },
+        stage: "doing"
+      }
+    });
+    expect(parseCommand("bulk delete")).toEqual({
+      ok: true,
+      command: {
+        type: "bulk",
+        operation: "delete",
+        target: { type: "marked" }
+      }
+    });
+  });
+});

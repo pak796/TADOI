@@ -1,0 +1,4 @@
+a3ae66053423861553576a10352cb475c7f2c5f467fbeb3a5ea37a8b3c06224d  dist/bin/macos/tadoi
+1ae69b80b5f16e22ad55b9dba184fe0249b39970bf80287434667114cda3956c  dist/installers/TADOI-0.3.9.pkg
+d1909bd1000377391ee49ab9327cd3e94c0c35eb0c8f66de00bcb1b2cab05675  dist/installers/TADOI-macOS-0.3.9.dmg
+ee45312603e2f30299172bdfc67a8d67d4f26c6fa2978288d5f96fc88460efe3  dist/installers/TADOI-macos-0.3.9-manifest.json

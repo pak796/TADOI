@@ -1,0 +1,8 @@
+TADOI binary build plan
+Target: macos
+Format: raw
+Generated: 2026-03-02T22:32:43.434Z
+
+This is a plan-mode output only.
+No native binary is produced in plan mode.
+Run with --mode build to emit a real binary.

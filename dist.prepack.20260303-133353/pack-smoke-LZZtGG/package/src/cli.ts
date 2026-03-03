@@ -1,0 +1,434 @@
+import {
+  APP_NAME,
+  APP_TAGLINE,
+  CLI_NAME,
+  ENV_VARS,
+  getAsciiLogoLines
+} from "./brand/brand";
+import { APP_VERSION } from "./app/version";
+import { runPortabilityCommand } from "./cli/portabilityCommands";
+import { runCalendarCommand } from "./cli/calendarCommands";
+import { runTitsCommandCli, TITS_CLI_EXIT_CODE } from "./cli/main";
+import { runTui, runTuiSmoke, type RunTuiOptions } from "./tui/runTui";
+import { TadoiLockBusyError } from "./state/lockfile";
+
+type CliOptions = {
+  showLogo: boolean;
+  showHelp: boolean;
+  showVersion: boolean;
+  smokeTui: boolean;
+};
+
+type RuntimeCliOptions = {
+  interactive: boolean;
+  json: boolean;
+  quiet: boolean;
+  dataFilePath?: string;
+};
+
+export type CliRoute =
+  | { kind: "help"; showLogo: boolean }
+  | { kind: "version" }
+  | { kind: "smoke_tui" }
+  | { kind: "portability"; command: "export" | "import"; args: string[] }
+  | { kind: "calendar"; command: "export" | "import"; args: string[] }
+  | { kind: "unknown"; token: string }
+  | { kind: "tui"; showLogo: boolean };
+
+export type CliRunDeps = {
+  runPortability: (
+    command: "export" | "import",
+    args: string[]
+  ) => Promise<number>;
+  runCalendar: (command: "export" | "import", args: string[]) => Promise<number>;
+  runInteractiveTui: (options: RunTuiOptions) => Promise<void>;
+  runSmokeTui: () => Promise<number>;
+  printHelp: (showLogo: boolean) => void;
+  printVersion: () => void;
+};
+
+function parseCliOptions(argv: string[]): CliOptions {
+  let showHelp = false;
+  let showLogo = true;
+  let showVersion = false;
+  let smokeTui = false;
+
+  for (const arg of argv) {
+    if (arg === "--help" || arg === "-h") {
+      showHelp = true;
+      continue;
+    }
+    if (arg === "--no-logo") {
+      showLogo = false;
+      continue;
+    }
+    if (arg === "--version") {
+      showVersion = true;
+      continue;
+    }
+    if (arg === "--smoke-tui") {
+      smokeTui = true;
+    }
+  }
+
+  return { showHelp, showLogo, showVersion, smokeTui };
+}
+
+function isCoreOptionToken(token: string): boolean {
+  return (
+    token === "--help" ||
+    token === "-h" ||
+    token === "--version" ||
+    token === "--smoke-tui" ||
+    token === "--no-logo"
+  );
+}
+
+function parseRuntimeCliOptions(argv: string[]): {
+  ok: true;
+  argv: string[];
+  runtime: RuntimeCliOptions;
+} | {
+  ok: false;
+  error: string;
+} {
+  let interactive = false;
+  let json = false;
+  let quiet = false;
+  let dataFilePath: string | undefined;
+  const nextArgv: string[] = [];
+  let passthrough = false;
+
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (passthrough) {
+      nextArgv.push(arg);
+      continue;
+    }
+
+    if (arg === "--") {
+      passthrough = true;
+      nextArgv.push(arg);
+      continue;
+    }
+    if (arg === "--interactive") {
+      interactive = true;
+      continue;
+    }
+    if (arg === "--json") {
+      json = true;
+      continue;
+    }
+    if (arg === "--quiet") {
+      quiet = true;
+      continue;
+    }
+    if (arg === "--data-file") {
+      const next = argv[i + 1];
+      if (next === undefined || next.length === 0) {
+        return { ok: false, error: "--data-file requires a value" };
+      }
+      dataFilePath = next;
+      i += 1;
+      continue;
+    }
+    if (arg.startsWith("--data-file=")) {
+      const value = arg.slice("--data-file=".length);
+      if (value.length === 0) {
+        return { ok: false, error: "--data-file requires a value" };
+      }
+      dataFilePath = value;
+      continue;
+    }
+
+    nextArgv.push(arg);
+  }
+
+  return {
+    ok: true,
+    argv: nextArgv,
+    runtime: {
+      interactive,
+      json,
+      quiet,
+      ...(dataFilePath ? { dataFilePath } : {})
+    }
+  };
+}
+
+async function withDataFileOverride<T>(
+  dataFilePath: string | undefined,
+  run: () => Promise<T>
+): Promise<T> {
+  if (!dataFilePath) {
+    return run();
+  }
+  const previous = process.env[ENV_VARS.DATA_PATH];
+  process.env[ENV_VARS.DATA_PATH] = dataFilePath;
+  try {
+    return await run();
+  } finally {
+    if (previous === undefined) {
+      delete process.env[ENV_VARS.DATA_PATH];
+    } else {
+      process.env[ENV_VARS.DATA_PATH] = previous;
+    }
+  }
+}
+
+async function withOutputMode<T extends number | undefined>(
+  runtime: RuntimeCliOptions,
+  run: () => Promise<T>
+): Promise<T | number> {
+  if (!runtime.json && !runtime.quiet) {
+    return run();
+  }
+
+  const stdout: string[] = [];
+  const stderr: string[] = [];
+  const originalLog = console.log;
+  const originalError = console.error;
+  const lineify = (values: unknown[]): string => values.map((value) => String(value)).join(" ");
+
+  console.log = (...values: unknown[]) => {
+    if (runtime.json) {
+      stdout.push(lineify(values));
+      return;
+    }
+  };
+  console.error = (...values: unknown[]) => {
+    if (runtime.json) {
+      stderr.push(lineify(values));
+      return;
+    }
+    originalError(...values);
+  };
+
+  let value: T | undefined;
+  let thrown: unknown;
+  try {
+    value = await run();
+  } catch (error: unknown) {
+    thrown = error;
+  } finally {
+    console.log = originalLog;
+    console.error = originalError;
+  }
+
+  if (runtime.json) {
+    const exitCode =
+      thrown !== undefined
+        ? TITS_CLI_EXIT_CODE.IO_ERROR
+        : typeof value === "number"
+          ? value
+          : 0;
+    if (thrown !== undefined) {
+      stderr.push(
+        `Unhandled error: ${thrown instanceof Error ? thrown.message : String(thrown)}`
+      );
+    }
+    originalLog(
+      JSON.stringify(
+        {
+          ok: exitCode === 0,
+          exitCode,
+          stdout,
+          stderr
+        },
+        null,
+        2
+      )
+    );
+    if (thrown !== undefined) {
+      return TITS_CLI_EXIT_CODE.IO_ERROR;
+    }
+  } else if (thrown !== undefined) {
+    throw thrown;
+  }
+
+  return value as T;
+}
+
+export function printHelp(showLogo: boolean): void {
+  if (showLogo) {
+    console.log(getAsciiLogoLines("MICRO").join("\n"));
+  }
+  console.log(`${APP_NAME}`);
+  console.log(APP_TAGLINE);
+  console.log("");
+  console.log(`Usage: ${CLI_NAME} [options]`);
+  console.log(`       ${CLI_NAME} <command> [options]`);
+  console.log("");
+  console.log("Options:");
+  console.log("  -h, --help      Show this help");
+  console.log("      --version   Print app version");
+  console.log("      --smoke-tui Run minimal TUI smoke render and exit");
+  console.log("      --interactive Force interactive TUI mode");
+  console.log("      --json      Emit machine-readable output for non-interactive commands");
+  console.log("      --quiet     Suppress non-essential non-error output");
+  console.log("      --data-file <path> Override data file path for this invocation");
+  console.log("      --no-logo   Hide ASCII logo in app header");
+  console.log("");
+  console.log("Commands:");
+  console.log("  add             Add task via TITS command engine");
+  console.log("  done            Mark task done by id via TITS command engine");
+  console.log("  due             Set/clear due by id via TITS command engine");
+  console.log("  recur           Set/clear recurrence by id via TITS command engine");
+  console.log("  check:*         Checklist commands (add/toggle/edit/del/clear)");
+  console.log("  bulk:*          Bulk commands (done/tag/due/priority/assignee/project/stage/delete)");
+  console.log("  help            Show TITS command help topics");
+  console.log("  export          Export full persisted state (plus settings)");
+  console.log("  import          Import state from a JSON export");
+  console.log("  calendar:export Export one-way calendar ICS file");
+  console.log("  calendar:import Import one-way calendar ICS file");
+  console.log(`  ${CLI_NAME} 'add \"Task\" due:2026-03-05 #tag'`);
+  console.log(`  Run '${CLI_NAME} <command> --help' for command-specific flags`);
+  console.log(`  Use '--' to pass literal tokens (example: ${CLI_NAME} add -- --help)`);
+  console.log("");
+  console.log("Environment:");
+  console.log(`  ${ENV_VARS.DATA_PATH}=<path>   Override data file location`);
+  console.log(`  ${ENV_VARS.PERF_DEBUG}=1        Enable perf debug logs`);
+}
+
+function printVersion(): void {
+  console.log(APP_VERSION);
+}
+
+const DEFAULT_DEPS: CliRunDeps = {
+  runPortability: runPortabilityCommand,
+  runCalendar: runCalendarCommand,
+  runInteractiveTui: runTui,
+  runSmokeTui: runTuiSmoke,
+  printHelp,
+  printVersion
+};
+
+export function resolveCliRoute(argv: string[]): CliRoute {
+  const command = argv[0];
+  if (command === "export" || command === "import") {
+    return {
+      kind: "portability",
+      command,
+      args: argv.slice(1)
+    };
+  }
+  if (command === "calendar:export") {
+    return {
+      kind: "calendar",
+      command: "export",
+      args: argv.slice(1)
+    };
+  }
+  if (command === "calendar:import") {
+    return {
+      kind: "calendar",
+      command: "import",
+      args: argv.slice(1)
+    };
+  }
+
+  if (argv.length === 0) {
+    return { kind: "tui", showLogo: true };
+  }
+
+  const cliOptions = parseCliOptions(argv);
+  const argsOnlyCoreOptions = argv.every(isCoreOptionToken);
+
+  if (cliOptions.showHelp && argsOnlyCoreOptions) {
+    return { kind: "help", showLogo: cliOptions.showLogo };
+  }
+
+  if (cliOptions.showVersion && argsOnlyCoreOptions) {
+    return { kind: "version" };
+  }
+
+  if (cliOptions.smokeTui && argsOnlyCoreOptions) {
+    return { kind: "smoke_tui" };
+  }
+
+  if (argsOnlyCoreOptions) {
+    return { kind: "tui", showLogo: cliOptions.showLogo };
+  }
+
+  const unknownToken = argv.find((arg) => !isCoreOptionToken(arg));
+  if (unknownToken) {
+    return { kind: "unknown", token: unknownToken };
+  }
+
+  return { kind: "tui", showLogo: cliOptions.showLogo };
+}
+
+export async function runCli(
+  argv: string[] = process.argv.slice(2),
+  deps: CliRunDeps = DEFAULT_DEPS
+): Promise<number | undefined> {
+  const runtimeParsed = parseRuntimeCliOptions(argv);
+  if (!runtimeParsed.ok) {
+    console.error(`Error: ${runtimeParsed.error}`);
+    console.error(`Run '${CLI_NAME} --help' for usage.`);
+    return TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION;
+  }
+
+  const runtimeArgv = runtimeParsed.argv;
+  const runtime = runtimeParsed.runtime;
+  const route = resolveCliRoute(runtimeArgv);
+
+  return withDataFileOverride(runtime.dataFilePath, () =>
+    withOutputMode(runtime, async () => {
+      if (route.kind === "portability") {
+        return deps.runPortability(route.command, route.args);
+      }
+      if (route.kind === "calendar") {
+        return deps.runCalendar(route.command, route.args);
+      }
+
+      const titsResult = await runTitsCommandCli(runtimeArgv);
+      if (titsResult.handled) {
+        return titsResult.exitCode ?? 0;
+      }
+
+      if (route.kind === "help") {
+        deps.printHelp(route.showLogo);
+        return 0;
+      }
+
+      if (route.kind === "version") {
+        deps.printVersion();
+        return 0;
+      }
+
+      if (route.kind === "smoke_tui") {
+        return deps.runSmokeTui();
+      }
+
+      if (route.kind === "unknown") {
+        console.error(`Error: unknown command or option '${route.token}'.`);
+        console.error(`Run '${CLI_NAME} --help' for usage.`);
+        return TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION;
+      }
+
+      if (runtime.json || runtime.quiet) {
+        console.error("Error: --json and --quiet are only supported for non-interactive commands.");
+        return TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION;
+      }
+
+      try {
+        await deps.runInteractiveTui({ showLogo: route.showLogo });
+        return undefined;
+      } catch (error: unknown) {
+        if (error instanceof TadoiLockBusyError) {
+          console.error("Error: TADOI is running (lock present).");
+          return TITS_CLI_EXIT_CODE.LOCKED;
+        }
+        throw error;
+      }
+    })
+  );
+}
+
+if (import.meta.main) {
+  const exitCode = await runCli(process.argv.slice(2));
+  if (typeof exitCode === "number" && exitCode !== 0) {
+    process.exitCode = exitCode;
+  }
+}

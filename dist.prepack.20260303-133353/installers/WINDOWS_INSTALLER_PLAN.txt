@@ -1,0 +1,10 @@
+TADOI installer scaffold output
+Target: windows
+Format: installer
+Generated: 2026-02-11T03:56:26.300Z
+
+Installer generation is intentionally not implemented in this phase.
+Planned outputs:
+- .exe/.msi
+
+See packaging docs for signing/notarization prerequisites.
