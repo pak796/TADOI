@@ -2,9 +2,10 @@ import { describe, expect, it } from "bun:test";
 import { createDefaultEngagementState } from "../domain/engagement";
 import type { LoadedData } from "../state/persistence";
 import type { TadoiLockPayload } from "../state/lockfile";
-import type { CommandOutput, NoteCommand } from "../commands/types";
+import type { NoteCommand } from "../commands/types";
 import { executeCommand } from "../commands/execute";
 import { parseCommand } from "../commands/parse";
+import type { ExecuteNoteCommandResult } from "../notes/commands";
 import {
   TITS_CLI_EXIT_CODE,
   resolveTitsCliInput,
@@ -72,19 +73,24 @@ function createDeps(options: {
       loadedData = data;
       saved.push(data);
     },
-    runNoteCommand: async (command: NoteCommand): Promise<CommandOutput> => {
+    runNoteCommand: async (command: NoteCommand): Promise<ExecuteNoteCommandResult> => {
       noteRuns.push(command);
       if (command.operation === "help") {
         return {
-          kind: "ok",
-          text: "TOME COMMANDS\n- note new \"Title\"      Create note"
+          output: {
+            kind: "ok",
+            text: "TOME COMMANDS\n- note new \"Title\"      Create note"
+          }
         };
       }
       return {
-        kind: "ok",
-        text: "note command ok"
+        output: {
+          kind: "ok",
+          text: "note command ok"
+        }
       };
     },
+    readStdin: async () => "",
     log: (line: string) => logs.push(line),
     error: (line: string) => errors.push(line)
   };
@@ -119,6 +125,10 @@ describe("resolveTitsCliInput", () => {
     expect(resolveTitsCliInput(["note", "search", "tag:inbox"])).toEqual({
       mode: "subcommand",
       dsl: "note search tag:inbox"
+    });
+    expect(resolveTitsCliInput(["nq", "Daily"])).toEqual({
+      mode: "subcommand",
+      dsl: "nq Daily"
     });
   });
 
@@ -513,6 +523,28 @@ describe("runTitsCommandCliWithDeps", () => {
     expect(logs).toEqual(["note command ok"]);
   });
 
+  it("injects stdin body for nq quick capture when body argument is omitted", async () => {
+    const { deps, errors, saved, noteRuns } = createDeps();
+    deps.readStdin = async () => "stdin body\n";
+
+    const result = await runTitsCommandCliWithDeps(["nq", "Daily"], deps);
+
+    expect(result).toEqual({ handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS });
+    expect(errors).toHaveLength(0);
+    expect(saved).toHaveLength(0);
+    expect(noteRuns).toEqual([
+      {
+        type: "note",
+        operation: "quick",
+        title: "Daily",
+        tags: [],
+        aliases: [],
+        metadata: {},
+        stdinBody: "stdin body"
+      }
+    ]);
+  });
+
   it("routes note delete and restore-defaults through shared notes runner", async () => {
     const { deps, errors, saved, noteRuns } = createDeps();
 
@@ -539,8 +571,10 @@ describe("runTitsCommandCliWithDeps", () => {
   it("preserves multiline output for non-help note commands", async () => {
     const { deps, logs, errors, saved } = createDeps();
     deps.runNoteCommand = async () => ({
-      kind: "ok",
-      text: "Opened note (title): Design\nPath: notes/Design.md\nGraph: out=1 back=0 tasks=0 broken=0"
+      output: {
+        kind: "ok",
+        text: "Opened note (title): Design\nPath: notes/Design.md\nGraph: out=1 back=0 tasks=0 broken=0"
+      }
     });
 
     const result = await runTitsCommandCliWithDeps(["note", "open", "Design"], deps);

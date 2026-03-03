@@ -3,7 +3,6 @@ import { executeCommand } from "../commands/execute";
 import type {
   BulkCommand,
   Command,
-  CommandOutput,
   CommandResult,
   HelpTopic,
   NoteCommand,
@@ -32,6 +31,7 @@ import {
 import { CLI_EXIT_CODE } from "./exitCodes";
 import { parseSelectorTokens } from "./selectors";
 import { runNoteCommandCli } from "./noteCommands";
+import type { ExecuteNoteCommandResult } from "../notes/commands";
 import { redactedLogger } from "../logging/redactedLogger";
 
 export const TITS_CLI_EXIT_CODE = CLI_EXIT_CODE;
@@ -59,6 +59,7 @@ type TitsCommandName =
   | "bulk:stage"
   | "bulk:delete"
   | "note"
+  | "nq"
   | "help";
 
 type SaveDataOptions = {
@@ -79,7 +80,8 @@ type TitsCliDeps = {
   releaseLock: (lockPath: string) => Promise<void>;
   loadData: (filePath: string) => Promise<LoadedData>;
   saveData: (data: LoadedData, filePath: string, options?: SaveDataOptions) => Promise<void>;
-  runNoteCommand: (command: NoteCommand, dataFilePath: string) => Promise<CommandOutput>;
+  runNoteCommand: (command: NoteCommand, dataFilePath: string) => Promise<ExecuteNoteCommandResult>;
+  readStdin: () => Promise<string>;
   log: (line: string) => void;
   error: (line: string) => void;
 };
@@ -101,6 +103,18 @@ const DEFAULT_DEPS: TitsCliDeps = {
     await saveStateAtomic(data, filePath, undefined, options);
   },
   runNoteCommand: runNoteCommandCli,
+  readStdin: async () => {
+    if (process.stdin.isTTY) return "";
+    const chunks: Buffer[] = [];
+    for await (const chunk of process.stdin) {
+      if (typeof chunk === "string") {
+        chunks.push(Buffer.from(chunk));
+      } else {
+        chunks.push(chunk);
+      }
+    }
+    return Buffer.concat(chunks).toString("utf8");
+  },
   log: (line: string) => redactedLogger.log(line),
   error: (line: string) => redactedLogger.error(line)
 };
@@ -129,6 +143,7 @@ function isTitsCommandName(value: string): value is TitsCommandName {
     value === "bulk:stage" ||
     value === "bulk:delete" ||
     value === "note" ||
+    value === "nq" ||
     value === "help"
   );
 }
@@ -182,11 +197,13 @@ function resolveWrapperHelpCommand(argv: string[]): Command | null {
   }
 
   const topic = (
-    first.startsWith("check")
-      ? "check"
-      : first.startsWith("bulk")
-        ? "bulk"
-        : first
+    first === "note" || first === "nq"
+      ? "note"
+      : first.startsWith("check")
+        ? "check"
+        : first.startsWith("bulk")
+          ? "bulk"
+          : first
   ) as HelpTopic;
   return {
     type: "help",
@@ -234,6 +251,13 @@ function commandRequiresInAppSelection(command: Command): boolean {
     return true;
   }
   if (command.type === "bulk" && command.target.type === "marked") {
+    return true;
+  }
+  if (
+    command.type === "note" &&
+    command.operation === "quick" &&
+    command.target?.type === "selected"
+  ) {
     return true;
   }
   return false;
@@ -495,7 +519,7 @@ function buildSelectorCommand(
 export async function runTitsCommandCliWithDeps(
   argv: string[],
   deps: TitsCliDeps
-): Promise<{ handled: boolean; exitCode?: number }> {
+): Promise<{ handled: boolean; exitCode?: number; data?: unknown }> {
   const invocationNow = deps.now();
   const wrapperHelpCommand = resolveWrapperHelpCommand(argv);
   if (wrapperHelpCommand) {
@@ -545,6 +569,16 @@ export async function runTitsCommandCliWithDeps(
     }
     parsedCommand = parsed.command;
 
+    if (parsedCommand.type === "note" && parsedCommand.operation === "quick" && !parsedCommand.body) {
+      const stdinBody = (await deps.readStdin()).trimEnd();
+      if (stdinBody.trim().length > 0) {
+        parsedCommand = {
+          ...parsedCommand,
+          stdinBody
+        };
+      }
+    }
+
     if (commandRequiresInAppSelection(parsedCommand)) {
       if (parsedCommand.type === "bulk") {
         deps.error('Error: CLI bulk commands require repeated "id:<task-id>" targets.');
@@ -574,13 +608,17 @@ export async function runTitsCommandCliWithDeps(
     }
 
     if (parsedCommand.type === "note" && parsedCommand.operation === "help") {
-      const output = await deps.runNoteCommand(parsedCommand, deps.getDataFilePath());
-      if (output.kind === "error") {
-        deps.error(toSingleLine(output.text));
+      const result = await deps.runNoteCommand(parsedCommand, deps.getDataFilePath());
+      if (result.output.kind === "error") {
+        deps.error(toSingleLine(result.output.text));
         return { handled: true, exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION };
       }
-      deps.log(formatCliOutput(output.text, { preserveMultiline: true }));
-      return { handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS };
+      deps.log(formatCliOutput(result.output.text, { preserveMultiline: true }));
+      return {
+        handled: true,
+        exitCode: TITS_CLI_EXIT_CODE.SUCCESS,
+        ...(result.data !== undefined ? { data: result.data } : {})
+      };
     }
   }
 
@@ -596,13 +634,17 @@ export async function runTitsCommandCliWithDeps(
     }
 
     if (parsedCommand?.type === "note") {
-      const output = await deps.runNoteCommand(parsedCommand, dataFilePath);
-      if (output.kind === "error") {
-        deps.error(toSingleLine(output.text));
+      const result = await deps.runNoteCommand(parsedCommand, dataFilePath);
+      if (result.output.kind === "error") {
+        deps.error(toSingleLine(result.output.text));
         return { handled: true, exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION };
       }
-      deps.log(formatCliOutput(output.text, { preserveMultiline: true }));
-      return { handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS };
+      deps.log(formatCliOutput(result.output.text, { preserveMultiline: true }));
+      return {
+        handled: true,
+        exitCode: TITS_CLI_EXIT_CODE.SUCCESS,
+        ...(result.data !== undefined ? { data: result.data } : {})
+      };
     }
 
     const loaded = await deps.loadData(dataFilePath);
@@ -686,6 +728,6 @@ export async function runTitsCommandCliWithDeps(
 
 export async function runTitsCommandCli(
   argv: string[]
-): Promise<{ handled: boolean; exitCode?: number }> {
+): Promise<{ handled: boolean; exitCode?: number; data?: unknown }> {
   return runTitsCommandCliWithDeps(argv, DEFAULT_DEPS);
 }

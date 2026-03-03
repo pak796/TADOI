@@ -162,12 +162,53 @@ export type HelpCommand = {
   topic?: HelpTopic;
 };
 
+export type NoteOutputFormat = "text" | "json";
+
+export type NoteLinkDirection = "incoming" | "outgoing" | "both";
+
+export type NoteSearchFilters = {
+  textTerms: string[];
+  titleFilters: string[];
+  pathFilters: string[];
+  tagFilters: string[];
+  excludedTagFilters: string[];
+  createdAfter?: string;
+  createdBefore?: string;
+  updatedAfter?: string;
+  updatedBefore?: string;
+  limit?: number;
+  format?: NoteOutputFormat;
+};
+
+export type NoteQuickInput = {
+  title: string;
+  body?: string;
+  stdinBody?: string;
+  tags: string[];
+  status?: string;
+  aliases: string[];
+  metadata: Record<string, string>;
+  template?: string;
+  target?: CommandTarget;
+};
+
 export type NoteCommand =
   | {
       type: "note";
       operation: "new";
       title: string;
+      template?: string;
     }
+  | {
+      type: "note";
+      operation: "template";
+      template: string;
+      title?: string;
+    }
+  | ({
+      type: "note";
+      operation: "quick";
+    } & NoteQuickInput)
   | {
       type: "note";
       operation: "open";
@@ -177,6 +218,29 @@ export type NoteCommand =
       type: "note";
       operation: "search";
       query: string;
+      filters: NoteSearchFilters;
+    }
+  | {
+      type: "note";
+      operation: "query";
+      query: string;
+      filters: NoteSearchFilters;
+    }
+  | {
+      type: "note";
+      operation: "graph";
+      query: string;
+      direction: NoteLinkDirection;
+      limit?: number;
+      format?: NoteOutputFormat;
+    }
+  | {
+      type: "note";
+      operation: "links";
+      query: string;
+      direction: NoteLinkDirection;
+      limit?: number;
+      format?: NoteOutputFormat;
     }
   | {
       type: "note";

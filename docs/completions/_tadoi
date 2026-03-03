@@ -20,6 +20,7 @@ commands=(
   'due:Set or clear due date via TITS command engine'
   'recur:Set or clear recurrence by id via TITS command engine'
   'note:TOME commands (new/open/search/delete/restore-defaults/reindex/root/help)'
+  'nq:Alias for note quick capture'
   'list:List tasks via selector grammar'
   'reminders:Out-of-app reminder helper commands'
   'remind:Open reminder modal by event id'
@@ -52,7 +53,7 @@ if (( CURRENT == 2 )); then
 fi
 
 case "${words[2]}" in
-  add|done|due|recur|note|help)
+  add|done|due|recur|note|nq|help)
     _arguments '*:arg: '
     ;;
   list)

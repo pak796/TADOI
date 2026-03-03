@@ -1,4 +1,4 @@
-set -l _tadoi_commands add done due recur note list reminders remind help check:add check:toggle check:edit check:del check:clear bulk:done bulk:tag:add bulk:tag:rm bulk:due bulk:due:clear bulk:priority bulk:assignee bulk:project bulk:stage bulk:delete export import calendar:export calendar:import
+set -l _tadoi_commands add done due recur note nq list reminders remind help check:add check:toggle check:edit check:del check:clear bulk:done bulk:tag:add bulk:tag:rm bulk:due bulk:due:clear bulk:priority bulk:assignee bulk:project bulk:stage bulk:delete export import calendar:export calendar:import
 
 complete -c tadoi -n "not __fish_seen_subcommand_from $_tadoi_commands" -a "$_tadoi_commands"
 complete -c tadoi -n "not __fish_seen_subcommand_from $_tadoi_commands" -l help -s h -d "Show help"
@@ -10,7 +10,7 @@ complete -c tadoi -n "not __fish_seen_subcommand_from $_tadoi_commands" -l quiet
 complete -c tadoi -n "not __fish_seen_subcommand_from $_tadoi_commands" -l data-file -r -d "Override data file path for this invocation"
 complete -c tadoi -n "not __fish_seen_subcommand_from $_tadoi_commands" -l no-logo -d "Hide ASCII logo in app header"
 
-complete -c tadoi -n "__fish_seen_subcommand_from add done due recur note help" -l help -s h -d "Show command help"
+complete -c tadoi -n "__fish_seen_subcommand_from add done due recur note nq help" -l help -s h -d "Show command help"
 
 complete -c tadoi -n "__fish_seen_subcommand_from list" -l help -s h -d "Show list help"
 complete -c tadoi -n "__fish_seen_subcommand_from list" -l sort -r -a "due updated created title" -d "Sort mode"

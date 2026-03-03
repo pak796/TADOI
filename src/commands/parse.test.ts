@@ -289,12 +289,34 @@ describe("parseCommand", () => {
   });
 
   it("parses note command families", () => {
-    expect(parseCommand('note new "Design notes"')).toEqual({
+    expect(parseCommand('note new "Design notes" --template meeting')).toEqual({
       ok: true,
       command: {
         type: "note",
         operation: "new",
-        title: "Design notes"
+        title: "Design notes",
+        template: "meeting"
+      }
+    });
+    expect(parseCommand("note template meeting")).toEqual({
+      ok: true,
+      command: {
+        type: "note",
+        operation: "template",
+        template: "meeting"
+      }
+    });
+    expect(parseCommand('nq "Daily" "Body" #work --status done --alias d1 --meta:source=cli')).toEqual({
+      ok: true,
+      command: {
+        type: "note",
+        operation: "quick",
+        title: "Daily",
+        body: "Body",
+        tags: ["work"],
+        status: "done",
+        aliases: ["d1"],
+        metadata: { source: "cli" }
       }
     });
     expect(parseCommand('note open "Design notes"')).toEqual({
@@ -305,12 +327,57 @@ describe("parseCommand", () => {
         query: "Design notes"
       }
     });
-    expect(parseCommand("note search tag:inbox")).toEqual({
+    expect(parseCommand("note search tag:inbox title:retro -tag:closed created:today limit:20", MINI_OPTIONS_10)).toEqual({
       ok: true,
       command: {
         type: "note",
         operation: "search",
-        query: "tag:inbox"
+        query: "tag:inbox title:retro -tag:closed created:today limit:20",
+        filters: {
+          textTerms: [],
+          titleFilters: ["retro"],
+          pathFilters: [],
+          tagFilters: ["inbox"],
+          excludedTagFilters: ["closed"],
+          createdAfter: "2026-03-02",
+          createdBefore: "2026-03-03",
+          limit: 20
+        }
+      }
+    });
+    expect(parseCommand("note query tag:inbox")).toEqual({
+      ok: true,
+      command: {
+        type: "note",
+        operation: "query",
+        query: "tag:inbox",
+        filters: {
+          textTerms: [],
+          titleFilters: [],
+          pathFilters: [],
+          tagFilters: ["inbox"],
+          excludedTagFilters: []
+        }
+      }
+    });
+    expect(parseCommand("note graph Inbox incoming limit:5")).toEqual({
+      ok: true,
+      command: {
+        type: "note",
+        operation: "graph",
+        query: "Inbox",
+        direction: "incoming",
+        limit: 5
+      }
+    });
+    expect(parseCommand("note links Inbox outgoing format:json")).toEqual({
+      ok: true,
+      command: {
+        type: "note",
+        operation: "links",
+        query: "Inbox",
+        direction: "outgoing",
+        format: "json"
       }
     });
     expect(parseCommand('note delete "Design notes"')).toEqual({

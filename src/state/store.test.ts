@@ -1,6 +1,12 @@
 import { describe, expect, it } from "bun:test";
 import { createDefaultEngagementState } from "../domain/engagement";
-import { applyArchiveAging, createDraftFromTask, initialState, reducer } from "./store";
+import {
+  applyArchiveAging,
+  combineDueDateTime,
+  createDraftFromTask,
+  initialState,
+  reducer
+} from "./store";
 import { LoadedData } from "./persistence";
 import { Task } from "../domain/models";
 
@@ -256,5 +262,84 @@ describe("engagement reducer actions", () => {
       withChecklistCompleted.engagement.achievements.FIRST_CHECKLIST_FULLY_COMPLETED
     ).toBeDefined();
     expect(withChecklistCompleted.engagementToastQueue).toHaveLength(3);
+  });
+});
+
+describe("combineDueDateTime", () => {
+  const miniOptions = {
+    now: Date.parse("2026-03-02T10:00:00-06:00"),
+    tz: "America/Chicago"
+  };
+
+  it("resolves mini time as same-day datetime when still in future", () => {
+    const result = combineDueDateTime("3pm", "", {
+      ...miniOptions
+    });
+    expect(result).toEqual({
+      dueAt: new Date(2026, 2, 2, 15, 0, 0, 0).getTime(),
+      hasExplicitTime: true
+    });
+  });
+
+  it("resolves mini time as next-day datetime when today's time has passed", () => {
+    const result = combineDueDateTime("3pm", "", {
+      ...miniOptions,
+      now: Date.parse("2026-03-02T16:00:00-06:00")
+    });
+    expect(result).toEqual({
+      dueAt: new Date(2026, 2, 3, 15, 0, 0, 0).getTime(),
+      hasExplicitTime: true
+    });
+  });
+
+  it("resolves mini weekday+time using today when in the future", () => {
+    const result = combineDueDateTime("mon 3pm", "", {
+      now: Date.parse("2026-03-02T10:00:00-06:00"),
+      tz: "America/Chicago"
+    });
+    expect(result).toEqual({
+      dueAt: new Date(2026, 2, 2, 15, 0, 0, 0).getTime(),
+      hasExplicitTime: true
+    });
+  });
+
+  it("resolves mini weekday+time to next occurrence when current weekday time has passed", () => {
+    const result = combineDueDateTime("mon 3pm", "", {
+      now: Date.parse("2026-03-02T16:00:00-06:00"),
+      tz: "America/Chicago"
+    });
+    expect(result).toEqual({
+      dueAt: new Date(2026, 2, 9, 15, 0, 0, 0).getTime(),
+      hasExplicitTime: true
+    });
+  });
+
+  it("supports 24-hour mini time", () => {
+    const result = combineDueDateTime("15:30", "", {
+      now: Date.parse("2026-03-02T10:00:00-06:00"),
+      tz: "America/Chicago"
+    });
+    expect(result).toEqual({
+      dueAt: new Date(2026, 2, 2, 15, 30, 0, 0).getTime(),
+      hasExplicitTime: true
+    });
+  });
+
+  it("ignores ambiguous single-number time in mini preview parse", () => {
+    expect(combineDueDateTime("3", "", {
+      now: Date.parse("2026-03-02T10:00:00-06:00"),
+      tz: "America/Chicago"
+    })).toEqual({ dueAt: undefined, hasExplicitTime: false });
+  });
+
+  it("keeps strict ISO behavior with options provided", () => {
+    const result = combineDueDateTime("2026-03-05", "09:00", {
+      now: Date.parse("2026-03-02T10:00:00-06:00"),
+      tz: "America/Chicago"
+    });
+    expect(result).toEqual({
+      dueAt: new Date(2026, 2, 5, 9, 0, 0, 0).getTime(),
+      hasExplicitTime: true
+    });
   });
 });

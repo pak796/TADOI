@@ -13,6 +13,8 @@ import {
   updateStreak
 } from "./engagement";
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 function makeToast(partial: Partial<EngagementToast> & Pick<EngagementToast, "id">): EngagementToast {
   return {
     id: partial.id,

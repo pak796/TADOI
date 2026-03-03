@@ -14,9 +14,14 @@ const HELP_CHECK =
 const HELP_BULK =
   "bulk done | bulk tag add #tag... | bulk tag rm #tag... | bulk due <date|mini> [at:<time>] | bulk due clear | bulk priority <P?>|clear | bulk assignee <value|clear> | bulk project <value|clear> | bulk stage <todo|doing|blocked|done> | bulk delete";
 const HELP_NOTE = `TOME COMMANDS (Terminal Oriented Markdown Environment)
-- note new "Title"      Create note
+- note new "Title" [--template <id>]  Create note
+- note template <id> ["Title"]         Create note from template
+- note q|quick|capture "Title" ["Body"] [#tag|tag:x] [--status x] [--alias x] [--meta:key=value] [--template x] [@selected|id:task]
 - note open "Query"     Open note
-- note search "Term"    Search TOME notes (supports tag:<x>)
+- note search "Query"   Search TOME notes (tag:/-tag:/title:/path:/text:/created:/updated:/limit:/format:)
+- note query "Query"    Alias for search
+- note graph "Query" [incoming|outgoing|both] [limit:N] [format:text|json]
+- note links "Query" [incoming|outgoing|both] [limit:N] [format:text|json]
 - note delete "Query"   Delete note (same resolver as open)
 - note restore-defaults Restore missing default guide docs
 - note reindex          Rebuild TOME index

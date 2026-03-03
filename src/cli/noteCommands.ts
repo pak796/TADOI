@@ -1,5 +1,8 @@
-import type { CommandOutput, NoteCommand } from "../commands/types";
-import { executeNoteCommand } from "../notes/commands";
+import type { NoteCommand } from "../commands/types";
+import {
+  executeNoteCommand,
+  type ExecuteNoteCommandResult
+} from "../notes/commands";
 import { createNotesService } from "../notes/service";
 import { loadSettings, saveSettingsStrict } from "../settings/settings";
 import { createDataBackup } from "../state/persistence";
@@ -7,7 +10,7 @@ import { createDataBackup } from "../state/persistence";
 export async function runNoteCommandCli(
   command: NoteCommand,
   dataFilePath: string
-): Promise<CommandOutput> {
+): Promise<ExecuteNoteCommandResult> {
   const settingsResult = await loadSettings();
   const settings = settingsResult.settings;
   const notesSettings = settings.notes ?? { enabled: true, rootPath: null };
@@ -23,6 +26,7 @@ export async function runNoteCommandCli(
     service,
     dataFilePath,
     notesSettings,
+    captureSource: "cli",
     createBackup: createDataBackup,
     persistNotesSettings: async (nextNotes) => {
       await saveSettingsStrict(
@@ -35,5 +39,5 @@ export async function runNoteCommandCli(
     }
   });
 
-  return result.output;
+  return result;
 }

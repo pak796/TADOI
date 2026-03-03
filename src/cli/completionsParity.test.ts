@@ -10,6 +10,7 @@ const COMPLETION_FILES = [
 
 const REQUIRED_COMMAND_TOKENS = [
   "list",
+  "nq",
   "check:add",
   "check:toggle",
   "check:edit",
@@ -37,4 +38,3 @@ describe("CLI completion parity", () => {
     }
   });
 });
-

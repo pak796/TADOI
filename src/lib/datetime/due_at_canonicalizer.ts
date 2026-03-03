@@ -54,7 +54,11 @@ function formatTime(hours: number, minutes: number): string {
   return `${pad2(hours)}:${pad2(minutes)}`;
 }
 
-function invalidDue(input: string): DueAtCanonicalErr {
+function invalidDue(input: string): {
+  ok: false;
+  code: "INVALID_DUE";
+  message: string;
+} {
   return {
     ok: false,
     code: "INVALID_DUE",

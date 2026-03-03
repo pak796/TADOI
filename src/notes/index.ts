@@ -21,6 +21,13 @@ type IdentitySnapshot = {
   aliases: string[];
 };
 
+export type NoteSearchRankingInput = {
+  textTerms: string[];
+  titleTerms: string[];
+  pathTerms: string[];
+  tagTerms: string[];
+};
+
 function titleFromBody(body: string): string | null {
   const match = body.match(/^#\s+(.+)$/m);
   return match?.[1]?.trim() || null;
@@ -29,6 +36,50 @@ function titleFromBody(body: string): string | null {
 function noteTitleFallback(notePath: NotePath): string {
   const filename = path.posix.basename(notePath);
   return path.posix.basename(filename, path.posix.extname(filename));
+}
+
+function hasPrefixMatch(haystack: string, terms: string[]): boolean {
+  if (terms.length === 0) return false;
+  return terms.some((term) => haystack.startsWith(term));
+}
+
+function countSubstringMatches(haystack: string, terms: string[]): number {
+  if (terms.length === 0) return 0;
+  return terms.reduce((count, term) => (haystack.includes(term) ? count + 1 : count), 0);
+}
+
+export function computeNoteSearchRank(
+  note: Note,
+  bodyContent: string,
+  input: NoteSearchRankingInput
+): number {
+  const title = note.title.toLowerCase();
+  const aliases = note.aliases.map((alias) => alias.toLowerCase());
+  const pathValue = note.path.toLowerCase();
+  const tags = note.tags.map((tag) => tag.toLowerCase());
+  const body = bodyContent.toLowerCase();
+
+  const titleExactBoost = input.titleTerms.some((term) => title === term) ||
+    input.textTerms.some((term) => title === term) ||
+    aliases.some((alias) => input.titleTerms.includes(alias) || input.textTerms.includes(alias))
+    ? 1_000
+    : 0;
+
+  const titlePrefixBoost = hasPrefixMatch(title, [...input.textTerms, ...input.titleTerms]) ||
+    aliases.some((alias) => hasPrefixMatch(alias, [...input.textTerms, ...input.titleTerms]))
+    ? 300
+    : 0;
+
+  const tagBoost = tags.reduce(
+    (score, tag) => score + countSubstringMatches(tag, input.tagTerms) * 120,
+    0
+  );
+  const titleContainsBoost = countSubstringMatches(title, [...input.textTerms, ...input.titleTerms]) * 80;
+  const pathBoost = countSubstringMatches(pathValue, input.pathTerms) * 25;
+  const bodyBoost = countSubstringMatches(body, input.textTerms) * 20;
+  const recencyBoost = Math.max(0, Math.min(50, Math.round(note.mtimeMs / 86_400_000)));
+
+  return titleExactBoost + titlePrefixBoost + tagBoost + titleContainsBoost + pathBoost + bodyBoost + recencyBoost;
 }
 
 function mapWarning(notePath: NotePath, warning: {

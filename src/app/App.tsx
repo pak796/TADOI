@@ -3456,7 +3456,10 @@ export function App({
         ? `→ ${timeSuggestion.hh}:${timeSuggestion.mm}`
         : null;
   const editorDueTime = state.editor
-    ? combineDueDateTime(state.editor.dueText, state.editor.timeText)
+    ? combineDueDateTime(state.editor.dueText, state.editor.timeText, {
+        now,
+        tz: MINI_DEFAULT_TIMEZONE
+      })
     : { dueAt: undefined, hasExplicitTime: false };
   const recurrencePreview = state.editor
     ? buildRecurrencePreviewFromDraft(
@@ -6466,6 +6469,8 @@ export function App({
           service,
           dataFilePath: getDataFilePath(),
           notesSettings: settingsState.notes,
+          selectedTaskId: selectedPersistedTask?.id,
+          captureSource: "tits",
           createBackup: createDataBackup,
           persistNotesSettings: async (nextNotes) => {
             settingsDispatch({ type: "setNotes", notes: nextNotes });
@@ -6490,11 +6495,16 @@ export function App({
           });
           setNotesRootInput(result.notesRoot);
         }
-        if (parsed.command.operation === "new" && result.notePath) {
+        if (
+          (parsed.command.operation === "new" ||
+            parsed.command.operation === "template" ||
+            parsed.command.operation === "quick") &&
+          result.notePath
+        ) {
           triggerFirstTomeCreated(Date.now(), result.notePath);
         }
 
-        if (parsed.command.operation === "search") {
+        if (parsed.command.operation === "search" || parsed.command.operation === "query") {
           const parsedQuery = parseNoteSearchQuery(parsed.command.query);
           setNotesSearchQuery(parsedQuery.textTerms.join(" "));
           setNotesTagFilterQuery(parsedQuery.tagFilters[0] ?? "");
@@ -6519,7 +6529,12 @@ export function App({
           return;
         }
 
-        if (result.notePath) {
+        if (
+          result.notePath &&
+          (parsed.command.operation === "open" ||
+            parsed.command.operation === "new" ||
+            parsed.command.operation === "template")
+        ) {
           await hydrateOpenNote(result.notePath);
           uiDispatch({
             type: "captureReturnContext",

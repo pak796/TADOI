@@ -1,22 +1,44 @@
+export type FrontmatterValue = string | string[];
+
 export type ParsedFrontmatter = {
   id?: string;
   title?: string;
   tags?: string[];
   aliases?: string[];
+  status?: string;
+  capture?: {
+    source?: string;
+    timestamp?: string;
+  };
   created?: string;
   updated?: string;
+  extra: Record<string, FrontmatterValue>;
 };
 
 export type FrontmatterParseResult = {
   frontmatter: ParsedFrontmatter;
+  raw: Record<string, FrontmatterValue>;
   body: string;
   warnings: string[];
+};
+
+export type FrontmatterUpsertPatch = {
+  id?: string;
+  title?: string;
+  tags?: string[];
+  aliases?: string[];
+  status?: string;
+  captureSource?: string;
+  captureTimestamp?: string;
+  created?: string;
+  updated?: string;
+  metadata?: Record<string, FrontmatterValue | undefined>;
 };
 
 function unquote(value: string): string {
   const trimmed = value.trim();
   if (
-    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("\"") && trimmed.endsWith("\"")) ||
     (trimmed.startsWith("'") && trimmed.endsWith("'"))
   ) {
     return trimmed.slice(1, -1);
@@ -42,12 +64,10 @@ function parseArrayBlock(lines: string[], start: number): { values: string[]; ne
   const values: string[] = [];
   let index = start;
   while (index < lines.length) {
-    const line = lines[index];
+    const line = lines[index] ?? "";
     const match = line.match(/^\s*-\s*(.+)\s*$/);
-    if (!match) {
-      break;
-    }
-    const value = unquote(match[1]);
+    if (!match) break;
+    const value = unquote(match[1] ?? "");
     if (value.trim().length > 0) {
       values.push(value.trim());
     }
@@ -56,28 +76,52 @@ function parseArrayBlock(lines: string[], start: number): { values: string[]; ne
   return { values, nextIndex: index };
 }
 
-function parseFrontmatterBlock(raw: string): { frontmatter: ParsedFrontmatter; warnings: string[] } {
+function normalizeString(value: FrontmatterValue | undefined): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function normalizeStringArray(value: FrontmatterValue | undefined): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const normalized = Array.from(
+    new Set(
+      value
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0)
+    )
+  );
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function parseFrontmatterBlock(raw: string): {
+  record: Record<string, FrontmatterValue>;
+  warnings: string[];
+} {
   const lines = raw.split(/\r?\n/);
-  const record: Record<string, string | string[]> = {};
+  const record: Record<string, FrontmatterValue> = {};
   const warnings: string[] = [];
 
   let index = 0;
   while (index < lines.length) {
-    const line = lines[index].trimEnd();
+    const line = (lines[index] ?? "").trimEnd();
     index += 1;
-
     if (!line.trim() || line.trim().startsWith("#")) {
       continue;
     }
 
-    const match = line.match(/^([A-Za-z0-9_]+)\s*:\s*(.*)$/);
+    const match = line.match(/^([A-Za-z0-9_.-]+)\s*:\s*(.*)$/);
     if (!match) {
       warnings.push(`Unrecognized frontmatter line: ${line}`);
       continue;
     }
 
-    const key = match[1].toLowerCase();
+    const key = (match[1] ?? "").toLowerCase();
     const rawValue = match[2] ?? "";
+    if (!key) {
+      warnings.push(`Unrecognized frontmatter line: ${line}`);
+      continue;
+    }
 
     if (rawValue.trim().length === 0) {
       const block = parseArrayBlock(lines, index);
@@ -99,44 +143,138 @@ function parseFrontmatterBlock(raw: string): { frontmatter: ParsedFrontmatter; w
     record[key] = unquote(rawValue);
   }
 
-  const parsed: ParsedFrontmatter = {};
+  return { record, warnings };
+}
 
-  const id = typeof record.id === "string" ? record.id.trim() : "";
-  if (id) parsed.id = id;
+function formatFrontmatterValue(value: FrontmatterValue): string {
+  if (Array.isArray(value)) {
+    return `[${value.join(", ")}]`;
+  }
+  return value;
+}
 
-  const title = typeof record.title === "string" ? record.title.trim() : "";
-  if (title) parsed.title = title;
+function setOrDeleteString(
+  record: Record<string, FrontmatterValue>,
+  key: string,
+  value: string | undefined
+): void {
+  if (value === undefined) return;
+  const normalized = value.trim();
+  if (!normalized) {
+    delete record[key];
+    return;
+  }
+  record[key] = normalized;
+}
 
-  const created = typeof record.created === "string" ? record.created.trim() : "";
-  if (created) parsed.created = created;
+function setOrDeleteArray(
+  record: Record<string, FrontmatterValue>,
+  key: string,
+  values: string[] | undefined
+): void {
+  if (values === undefined) return;
+  const normalized = Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
+  if (normalized.length === 0) {
+    delete record[key];
+    return;
+  }
+  record[key] = normalized;
+}
 
-  const updated = typeof record.updated === "string" ? record.updated.trim() : "";
-  if (updated) parsed.updated = updated;
-
-  const tags = Array.isArray(record.tags)
-    ? record.tags
-        .map((value) => value.trim())
-        .filter((value) => value.length > 0)
-    : [];
-  if (tags.length > 0) parsed.tags = tags;
-
-  const aliases = Array.isArray(record.aliases)
-    ? record.aliases
-        .map((value) => value.trim())
-        .filter((value) => value.length > 0)
-    : [];
-  if (aliases.length > 0) parsed.aliases = aliases;
-
-  return {
-    frontmatter: parsed,
-    warnings
+function frontmatterToParsed(record: Record<string, FrontmatterValue>): ParsedFrontmatter {
+  const parsed: ParsedFrontmatter = {
+    extra: {}
   };
+
+  const id = normalizeString(record.id);
+  if (id) parsed.id = id;
+  const title = normalizeString(record.title);
+  if (title) parsed.title = title;
+  const created = normalizeString(record.created);
+  if (created) parsed.created = created;
+  const updated = normalizeString(record.updated);
+  if (updated) parsed.updated = updated;
+  const status = normalizeString(record.status);
+  if (status) parsed.status = status;
+
+  const tags = normalizeStringArray(record.tags);
+  if (tags) parsed.tags = tags;
+  const aliases = normalizeStringArray(record.aliases);
+  if (aliases) parsed.aliases = aliases;
+
+  const captureSource = normalizeString(record["capture.source"]);
+  const captureTimestamp = normalizeString(record["capture.timestamp"]);
+  if (captureSource || captureTimestamp) {
+    parsed.capture = {
+      ...(captureSource ? { source: captureSource } : {}),
+      ...(captureTimestamp ? { timestamp: captureTimestamp } : {})
+    };
+  }
+
+  const reservedKeys = new Set([
+    "id",
+    "title",
+    "created",
+    "updated",
+    "tags",
+    "aliases",
+    "status",
+    "capture.source",
+    "capture.timestamp"
+  ]);
+  for (const [key, value] of Object.entries(record)) {
+    if (reservedKeys.has(key)) continue;
+    parsed.extra[key] = Array.isArray(value) ? [...value] : value;
+  }
+
+  return parsed;
+}
+
+function renderFrontmatterRecord(record: Record<string, FrontmatterValue>): string[] {
+  const reservedOrder = [
+    "id",
+    "title",
+    "status",
+    "created",
+    "updated",
+    "capture.source",
+    "capture.timestamp",
+    "tags",
+    "aliases"
+  ];
+  const lines: string[] = [];
+
+  for (const key of reservedOrder) {
+    if (!(key in record)) continue;
+    lines.push(`${key}: ${formatFrontmatterValue(record[key] as FrontmatterValue)}`);
+  }
+
+  const extras = Object.keys(record)
+    .filter((key) => !reservedOrder.includes(key))
+    .sort((left, right) => left.localeCompare(right));
+  for (const key of extras) {
+    lines.push(`${key}: ${formatFrontmatterValue(record[key] as FrontmatterValue)}`);
+  }
+  return lines;
+}
+
+function buildContentWithFrontmatter(body: string, record: Record<string, FrontmatterValue>): string {
+  const lines = renderFrontmatterRecord(record);
+  if (lines.length === 0) {
+    return body;
+  }
+  const normalizedBody = body.replace(/^\n+/, "");
+  if (!normalizedBody) {
+    return ["---", ...lines, "---", ""].join("\n");
+  }
+  return ["---", ...lines, "---", "", normalizedBody].join("\n");
 }
 
 export function parseFrontmatter(content: string): FrontmatterParseResult {
   if (!content.startsWith("---\n") && !content.startsWith("---\r\n")) {
     return {
-      frontmatter: {},
+      frontmatter: { extra: {} },
+      raw: {},
       body: content,
       warnings: []
     };
@@ -145,7 +283,7 @@ export function parseFrontmatter(content: string): FrontmatterParseResult {
   const lines = content.split(/\r?\n/);
   let closingLine = -1;
   for (let index = 1; index < lines.length; index += 1) {
-    if (lines[index].trim() === "---") {
+    if ((lines[index] ?? "").trim() === "---") {
       closingLine = index;
       break;
     }
@@ -153,7 +291,8 @@ export function parseFrontmatter(content: string): FrontmatterParseResult {
 
   if (closingLine === -1) {
     return {
-      frontmatter: {},
+      frontmatter: { extra: {} },
+      raw: {},
       body: content,
       warnings: ["Frontmatter start marker found but no closing marker."]
     };
@@ -163,87 +302,58 @@ export function parseFrontmatter(content: string): FrontmatterParseResult {
   const body = lines.slice(closingLine + 1).join("\n");
   const parsed = parseFrontmatterBlock(frontmatterRaw);
   return {
-    frontmatter: parsed.frontmatter,
+    frontmatter: frontmatterToParsed(parsed.record),
+    raw: parsed.record,
     body,
     warnings: parsed.warnings
   };
 }
 
-function findFrontmatterClosingLine(lines: string[]): number {
-  for (let index = 1; index < lines.length; index += 1) {
-    if (lines[index].trim() === "---") {
-      return index;
-    }
-  }
-  return -1;
-}
+export function upsertFrontmatter(content: string, patch: FrontmatterUpsertPatch): string {
+  const parsed = parseFrontmatter(content);
+  const nextRecord: Record<string, FrontmatterValue> = Object.fromEntries(
+    Object.entries(parsed.raw).map(([key, value]) => [key, Array.isArray(value) ? [...value] : value])
+  );
 
-function removeTagsField(lines: string[]): string[] {
-  const next: string[] = [];
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index];
-    const tagLineMatch = line.match(/^\s*tags\s*:\s*(.*)$/i);
-    if (!tagLineMatch) {
-      next.push(line);
+  setOrDeleteString(nextRecord, "id", patch.id);
+  setOrDeleteString(nextRecord, "title", patch.title);
+  setOrDeleteString(nextRecord, "status", patch.status);
+  setOrDeleteString(nextRecord, "created", patch.created);
+  setOrDeleteString(nextRecord, "updated", patch.updated);
+  setOrDeleteString(nextRecord, "capture.source", patch.captureSource);
+  setOrDeleteString(nextRecord, "capture.timestamp", patch.captureTimestamp);
+  setOrDeleteArray(nextRecord, "tags", patch.tags);
+  setOrDeleteArray(nextRecord, "aliases", patch.aliases);
+
+  for (const [key, value] of Object.entries(patch.metadata ?? {})) {
+    const normalizedKey = key.trim().toLowerCase();
+    if (!normalizedKey) continue;
+    if (value === undefined) {
+      delete nextRecord[normalizedKey];
       continue;
     }
-
-    const rest = (tagLineMatch[1] ?? "").trim();
-    if (rest.length === 0) {
-      let scan = index + 1;
-      while (scan < lines.length && /^\s*-\s+/.test(lines[scan])) {
-        scan += 1;
+    if (Array.isArray(value)) {
+      const normalizedArray = Array.from(new Set(value.map((item) => item.trim()).filter(Boolean)));
+      if (normalizedArray.length === 0) {
+        delete nextRecord[normalizedKey];
+      } else {
+        nextRecord[normalizedKey] = normalizedArray;
       }
-      index = scan - 1;
+      continue;
+    }
+    const normalized = value.trim();
+    if (!normalized) {
+      delete nextRecord[normalizedKey];
+    } else {
+      nextRecord[normalizedKey] = normalized;
     }
   }
-  return next;
-}
 
-function insertTagsField(lines: string[], tags: string[]): string[] {
-  if (tags.length === 0) return lines;
-  const tagLine = `tags: [${tags.join(", ")}]`;
-
-  const titleIndex = lines.findIndex((line) => /^\s*title\s*:/.test(line));
-  if (titleIndex >= 0) {
-    return [...lines.slice(0, titleIndex + 1), tagLine, ...lines.slice(titleIndex + 1)];
-  }
-
-  const idIndex = lines.findIndex((line) => /^\s*id\s*:/.test(line));
-  if (idIndex >= 0) {
-    return [...lines.slice(0, idIndex + 1), tagLine, ...lines.slice(idIndex + 1)];
-  }
-
-  return [tagLine, ...lines];
+  return buildContentWithFrontmatter(parsed.body, nextRecord);
 }
 
 export function upsertFrontmatterTags(content: string, tags: string[]): string {
-  const deduped = Array.from(new Set(tags.map((tag) => tag.trim()).filter((tag) => tag.length > 0)));
-  const lines = content.split(/\r?\n/);
-
-  const hasFrontmatterStart =
-    content.startsWith("---\n") ||
-    content.startsWith("---\r\n") ||
-    (lines.length > 0 && lines[0].trim() === "---");
-
-  if (!hasFrontmatterStart) {
-    if (deduped.length === 0) return content;
-    return `---\ntags: [${deduped.join(", ")}]\n---\n\n${content}`;
-  }
-
-  const closingLine = findFrontmatterClosingLine(lines);
-  if (closingLine === -1) {
-    return content;
-  }
-
-  const frontmatterLines = lines.slice(1, closingLine);
-  const bodyLines = lines.slice(closingLine + 1);
-  const strippedFrontmatter = removeTagsField(frontmatterLines);
-  const nextFrontmatter = insertTagsField(strippedFrontmatter, deduped);
-
-  if (nextFrontmatter.length === 0) {
-    return bodyLines.join("\n");
-  }
-
-  return ["---", ...nextFrontmatter, "---", ...bodyLines].join("\n");
+  return upsertFrontmatter(content, {
+    tags
+  });
 }

@@ -62,8 +62,8 @@ describe("runNoteCommandCli integration", () => {
         },
         dataPath
       );
-      expect(openBefore.kind).toBe("ok");
-      expect(openBefore.text).toContain("Path: A.md");
+      expect(openBefore.output.kind).toBe("ok");
+      expect(openBefore.output.text).toContain("Path: A.md");
 
       const migrate = await runNoteCommandCli(
         {
@@ -73,8 +73,8 @@ describe("runNoteCommandCli integration", () => {
         },
         dataPath
       );
-      expect(migrate.kind).toBe("ok");
-      expect(migrate.text).toContain(migratedNotesRoot);
+      expect(migrate.output.kind).toBe("ok");
+      expect(migrate.output.text).toContain(migratedNotesRoot);
 
       await fs.access(path.join(defaultNotesRoot, "A.md"));
       await fs.access(path.join(migratedNotesRoot, "A.md"));
@@ -101,7 +101,7 @@ describe("runNoteCommandCli integration", () => {
         },
         dataPath
       );
-      expect(createAfterMigration.kind).toBe("ok");
+      expect(createAfterMigration.output.kind).toBe("ok");
       await fs.access(path.join(migratedNotesRoot, "After Migration.md"));
       await expect(fs.access(path.join(defaultNotesRoot, "After Migration.md"))).rejects.toThrow();
     } finally {

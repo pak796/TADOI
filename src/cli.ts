@@ -317,7 +317,8 @@ export function printHelp(showLogo: boolean): void {
   redactedLogger.log("  done            Mark task done by id via TITS command engine");
   redactedLogger.log("  due             Set/clear due by id via TITS command engine");
   redactedLogger.log("  recur           Set/clear recurrence by id via TITS command engine");
-  redactedLogger.log("  note            TOME commands (new/open/search/reindex/help)");
+  redactedLogger.log("  note            TOME commands (quick/new/open/search/query/graph/links/reindex/help)");
+  redactedLogger.log("  nq              Alias for: note q ...");
   redactedLogger.log("  list            List tasks with selector filters");
   redactedLogger.log("  reminders       Out-of-app reminder helper commands");
   redactedLogger.log("  remind          Open reminder modal by event id");
@@ -467,6 +468,12 @@ export async function runCli(
 
       const titsResult = await runTitsCommandCli(runtimeArgv);
       if (titsResult.handled) {
+        if (runtime.json && titsResult.data !== undefined) {
+          return {
+            exitCode: titsResult.exitCode ?? 0,
+            data: titsResult.data
+          };
+        }
         return titsResult.exitCode ?? 0;
       }
 

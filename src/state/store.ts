@@ -23,6 +23,7 @@ import {
   normalizeTaskReminder,
   reminderDraftFieldsFromTask
 } from "../domain/reminders";
+import { canonicalizeDueAtInput } from "../lib/datetime/due_at_canonicalizer";
 import {
   AppState,
   EditorDraft,
@@ -411,12 +412,42 @@ export function parseDueTime(input: string): number | undefined {
   return parseTimeToMinutes(input);
 }
 
+type CombineDueDateTimeOptions = {
+  now: number;
+  tz?: string;
+};
+
 export function combineDueDateTime(
   dateText: string,
-  timeText: string
+  timeText: string,
+  options?: CombineDueDateTimeOptions
 ): { dueAt?: number; hasExplicitTime: boolean } {
+  if (options) {
+    const normalizedDate = dateText.trim();
+    const canonicalized = canonicalizeDueAtInput(normalizedDate, timeText.trim() || undefined, {
+      now: options.now,
+      tz: options.tz
+    });
+
+    if (canonicalized.ok) {
+      const date = parseDateToLocalMidnight(canonicalized.dueDate);
+      if (!date) return { dueAt: undefined, hasExplicitTime: false };
+      if (canonicalized.atTime) {
+        const combined = combineLocalDateAndTime(date, canonicalized.atTime);
+        return {
+          dueAt: combined ? combined.getTime() : date.getTime(),
+          hasExplicitTime: true
+        };
+      }
+      return { dueAt: date.getTime(), hasExplicitTime: false };
+    }
+  }
+
   const date = parseDateToLocalMidnight(dateText);
-  if (!date) return { dueAt: undefined, hasExplicitTime: false };
+  if (!date) {
+    return { dueAt: undefined, hasExplicitTime: false };
+  }
+
   const minutes = parseTimeToMinutes(timeText);
   if (minutes === undefined) {
     return { dueAt: date.getTime(), hasExplicitTime: false };

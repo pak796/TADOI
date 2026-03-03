@@ -254,9 +254,15 @@ Supported TITS commands:
 - `help` / `help add|done|due|recur|check|bulk|note`
 
 TOME COMMANDS (Terminal Oriented Markdown Environment)
-- note new "Title"      Create note
+- note new "Title" [--template <id>]  Create note
+- note template <id> ["Title"]         Create note from template
+- note q|quick|capture "Title" ["Body"] [#tag|tag:x] [--status x] [--alias x] [--meta:key=value] [--template x] [@selected|id:task]
+- nq "Title" ["Body"]                  CLI alias for note quick
 - note open "Query"     Open note
-- note search "Term"    Search TOME notes (supports tag:<x>)
+- note search "Query"   Search TOME notes (tag:/-tag:/title:/path:/text:/created:/updated:/limit:/format:)
+- note query "Query"    Alias for search
+- note graph "Query" [incoming|outgoing|both] [limit:N] [format:text|json]
+- note links "Query" [incoming|outgoing|both] [limit:N] [format:text|json]
 - note delete "Query"   Delete note (same resolver as open)
 - note restore-defaults Restore missing default guide docs
 - note reindex          Rebuild TOME index
@@ -267,7 +273,10 @@ TOME is TADOI's notes-oriented markdown tool.
 
 TOME command examples:
 - In-app TITS or CLI wrapper: `tadoi note new "Meeting Notes"`
-- Search with tag + text: `tadoi note search "tag:inbox design"`
+- Quick capture (CLI): `tadoi nq "Daily" "body" #work --status done --meta:source=cli`
+- Quick capture from stdin: `printf "body\n" | tadoi note q "Daily" --json`
+- Search with filters: `tadoi note search "tag:work title:retro -tag:closed created:today limit:20"`
+- Graph discoverability: `tadoi note graph "Daily" both limit:20`
 - Open by exact title: `tadoi note open "Meeting Notes"`
 - Open by id disambiguation: `tadoi note open id:note-dup-primary`
 - Open by path disambiguation: `tadoi note open "Conflicts/SameTitle1.md"`

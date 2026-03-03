@@ -98,14 +98,18 @@ The user-facing product name for this feature is TOME (Terminal Oriented Markdow
 
 ## Slice 5 Command Layer Baseline (B6/B7)
 - Shared parser/execution path now supports TOME commands:
-  - parser: `src/commands/parse.ts` (`note new/open/search/delete/restore-defaults/reindex/help/root set`)
+  - parser: `src/commands/parse.ts` (`note q|quick|capture`, `nq`, `note new --template`, `note template`, `note search|query`, `note graph|links`, plus existing `open/delete/restore-defaults/reindex/help/root set`)
   - shared note execution: `src/notes/commands.ts`
   - CLI bridge: `src/cli/noteCommands.ts` + `src/cli/main.ts`
   - in-app TITS bridge: `src/app/App.tsx` command bar branch
 - TIT and CLI both call the same TOME command executor (`executeNoteCommand`) for:
+  - quick capture with structured metadata/frontmatter (`capture.source`, `capture.timestamp`, `status`, `aliases`, custom `--meta:*`)
+  - quick capture stdin parity (`printf "body" | tadoi note q "Title"`)
   - create note
+  - template-backed note creation (`note new --template`, `note template`)
   - open note
-  - search TOME notes
+  - search/query TOME notes with composable filters (`tag:`, `-tag:`, `title:`, `path:`, `text:`, `created:`, `updated:`, `limit:`, `format:`)
+  - graph/link discoverability (`note graph`, `note links` with incoming/outgoing/both)
   - delete note (shared open-query resolver)
   - restore default guide docs (missing-only, non-destructive)
   - reindex TOME notes

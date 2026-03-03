@@ -1,22 +1,30 @@
 import path from "path";
 import { getHelpLine } from "../commands/help";
-import type { CommandOutput, NoteCommand } from "../commands/types";
+import type {
+  CommandOutput,
+  NoteCommand,
+  NoteLinkDirection,
+  NoteSearchFilters
+} from "../commands/types";
 import type { NotesSettings } from "../settings/settings";
+import { computeNoteSearchRank } from "./index";
 import { normalizeTitleKey } from "./links";
+import { upsertFrontmatter } from "./frontmatter";
 import type { NotesService } from "./service";
 import { resolveNotesRootPath } from "./storage";
 import { noteTagMatchesFilter } from "./tags";
-import type { NoteGraphIndex, NoteListItem, NotePath } from "./types";
+import type { Note, NoteGraphIndex, NoteListItem, NotePath } from "./types";
 
-export type ParsedNoteSearchQuery = {
-  textTerms: string[];
-  tagFilters: string[];
-};
+const TEMPLATE_DIR = "Templates";
+
+export type ParsedNoteSearchQuery = NoteSearchFilters;
 
 export type ExecuteNoteCommandContext = {
   service: NotesService;
   dataFilePath: string;
   notesSettings: NotesSettings;
+  selectedTaskId?: string;
+  captureSource?: string;
   createBackup?: (dataFilePath: string) => Promise<unknown>;
   persistNotesSettings?: (next: NotesSettings) => Promise<void> | void;
 };
@@ -24,8 +32,13 @@ export type ExecuteNoteCommandContext = {
 export type ExecuteNoteCommandResult = {
   output: CommandOutput;
   notePath?: NotePath;
+  noteId?: string;
+  path?: NotePath;
+  title?: string;
+  capturedAt?: string;
   notesRoot?: string;
   matches?: NotePath[];
+  data?: unknown;
 };
 
 type OpenResolutionResult =
@@ -60,25 +73,131 @@ function indexNotesByPath(noteList: NoteListItem[]): Map<NotePath, NoteListItem>
   return new Map(noteList.map((note) => [note.path, note]));
 }
 
+function nextIsoDate(isoDate: string): string | null {
+  const match = isoDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const year = Number.parseInt(match[1] as string, 10);
+  const month = Number.parseInt(match[2] as string, 10);
+  const day = Number.parseInt(match[3] as string, 10);
+  const next = new Date(year, month - 1, day + 1);
+  const y = next.getFullYear();
+  const m = String(next.getMonth() + 1).padStart(2, "0");
+  const d = String(next.getDate()).padStart(2, "0");
+  return `${String(y)}-${m}-${d}`;
+}
+
+function parseDateWindowToken(value: string): { after?: string; before?: string } {
+  const token = value.trim().toLowerCase();
+  const now = new Date();
+  const today = `${String(now.getFullYear())}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  if (token === "today") {
+    return {
+      after: today,
+      before: nextIsoDate(today) ?? undefined
+    };
+  }
+  if (token.startsWith("created:")) {
+    return parseDateWindowToken(token.slice("created:".length));
+  }
+  if (token.startsWith("updated:")) {
+    return parseDateWindowToken(token.slice("updated:".length));
+  }
+  if (token.startsWith(">=")) {
+    return { after: token.slice(2).trim() };
+  }
+  if (token.startsWith("<=")) {
+    const date = token.slice(2).trim();
+    return { before: nextIsoDate(date) ?? undefined };
+  }
+  if (token.includes("..")) {
+    const [start, end] = token.split("..");
+    const endNext = nextIsoDate((end ?? "").trim());
+    return {
+      after: (start ?? "").trim() || undefined,
+      before: endNext ?? undefined
+    };
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(token)) {
+    return {
+      after: token,
+      before: nextIsoDate(token) ?? undefined
+    };
+  }
+  return {};
+}
+
+function parseSearchLimit(value: string): number | undefined {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isInteger(parsed) || parsed < 1) return undefined;
+  return parsed;
+}
+
 export function parseNoteSearchQuery(query: string): ParsedNoteSearchQuery {
-  const textTerms: string[] = [];
-  const tagFilters: string[] = [];
+  const parsed: ParsedNoteSearchQuery = {
+    textTerms: [],
+    titleFilters: [],
+    pathFilters: [],
+    tagFilters: [],
+    excludedTagFilters: []
+  };
 
   for (const token of query.split(/\s+/).map((value) => value.trim()).filter(Boolean)) {
-    if (token.toLowerCase().startsWith("tag:")) {
+    const lowered = token.toLowerCase();
+    if (lowered.startsWith("-tag:")) {
+      const filter = normalizeSearchTagFilter(`tag:${token.slice("-tag:".length)}`);
+      if (filter) parsed.excludedTagFilters.push(filter);
+      continue;
+    }
+    if (lowered.startsWith("tag:")) {
       const filter = normalizeSearchTagFilter(token);
-      if (filter) {
-        tagFilters.push(filter);
+      if (filter) parsed.tagFilters.push(filter);
+      continue;
+    }
+    if (lowered.startsWith("title:")) {
+      const value = token.slice("title:".length).trim().toLowerCase();
+      if (value) parsed.titleFilters.push(value);
+      continue;
+    }
+    if (lowered.startsWith("path:")) {
+      const value = token.slice("path:".length).trim().toLowerCase();
+      if (value) parsed.pathFilters.push(value);
+      continue;
+    }
+    if (lowered.startsWith("text:")) {
+      const value = token.slice("text:".length).trim().toLowerCase();
+      if (value) parsed.textTerms.push(value);
+      continue;
+    }
+    if (lowered.startsWith("created:")) {
+      const window = parseDateWindowToken(token.slice("created:".length));
+      if (window.after) parsed.createdAfter = window.after;
+      if (window.before) parsed.createdBefore = window.before;
+      continue;
+    }
+    if (lowered.startsWith("updated:")) {
+      const window = parseDateWindowToken(token.slice("updated:".length));
+      if (window.after) parsed.updatedAfter = window.after;
+      if (window.before) parsed.updatedBefore = window.before;
+      continue;
+    }
+    if (lowered.startsWith("limit:")) {
+      const limit = parseSearchLimit(token.slice("limit:".length).trim());
+      if (limit !== undefined) {
+        parsed.limit = limit;
       }
       continue;
     }
-    textTerms.push(token.toLowerCase());
+    if (lowered.startsWith("format:")) {
+      const format = token.slice("format:".length).trim().toLowerCase();
+      if (format === "text" || format === "json") {
+        parsed.format = format;
+      }
+      continue;
+    }
+    parsed.textTerms.push(token.toLowerCase());
   }
 
-  return {
-    textTerms,
-    tagFilters
-  };
+  return parsed;
 }
 
 function candidateLabels(
@@ -294,10 +413,11 @@ function formatSearchResultText(options: {
   matches: NotePath[];
   noteLookup: Map<NotePath, NoteListItem>;
   snapshot: NoteGraphIndex;
+  limit?: number;
 }): string {
-  const { rawQuery, matches, noteLookup, snapshot } = options;
+  const { rawQuery, matches, noteLookup, snapshot, limit } = options;
+  const previewLimit = limit ?? 8;
   const lines = [`TOME search matches (${String(matches.length)}) for "${rawQuery}":`];
-  const previewLimit = 8;
   const preview = matches.slice(0, previewLimit);
   for (let index = 0; index < preview.length; index += 1) {
     const pathValue = preview[index];
@@ -309,34 +429,230 @@ function formatSearchResultText(options: {
   return lines.join("\n");
 }
 
-function matchesSearchQuery(note: NoteListItem, query: ParsedNoteSearchQuery): boolean {
+function parseIsoDate(value: string | undefined): number | null {
+  if (!value) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  const parsed = Date.parse(`${value}T00:00:00`);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function resolveTemporalValueMs(note: Note, field: "created" | "updated"): number {
+  const fromFrontmatter = parseIsoDate(note[field]);
+  return fromFrontmatter ?? note.mtimeMs;
+}
+
+function matchesDateWindow(valueMs: number, after?: string, before?: string): boolean {
+  const afterMs = parseIsoDate(after);
+  const beforeMs = parseIsoDate(before);
+  if (afterMs !== null && valueMs < afterMs) return false;
+  if (beforeMs !== null && valueMs >= beforeMs) return false;
+  return true;
+}
+
+function matchesSearchQuery(
+  note: NoteListItem,
+  graphNote: Note | undefined,
+  query: ParsedNoteSearchQuery,
+  bodyContent: string
+): boolean {
+  const lowerTitle = note.title.toLowerCase();
+  const lowerPath = note.path.toLowerCase();
+  const lowerAliases = (graphNote?.aliases ?? []).map((alias) => alias.toLowerCase());
+  const lowerBody = bodyContent.toLowerCase();
+
   const textMatch =
     query.textTerms.length === 0 ||
     query.textTerms.every((term) => {
       const loweredTerm = term.toLowerCase();
       return (
-        note.title.toLowerCase().includes(loweredTerm) ||
-        note.path.toLowerCase().includes(loweredTerm)
+        lowerTitle.includes(loweredTerm) ||
+        lowerPath.includes(loweredTerm) ||
+        lowerAliases.some((alias) => alias.includes(loweredTerm)) ||
+        lowerBody.includes(loweredTerm)
       );
     });
-  if (!textMatch) {
-    return false;
-  }
+  if (!textMatch) return false;
 
-  if (query.tagFilters.length === 0) {
-    return true;
-  }
+  const titleMatch =
+    query.titleFilters.length === 0 ||
+    query.titleFilters.every((term) =>
+      lowerTitle.includes(term) || lowerAliases.some((alias) => alias.includes(term))
+    );
+  if (!titleMatch) return false;
 
-  return query.tagFilters.every((filter) =>
-    note.tags.some((tag) => noteTagMatchesFilter(tag, filter))
+  const pathMatch =
+    query.pathFilters.length === 0 ||
+    query.pathFilters.every((term) => lowerPath.includes(term));
+  if (!pathMatch) return false;
+
+  const tagValues = (graphNote?.tags ?? note.tags).map((tag) => tag.toLowerCase());
+  const tagMatch =
+    query.tagFilters.length === 0 ||
+    query.tagFilters.every((filter) =>
+      tagValues.some((tag) => noteTagMatchesFilter(tag, filter))
+    );
+  if (!tagMatch) return false;
+
+  const excludedTagMatch =
+    query.excludedTagFilters.length === 0 ||
+    query.excludedTagFilters.every((filter) =>
+      tagValues.every((tag) => !noteTagMatchesFilter(tag, filter))
+    );
+  if (!excludedTagMatch) return false;
+
+  const temporalSource = graphNote ?? {
+    id: undefined,
+    path: note.path,
+    filename: path.posix.basename(note.path),
+    title: note.title,
+    tags: note.tags,
+    aliases: [],
+    mtimeMs: note.mtimeMs
+  };
+  const createdMatch = matchesDateWindow(
+    resolveTemporalValueMs(temporalSource as Note, "created"),
+    query.createdAfter,
+    query.createdBefore
   );
+  if (!createdMatch) return false;
+
+  const updatedMatch = matchesDateWindow(
+    resolveTemporalValueMs(temporalSource as Note, "updated"),
+    query.updatedAfter,
+    query.updatedBefore
+  );
+  return updatedMatch;
 }
 
 export function findNoteSearchMatches(
   notes: NoteListItem[],
-  query: ParsedNoteSearchQuery
+  query: ParsedNoteSearchQuery,
+  options: { snapshot?: NoteGraphIndex; service?: NotesService } = {}
 ): NotePath[] {
-  return notes.filter((note) => matchesSearchQuery(note, query)).map((note) => note.path);
+  const snapshot = options.snapshot;
+  const service = options.service;
+  const ranked = notes
+    .map((note) => {
+      const graphNote = snapshot?.notesByPath.get(note.path);
+      const parsedNote = service?.getParsedNote(note.path);
+      const body = parsedNote?.content ?? "";
+      if (!matchesSearchQuery(note, graphNote, query, body)) {
+        return null;
+      }
+      const noteForRank: Note = graphNote ?? {
+        id: undefined,
+        path: note.path,
+        filename: path.posix.basename(note.path),
+        title: note.title,
+        tags: note.tags,
+        aliases: [],
+        mtimeMs: note.mtimeMs
+      };
+      const score = computeNoteSearchRank(noteForRank, body, {
+        textTerms: query.textTerms,
+        titleTerms: query.titleFilters,
+        pathTerms: query.pathFilters,
+        tagTerms: query.tagFilters
+      });
+      return {
+        path: note.path,
+        score,
+        mtimeMs: note.mtimeMs
+      };
+    })
+    .filter((entry): entry is { path: NotePath; score: number; mtimeMs: number } => Boolean(entry))
+    .sort((left, right) =>
+      right.score - left.score ||
+      right.mtimeMs - left.mtimeMs ||
+      left.path.localeCompare(right.path)
+    );
+
+  const rankedPaths = ranked.map((entry) => entry.path);
+  if (query.limit !== undefined) {
+    return rankedPaths.slice(0, query.limit);
+  }
+  return rankedPaths;
+}
+
+function normalizeTemplatePath(templateId: string): NotePath[] {
+  const trimmed = templateId.trim().replace(/\\/g, "/");
+  const withExt = trimmed.toLowerCase().endsWith(".md") ? trimmed : `${trimmed}.md`;
+  const templatesPath = `${TEMPLATE_DIR}/${withExt}`.replace(/\/+/g, "/");
+  return Array.from(new Set([withExt, templatesPath]));
+}
+
+async function resolveTemplateContent(
+  service: NotesService,
+  templateId: string
+): Promise<{ path: NotePath; content: string } | null> {
+  const candidates = normalizeTemplatePath(templateId);
+  for (const candidate of candidates) {
+    const document = await service.getNoteContent(candidate);
+    if (document) {
+      return { path: candidate, content: document.content };
+    }
+  }
+  return null;
+}
+
+function withTitleSeed(content: string, title: string): string {
+  const replaced = content.replace(/\{\{\s*title\s*\}\}/gi, title);
+  if (/^#\s+/m.test(replaced)) {
+    return replaced;
+  }
+  const body = replaced.trim();
+  if (!body) {
+    return `# ${title}\n\n`;
+  }
+  return `# ${title}\n\n${body}\n`;
+}
+
+function formatGraphText(options: {
+  query: string;
+  notePath: NotePath;
+  direction: NoteLinkDirection;
+  outgoing: NotePath[];
+  incoming: NotePath[];
+  noteLookup: Map<NotePath, NoteListItem>;
+  snapshot: NoteGraphIndex;
+}): string {
+  const lines: string[] = [
+    `TOME graph for "${options.query}" (${options.direction})`,
+    `Path: ${options.notePath}`
+  ];
+  if (options.direction === "outgoing" || options.direction === "both") {
+    lines.push(`Outgoing (${String(options.outgoing.length)}):`);
+    if (options.outgoing.length === 0) {
+      lines.push("- (none)");
+    } else {
+      for (const pathValue of options.outgoing) {
+        lines.push(`- ${formatNoteSummaryLine(pathValue, options.noteLookup, options.snapshot)}`);
+      }
+    }
+  }
+  if (options.direction === "incoming" || options.direction === "both") {
+    lines.push(`Incoming (${String(options.incoming.length)}):`);
+    if (options.incoming.length === 0) {
+      lines.push("- (none)");
+    } else {
+      for (const pathValue of options.incoming) {
+        lines.push(`- ${formatNoteSummaryLine(pathValue, options.noteLookup, options.snapshot)}`);
+      }
+    }
+  }
+  return lines.join("\n");
+}
+
+function resolveLinkTargetTaskId(
+  command: Extract<NoteCommand, { operation: "quick" }>,
+  context: ExecuteNoteCommandContext
+): string | undefined {
+  if (!command.target) return undefined;
+  if (command.target.type === "id") return command.target.id;
+  return context.selectedTaskId;
 }
 
 export async function executeNoteCommand(
@@ -344,21 +660,120 @@ export async function executeNoteCommand(
   context: ExecuteNoteCommandContext
 ): Promise<ExecuteNoteCommandResult> {
   if (command.operation === "help") {
-    return ok(getHelpLine("note"));
+    return ok(getHelpLine("note"), {
+      data: {
+        operation: "help"
+      }
+    });
   }
 
   if (!context.notesSettings.enabled && command.operation !== "root_set") {
     return error("Error: TOME is disabled in settings");
   }
 
-  if (command.operation === "new") {
-    const title = command.title.trim();
+  if (command.operation === "new" || command.operation === "template") {
+    const templateId = command.operation === "template" ? command.template : command.template;
+    const title =
+      command.operation === "template"
+        ? command.title?.trim() || `${command.template}-${new Date().toISOString().slice(0, 10)}`
+        : command.title.trim();
     if (!title) {
       return error('Error: note new requires a title (example: note new "Title")');
     }
-    const seededContent = `# ${title}\n\n`;
-    const created = await context.service.createNote(title, seededContent);
-    return ok(`Note created: ${created.path}`, { notePath: created.path });
+
+    const templateContent = templateId
+      ? await resolveTemplateContent(context.service, templateId)
+      : null;
+    const seededContent = templateContent
+      ? withTitleSeed(templateContent.content, title)
+      : `# ${title}\n\n`;
+    const content = upsertFrontmatter(seededContent, { title });
+    const created = await context.service.createNote(title, content);
+    const note = context.service.getParsedNote(created.path)?.note;
+    const templateSuffix =
+      templateId && !templateContent
+        ? ` (template "${templateId}" not found; used default seed)`
+        : templateContent
+          ? ` (template: ${templateContent.path})`
+          : "";
+    return ok(`Note created: ${created.path}${templateSuffix}`, {
+      notePath: created.path,
+      noteId: note?.id,
+      path: created.path,
+      title,
+      data: {
+        operation: command.operation,
+        noteId: note?.id,
+        path: created.path,
+        title
+      }
+    });
+  }
+
+  if (command.operation === "quick") {
+    const title = command.title.trim();
+    if (!title) {
+      return error('Error: note quick requires a title (example: note q "Title" "Body")');
+    }
+
+    const capturedAt = new Date().toISOString();
+    const templateContent = command.template
+      ? await resolveTemplateContent(context.service, command.template)
+      : null;
+    let seededContent = templateContent
+      ? withTitleSeed(templateContent.content, title)
+      : `# ${title}\n\n`;
+    const body = (command.body ?? command.stdinBody ?? "").trim();
+    if (body.length > 0) {
+      seededContent = `${seededContent.trimEnd()}\n\n${body}\n`;
+    }
+
+    const linkedTaskId = resolveLinkTargetTaskId(command, context);
+    if (linkedTaskId) {
+      seededContent = `${seededContent.trimEnd()}\n\nLinked task: @task:${linkedTaskId}\n`;
+    }
+
+    const metadata = { ...command.metadata };
+    const captureSource =
+      metadata["capture.source"] ??
+      metadata.source ??
+      context.captureSource ??
+      "quick";
+    const captureTimestamp = metadata["capture.timestamp"] ?? capturedAt;
+    delete metadata["capture.source"];
+    delete metadata["capture.timestamp"];
+    delete metadata.source;
+
+    const content = upsertFrontmatter(seededContent, {
+      title,
+      tags: command.tags,
+      aliases: command.aliases,
+      status: command.status,
+      captureSource,
+      captureTimestamp,
+      metadata
+    });
+    const created = await context.service.createNote(title, content);
+    const note = context.service.getParsedNote(created.path)?.note;
+    const createdPayload = {
+      noteId: note?.id,
+      path: created.path,
+      title,
+      capturedAt,
+      linkedTaskId,
+      template: templateContent?.path ?? null
+    };
+    return ok(`Quick note captured: ${created.path}`, {
+      notePath: created.path,
+      noteId: note?.id,
+      path: created.path,
+      title,
+      capturedAt,
+      data: {
+        operation: "quick",
+        ...createdPayload
+      }
+    });
   }
 
   if (command.operation === "open") {
@@ -368,9 +783,13 @@ export async function executeNoteCommand(
     const resolved = resolveOpenQuery(notes, snapshot, command.query);
     if (!resolved.ok) {
       const parsedQuery = parseNoteSearchQuery(command.query);
-      const searchMatches = findNoteSearchMatches(notes, parsedQuery);
+      const searchMatches = findNoteSearchMatches(notes, parsedQuery, {
+        snapshot,
+        service: context.service
+      });
       if (resolved.text.startsWith("Error: note not found") && searchMatches.length === 1) {
         const [matchedPath] = searchMatches;
+        const note = snapshot.notesByPath.get(matchedPath);
         return ok(
           formatOpenResultText({
             resolvedPath: matchedPath,
@@ -379,7 +798,17 @@ export async function executeNoteCommand(
             snapshot,
             service: context.service
           }),
-          { notePath: matchedPath }
+          {
+            notePath: matchedPath,
+            noteId: note?.id,
+            path: matchedPath,
+            title: note?.title,
+            data: {
+              operation: "open",
+              path: matchedPath,
+              noteId: note?.id
+            }
+          }
         );
       }
       if (resolved.text.startsWith("Error: note not found") && searchMatches.length > 1) {
@@ -395,6 +824,7 @@ export async function executeNoteCommand(
       return error(resolved.text);
     }
 
+    const note = snapshot.notesByPath.get(resolved.path);
     return ok(
       formatOpenResultText({
         resolvedPath: resolved.path,
@@ -403,32 +833,122 @@ export async function executeNoteCommand(
         snapshot,
         service: context.service
       }),
-      { notePath: resolved.path }
+      {
+        notePath: resolved.path,
+        noteId: note?.id,
+        path: resolved.path,
+        title: note?.title,
+        data: {
+          operation: "open",
+          path: resolved.path,
+          noteId: note?.id
+        }
+      }
     );
   }
 
-  if (command.operation === "search") {
+  if (command.operation === "search" || command.operation === "query") {
     const rawQuery = command.query.trim();
     if (!rawQuery) {
-      return error('Error: note search requires a query (example: note search "Term")');
+      return error(`Error: note ${command.operation} requires a query`);
     }
     const notes = context.service.listNotes();
     const snapshot = context.service.getIndexSnapshot();
     const noteLookup = indexNotesByPath(notes);
-    const parsedQuery = parseNoteSearchQuery(rawQuery);
-    const matches = findNoteSearchMatches(notes, parsedQuery);
+    const parsedQuery = command.filters ?? parseNoteSearchQuery(rawQuery);
+    const matches = findNoteSearchMatches(notes, parsedQuery, {
+      snapshot,
+      service: context.service
+    });
     if (matches.length === 0) {
-      return ok(`No TOME notes match "${rawQuery}"`, { matches: [] });
+      return ok(`No TOME notes match "${rawQuery}"`, {
+        matches: [],
+        data: {
+          operation: command.operation,
+          query: rawQuery,
+          matches: []
+        }
+      });
     }
     return ok(
       formatSearchResultText({
         rawQuery,
         matches,
         noteLookup,
-        snapshot
+        snapshot,
+        limit: parsedQuery.limit
       }),
-      { matches }
+      {
+        matches,
+        data: {
+          operation: command.operation,
+          query: rawQuery,
+          matches: matches.map((pathValue) => {
+            const note = snapshot.notesByPath.get(pathValue);
+            return {
+              path: pathValue,
+              noteId: note?.id,
+              title: note?.title ?? noteLookup.get(pathValue)?.title
+            };
+          })
+        }
+      }
     );
+  }
+
+  if (command.operation === "graph" || command.operation === "links") {
+    const notes = context.service.listNotes();
+    const snapshot = context.service.getIndexSnapshot();
+    const noteLookup = indexNotesByPath(notes);
+    const resolved = resolveOpenQuery(notes, snapshot, command.query);
+    if (!resolved.ok) {
+      return error(resolved.text);
+    }
+
+    const outgoingResolved = Array.from(
+      new Set(
+        context.service
+          .getResolvedOutgoingRefs(resolved.path)
+          .map((ref) => ref.toResolved)
+          .filter((value): value is NotePath => Boolean(value))
+      )
+    ).sort((left, right) => left.localeCompare(right));
+    const incomingResolved = context.service.getBacklinks(resolved.path);
+    const limit = command.limit;
+    const outgoing = limit !== undefined ? outgoingResolved.slice(0, limit) : outgoingResolved;
+    const incoming = limit !== undefined ? incomingResolved.slice(0, limit) : incomingResolved;
+
+    const text = formatGraphText({
+      query: command.query,
+      notePath: resolved.path,
+      direction: command.direction,
+      outgoing,
+      incoming,
+      noteLookup,
+      snapshot
+    });
+    const note = snapshot.notesByPath.get(resolved.path);
+    return ok(text, {
+      notePath: resolved.path,
+      noteId: note?.id,
+      path: resolved.path,
+      title: note?.title,
+      data: {
+        operation: command.operation,
+        query: command.query,
+        direction: command.direction,
+        path: resolved.path,
+        noteId: note?.id,
+        outgoing: outgoing.map((pathValue) => ({
+          path: pathValue,
+          noteId: snapshot.notesByPath.get(pathValue)?.id
+        })),
+        incoming: incoming.map((pathValue) => ({
+          path: pathValue,
+          noteId: snapshot.notesByPath.get(pathValue)?.id
+        }))
+      }
+    });
   }
 
   if (command.operation === "delete") {
@@ -443,21 +963,43 @@ export async function executeNoteCommand(
     if (!deleted) {
       return error(`Error: note not found for query "${command.query}"`);
     }
-    return ok(`Note deleted: ${resolved.path}`, { notePath: resolved.path });
+    return ok(`Note deleted: ${resolved.path}`, {
+      notePath: resolved.path,
+      path: resolved.path,
+      data: {
+        operation: "delete",
+        path: resolved.path
+      }
+    });
   }
 
   if (command.operation === "restore_defaults") {
     const restored = await context.service.restoreDefaultGuideDocs("restore_missing");
     if (restored.createdPaths.length === 0) {
-      return ok("Default TOME guide docs already present");
+      return ok("Default TOME guide docs already present", {
+        data: {
+          operation: "restore_defaults",
+          createdPaths: []
+        }
+      });
     }
-    return ok(`Restored default docs: ${restored.createdPaths.join(", ")}`);
+    return ok(`Restored default docs: ${restored.createdPaths.join(", ")}`, {
+      data: {
+        operation: "restore_defaults",
+        createdPaths: restored.createdPaths
+      }
+    });
   }
 
   if (command.operation === "reindex") {
     await context.service.reindexAll();
     const total = context.service.listNotes().length;
-    return ok(`TOME reindex complete (${String(total)} notes)`);
+    return ok(`TOME reindex complete (${String(total)} notes)`, {
+      data: {
+        operation: "reindex",
+        total
+      }
+    });
   }
 
   if (!context.createBackup || !context.persistNotesSettings) {
@@ -477,5 +1019,11 @@ export async function executeNoteCommand(
     rootPath: nextRoot
   };
   await context.persistNotesSettings(nextSettings);
-  return ok(`TOME root migrated to ${nextRoot}`, { notesRoot: nextRoot });
+  return ok(`TOME root migrated to ${nextRoot}`, {
+    notesRoot: nextRoot,
+    data: {
+      operation: "root_set",
+      notesRoot: nextRoot
+    }
+  });
 }

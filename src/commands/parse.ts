@@ -2,6 +2,9 @@ import type {
   BulkTarget,
   CommandTarget,
   HelpTopic,
+  NoteLinkDirection,
+  NoteOutputFormat,
+  NoteSearchFilters,
   RecurEvery,
   ParseCommandResult
 } from "./types";
@@ -725,10 +728,476 @@ function parseTagCommand(tokens: string[]): ParseCommandResult {
   return error("Error: tag requires subcommand rename|merge|hygiene|cleanup");
 }
 
-function parseNoteCommand(tokens: string[]): ParseCommandResult {
+function localIsoDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${String(year)}-${month}-${day}`;
+}
+
+function shiftIsoDate(isoDate: string, deltaDays: number): string | null {
+  const match = isoDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const year = Number.parseInt(match[1] as string, 10);
+  const month = Number.parseInt(match[2] as string, 10);
+  const day = Number.parseInt(match[3] as string, 10);
+  const shifted = new Date(year, month - 1, day + deltaDays);
+  return localIsoDate(shifted);
+}
+
+function isIsoDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00`);
+  return localIsoDate(parsed) === value;
+}
+
+function parseDateWindowToken(
+  value: string,
+  context: ParseContext
+): { after?: string; before?: string; error?: string } {
+  const trimmed = value.trim().toLowerCase();
+  const today = localIsoDate(new Date(context.now));
+
+  if (trimmed === "today") {
+    return {
+      after: today,
+      before: shiftIsoDate(today, 1) ?? undefined
+    };
+  }
+  if (trimmed === "yesterday") {
+    const yesterday = shiftIsoDate(today, -1);
+    return {
+      ...(yesterday ? { after: yesterday } : {}),
+      before: today
+    };
+  }
+
+  if (trimmed.startsWith(">=")) {
+    const date = trimmed.slice(2).trim();
+    if (!isIsoDate(date)) {
+      return { error: `Error: invalid date filter "${value}"` };
+    }
+    return { after: date };
+  }
+
+  if (trimmed.startsWith("<=")) {
+    const date = trimmed.slice(2).trim();
+    if (!isIsoDate(date)) {
+      return { error: `Error: invalid date filter "${value}"` };
+    }
+    const next = shiftIsoDate(date, 1);
+    return next ? { before: next } : { error: `Error: invalid date filter "${value}"` };
+  }
+
+  if (trimmed.includes("..")) {
+    const [start, end] = trimmed.split("..");
+    const startDate = start?.trim() ?? "";
+    const endDate = end?.trim() ?? "";
+    if (!isIsoDate(startDate) || !isIsoDate(endDate)) {
+      return { error: `Error: invalid date range "${value}"` };
+    }
+    const next = shiftIsoDate(endDate, 1);
+    return next
+      ? { after: startDate, before: next }
+      : { error: `Error: invalid date range "${value}"` };
+  }
+
+  if (isIsoDate(trimmed)) {
+    const next = shiftIsoDate(trimmed, 1);
+    return next ? { after: trimmed, before: next } : { error: `Error: invalid date "${value}"` };
+  }
+
+  return { error: `Error: invalid date filter "${value}"` };
+}
+
+function createEmptyNoteSearchFilters(): NoteSearchFilters {
+  return {
+    textTerms: [],
+    titleFilters: [],
+    pathFilters: [],
+    tagFilters: [],
+    excludedTagFilters: []
+  };
+}
+
+function parseFormatToken(value: string): NoteOutputFormat | null {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "text" || normalized === "json") {
+    return normalized;
+  }
+  return null;
+}
+
+function parseNoteSearchFilters(rawQuery: string, context: ParseContext): {
+  ok: true;
+  filters: NoteSearchFilters;
+} | {
+  ok: false;
+  error: string;
+} {
+  const filters = createEmptyNoteSearchFilters();
+  const tokens = rawQuery.split(/\s+/).map((token) => token.trim()).filter(Boolean);
+
+  for (const token of tokens) {
+    const lowered = token.toLowerCase();
+    if (lowered.startsWith("-tag:")) {
+      const value = token.slice("-tag:".length).trim().toLowerCase();
+      if (value.length > 0) {
+        filters.excludedTagFilters.push(value);
+      }
+      continue;
+    }
+    if (lowered.startsWith("tag:")) {
+      const value = token.slice("tag:".length).trim().toLowerCase();
+      if (value.length > 0) {
+        filters.tagFilters.push(value);
+      }
+      continue;
+    }
+    if (lowered.startsWith("title:")) {
+      const value = token.slice("title:".length).trim().toLowerCase();
+      if (value.length > 0) {
+        filters.titleFilters.push(value);
+      }
+      continue;
+    }
+    if (lowered.startsWith("path:")) {
+      const value = token.slice("path:".length).trim().toLowerCase();
+      if (value.length > 0) {
+        filters.pathFilters.push(value);
+      }
+      continue;
+    }
+    if (lowered.startsWith("text:")) {
+      const value = token.slice("text:".length).trim().toLowerCase();
+      if (value.length > 0) {
+        filters.textTerms.push(value);
+      }
+      continue;
+    }
+    if (lowered.startsWith("created:")) {
+      const parsed = parseDateWindowToken(token.slice("created:".length), context);
+      if (parsed.error) {
+        return { ok: false, error: parsed.error };
+      }
+      if (parsed.after) filters.createdAfter = parsed.after;
+      if (parsed.before) filters.createdBefore = parsed.before;
+      continue;
+    }
+    if (lowered.startsWith("updated:")) {
+      const parsed = parseDateWindowToken(token.slice("updated:".length), context);
+      if (parsed.error) {
+        return { ok: false, error: parsed.error };
+      }
+      if (parsed.after) filters.updatedAfter = parsed.after;
+      if (parsed.before) filters.updatedBefore = parsed.before;
+      continue;
+    }
+    if (lowered.startsWith("limit:")) {
+      const parsed = Number.parseInt(token.slice("limit:".length), 10);
+      if (!Number.isInteger(parsed) || parsed < 1) {
+        return { ok: false, error: `Error: invalid note search limit "${token}"` };
+      }
+      filters.limit = parsed;
+      continue;
+    }
+    if (lowered.startsWith("format:")) {
+      const parsed = parseFormatToken(token.slice("format:".length));
+      if (!parsed) {
+        return { ok: false, error: `Error: note search format must be text|json` };
+      }
+      filters.format = parsed;
+      continue;
+    }
+
+    filters.textTerms.push(token.toLowerCase());
+  }
+
+  return {
+    ok: true,
+    filters
+  };
+}
+
+function parseNoteQuickCommand(tokens: string[], context: ParseContext): ParseCommandResult {
+  const tags: string[] = [];
+  const aliases: string[] = [];
+  const metadata: Record<string, string> = {};
+  const positional: string[] = [];
+  let status: string | undefined;
+  let template: string | undefined;
+  let target: CommandTarget | undefined;
+
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index] ?? "";
+    const lowered = token.toLowerCase();
+    if (token.startsWith("#")) {
+      tags.push(token.slice(1).trim().toLowerCase());
+      continue;
+    }
+    if (lowered.startsWith("tag:")) {
+      const tag = token.slice("tag:".length).trim().toLowerCase();
+      if (tag.length > 0) {
+        tags.push(tag);
+      }
+      continue;
+    }
+    if (lowered.startsWith("--meta:")) {
+      const pair = token.slice("--meta:".length);
+      const separator = pair.indexOf("=");
+      if (separator <= 0 || separator >= pair.length - 1) {
+        return error('Error: --meta:key=value requires non-empty key and value');
+      }
+      const key = pair.slice(0, separator).trim();
+      const value = pair.slice(separator + 1).trim();
+      if (!key || !value) {
+        return error('Error: --meta:key=value requires non-empty key and value');
+      }
+      metadata[key] = value;
+      continue;
+    }
+    if (lowered === "--status" || lowered.startsWith("--status=")) {
+      const value =
+        lowered === "--status"
+          ? (tokens[(index += 1)] ?? "")
+          : token.slice("--status=".length);
+      if (!value.trim()) {
+        return error("Error: --status requires a value");
+      }
+      status = value.trim();
+      continue;
+    }
+    if (lowered === "--alias" || lowered.startsWith("--alias=")) {
+      const value =
+        lowered === "--alias"
+          ? (tokens[(index += 1)] ?? "")
+          : token.slice("--alias=".length);
+      if (!value.trim()) {
+        return error("Error: --alias requires a value");
+      }
+      aliases.push(value.trim());
+      continue;
+    }
+    if (lowered === "--template" || lowered.startsWith("--template=")) {
+      const value =
+        lowered === "--template"
+          ? (tokens[(index += 1)] ?? "")
+          : token.slice("--template=".length);
+      if (!value.trim()) {
+        return error("Error: --template requires a value");
+      }
+      template = value.trim();
+      continue;
+    }
+    if (token === "@selected" || token.startsWith("id:")) {
+      const parsedTarget = parseCommandTarget(token);
+      if (!parsedTarget) {
+        return error('Error: note quick target must be "@selected" or "id:<task-id>"');
+      }
+      if (target) {
+        return error("Error: note quick accepts at most one task target");
+      }
+      target = parsedTarget;
+      continue;
+    }
+    if (token.startsWith("--")) {
+      return error(`Error: unrecognized note quick option "${token}"`);
+    }
+    positional.push(token);
+  }
+
+  let title = "";
+  let body: string | undefined;
+  if (positional.length === 0) {
+    if (
+      tags.length > 0 ||
+      aliases.length > 0 ||
+      Object.keys(metadata).length > 0 ||
+      Boolean(status) ||
+      Boolean(template) ||
+      Boolean(target)
+    ) {
+      title = `Quick Capture ${localIsoDate(new Date(context.now))}`;
+    } else {
+      return error('Error: note quick requires a title (example: note q "Title" "Body")');
+    }
+  } else if (positional.length === 1) {
+    const pipeIndex = positional[0].indexOf("|");
+    if (pipeIndex > 0) {
+      title = positional[0].slice(0, pipeIndex).trim();
+      body = positional[0].slice(pipeIndex + 1).trim() || undefined;
+    } else {
+      title = positional[0].trim();
+    }
+  } else {
+    title = positional[0]?.trim() ?? "";
+    body = positional.slice(1).join(" ").trim() || undefined;
+  }
+
+  if (!title) {
+    return error('Error: note quick requires a title (example: note q "Title" "Body")');
+  }
+
+  return {
+    ok: true,
+    command: {
+      type: "note",
+      operation: "quick",
+      title,
+      ...(body ? { body } : {}),
+      tags: Array.from(new Set(tags.filter((tag) => tag.length > 0))),
+      ...(status ? { status } : {}),
+      aliases: Array.from(new Set(aliases)),
+      metadata,
+      ...(template ? { template } : {}),
+      ...(target ? { target } : {})
+    }
+  };
+}
+
+function parseNoteSearchLikeCommand(
+  operation: "search" | "query",
+  tokens: string[],
+  context: ParseContext
+): ParseCommandResult {
+  const queryTokens: string[] = [];
+  let flagLimit: number | undefined;
+  let flagFormat: NoteOutputFormat | undefined;
+
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index] ?? "";
+    const lowered = token.toLowerCase();
+    if (lowered === "--limit" || lowered.startsWith("--limit=")) {
+      const rawValue =
+        lowered === "--limit"
+          ? (tokens[(index += 1)] ?? "")
+          : token.slice("--limit=".length);
+      const parsed = Number.parseInt(rawValue, 10);
+      if (!Number.isInteger(parsed) || parsed < 1) {
+        return error("Error: --limit requires a positive integer");
+      }
+      flagLimit = parsed;
+      continue;
+    }
+    if (lowered === "--format" || lowered.startsWith("--format=")) {
+      const rawValue =
+        lowered === "--format"
+          ? (tokens[(index += 1)] ?? "")
+          : token.slice("--format=".length);
+      const parsed = parseFormatToken(rawValue);
+      if (!parsed) {
+        return error("Error: --format must be text|json");
+      }
+      flagFormat = parsed;
+      continue;
+    }
+    queryTokens.push(token);
+  }
+
+  const query = queryTokens.join(" ").trim();
+  if (!query) {
+    return error(
+      `Error: note ${operation} requires a query (example: note ${operation} \"tag:work title:retro\")`
+    );
+  }
+
+  const parsed = parseNoteSearchFilters(query, context);
+  if (!parsed.ok) {
+    return error(parsed.error);
+  }
+  if (flagLimit !== undefined) {
+    parsed.filters.limit = flagLimit;
+  }
+  if (flagFormat) {
+    parsed.filters.format = flagFormat;
+  }
+
+  return {
+    ok: true,
+    command: {
+      type: "note",
+      operation,
+      query,
+      filters: parsed.filters
+    }
+  };
+}
+
+function parseNoteGraphLikeCommand(
+  operation: "graph" | "links",
+  tokens: string[]
+): ParseCommandResult {
+  const queryTokens: string[] = [];
+  let direction: NoteLinkDirection = "both";
+  let limit: number | undefined;
+  let format: NoteOutputFormat | undefined;
+
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index] ?? "";
+    const lowered = token.toLowerCase();
+    if (lowered === "incoming" || lowered === "outgoing" || lowered === "both") {
+      direction = lowered;
+      continue;
+    }
+    if (lowered.startsWith("dir:")) {
+      const raw = lowered.slice("dir:".length);
+      if (raw === "incoming" || raw === "outgoing" || raw === "both") {
+        direction = raw;
+        continue;
+      }
+      return error("Error: note links direction must be incoming|outgoing|both");
+    }
+    if (lowered === "--limit" || lowered.startsWith("--limit=") || lowered.startsWith("limit:")) {
+      const rawValue = lowered.startsWith("limit:")
+        ? token.slice("limit:".length)
+        : lowered === "--limit"
+          ? (tokens[(index += 1)] ?? "")
+          : token.slice("--limit=".length);
+      const parsed = Number.parseInt(rawValue, 10);
+      if (!Number.isInteger(parsed) || parsed < 1) {
+        return error("Error: note links limit must be a positive integer");
+      }
+      limit = parsed;
+      continue;
+    }
+    if (lowered === "--format" || lowered.startsWith("--format=") || lowered.startsWith("format:")) {
+      const rawValue = lowered.startsWith("format:")
+        ? token.slice("format:".length)
+        : lowered === "--format"
+          ? (tokens[(index += 1)] ?? "")
+          : token.slice("--format=".length);
+      const parsed = parseFormatToken(rawValue);
+      if (!parsed) {
+        return error("Error: note links format must be text|json");
+      }
+      format = parsed;
+      continue;
+    }
+    queryTokens.push(token);
+  }
+
+  const query = queryTokens.join(" ").trim();
+  if (!query) {
+    return error(`Error: note ${operation} requires a query`);
+  }
+
+  return {
+    ok: true,
+    command: {
+      type: "note",
+      operation,
+      query,
+      direction,
+      ...(limit !== undefined ? { limit } : {}),
+      ...(format ? { format } : {})
+    }
+  };
+}
+
+function parseNoteCommand(tokens: string[], context: ParseContext): ParseCommandResult {
   if (tokens.length === 0) {
     return error(
-      "Error: note requires subcommand new|open|search|delete|restore-defaults|reindex|help|root set"
+      "Error: note requires subcommand new|template|q|quick|capture|open|search|query|graph|links|delete|restore-defaults|reindex|help|root set"
     );
   }
 
@@ -749,7 +1218,25 @@ function parseNoteCommand(tokens: string[]): ParseCommandResult {
   }
 
   if (operation === "new") {
-    const title = rest.join(" ").trim();
+    const titleTokens: string[] = [];
+    let template: string | undefined;
+    for (let index = 0; index < rest.length; index += 1) {
+      const token = rest[index] ?? "";
+      const lowered = token.toLowerCase();
+      if (lowered === "--template" || lowered.startsWith("--template=")) {
+        const value =
+          lowered === "--template"
+            ? (rest[(index += 1)] ?? "")
+            : token.slice("--template=".length);
+        if (!value.trim()) {
+          return error("Error: note new --template requires a value");
+        }
+        template = value.trim();
+        continue;
+      }
+      titleTokens.push(token);
+    }
+    const title = titleTokens.join(" ").trim();
     if (!title) {
       return error('Error: note new requires a title (example: note new "Title")');
     }
@@ -758,9 +1245,31 @@ function parseNoteCommand(tokens: string[]): ParseCommandResult {
       command: {
         type: "note",
         operation: "new",
-        title
+        title,
+        ...(template ? { template } : {})
       }
     };
+  }
+
+  if (operation === "template") {
+    const template = rest[0]?.trim() ?? "";
+    const title = rest.slice(1).join(" ").trim();
+    if (!template) {
+      return error('Error: note template requires a template id (example: note template meeting)');
+    }
+    return {
+      ok: true,
+      command: {
+        type: "note",
+        operation: "template",
+        template,
+        ...(title ? { title } : {})
+      }
+    };
+  }
+
+  if (operation === "q" || operation === "quick" || operation === "capture") {
+    return parseNoteQuickCommand(rest, context);
   }
 
   if (operation === "open") {
@@ -779,18 +1288,19 @@ function parseNoteCommand(tokens: string[]): ParseCommandResult {
   }
 
   if (operation === "search") {
-    const query = rest.join(" ").trim();
-    if (!query) {
-      return error('Error: note search requires a query (example: note search "Term")');
-    }
-    return {
-      ok: true,
-      command: {
-        type: "note",
-        operation: "search",
-        query
-      }
-    };
+    return parseNoteSearchLikeCommand("search", rest, context);
+  }
+
+  if (operation === "query") {
+    return parseNoteSearchLikeCommand("query", rest, context);
+  }
+
+  if (operation === "graph") {
+    return parseNoteGraphLikeCommand("graph", rest);
+  }
+
+  if (operation === "links") {
+    return parseNoteGraphLikeCommand("links", rest);
   }
 
   if (operation === "delete") {
@@ -854,7 +1364,7 @@ function parseNoteCommand(tokens: string[]): ParseCommandResult {
   }
 
   return error(
-    "Error: note requires subcommand new|open|search|delete|restore-defaults|reindex|help|root set"
+    "Error: note requires subcommand new|template|q|quick|capture|open|search|query|graph|links|delete|restore-defaults|reindex|help|root set"
   );
 }
 
@@ -1054,10 +1564,13 @@ export function parseCommand(
     return parseBulkCommand(commandName.slice("bulk:".length), args, context);
   }
   if (commandName === "note") {
-    return parseNoteCommand(args);
+    return parseNoteCommand(args, context);
   }
   if (commandName.startsWith("note:")) {
-    return parseNoteCommand([commandName.slice("note:".length), ...args]);
+    return parseNoteCommand([commandName.slice("note:".length), ...args], context);
+  }
+  if (commandName === "nq") {
+    return parseNoteCommand(["q", ...args], context);
   }
   if (commandName === "tag") {
     return parseTagCommand(args);
