@@ -838,4 +838,97 @@ describe("validatePersistedState", () => {
     );
     expect(result.ok).toBe(false);
   });
+
+  it("rejects non-normalized completionLog tags in strict mode", () => {
+    const result = validatePersistedState(
+      {
+        ...BASE_STATE,
+        schemaVersion: 5,
+        engagement: {
+          completionLog: [
+            {
+              taskId: "task-a",
+              at: 1,
+              tags: ["work", "Work", "work", ""]
+            }
+          ],
+          achievements: {},
+          streak: {
+            currentDays: 0,
+            bestDays: 0,
+            lastCompletionDayKey: null
+          }
+        }
+      },
+      "strict"
+    );
+    expect(result.ok).toBe(false);
+  });
+
+  it("rejects achievement meta values with disallowed types in strict mode", () => {
+    const result = validatePersistedState(
+      {
+        ...BASE_STATE,
+        schemaVersion: 5,
+        engagement: {
+          completionLog: [],
+          achievements: {
+            BAD: {
+              id: "BAD",
+              unlockedAt: 1,
+              meta: {
+                count: 1,
+                seen: true
+              }
+            }
+          },
+          streak: {
+            currentDays: 0,
+            bestDays: 0,
+            lastCompletionDayKey: null
+          }
+        }
+      },
+      "strict"
+    );
+    expect(result.ok).toBe(false);
+  });
+
+  it("rejects invalid streak metadata in strict mode", () => {
+    const negative = validatePersistedState(
+      {
+        ...BASE_STATE,
+        schemaVersion: 5,
+        engagement: {
+          completionLog: [],
+          achievements: {},
+          streak: {
+            currentDays: -1,
+            bestDays: 1,
+            lastCompletionDayKey: null
+          }
+        }
+      },
+      "strict"
+    );
+    expect(negative.ok).toBe(false);
+
+    const malformedDate = validatePersistedState(
+      {
+        ...BASE_STATE,
+        schemaVersion: 5,
+        engagement: {
+          completionLog: [],
+          achievements: {},
+          streak: {
+            currentDays: 1,
+            bestDays: 1,
+            lastCompletionDayKey: "2026-13-99"
+          }
+        }
+      },
+      "strict"
+    );
+    expect(malformedDate.ok).toBe(false);
+  });
 });

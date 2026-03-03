@@ -422,6 +422,7 @@ describe("App TITS integration", () => {
       await pressEnterAndRender(mockInput, harness);
       await waitForText(harness, "APPLY TAG RENAME? [Y/N/ESC]");
 
+      await Bun.sleep(120);
       await pressKeyAndRender(mockInput, harness, "y");
       await Bun.sleep(80);
       await pressKeyAndRender(mockInput, harness, "y");
@@ -430,6 +431,65 @@ describe("App TITS integration", () => {
       const firstTask = savedJson.tasks.find((candidate) => candidate.id === "task-tag-apply-1");
       expect(firstTask?.tags).toEqual(["focus"]);
       expect(savedJson.tagAliases).toEqual({ work: "focus" });
+
+      const entries = await fs.readdir(dataDir);
+      const backupPrefix = `${path.basename(dataPath)}.backup.`;
+      expect(entries.some((entry) => entry.startsWith(backupPrefix))).toBe(true);
+    } finally {
+      await cleanupSession(session);
+      await fs.rm(dataDir, { recursive: true, force: true });
+      if (originalDataPath === undefined) {
+        delete process.env.TADOI_DATA_PATH;
+      } else {
+        process.env.TADOI_DATA_PATH = originalDataPath;
+      }
+    }
+  });
+
+  it("applies tag merge after confirm with backup, rewrite, dedupe, and alias persistence", async () => {
+    const now = new Date(2026, 1, 26, 12, 0).getTime();
+    const tasks: Task[] = [
+      {
+        id: "task-tag-merge-1",
+        title: "Tag merge apply one",
+        status: "open",
+        workflowStage: "todo",
+        createdAt: now - 2000,
+        updatedAt: now - 2000,
+        tags: ["work", "project", "misc"]
+      }
+    ];
+
+    const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-app-tits-tag-merge-"));
+    const dataPath = path.join(dataDir, "tadoi_data.json");
+    const originalDataPath = process.env.TADOI_DATA_PATH;
+    process.env.TADOI_DATA_PATH = dataPath;
+
+    const session = await createSession(makeInitialData(tasks), { skipInitialSave: false });
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      await waitForText(harness, "TAG MERGE APPLY ONE");
+      await waitForFile(dataPath, 4000);
+      await Bun.sleep(900);
+
+      await pressKeyAndRender(mockInput, harness, "`");
+      await waitForText(harness, TITS_HEADER_TEXT);
+      await typeTextAndRender(mockInput, harness, "tag merge work,project -> focus");
+      await pressEnterAndRender(mockInput, harness);
+      await waitForText(harness, "APPLY TAG MERGE? [Y/N/ESC]");
+
+      await Bun.sleep(120);
+      await pressKeyAndRender(mockInput, harness, "y");
+      await Bun.sleep(80);
+      await pressKeyAndRender(mockInput, harness, "y");
+
+      await Bun.sleep(1300);
+      const savedJson = await readSavedData(dataPath);
+      const firstTask = savedJson.tasks.find((candidate) => candidate.id === "task-tag-merge-1");
+      expect(firstTask?.tags).toEqual(["focus", "misc"]);
+      expect(savedJson.tagAliases).toEqual({ project: "focus", work: "focus" });
 
       const entries = await fs.readdir(dataDir);
       const backupPrefix = `${path.basename(dataPath)}.backup.`;

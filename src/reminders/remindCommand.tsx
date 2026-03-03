@@ -171,10 +171,16 @@ async function mutateReminderAction(
   }
 }
 
-async function openMainTadoiApp(): Promise<void> {
-  const invocation = resolveCurrentTadoiInvocation();
+export async function openMainTadoiApp(
+  invocation: { command: string; baseArgs: string[] },
+  spawnImpl: (
+    command: string,
+    args: readonly string[] | undefined,
+    options?: Parameters<typeof spawn>[2]
+  ) => ReturnType<typeof spawn> = spawn
+): Promise<void> {
   await new Promise<void>((resolve, reject) => {
-    const child = spawn(invocation.command, invocation.baseArgs, {
+    const child = spawnImpl(invocation.command, invocation.baseArgs, {
       detached: true,
       stdio: "ignore",
       windowsHide: true
@@ -217,6 +223,10 @@ function cycleAction(
 function ReminderModalApp(props: {
   event: ReminderIndexEvent;
   notesSnippet?: string;
+  invocation: {
+    command: string;
+    baseArgs: string[];
+  };
   onClose: (exitCode?: number) => Promise<void>;
   onError: (message: string) => void;
 }) {
@@ -233,7 +243,7 @@ function ReminderModalApp(props: {
           return;
         }
         if (action === "open") {
-          await openMainTadoiApp();
+          await openMainTadoiApp(props.invocation);
           await props.onClose(CLI_EXIT_CODE.SUCCESS);
           return;
         }
@@ -335,6 +345,7 @@ export async function runRemindCommand(args: string[]): Promise<number> {
   const loaded = await loadStateStrict({ filePath: dataFilePath });
   const task = findTaskForReminderEvent(loaded.data.tasks, event);
   const notesSnippet = notesSnippetFromTask(task);
+  const invocation = resolveCurrentTadoiInvocation(process.argv, process.execPath);
 
   const renderer = await createCliRenderer({
     exitOnCtrlC: true,
@@ -359,6 +370,7 @@ export async function runRemindCommand(args: string[]): Promise<number> {
       createRoot(renderer).render(
         <ReminderModalApp
           event={event}
+          invocation={invocation}
           notesSnippet={notesSnippet}
           onClose={close}
           onError={reportError}

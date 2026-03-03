@@ -19,6 +19,15 @@ export type TerminalLauncherDeps = {
   ) => Pick<ChildProcess, "once" | "unref">;
 };
 
+class LaunchAttemptError extends Error {
+  public readonly attempted: string[];
+
+  constructor(message: string, attempted: string[]) {
+    super(message);
+    this.attempted = attempted;
+  }
+}
+
 function baseSpawnOptions(): SpawnOptionsWithoutStdio {
   return {
     stdio: "ignore",
@@ -59,34 +68,64 @@ function escapeAppleScriptString(value: string): string {
 async function launchMacTerminal(
   commandLine: string,
   spawnImpl: TerminalLauncherDeps["spawnImpl"]
-): Promise<string> {
+): Promise<{ launcher: string; attempted: string[] }> {
   const escaped = escapeAppleScriptString(commandLine);
+  const doScript = `tell application \"Terminal\" to do script \"${escaped}\"`;
+  const fallbackScript = [
+    "tell application \"Terminal\"",
+    `  do script \"${escaped}\"`,
+    "  activate",
+    "end tell"
+  ].join("\n");
+  const primary = `osascript primary`;
+  const fallback = `osascript fallback`;
+  const attempted = [primary];
   try {
     await spawnDetached(
       "osascript",
-      ["-e", `tell application \"Terminal\" to do script \"${escaped}\"`],
+      ["-e", doScript],
       spawnImpl
     );
-    return "osascript:Terminal";
+    return { launcher: primary, attempted };
   } catch {
-    await spawnDetached("open", ["-a", "Terminal"], spawnImpl);
-    return "open:Terminal";
+    attempted.push(fallback);
+    try {
+      await spawnDetached(
+        "osascript",
+        ["-e", fallbackScript],
+        spawnImpl
+      );
+      return { launcher: fallback, attempted };
+    } catch (error: unknown) {
+      throw new LaunchAttemptError(
+        error instanceof Error ? error.message : String(error),
+        attempted
+      );
+    }
   }
 }
 
 async function launchWindowsTerminal(
   commandLine: string,
   spawnImpl: TerminalLauncherDeps["spawnImpl"]
-): Promise<string> {
+): Promise<{ launcher: string; attempted: string[] }> {
+  const attempted = ["wt.exe", "powershell"];
   try {
     await spawnDetached("wt.exe", ["new-tab", "cmd", "/k", commandLine], spawnImpl);
-    return "wt.exe";
+    return { launcher: "wt.exe", attempted };
   } catch {
     const ps =
       "Start-Process -FilePath 'cmd.exe' -ArgumentList '/k', " +
       `'${commandLine.replace(/'/g, "''")}'`;
-    await spawnDetached("powershell", ["-NoProfile", "-Command", ps], spawnImpl);
-    return "powershell:Start-Process";
+    try {
+      await spawnDetached("powershell", ["-NoProfile", "-Command", ps], spawnImpl);
+      return { launcher: "powershell:Start-Process", attempted };
+    } catch (error: unknown) {
+      throw new LaunchAttemptError(
+        error instanceof Error ? error.message : String(error),
+        attempted
+      );
+    }
   }
 }
 
@@ -132,7 +171,10 @@ async function launchLinuxTerminal(
     }
   }
 
-  throw new Error(`No supported GUI terminal found (${attempted.join(", ")})`);
+  throw new LaunchAttemptError(
+    `No supported GUI terminal found (${attempted.join(", ")})`,
+    attempted
+  );
 }
 
 export async function launchReminderTerminal(options: {
@@ -157,11 +199,11 @@ export async function launchReminderTerminal(options: {
 
   try {
     if (platform === "darwin") {
-      const launcher = await launchMacTerminal(commandLine, options.spawnImpl);
+      const result = await launchMacTerminal(commandLine, options.spawnImpl);
       return {
         ok: true,
-        launcher,
-        attempted: [launcher]
+        launcher: result.launcher,
+        attempted: result.attempted
       };
     }
 
@@ -169,8 +211,8 @@ export async function launchReminderTerminal(options: {
       const launcher = await launchWindowsTerminal(commandLine, options.spawnImpl);
       return {
         ok: true,
-        launcher,
-        attempted: ["wt.exe", "powershell"]
+        launcher: launcher.launcher,
+        attempted: launcher.attempted
       };
     }
 
@@ -193,7 +235,12 @@ export async function launchReminderTerminal(options: {
     return {
       ok: false,
       launcher: "none",
-      attempted: platform === "linux" ? linuxTerminalCandidates(env).map((item) => item.command) : [],
+      attempted:
+        error instanceof LaunchAttemptError
+          ? error.attempted
+          : platform === "linux"
+            ? linuxTerminalCandidates(env).map((item) => item.command)
+            : [],
       error: error instanceof Error ? error.message : String(error)
     };
   }

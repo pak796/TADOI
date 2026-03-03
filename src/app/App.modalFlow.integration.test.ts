@@ -2736,3 +2736,113 @@ describe("App modal flow integration", () => {
     }
   });
 });
+
+describe("App modal flow engagement toast protections", () => {
+  async function assertToastSuppressedAcrossBlockingOverlay(
+    harness: RenderHarness,
+    mockInput: MockInput,
+    openOverlay: () => Promise<void>,
+    closeOverlay: () => Promise<void>
+  ): Promise<void> {
+    const toastMessage = "First task completed.";
+    await pressKeyAndRender(mockInput, harness, " ");
+    await waitForText(harness, toastMessage);
+
+    await openOverlay();
+    await expectTextAbsentForDuration(harness, toastMessage);
+    await closeOverlay();
+    await waitForText(harness, toastMessage);
+  }
+
+  it("suppresses engagement toasts while HELP overlay is open", async () => {
+    const session = await createSession();
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      await assertToastSuppressedAcrossBlockingOverlay(
+        harness,
+        mockInput,
+        async () => {
+          await openHelpSettingsPage(harness);
+          await waitForText(harness, "Help / Settings");
+        },
+        async () => {
+          await pressEscapeAndRender(mockInput, harness);
+          await waitForText(harness, "MODE:  LIST");
+        }
+      );
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
+  it("suppresses engagement toasts while Backup Center overlay is open", async () => {
+    const session = await createSession();
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      await assertToastSuppressedAcrossBlockingOverlay(
+        harness,
+        mockInput,
+        async () => {
+          await openBackupCenterMenu(harness);
+          await waitForText(harness, "1) Export backup (recommended)");
+        },
+        async () => {
+          await pressEscapeAndRender(mockInput, harness);
+          await waitForText(harness, "MODE:  LIST");
+        }
+      );
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
+  it("suppresses engagement toasts while Tag Filter panel is open", async () => {
+    const session = await createSession();
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      await assertToastSuppressedAcrossBlockingOverlay(
+        harness,
+        mockInput,
+        async () => {
+          await pressKeyAndRender(mockInput, harness, "p");
+          await waitForText(harness, "TAG FILTER PANEL");
+        },
+        async () => {
+          await pressEscapeAndRender(mockInput, harness);
+          await waitForText(harness, "MODE:  LIST");
+        }
+      );
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
+  it("suppresses engagement toasts while delete confirmation modal is open", async () => {
+    const session = await createSession();
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      await assertToastSuppressedAcrossBlockingOverlay(
+        harness,
+        mockInput,
+        async () => {
+          await pressKeyAndRender(mockInput, harness, "d");
+          await waitForText(harness, "DELETE SELECTED TASK? [Y/N/ESC]");
+        },
+        async () => {
+          await pressKeyAndRender(mockInput, harness, "n");
+          await waitForText(harness, "MODE:  LIST");
+        }
+      );
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+});

@@ -19,8 +19,9 @@
   },
   "scripts": {
     "postinstall": "bun run completions:install:user",
-    "test": "bun test",
-    "test:coverage": "bun test --coverage --coverage-reporter=text --coverage-reporter=lcov",
+    "test": "bun scripts/test-sharded.ts",
+    "test:full": "bun scripts/test-sharded.ts --shards 1",
+    "test:coverage": "bun scripts/test-coverage-app-shell.ts",
     "coverage:app-shell:check": "bun scripts/check-app-shell-coverage.ts --lcov-file coverage/lcov.info --file src/app/App.tsx --min-lines 45 --min-functions 40",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "brand:check": "bun scripts/check-legacy-branding.ts",

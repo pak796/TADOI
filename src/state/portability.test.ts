@@ -489,6 +489,76 @@ describe("importState", () => {
     expect(result.nextState.engagement?.completionLog).toHaveLength(1);
     expect(result.nextState.engagement?.completionLog[0]?.taskId).toBe("incoming");
   });
+
+  it("rebuilds streak from merged completion logs in merge mode", () => {
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    const day1 = Date.UTC(2026, 1, 10);
+    const day2 = day1 + oneDayMs;
+    const current = baseState([{ ...BASE_LOCAL_TASK }]);
+    current.engagement = {
+      completionLog: [{ taskId: "current", at: day1, tags: ["work"] }],
+      achievements: {},
+      streak: {
+        currentDays: 9,
+        bestDays: 9,
+        lastCompletionDayKey: "2026-02-10"
+      }
+    };
+    const incoming = baseState([{ ...BASE_INCOMING_TASK }]);
+    incoming.engagement = {
+      completionLog: [{ taskId: "incoming", at: day2, tags: ["work"] }],
+      achievements: {},
+      streak: {
+        currentDays: 1,
+        bestDays: 1,
+        lastCompletionDayKey: "2026-02-11"
+      }
+    };
+
+    const result = importState(current, incoming, { mode: "merge", now: day2 + oneDayMs });
+    expect(result.nextState.engagement?.streak.currentDays).toBe(2);
+    expect(result.nextState.engagement?.streak.bestDays).toBe(2);
+    expect(result.nextState.engagement?.streak.lastCompletionDayKey).toBe("2026-02-11");
+  });
+
+  it("normalizes incoming engagement in replace mode (retention + tag normalization)", () => {
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    const now = Date.UTC(2026, 1, 20);
+    const oldEvent = now - (91 * oneDayMs);
+    const recentEvent = now - oneDayMs;
+    const current = baseState([{ ...BASE_LOCAL_TASK }]);
+    const incoming = baseState([{ ...BASE_INCOMING_TASK }]);
+    incoming.engagement = {
+      ...createDefaultEngagementState(),
+      streak: {
+        currentDays: "stale-current-days" as unknown as number,
+        bestDays: "stale-best-days" as unknown as number,
+        lastCompletionDayKey: "not-a-day"
+      },
+      completionLog: [
+        {
+          taskId: "old",
+          at: oldEvent,
+          tags: [" old", "work", "work"]
+        },
+        {
+          taskId: "recent",
+          at: recentEvent,
+          tags: ["work", "work", ""]
+        }
+      ]
+    };
+
+    const result = importState(current, incoming, { mode: "replace", now });
+    const completionLog = result.nextState.engagement?.completionLog ?? [];
+
+    expect(result.nextState.engagement?.completionLog).toHaveLength(1);
+    expect(completionLog[0]?.taskId).toBe("recent");
+    expect(completionLog[0]?.tags).toEqual(["work"]);
+    expect(result.nextState.engagement?.streak.currentDays).toBe(1);
+    expect(result.nextState.engagement?.streak.bestDays).toBe(1);
+    expect(result.nextState.engagement?.streak.lastCompletionDayKey).toBe("2026-02-19");
+  });
 });
 
 describe("redactStateForExport", () => {

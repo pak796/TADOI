@@ -610,6 +610,11 @@ bun run pack:inspect
 bun run pack:smoke
 ```
 
+Notes:
+- CI and local gates should use `bun run test` / `bun run test:coverage` (not raw `bun test`).
+- `bun run test` uses `scripts/test-sharded.ts` to run absolute-path shards under `src/**/*.test.ts` and `scripts/**/*.test.ts`. This avoids accidental `dist/pack-smoke-*` test discovery and reduces Bun full-suite instability.
+- `bun run test:coverage` uses `scripts/test-coverage-app-shell.ts` to run a deterministic App shell coverage slice used by CI and `coverage:app-shell:check`.
+
 ## Build & Package
 
 ### Plan mode vs build mode

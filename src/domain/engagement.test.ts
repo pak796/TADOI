@@ -4,9 +4,11 @@ import {
   computeDayKey,
   createDefaultEngagementState,
   enqueueToastsWithCap,
+  enforceCompletionRetention,
   evaluateMilestones,
   mergeEngagementStates,
   ONBOARDING_ENGAGEMENT_ACHIEVEMENTS,
+  normalizeEngagementState,
   suppressActiveToastWithCap,
   updateStreak
 } from "./engagement";
@@ -115,6 +117,80 @@ describe("engagement helpers", () => {
     expect(evaluated.toasts.some((toast) => toast.id === "STREAK_3_DAYS")).toBe(true);
     const repeated = evaluateMilestones(evaluated.engagement, day3);
     expect(repeated.toasts.some((toast) => toast.id === "STREAK_3_DAYS")).toBe(false);
+  });
+
+  it("normalizes engagement via enforceCompletionRetention", () => {
+    const now = Date.now();
+    const dayLog = Array.from({ length: 550 }, (_value, index) => ({
+      taskId: `task-${index}`,
+      at: now - index * 1_000,
+      tags: ["task"]
+    }));
+
+    const retained = enforceCompletionRetention(dayLog, now);
+    expect(retained).toHaveLength(500);
+    expect(retained[0]?.taskId).toBe("task-50");
+    expect(retained[retained.length - 1]?.taskId).toBe("task-549");
+  });
+
+  it("normalizes completion-log and rebuilds streak ignoring stale stored counters", () => {
+    const base = new Date(2026, 1, 20, 8, 0, 0, 0).getTime();
+    const state = normalizeEngagementState({
+      completionLog: [
+        { taskId: "a", at: base - 2 * DAY_MS, tags: [" home ", "alpha", "home"] },
+        { taskId: "b", at: base - 1 * DAY_MS, tags: ["alpha"] },
+        { taskId: "c", at: base, tags: ["beta", "alpha", "  beta  "] },
+        { taskId: "d", at: base + DAY_MS, tags: ["alpha"] }
+      ],
+      achievements: {
+        "FIRST_TASK_DONE": {
+          id: "FIRST_TASK_DONE",
+          unlockedAt: base - 3 * DAY_MS,
+          meta: {}
+        }
+      },
+      streak: {
+        currentDays: 99,
+        bestDays: 101,
+        lastCompletionDayKey: "1999-01-01"
+      }
+    }, base + DAY_MS);
+
+    expect(state.streak.currentDays).toBe(4);
+    expect(state.streak.bestDays).toBe(4);
+    expect(state.completionLog[0]?.tags).toEqual(["alpha", "beta"]);
+  });
+
+  it("selects a deterministic tag when multiple tag-5 milestones fire on the same completion", () => {
+    const now = new Date(2026, 1, 20, 10, 0, 0, 0).getTime();
+    const recentEvents = [];
+    for (let dayOffset = 1; dayOffset <= 4; dayOffset += 1) {
+      recentEvents.push(
+        { taskId: `a-${dayOffset}`, at: now - dayOffset * DAY_MS, tags: ["beta"] },
+        { taskId: `b-${dayOffset}`, at: now - dayOffset * DAY_MS, tags: ["alpha"] }
+      );
+    }
+    const engagement = normalizeEngagementState({
+      completionLog: [
+        ...recentEvents,
+        {
+          taskId: "latest",
+          at: now,
+          tags: ["beta", "alpha"]
+        }
+      ],
+      achievements: {},
+      streak: {
+        currentDays: 0,
+        bestDays: 0,
+        lastCompletionDayKey: null
+      }
+    }, now);
+
+    const outcome = evaluateMilestones(engagement, now);
+    const toastIds = outcome.toasts.map((toast) => toast.id);
+    expect(toastIds).toContain("TAG_5_LAST_7_DAYS:alpha");
+    expect(toastIds).not.toContain("TAG_5_LAST_7_DAYS:beta");
   });
 
   it("caps queued toasts and drops lowest priority first (fifo for ties)", () => {
