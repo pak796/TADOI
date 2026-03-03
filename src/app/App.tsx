@@ -334,6 +334,7 @@ import {
 import { copyToClipboard } from "./copyToClipboard";
 import { openTarget } from "./openTarget";
 import { redactPathForDisplay } from "./pathRedaction";
+import { redactedLogger } from "../logging/redactedLogger";
 import { useEditorFlow } from "./editorFlow";
 import { useModalOrchestration } from "./modalOrchestration";
 import { useCalendarFlow } from "./calendarFlow";
@@ -398,7 +399,7 @@ const ROTATING_THEME_INTERVAL_MS = 15000;
 const G_PREFIX_RELEASE_TIMEOUT_MS = 1500;
 const CORRUPTION_STARTUP_BANNER_AUTO_DISMISS_MS = 60_000;
 const NAV_BANNER_TIMEOUT_MS = 1800;
-const NOTES_REFRESH_INTERVAL_MS = 2500;
+const NOTES_POLL_FALLBACK_INTERVAL_MS = 15_000;
 const DETAILS_NOTE_PREVIEW_ROWS = 3;
 const SEARCH_RESULT_LIMIT = 60;
 const VIEW_NAME_MAX_LENGTH = 40;
@@ -1916,6 +1917,7 @@ export function App({
   const [notesSearchQuery, setNotesSearchQuery] = useState("");
   const [notesTagFilterQuery, setNotesTagFilterQuery] = useState("");
   const [notesOpenPath, setNotesOpenPath] = useState<NotePath | null>(null);
+  const notesOpenPathRef = useRef<NotePath | null>(null);
   const [notesViewReturnToCapturedContext, setNotesViewReturnToCapturedContext] =
     useState(false);
   const [notesViewContent, setNotesViewContent] = useState("");
@@ -2107,6 +2109,7 @@ export function App({
 
     return () => {
       cancelled = true;
+      notesService.stopAutoRefresh();
       if (notesServiceRef.current === notesService) {
         notesServiceRef.current = null;
       }
@@ -2114,32 +2117,46 @@ export function App({
   }, [settingsState.notes.enabled, settingsState.notes.rootPath]);
 
   useEffect(() => {
+    notesOpenPathRef.current = notesOpenPath;
+  }, [notesOpenPath]);
+
+  useEffect(() => {
     if (!notesRuntime.ready || !notesRuntime.enabled) return;
-    const interval = setInterval(() => {
-      void (async () => {
-        const service = notesServiceRef.current;
-        if (!service) return;
-        try {
-          await service.refreshChanged();
-          setNotesList(service.listNotes());
-          if (notesOpenPath) {
-            const current = await service.getNoteContent(notesOpenPath);
-            if (!current) return;
-            setNotesViewContent(current.content);
-            setNotesViewLines(renderMarkdownToTerminalLines(current.content));
-            setNotesOutgoingRefs(service.getResolvedOutgoingRefs(notesOpenPath));
-            setNotesBacklinks(service.getBacklinks(notesOpenPath));
-            setNotesWarnings(service.getWarnings(notesOpenPath));
-            setNotesUnlinkedMentions(service.getUnlinkedMentions(notesOpenPath));
-            setNotesLinkedTasks(service.getLinkedTasksForNote(notesOpenPath));
-          }
-        } catch {
-          // Best effort periodic refresh; errors surface through manual actions.
-        }
-      })();
-    }, NOTES_REFRESH_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, [notesOpenPath, notesRuntime.enabled, notesRuntime.ready]);
+    const service = notesServiceRef.current;
+    if (!service) return;
+
+    let cancelled = false;
+    const hydrateFromService = async () => {
+      if (cancelled) return;
+      setNotesList(service.listNotes());
+      const openPath = notesOpenPathRef.current;
+      if (!openPath) return;
+
+      const current = await service.getNoteContent(openPath);
+      if (!current || cancelled) return;
+      setNotesViewContent(current.content);
+      setNotesViewLines(renderMarkdownToTerminalLines(current.content));
+      setNotesOutgoingRefs(service.getResolvedOutgoingRefs(openPath));
+      setNotesBacklinks(service.getBacklinks(openPath));
+      setNotesWarnings(service.getWarnings(openPath));
+      setNotesUnlinkedMentions(service.getUnlinkedMentions(openPath));
+      setNotesLinkedTasks(service.getLinkedTasksForNote(openPath));
+    };
+
+    void service
+      .startAutoRefresh({
+        pollingFallbackIntervalMs: NOTES_POLL_FALLBACK_INTERVAL_MS,
+        onRefreshed: hydrateFromService
+      })
+      .catch(() => {
+        // Best effort refresh runtime; errors surface through manual notes actions.
+      });
+
+    return () => {
+      cancelled = true;
+      service.stopAutoRefresh();
+    };
+  }, [notesRuntime.enabled, notesRuntime.ready, notesRuntime.notesRoot]);
 
   // Force a frame request on mode/size transitions so borders are repainted
   // after layout shape changes (list/details <-> dashboard).
@@ -4045,7 +4062,7 @@ export function App({
   useEffect(() => {
     if (resolvedKeymapAliases.warnings.length === 0) return;
     for (const warning of resolvedKeymapAliases.warnings) {
-      console.warn(`[TADOI][keymapAliases] ${warning}`);
+      redactedLogger.warn(`[TADOI][keymapAliases] ${warning}`);
     }
   }, [resolvedKeymapAliases]);
 
@@ -4121,7 +4138,7 @@ export function App({
   useEffect(() => {
     if (!PERF_DEBUG_ENABLED) return;
     const durationMs = Date.now() - renderStartMs;
-    console.log(
+    redactedLogger.log(
       `[${APP_NAME}][perf] render=${durationMs}ms terminal=${terminalWidth}x${terminalHeight} visibleRows=${visibleRows} visibleTaskRows=${visibleTaskRows.length}`
     );
   });
@@ -4977,6 +4994,13 @@ export function App({
     return settingsState.githubBackup ?? defaults;
   }
 
+  function resolveGitHubSnapshotPassphrase(): string | undefined {
+    const raw = process.env[ENV_VARS.GITHUB_SNAPSHOT_PASSPHRASE];
+    if (typeof raw !== "string") return undefined;
+    const trimmed = raw.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }
+
   function toGitHubSnapshotListItem(snapshot: SnapshotRef): GitHubSnapshotListItem {
     return {
       id: snapshot.id,
@@ -5022,6 +5046,7 @@ export function App({
       username,
       ownerRepoConfigured: githubSettings?.ownerRepo ?? undefined,
       repoIsPublic,
+      snapshotEncryptionActive: Boolean(resolveGitHubSnapshotPassphrase()),
       autoPushPolicy: githubSettings?.autoPushPolicy ?? "off",
       lastPushedAt: githubSettings?.lastPushed?.timestamp,
       lastRestorePulledAt: backupState.githubLastRestorePulledAt
@@ -5217,7 +5242,8 @@ export function App({
             branch: auth.branch,
             pathPrefix: auth.pathPrefix
           },
-          deviceId: auth.deviceId
+          deviceId: auth.deviceId,
+          encryptionPassphrase: resolveGitHubSnapshotPassphrase()
         });
         const result = await pushSnapshot(
           {
@@ -5302,7 +5328,10 @@ export function App({
             branch: auth.branch,
             pathPrefix: auth.pathPrefix
           },
-          selected
+          selected,
+          {
+            passphrase: resolveGitHubSnapshotPassphrase()
+          }
         );
         const importPayloadPath = await buildRestoreImportPayload({
           statePath: downloaded.statePath,
@@ -6946,7 +6975,7 @@ export function App({
       } catch (error) {
         const detail = normalizeErrorDetail(error);
         showShortNavigationBanner(`Action failed: ${detail}`);
-        console.error("[TADOI] routed action failed", action, error);
+        redactedLogger.error("[TADOI] routed action failed", action, error);
       }
     }
   }, { release: true });

@@ -5,6 +5,13 @@ import { promises as fs } from "fs";
 import type { LoadedData } from "../state/persistence";
 import type { TadoiSettings } from "../settings/settings";
 import { APP_VERSION } from "../app/version";
+import {
+  decryptSnapshotPayload,
+  encryptSnapshotPayload,
+  isSnapshotEncryptedPayload,
+  SNAPSHOT_ENCRYPTION_KIND,
+  SNAPSHOT_ENCRYPTION_SCHEME
+} from "./snapshotCrypto";
 
 export type GhCommandResult = {
   exitCode: number;
@@ -33,6 +40,7 @@ export type SnapshotRef = {
   tasksOpen?: number;
   appVersion?: string;
   schemaVersion?: number;
+  encrypted?: boolean;
 };
 
 export type GitHubPushArtifacts = {
@@ -61,6 +69,11 @@ export type GitHubSnapshotManifest = {
     tasksTotal: number;
     tasksOpen: number;
     tagsTotal: number;
+  };
+  encryption?: {
+    enabled: true;
+    scheme: typeof SNAPSHOT_ENCRYPTION_SCHEME;
+    payloadKind: typeof SNAPSHOT_ENCRYPTION_KIND;
   };
 };
 
@@ -138,7 +151,15 @@ function normalizeGhError(stderr: string, stdout: string, code: number): string 
 }
 
 export const runGhCommand: GhCommandRunner = async (args, options = {}) => {
+  const spawnEnv: Record<string, string> = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (typeof value === "string") {
+      spawnEnv[key] = value;
+    }
+  }
+
   const processHandle = Bun.spawn(["gh", ...args], {
+    env: spawnEnv,
     cwd: options.cwd,
     stdin: options.stdin !== undefined ? "pipe" : "ignore",
     stdout: "pipe",
@@ -146,9 +167,35 @@ export const runGhCommand: GhCommandRunner = async (args, options = {}) => {
   });
 
   if (options.stdin !== undefined && processHandle.stdin) {
-    const writer = processHandle.stdin.getWriter();
-    await writer.write(new TextEncoder().encode(options.stdin));
-    await writer.close();
+    const stdinHandle = processHandle.stdin as unknown as {
+      getWriter?: () => {
+        write: (chunk: Uint8Array) => Promise<unknown>;
+        close: () => Promise<unknown>;
+      };
+      write?: (chunk: Uint8Array) => unknown;
+      end?: () => unknown;
+      close?: () => unknown;
+    };
+    const encoded = new TextEncoder().encode(options.stdin);
+    if (typeof stdinHandle.getWriter === "function") {
+      const writer = stdinHandle.getWriter();
+      await writer.write(encoded);
+      await writer.close();
+    } else if (typeof stdinHandle.write === "function") {
+      const writeResult = stdinHandle.write(encoded);
+      if (writeResult instanceof Promise) {
+        await writeResult;
+      }
+      const endResult =
+        typeof stdinHandle.end === "function"
+          ? stdinHandle.end()
+          : typeof stdinHandle.close === "function"
+            ? stdinHandle.close()
+            : undefined;
+      if (endResult instanceof Promise) {
+        await endResult;
+      }
+    }
   }
 
   const [exitCode, stdout, stderr] = await Promise.all([
@@ -347,6 +394,19 @@ async function readRemoteFile(
   return Buffer.from(compact, "base64").toString("utf8");
 }
 
+function verifySnapshotPayloadHash(
+  payload: string,
+  expectedHash: unknown,
+  payloadLabel: "state" | "settings"
+): void {
+  if (typeof expectedHash !== "string" || expectedHash.length === 0) {
+    return;
+  }
+  if (sha256(payload) !== expectedHash) {
+    throw new Error(`Snapshot integrity check failed for ${payloadLabel} payload.`);
+  }
+}
+
 export async function listSnapshots(
   config: GitHubBackupRepoConfig,
   runner: GhCommandRunner = runGhCommand
@@ -391,6 +451,7 @@ export async function listSnapshots(
         if (typeof manifest.schemaVersion === "number") {
           ref.schemaVersion = manifest.schemaVersion;
         }
+        ref.encrypted = manifest.encryption?.enabled === true;
       } catch {
         // Keep listing robust even if one manifest is malformed.
       }
@@ -405,19 +466,48 @@ export async function listSnapshots(
 export async function downloadSnapshot(
   config: GitHubBackupRepoConfig,
   snapshotRef: SnapshotRef,
-  runner: GhCommandRunner = runGhCommand
+  options: {
+    passphrase?: string;
+    runner?: GhCommandRunner;
+  } = {}
 ): Promise<{ statePath: string; settingsPath: string; manifestPath: string }> {
+  const runner = options.runner ?? runGhCommand;
   const stagingDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-gh-restore-"));
   const stateRaw = await readRemoteFile(config, snapshotRef.statePath, runner);
   const settingsRaw = await readRemoteFile(config, snapshotRef.settingsPath, runner);
   const manifestRaw = await readRemoteFile(config, snapshotRef.manifestPath, runner);
+  let manifest: Partial<GitHubSnapshotManifest> | undefined;
+  try {
+    manifest = JSON.parse(manifestRaw) as Partial<GitHubSnapshotManifest>;
+  } catch {
+    // Keep download resilient for malformed manifests.
+  }
+
+  const encryptedPayload =
+    manifest?.encryption?.enabled === true ||
+    isSnapshotEncryptedPayload(stateRaw) ||
+    isSnapshotEncryptedPayload(settingsRaw);
+  const passphrase = options.passphrase?.trim();
+  if (encryptedPayload && !passphrase) {
+    throw new Error(
+      "Snapshot is encrypted. Set TADOI_GITHUB_SNAPSHOT_PASSPHRASE and retry restore."
+    );
+  }
+  const statePayload =
+    encryptedPayload && passphrase ? decryptSnapshotPayload(stateRaw, passphrase) : stateRaw;
+  const settingsPayload =
+    encryptedPayload && passphrase
+      ? decryptSnapshotPayload(settingsRaw, passphrase)
+      : settingsRaw;
+  verifySnapshotPayloadHash(statePayload, manifest?.hashes?.stateSha256, "state");
+  verifySnapshotPayloadHash(settingsPayload, manifest?.hashes?.settingsSha256, "settings");
 
   const statePath = path.join(stagingDir, `${snapshotRef.timestamp}.state.json`);
   const settingsPath = path.join(stagingDir, `${snapshotRef.timestamp}.settings.json`);
   const manifestPath = path.join(stagingDir, `${snapshotRef.timestamp}.manifest.json`);
 
-  await fs.writeFile(statePath, stateRaw, "utf8");
-  await fs.writeFile(settingsPath, settingsRaw, "utf8");
+  await fs.writeFile(statePath, statePayload, "utf8");
+  await fs.writeFile(settingsPath, settingsPayload, "utf8");
   await fs.writeFile(manifestPath, manifestRaw, "utf8");
 
   return { statePath, settingsPath, manifestPath };
@@ -553,12 +643,14 @@ export function buildSnapshotArtifacts(options: {
   settings: TadoiSettings;
   repoConfig: GitHubBackupRepoConfig;
   deviceId: string;
+  encryptionPassphrase?: string;
   now?: Date;
 }): GitHubPushArtifacts {
   const now = options.now ?? new Date();
   const timestampId = formatSnapshotId(now);
   const stateJson = JSON.stringify(options.state, null, 2);
   const settingsJson = JSON.stringify(options.settings, null, 2);
+  const encryptionPassphrase = options.encryptionPassphrase?.trim();
   const manifest: GitHubSnapshotManifest = {
     tadoiBackupVersion: 1,
     timestamp: now.toISOString(),
@@ -585,11 +677,25 @@ export function buildSnapshotArtifacts(options: {
       tagsTotal: Object.keys(options.state.tagIndex ?? {}).length
     }
   };
+  if (encryptionPassphrase) {
+    manifest.encryption = {
+      enabled: true,
+      scheme: SNAPSHOT_ENCRYPTION_SCHEME,
+      payloadKind: SNAPSHOT_ENCRYPTION_KIND
+    };
+  }
+
+  const statePayload = encryptionPassphrase
+    ? encryptSnapshotPayload(stateJson, encryptionPassphrase)
+    : stateJson;
+  const settingsPayload = encryptionPassphrase
+    ? encryptSnapshotPayload(settingsJson, encryptionPassphrase)
+    : settingsJson;
 
   return {
     timestampId,
-    stateJson,
-    settingsJson,
+    stateJson: statePayload,
+    settingsJson: settingsPayload,
     manifestJson: JSON.stringify(manifest, null, 2),
     stateRevision: manifest.stateRevision
   };

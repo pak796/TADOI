@@ -4,6 +4,7 @@ import { CLI_EXIT_CODE } from "./exitCodes";
 import { parseSelectorTokens } from "./selectors";
 import { getDataFilePath, safeLoadState, type LoadedData } from "../state/persistence";
 import { initialState, reducer } from "../state/store";
+import { redactedLogger } from "../logging/redactedLogger";
 
 export type ListTaskRecord = {
   id: string;
@@ -53,8 +54,8 @@ const DEFAULT_DEPS: ListCommandDeps = {
     const result = await safeLoadState({ filePath });
     return result.data;
   },
-  log: (line: string) => console.log(line),
-  error: (line: string) => console.error(line)
+  log: (line: string) => redactedLogger.log(line),
+  error: (line: string) => redactedLogger.error(line)
 };
 
 const VALID_SORT_MODE = new Set<SortMode>(["due", "updated", "created", "title"]);
@@ -143,7 +144,7 @@ export function parseListArgs(args: string[]): ListParseResult {
   };
 }
 
-export function printListHelp(log: (line: string) => void = console.log): void {
+export function printListHelp(log: (line: string) => void = redactedLogger.log): void {
   log("Usage: tadoi list [selectors...] [--sort <due|updated|created|title>] [--limit <n>] [--json]");
   log("");
   log("Selectors:");
@@ -241,4 +242,3 @@ export async function runListCommand(
 ): Promise<{ exitCode: number; data?: ListJsonData }> {
   return runListCommandWithDeps(args, options, DEFAULT_DEPS);
 }
-

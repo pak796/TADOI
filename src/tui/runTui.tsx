@@ -3,6 +3,7 @@ import { createRoot } from "@opentui/react";
 import { App } from "../app/App";
 import { redactPathForDisplay } from "../app/pathRedaction";
 import { applyThemeWithSettings } from "../app/theme";
+import { redactedLogger } from "../logging/redactedLogger";
 import { startOfLocalDayMs } from "../domain/dates";
 import { normalizeEngagementState } from "../domain/engagement";
 import { normalizeTaskReminder } from "../domain/reminders";
@@ -155,7 +156,7 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
         await removeTadoiLock(lockPath);
       }
     } catch (error: unknown) {
-      console.warn(
+      redactedLogger.warn(
         `[${APP_NAME}] failed to remove lock file (${redactedLockPath}): ${
           error instanceof Error ? error.message : String(error)
         }`
@@ -194,7 +195,7 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
         if (lockCleanedUp) {
           return;
         }
-        console.warn(
+        redactedLogger.warn(
           `[${APP_NAME}] failed to refresh lock heartbeat (${redactedLockPath}): ${
             error instanceof Error ? error.message : String(error)
           }`
@@ -204,9 +205,11 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
     heartbeatTimer.unref?.();
   } catch (error: unknown) {
     if (error instanceof Error) {
-      console.warn(`[${APP_NAME}] ${error.message} (${redactedLockPath})`);
+      redactedLogger.warn(`[${APP_NAME}] ${error.message} (${redactedLockPath})`);
     } else {
-      console.warn(`[${APP_NAME}] failed to acquire lock (${redactedLockPath}): ${String(error)}`);
+      redactedLogger.warn(
+        `[${APP_NAME}] failed to acquire lock (${redactedLockPath}): ${String(error)}`
+      );
     }
     throw error;
   }
@@ -220,16 +223,18 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
   const startupBanner =
     startupWarnings.length > 0 ? startupWarnings.join(" | ") : undefined;
 
-  console.log(`[${APP_NAME}] data path: ${redactStartupPath(loadResult.resolvedPath)}`);
-  console.log(`[${APP_NAME}] settings path: ${redactStartupPath(settingsResult.resolvedPath)}`);
+  redactedLogger.log(`[${APP_NAME}] data path: ${redactStartupPath(loadResult.resolvedPath)}`);
+  redactedLogger.log(
+    `[${APP_NAME}] settings path: ${redactStartupPath(settingsResult.resolvedPath)}`
+  );
   for (const warning of settingsResult.warnings) {
-    console.warn(`[${APP_NAME}] ${warning}`);
+    redactedLogger.warn(`[${APP_NAME}] ${warning}`);
   }
   for (const warning of lockRecoveryWarnings) {
-    console.warn(`[${APP_NAME}] ${warning}`);
+    redactedLogger.warn(`[${APP_NAME}] ${warning}`);
   }
   if (loadResult.bannerMessage) {
-    console.warn(`[${APP_NAME}] ${loadResult.bannerMessage}`);
+    redactedLogger.warn(`[${APP_NAME}] ${loadResult.bannerMessage}`);
   }
 
   const { normalizedLoaded, tasksChanged, tagIndexChanged } =

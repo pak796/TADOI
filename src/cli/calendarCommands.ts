@@ -10,6 +10,7 @@ import { CLI_EXIT_CODE } from "./exitCodes";
 import type { CalendarExportRange } from "../calendar/range";
 import type { CalendarEventPrivacyMode } from "../calendar/calendarMapper";
 import type { CalendarImportMode } from "../calendar/importMapper";
+import { redactedLogger } from "../logging/redactedLogger";
 
 type ParseResult<T> =
   | { ok: true; value: T }
@@ -349,7 +350,7 @@ export async function runCalendarCommand(
   if (command === "export") {
     const parsed = parseCalendarExportArgs(args);
     if (!parsed.ok) {
-      console.error(`[calendar:export] ${parsed.error}`);
+      redactedLogger.error(`[calendar:export] ${parsed.error}`);
       printCalendarExportHelp();
       return CLI_EXIT_CODE.PARSE_OR_VALIDATION;
     }
@@ -358,7 +359,7 @@ export async function runCalendarCommand(
 
   const parsed = parseCalendarImportArgs(args);
   if (!parsed.ok) {
-    console.error(`[calendar:import] ${parsed.error}`);
+    redactedLogger.error(`[calendar:import] ${parsed.error}`);
     printCalendarImportHelp();
     return CLI_EXIT_CODE.PARSE_OR_VALIDATION;
   }

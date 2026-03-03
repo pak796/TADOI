@@ -122,6 +122,7 @@ export type BackupCenterState = {
   githubUsername?: string;
   githubOwnerRepoConfigured?: string;
   githubRepoIsPublic?: boolean;
+  githubSnapshotEncryptionActive: boolean;
   githubAutoPushPolicy: GitHubAutoPushPolicy;
   githubLastPushedAt?: string;
   githubLastRestorePulledAt?: string;
@@ -222,6 +223,7 @@ export type BackupCenterAction =
       username?: string;
       ownerRepoConfigured?: string;
       repoIsPublic?: boolean;
+      snapshotEncryptionActive?: boolean;
       autoPushPolicy: GitHubAutoPushPolicy;
       lastPushedAt?: string;
       lastRestorePulledAt?: string;
@@ -277,6 +279,7 @@ export const initialBackupCenterState: BackupCenterState = {
   calendarImportConfirmInput: "",
   githubGhDetected: false,
   githubLoggedIn: false,
+  githubSnapshotEncryptionActive: false,
   githubAutoPushPolicy: "off",
   githubConnectMode: "create",
   githubRepoNameInput: "tadoi-backups",
@@ -981,6 +984,7 @@ export function backupCenterReducer(
         githubUsername: normalizeOptionalInput(action.username),
         githubOwnerRepoConfigured: normalizeOptionalInput(action.ownerRepoConfigured),
         githubRepoIsPublic: action.repoIsPublic,
+        githubSnapshotEncryptionActive: action.snapshotEncryptionActive === true,
         githubAutoPushPolicy: action.autoPushPolicy,
         githubLastPushedAt: normalizeOptionalInput(action.lastPushedAt),
         githubLastRestorePulledAt: normalizeOptionalInput(action.lastRestorePulledAt)

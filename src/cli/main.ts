@@ -32,6 +32,7 @@ import {
 import { CLI_EXIT_CODE } from "./exitCodes";
 import { parseSelectorTokens } from "./selectors";
 import { runNoteCommandCli } from "./noteCommands";
+import { redactedLogger } from "../logging/redactedLogger";
 
 export const TITS_CLI_EXIT_CODE = CLI_EXIT_CODE;
 
@@ -100,8 +101,8 @@ const DEFAULT_DEPS: TitsCliDeps = {
     await saveStateAtomic(data, filePath, undefined, options);
   },
   runNoteCommand: runNoteCommandCli,
-  log: (line: string) => console.log(line),
-  error: (line: string) => console.error(line)
+  log: (line: string) => redactedLogger.log(line),
+  error: (line: string) => redactedLogger.error(line)
 };
 
 function isTitsCommandName(value: string): value is TitsCommandName {

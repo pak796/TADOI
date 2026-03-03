@@ -2,6 +2,7 @@ import type { ImportMode } from "../state/portability";
 import { printExportHelp, runExportCommand } from "../commands/export";
 import { printImportHelp, runImportCommand } from "../commands/import";
 import { CLI_EXIT_CODE } from "./exitCodes";
+import { redactedLogger } from "../logging/redactedLogger";
 
 type ParseResult<T> =
   | { ok: true; value: T }
@@ -12,7 +13,7 @@ export type ExportCommandOptions = {
   format: "json";
   pretty: boolean;
   redact: boolean;
-  redactMode?: "basic" | "strict";
+  redactMode?: "basic" | "strict" | "strict-v2";
   help: boolean;
 };
 
@@ -50,7 +51,7 @@ export function parseExportArgs(args: string[]): ParseResult<ExportCommandOption
   let format: "json" = "json";
   let pretty = false;
   let redact = false;
-  let redactMode: "basic" | "strict" | undefined;
+  let redactMode: "basic" | "strict" | "strict-v2" | undefined;
   let help = false;
 
   for (let i = 0; i < args.length; i += 1) {
@@ -109,8 +110,12 @@ export function parseExportArgs(args: string[]): ParseResult<ExportCommandOption
       const next = requireNextArg(args, i, "--redact-mode");
       if (!next.ok) return next;
       const normalized = next.value.trim().toLowerCase();
-      if (normalized !== "basic" && normalized !== "strict") {
-        return { ok: false, error: "--redact-mode must be basic or strict" };
+      if (
+        normalized !== "basic" &&
+        normalized !== "strict" &&
+        normalized !== "strict-v2"
+      ) {
+        return { ok: false, error: "--redact-mode must be basic, strict, or strict-v2" };
       }
       redactMode = normalized;
       i += 1;
@@ -119,8 +124,12 @@ export function parseExportArgs(args: string[]): ParseResult<ExportCommandOption
 
     if (arg.startsWith("--redact-mode=")) {
       const normalized = arg.slice("--redact-mode=".length).trim().toLowerCase();
-      if (normalized !== "basic" && normalized !== "strict") {
-        return { ok: false, error: "--redact-mode must be basic or strict" };
+      if (
+        normalized !== "basic" &&
+        normalized !== "strict" &&
+        normalized !== "strict-v2"
+      ) {
+        return { ok: false, error: "--redact-mode must be basic, strict, or strict-v2" };
       }
       redactMode = normalized;
       continue;
@@ -265,7 +274,7 @@ export async function runPortabilityCommand(
   if (command === "export") {
     const parsed = parseExportArgs(args);
     if (!parsed.ok) {
-      console.error(`[export] ${parsed.error}`);
+      redactedLogger.error(`[export] ${parsed.error}`);
       printExportHelp();
       return CLI_EXIT_CODE.PARSE_OR_VALIDATION;
     }
@@ -274,7 +283,7 @@ export async function runPortabilityCommand(
 
   const parsed = parseImportArgs(args);
   if (!parsed.ok) {
-    console.error(`[import] ${parsed.error}`);
+    redactedLogger.error(`[import] ${parsed.error}`);
     printImportHelp();
     return CLI_EXIT_CODE.PARSE_OR_VALIDATION;
   }

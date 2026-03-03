@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import React from "react";
 import os from "os";
 import path from "path";
+import { createHash } from "node:crypto";
 import { promises as fs } from "fs";
 import { testRender } from "@opentui/react/test-utils";
 import type { MockInput } from "@opentui/core/testing";
@@ -9,8 +10,14 @@ import { App } from "./App";
 import type { Task } from "../domain/models";
 import { createDefaultEngagementState } from "../domain/engagement";
 import type { LoadedData } from "../state/persistence";
-import type { NotificationSettings, RetroFxMode } from "../settings/settings";
+import type {
+  GitHubBackupSettings,
+  NotificationSettings,
+  RetroFxMode
+} from "../settings/settings";
 import { addLocalDaysMs, startOfLocalDayMs } from "../domain/dates";
+import { ENV_VARS } from "../brand/brand";
+import { encryptSnapshotPayload } from "../backup/snapshotCrypto";
 
 type RenderHarness = Awaited<ReturnType<typeof testRender>>;
 
@@ -25,6 +32,7 @@ type SessionOptions = {
   showCorruptionRecoveryImportCta?: boolean;
   initialRetroFxMode?: RetroFxMode;
   initialNotificationSettings?: NotificationSettings;
+  initialGithubBackup?: GitHubBackupSettings;
   skipInitialSave?: boolean;
   width?: number;
   height?: number;
@@ -97,6 +105,7 @@ async function createSession(options: SessionOptions = {}): Promise<AppSession> 
       settingsPath,
       initialRetroFxMode: options.initialRetroFxMode,
       initialNotificationSettings: options.initialNotificationSettings,
+      initialGithubBackup: options.initialGithubBackup,
       showLogo: false
     }),
     {
@@ -485,6 +494,234 @@ async function prepareBackupRuntimeFixture(
     calendarImportPath,
     calendarExportPath
   };
+}
+
+async function createFakeGitHubCliFixture(options: {
+  rootDir: string;
+  ownerRepo: string;
+  branch: string;
+  pathPrefix: string;
+  passphrase: string;
+}): Promise<{
+  binDir: string;
+  logPath: string;
+}> {
+  const timestamp = "20260227-123000Z";
+  const year = timestamp.slice(0, 4);
+  const month = timestamp.slice(4, 6);
+  const basePath = `${options.pathPrefix}/snapshots/${year}/${month}/${timestamp}`;
+  const manifestPath = `${basePath}.manifest.json`;
+  const statePath = `${basePath}.state.json`;
+  const settingsPath = `${basePath}.settings.json`;
+
+  const restoreState = JSON.stringify(
+    {
+      schemaVersion: 8,
+      stateRevision: 7,
+      tasks: [makeTask("restored-encrypted-1", "Restored encrypted task")],
+      tagIndex: {},
+      savedViews: []
+    },
+    null,
+    2
+  );
+  const restoreSettings = JSON.stringify(
+    {
+      themeId: "default",
+      logoMode: "default",
+      flashMode: "slow",
+      notifications: {
+        enabled: true,
+        inAppOverdueBanner: true,
+        terminalBellOnOverdue: false,
+        bannerDurationMs: 5000,
+        bellCooldownMs: 2000
+      },
+      security: {
+        nonHttpLinkPolicy: "prompt"
+      },
+      githubBackup: {
+        enabled: true,
+        ownerRepo: options.ownerRepo,
+        branch: options.branch,
+        deviceId: "dev_test",
+        pathPrefix: options.pathPrefix,
+        autoPushPolicy: "off"
+      },
+      notes: {
+        enabled: true,
+        rootPath: null
+      }
+    },
+    null,
+    2
+  );
+  const restoreManifest = JSON.stringify(
+    {
+      tadoiBackupVersion: 1,
+      timestamp: "2026-02-27T12:30:00.000Z",
+      deviceId: "dev_test",
+      ownerRepo: options.ownerRepo,
+      branch: options.branch,
+      pathPrefix: options.pathPrefix,
+      appVersion: "v0.3.9",
+      schemaVersion: 8,
+      stateRevision: 7,
+      hashes: {
+        stateSha256: createHash("sha256").update(restoreState).digest("hex"),
+        settingsSha256: createHash("sha256").update(restoreSettings).digest("hex")
+      },
+      counts: {
+        tasksTotal: 1,
+        tasksOpen: 1,
+        tagsTotal: 0
+      },
+      encryption: {
+        enabled: true,
+        scheme: "aes-256-gcm+scrypt-v1",
+        payloadKind: "tadoi.snapshot.encrypted.v1"
+      }
+    },
+    null,
+    2
+  );
+
+  const encryptedState = encryptSnapshotPayload(restoreState, options.passphrase);
+  const encryptedSettings = encryptSnapshotPayload(restoreSettings, options.passphrase);
+
+  const binDir = path.join(options.rootDir, "fake-gh-bin");
+  const ghPath = path.join(binDir, "gh");
+  const logPath = path.join(options.rootDir, "fake-gh.log");
+  await fs.mkdir(binDir, { recursive: true });
+
+  const script = `#!/usr/bin/env bun
+import { appendFileSync, readFileSync } from "fs";
+
+const ownerRepo = ${JSON.stringify(options.ownerRepo)};
+const branch = ${JSON.stringify(options.branch)};
+const manifestPath = ${JSON.stringify(manifestPath)};
+const statePath = ${JSON.stringify(statePath)};
+const settingsPath = ${JSON.stringify(settingsPath)};
+const logPath = process.env.TADOI_TEST_GH_LOG_PATH || ${JSON.stringify(logPath)};
+const manifestB64 = ${JSON.stringify(Buffer.from(restoreManifest, "utf8").toString("base64"))};
+const stateB64 = ${JSON.stringify(Buffer.from(encryptedState, "utf8").toString("base64"))};
+const settingsB64 = ${JSON.stringify(Buffer.from(encryptedSettings, "utf8").toString("base64"))};
+
+const args = process.argv.slice(2);
+const log = (line) => {
+  if (!logPath) return;
+  appendFileSync(logPath, String(line) + "\\n");
+};
+const respondJson = (value) => {
+  process.stdout.write(JSON.stringify(value));
+};
+
+if (args[0] === "--version") {
+  process.stdout.write("gh version 2.55.0\\n");
+  process.exit(0);
+}
+
+if (args[0] === "auth" && args[1] === "status") {
+  process.stdout.write("Logged in to github.com as patrick\\n");
+  process.exit(0);
+}
+
+if (args[0] === "api") {
+  let method = "GET";
+  let endpoint = "";
+  for (let i = 1; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === "--method") {
+      method = args[i + 1] || "GET";
+      i += 1;
+      continue;
+    }
+    if (!token.startsWith("--") && endpoint.length === 0) {
+      endpoint = token;
+    }
+  }
+
+  let stdin = "";
+  if (args.includes("--input")) {
+    try {
+      stdin = readFileSync(0, "utf8");
+    } catch {
+      stdin = "";
+    }
+  }
+
+  log("API " + method + " " + endpoint);
+
+  if (method === "GET" && endpoint === \`repos/\${ownerRepo}\`) {
+    respondJson({ private: true });
+    process.exit(0);
+  }
+  if (method === "GET" && endpoint === \`repos/\${ownerRepo}/git/ref/heads/\${encodeURIComponent(branch)}\`) {
+    respondJson({ object: { sha: "basecommitsha" } });
+    process.exit(0);
+  }
+  if (method === "GET" && endpoint === \`repos/\${ownerRepo}/git/commits/basecommitsha\`) {
+    respondJson({ tree: { sha: "basetreesha" } });
+    process.exit(0);
+  }
+  if (method === "POST" && endpoint === \`repos/\${ownerRepo}/git/blobs\`) {
+    try {
+      const parsed = JSON.parse(stdin || "{}");
+      const content = typeof parsed.content === "string" ? parsed.content : "";
+      log("BLOB_HAS_ENCRYPTION " + (content.includes("tadoi.snapshot.encrypted.v1") ? "yes" : "no"));
+    } catch {
+      log("BLOB_HAS_ENCRYPTION no");
+    }
+    respondJson({ sha: "blobsha" });
+    process.exit(0);
+  }
+  if (method === "POST" && endpoint === \`repos/\${ownerRepo}/git/trees\`) {
+    respondJson({ sha: "nexttreesha" });
+    process.exit(0);
+  }
+  if (method === "POST" && endpoint === \`repos/\${ownerRepo}/git/commits\`) {
+    respondJson({ sha: "nextcommitsha" });
+    process.exit(0);
+  }
+  if (method === "PATCH" && endpoint === \`repos/\${ownerRepo}/git/refs/heads/\${encodeURIComponent(branch)}\`) {
+    respondJson({});
+    process.exit(0);
+  }
+  if (method === "GET" && endpoint === \`repos/\${ownerRepo}/git/trees/\${encodeURIComponent(branch)}?recursive=1\`) {
+    respondJson({
+      tree: [{ path: manifestPath, type: "blob" }]
+    });
+    process.exit(0);
+  }
+
+  const contentsPrefix = \`repos/\${ownerRepo}/contents/\`;
+  if (method === "GET" && endpoint.startsWith(contentsPrefix)) {
+    const encodedPath = endpoint.slice(contentsPrefix.length).split("?")[0] || "";
+    const decodedPath = decodeURIComponent(encodedPath);
+    if (decodedPath === manifestPath) {
+      respondJson({ encoding: "base64", content: manifestB64 });
+      process.exit(0);
+    }
+    if (decodedPath === statePath) {
+      respondJson({ encoding: "base64", content: stateB64 });
+      process.exit(0);
+    }
+    if (decodedPath === settingsPath) {
+      respondJson({ encoding: "base64", content: settingsB64 });
+      process.exit(0);
+    }
+  }
+
+  process.stderr.write("Unhandled gh api endpoint: " + method + " " + endpoint + "\\n");
+  process.exit(1);
+}
+
+process.stderr.write("Unhandled gh args: " + args.join(" ") + "\\n");
+process.exit(1);
+`;
+
+  await fs.writeFile(ghPath, script, { encoding: "utf8", mode: 0o755 });
+  return { binDir, logPath };
 }
 
 async function openHelpSettingsPage(harness: RenderHarness) {
@@ -1184,10 +1421,118 @@ describe("App modal flow integration", () => {
       await pressEnterAndRender(mockInput, harness);
       const frame = await waitForText(harness, "GitHub (CLI) Cloud Backups");
       expect(frame).toContain("CLOUD / GITHUB");
+      expect(frame).toContain("snapshot encryption: off");
     } finally {
       await cleanupSession(session);
     }
   });
+
+  it(
+    "runs encrypted GitHub push + restore flows end-to-end in Backup Center",
+    async () => {
+      const ownerRepo = "patrick/tadoi-backups";
+      const branch = "main";
+      const deviceId = "dev_test";
+      const pathPrefix = `tadoi/devices/${deviceId}`;
+      const passphrase = "modal-flow-encryption-passphrase";
+      const session = await createSession({
+        initialGithubBackup: {
+          enabled: true,
+          ownerRepo,
+          branch,
+          deviceId,
+          pathPrefix,
+          autoPushPolicy: "off"
+        }
+      });
+      const { harness, tempDir } = session;
+      const { mockInput } = harness;
+      const fixture = await prepareBackupRuntimeFixture(session);
+      const fakeGh = await createFakeGitHubCliFixture({
+        rootDir: tempDir,
+        ownerRepo,
+        branch,
+        pathPrefix,
+        passphrase
+      });
+
+      const originalPath = process.env.PATH;
+      const originalPassphrase = process.env[ENV_VARS.GITHUB_SNAPSHOT_PASSPHRASE];
+      const originalGhLogPath = process.env.TADOI_TEST_GH_LOG_PATH;
+      process.env.PATH = `${fakeGh.binDir}:${originalPath ?? ""}`;
+      process.env[ENV_VARS.GITHUB_SNAPSHOT_PASSPHRASE] = passphrase;
+      process.env.TADOI_TEST_GH_LOG_PATH = fakeGh.logPath;
+
+      try {
+        await withDataPathAndCwd(fixture.dataPath, fixture.backupDir, async () => {
+          await openCalendarMenu(harness);
+          await pressKeyAndRender(mockInput, harness, "3");
+          let frame = await waitForText(
+            harness,
+            "snapshot encryption: on (passphrase set)",
+            10_000
+          );
+          expect(frame).toContain("GitHub (CLI) Cloud Backups");
+
+          await pressKeyAndRender(mockInput, harness, "2");
+          await waitForAnyText(
+            harness,
+            ["Pushing snapshot to GitHub...", "GitHub snapshot pushed"],
+            10000
+          );
+          frame = await waitForText(harness, "GitHub snapshot pushed", 10000);
+          expect(frame).toContain("Last push:");
+
+          await pressEnterAndRender(mockInput, harness);
+          await waitForText(harness, "GitHub (CLI) Cloud Backups");
+          await pressKeyAndRender(mockInput, harness, "3");
+          await waitForAnyText(
+            harness,
+            ["Loading remote snapshots...", "Select snapshot to restore"],
+            10000
+          );
+          frame = await waitForAnyText(
+            harness,
+            ["Select snapshot to restore", "Restore from GitHub"],
+            10_000
+          );
+          expect(frame).toContain("20260227-123000Z");
+
+          await pressEnterAndRender(mockInput, harness);
+          await waitForAnyText(
+            harness,
+            ["Downloading selected snapshot...", "Dry-run summary"],
+            10000
+          );
+          frame = await waitForText(harness, "Dry-run summary", 10000);
+          expect(frame).toContain("Mode: MERGE");
+        });
+
+        const ghLog = await fs.readFile(fakeGh.logPath, "utf8");
+        expect(ghLog).toContain("BLOB_HAS_ENCRYPTION yes");
+        expect(ghLog).toContain(`API GET repos/${ownerRepo}/git/trees/${branch}?recursive=1`);
+        expect(ghLog).toContain(`API GET repos/${ownerRepo}/contents/${pathPrefix}/snapshots/`);
+      } finally {
+        if (originalPath === undefined) {
+          delete process.env.PATH;
+        } else {
+          process.env.PATH = originalPath;
+        }
+        if (originalPassphrase === undefined) {
+          delete process.env[ENV_VARS.GITHUB_SNAPSHOT_PASSPHRASE];
+        } else {
+          process.env[ENV_VARS.GITHUB_SNAPSHOT_PASSPHRASE] = originalPassphrase;
+        }
+        if (originalGhLogPath === undefined) {
+          delete process.env.TADOI_TEST_GH_LOG_PATH;
+        } else {
+          process.env.TADOI_TEST_GH_LOG_PATH = originalGhLogPath;
+        }
+        await cleanupSession(session);
+      }
+    },
+    25_000
+  );
 
   it(
     "persists settingsInput values for notification and cloud text fields",

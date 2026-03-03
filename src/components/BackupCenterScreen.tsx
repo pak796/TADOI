@@ -1452,6 +1452,14 @@ export function BackupCenterScreen({
           <text style={{ color: theme.muted }}>
             auto-push policy: {state.githubAutoPushPolicy}
           </text>
+          <text
+            style={{
+              color: state.githubSnapshotEncryptionActive ? theme.ok : theme.warn
+            }}
+          >
+            snapshot encryption:{" "}
+            {state.githubSnapshotEncryptionActive ? "on (passphrase set)" : "off"}
+          </text>
           <text style={{ color: theme.muted }}>
             last push: {state.githubLastPushedAt ?? "(never)"}
           </text>

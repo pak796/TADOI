@@ -24,7 +24,7 @@ export type PortableExportPayload = LoadedData & {
 };
 
 export type ImportMode = "merge" | "replace";
-export type RedactMode = "basic" | "strict";
+export type RedactMode = "basic" | "strict" | "strict-v2";
 
 export type MergeTasksStats = {
   added: number;
@@ -575,6 +575,30 @@ export function redactStateForExport(
         title: "",
         notes: ""
       }))
+    };
+  }
+
+  if (mode === "strict-v2") {
+    return {
+      ...payload,
+      tasks: payload.tasks.map((task) => ({
+        ...task,
+        title: "",
+        notes: "",
+        tags: [],
+        links: undefined,
+        dueAt: undefined,
+        hasExplicitTime: undefined,
+        recurrence: undefined,
+        instance_of: undefined,
+        external: undefined,
+        reminder: undefined
+      })),
+      tagIndex: {},
+      tagAliases: {},
+      savedViews: [],
+      engagement: createDefaultEngagementState(),
+      settings: undefined
     };
   }
 

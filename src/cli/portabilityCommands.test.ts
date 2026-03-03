@@ -33,6 +33,17 @@ describe("parseExportArgs", () => {
       expect(strict.value.redactMode).toBe("strict");
     }
 
+    const strictV2 = parseExportArgs([
+      "--out",
+      "./export.json",
+      "--redact-mode",
+      "strict-v2"
+    ]);
+    expect(strictV2.ok).toBe(true);
+    if (strictV2.ok) {
+      expect(strictV2.value.redactMode).toBe("strict-v2");
+    }
+
     const legacy = parseExportArgs(["--out", "./export.json", "--redact"]);
     expect(legacy.ok).toBe(true);
     if (legacy.ok) {

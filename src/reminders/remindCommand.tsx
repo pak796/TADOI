@@ -23,6 +23,7 @@ import { OutOfAppReminderModal, type OutOfAppReminderActionId } from "../compone
 import { resolveCurrentTadoiInvocation } from "./invocation";
 import { CLI_EXIT_CODE } from "../cli/exitCodes";
 import type { Task } from "../domain/models";
+import { redactedLogger } from "../logging/redactedLogger";
 
 type ParsedArgs = {
   eventId?: string;
@@ -312,14 +313,14 @@ function ReminderModalApp(props: {
 
 export async function runRemindCommand(args: string[]): Promise<number> {
   if (args.includes("--help") || args.includes("-h")) {
-    console.log("Usage:");
-    console.log("  tadoi remind --event <eventId>");
+    redactedLogger.log("Usage:");
+    redactedLogger.log("  tadoi remind --event <eventId>");
     return CLI_EXIT_CODE.SUCCESS;
   }
 
   const parsed = parseArgs(args);
   if (!parsed.eventId) {
-    console.error("Error: remind requires --event <eventId>");
+    redactedLogger.error("Error: remind requires --event <eventId>");
     return CLI_EXIT_CODE.PARSE_OR_VALIDATION;
   }
 
@@ -327,7 +328,7 @@ export async function runRemindCommand(args: string[]): Promise<number> {
   const index = await loadReminderIndexForDataFile({ dataFilePath });
   const event = index.events.find((item) => item.eventId === parsed.eventId);
   if (!event) {
-    console.error(`Error: reminder event '${parsed.eventId}' not found in index`);
+    redactedLogger.error(`Error: reminder event '${parsed.eventId}' not found in index`);
     return CLI_EXIT_CODE.TARGET_RESOLUTION;
   }
 
@@ -352,7 +353,7 @@ export async function runRemindCommand(args: string[]): Promise<number> {
       };
 
       const reportError = (message: string) => {
-        console.error(`Reminder action failed: ${message}`);
+        redactedLogger.error(`Reminder action failed: ${message}`);
       };
 
       createRoot(renderer).render(
@@ -367,7 +368,7 @@ export async function runRemindCommand(args: string[]): Promise<number> {
 
     return exitCode;
   } catch (error: unknown) {
-    console.error(
+    redactedLogger.error(
       `Error: failed to run reminder modal (${error instanceof Error ? error.message : String(error)})`
     );
     return CLI_EXIT_CODE.IO_ERROR;

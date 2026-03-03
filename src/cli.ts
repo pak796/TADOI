@@ -14,6 +14,7 @@ import { runRemindersCommand } from "./cli/remindersCommands";
 import { runRemindCommand } from "./reminders/remindCommand";
 import { runTui, runTuiSmoke, type RunTuiOptions } from "./tui/runTui";
 import { TadoiLockBusyError } from "./state/lockfile";
+import { redactedLogger } from "./logging/redactedLogger";
 
 type CliOptions = {
   showLogo: boolean;
@@ -293,51 +294,51 @@ async function withOutputMode(
 
 export function printHelp(showLogo: boolean): void {
   if (showLogo) {
-    console.log(getAsciiLogoLines("MICRO").join("\n"));
+    redactedLogger.log(getAsciiLogoLines("MICRO").join("\n"));
   }
-  console.log(`${APP_NAME}`);
-  console.log(APP_TAGLINE);
-  console.log("");
-  console.log(`Usage: ${CLI_NAME} [options]`);
-  console.log(`       ${CLI_NAME} <command> [options]`);
-  console.log("");
-  console.log("Options:");
-  console.log("  -h, --help      Show this help");
-  console.log("      --version   Print app version");
-  console.log("      --smoke-tui Run minimal TUI smoke render and exit");
-  console.log("      --interactive Force interactive TUI mode");
-  console.log("      --json      Emit machine-readable output for non-interactive commands");
-  console.log("      --quiet     Suppress non-essential non-error output");
-  console.log("      --data-file <path> Override data file path for this invocation");
-  console.log("      --no-logo   Hide ASCII logo in app header");
-  console.log("");
-  console.log("Commands:");
-  console.log("  add             Add task via TITS command engine");
-  console.log("  done            Mark task done by id via TITS command engine");
-  console.log("  due             Set/clear due by id via TITS command engine");
-  console.log("  recur           Set/clear recurrence by id via TITS command engine");
-  console.log("  note            TOME commands (new/open/search/reindex/help)");
-  console.log("  list            List tasks with selector filters");
-  console.log("  reminders       Out-of-app reminder helper commands");
-  console.log("  remind          Open reminder modal by event id");
-  console.log("  check:*         Checklist commands (add/toggle/edit/del/clear)");
-  console.log("  bulk:*          Bulk commands (done/tag/due/priority/assignee/project/stage/delete)");
-  console.log("  help            Show TITS command help topics");
-  console.log("  export          Export full persisted state (plus settings)");
-  console.log("  import          Import state from a JSON export");
-  console.log("  calendar:export Export one-way calendar ICS file");
-  console.log("  calendar:import Import one-way calendar ICS file");
-  console.log(`  ${CLI_NAME} 'add \"Task\" due:2026-03-05 #tag'`);
-  console.log(`  Run '${CLI_NAME} <command> --help' for command-specific flags`);
-  console.log(`  Use '--' to pass literal tokens (example: ${CLI_NAME} add -- --help)`);
-  console.log("");
-  console.log("Environment:");
-  console.log(`  ${ENV_VARS.DATA_PATH}=<path>   Override data file location`);
-  console.log(`  ${ENV_VARS.PERF_DEBUG}=1        Enable perf debug logs`);
+  redactedLogger.log(`${APP_NAME}`);
+  redactedLogger.log(APP_TAGLINE);
+  redactedLogger.log("");
+  redactedLogger.log(`Usage: ${CLI_NAME} [options]`);
+  redactedLogger.log(`       ${CLI_NAME} <command> [options]`);
+  redactedLogger.log("");
+  redactedLogger.log("Options:");
+  redactedLogger.log("  -h, --help      Show this help");
+  redactedLogger.log("      --version   Print app version");
+  redactedLogger.log("      --smoke-tui Run minimal TUI smoke render and exit");
+  redactedLogger.log("      --interactive Force interactive TUI mode");
+  redactedLogger.log("      --json      Emit machine-readable output for non-interactive commands");
+  redactedLogger.log("      --quiet     Suppress non-essential non-error output");
+  redactedLogger.log("      --data-file <path> Override data file path for this invocation");
+  redactedLogger.log("      --no-logo   Hide ASCII logo in app header");
+  redactedLogger.log("");
+  redactedLogger.log("Commands:");
+  redactedLogger.log("  add             Add task via TITS command engine");
+  redactedLogger.log("  done            Mark task done by id via TITS command engine");
+  redactedLogger.log("  due             Set/clear due by id via TITS command engine");
+  redactedLogger.log("  recur           Set/clear recurrence by id via TITS command engine");
+  redactedLogger.log("  note            TOME commands (new/open/search/reindex/help)");
+  redactedLogger.log("  list            List tasks with selector filters");
+  redactedLogger.log("  reminders       Out-of-app reminder helper commands");
+  redactedLogger.log("  remind          Open reminder modal by event id");
+  redactedLogger.log("  check:*         Checklist commands (add/toggle/edit/del/clear)");
+  redactedLogger.log("  bulk:*          Bulk commands (done/tag/due/priority/assignee/project/stage/delete)");
+  redactedLogger.log("  help            Show TITS command help topics");
+  redactedLogger.log("  export          Export full persisted state (plus settings)");
+  redactedLogger.log("  import          Import state from a JSON export");
+  redactedLogger.log("  calendar:export Export one-way calendar ICS file");
+  redactedLogger.log("  calendar:import Import one-way calendar ICS file");
+  redactedLogger.log(`  ${CLI_NAME} 'add \"Task\" due:2026-03-05 #tag'`);
+  redactedLogger.log(`  Run '${CLI_NAME} <command> --help' for command-specific flags`);
+  redactedLogger.log(`  Use '--' to pass literal tokens (example: ${CLI_NAME} add -- --help)`);
+  redactedLogger.log("");
+  redactedLogger.log("Environment:");
+  redactedLogger.log(`  ${ENV_VARS.DATA_PATH}=<path>   Override data file location`);
+  redactedLogger.log(`  ${ENV_VARS.PERF_DEBUG}=1        Enable perf debug logs`);
 }
 
 function printVersion(): void {
-  console.log(APP_VERSION);
+  redactedLogger.log(APP_VERSION);
 }
 
 const DEFAULT_DEPS: CliRunDeps = {
@@ -431,8 +432,8 @@ export async function runCli(
 ): Promise<number | undefined> {
   const runtimeParsed = parseRuntimeCliOptions(argv);
   if (!runtimeParsed.ok) {
-    console.error(`Error: ${runtimeParsed.error}`);
-    console.error(`Run '${CLI_NAME} --help' for usage.`);
+    redactedLogger.error(`Error: ${runtimeParsed.error}`);
+    redactedLogger.error(`Run '${CLI_NAME} --help' for usage.`);
     return TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION;
   }
 
@@ -456,7 +457,9 @@ export async function runCli(
       }
       if (route.kind === "remind") {
         if (runtime.json || runtime.quiet) {
-          console.error("Error: --json and --quiet are not supported for reminder modal commands.");
+          redactedLogger.error(
+            "Error: --json and --quiet are not supported for reminder modal commands."
+          );
           return TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION;
         }
         return deps.runRemind(route.args);
@@ -482,13 +485,15 @@ export async function runCli(
       }
 
       if (route.kind === "unknown") {
-        console.error(`Error: unknown command or option '${route.token}'.`);
-        console.error(`Run '${CLI_NAME} --help' for usage.`);
+        redactedLogger.error(`Error: unknown command or option '${route.token}'.`);
+        redactedLogger.error(`Run '${CLI_NAME} --help' for usage.`);
         return TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION;
       }
 
       if (runtime.json || runtime.quiet) {
-        console.error("Error: --json and --quiet are only supported for non-interactive commands.");
+        redactedLogger.error(
+          "Error: --json and --quiet are only supported for non-interactive commands."
+        );
         return TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION;
       }
 
@@ -497,7 +502,7 @@ export async function runCli(
         return undefined;
       } catch (error: unknown) {
         if (error instanceof TadoiLockBusyError) {
-          console.error("Error: TADOI is running (lock present).");
+          redactedLogger.error("Error: TADOI is running (lock present).");
           return TITS_CLI_EXIT_CODE.LOCKED;
         }
         throw error;

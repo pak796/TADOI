@@ -30,6 +30,7 @@ import {
 } from "../reminders/types";
 import { CLI_EXIT_CODE } from "./exitCodes";
 import { loadSettings } from "../settings/settings";
+import { redactedLogger } from "../logging/redactedLogger";
 
 function usage(): string {
   return [
@@ -126,7 +127,7 @@ async function runInstallCommand(dataFilePath: string): Promise<number> {
   const status = await installReminderScheduler({ invocation });
   const lines = renderSchedulerStatusLines(status);
   for (const line of lines) {
-    console.log(line);
+    redactedLogger.log(line);
   }
   if (!status.installed) {
     return CLI_EXIT_CODE.IO_ERROR;
@@ -140,7 +141,7 @@ async function runUninstallCommand(): Promise<number> {
   const status = await uninstallReminderScheduler({});
   const lines = renderSchedulerStatusLines(status);
   for (const line of lines) {
-    console.log(line);
+    redactedLogger.log(line);
   }
   return CLI_EXIT_CODE.SUCCESS;
 }
@@ -156,16 +157,16 @@ async function runStatusCommand(dataFilePath: string): Promise<number> {
     settings?.settings.notifications.outOfAppRemindersEnabled === true;
   const index = await loadReminderIndexForDataFile({ dataFilePath });
 
-  console.log(`out_of_app_setting: ${enabledSetting ? "on" : "off"}`);
+  redactedLogger.log(`out_of_app_setting: ${enabledSetting ? "on" : "off"}`);
   for (const line of renderSchedulerStatusLines(schedulerStatus)) {
-    console.log(line);
+    redactedLogger.log(line);
   }
-  console.log(`events_indexed: ${String(index.events.length)}`);
+  redactedLogger.log(`events_indexed: ${String(index.events.length)}`);
   const nextEvent = index.events[0];
   if (nextEvent) {
-    console.log(`next_event: ${formatReminderEventLine(nextEvent)}`);
+    redactedLogger.log(`next_event: ${formatReminderEventLine(nextEvent)}`);
   } else {
-    console.log("next_event: none");
+    redactedLogger.log("next_event: none");
   }
 
   return CLI_EXIT_CODE.SUCCESS;
@@ -207,8 +208,8 @@ async function runTestCommand(dataFilePath: string): Promise<number> {
   const nextState = clearReminderEventFired(state, testEvent.eventId, nowMs);
   await saveReminderHelperState({ dataFilePath, state: nextState, nowMs });
 
-  console.log(`scheduled_test_event: ${testEvent.eventId}`);
-  console.log(`remind_at: ${testEvent.remindAt}`);
+  redactedLogger.log(`scheduled_test_event: ${testEvent.eventId}`);
+  redactedLogger.log(`remind_at: ${testEvent.remindAt}`);
   return CLI_EXIT_CODE.SUCCESS;
 }
 
@@ -218,7 +219,7 @@ async function runTickCommand(dataFilePath: string): Promise<number> {
     settings.settings.notifications.outOfAppRemindersEnabled === true;
 
   if (!outOfAppEnabled) {
-    console.log("out-of-app reminders disabled in settings; tick skipped");
+    redactedLogger.log("out-of-app reminders disabled in settings; tick skipped");
     return CLI_EXIT_CODE.SUCCESS;
   }
 
@@ -235,7 +236,7 @@ async function runTickCommand(dataFilePath: string): Promise<number> {
 
   const runningProbe = await probeTadoiRunningState({ dataFilePath, nowMs });
   if (runningProbe.running) {
-    console.log(
+    redactedLogger.log(
       `tadoi is running (pid ${String(runningProbe.pid ?? "unknown")}); reminder popups skipped`
     );
     return CLI_EXIT_CODE.SUCCESS;
@@ -252,7 +253,7 @@ async function runTickCommand(dataFilePath: string): Promise<number> {
 
   if (dueEvents.length === 0) {
     await saveReminderHelperState({ dataFilePath, state: helperState, nowMs });
-    console.log("no due reminder events");
+    redactedLogger.log("no due reminder events");
     return CLI_EXIT_CODE.SUCCESS;
   }
 
@@ -272,7 +273,7 @@ async function runTickCommand(dataFilePath: string): Promise<number> {
         new Date(nowMs).toISOString(),
         nowMs
       );
-      console.log(`launched reminder: ${formatReminderEventLine(event)}`);
+      redactedLogger.log(`launched reminder: ${formatReminderEventLine(event)}`);
       continue;
     }
 
@@ -285,7 +286,7 @@ async function runTickCommand(dataFilePath: string): Promise<number> {
 
   if (launchFailures.length > 0) {
     for (const line of launchFailures) {
-      console.error(`launch_failed: ${line}`);
+      redactedLogger.error(`launch_failed: ${line}`);
     }
     return CLI_EXIT_CODE.IO_ERROR;
   }
@@ -298,7 +299,7 @@ export async function runRemindersCommand(args: string[]): Promise<number> {
   const dataFilePath = getDataFilePath();
 
   if (!subcommand || subcommand === "--help" || subcommand === "-h") {
-    console.log(usage());
+    redactedLogger.log(usage());
     return CLI_EXIT_CODE.SUCCESS;
   }
 
@@ -319,11 +320,11 @@ export async function runRemindersCommand(args: string[]): Promise<number> {
       return await runTickCommand(dataFilePath);
     }
 
-    console.error(`Error: unknown reminders command '${subcommand}'.`);
-    console.error(usage());
+    redactedLogger.error(`Error: unknown reminders command '${subcommand}'.`);
+    redactedLogger.error(usage());
     return CLI_EXIT_CODE.PARSE_OR_VALIDATION;
   } catch (error: unknown) {
-    console.error(
+    redactedLogger.error(
       `Error: reminders command failed (${error instanceof Error ? error.message : String(error)})`
     );
     return CLI_EXIT_CODE.IO_ERROR;

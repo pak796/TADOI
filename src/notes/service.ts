@@ -17,6 +17,7 @@ import {
 import { NoteGraphRuntimeIndex } from "./index";
 import { findUnlinkedMentions, type NoteMention } from "./mentions";
 import { DEFAULT_TOME_GUIDE_DOCS } from "./defaultDocs";
+import { watchMarkdownTree } from "./watch";
 import type {
   NoteDocument,
   NoteGraphIndex,
@@ -65,6 +66,15 @@ export type NotesServiceInstrumentation = {
   lastResolvedPaths: NotePath[];
 };
 
+export type NotesAutoRefreshOptions = {
+  onRefreshed?: () => void | Promise<void>;
+  onError?: (error: unknown) => void;
+  pollingFallbackIntervalMs?: number;
+  watchDebounceMs?: number;
+};
+
+const DEFAULT_NOTES_POLLING_FALLBACK_INTERVAL_MS = 15_000;
+
 export class NotesService {
   private readonly dataFilePath: string;
   private notesRoot: string;
@@ -72,6 +82,9 @@ export class NotesService {
   private runtime = new NoteGraphRuntimeIndex();
   private cacheByPath = new Map<NotePath, NoteCacheEntry>();
   private initialized = false;
+  private autoRefreshStop: (() => void) | null = null;
+  private autoRefreshInFlight = false;
+  private autoRefreshPending = false;
   private instrumentation: NotesServiceInstrumentation = {
     fullReindexCount: 0,
     refreshCount: 0,
@@ -97,6 +110,7 @@ export class NotesService {
 
   async initialize(): Promise<void> {
     if (!this.enabled) {
+      this.stopAutoRefresh();
       this.initialized = true;
       return;
     }
@@ -107,6 +121,7 @@ export class NotesService {
   async setEnabled(enabled: boolean): Promise<void> {
     this.enabled = enabled;
     if (!enabled) {
+      this.stopAutoRefresh();
       this.runtime.clear();
       this.cacheByPath.clear();
       this.initialized = true;
@@ -127,6 +142,7 @@ export class NotesService {
   }
 
   async setNotesRoot(rootPath: string | null | undefined): Promise<void> {
+    this.stopAutoRefresh();
     this.notesRoot = resolveNotesRootPath(this.dataFilePath, rootPath);
     if (!this.enabled) {
       this.initialized = true;
@@ -137,6 +153,7 @@ export class NotesService {
   }
 
   async migrateNotesRootCopyFirst(nextRootPath: string): Promise<void> {
+    this.stopAutoRefresh();
     const nextRoot = resolveNotesRootPath(this.dataFilePath, nextRootPath);
     await ensureNotesRoot(nextRoot);
     await copyNotesRoot({
@@ -214,6 +231,83 @@ export class NotesService {
       }
       this.upsertDocument(document);
     }
+  }
+
+  stopAutoRefresh(): void {
+    if (this.autoRefreshStop) {
+      this.autoRefreshStop();
+      this.autoRefreshStop = null;
+    }
+    this.autoRefreshInFlight = false;
+    this.autoRefreshPending = false;
+  }
+
+  private async runAutoRefreshCycle(
+    options: Pick<NotesAutoRefreshOptions, "onRefreshed" | "onError">
+  ): Promise<void> {
+    if (!this.enabled) return;
+    if (this.autoRefreshInFlight) {
+      this.autoRefreshPending = true;
+      return;
+    }
+
+    this.autoRefreshInFlight = true;
+    try {
+      do {
+        this.autoRefreshPending = false;
+        await this.refreshChanged();
+        await options.onRefreshed?.();
+      } while (this.autoRefreshPending);
+    } catch (error: unknown) {
+      options.onError?.(error);
+    } finally {
+      this.autoRefreshInFlight = false;
+    }
+  }
+
+  async startAutoRefresh(options: NotesAutoRefreshOptions = {}): Promise<void> {
+    this.stopAutoRefresh();
+    if (!this.enabled) return;
+
+    const pollingFallbackIntervalMs =
+      typeof options.pollingFallbackIntervalMs === "number" &&
+      Number.isFinite(options.pollingFallbackIntervalMs) &&
+      options.pollingFallbackIntervalMs > 0
+        ? Math.floor(options.pollingFallbackIntervalMs)
+        : DEFAULT_NOTES_POLLING_FALLBACK_INTERVAL_MS;
+
+    const triggerRefresh = () => {
+      void this.runAutoRefreshCycle({
+        onRefreshed: options.onRefreshed,
+        onError: options.onError
+      });
+    };
+
+    const watcher = await watchMarkdownTree({
+      rootPath: this.notesRoot,
+      onChange: triggerRefresh,
+      onError: options.onError,
+      debounceMs: options.watchDebounceMs
+    });
+
+    let pollTimer: ReturnType<typeof setInterval> | undefined;
+    if (!watcher.active) {
+      pollTimer = setInterval(triggerRefresh, pollingFallbackIntervalMs);
+      pollTimer.unref?.();
+    }
+
+    this.autoRefreshStop = () => {
+      watcher.close();
+      if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = undefined;
+      }
+    };
+
+    await this.runAutoRefreshCycle({
+      onRefreshed: options.onRefreshed,
+      onError: options.onError
+    });
   }
 
   listNotes(): NoteListItem[] {

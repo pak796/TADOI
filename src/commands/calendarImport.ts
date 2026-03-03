@@ -8,37 +8,38 @@ import {
 } from "../state/calendarImportService";
 import { TadoiLockBusyError } from "../state/lockfile";
 import { CLI_EXIT_CODE } from "../cli/exitCodes";
+import { redactedLogger } from "../logging/redactedLogger";
 
 function toErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
 export function printCalendarImportHelp(): void {
-  console.log(`Usage: ${CLI_NAME} calendar:import --in <file.ics> [options]`);
-  console.log("");
-  console.log("Options:");
-  console.log("  --in <path>                  Input .ics path (required)");
-  console.log("  --view <name>                Saved view display name");
-  console.log("  --range <next7|month|all>    Date range (default: next7)");
-  console.log("  --mode <merge|update|create> Import mode (default: merge)");
-  console.log("  --horizon-days <n>           Recurrence expansion horizon (default: 365)");
-  console.log("  --dry-run                    Parse and plan without writing");
-  console.log("  --tag <value>                Tag to add on newly created tasks only");
-  console.log("  --report <path>              Write JSON import report");
-  console.log("  -h, --help                   Show calendar import help");
-  console.log("");
-  console.log("Notes:");
-  console.log("  - One-way import action only (no live sync).");
-  console.log("  - Identity precedence: X-TADOI-TASK-ID, then TADOI UID, then external UID.");
-  console.log("  - merge mode is conservative (tags/links union, notes append).");
-  console.log("  - RRULE must be valid for recurring series; recurrence expansion is bounded.");
-  console.log("");
-  console.log("Examples:");
-  console.log(`  ${CLI_NAME} calendar:import --in ./tadoi.ics --dry-run`);
-  console.log(
+  redactedLogger.log(`Usage: ${CLI_NAME} calendar:import --in <file.ics> [options]`);
+  redactedLogger.log("");
+  redactedLogger.log("Options:");
+  redactedLogger.log("  --in <path>                  Input .ics path (required)");
+  redactedLogger.log("  --view <name>                Saved view display name");
+  redactedLogger.log("  --range <next7|month|all>    Date range (default: next7)");
+  redactedLogger.log("  --mode <merge|update|create> Import mode (default: merge)");
+  redactedLogger.log("  --horizon-days <n>           Recurrence expansion horizon (default: 365)");
+  redactedLogger.log("  --dry-run                    Parse and plan without writing");
+  redactedLogger.log("  --tag <value>                Tag to add on newly created tasks only");
+  redactedLogger.log("  --report <path>              Write JSON import report");
+  redactedLogger.log("  -h, --help                   Show calendar import help");
+  redactedLogger.log("");
+  redactedLogger.log("Notes:");
+  redactedLogger.log("  - One-way import action only (no live sync).");
+  redactedLogger.log("  - Identity precedence: X-TADOI-TASK-ID, then TADOI UID, then external UID.");
+  redactedLogger.log("  - merge mode is conservative (tags/links union, notes append).");
+  redactedLogger.log("  - RRULE must be valid for recurring series; recurrence expansion is bounded.");
+  redactedLogger.log("");
+  redactedLogger.log("Examples:");
+  redactedLogger.log(`  ${CLI_NAME} calendar:import --in ./tadoi.ics --dry-run`);
+  redactedLogger.log(
     `  ${CLI_NAME} calendar:import --in ./tadoi.ics --mode merge --range month --report ./import-report.json`
   );
-  console.log(
+  redactedLogger.log(
     `  ${CLI_NAME} calendar:import --in ./tadoi.ics --mode update --range all --horizon-days 365`
   );
 }
@@ -64,53 +65,53 @@ export async function runCalendarImportCommand(
     });
 
     const dryRunLabel = parsed.dryRun ? " (dry-run)" : "";
-    console.log(`[calendar:import] events parsed: ${result.summary.eventsParsed}${dryRunLabel}`);
-    console.log(
+    redactedLogger.log(`[calendar:import] events parsed: ${result.summary.eventsParsed}${dryRunLabel}`);
+    redactedLogger.log(
       `[calendar:import] matched by X-TADOI-TASK-ID: ${result.summary.matchedByTaskId}`
     );
-    console.log(`[calendar:import] matched by UID: ${result.summary.matchedByUid}`);
-    console.log(`[calendar:import] created: ${result.summary.created}`);
-    console.log(`[calendar:import] updated: ${result.summary.updated}`);
-    console.log(`[calendar:import] merged: ${result.summary.merged}`);
-    console.log(`[calendar:import] skipped: ${result.summary.skipped}`);
-    console.log(`[calendar:import] errors: ${result.summary.errors}`);
-    console.log(
+    redactedLogger.log(`[calendar:import] matched by UID: ${result.summary.matchedByUid}`);
+    redactedLogger.log(`[calendar:import] created: ${result.summary.created}`);
+    redactedLogger.log(`[calendar:import] updated: ${result.summary.updated}`);
+    redactedLogger.log(`[calendar:import] merged: ${result.summary.merged}`);
+    redactedLogger.log(`[calendar:import] skipped: ${result.summary.skipped}`);
+    redactedLogger.log(`[calendar:import] errors: ${result.summary.errors}`);
+    redactedLogger.log(
       `[calendar:import] recurring series imported: ${result.summary.recurringSeriesImported}`
     );
-    console.log(`[calendar:import] overrides created: ${result.summary.overridesCreated}`);
-    console.log(`[calendar:import] overrides updated: ${result.summary.overridesUpdated}`);
-    console.log(
+    redactedLogger.log(`[calendar:import] overrides created: ${result.summary.overridesCreated}`);
+    redactedLogger.log(`[calendar:import] overrides updated: ${result.summary.overridesUpdated}`);
+    redactedLogger.log(
       `[calendar:import] cancellations applied: ${result.summary.cancellationsApplied}`
     );
-    console.log(
+    redactedLogger.log(
       `[calendar:import] filters: range=${parsed.range} view=${parsed.viewName ?? "(none)"} mode=${parsed.mode} horizonDays=${String(parsed.horizonDays)}`
     );
     if (result.outputReportPath) {
-      console.log(`[calendar:import] report: ${result.outputReportPath}`);
+      redactedLogger.log(`[calendar:import] report: ${result.outputReportPath}`);
     }
     for (const warning of result.warnings ?? []) {
-      console.log(`[calendar:import] warning: ${warning}`);
+      redactedLogger.log(`[calendar:import] warning: ${warning}`);
     }
 
     return result.hasErrors ? CLI_EXIT_CODE.TARGET_RESOLUTION : CLI_EXIT_CODE.SUCCESS;
   } catch (error: unknown) {
     if (error instanceof TadoiLockBusyError) {
-      console.error("[calendar:import] failed: TADOI is running (lock present).");
+      redactedLogger.error("[calendar:import] failed: TADOI is running (lock present).");
       return CLI_EXIT_CODE.LOCKED;
     }
     if (error instanceof CalendarImportDomainError) {
-      console.error(`[calendar:import] ${toErrorMessage(error)}`);
+      redactedLogger.error(`[calendar:import] ${toErrorMessage(error)}`);
       return CLI_EXIT_CODE.TARGET_RESOLUTION;
     }
     if (error instanceof CalendarImportFilesystemError) {
-      console.error(`[calendar:import] failed: ${toErrorMessage(error)}`);
+      redactedLogger.error(`[calendar:import] failed: ${toErrorMessage(error)}`);
       return CLI_EXIT_CODE.IO_ERROR;
     }
     if (error instanceof CalendarImportUsageError) {
-      console.error(`[calendar:import] ${toErrorMessage(error)}`);
+      redactedLogger.error(`[calendar:import] ${toErrorMessage(error)}`);
       return CLI_EXIT_CODE.PARSE_OR_VALIDATION;
     }
-    console.error(`[calendar:import] failed: ${toErrorMessage(error)}`);
+    redactedLogger.error(`[calendar:import] failed: ${toErrorMessage(error)}`);
     return CLI_EXIT_CODE.IO_ERROR;
   }
 }

@@ -575,6 +575,65 @@ describe("redactStateForExport", () => {
     expect(redacted.settings?.security?.nonHttpLinkPolicy).toBe("prompt");
   });
 
+  it("strips export metadata aggressively in strict-v2 mode", () => {
+    const payload: PortableExportPayload = {
+      schemaVersion: 4,
+      tasks: [
+        {
+          id: "a",
+          title: "secret",
+          status: "open",
+          createdAt: 1,
+          updatedAt: 1,
+          dueAt: 1700000000000,
+          notes: "private",
+          tags: ["work"],
+          links: [{ id: "link-1", target: "https://example.com", source: "manual" }]
+        }
+      ],
+      tagIndex: {
+        work: { tagName: "work", usageCount: 1, lastUsedAt: 1 }
+      },
+      tagAliases: {
+        wrk: "work"
+      },
+      savedViews: [
+        {
+          id: "view-1",
+          name: "Work",
+          createdAt: 1,
+          updatedAt: 1,
+          filters: { status: "open", due: "any", tag: "work" }
+        }
+      ],
+      engagement: {
+        ...createDefaultEngagementState(),
+        completionLog: [{ taskId: "a", at: 1, tags: ["work"] }]
+      },
+      settings: {
+        themeId: "default",
+        logoMode: "default",
+        flashMode: "slow",
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: {
+          nonHttpLinkPolicy: "block"
+        }
+      }
+    };
+
+    const redacted = redactStateForExport(payload, "strict-v2");
+    expect(redacted.tasks[0]?.title).toBe("");
+    expect(redacted.tasks[0]?.notes).toBe("");
+    expect(redacted.tasks[0]?.tags).toEqual([]);
+    expect(redacted.tasks[0]?.links).toBeUndefined();
+    expect(redacted.tasks[0]?.dueAt).toBeUndefined();
+    expect(redacted.tagIndex).toEqual({});
+    expect(redacted.tagAliases).toEqual({});
+    expect(redacted.savedViews).toEqual([]);
+    expect(redacted.engagement?.completionLog).toEqual([]);
+    expect(redacted.settings).toBeUndefined();
+  });
+
   it("treats recurrence field changes as task updates", () => {
     const local = [
       {

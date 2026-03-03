@@ -16,11 +16,23 @@ The format is based on Keep a Changelog.
   - personal owner enforcement,
   - repo privacy checks,
   - snapshot list/download/push operations.
+- Notes runtime file watching with polling fallback (`src/notes/watch.ts`) to replace
+  fixed-interval full-tree refresh.
+- Snapshot payload encryption/decryption support for GitHub cloud backups using
+  `TADOI_GITHUB_SNAPSHOT_PASSPHRASE`.
+- Redacted logger module (`src/logging/redactedLogger.ts`) plus modal-flow integration
+  coverage for encrypted push + restore.
 
 ### Changed
 - Settings schema/normalization now includes non-secret `githubBackup` config with safe defaults:
   - `enabled`, `ownerRepo`, `branch`, `deviceId`, `pathPrefix`, `autoPushPolicy`, `lastPushed`.
 - Backup Center calendar submenu now includes the GitHub cloud backup entry.
+- Backup Center GitHub status now shows snapshot encryption state (`on`/`off`).
+- CLI command surfaces now emit through the redacted logger.
+
+### Fixed
+- GitHub CLI adapter process spawn now forwards runtime environment (`PATH`) and
+  supports Bun stdin sink semantics for `gh api --input -`.
 
 ## [0.3.9] - 2026-02-27
 ### Added
