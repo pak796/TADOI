@@ -1,6 +1,6 @@
 # TADOI™ Documentation Index
 
-Updated: 2026-02-27
+Updated: 2026-03-03
 Active runtime baseline: `v0.3.9`
 Active package baseline: `0.3.9`
 
@@ -13,7 +13,7 @@ Active package baseline: `0.3.9`
 - `docs/USAGE.md`: core flows, keybindings, TITS in-app + CLI command contract.
 - `docs/CLI_COMPLETIONS.md`: optional bash/zsh/fish completion install guide.
 - Install guide (all platforms): binary/source install and troubleshooting.
-- `docs/TADOI_QA_Guide_v0.3.9.md`: full manual QA matrix (`QA-001`..`QA-072`).
+- `docs/TADOI_QA_Guide_v0.3.9.md`: full manual QA matrix (`QA-001`..`QA-085`).
 - `docs/QA/SMOKE_TEST_CHECKLIST.md`: daily smoke list with TITS cases.
 - `docs/QA/BLACK_BOX_TEST_MATRIX.md`: black-box scenarios with TITS coverage.
 - `docs/QA/REGRESSION_AREAS.md`: high-risk invariants, including TITS routing + CLI lock safety.
@@ -45,7 +45,7 @@ Active package baseline: `0.3.9`
 - `docs/notion/NOTION_SYNC_PAYLOAD.json`: deterministic Notion payload artifact.
 - `docs/notion/NOTION_SYNC_RUNBOOK.md`: deterministic sync runbook.
 - `docs/ops/TADOI_DOC_AUDIT_POST_REMEDIATION_2026-02-27.md`: latest post-remediation docs audit record.
-- `docs/ops/NOTION_DEPLOY_PACKAGE_2026-02-27.md`: deployment-ready Notion package manifest for deferred apply.
+- `docs/ops/NOTION_DEPLOY_PACKAGE_2026-03-03.md`: deployment-ready Notion package manifest for deferred apply.
 - `docs/ARCHIVAL_PATH_POLICY.md`: archival path normalization policy and scope.
 - `docs/HISTORICAL_DOCS_INDEX.md`: single index for deprecated/historical docs.
 - `docs/ops/branding.md`: branding + external GitHub/Notion guidance.

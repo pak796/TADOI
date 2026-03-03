@@ -1,6 +1,6 @@
 # TADOI™ Task List (v0.3.9)
 
-Updated: 2026-02-27
+Updated: 2026-03-03
 Runtime baseline: `v0.3.9`
 Package baseline: `0.3.9`
 
@@ -64,6 +64,7 @@ Package baseline: `0.3.9`
 - `TA-060` Persisted engagement/concurrency migrations landed with schema bumps `4 -> 5` (engagement) and `5 -> 6` (`stateRevision` hardening). (`Complete`)
 - `TA-080` Schema bump `6 -> 7` landed with `workflowStage` migration backfill (`open -> todo`, `done|archived -> done`) and strict validation. (`Complete`)
 - `TA-081` Task/editor/filter schema expanded with analytics dimensions (`assignee`, `project`, `workflowStage`) and dashboard analytics fields (`analyticsWindow`, `dueDayOffset`). (`Complete`)
+- `TA-082` Schema bump `7 -> 8` landed with checklist-array normalization backfill and strict persisted-state parity. (`Complete`)
 
 ### A9) TITS Command Layer
 - `TA-061` TITS M1 command bar overlay landed in LIST mode with history + routing suppression. (`Complete`)
@@ -72,7 +73,7 @@ Package baseline: `0.3.9`
 - `TA-064` Completion pathway recurrence spawn parity preserved across TITS command execution and list-mode completion flows. (`Complete`)
 
 ### A10) Theme + CRT FX Surface
-- `TA-065` Theme registry expanded with `crtGreen` and `crtAmber`; rotating theme order includes both CRT palettes. (`Complete`)
+- `TA-065` Theme registry expanded with `crtGreen`, `crtAmber`, `kitty`, `corpo`, and `strikefitron`; rotating theme order includes CRT palettes. (`Complete`)
 - `TA-066` Help settings navigation includes `CRT FX Lite` and `CRT FX Profile` controls alongside existing settings rows. (`Complete`)
 - `TA-067` CRT FX Lite panel tint/flicker pipeline landed for left rail, task list, and details panel surfaces with profile-driven cadence. (`Complete`)
 

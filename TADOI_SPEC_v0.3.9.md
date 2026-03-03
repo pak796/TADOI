@@ -1,9 +1,9 @@
 # TADOI™ Product Spec (v0.3.9)
 
-Updated: 2026-02-27
+Updated: 2026-03-03
 Runtime baseline: `v0.3.9`
 Package baseline: `0.3.9`
-Persistence schema baseline: `7`
+Persistence schema baseline: `8`
 
 Stability taxonomy:
 - `Canonical`: compatibility contract expected to remain stable across patch/minor updates.
@@ -195,7 +195,7 @@ Import:
   - `default`, `retro`, `highContrast`, `neonHacker`, `lightSlate`, `paperWhite`, `midnightBlack`
   - `jester`, `sonora`, `tigers`, `tech`, `deuteranopia`, `protanopia`, `tritanopia`
   - `blueAngels`, `southwest`, `rams`, `trooper`, `twilight`, `msdos`, `niners`, `mcrn`
-  - `zeke`, `gundam`, `crtGreen`, `crtAmber`, `custom1`, `rotating`
+  - `zeke`, `gundam`, `crtGreen`, `crtAmber`, `kitty`, `corpo`, `strikefitron`, `custom1`, `rotating`
 - Theme rotation and rotating-mode order include both CRT themes (`crtGreen`, `crtAmber`).
 - Help root is read-only for direct settings hotkeys; settings changes are applied through the Help `Settings & Themes` page flow.
 - Settings IA includes sectioned pages:
@@ -331,8 +331,9 @@ Domain core (`src/domain/models.ts`):
 Persistence expectations:
 - local JSON storage
 - schema migrations applied at load
-- current schema version `7`
+- current schema version `8`
 - migration `6 -> 7` backfills `workflowStage` (`open -> todo`, `done|archived -> done`)
+- migration `7 -> 8` normalizes task checklist arrays for strict validation parity
 - corrupt payload recovery creates `.corrupt.<timestamp>` backup file
 - engagement state is persisted and migrated with the rest of app state
 

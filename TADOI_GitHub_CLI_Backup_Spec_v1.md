@@ -1,7 +1,7 @@
 # TADOI Optional Feature Spec — GitHub CLI Cloud Backup (Personal Repo, Push + Restore)
 **Spec ID:** TADOI-GH-BACKUP-v1  
-**Status:** Draft (implementation-ready)  
-**Last updated:** 2026-02-27  
+**Status:** Implemented baseline (v0.3.9)  
+**Last updated:** 2026-03-03  
 **Scope:** Optional feature surfaced in **Backup Center**. Uses **GitHub CLI (`gh`)** auth (user-managed) to push restore-grade backups to a **personal private GitHub repo**.  
 **Out of scope (v1):** org repos, realtime multi-device sync, conflict-free continuous sync, ICS as canonical restore.
 
@@ -179,8 +179,8 @@ Flow:
   "ownerRepo": "user/tadoi-backups",
   "branch": "main",
   "pathPrefix": "tadoi/devices/dev_ABC123",
-  "appVersion": "0.2.x",
-  "schemaVersion": "stateSchema:0.2.x",
+  "appVersion": "0.3.9",
+  "schemaVersion": 8,
   "stateRevision": 1234,
   "hashes": {
     "stateSha256": "<sha256>",
@@ -384,7 +384,7 @@ gh api repos/<user>/tadoi-backups/contents/tadoi/devices/<deviceId>/latest
   - Extend settings normalization & persistence for `githubBackup` block.
 
 - **Docs**
-  - `backup-center.md` update: document GitHub CLI backup option and flows.
+  - `docs/backup-center.md` update: document GitHub CLI backup option and flows.
   - Fix import exit code drift note separately (not required for GH feature, but recommended).
 
 ---

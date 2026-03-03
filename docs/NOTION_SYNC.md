@@ -1,16 +1,16 @@
 # TADOI™ Notion Sync Checklist
 
-Date: 2026-02-27
+Date: 2026-03-03
 Target workspace area: `Patrick's Projects > TADOI`
 Primary documents data source: `collection://3035aa1e-f93f-80a3-ba35-000b3b596866`
-Sync status: `Payload refreshed for deferred apply (offline)`
+Sync status: `Payload refreshed after full docs pass for deferred apply`
 
 ## 1) Sync Policy
 - Keep Notion guide content aligned to runtime `v0.3.9` and package `0.3.9`.
 - Keep first prominent mention per page as `TADOI™`.
 - Use repository docs as canonical source for technical behavior contracts.
 - Keep TITS coverage aligned to canonical `*TITS*.md` source set.
-- Notes/audit token staged for this pass: `[AUDIT 2026-02-27] Full docs sweep + Notion payload refresh staged for deferred apply`.
+- Notes/audit token staged for this pass: `[AUDIT 2026-03-03] Full docs pass + implementation/spec drift reconciliation staged for deferred apply`.
 
 ## 2) Repo -> Notion Page Mapping
 
@@ -40,8 +40,8 @@ Sync status: `Payload refreshed for deferred apply (offline)`
 - `docs/notion/NOTION_SYNC_PAYLOAD.json`
 - `docs/notion/NOTION_SYNC_RUNBOOK.md`
 - `docs/notion/NOTION_SYNC_INSTRUCTIONS.md`
-- `docs/notion/NOTION_SYNC_VERIFY_2026-02-27.json`
-- `docs/ops/NOTION_DEPLOY_PACKAGE_2026-02-27.md`
+- `docs/notion/NOTION_SYNC_VERIFY_2026-03-03.json`
+- `docs/ops/NOTION_DEPLOY_PACKAGE_2026-03-03.md`
 
 ## 5) Execution Note
 - This pass is payload/runbook only (no direct Notion write).

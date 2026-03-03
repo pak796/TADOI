@@ -1,7 +1,7 @@
 # TADOI™ Spec Sheet — Calendar Export (ICS) (One‑Way)
 
-**Repo version context:** `v0.3.4` (runtime baseline)  
-**Updated:** 2026-02-12  
+**Repo version context:** `v0.3.9` (runtime baseline)  
+**Updated:** 2026-03-03  
 **Feature status:** Implemented (user-facing CLI: `calendar:export`)
 
 ---
@@ -29,7 +29,7 @@ This spec is aligned to TADOI’s existing baseline contracts for recurrence (RR
 - Add in-app Help section entry: **“Calendar export (ICS)”**.
 
 ### Non‑Goals
-- No user-facing `calendar:import` CLI command yet (import foundation exists at service layer).
+- No changes to the existing `calendar:import` flow in this spec; this document remains export-only.
 - No bidirectional sync, CalDAV, Google/Microsoft APIs, OAuth.
 - No live refresh or background export.
 - No alarms/VALARM in v1.
@@ -264,11 +264,10 @@ tadoi calendar:export --out ./tadoi.ics --range all
 
 ## 16) Future Enhancements (Out of Scope for v1)
 
-- `--include-done` (export done tasks in-range).
-- `--duration <mins>` or settings-driven duration.
+- Optional done-task export mode (currently open tasks only).
+- Configurable timed-event duration (currently fixed default duration).
 - VALARM support.
 - True exception overrides using `RECURRENCE-ID` + `SEQUENCE`.
-- In-app guided export entrypoint (Backup Center-style).
 
 ---
 

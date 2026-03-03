@@ -1,6 +1,6 @@
 # TADOI™ Engagement Notifications (NUX Stickiness) — Spec v0.1
 
-Updated: 2026-03-01  
+Updated: 2026-03-03  
 Runtime baseline: `v0.3.9`  
 Package baseline: `0.3.9`  
 Persistence schema baseline: `8`
@@ -13,10 +13,10 @@ Status: Implemented baseline + onboarding/recurrence extensions (v0.3.9)
 
 Add **non-interactive, bottom-bar “engagement toasts”** triggered by task-completion milestones and lightweight streak logic:
 
-- First-ever completion (“★ First task completed.”)
-- Daily momentum (“🔥 3 tasks completed today.”)
-- Weekly tag momentum (“🏷 5 #work tasks completed this week.”)
-- Streak milestones (“✅ 3-day streak …”)
+- First-ever completion (`First task completed.`)
+- Daily momentum (`3 tasks completed today.`)
+- Weekly tag momentum (`5 #work tasks completed this week.`)
+- Streak milestones (`3-day streak completed tasks 3 days in a row.`)
 - Recurrence milestones:
   - first recurring task created
   - first recurring repeat occurrence completed
@@ -76,6 +76,10 @@ If multiple events trigger on a single completion, show the highest priority fir
 3. `TAG_5_LAST_7_DAYS`
 4. `DONE_3_TODAY`
 
+Direct-trigger milestones currently use:
+- `priority: 2` for `FIRST_RECURRING_REPEAT_DONE` and `FIRST_CHECKLIST_FULLY_COMPLETED`
+- `priority: 3` for `FIRST_RECURRING_TASK_CREATED`, `FIRST_TOME_CREATED`, `FIRST_CHECKLIST_CREATED`
+
 **Queue:**
 - `maxQueued = 3`
 - When exceeding, drop lowest priority first (FIFO within same priority).
@@ -85,10 +89,10 @@ If multiple events trigger on a single completion, show the highest priority fir
 - Daily/weekly momentum: `6_000–8_000ms`
 
 ### 2.5 Copy (examples)
-- `★ First task completed.`
-- `🔥 3 tasks completed today.`
-- `🏷 5 #work tasks completed this week.`
-- `✅ 3-day streak — completed tasks 3 days in a row.`
+- `First task completed.`
+- `3 tasks completed today.`
+- `5 #work tasks completed this week.`
+- `3-day streak completed tasks 3 days in a row.`
 
 ---
 
@@ -166,21 +170,14 @@ type UIState = {
 ### 5.1 First-time Milestones
 **M1: FIRST_TASK_DONE**
 - Condition: first completion event ever.
-- Toast: `★ First task completed.`
+- Toast: `First task completed.`
 - Duration: 12s
 - Persist unlock: `engagement.achievements["FIRST_TASK_DONE"]`
-
-*(Optional, if you want slightly richer early NUX without interaction)*
-**M2: FIRST_TAGGED_TASK_DONE**
-- Condition: first completion where `tags.length > 0`
-- Toast: `🏷 First tagged task completed (#tag).`
-- Duration: 10s
-- Persist unlock.
 
 ### 5.2 Daily Momentum
 **M3: DONE_3_TODAY**
 - Condition: 3 completion events in the same local day.
-- Toast: `🔥 3 tasks completed today.`
+- Toast: `3 tasks completed today.`
 - Duration: 8s
 - Cooldown: once per local day.
 
@@ -188,7 +185,7 @@ type UIState = {
 **M4: TAG_5_LAST_7_DAYS**
 - Condition: within the last 7 days, at least 5 completion events share the same tag.
 - Tag selection rule: the tag that hits threshold **on this completion** (deterministic).
-- Toast: `🏷 5 #<tag> tasks completed this week.`
+- Toast: `5 #<tag> tasks completed this week.`
 - Duration: 8s
 - Cooldown: once per tag per rolling 7 days (recommended), stored as:
   - `engagement.achievements["TAG_5_LAST_7_DAYS:<tag>"]` with `unlockedAt`
@@ -196,7 +193,7 @@ type UIState = {
 ### 5.4 Streaks
 **M5: STREAK_3_DAYS**
 - Condition: `streak.currentDays` reaches 3.
-- Toast: `✅ 3-day streak — completed tasks 3 days in a row.`
+- Toast: `3-day streak completed tasks 3 days in a row.`
 - Duration: 10s
 - Persist unlock: `engagement.achievements["STREAK_3_DAYS"]`
 
@@ -205,15 +202,20 @@ These milestones are dispatched through `triggerEngagementMilestone` at runtime 
 
 - `FIRST_RECURRING_TASK_CREATED`
   - Trigger: recurrence transitions from undefined to defined.
+  - Toast: `Created your first recurring task.` (`priority: 3`, `durationMs: 10_000`)
   - Dedupe: unlock once per workspace state.
 - `FIRST_RECURRING_REPEAT_DONE`
   - Trigger: first completed recurring repeat occurrence.
+  - Toast: `Completed your first recurring repeat occurrence.` (`priority: 2`, `durationMs: 10_000`)
 - `FIRST_TOME_CREATED` (in-app only in this pass)
   - Trigger: first successful in-app note creation.
+  - Toast: `Created your first TOME note.` (`priority: 3`, `durationMs: 10_000`)
 - `FIRST_CHECKLIST_CREATED`
   - Trigger: checklist transitions from empty to non-empty.
+  - Toast: `Created your first checklist.` (`priority: 3`, `durationMs: 10_000`)
 - `FIRST_CHECKLIST_FULLY_COMPLETED`
   - Trigger: checklist transitions from not-all-done to all-done (`total > 0`).
+  - Toast: `Completed your first checklist.` (`priority: 2`, `durationMs: 10_000`)
 
 ---
 
@@ -245,8 +247,8 @@ For the completion event at time `now`:
 
 > Assumes your state has a domain reducer (tasks/filters/engagement) plus UI reducer (modals/toasts). Keep this consistent with current “modal-first” routing/overlay behavior.
 
-### 7.1 New Action Types (domain)
-Add to `Action` union (store reducer):
+### 7.1 Action Types (domain, current)
+Implemented in `src/state/store.ts`:
 
 ```ts
 // When a task transitions open → done
@@ -262,9 +264,23 @@ type EvaluateEngagementAction = {
   type: "evaluateEngagement";
   at: number;
 };
+
+// Direct milestone trigger path (recurrence + onboarding milestones)
+type TriggerEngagementMilestoneAction = {
+  type: "triggerEngagementMilestone";
+  achievementKey: string;
+  achievementId: string;
+  at: number;
+  meta?: Record<string, string | number>;
+  toast: {
+    message: string;
+    priority: 1 | 2 | 3 | 4;
+    durationMs: number;
+  };
+};
 ```
 
-### 7.2 New Action Types (UI)
+### 7.2 Action Types (toast queue/runtime, current)
 ```ts
 type PushEngagementToastAction = {
   type: "pushEngagementToast";
@@ -274,6 +290,7 @@ type PushEngagementToastAction = {
 type TickEngagementToastAction = {
   type: "tickEngagementToast";
   now: number;
+  overlayBlocked: boolean;
 };
 
 type PopEngagementToastAction = {
@@ -286,77 +303,61 @@ type PopEngagementToastAction = {
   - append to `engagement.completionLog` (then enforce retention)
   - update streak
 - `evaluateEngagement`:
-  - compute triggered milestone(s) (priority + cooldown checks)
+  - compute evaluated milestone(s) (first-task, streak, tag momentum, daily momentum)
   - mark unlocks in `engagement.achievements`
-  - emit `pushEngagementToast` for highest priority (and optionally queue others up to cap)
+  - enqueue toasts with cap (`ENGAGEMENT_TOAST_QUEUE_MAX = 3`)
+- `triggerEngagementMilestone`:
+  - dedupe by `achievementKey`
+  - unlock once and enqueue its toast
 - `tickEngagementToast`:
-  - if no active toast and queue non-empty and overlays clear → activate next toast
+  - if `overlayBlocked` and active toast exists, suppress active back into queue
+  - if no active toast and queue non-empty and overlays clear, activate next toast
   - if active toast expired → clear and promote next
 
 ---
 
-## 8) File-by-file Change List (implementation plan)
-
-> Paths below follow current conventions referenced in v0.3.5 docs (store/persistence/models/routing). Adjust filenames only if your repo has renamed modules.
+## 8) Implementation Map (current code, shipped)
 
 ### A) Domain + Persistence
 1. `src/domain/models.ts`
-   - Add `EngagementState` types (or dedicated `src/domain/engagement.ts` if preferred).
-   - Optional: add `completedAt?: number` to `Task` (future-proofing; not required if `completionLog` is source of truth).
+   - Defines `CompletionEvent`, `AchievementUnlock`, `EngagementState`, and `EngagementToast`.
+2. `src/domain/engagement.ts`
+   - Implements streak/day-key logic, retention, milestone evaluation, queue cap/drop rules, and onboarding milestone constants.
+3. `src/state/store.ts`
+   - Owns engagement actions/reducer paths and queue/runtime state (`engagementToastQueue`, `engagementToastActive`).
+4. `src/state/persistence.ts`, `src/state/validation.ts`, `src/state/migrations.ts`
+   - Persist/load/validate/migrate engagement state under current schema baseline `8` (engagement introduced in `4 -> 5` migration).
 
-2. `src/state/store.ts`
-   - Extend `initialState` to include `engagement: EngagementState`.
-   - Extend `Action` union with new engagement actions.
-   - Update task completion path (toggle done / complete occurrence) to dispatch:
-     - `recordCompletion` (only when open → done)
-     - `evaluateEngagement`
+### B) Runtime Trigger Paths
+5. `src/app/App.tsx`
+   - Dispatches `recordCompletion` + `evaluateEngagement` only on `open -> done` transitions.
+   - Triggers direct milestones:
+     - `FIRST_RECURRING_TASK_CREATED`
+     - `FIRST_RECURRING_REPEAT_DONE`
+     - `FIRST_TOME_CREATED`
+     - `FIRST_CHECKLIST_CREATED`
+     - `FIRST_CHECKLIST_FULLY_COMPLETED`
+   - Runs `tickEngagementToast` on interval with overlay suppression state.
+6. `src/app/editorFlow.ts`
+   - Fires first recurring/checklist milestones on add/edit paths when threshold transitions occur.
 
-3. `src/state/persistence.ts`
-   - Include `engagement` in load/save payloads.
-   - Ensure missing `engagement` defaults safely.
-
-4. `src/state/validation.ts` (or equivalent schema validator)
-   - Extend persisted-state validator to accept `engagement`.
-   - Ensure older files without `engagement` are accepted.
-
-5. `src/state/migrations.ts` (or equivalent)
-   - Bump schema `4 → 5`
-   - Migration: add default `engagement` object.
-
-### B) UI Layer
-6. `src/state/state.ts` (or equivalent UI state/reducer)
-   - Add `engagementToastQueue` and `engagementToastActive`.
-   - Add reducer handlers for push/tick/pop.
-
-7. `src/components/BottomBar.tsx` (or whatever renders the bottom rotating/info bar)
-   - Add a rendering layer for engagement toast messages.
-   - Precedence:
-     - show critical banners (save failure) first (if you have them)
-     - show engagement toast next
-     - otherwise show existing rotating info bar content
-
-8. `src/app/App.tsx` (or `src/tui/runTui.tsx`)
-   - Add a timer tick (`setInterval` or animation frame) to dispatch `tickEngagementToast`.
-   - Ensure tick does not create high CPU (250–500ms is sufficient).
-
-### C) Routing / Overlays (no key changes)
-9. `src/state/keyRouter.ts` (if present)
-   - **No new key handlers** (v0.1 is non-interactive).
-   - Ensure any existing “banner” rendering does not capture keys.
-
-10. `src/components/modals/*`
-   - No changes for v0.1; but ensure overlay-detection API exists for “toast suppressed while modal visible”.
+### C) Render Surface
+7. `src/app/App.tsx`
+   - Renders toast as absolute bottom overlay panel from `state.engagementToastActive`.
+   - Hides active toast while command bar is active or blocking overlays are open.
 
 ---
 
 ## 9) Overlay / Mode Compatibility Rules
 
 Engagement toast rendering is suppressed when any of these are active:
-- blocking confirm modal(s)
-- Help overlay
-- Backup Center
-- Overdue notification modal queue (Tier 1/2 system)
-- Editor/Add/Edit flows **may** still show toasts (recommended) because they do not interfere, but if visual clutter is a concern, suppress there too.
+- `Mode.MODAL_CONFIRM`
+- `Mode.HELP`
+- `Mode.BACKUP_CENTER`
+- `Mode.TAG_FILTER`
+
+Additional render suppression:
+- TITS command bar active (`commandActive === true`) hides the visual toast surface.
 
 **Rule of thumb:** if the screen is already “overlay-heavy,” queue and show later.
 
@@ -365,8 +366,8 @@ Engagement toast rendering is suppressed when any of these are active:
 ## 10) QA Checklist (manual, matching current patterns)
 
 ### A) Persistence / Migration
-- [ ] Start from a **schema v4** data file with tasks; launch app.
-  - Expect: app loads and initializes `engagement` defaults.
+- [ ] Start from a legacy fixture (for example schema `v4`/`v6`) and launch app on current runtime.
+  - Expect: migration reaches schema `8` and initializes/normalizes `engagement` safely.
 - [ ] Complete a task; quit; relaunch.
   - Expect: `FIRST_TASK_DONE` does **not** re-trigger if unlocked.
 

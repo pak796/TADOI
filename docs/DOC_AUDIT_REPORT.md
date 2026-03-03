@@ -1,75 +1,63 @@
 # TADOI Documentation Audit Report
 
-Date: 2026-02-27
-Scope: full documentation alignment sweep (repo docs + spec sheets + Notion staging package)
-Baseline: runtime `v0.3.8`, package `0.3.8`, persistence schema `7`
+Date: 2026-03-03
+Scope: full documentation alignment sweep (implementation vs specs/tasks/guides + Notion staging package)
+Baseline: runtime `v0.3.9`, package `0.3.9`, persistence schema `8`
 
 ## 1) Summary
 
-This pass reconciled active documentation with current implementation and staged a fresh Notion deployment package (local payload only, no remote apply).
+This pass reconciled active documentation against current implementation contracts and refreshed the deferred Notion sync package.
 
 Primary outcomes:
-- Updated active docs to current schema baseline (`7`) and current contract evidence.
-- Normalized spec/task drift by adding `DTF-008` and `DTF-009` to the active v0.3.8 spec contract table.
-- Refreshed governance docs (`DOC_INDEX`, audit inventory/ownership maps, release run report, Notion sync checklists/runbooks).
-- Regenerated `docs/notion/NOTION_SYNC_PAYLOAD.json` markdown from mapped source files and produced a new verification artifact (`docs/notion/NOTION_SYNC_VERIFY_2026-02-27.json`).
+- Corrected active schema drift (`7 -> 8`) across spec/feature/readme/governance docs.
+- Updated engagement notifications spec to match shipped reducer/actions, milestone copy, trigger paths, and overlay suppression rules.
+- Updated install/distribution spec to match current multi-target build/installer pipeline (`macos`, `windows`, `linux`) and manifest outputs.
+- Updated calendar export spec to current `v0.3.9` context and removed non-implemented CLI flag claims from future scope wording.
+- Refreshed Notion staging docs/package references to 2026-03-03 artifacts and audit token.
 
-## 2) Canonical TITS Source Set (filename rule `*TITS*.md`)
+## 2) Canonical Drift Corrections
 
-Detected and reconciled sources:
-- `docs/specs/tits-m1-commandbar.md`
-- `docs/specs/tits-m2-cli.md`
-- `docs/specs/tits-m3-recurrence.md`
-- `tadoi_TITS_milestone1_spec.md`
-- `tits-m2-cli-revised.md`
-- `tits-m3-recurrence.md`
+- Version/schema drift:
+  - `README.md`, `TADOI_SPEC_v0.3.9.md`, `docs/TADOI_Feature_List_v0.3.9.md`, Notion sync pack/deploy docs now align to schema `8`.
+- Engagement runtime drift:
+  - Replaced legacy implementation-plan paths (for example `src/state/state.ts`, `src/components/BottomBar.tsx`) with current code map:
+    - `src/domain/engagement.ts`
+    - `src/state/store.ts`
+    - `src/app/App.tsx`
+    - `src/app/editorFlow.ts`
+- Packaging drift:
+  - `TADOI_Installable_Distribution_Spec.md` now reflects shipped `build-binary.ts` behavior, active release targets, and current artifact names.
+- Calendar export drift:
+  - `TADOI_Spec_Calendar_Export_ICS_v0.2.md` updated to runtime `v0.3.9` context and export-only scope wording.
 
-Code evidence references used in this sweep:
-- `src/app/App.tsx`
-- `src/app/keyRouter.ts`
-- `src/commands/parse.ts`
-- `src/commands/execute.ts`
-- `src/commands/help.ts`
-- `src/cli/main.ts`
-- `src/domain/savedViews.ts`
-- `src/domain/query.ts`
-- `src/state/migrations.ts`
+## 3) Notion Staging Outputs
 
-## 3) High-Value Drift Corrected
+No remote Notion write was executed in this pass.
 
-- Baseline/version drift:
-  - `README.md`, `TADOI_SPEC_v0.3.8.md`, `TADOI_TASKS_v0.3.8.md`, and release governance docs now align to current v0.3.8 implementation state.
-- Contract drift:
-  - Active spec table now includes `DTF-008`/`DTF-009` and points to current named tests.
-- Schema drift:
-  - Active docs now reflect persistence schema `7` (including `6 -> 7` `workflowStage` backfill context).
-- Notion staging drift:
-  - Sync checklists/runbooks and sync-pack docs now point to current audit token/date and verification artifact.
-
-## 4) Notion Sync Scope and Outputs
-
-No Notion write/apply was executed in this pass.
-
-Generated/staged artifacts:
+Staged artifacts:
 - `docs/notion/NOTION_SYNC_PAYLOAD.json`
-- `docs/notion/NOTION_SYNC_VERIFY_2026-02-27.json`
-- `docs/ops/notion_v0.3.8_sync_pack.md`
+- `docs/notion/NOTION_SYNC_VERIFY_2026-03-03.json`
 - `docs/NOTION_SYNC.md`
 - `docs/notion/NOTION_SYNC_RUNBOOK.md`
 - `docs/notion/NOTION_SYNC_INSTRUCTIONS.md`
+- `docs/ops/notion_v0.3.9_sync_pack.md`
+- `docs/ops/NOTION_DEPLOY_PACKAGE_2026-03-03.md`
 
-## 5) Validation Commands in This Pass
+Audit token for this pass:
+- `[AUDIT 2026-03-03] Full docs pass + implementation/spec drift reconciliation staged for deferred apply`
 
-- `bun run docs:lint` -> PASS
-- `bun run contract:dtf:check` -> PASS
-- `bun run notion:sync:validate` -> PASS
-- `bun run keybind:canonical:check` -> BLOCKED in this host environment (`python3` unavailable until Xcode license acceptance via `xcodebuild -license`)
+## 4) Validation Results
 
-## 6) Known Boundaries
+- Scope enforcement: `python3 /Users/patrickkazar/.codex/skills/safe-scope-enforcer/scripts/scope_enforcer.py --repo-root . --scope-profile custom --allow-glob 'docs/**' --allow-glob 'README.md' --allow-glob 'TADOI_*.md' --allow-glob 'tadoi_*.md' --allow-glob 'tits-*.md' --allow-glob 'DASHBOARD_SPEC_MVP.md'` -> PASS (`20 changed file(s)` in-scope)
+- Docs lint: `bun run docs:lint` -> PASS (`profile=docs PASS=6 FAIL=0 BLOCKED=0`; markdown links/anchors resolved)
+- Notion payload validation: `bun run notion:sync:validate` -> PASS (`items=14`)
+- Notion dry run: `bun run notion:sync:full:dry` -> BLOCKED (`Missing Notion token. Set NOTION_TOKEN and retry.`)
+- Drift scan: `python3 /Users/patrickkazar/.codex/skills/spec-task-drift-guard/scripts/doc_drift_scan.py ... --code-glob 'packaging/**/*' --code-glob 'docs/**/*' ...` -> PASS (`1738 findings; 1695 verified; 43 missing-evidence`, with remaining high/medium misses only in historical audit docs)
+
+## 5) Known Boundaries
 
 - Historical versioned docs remain intentionally retained for traceability and may describe prior baselines.
-- This pass is documentation-only; no runtime/source behavior was changed.
-- Keybind audit regeneration is pending host prerequisite (Xcode license acceptance).
+- This pass is documentation/sync-artifact only; no runtime source behavior changes were made.
 
 ## Trademark Notice
 TADOI™ is a trademark of <OWNER>. Other names may be trademarks of their respective owners.

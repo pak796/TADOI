@@ -1,6 +1,6 @@
 # TADOI™ Notion Sync Pack (v0.3.9)
 
-Date: `2026-02-27`
+Date: `2026-03-03`
 
 ## Status
 This pack stages Notion updates from repository markdown and is intended for deferred apply.
@@ -14,7 +14,7 @@ Parent project: `Patrick's Projects > TADOI`
 - Baseline enforced by this pack:
   - runtime `v0.3.9`
   - package `0.3.9`
-  - persistence schema 7
+  - persistence schema 8
 
 ## Mapped Pages (Staged)
 
@@ -38,7 +38,7 @@ Parent project: `Patrick's Projects > TADOI`
 ## Current Pass Notes
 - Docs sweep aligned active docs/spec/task/governance surfaces to current `v0.3.9` implementation.
 - Notion payload was refreshed from mapped source markdown (local staging only).
-- Staged audit token: `[AUDIT 2026-02-27] Full docs sweep + Notion payload refresh staged for deferred apply`
+- Staged audit token: `[AUDIT 2026-03-03] Full docs pass + implementation/spec drift reconciliation staged for deferred apply`
 
 ## Validation Checklist
 - `bun run notion:sync:validate` returns PASS.

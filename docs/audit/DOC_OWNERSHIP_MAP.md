@@ -1,6 +1,6 @@
 # TADOI Documentation Ownership Map
 
-Date: 2026-02-27
+Date: 2026-03-03
 Active baseline: `v0.3.9`
 
 ## Product Overview

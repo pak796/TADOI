@@ -29,7 +29,7 @@
 ### User-facing artifacts
 | Platform | Primary artifact | Secondary artifacts (optional) |
 |---|---|---|
-| Windows | `TADOI-Setup-x64.exe` | `TADOI-x64.msi`, portable zip |
+| Windows | `TADOI-Setup-x64-<ver>.exe` | portable zip |
 | macOS | `TADOI-macOS-<ver>.dmg` **(preferred)** | `.pkg` inside DMG, portable tarball |
 | Linux | `tadoi-<ver>.AppImage` + `tadoi_<ver>_amd64.deb` | `.rpm`, snap, flatpak |
 
@@ -137,7 +137,7 @@ Only if you want broader distro/store support.
 
 ### 7.2 Pipeline stages
 1. **Install deps** (deterministic)
-   - `bun install --frozen-lockfile` (or your equivalent)
+   - `bun install` (plus lockfile review in CI policy)
 2. **Validate OpenTUI platform resolution**
    - Verify expected `@opentui/core-<platform>` package is present/resolved
 3. **Build compiled binary**
@@ -157,38 +157,37 @@ Only if you want broader distro/store support.
 
 ---
 
-## 8) Repo Integration (your existing scaffolds)
+## 8) Repo Integration (current implementation)
 
-### 8.1 `scripts/build-binary.ts` (current: planner-only)
-**Current behavior (planner-only):**
+### 8.1 `scripts/build-binary.ts`
+**Current behavior:**
 - Flags:
-  - `--target` must be `macos` or `windows` (line refs: `:4`, `:13-17`)
-  - `--format` must be `raw` or `installer` (line refs: `:5`, `:19-23`)
-  - Invalid/missing values → error + exit code `1`
-- Output naming:
-  - `raw` → `dist/bin/<target>/BUILD_PLAN.txt` (`:35-37`)
-  - `installer` → `dist/installers/<TARGET_UPPER>_INSTALLER_PLAN.txt` (`:54`)
-- Writes plan artifacts only; explicitly states no native binary/installer is produced (`:45-47`, `:63-66`).
+  - `--target` must be `macos|windows|linux`
+  - `--format` must be `raw|installer`
+  - `--mode` supports `plan|build` (default `plan`)
+  - Invalid/missing values exit non-zero.
+- Plan mode outputs:
+  - `raw` → `dist/bin/<target>/BUILD_PLAN.txt`
+  - `installer` → `dist/installers/<TARGET_UPPER>_INSTALLER_PLAN.txt`
+- Build mode behavior:
+  - Enforces native-host target parity (`target` must equal runtime host OS).
+  - `raw` compiles with Bun to `dist/bin/<target>/tadoi[.exe]`.
+  - `installer` ensures raw binary exists, then runs target packaging scripts:
+    - macOS: `packaging/macos/build-pkg.sh` + `sign-notarize.sh` + `build-dmg.sh`
+    - Windows: `packaging/windows/build-installer.ps1` + `sign.ps1`
+    - Linux: `packaging/linux/build-deb.sh` + `build-appimage.sh`
+  - Installer build writes per-target manifest:
+    - `dist/installers/TADOI-<target>-<version>-manifest.json`
+  - Linux installer mode hard-fails if `dpkg-deb` or `appimagetool` are missing.
 
-**Spec-required evolution:**
-- Add `linux` target (parity with distro requirements)
-- Keep plan mode, but implement “execute mode”:
-  - `--format raw` → produce compiled executable in `dist/bin/<target>/`
-  - `--format installer` → produce final installer artifacts in `dist/installers/`
-- Use `packaging/release-targets.json` as the source of output dirs/status gates.
-
-### 8.2 `packaging/release-targets.json` (current: metadata)
+### 8.2 `packaging/release-targets.json`
 - `version: 1` (`:2`)
 - Targets:
   - `tarball` → `status: active`, `outputDir: dist/tarball` (`:5-9`)
-  - `binary-macos` → `status: planned`, `outputDir: dist/bin/macos`, `installerOutputDir: dist/installers` (`:11-16`)
-  - `binary-windows` → `status: planned`, `outputDir: dist/bin/windows`, `installerOutputDir: dist/installers` (`:18-23`)
+  - `binary-macos` → `status: active`, `outputDir: dist/bin/macos`, `installerOutputDir: dist/installers`
+  - `binary-windows` → `status: active`, `outputDir: dist/bin/windows`, `installerOutputDir: dist/installers`
+  - `binary-linux` → `status: active`, `outputDir: dist/bin/linux`, `installerOutputDir: dist/installers`
 - No CLI flags; declarative only.
-
-**Spec-required evolution:**
-- Add `binary-linux` target with `outputDir` + `installerOutputDir`
-- Add artifact naming metadata (recommended fields):
-  - `artifactBaseName`, `arch`, `signingRequired`, `notarizeRequired`, `formats`
 
 ---
 
@@ -245,21 +244,12 @@ Define stable paths now to avoid later migration pain.
 
 ---
 
-## 11) MVP Task Breakdown (implementation plan)
+## 11) Current Gaps / Hardening Backlog
 
-1. **Add “smoke mode”**
-   - Implement `--smoke-tui` to render one frame and exit
-2. **Implement real raw builds**
-   - Extend `scripts/build-binary.ts` to compile binaries into `dist/bin/<target>/`
-3. **Implement macOS DMG packaging**
-   - Create notarized `.pkg`
-   - Place `.pkg` inside DMG as primary UX
-4. **Implement Windows installer**
-   - Inno/NSIS script, PATH support, signing hook points
-5. **Implement Linux packaging**
-   - AppImage + `.deb`
-6. **CI matrix + releases**
-   - Automate builds, signing/notarization steps, publish artifacts
+1. Expand signed/notarized pipeline evidence coverage in CI artifacts.
+2. Add stricter per-platform smoke gates against produced installers (not only raw binaries).
+3. Decide whether to ship additional formats (RPM/Snap/Flatpak/MSI) or keep current installer set.
+4. Publish deterministic checksum/signature verification instructions with each release artifact bundle.
 
 ---
 

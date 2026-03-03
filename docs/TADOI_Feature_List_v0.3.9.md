@@ -1,6 +1,6 @@
 # TADOI™ Feature List (v0.3.9)
 
-This list reflects current runtime behavior as of **2026-02-27**.
+This list reflects current runtime behavior as of **2026-03-03**.
 
 ## Core Workflow
 - Create, edit, duplicate, complete/reopen, and delete tasks.
@@ -61,7 +61,7 @@ This list reflects current runtime behavior as of **2026-02-27**.
 - Deterministic height-priority collapse strategy to avoid border overlap on compressed heights.
 
 ## Data Safety and Portability
-- JSON persistence with schema migration and strict validation (current schema 7).
+- JSON persistence with schema migration and strict validation (current schema 8).
 - Task schema includes optional analytics dimensions: `assignee`, `project`, `workflowStage`.
 - Corrupt file recovery with timestamped `.corrupt.*` backups.
 - Save-failure banner with retry on next domain mutation.

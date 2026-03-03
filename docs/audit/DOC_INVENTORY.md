@@ -1,13 +1,13 @@
 # TADOI Documentation Inventory
 
-Date: 2026-02-27
-Active baseline: `v0.3.8` / `0.3.8`
+Date: 2026-03-03
+Active baseline: `v0.3.9` / `0.3.9`
 
 ## Active Root Docs
 - `README.md`
 - `CHANGELOG.md`
-- `TADOI_SPEC_v0.3.8.md`
-- `TADOI_TASKS_v0.3.8.md`
+- `TADOI_SPEC_v0.3.9.md`
+- `TADOI_TASKS_v0.3.9.md`
 - `DASHBOARD_SPEC_MVP.md`
 - `TADOI_Installable_Distribution_Spec.md`
 - `TADOI_BackupCenter_InApp_Spec.md`
@@ -28,8 +28,8 @@ Active baseline: `v0.3.8` / `0.3.8`
 - `docs/RELEASE_CHECKLIST.md`
 - `docs/RELEASE_NOTES.md`
 - `docs/TADOI_Installation_Guide_All_Platforms.md`
-- `docs/TADOI_QA_Guide_v0.3.8.md`
-- `docs/TADOI_Feature_List_v0.3.8.md`
+- `docs/TADOI_QA_Guide_v0.3.9.md`
+- `docs/TADOI_Feature_List_v0.3.9.md`
 
 ## QA Artifact Set
 - `docs/QA/SMOKE_TEST_CHECKLIST.md`

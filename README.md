@@ -181,7 +181,7 @@ TADOI saves tasks to `tadoi_data.json` using this path order:
 
 The active path appears in startup logs and in the Help panel.
 
-Current persisted schema version: 7 (includes recurrence fields, engagement state, `stateRevision`, and `workflowStage` migration backfill).
+Current persisted schema version: 8 (includes recurrence fields, engagement state, `stateRevision`, `workflowStage`, and checklist normalization backfill).
 
 If a save fails (permissions/disk/IO), TADOI keeps running and shows a persistent banner with the error and data path. It retries on the next domain mutation (not on UI-only ticks).
 If the banner reports a concurrent save conflict, press `r` or click the banner to reload the latest disk revision and retry save.
