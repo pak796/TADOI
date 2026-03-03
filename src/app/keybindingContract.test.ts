@@ -109,6 +109,28 @@ describe("link keybinding contract", () => {
     ).toEqual([{ scope: "ui", type: "BACKUP_SCROLL_BODY", delta: -8 }]);
   });
 
+  it("keeps Ctrl+N quick-capture docs aligned with router behavior", async () => {
+    const usagePath = fileURLToPath(new URL("../../docs/USAGE.md", import.meta.url).href);
+    const usageSource = await fs.readFile(usagePath, "utf8");
+    expect(usageSource).toContain("Ctrl+N");
+
+    expect(run({ ctrl: true, name: "n", sequence: "n" })).toEqual([
+      { scope: "ui", type: "OPEN_QUICK_CAPTURE" }
+    ]);
+    expect(
+      run(
+        { ctrl: true, name: "n", sequence: "n" },
+        {
+          uiState: {
+            ...initialUIState,
+            mode: Mode.DASHBOARD,
+            focus: FocusTarget.DASHBOARD
+          }
+        }
+      )
+    ).toEqual([{ scope: "ui", type: "OPEN_QUICK_CAPTURE" }]);
+  });
+
   it("keeps save-conflict retry hint aligned with banner affordance", async () => {
     const appPath = fileURLToPath(new URL("./App.tsx", import.meta.url).href);
     const appSource = await fs.readFile(appPath, "utf8");

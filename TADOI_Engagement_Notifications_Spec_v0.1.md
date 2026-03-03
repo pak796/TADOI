@@ -45,7 +45,6 @@ This is intended to feel **NUX-adjacent** (first-run wins + habit reinforcement)
 - No modal achievement popups.
 - No clickable actions / routing presets.
 - No achievements/stats screen.
-- No background notifications while app is closed.
 - No social, XP, points, leveling, or leaderboards.
 
 ---

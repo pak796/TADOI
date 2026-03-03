@@ -1038,6 +1038,15 @@ export function EditorPane({
           </box>
         </box>
       </box>
+      <box style={{ flexDirection: "column", marginTop: 1 }}>
+        <text style={{ color: theme.muted }}>TOME CONTEXT</text>
+        <text style={{ color: theme.muted }}>
+          Ctrl+N quick-captures from editor and auto-targets this task context.
+        </text>
+        <text style={{ color: theme.muted }}>
+          Bridge inline NOTES into TOME using --from-task-notes (optional --clear-task-notes).
+        </text>
+      </box>
           </box>
         </scrollbox>
       </box>

@@ -904,7 +904,7 @@ Body`
       await waitForText(harness, "TASK LIST");
       await pressTabAndRender(mockInput, harness);
       await pressArrowAndRender(mockInput, harness, "right");
-      await waitForText(harness, "NOTES CONTEXT (FOCUSED)");
+      await waitForText(harness, "TASK-NATIVE TOME CONTEXT (FOCUSED)");
 
       await pressKeyAndRender(mockInput, harness, "c");
       await waitForMarkdownCount(notesRoot, 2);
@@ -932,7 +932,7 @@ Body`
       await waitForText(harness, "TASK LIST");
       await pressTabAndRender(mockInput, harness);
       await pressArrowAndRender(mockInput, harness, "right");
-      await waitForText(harness, "NOTES CONTEXT (FOCUSED)");
+      await waitForText(harness, "TASK-NATIVE TOME CONTEXT (FOCUSED)");
 
       await pressKeyAndRender(mockInput, harness, "l");
       await waitForText(harness, "LINK NOTE PICKER");
@@ -1041,6 +1041,99 @@ Body`
       await pressEnterAndRender(mockInput, harness);
 
       await waitForFileExists(path.join(notesRoot, removedPath));
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
+  it("opens quick capture command from list/search/dashboard/edit via Ctrl+N", async () => {
+    const session = await createSession({
+      tasks: [makeTask("task-1", "Capture target")]
+    });
+    const { harness } = session;
+    const { mockInput } = harness;
+
+    try {
+      await waitForText(harness, "TASK LIST");
+
+      await pressCtrlKeyAndRender(mockInput, harness, "n");
+      await waitForFrame(
+        harness,
+        (frame) => frame.includes("TITS") && frame.includes("note q")
+      );
+      await pressEscapeAndRender(mockInput, harness);
+
+      await pressKeyAndRender(mockInput, harness, "/");
+      await waitForText(harness, "UNIFIED SEARCH");
+      await pressCtrlKeyAndRender(mockInput, harness, "n");
+      await waitForFrame(
+        harness,
+        (frame) => frame.includes("TITS") && frame.includes("note q")
+      );
+      await pressEscapeAndRender(mockInput, harness);
+
+      await pressEscapeAndRender(mockInput, harness);
+      await pressKeyAndRender(mockInput, harness, "b");
+      await waitForText(harness, "DASHBOARD");
+      await pressCtrlKeyAndRender(mockInput, harness, "n");
+      await waitForFrame(
+        harness,
+        (frame) => frame.includes("TITS") && frame.includes("note q")
+      );
+      await pressEscapeAndRender(mockInput, harness);
+
+      await pressKeyAndRender(mockInput, harness, "b");
+      await waitForText(harness, "TASK LIST");
+      await pressKeyAndRender(mockInput, harness, "e");
+      await waitForText(harness, "EDIT TASK");
+      await pressCtrlKeyAndRender(mockInput, harness, "n");
+      await waitForFrame(
+        harness,
+        (frame) => frame.includes("TITS") && frame.includes("note q")
+      );
+    } finally {
+      await cleanupSession(session);
+    }
+  });
+
+  it("prompts append/new for in-app targeted quick capture when task already has primary note", async () => {
+    const now = new Date(2026, 1, 28, 12, 0).getTime();
+    const session = await createSession({
+      seedNotes: {
+        "Primary.md": "# Primary\n\nExisting note body."
+      },
+      tasks: [
+        {
+          id: "task-1",
+          title: "Task One",
+          status: "open",
+          workflowStage: "todo",
+          createdAt: now,
+          updatedAt: now,
+          tags: [],
+          noteRef: { type: "filename", value: "Primary.md" }
+        }
+      ]
+    });
+    const { harness, notesRoot } = session;
+    const { mockInput } = harness;
+
+    try {
+      await waitForText(harness, "TASK LIST");
+      await pressCtrlKeyAndRender(mockInput, harness, "n");
+      await waitForFrame(
+        harness,
+        (frame) => frame.includes("TITS") && frame.includes("note q")
+      );
+      await typeTextAndRender(mockInput, harness, '"Daily capture"');
+      await pressEnterAndRender(mockInput, harness);
+      await waitForText(harness, "CAPTURE TARGET HAS PRIMARY NOTE");
+      await pressKeyAndRender(mockInput, harness, "a");
+
+      await waitForFrame(harness, (frame) => frame.includes("appended"));
+      const appended = await fs.readFile(path.join(notesRoot, "Primary.md"), "utf8");
+      expect(appended).toContain("## Capture ");
+      expect(appended).toContain("Title: Daily capture");
     } finally {
       await cleanupSession(session);
     }

@@ -130,6 +130,10 @@ describe("resolveTitsCliInput", () => {
       mode: "subcommand",
       dsl: "nq Daily"
     });
+    expect(resolveTitsCliInput(["capture", "Daily"])).toEqual({
+      mode: "subcommand",
+      dsl: "capture Daily"
+    });
   });
 
   it("supports -- delimiter for literal dash-prefixed add titles", () => {
@@ -490,7 +494,7 @@ describe("runTitsCommandCliWithDeps", () => {
 
     expect(result).toEqual({ handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS });
     expect(logs).toEqual([
-      "Commands: add, done, due, recur, check, bulk, note, tag, help. Try: help tag"
+      "Commands: add, done, due, recur, check, bulk, note, capture, nq, tag, help. Try: help tag"
     ]);
     expect(saved).toHaveLength(0);
   });
@@ -523,6 +527,48 @@ describe("runTitsCommandCliWithDeps", () => {
     expect(logs).toEqual(["note command ok"]);
   });
 
+  it("applies note task side effects to task state under lock", async () => {
+    const { deps, logs, errors, saved } = createDeps({
+      loadedData: createLoadedData({
+        tasks: [
+          {
+            id: "task-1",
+            title: "Has inline notes",
+            status: "open",
+            createdAt: 1,
+            updatedAt: 1,
+            notes: "legacy inline",
+            tags: []
+          }
+        ]
+      })
+    });
+    deps.runNoteCommand = async () => ({
+      output: {
+        kind: "ok",
+        text: "note command ok"
+      },
+      noteId: "note-1",
+      taskSideEffects: {
+        taskId: "task-1",
+        primaryNoteAction: "set",
+        primaryNotePath: "Daily.md",
+        clearInlineNotes: true
+      }
+    });
+
+    const result = await runTitsCommandCliWithDeps(["note", "q", "Daily", "id:task-1"], deps);
+    expect(result).toEqual({ handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS });
+    expect(errors).toHaveLength(0);
+    expect(logs).toEqual(["note command ok"]);
+    expect(saved).toHaveLength(1);
+    expect(saved[0]?.tasks[0]?.noteRef).toEqual({
+      type: "id",
+      value: "note-1"
+    });
+    expect(saved[0]?.tasks[0]?.notes).toBeUndefined();
+  });
+
   it("injects stdin body for nq quick capture when body argument is omitted", async () => {
     const { deps, errors, saved, noteRuns } = createDeps();
     deps.readStdin = async () => "stdin body\n";
@@ -541,6 +587,27 @@ describe("runTitsCommandCliWithDeps", () => {
         aliases: [],
         metadata: {},
         stdinBody: "stdin body"
+      }
+    ]);
+  });
+
+  it("defaults targeted capture alias quick mode to append when omitted", async () => {
+    const { deps, errors, saved, noteRuns } = createDeps();
+    const result = await runTitsCommandCliWithDeps(["capture", "Daily", "id:task-1"], deps);
+
+    expect(result).toEqual({ handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS });
+    expect(errors).toHaveLength(0);
+    expect(saved).toHaveLength(0);
+    expect(noteRuns).toEqual([
+      {
+        type: "note",
+        operation: "quick",
+        title: "Daily",
+        tags: [],
+        aliases: [],
+        metadata: {},
+        target: { type: "id", id: "task-1" },
+        captureMode: "append"
       }
     ]);
   });

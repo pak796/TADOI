@@ -165,6 +165,7 @@ export type HelpCommand = {
 export type NoteOutputFormat = "text" | "json";
 
 export type NoteLinkDirection = "incoming" | "outgoing" | "both";
+export type NoteCaptureMode = "append" | "new" | "prompt";
 
 export type NoteSearchFilters = {
   textTerms: string[];
@@ -190,6 +191,11 @@ export type NoteQuickInput = {
   metadata: Record<string, string>;
   template?: string;
   target?: CommandTarget;
+  captureMode?: NoteCaptureMode;
+  noLink?: boolean;
+  fromTaskNotes?: boolean;
+  setPrimary?: boolean;
+  clearTaskNotes?: boolean;
 };
 
 export type NoteCommand =

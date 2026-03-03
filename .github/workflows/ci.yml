@@ -43,6 +43,18 @@ jobs:
           TADOI_TEST_SHARDS: "6"
         run: bun run test
 
+      - name: Reminder hardening regression
+        run: >
+          bun test
+          src/cli/remindersCommands.test.ts
+          src/reminders/helperState.test.ts
+          src/reminders/indexer.test.ts
+          src/reminders/invocation.test.ts
+          src/reminders/isRunning.test.ts
+          src/reminders/remindCommand.test.ts
+          src/reminders/scheduler.test.ts
+          src/reminders/terminalLauncher.test.ts
+
       - name: Run tests with coverage
         if: matrix.target != 'windows'
         run: bun run test:coverage

@@ -62,7 +62,7 @@ Clear or rotate the override file between major suites to avoid cross-suite cont
 ## 5) Expedited Smoke Runbook
 
 Run these first for a fast confidence pass:
-- `QA-001`, `QA-002`, `QA-005`, `QA-008`, `QA-013`, `QA-019`, `QA-023`, `QA-029`, `QA-032`, `QA-036`, `QA-039`, `QA-042`, `QA-052`, `QA-053`, `QA-065`, `QA-066`, `QA-068`, `QA-083`, `QA-085`.
+- `QA-001`, `QA-002`, `QA-005`, `QA-008`, `QA-013`, `QA-019`, `QA-023`, `QA-029`, `QA-032`, `QA-036`, `QA-039`, `QA-042`, `QA-052`, `QA-053`, `QA-065`, `QA-066`, `QA-068`, `QA-083`, `QA-085`, `QA-GH-001`.
 
 Smoke pass criteria:
 1. All smoke cases pass on all three platforms.
@@ -278,6 +278,25 @@ Smoke pass criteria:
   - Preconditions: app running on each OS.
   - Steps: inspect help/data-path display and behavior with overrides.
   - Expected: resolved path matches platform rules.
+
+#### GitHub Cloud Backup (Backup Center)
+
+- [ ] `QA-GH-001 [SMOKE]` Cloud backup status entry points open correctly.
+  - Preconditions: app running with Help and Backup Center accessible.
+  - Steps: open `Help / Settings / Cloud Backup`; activate `Open Cloud Operations`; also open `?` -> `1` -> `Cloud Backups -> GitHub (CLI)`.
+  - Expected: both entry points land on `GitHub (CLI) Cloud Backups` status screen.
+- [ ] `QA-GH-002` Connect flow validates gh/auth/repo constraints and warnings.
+  - Preconditions: `gh` available; test both existing repo and create repo paths.
+  - Steps: run `connect`; validate behavior for missing login, owner mismatch, and public repo confirmation (`PUBLIC`).
+  - Expected: connect blocks on missing auth/owner mismatch, and requires explicit confirmation for public repos.
+- [ ] `QA-GH-003` Push snapshot now updates status and metadata.
+  - Preconditions: connected repo and at least one local task/settings change.
+  - Steps: run `Push snapshot now`.
+  - Expected: push completes, status shows updated `last push` timestamp and commit sha, and repo-path metadata remains deterministic.
+- [ ] `QA-GH-004` Restore from GitHub routes through import safety gates.
+  - Preconditions: at least one remote snapshot available.
+  - Steps: run `Restore from GitHub`; select snapshot; proceed through dry-run and commit path.
+  - Expected: restore remains inside existing import safeguards (dry-run first, typed confirmations where applicable, pre-import backup on commit).
 
 ### I) Notifications and Help Settings
 
@@ -542,6 +561,6 @@ Defect report format:
 
 Release candidate is manual-QA ready when:
 1. All smoke cases pass on macOS, Windows, Linux.
-2. Full case set (`QA-001` to `QA-088`) is executed at least once per target platform.
+2. Full case set (`QA-001` to `QA-092`, plus `QA-GH-001` to `QA-GH-004`) is executed at least once per target platform.
 3. No open `P0` or `P1` defects remain.
 4. Known automated failures are either resolved or explicitly accepted with owner and follow-up.

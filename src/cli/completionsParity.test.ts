@@ -10,6 +10,7 @@ const COMPLETION_FILES = [
 
 const REQUIRED_COMMAND_TOKENS = [
   "list",
+  "capture",
   "nq",
   "check:add",
   "check:toggle",

@@ -44,7 +44,7 @@ Esc/Enter contracts and modal semantics are enforced across all modes.
 
 Source-of-truth key tokens (as reported by `src/app/keyRouter.ts`):
 `/` `1` `2` `3` `4` `?` `ArrowDown` `ArrowLeft` `ArrowRight` `ArrowUp`
-`A` `B` `C` `Ctrl+D` `Ctrl+G` `Ctrl+L` `Ctrl+P` `Ctrl+S` `Ctrl+U` `Ctrl+Y` `D` `E` `Enter` `Esc`
+`A` `B` `C` `Ctrl+D` `Ctrl+G` `Ctrl+L` `Ctrl+N` `Ctrl+P` `Ctrl+S` `Ctrl+U` `Ctrl+Y` `D` `E` `Enter` `Esc`
 `G` `L` `O` `PageDown` `PageUp` `S` `Space` `Tab` `[`
 `]` `a` `b` `backspace` `c` `d` `e` `end` `f` `g` `h` `home`
 `i` `j` `k` `l` `m` `n` `o` `p` `q` `r` `s` `t` `u` `v` `x` `y` `z`
@@ -78,6 +78,7 @@ LIST mode navigation:
 
 LIST mode actions:
 - `a`: add task
+- `Ctrl+N`: quick capture (task-target aware)
 - `e`: edit selected task
 - `E`: edit recurring series
 - `c` / `C`: duplicate selected task
@@ -125,6 +126,7 @@ Details checklist subpane:
 
 DASHBOARD mode:
 - `b` / `B`: return to list
+- `Ctrl+N`: quick capture (task-target aware)
 - `u` / `U`: open Backup Center
 - `f` / `g` / `r` / `t` / `p`: same filter cycling as list
 - `w`: cycle analytics window (`7d -> 14d -> 30d -> 7d`)
@@ -143,6 +145,7 @@ Saved views overlay:
 
 ADD/EDIT mode:
 - `Tab` / `Shift+Tab`: move fields
+- `Ctrl+N`: quick capture (preserves editor context)
 - `Ctrl+S`: save
 - `Ctrl+L`: add link/attachment in Add mode
 - `Esc`: cancel
@@ -157,6 +160,7 @@ ADD/EDIT mode:
 SEARCH mode:
 - Type one query for unified task+note search
 - Scope chips: `All` / `Tasks` / `Notes` (mouse-select)
+- `Ctrl+N`: quick capture targeting selected task result (when selected result is a task)
 - `Tab`: toggle input/results focus
 - Input focus: `Enter` or `Esc` returns to list
 - Results focus: `Enter` opens selected result, `Esc` returns to list
@@ -219,7 +223,7 @@ Source-of-truth files:
 - `src/commands/*` (shared parser/executor)
 - `src/cli/main.ts` (external TITS CLI)
 
-In-app TITS (LIST mode only):
+In-app TITS (LIST, SEARCH, DASHBOARD, ADD, EDIT):
 - Open with `` ` ``
 - `Enter` executes current command
 - `Esc` closes TITS without executing
@@ -256,7 +260,8 @@ Supported TITS commands:
 TOME COMMANDS (Terminal Oriented Markdown Environment)
 - note new "Title" [--template <id>]  Create note
 - note template <id> ["Title"]         Create note from template
-- note q|quick|capture "Title" ["Body"] [#tag|tag:x] [--status x] [--alias x] [--meta:key=value] [--template x] [@selected|id:task]
+- note q|quick|capture "Title" ["Body"] [#tag|tag:x] [--status x] [--alias x] [--meta:key=value] [--template x] [--capture-mode append|new|prompt] [--no-link] [--from-task-notes] [--set-primary] [--clear-task-notes] [@selected|id:task]
+- capture "Title" ...                  top-level alias for note quick capture
 - nq "Title" ["Body"]                  CLI alias for note quick
 - note open "Query"     Open note
 - note search "Query"   Search TOME notes (tag:/-tag:/title:/path:/text:/created:/updated:/limit:/format:)

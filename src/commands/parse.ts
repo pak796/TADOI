@@ -1,5 +1,6 @@
 import type {
   BulkTarget,
+  NoteCaptureMode,
   CommandTarget,
   HelpTopic,
   NoteLinkDirection,
@@ -927,6 +928,11 @@ function parseNoteQuickCommand(tokens: string[], context: ParseContext): ParseCo
   let status: string | undefined;
   let template: string | undefined;
   let target: CommandTarget | undefined;
+  let captureMode: NoteCaptureMode | undefined;
+  let noLink = false;
+  let fromTaskNotes = false;
+  let setPrimary = false;
+  let clearTaskNotes = false;
 
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index] ?? "";
@@ -987,6 +993,34 @@ function parseNoteQuickCommand(tokens: string[], context: ParseContext): ParseCo
         return error("Error: --template requires a value");
       }
       template = value.trim();
+      continue;
+    }
+    if (lowered === "--capture-mode" || lowered.startsWith("--capture-mode=")) {
+      const value =
+        lowered === "--capture-mode"
+          ? (tokens[(index += 1)] ?? "")
+          : token.slice("--capture-mode=".length);
+      const normalized = value.trim().toLowerCase();
+      if (normalized !== "append" && normalized !== "new" && normalized !== "prompt") {
+        return error('Error: --capture-mode must be "append", "new", or "prompt"');
+      }
+      captureMode = normalized as NoteCaptureMode;
+      continue;
+    }
+    if (lowered === "--no-link") {
+      noLink = true;
+      continue;
+    }
+    if (lowered === "--from-task-notes") {
+      fromTaskNotes = true;
+      continue;
+    }
+    if (lowered === "--set-primary") {
+      setPrimary = true;
+      continue;
+    }
+    if (lowered === "--clear-task-notes") {
+      clearTaskNotes = true;
       continue;
     }
     if (token === "@selected" || token.startsWith("id:")) {
@@ -1050,7 +1084,12 @@ function parseNoteQuickCommand(tokens: string[], context: ParseContext): ParseCo
       aliases: Array.from(new Set(aliases)),
       metadata,
       ...(template ? { template } : {}),
-      ...(target ? { target } : {})
+      ...(target ? { target } : {}),
+      ...(captureMode ? { captureMode } : {}),
+      ...(noLink ? { noLink: true } : {}),
+      ...(fromTaskNotes ? { fromTaskNotes: true } : {}),
+      ...(setPrimary ? { setPrimary: true } : {}),
+      ...(clearTaskNotes ? { clearTaskNotes: true } : {})
     }
   };
 }
@@ -1570,6 +1609,9 @@ export function parseCommand(
     return parseNoteCommand([commandName.slice("note:".length), ...args], context);
   }
   if (commandName === "nq") {
+    return parseNoteCommand(["q", ...args], context);
+  }
+  if (commandName === "capture") {
     return parseNoteCommand(["q", ...args], context);
   }
   if (commandName === "tag") {

@@ -1926,4 +1926,66 @@ describe("handleKey", () => {
     };
     expect(run({ name: "d", sequence: "d" }, { uiState: notesTagFilterState })).toEqual([]);
   });
+
+  it("routes Ctrl+N to quick capture in list/dashboard/search/editor modes", () => {
+    expect(run({ name: "n", sequence: "n", ctrl: true })).toEqual([
+      { scope: "ui", type: "OPEN_QUICK_CAPTURE" }
+    ]);
+    expect(
+      run(
+        { name: "n", sequence: "n", ctrl: true },
+        {
+          uiState: {
+            ...initialUIState,
+            mode: Mode.DASHBOARD,
+            focus: FocusTarget.DASHBOARD
+          }
+        }
+      )
+    ).toEqual([{ scope: "ui", type: "OPEN_QUICK_CAPTURE" }]);
+    expect(
+      run(
+        { name: "n", sequence: "n", ctrl: true },
+        {
+          uiState: {
+            ...initialUIState,
+            mode: Mode.SEARCH,
+            focus: FocusTarget.SEARCH_INPUT
+          }
+        }
+      )
+    ).toEqual([{ scope: "ui", type: "OPEN_QUICK_CAPTURE" }]);
+    expect(
+      run(
+        { name: "n", sequence: "n", ctrl: true },
+        {
+          uiState: {
+            ...initialUIState,
+            mode: Mode.EDIT,
+            focus: FocusTarget.EDITOR_TITLE
+          }
+        }
+      )
+    ).toEqual([{ scope: "ui", type: "OPEN_QUICK_CAPTURE" }]);
+    expect(
+      run(
+        { name: "n", sequence: "n", ctrl: true },
+        {
+          uiState: {
+            ...initialUIState,
+            mode: Mode.MODAL_CONFIRM,
+            focus: FocusTarget.MODAL,
+            modal: {
+              type: "delete",
+              target: "regular_task",
+              taskId: "task-1",
+              taskTitle: "Task",
+              previousMode: Mode.LIST,
+              previousFocus: FocusTarget.TASK_LIST
+            }
+          }
+        }
+      )
+    ).toEqual([]);
+  });
 });

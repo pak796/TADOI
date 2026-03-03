@@ -114,12 +114,21 @@ function createStubService(options: {
       return parsed as ParsedNote;
     },
     getNoteContent: async (notePath: string) => {
-      const content = templatesByPath.get(notePath);
-      if (!content) return null;
+      const templateContent = templatesByPath.get(notePath);
+      if (templateContent) {
+        return {
+          path: notePath,
+          content: templateContent,
+          mtimeMs: Date.now()
+        };
+      }
+      const note = notes.find((item) => item.path === notePath);
+      if (!note) return null;
+      const content = parsedContentByPath.get(notePath) ?? createdContentByPath.get(notePath) ?? "";
       return {
         path: notePath,
         content,
-        mtimeMs: Date.now()
+        mtimeMs: note.mtimeMs
       };
     },
     createNote: async (title: string, content: string) => {
@@ -127,10 +136,24 @@ function createStubService(options: {
       const createdAt = Date.now();
       notes = [{ path, title, tags: [], mtimeMs: createdAt }, ...notes];
       createdContentByPath.set(path, content);
+      parsedContentByPath.set(path, content);
       return {
         path,
         content,
         mtimeMs: createdAt
+      };
+    },
+    saveNote: async (notePath: string, content: string) => {
+      const savedAt = Date.now();
+      notes = notes.map((note) =>
+        note.path === notePath ? { ...note, mtimeMs: savedAt } : note
+      );
+      createdContentByPath.set(notePath, content);
+      parsedContentByPath.set(notePath, content);
+      return {
+        path: notePath,
+        content,
+        mtimeMs: savedAt
       };
     },
     reindexAll: async () => {
@@ -239,6 +262,93 @@ describe("executeNoteCommand", () => {
     expect(created).toContain("capture.source: cli");
     expect(created).toContain("x-custom: 1");
     expect(created).toContain("Linked task: @task:task-1");
+    expect(result.taskSideEffects).toEqual({
+      taskId: "task-1",
+      primaryNoteAction: "set",
+      primaryNotePath: "Daily.md"
+    });
+  });
+
+  it("supports append capture mode against an existing task primary note", async () => {
+    const { service, getCreatedContentByPath } = createStubService({
+      notes: [{ path: "Primary.md", title: "Primary", tags: [], mtimeMs: 1 }],
+      parsedContentByPath: { "Primary.md": "# Primary\n\nExisting body" }
+    });
+    const result = await executeNoteCommand(
+      {
+        type: "note",
+        operation: "quick",
+        title: "Daily",
+        body: "Body line",
+        tags: [],
+        aliases: [],
+        metadata: {},
+        target: { type: "id", id: "task-1" },
+        captureMode: "append",
+        fromTaskNotes: true
+      },
+      {
+        service,
+        dataFilePath: "/tmp/tadoi_data.json",
+        notesSettings: { enabled: true, rootPath: null },
+        resolveTaskContext: () => ({
+          primaryNotePath: "Primary.md",
+          inlineNotes: "Inline note text"
+        })
+      }
+    );
+
+    expect(result.output.kind).toBe("ok");
+    expect(result.path).toBe("Primary.md");
+    const saved = getCreatedContentByPath("Primary.md") ?? "";
+    expect(saved).toContain("## Capture ");
+    expect(saved).toContain("Title: Daily");
+    expect(saved).toContain("Body line");
+    expect(saved).toContain("Task notes snapshot:\nInline note text");
+    expect(saved).toContain("Linked task: @task:task-1");
+    expect(result.taskSideEffects).toEqual({
+      taskId: "task-1",
+      primaryNoteAction: "keep",
+      primaryNotePath: "Primary.md"
+    });
+  });
+
+  it("keeps primary-note linkage by default in new mode and supports explicit clear-inline side effect", async () => {
+    const { service, getCreatedContentByPath } = createStubService({ notes: [] });
+    const result = await executeNoteCommand(
+      {
+        type: "note",
+        operation: "quick",
+        title: "Standup",
+        body: "Captured",
+        tags: [],
+        aliases: [],
+        metadata: {},
+        target: { type: "id", id: "task-1" },
+        captureMode: "new",
+        clearTaskNotes: true
+      },
+      {
+        service,
+        dataFilePath: "/tmp/tadoi_data.json",
+        notesSettings: { enabled: true, rootPath: null },
+        resolveTaskContext: () => ({
+          primaryNotePath: "Primary.md",
+          inlineNotes: "Legacy inline"
+        })
+      }
+    );
+
+    expect(result.output.kind).toBe("ok");
+    expect(result.path).toBe("Standup.md");
+    const created = getCreatedContentByPath("Standup.md") ?? "";
+    expect(created).toContain("Linked task: @task:task-1");
+    expect(result.taskSideEffects).toEqual({
+      taskId: "task-1",
+      primaryNoteAction: "keep",
+      primaryNotePath: "Primary.md",
+      clearInlineNotes: true
+    });
   });
 
   it("supports template fallback behavior for note new --template", async () => {

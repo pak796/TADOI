@@ -32,6 +32,56 @@ import { CLI_EXIT_CODE } from "./exitCodes";
 import { loadSettings } from "../settings/settings";
 import { redactedLogger } from "../logging/redactedLogger";
 
+export type RemindersCommandRuntime = {
+  nowMs: () => number;
+  getDataFilePath: () => string;
+  loadStateStrict: typeof loadStateStrict;
+  writeReminderIndexForDataFile: typeof writeReminderIndexForDataFile;
+  loadReminderIndexForDataFile: typeof loadReminderIndexForDataFile;
+  saveReminderIndexForDataFile: typeof saveReminderIndexForDataFile;
+  clearReminderEventFired: typeof clearReminderEventFired;
+  isReminderEventAlreadyFired: typeof isReminderEventAlreadyFired;
+  loadReminderHelperState: typeof loadReminderHelperState;
+  markReminderEventFired: typeof markReminderEventFired;
+  pruneReminderHelperState: typeof pruneReminderHelperState;
+  saveReminderHelperState: typeof saveReminderHelperState;
+  resolveCurrentTadoiInvocation: typeof resolveCurrentTadoiInvocation;
+  getReminderSchedulerStatus: typeof getReminderSchedulerStatus;
+  installReminderScheduler: typeof installReminderScheduler;
+  uninstallReminderScheduler: typeof uninstallReminderScheduler;
+  launchReminderTerminal: typeof launchReminderTerminal;
+  probeTadoiRunningState: typeof probeTadoiRunningState;
+  buildReminderIndex: typeof buildReminderIndex;
+  loadSettings: typeof loadSettings;
+  log: (line: string) => void;
+  error: (line: string) => void;
+};
+
+const DEFAULT_RUNTIME: RemindersCommandRuntime = {
+  nowMs: () => Date.now(),
+  getDataFilePath,
+  loadStateStrict,
+  writeReminderIndexForDataFile,
+  loadReminderIndexForDataFile,
+  saveReminderIndexForDataFile,
+  clearReminderEventFired,
+  isReminderEventAlreadyFired,
+  loadReminderHelperState,
+  markReminderEventFired,
+  pruneReminderHelperState,
+  saveReminderHelperState,
+  resolveCurrentTadoiInvocation,
+  getReminderSchedulerStatus,
+  installReminderScheduler,
+  uninstallReminderScheduler,
+  launchReminderTerminal,
+  probeTadoiRunningState,
+  buildReminderIndex,
+  loadSettings,
+  log: (line) => redactedLogger.log(line),
+  error: (line) => redactedLogger.error(line)
+};
+
 function usage(): string {
   return [
     "Usage:",
@@ -72,9 +122,12 @@ function renderSchedulerStatusLines(status: {
   return lines;
 }
 
-async function refreshReminderIndex(dataFilePath: string): Promise<void> {
-  const loaded = await loadStateStrict({ filePath: dataFilePath });
-  await writeReminderIndexForDataFile({
+async function refreshReminderIndex(
+  dataFilePath: string,
+  runtime: RemindersCommandRuntime
+): Promise<void> {
+  const loaded = await runtime.loadStateStrict({ filePath: dataFilePath });
+  await runtime.writeReminderIndexForDataFile({
     dataFilePath,
     tasks: loaded.data.tasks
   });
@@ -122,58 +175,67 @@ export function mergeReminderIndexWithHelperEvents(options: {
   };
 }
 
-async function runInstallCommand(dataFilePath: string): Promise<number> {
-  const invocation = resolveCurrentTadoiInvocation();
-  const status = await installReminderScheduler({ invocation });
+async function runInstallCommand(
+  dataFilePath: string,
+  runtime: RemindersCommandRuntime
+): Promise<number> {
+  const invocation = runtime.resolveCurrentTadoiInvocation();
+  const status = await runtime.installReminderScheduler({ invocation });
   const lines = renderSchedulerStatusLines(status);
   for (const line of lines) {
-    redactedLogger.log(line);
+    runtime.log(line);
   }
   if (!status.installed) {
     return CLI_EXIT_CODE.IO_ERROR;
   }
 
-  await refreshReminderIndex(dataFilePath).catch(() => undefined);
+  await refreshReminderIndex(dataFilePath, runtime).catch(() => undefined);
   return CLI_EXIT_CODE.SUCCESS;
 }
 
-async function runUninstallCommand(): Promise<number> {
-  const status = await uninstallReminderScheduler({});
+async function runUninstallCommand(runtime: RemindersCommandRuntime): Promise<number> {
+  const status = await runtime.uninstallReminderScheduler({});
   const lines = renderSchedulerStatusLines(status);
   for (const line of lines) {
-    redactedLogger.log(line);
+    runtime.log(line);
   }
   return CLI_EXIT_CODE.SUCCESS;
 }
 
-async function runStatusCommand(dataFilePath: string): Promise<number> {
-  const invocation = resolveCurrentTadoiInvocation();
-  const schedulerStatus = await getReminderSchedulerStatus({
+async function runStatusCommand(
+  dataFilePath: string,
+  runtime: RemindersCommandRuntime
+): Promise<number> {
+  const invocation = runtime.resolveCurrentTadoiInvocation();
+  const schedulerStatus = await runtime.getReminderSchedulerStatus({
     invocation
   });
 
-  const settings = await loadSettings().catch(() => undefined);
+  const settings = await runtime.loadSettings().catch(() => undefined);
   const enabledSetting =
     settings?.settings.notifications.outOfAppRemindersEnabled === true;
-  const index = await loadReminderIndexForDataFile({ dataFilePath });
+  const index = await runtime.loadReminderIndexForDataFile({ dataFilePath });
 
-  redactedLogger.log(`out_of_app_setting: ${enabledSetting ? "on" : "off"}`);
+  runtime.log(`out_of_app_setting: ${enabledSetting ? "on" : "off"}`);
   for (const line of renderSchedulerStatusLines(schedulerStatus)) {
-    redactedLogger.log(line);
+    runtime.log(line);
   }
-  redactedLogger.log(`events_indexed: ${String(index.events.length)}`);
+  runtime.log(`events_indexed: ${String(index.events.length)}`);
   const nextEvent = index.events[0];
   if (nextEvent) {
-    redactedLogger.log(`next_event: ${formatReminderEventLine(nextEvent)}`);
+    runtime.log(`next_event: ${formatReminderEventLine(nextEvent)}`);
   } else {
-    redactedLogger.log("next_event: none");
+    runtime.log("next_event: none");
   }
 
   return CLI_EXIT_CODE.SUCCESS;
 }
 
-async function runTestCommand(dataFilePath: string): Promise<number> {
-  const nowMs = Date.now();
+async function runTestCommand(
+  dataFilePath: string,
+  runtime: RemindersCommandRuntime
+): Promise<number> {
+  const nowMs = runtime.nowMs();
   const remindAtMs = nowMs + 60_000;
   const dueAtMs = remindAtMs + 10 * 60_000;
   const remindAt = new Date(remindAtMs).toISOString();
@@ -181,8 +243,8 @@ async function runTestCommand(dataFilePath: string): Promise<number> {
   const occurrenceKey = `test:${remindAt}`;
   const taskId = "__test__";
 
-  await refreshReminderIndex(dataFilePath);
-  const index = await loadReminderIndexForDataFile({ dataFilePath });
+  await refreshReminderIndex(dataFilePath, runtime);
+  const index = await runtime.loadReminderIndexForDataFile({ dataFilePath });
 
   const testEvent: ReminderIndexEvent = {
     eventId: hashEventId(taskId, occurrenceKey, remindAt),
@@ -202,78 +264,83 @@ async function runTestCommand(dataFilePath: string): Promise<number> {
     events: [...filtered, testEvent].sort((left, right) => left.remindAt.localeCompare(right.remindAt))
   };
 
-  await saveReminderIndexForDataFile({ dataFilePath, index: nextIndex });
+  await runtime.saveReminderIndexForDataFile({ dataFilePath, index: nextIndex });
 
-  const state = await loadReminderHelperState({ dataFilePath, nowMs });
-  const nextState = clearReminderEventFired(state, testEvent.eventId, nowMs);
-  await saveReminderHelperState({ dataFilePath, state: nextState, nowMs });
+  const state = await runtime.loadReminderHelperState({ dataFilePath, nowMs });
+  const nextState = runtime.clearReminderEventFired(state, testEvent.eventId, nowMs);
+  await runtime.saveReminderHelperState({ dataFilePath, state: nextState, nowMs });
 
-  redactedLogger.log(`scheduled_test_event: ${testEvent.eventId}`);
-  redactedLogger.log(`remind_at: ${testEvent.remindAt}`);
+  runtime.log(`scheduled_test_event: ${testEvent.eventId}`);
+  runtime.log(`remind_at: ${testEvent.remindAt}`);
   return CLI_EXIT_CODE.SUCCESS;
 }
 
-async function runTickCommand(dataFilePath: string): Promise<number> {
-  const settings = await loadSettings();
+async function runTickCommand(
+  dataFilePath: string,
+  runtime: RemindersCommandRuntime
+): Promise<number> {
+  const settings = await runtime.loadSettings();
   const outOfAppEnabled =
     settings.settings.notifications.outOfAppRemindersEnabled === true;
 
   if (!outOfAppEnabled) {
-    redactedLogger.log("out-of-app reminders disabled in settings; tick skipped");
+    runtime.log("out-of-app reminders disabled in settings; tick skipped");
     return CLI_EXIT_CODE.SUCCESS;
   }
 
-  const nowMs = Date.now();
-  const previousIndex = await loadReminderIndexForDataFile({ dataFilePath, nowMs });
-  const loaded = await loadStateStrict({ filePath: dataFilePath });
-  const rebuiltIndex = buildReminderIndex(loaded.data.tasks, nowMs);
+  const nowMs = runtime.nowMs();
+  const previousIndex = await runtime.loadReminderIndexForDataFile({ dataFilePath, nowMs });
+  const loaded = await runtime.loadStateStrict({ filePath: dataFilePath });
+  const rebuiltIndex = runtime.buildReminderIndex(loaded.data.tasks, nowMs);
   const index = mergeReminderIndexWithHelperEvents({
     rebuiltIndex,
     existingIndex: previousIndex,
     nowMs
   });
-  await saveReminderIndexForDataFile({ dataFilePath, index });
+  await runtime.saveReminderIndexForDataFile({ dataFilePath, index });
 
-  const runningProbe = await probeTadoiRunningState({ dataFilePath, nowMs });
+  const runningProbe = await runtime.probeTadoiRunningState({ dataFilePath, nowMs });
   if (runningProbe.running) {
-    redactedLogger.log(
+    runtime.log(
       `tadoi is running (pid ${String(runningProbe.pid ?? "unknown")}); reminder popups skipped`
     );
     return CLI_EXIT_CODE.SUCCESS;
   }
 
-  let helperState = pruneReminderHelperState(
-    await loadReminderHelperState({ dataFilePath, nowMs }),
+  let helperState = runtime.pruneReminderHelperState(
+    await runtime.loadReminderHelperState({ dataFilePath, nowMs }),
     nowMs
   );
 
   const dueEvents = index.events.filter(
-    (event) => Date.parse(event.remindAt) <= nowMs && !isReminderEventAlreadyFired(helperState, event.eventId)
+    (event) =>
+      Date.parse(event.remindAt) <= nowMs &&
+      !runtime.isReminderEventAlreadyFired(helperState, event.eventId)
   );
 
   if (dueEvents.length === 0) {
-    await saveReminderHelperState({ dataFilePath, state: helperState, nowMs });
-    redactedLogger.log("no due reminder events");
+    await runtime.saveReminderHelperState({ dataFilePath, state: helperState, nowMs });
+    runtime.log("no due reminder events");
     return CLI_EXIT_CODE.SUCCESS;
   }
 
-  const invocation = resolveCurrentTadoiInvocation();
+  const invocation = runtime.resolveCurrentTadoiInvocation();
   const launchFailures: string[] = [];
 
   for (const event of dueEvents) {
-    const launch = await launchReminderTerminal({
+    const launch = await runtime.launchReminderTerminal({
       eventId: event.eventId,
       invocation
     });
 
     if (launch.ok) {
-      helperState = markReminderEventFired(
+      helperState = runtime.markReminderEventFired(
         helperState,
         event.eventId,
         new Date(nowMs).toISOString(),
         nowMs
       );
-      redactedLogger.log(`launched reminder: ${formatReminderEventLine(event)}`);
+      runtime.log(`launched reminder: ${formatReminderEventLine(event)}`);
       continue;
     }
 
@@ -282,11 +349,11 @@ async function runTickCommand(dataFilePath: string): Promise<number> {
     );
   }
 
-  await saveReminderHelperState({ dataFilePath, state: helperState, nowMs });
+  await runtime.saveReminderHelperState({ dataFilePath, state: helperState, nowMs });
 
   if (launchFailures.length > 0) {
     for (const line of launchFailures) {
-      redactedLogger.error(`launch_failed: ${line}`);
+      runtime.error(`launch_failed: ${line}`);
     }
     return CLI_EXIT_CODE.IO_ERROR;
   }
@@ -294,41 +361,52 @@ async function runTickCommand(dataFilePath: string): Promise<number> {
   return CLI_EXIT_CODE.SUCCESS;
 }
 
-export async function runRemindersCommand(args: string[]): Promise<number> {
+export async function runRemindersCommandWithRuntime(
+  args: string[],
+  runtimeOverrides: Partial<RemindersCommandRuntime> = {}
+): Promise<number> {
+  const runtime: RemindersCommandRuntime = {
+    ...DEFAULT_RUNTIME,
+    ...runtimeOverrides
+  };
   const subcommand = args[0];
-  const dataFilePath = getDataFilePath();
+  const dataFilePath = runtime.getDataFilePath();
 
   if (!subcommand || subcommand === "--help" || subcommand === "-h") {
-    redactedLogger.log(usage());
+    runtime.log(usage());
     return CLI_EXIT_CODE.SUCCESS;
   }
 
   try {
     if (subcommand === "install") {
-      return await runInstallCommand(dataFilePath);
+      return await runInstallCommand(dataFilePath, runtime);
     }
     if (subcommand === "uninstall") {
-      return await runUninstallCommand();
+      return await runUninstallCommand(runtime);
     }
     if (subcommand === "status") {
-      return await runStatusCommand(dataFilePath);
+      return await runStatusCommand(dataFilePath, runtime);
     }
     if (subcommand === "test") {
-      return await runTestCommand(dataFilePath);
+      return await runTestCommand(dataFilePath, runtime);
     }
     if (subcommand === "tick") {
-      return await runTickCommand(dataFilePath);
+      return await runTickCommand(dataFilePath, runtime);
     }
 
-    redactedLogger.error(`Error: unknown reminders command '${subcommand}'.`);
-    redactedLogger.error(usage());
+    runtime.error(`Error: unknown reminders command '${subcommand}'.`);
+    runtime.error(usage());
     return CLI_EXIT_CODE.PARSE_OR_VALIDATION;
   } catch (error: unknown) {
-    redactedLogger.error(
+    runtime.error(
       `Error: reminders command failed (${error instanceof Error ? error.message : String(error)})`
     );
     return CLI_EXIT_CODE.IO_ERROR;
   }
+}
+
+export async function runRemindersCommand(args: string[]): Promise<number> {
+  return runRemindersCommandWithRuntime(args);
 }
 
 export function getReminderSettingsHelpLines(platform = process.platform): string[] {

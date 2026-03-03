@@ -267,7 +267,7 @@ export function DetailsPane({
       <text style={{ color: theme.text }}>{task.notes || "(no notes)"}</text>
       <box style={{ flexDirection: "column", marginTop: 1 }}>
         <text style={{ color: theme.muted }}>
-          NOTES CONTEXT {notesFocused ? "(FOCUSED)" : ""}
+          TASK-NATIVE TOME CONTEXT {notesFocused ? "(FOCUSED)" : ""}
         </text>
         {linkedTaskNotePath ? (
           <text style={{ color: theme.accentBlue }}>
@@ -284,6 +284,9 @@ export function DetailsPane({
             Actions: Enter/o open · l/r relink · u unlink
           </text>
         )}
+        <text style={{ color: theme.muted }}>
+          Primary note state: {linkedTaskNotePath ? "linked" : "not linked"}
+        </text>
         {linkedTaskNotePreviewLines.length > 0 ? (
           <box style={{ flexDirection: "column" }}>
             {linkedTaskNotePreviewLines.slice(0, 3).map((line, index) => (
@@ -296,6 +299,9 @@ export function DetailsPane({
         <text style={{ color: theme.muted }}>Notes linking here: {String(linkedNotes.length)}</text>
         <text style={{ color: theme.muted }}>
           Tasks referenced by linked note: {String(linkedTaskReferencedTaskCount)}
+        </text>
+        <text style={{ color: theme.muted }}>
+          Capture hint: Ctrl+N (or `note q`) captures into this task context.
         </text>
         {noteContextWarning ? (
           <text style={{ color: theme.warn }}>{noteContextWarning}</text>

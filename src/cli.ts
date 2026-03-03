@@ -318,6 +318,7 @@ export function printHelp(showLogo: boolean): void {
   redactedLogger.log("  due             Set/clear due by id via TITS command engine");
   redactedLogger.log("  recur           Set/clear recurrence by id via TITS command engine");
   redactedLogger.log("  note            TOME commands (quick/new/open/search/query/graph/links/reindex/help)");
+  redactedLogger.log("  capture         Alias for: note q ...");
   redactedLogger.log("  nq              Alias for: note q ...");
   redactedLogger.log("  list            List tasks with selector filters");
   redactedLogger.log("  reminders       Out-of-app reminder helper commands");

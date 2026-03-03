@@ -25,8 +25,21 @@ export type ExecuteNoteCommandContext = {
   notesSettings: NotesSettings;
   selectedTaskId?: string;
   captureSource?: string;
+  resolveTaskContext?: (
+    taskId: string
+  ) =>
+    | { primaryNotePath?: NotePath; inlineNotes?: string }
+    | null
+    | Promise<{ primaryNotePath?: NotePath; inlineNotes?: string } | null>;
   createBackup?: (dataFilePath: string) => Promise<unknown>;
   persistNotesSettings?: (next: NotesSettings) => Promise<void> | void;
+};
+
+export type NoteTaskSideEffects = {
+  taskId: string;
+  primaryNoteAction: "set" | "keep" | "none";
+  primaryNotePath?: NotePath;
+  clearInlineNotes?: boolean;
 };
 
 export type ExecuteNoteCommandResult = {
@@ -38,6 +51,7 @@ export type ExecuteNoteCommandResult = {
   capturedAt?: string;
   notesRoot?: string;
   matches?: NotePath[];
+  taskSideEffects?: NoteTaskSideEffects;
   data?: unknown;
 };
 
@@ -655,6 +669,42 @@ function resolveLinkTargetTaskId(
   return context.selectedTaskId;
 }
 
+function mergeCaptureBody(options: {
+  body?: string;
+  inlineTaskNotes?: string;
+}): string | undefined {
+  const body = options.body?.trim() ?? "";
+  const inlineTaskNotes = options.inlineTaskNotes?.trim() ?? "";
+  if (!body && !inlineTaskNotes) {
+    return undefined;
+  }
+  if (!inlineTaskNotes) {
+    return body || undefined;
+  }
+  if (!body) {
+    return `Task notes snapshot:\n${inlineTaskNotes}`;
+  }
+  return `${body}\n\nTask notes snapshot:\n${inlineTaskNotes}`;
+}
+
+function buildCaptureAppendBlock(options: {
+  capturedAt: string;
+  title: string;
+  body?: string;
+  linkedTaskId?: string;
+  includeTaskLink: boolean;
+}): string {
+  const lines = [`## Capture ${options.capturedAt}`, `Title: ${options.title}`];
+  const body = options.body?.trim() ?? "";
+  if (body) {
+    lines.push("", body);
+  }
+  if (options.includeTaskLink && options.linkedTaskId) {
+    lines.push("", `Linked task: @task:${options.linkedTaskId}`);
+  }
+  return `${lines.join("\n").trim()}\n`;
+}
+
 export async function executeNoteCommand(
   command: NoteCommand,
   context: ExecuteNoteCommandContext
@@ -717,19 +767,78 @@ export async function executeNoteCommand(
     }
 
     const capturedAt = new Date().toISOString();
+    const linkedTaskId = resolveLinkTargetTaskId(command, context);
+    const taskContext =
+      linkedTaskId && context.resolveTaskContext
+        ? ((await context.resolveTaskContext(linkedTaskId)) ?? null)
+        : null;
+    const includeTaskLink = Boolean(linkedTaskId) && !command.noLink;
+    const mergedBody = mergeCaptureBody({
+      body: command.body ?? command.stdinBody,
+      inlineTaskNotes: command.fromTaskNotes ? taskContext?.inlineNotes : undefined
+    });
+    const requestedCaptureMode = command.captureMode;
+    const effectiveCaptureMode =
+      requestedCaptureMode === "append" || requestedCaptureMode === "new"
+        ? requestedCaptureMode
+        : "new";
+    const primaryNotePath = taskContext?.primaryNotePath;
+
+    if (effectiveCaptureMode === "append" && primaryNotePath) {
+      const existing = await context.service.getNoteContent(primaryNotePath);
+      if (existing) {
+        const appendBlock = buildCaptureAppendBlock({
+          capturedAt,
+          title,
+          ...(mergedBody ? { body: mergedBody } : {}),
+          linkedTaskId,
+          includeTaskLink
+        });
+        const saved = await context.service.saveNote(
+          primaryNotePath,
+          `${existing.content.trimEnd()}\n\n${appendBlock}`
+        );
+        const note = context.service.getParsedNote(saved.path)?.note;
+        const taskSideEffects: NoteTaskSideEffects | undefined = linkedTaskId
+          ? {
+              taskId: linkedTaskId,
+              primaryNoteAction: includeTaskLink ? (command.setPrimary ? "set" : "keep") : "none",
+              ...(includeTaskLink ? { primaryNotePath: saved.path } : {}),
+              ...(command.clearTaskNotes ? { clearInlineNotes: true } : {})
+            }
+          : undefined;
+        return ok(`Quick note captured: ${saved.path} (appended)`, {
+          notePath: saved.path,
+          noteId: note?.id,
+          path: saved.path,
+          title: note?.title ?? title,
+          capturedAt,
+          ...(taskSideEffects ? { taskSideEffects } : {}),
+          data: {
+            operation: "quick",
+            captureMode: "append",
+            noteId: note?.id,
+            path: saved.path,
+            title: note?.title ?? title,
+            capturedAt,
+            linkedTaskId,
+            ...(taskSideEffects ? { taskSideEffects } : {})
+          }
+        });
+      }
+    }
+
     const templateContent = command.template
       ? await resolveTemplateContent(context.service, command.template)
       : null;
     let seededContent = templateContent
       ? withTitleSeed(templateContent.content, title)
       : `# ${title}\n\n`;
-    const body = (command.body ?? command.stdinBody ?? "").trim();
-    if (body.length > 0) {
-      seededContent = `${seededContent.trimEnd()}\n\n${body}\n`;
+    if (mergedBody) {
+      seededContent = `${seededContent.trimEnd()}\n\n${mergedBody}\n`;
     }
 
-    const linkedTaskId = resolveLinkTargetTaskId(command, context);
-    if (linkedTaskId) {
+    if (includeTaskLink && linkedTaskId) {
       seededContent = `${seededContent.trimEnd()}\n\nLinked task: @task:${linkedTaskId}\n`;
     }
 
@@ -755,12 +864,27 @@ export async function executeNoteCommand(
     });
     const created = await context.service.createNote(title, content);
     const note = context.service.getParsedNote(created.path)?.note;
+    const taskSideEffects: NoteTaskSideEffects | undefined = linkedTaskId
+      ? {
+          taskId: linkedTaskId,
+          primaryNoteAction: includeTaskLink
+            ? primaryNotePath && !command.setPrimary
+              ? "keep"
+              : "set"
+            : "none",
+          ...(includeTaskLink
+            ? { primaryNotePath: primaryNotePath && !command.setPrimary ? primaryNotePath : created.path }
+            : {}),
+          ...(command.clearTaskNotes ? { clearInlineNotes: true } : {})
+        }
+      : undefined;
     const createdPayload = {
       noteId: note?.id,
       path: created.path,
       title,
       capturedAt,
       linkedTaskId,
+      captureMode: effectiveCaptureMode,
       template: templateContent?.path ?? null
     };
     return ok(`Quick note captured: ${created.path}`, {
@@ -769,9 +893,11 @@ export async function executeNoteCommand(
       path: created.path,
       title,
       capturedAt,
+      ...(taskSideEffects ? { taskSideEffects } : {}),
       data: {
         operation: "quick",
-        ...createdPayload
+        ...createdPayload,
+        ...(taskSideEffects ? { taskSideEffects } : {})
       }
     });
   }

@@ -102,7 +102,7 @@ import {
 import { decideTaskLinkOpen } from "./linkOpenFlow";
 import { executeCommand } from "../commands/execute";
 import { parseCommand } from "../commands/parse";
-import type { CommandOutput } from "../commands/types";
+import type { CommandOutput, NoteCommand } from "../commands/types";
 import { MINI_DEFAULT_TIMEZONE } from "../lib/datetime/mini_datetime_parser";
 import {
   addTagToTagFilterDraftBucket,
@@ -258,7 +258,11 @@ import {
   deriveDefaultNoteTitleFromTaskTitle,
   isPathWithin
 } from "../notes/service";
-import { executeNoteCommand, parseNoteSearchQuery } from "../notes/commands";
+import {
+  executeNoteCommand,
+  parseNoteSearchQuery,
+  type ExecuteNoteCommandResult
+} from "../notes/commands";
 import { parseFrontmatter, upsertFrontmatterTags } from "../notes/frontmatter";
 import { renderMarkdownToTerminalLines } from "../notes/markdown";
 import { noteTagMatchesFilter, parseNoteTags } from "../notes/tags";
@@ -756,6 +760,7 @@ const HELP_TEXT_TUNING_THEME_NAV_ITEMS: HelpNavItem[] = [
 
 type KeymapAliasPresetContext = "list" | "dashboard" | "backup" | "help";
 type KeymapAliasPresetState = "off" | "preset" | "custom";
+type QuickNoteCommand = Extract<NoteCommand, { type: "note"; operation: "quick" }>;
 
 const HELP_KEYMAP_ALIAS_NAV_ITEMS: HelpNavItem[] = [
   {
@@ -945,7 +950,7 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
     items: [
       {
         title: "Press 1 in Help to open Backup Center",
-        description: "Guided DATA and CALENDAR flows with dry-run safety gates."
+        description: "Guided DATA, CALENDAR, and GITHUB CLOUD flows with dry-run safety gates."
       },
       {
         title: "CLI export/import commands available",
@@ -967,8 +972,13 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
         ]
       },
       {
-        title: "Cloud sync integrations (placeholder)",
-        description: "Reserved for future workspace sync options."
+        title: "GitHub cloud backups (shipped)",
+        description: [
+          "Open Backup Center -> Cloud Backups -> GitHub (CLI).",
+          "Connect flow checks gh install/login, verifies owner/repo, and warns on public repos.",
+          "Use Push snapshot now to write timestamped backups to GitHub.",
+          "Use Restore from GitHub to pull a snapshot into the existing dry-run -> commit import safety flow."
+        ]
       }
     ]
   },
@@ -2003,6 +2013,11 @@ export function App({
     Partial<Record<ThemeObjectId, ThemeTextTokenOverrides>>
   >({});
   const selectedRowIdRef = useRef<string | undefined>(state.selectedId);
+  const lastSelectedTaskIdRef = useRef<string | undefined>(state.selectedId);
+  const pendingNoteCaptureMergeRef = useRef<{
+    rawInput: string;
+    command: QuickNoteCommand;
+  } | null>(null);
   const editorDraftRef = useRef<EditorDraft | null>(state.editor);
   const editorDirtyIntentRef = useRef(false);
   const editorTargetRowIdRef = useRef<string | undefined>(undefined);
@@ -2730,6 +2745,11 @@ export function App({
     const start = Math.max(0, Math.min(detailsNotesPreviewOffset, maxStart));
     return lines.slice(start, start + DETAILS_NOTE_PREVIEW_ROWS);
   }, [detailsNotesPreviewOffset, selectedTaskLinkedNotePreviewLines]);
+  useEffect(() => {
+    if (selectedPersistedTask?.id) {
+      lastSelectedTaskIdRef.current = selectedPersistedTask.id;
+    }
+  }, [selectedPersistedTask?.id]);
   const retroFxMode = settingsState.retroFxMode;
   const isRetroFxActive = retroFxMode !== "off";
   const bottomBarHeight = 3;
@@ -4001,7 +4021,15 @@ export function App({
 
   useEffect(() => {
     if (!commandActive) return;
-    if (uiState.mode === Mode.LIST) return;
+    if (
+      uiState.mode === Mode.LIST ||
+      uiState.mode === Mode.DASHBOARD ||
+      uiState.mode === Mode.SEARCH ||
+      uiState.mode === Mode.ADD ||
+      uiState.mode === Mode.EDIT
+    ) {
+      return;
+    }
     setCommandActive(false);
     setCommandTextValue("");
     setCommandHistoryIndex(null);
@@ -5588,7 +5616,9 @@ export function App({
       "MODAL_CONFIRM_CHECKLIST_DELETE",
       "MODAL_SUBMIT_CHECKLIST_INPUT",
       "MODAL_CONFIRM_BULK_DELETE",
-      "MODAL_CONFIRM_TAG_LIFECYCLE"
+      "MODAL_CONFIRM_TAG_LIFECYCLE",
+      "MODAL_NOTE_CAPTURE_APPEND",
+      "MODAL_NOTE_CAPTURE_NEW"
     ]);
 
     if (
@@ -5870,6 +5900,12 @@ export function App({
       case "OPEN_SEARCH":
         openSearchMode();
         return;
+      case "OPEN_QUICK_CAPTURE":
+        clearPendingGPrefix();
+        setCommandActive(true);
+        setCommandTextValue("note q ");
+        setCommandHistoryIndex(null);
+        return;
       case "CLOSE_SEARCH":
         closeSearch();
         return;
@@ -6121,6 +6157,12 @@ export function App({
         return;
       case "MODAL_CONFIRM_TAG_LIFECYCLE":
         void handleConfirmTagLifecycleFromModal();
+        return;
+      case "MODAL_NOTE_CAPTURE_APPEND":
+        void confirmNoteCaptureModeFromModal("append");
+        return;
+      case "MODAL_NOTE_CAPTURE_NEW":
+        void confirmNoteCaptureModeFromModal("new");
         return;
       case "MODAL_CONFIRM_TASK_LINK_DELETE":
         handleDeleteTaskLinkFromModal();
@@ -6377,6 +6419,231 @@ export function App({
     showShortNavigationBanner(`${preview.summary} applied`);
   }
 
+  function resolveQuickCaptureTargetTaskId(): string | undefined {
+    if (uiState.mode === Mode.SEARCH && selectedUnifiedSearchResult?.kind === "task") {
+      return selectedUnifiedSearchResult.taskId;
+    }
+    if (selectedPersistedTask?.id) {
+      return selectedPersistedTask.id;
+    }
+    return lastSelectedTaskIdRef.current;
+  }
+
+  function resolveTaskCaptureContext(
+    taskId: string
+  ): { primaryNotePath?: NotePath; inlineNotes?: string } | null {
+    const task = findTaskById(taskId);
+    if (!task) return null;
+    const noteResolution =
+      task.noteRef && notesIndexSnapshot
+        ? resolveTaskNoteRef(task.noteRef, notesIndexSnapshot)
+        : null;
+    const primaryNotePath =
+      noteResolution?.status === "resolved"
+        ? noteResolution.notePath
+        : undefined;
+    const inlineNotes = task.notes?.trim();
+    return {
+      ...(primaryNotePath ? { primaryNotePath } : {}),
+      ...(inlineNotes ? { inlineNotes } : {})
+    };
+  }
+
+  function resolveQuickCaptureCommandTarget(command: QuickNoteCommand): QuickNoteCommand {
+    const explicitTargetId = command.target?.type === "id" ? command.target.id : undefined;
+    const resolvedTargetId = explicitTargetId ?? resolveQuickCaptureTargetTaskId();
+    if (!resolvedTargetId) {
+      return command;
+    }
+    if (command.target?.type === "id" && command.target.id === resolvedTargetId) {
+      return command;
+    }
+    return {
+      ...command,
+      target: {
+        type: "id",
+        id: resolvedTargetId
+      }
+    };
+  }
+
+  function applyNoteTaskSideEffects(result: ExecuteNoteCommandResult): void {
+    const sideEffect = result.taskSideEffects;
+    if (!sideEffect) return;
+    const task = findTaskById(sideEffect.taskId);
+    if (!task) return;
+
+    const nextNoteRef =
+      sideEffect.primaryNoteAction === "set" && sideEffect.primaryNotePath
+        ? result.noteId
+          ? { type: "id" as const, value: result.noteId }
+          : {
+              type: "filename" as const,
+              value: path.posix.basename(sideEffect.primaryNotePath)
+            }
+        : task.noteRef;
+    const nextInlineNotes = sideEffect.clearInlineNotes ? undefined : task.notes;
+    if (nextNoteRef === task.noteRef && nextInlineNotes === task.notes) {
+      return;
+    }
+    dispatch({
+      type: "setTasks",
+      tasks: tasksRef.current.map((candidate) =>
+        candidate.id === task.id
+          ? {
+              ...candidate,
+              noteRef: nextNoteRef,
+              notes: nextInlineNotes,
+              updatedAt: Date.now()
+            }
+          : candidate
+      )
+    });
+  }
+
+  async function executeInAppNoteCommand(
+    command: NoteCommand,
+    rawInput: string
+  ): Promise<"handled" | "deferred"> {
+    const service = resolveNotesService();
+    if (!service) return "handled";
+
+    let commandToExecute: NoteCommand = command;
+    if (command.operation === "quick") {
+      const quickCommand = resolveQuickCaptureCommandTarget(command);
+      const targetTaskId =
+        quickCommand.target?.type === "id"
+          ? quickCommand.target.id
+          : undefined;
+      const taskContext =
+        targetTaskId ? resolveTaskCaptureContext(targetTaskId) : null;
+      if (
+        targetTaskId &&
+        (!quickCommand.captureMode || quickCommand.captureMode === "prompt") &&
+        taskContext?.primaryNotePath
+      ) {
+        const captureTask = findTaskById(targetTaskId);
+        pendingNoteCaptureMergeRef.current = {
+          rawInput,
+          command: quickCommand
+        };
+        openModalWithContext({
+          type: "note_capture_merge",
+          taskId: targetTaskId,
+          taskTitle: captureTask?.title ?? targetTaskId,
+          primaryNotePath: taskContext.primaryNotePath,
+          previousMode: uiState.mode,
+          previousFocus: uiState.focus
+        });
+        return "deferred";
+      }
+      commandToExecute = quickCommand;
+    }
+
+    const result = await executeNoteCommand(commandToExecute, {
+      service,
+      dataFilePath: getDataFilePath(),
+      notesSettings: settingsState.notes,
+      selectedTaskId: resolveQuickCaptureTargetTaskId() ?? selectedPersistedTask?.id,
+      captureSource: "tits",
+      resolveTaskContext: resolveTaskCaptureContext,
+      createBackup: createDataBackup,
+      persistNotesSettings: async (nextNotes) => {
+        settingsDispatch({ type: "setNotes", notes: nextNotes });
+      }
+    });
+
+    setCommandOutput(result.output);
+    if (result.output.kind === "error") {
+      return "handled";
+    }
+
+    pendingNoteCaptureMergeRef.current = null;
+    applyNoteTaskSideEffects(result);
+    setCommandHistory((previous) => [...previous, rawInput]);
+    setCommandHistoryIndex(null);
+    setCommandTextValue("");
+
+    setNotesList(service.listNotes());
+    if (result.notesRoot) {
+      setNotesRuntime({
+        ready: true,
+        enabled: true,
+        notesRoot: result.notesRoot
+      });
+      setNotesRootInput(result.notesRoot);
+    }
+    if (
+      (commandToExecute.operation === "new" ||
+        commandToExecute.operation === "template" ||
+        commandToExecute.operation === "quick") &&
+      result.notePath
+    ) {
+      triggerFirstTomeCreated(Date.now(), result.notePath);
+    }
+
+    if (commandToExecute.operation === "search" || commandToExecute.operation === "query") {
+      const parsedQuery = parseNoteSearchQuery(commandToExecute.query);
+      setNotesSearchQuery(parsedQuery.textTerms.join(" "));
+      setNotesTagFilterQuery(parsedQuery.tagFilters[0] ?? "");
+      uiDispatch({
+        type: "captureReturnContext",
+        mode: uiState.mode,
+        focus: uiState.focus
+      });
+      uiDispatch({ type: "setMode", mode: Mode.NOTES_LIST });
+      uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_LIST });
+      if ((result.matches ?? []).length > 0) {
+        const firstMatch = result.matches?.[0];
+        if (firstMatch) {
+          const matchIndex = service
+            .listNotes()
+            .findIndex((item) => item.path === firstMatch);
+          if (matchIndex >= 0) {
+            setNotesSelectedIndex(matchIndex);
+          }
+        }
+      }
+      return "handled";
+    }
+
+    if (
+      result.notePath &&
+      (commandToExecute.operation === "open" ||
+        commandToExecute.operation === "new" ||
+        commandToExecute.operation === "template")
+    ) {
+      await hydrateOpenNote(result.notePath);
+      uiDispatch({
+        type: "captureReturnContext",
+        mode: uiState.mode,
+        focus: uiState.focus
+      });
+      uiDispatch({ type: "setMode", mode: Mode.NOTES_VIEW });
+      uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_VIEW });
+    }
+
+    return "handled";
+  }
+
+  async function confirmNoteCaptureModeFromModal(
+    captureMode: "append" | "new"
+  ): Promise<void> {
+    const modal = uiState.modal;
+    if (!modal || modal.type !== "note_capture_merge") return;
+    const pendingCapture = pendingNoteCaptureMergeRef.current;
+    closeModalWithPreviousContext(modal);
+    if (!pendingCapture) return;
+    pendingNoteCaptureMergeRef.current = null;
+    await executeInAppNoteCommand(
+      {
+        ...pendingCapture.command,
+        captureMode
+      },
+      `${pendingCapture.rawInput} --capture-mode ${captureMode}`
+    );
+  }
+
   async function executeCommandBar() {
     const raw = commandTextRef.current;
     const trimmed = raw.trim();
@@ -6461,89 +6728,8 @@ export function App({
     }
 
     if (parsed.command.type === "note") {
-      const service = resolveNotesService();
-      if (!service) return;
-
       try {
-        const result = await executeNoteCommand(parsed.command, {
-          service,
-          dataFilePath: getDataFilePath(),
-          notesSettings: settingsState.notes,
-          selectedTaskId: selectedPersistedTask?.id,
-          captureSource: "tits",
-          createBackup: createDataBackup,
-          persistNotesSettings: async (nextNotes) => {
-            settingsDispatch({ type: "setNotes", notes: nextNotes });
-          }
-        });
-
-        setCommandOutput(result.output);
-        if (result.output.kind === "error") {
-          return;
-        }
-
-        setCommandHistory((previous) => [...previous, raw]);
-        setCommandHistoryIndex(null);
-        setCommandTextValue("");
-
-        setNotesList(service.listNotes());
-        if (result.notesRoot) {
-          setNotesRuntime({
-            ready: true,
-            enabled: true,
-            notesRoot: result.notesRoot
-          });
-          setNotesRootInput(result.notesRoot);
-        }
-        if (
-          (parsed.command.operation === "new" ||
-            parsed.command.operation === "template" ||
-            parsed.command.operation === "quick") &&
-          result.notePath
-        ) {
-          triggerFirstTomeCreated(Date.now(), result.notePath);
-        }
-
-        if (parsed.command.operation === "search" || parsed.command.operation === "query") {
-          const parsedQuery = parseNoteSearchQuery(parsed.command.query);
-          setNotesSearchQuery(parsedQuery.textTerms.join(" "));
-          setNotesTagFilterQuery(parsedQuery.tagFilters[0] ?? "");
-          uiDispatch({
-            type: "captureReturnContext",
-            mode: uiState.mode,
-            focus: uiState.focus
-          });
-          uiDispatch({ type: "setMode", mode: Mode.NOTES_LIST });
-          uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_LIST });
-          if ((result.matches ?? []).length > 0) {
-            const firstMatch = result.matches?.[0];
-            if (firstMatch) {
-              const matchIndex = service
-                .listNotes()
-                .findIndex((item) => item.path === firstMatch);
-              if (matchIndex >= 0) {
-                setNotesSelectedIndex(matchIndex);
-              }
-            }
-          }
-          return;
-        }
-
-        if (
-          result.notePath &&
-          (parsed.command.operation === "open" ||
-            parsed.command.operation === "new" ||
-            parsed.command.operation === "template")
-        ) {
-          await hydrateOpenNote(result.notePath);
-          uiDispatch({
-            type: "captureReturnContext",
-            mode: uiState.mode,
-            focus: uiState.focus
-          });
-          uiDispatch({ type: "setMode", mode: Mode.NOTES_VIEW });
-          uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_VIEW });
-        }
+        await executeInAppNoteCommand(parsed.command, raw);
       } catch (error: unknown) {
         setCommandOutput({
           kind: "error",
@@ -6899,7 +7085,11 @@ export function App({
     }
 
     if (
-      uiState.mode === Mode.LIST &&
+      (uiState.mode === Mode.LIST ||
+        uiState.mode === Mode.DASHBOARD ||
+        uiState.mode === Mode.SEARCH ||
+        uiState.mode === Mode.ADD ||
+        uiState.mode === Mode.EDIT) &&
       !viewsOverlayOpen &&
       !saveViewPromptOpen &&
       (
@@ -12015,6 +12205,10 @@ export function App({
                 projectSlices={dashboardProjectSlices}
                 workflowStageSlices={dashboardWorkflowStageSlices}
                 activeFocusGroup={dashboardFocusGroup}
+                selectedTaskTitle={selectedPersistedTask?.title}
+                selectedTaskNotePath={selectedTaskLinkedNotePath}
+                selectedTaskLinkedNoteCount={selectedTaskLinkedNotes.length}
+                captureHint="Ctrl+N: quick capture to selected task context"
                 now={now}
                 width={dashboardPaneWidth}
                 height={dashboardPaneHeight}
@@ -12742,6 +12936,11 @@ export function App({
                         {`Results: ${String(unifiedSearchResults.length)} (${String(unifiedSearchTaskCount)} tasks, ${String(unifiedSearchNoteCount)} notes)`}
                         {searchResultsFocused ? " · results focus" : " · input focus"}
                       </text>
+                      {selectedUnifiedSearchResult?.kind === "task" ? (
+                        <text style={{ color: taskListTheme.muted }}>
+                          {`Selected task note: ${resolveTaskCaptureContext(selectedUnifiedSearchResult.taskId)?.primaryNotePath ?? "(none)"} · Ctrl+N capture targets this task`}
+                        </text>
+                      ) : null}
                       <box style={{ flexDirection: "column", marginTop: 1 }}>
                         {visibleUnifiedSearchResults.length === 0 ? (
                           <text style={{ color: theme.muted }}>(no matches)</text>
@@ -13291,6 +13490,12 @@ export function App({
         handleConfirmBulkDeleteFromModal={handleConfirmBulkDeleteFromModal}
         handleConfirmTagLifecycleModal={() => {
           void handleConfirmTagLifecycleFromModal();
+        }}
+        confirmNoteCaptureAppendFromModal={() => {
+          void confirmNoteCaptureModeFromModal("append");
+        }}
+        confirmNoteCaptureNewFromModal={() => {
+          void confirmNoteCaptureModeFromModal("new");
         }}
         patchTaskLinkFormModal={patchTaskLinkFormModal}
         submitTaskLinkFormModal={submitTaskLinkFormModal}

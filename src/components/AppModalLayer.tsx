@@ -54,6 +54,8 @@ type AppModalLayerProps = {
   handleDeleteChecklistItemFromModal: () => void;
   handleConfirmBulkDeleteFromModal: () => void;
   handleConfirmTagLifecycleModal: () => void;
+  confirmNoteCaptureAppendFromModal: () => void;
+  confirmNoteCaptureNewFromModal: () => void;
   patchTaskLinkFormModal: (patch: Partial<UITaskLinkFormModal>) => void;
   submitTaskLinkFormModal: () => void;
   applyEscUnwind: () => void;
@@ -117,6 +119,8 @@ export function AppModalLayer({
   handleDeleteChecklistItemFromModal,
   handleConfirmBulkDeleteFromModal,
   handleConfirmTagLifecycleModal,
+  confirmNoteCaptureAppendFromModal,
+  confirmNoteCaptureNewFromModal,
   patchTaskLinkFormModal,
   submitTaskLinkFormModal,
   applyEscUnwind,
@@ -361,6 +365,37 @@ export function AppModalLayer({
                   tone="warning"
                   label="CANCEL [N/ESC]"
                   onPress={applyEscUnwind}
+                />
+              </ModalActionRow>
+            </ModalContainer>
+          ) : uiState.modal.type === "note_capture_merge" ? (
+            <ModalContainer theme={theme} minWidth={MODAL_STANDARD_WIDTH}>
+              <text style={{ color: theme.text, fontWeight: "bold" }}>CAPTURE TARGET HAS PRIMARY NOTE</text>
+              <text style={{ color: theme.muted }}>Task: {uiState.modal.taskTitle}</text>
+              <text style={{ color: theme.muted }}>Primary note: {uiState.modal.primaryNotePath}</text>
+              <text style={{ color: theme.muted }}>
+                Choose capture behavior for this task context.
+              </text>
+              <ModalActionRow>
+                <ModalActionButton
+                  theme={theme}
+                  label="APPEND [A]"
+                  onPress={confirmNoteCaptureAppendFromModal}
+                  paddingX={2}
+                />
+                <ModalActionButton
+                  theme={theme}
+                  label="NEW [N]"
+                  onPress={confirmNoteCaptureNewFromModal}
+                  paddingX={2}
+                />
+              </ModalActionRow>
+              <ModalActionRow>
+                <ModalActionButton
+                  theme={theme}
+                  label="CANCEL [ESC]"
+                  onPress={applyEscUnwind}
+                  paddingX={2}
                 />
               </ModalActionRow>
             </ModalContainer>

@@ -1,7 +1,7 @@
 import type { HelpTopic } from "./types";
 
 const HELP_GENERAL =
-  "Commands: add, done, due, recur, check, bulk, note, tag, help. Try: help tag";
+  "Commands: add, done, due, recur, check, bulk, note, capture, nq, tag, help. Try: help tag";
 const HELP_ADD =
   'add <title> [due:<date|mini>] [at:<time>] [#tag ...] [notes:"..."]';
 const HELP_DONE = "done | done @selected | done id:<task-id>";
@@ -16,7 +16,9 @@ const HELP_BULK =
 const HELP_NOTE = `TOME COMMANDS (Terminal Oriented Markdown Environment)
 - note new "Title" [--template <id>]  Create note
 - note template <id> ["Title"]         Create note from template
-- note q|quick|capture "Title" ["Body"] [#tag|tag:x] [--status x] [--alias x] [--meta:key=value] [--template x] [@selected|id:task]
+- note q|quick|capture "Title" ["Body"] [#tag|tag:x] [--status x] [--alias x] [--meta:key=value] [--template x] [--capture-mode append|new|prompt] [--no-link] [--from-task-notes] [--set-primary] [--clear-task-notes] [@selected|id:task]
+- capture "Title" ...  Alias for note quick capture
+- nq "Title" ...       Alias for note quick capture
 - note open "Query"     Open note
 - note search "Query"   Search TOME notes (tag:/-tag:/title:/path:/text:/created:/updated:/limit:/format:)
 - note query "Query"    Alias for search

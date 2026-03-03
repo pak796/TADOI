@@ -1,5 +1,6 @@
 import { parseCommand, type ParseCommandOptions } from "../commands/parse";
 import { executeCommand } from "../commands/execute";
+import path from "path";
 import type {
   BulkCommand,
   Command,
@@ -59,6 +60,7 @@ type TitsCommandName =
   | "bulk:stage"
   | "bulk:delete"
   | "note"
+  | "capture"
   | "nq"
   | "help";
 
@@ -80,7 +82,14 @@ type TitsCliDeps = {
   releaseLock: (lockPath: string) => Promise<void>;
   loadData: (filePath: string) => Promise<LoadedData>;
   saveData: (data: LoadedData, filePath: string, options?: SaveDataOptions) => Promise<void>;
-  runNoteCommand: (command: NoteCommand, dataFilePath: string) => Promise<ExecuteNoteCommandResult>;
+  runNoteCommand: (
+    command: NoteCommand,
+    dataFilePath: string,
+    options?: {
+      tasks?: LoadedData["tasks"];
+      selectedTaskId?: string;
+    }
+  ) => Promise<ExecuteNoteCommandResult>;
   readStdin: () => Promise<string>;
   log: (line: string) => void;
   error: (line: string) => void;
@@ -143,6 +152,7 @@ function isTitsCommandName(value: string): value is TitsCommandName {
     value === "bulk:stage" ||
     value === "bulk:delete" ||
     value === "note" ||
+    value === "capture" ||
     value === "nq" ||
     value === "help"
   );
@@ -197,7 +207,7 @@ function resolveWrapperHelpCommand(argv: string[]): Command | null {
   }
 
   const topic = (
-    first === "note" || first === "nq"
+    first === "note" || first === "nq" || first === "capture"
       ? "note"
       : first.startsWith("check")
         ? "check"
@@ -578,6 +588,17 @@ export async function runTitsCommandCliWithDeps(
         };
       }
     }
+    if (
+      parsedCommand.type === "note" &&
+      parsedCommand.operation === "quick" &&
+      parsedCommand.target?.type === "id" &&
+      !parsedCommand.captureMode
+    ) {
+      parsedCommand = {
+        ...parsedCommand,
+        captureMode: "append"
+      };
+    }
 
     if (commandRequiresInAppSelection(parsedCommand)) {
       if (parsedCommand.type === "bulk") {
@@ -634,10 +655,55 @@ export async function runTitsCommandCliWithDeps(
     }
 
     if (parsedCommand?.type === "note") {
-      const result = await deps.runNoteCommand(parsedCommand, dataFilePath);
+      const loadedForNote = await deps.loadData(dataFilePath);
+      const noteExpectedStateRevision =
+        typeof loadedForNote.stateRevision === "number" &&
+        Number.isInteger(loadedForNote.stateRevision) &&
+        loadedForNote.stateRevision >= 0
+          ? loadedForNote.stateRevision
+          : 0;
+      const result = await deps.runNoteCommand(parsedCommand, dataFilePath, {
+        tasks: loadedForNote.tasks
+      });
       if (result.output.kind === "error") {
         deps.error(toSingleLine(result.output.text));
         return { handled: true, exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION };
+      }
+      if (result.taskSideEffects) {
+        const sideEffect = result.taskSideEffects;
+        const taskIndex = loadedForNote.tasks.findIndex((task) => task.id === sideEffect.taskId);
+        if (taskIndex >= 0) {
+          const targetTask = loadedForNote.tasks[taskIndex];
+          const nextNoteRef =
+            sideEffect.primaryNoteAction === "set" && sideEffect.primaryNotePath
+              ? result.noteId
+                ? { type: "id" as const, value: result.noteId }
+                : {
+                    type: "filename" as const,
+                    value: path.posix.basename(sideEffect.primaryNotePath)
+                  }
+              : targetTask.noteRef;
+          const nextInlineNotes = sideEffect.clearInlineNotes ? undefined : targetTask.notes;
+          const shouldUpdateTask =
+            nextNoteRef !== targetTask.noteRef || nextInlineNotes !== targetTask.notes;
+          if (shouldUpdateTask) {
+            const nextTasks = [...loadedForNote.tasks];
+            nextTasks[taskIndex] = {
+              ...targetTask,
+              noteRef: nextNoteRef,
+              notes: nextInlineNotes,
+              updatedAt: invocationNow
+            };
+            await deps.saveData(
+              {
+                ...loadedForNote,
+                tasks: nextTasks
+              },
+              dataFilePath,
+              { expectedStateRevision: noteExpectedStateRevision }
+            );
+          }
+        }
       }
       deps.log(formatCliOutput(result.output.text, { preserveMultiline: true }));
       return {

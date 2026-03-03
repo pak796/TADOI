@@ -37,6 +37,7 @@ type HintSpec = {
 const LIST_HINTS: HintSpec[] = [
   { key: "a", label: "add", actionId: "list_open_add" },
   { key: "`", label: "TITS" },
+  { key: "Ctrl+N", label: "quick capture" },
   { key: "e", label: "edit", actionId: "list_open_edit" },
   { key: "Space", label: "toggle", actionId: "list_toggle_selected" },
   { key: "/", label: "search", actionId: "list_open_search" },
@@ -50,6 +51,7 @@ const LIST_HINTS: HintSpec[] = [
 
 const DASHBOARD_HINTS: HintSpec[] = [
   { key: "Enter", label: "apply", actionId: "dashboard_apply_selection" },
+  { key: "Ctrl+N", label: "quick capture" },
   { key: "f", label: "status", actionId: "dashboard_cycle_status" },
   { key: "g", label: "due", actionId: "dashboard_cycle_due" },
   { key: "r", label: "priority", actionId: "dashboard_cycle_priority" },
@@ -81,6 +83,7 @@ const HELP_HINTS: HintSpec[] = [
 
 const SEARCH_HINTS: HintSpec[] = [
   { key: "type", label: "query" },
+  { key: "Ctrl+N", label: "quick capture" },
   { key: "Tab", label: "results" },
   { key: "Enter", label: "close/open" },
   { key: "Esc", label: "cancel" }
@@ -88,6 +91,7 @@ const SEARCH_HINTS: HintSpec[] = [
 
 const EDITOR_HINTS: HintSpec[] = [
   { key: "Tab", label: "next field" },
+  { key: "Ctrl+N", label: "quick capture" },
   { key: "Ctrl+S", label: "save" },
   { key: "Esc", label: "cancel" },
   { key: "PgUp/PgDn", label: "scroll" }
@@ -201,6 +205,7 @@ export function buildLeftRailHintLines(params: {
   if (context === "dashboard") {
     return [
       `${resolveAliasBackedKey("dashboard", "dashboard_move_down", "j", resolvedAliases)}/${resolveAliasBackedKey("dashboard", "dashboard_move_up", "k", resolvedAliases)}: MOVE`,
+      "Ctrl+N: CAPTURE",
       `${resolveAliasBackedKey("dashboard", "dashboard_open_tag_panel", "p", resolvedAliases)}: TAG PANEL`,
       `${resolveAliasBackedKey("dashboard", "dashboard_cycle_priority", "r", resolvedAliases)}: PRIORITY`,
       `${resolveAliasBackedKey("dashboard", "dashboard_apply_selection", "Enter", resolvedAliases)}: APPLY`,
@@ -249,6 +254,7 @@ export function buildLeftRailHintLines(params: {
 
   return [
     `${resolveAliasBackedKey("list", "list_move_down", "j", resolvedAliases)}/${resolveAliasBackedKey("list", "list_move_up", "k", resolvedAliases)}: MOVE`,
+    "Ctrl+N: CAPTURE",
     `${resolveAliasBackedKey("list", "list_open_tag_panel", "p", resolvedAliases)}: TAG PANEL`,
     `${resolveAliasBackedKey("list", "list_cycle_priority", "r", resolvedAliases)}: PRIORITY`,
     `${resolveAliasBackedKey("list", "list_open_search", "/", resolvedAliases)}: SEARCH`,

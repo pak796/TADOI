@@ -7,7 +7,7 @@ Optional shell completion scripts for `tadoi` are in:
 - `docs/completions/tadoi.fish`
 
 Covered surface:
-- top-level commands (`add`, `done`, `due`, `recur`, `note`, `nq`, `list`, `help`, `check:*`, `bulk:*`, `export`, `import`, `calendar:export`, `calendar:import`)
+- top-level commands (`add`, `done`, `due`, `recur`, `note`, `capture`, `nq`, `list`, `help`, `check:*`, `bulk:*`, `export`, `import`, `calendar:export`, `calendar:import`)
 - global runtime flags (`--interactive`, `--json`, `--quiet`, `--data-file`, plus existing help/version flags)
 - command-specific flags for `list`, portability, and calendar commands
 
@@ -54,6 +54,7 @@ TADOI_SKIP_COMPLETION_INSTALL=1 bun install
 
 ```bash
 tadoi <TAB>
+tadoi capture <TAB>
 tadoi list --<TAB>
 tadoi check:add --<TAB>
 tadoi bulk:due --<TAB>

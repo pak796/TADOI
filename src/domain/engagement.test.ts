@@ -160,7 +160,7 @@ describe("engagement helpers", () => {
 
     expect(state.streak.currentDays).toBe(4);
     expect(state.streak.bestDays).toBe(4);
-    expect(state.completionLog[0]?.tags).toEqual(["alpha", "beta"]);
+    expect(state.completionLog[0]?.tags).toEqual(["alpha", "home"]);
   });
 
   it("selects a deterministic tag when multiple tag-5 milestones fire on the same completion", () => {

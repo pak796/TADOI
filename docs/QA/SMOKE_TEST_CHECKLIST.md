@@ -22,6 +22,7 @@ Run on macOS, Windows, Linux.
 - [ ] `QA-066` TITS `add` succeeds and invalid `at:` without `due:` returns validation error
 - [ ] `QA-068` TITS `due` set and clear both succeed for selected task
 - [ ] `QA-071` CLI write command returns lock error while app is running
+- [ ] `QA-GH-001` Cloud backup status entry points open correctly (`Help / Settings / Cloud Backup` -> `Open Cloud Operations`, and `Backup Center` -> `Cloud Backups -> GitHub (CLI)`)
 
 ## Pass Criteria
 - All checks pass on all three platforms

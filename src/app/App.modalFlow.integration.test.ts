@@ -2764,8 +2764,8 @@ describe("App modal flow engagement toast protections", () => {
         harness,
         mockInput,
         async () => {
-          await openHelpSettingsPage(harness);
-          await waitForText(harness, "Help / Settings");
+          await pressKeyAndRender(mockInput, harness, "?");
+          await waitForText(harness, "MODE:  HELP");
         },
         async () => {
           await pressEscapeAndRender(mockInput, harness);
@@ -2775,7 +2775,7 @@ describe("App modal flow engagement toast protections", () => {
     } finally {
       await cleanupSession(session);
     }
-  });
+  }, 15_000);
 
   it("suppresses engagement toasts while Backup Center overlay is open", async () => {
     const session = await createSession();

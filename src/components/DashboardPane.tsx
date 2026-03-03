@@ -59,6 +59,10 @@ type DashboardPaneProps = {
   projectSlices?: Array<{ value: string; count: number }>;
   workflowStageSlices?: Array<{ value: string; count: number }>;
   activeFocusGroup?: DashboardFocusGroup;
+  selectedTaskTitle?: string;
+  selectedTaskNotePath?: string;
+  selectedTaskLinkedNoteCount?: number;
+  captureHint?: string;
   now: number;
   width: number;
   height: number;
@@ -572,6 +576,10 @@ export function DashboardPane({
   projectSlices = [],
   workflowStageSlices = [],
   activeFocusGroup = "top_tags",
+  selectedTaskTitle,
+  selectedTaskNotePath,
+  selectedTaskLinkedNoteCount = 0,
+  captureHint,
   now,
   width,
   height,
@@ -728,6 +736,10 @@ export function DashboardPane({
     const compact = kpiItems.map((item) => `${item.shortLabel}:${item.value}`).join("  ");
     return compact.length <= kpiStripInnerWidth;
   }, [kpiItems, kpiStripInnerWidth]);
+  const linkedTaskCount = React.useMemo(
+    () => tasks.filter((task) => Boolean(task.noteRef)).length,
+    [tasks]
+  );
 
   const panelStyle = {
     flexDirection: "column" as const,
@@ -752,6 +764,28 @@ export function DashboardPane({
       {showFilterSummary ? (
         <text style={{ color: theme.muted }}>{truncateLine(getFilterLine(filters), headerWidth)}</text>
       ) : null}
+      <box
+        style={{
+          ...panelStyle,
+          width: dashboardContentWidth,
+          marginTop: showFilterSummary ? 1 : 0
+        }}
+      >
+        <text style={{ color: theme.text, fontWeight: "bold" }}>
+          TOME COVERAGE
+        </text>
+        <text style={{ color: theme.text }}>
+          {`Linked tasks: ${String(linkedTaskCount)}/${String(tasks.length)}`}
+        </text>
+        {selectedTaskTitle ? (
+          <text style={{ color: theme.muted }}>
+            {`Selected task: ${selectedTaskTitle} · primary note: ${selectedTaskNotePath ?? "(none)"} · backlinks: ${String(selectedTaskLinkedNoteCount)}`}
+          </text>
+        ) : null}
+        {captureHint ? (
+          <text style={{ color: theme.muted }}>{captureHint}</text>
+        ) : null}
+      </box>
 
       <box
         style={{

@@ -319,6 +319,39 @@ describe("parseCommand", () => {
         metadata: { source: "cli" }
       }
     });
+    expect(parseCommand('capture "Daily" "Body" id:task-123')).toEqual({
+      ok: true,
+      command: {
+        type: "note",
+        operation: "quick",
+        title: "Daily",
+        body: "Body",
+        tags: [],
+        aliases: [],
+        metadata: {},
+        target: { type: "id", id: "task-123" }
+      }
+    });
+    expect(
+      parseCommand(
+        'note q "Daily" #work --capture-mode append --no-link --from-task-notes --set-primary --clear-task-notes'
+      )
+    ).toEqual({
+      ok: true,
+      command: {
+        type: "note",
+        operation: "quick",
+        title: "Daily",
+        tags: ["work"],
+        aliases: [],
+        metadata: {},
+        captureMode: "append",
+        noLink: true,
+        fromTaskNotes: true,
+        setPrimary: true,
+        clearTaskNotes: true
+      }
+    });
     expect(parseCommand('note open "Design notes"')).toEqual({
       ok: true,
       command: {
@@ -420,6 +453,10 @@ describe("parseCommand", () => {
     expect(parseCommand("note restore-defaults now")).toEqual({
       ok: false,
       error: "Error: note restore-defaults takes no extra tokens"
+    });
+    expect(parseCommand('note q "Daily" --capture-mode invalid')).toEqual({
+      ok: false,
+      error: 'Error: --capture-mode must be "append", "new", or "prompt"'
     });
   });
 

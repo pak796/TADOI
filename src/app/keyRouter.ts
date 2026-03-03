@@ -103,6 +103,7 @@ export type KeyRouterAction =
   | { scope: "ui"; type: "OPEN_TAG_FILTER_PANEL" }
   | { scope: "ui"; type: "CLOSE_HELP" }
   | { scope: "ui"; type: "OPEN_SEARCH" }
+  | { scope: "ui"; type: "OPEN_QUICK_CAPTURE" }
   | { scope: "ui"; type: "CLOSE_SEARCH" }
   | { scope: "ui"; type: "SEARCH_SET_RESULTS_FOCUS"; focused: boolean }
   | { scope: "ui"; type: "SEARCH_MOVE_RESULT_SELECTION"; delta: 1 | -1 }
@@ -230,6 +231,8 @@ export type KeyRouterAction =
   | { scope: "domain"; type: "MODAL_SUBMIT_CHECKLIST_INPUT" }
   | { scope: "domain"; type: "MODAL_CONFIRM_BULK_DELETE" }
   | { scope: "domain"; type: "MODAL_CONFIRM_TAG_LIFECYCLE" }
+  | { scope: "ui"; type: "MODAL_NOTE_CAPTURE_APPEND" }
+  | { scope: "ui"; type: "MODAL_NOTE_CAPTURE_NEW" }
   | { scope: "domain"; type: "MODAL_CONFIRM_TASK_LINK_DELETE" }
   | { scope: "domain"; type: "MODAL_CONFIRM_TASK_LINK_OPEN_EXTERNAL" }
   | { scope: "domain"; type: "MODAL_EDIT_SWITCH_SAVE" }
@@ -304,6 +307,15 @@ function isNotesOpenKey(
   shift: boolean
 ): boolean {
   return !ctrl && !shift && (name === "n" || sequence === "n");
+}
+
+function isQuickCaptureOpenKey(
+  name: string,
+  sequence: string,
+  ctrl: boolean,
+  shift: boolean
+): boolean {
+  return ctrl && !shift && (name.toLowerCase() === "n" || sequence.toLowerCase() === "n");
 }
 
 const BACKUP_INPUT_SUBMIT_SCREENS = new Set<BackupCenterScreen>([
@@ -653,6 +665,27 @@ function isHelpCloseKey(name: string, sequence: string): boolean {
   return name === "escape" || sequence === "?";
 }
 
+function resolveQuickCaptureActions(
+  key: KeyInput,
+  context: KeyRouterContext
+): KeyRouterAction[] | null {
+  const { name, sequence, ctrl, shift } = key;
+  if (!isQuickCaptureOpenKey(name, sequence, ctrl, shift)) {
+    return null;
+  }
+  const mode = context.uiState.mode;
+  if (
+    mode === Mode.LIST ||
+    mode === Mode.DASHBOARD ||
+    mode === Mode.SEARCH ||
+    mode === Mode.ADD ||
+    mode === Mode.EDIT
+  ) {
+    return [{ scope: "ui", type: "OPEN_QUICK_CAPTURE" }];
+  }
+  return [];
+}
+
 export function handleKey(
   key: KeyInput,
   context: KeyRouterContext
@@ -660,6 +693,7 @@ export function handleKey(
   const resolvers: Array<(k: KeyInput, c: KeyRouterContext) => KeyRouterAction[] | null> = [
     resolveEscapeActions,
     resolveModalModeActions,
+    resolveQuickCaptureActions,
     resolveDashboardToggleActions,
     resolveHelpModeActions,
     resolveBackupCenterModeActions,
@@ -791,6 +825,18 @@ function resolveModalModeActions(
   const { name, sequence, ctrl, shift } = key;
   const { uiState, allowEmptyNuxRecoveryImport } = context;
   if (uiState.mode !== Mode.MODAL_CONFIRM) return null;
+
+  if (uiState.modal?.type === "note_capture_merge") {
+    const lowerName = name.toLowerCase();
+    const lowerSequence = sequence.toLowerCase();
+    if (lowerName === "a" || lowerSequence === "a") {
+      return [{ scope: "ui", type: "MODAL_NOTE_CAPTURE_APPEND" }];
+    }
+    if (lowerName === "n" || lowerSequence === "n") {
+      return [{ scope: "ui", type: "MODAL_NOTE_CAPTURE_NEW" }];
+    }
+    return [];
+  }
 
   if (uiState.modal?.type === "emptyNux") {
     const step = uiState.emptyNux?.step ?? "welcome";

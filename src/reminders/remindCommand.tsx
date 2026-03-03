@@ -29,7 +29,7 @@ type ParsedArgs = {
   eventId?: string;
 };
 
-function parseArgs(args: string[]): ParsedArgs {
+export function parseRemindArgs(args: string[]): ParsedArgs {
   let eventId: string | undefined;
 
   for (let index = 0; index < args.length; index += 1) {
@@ -210,7 +210,7 @@ const ACTION_ORDER: OutOfAppReminderActionId[] = [
   "close"
 ];
 
-function cycleAction(
+export function cycleReminderAction(
   current: OutOfAppReminderActionId,
   direction: 1 | -1
 ): OutOfAppReminderActionId {
@@ -272,12 +272,12 @@ function ReminderModalApp(props: {
     }
 
     if (keyName === "tab" || keyName === "right" || keyName === "down" || sequence === "j") {
-      setSelectedAction((current) => cycleAction(current, 1));
+      setSelectedAction((current) => cycleReminderAction(current, 1));
       return;
     }
 
     if (keyName === "left" || keyName === "up" || sequence === "k") {
-      setSelectedAction((current) => cycleAction(current, -1));
+      setSelectedAction((current) => cycleReminderAction(current, -1));
       return;
     }
 
@@ -328,7 +328,7 @@ export async function runRemindCommand(args: string[]): Promise<number> {
     return CLI_EXIT_CODE.SUCCESS;
   }
 
-  const parsed = parseArgs(args);
+  const parsed = parseRemindArgs(args);
   if (!parsed.eventId) {
     redactedLogger.error("Error: remind requires --event <eventId>");
     return CLI_EXIT_CODE.PARSE_OR_VALIDATION;

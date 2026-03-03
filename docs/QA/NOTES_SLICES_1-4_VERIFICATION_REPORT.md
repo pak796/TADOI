@@ -1,5 +1,5 @@
 # TOME (Notes-Oriented Markdown) Feature Verification Report (Slices 1–4)
-Date: 2026-02-28
+Date: 2026-03-03
 Commit/Branch: 2a702b3 / master
 Tester: Codex
 OS: Darwin 25.3.0 arm64
@@ -11,6 +11,9 @@ OS: Darwin 25.3.0 arm64
 - `bun test "$PWD/src/notes/service.test.ts"`  ✅  (includes 100-note incremental edit guard; full reindex count remains stable)
 - `bun test "$PWD/src/app/App.bulk.integration.test.ts" "$PWD/src/app/App.modalFlow.integration.test.ts" "$PWD/src/app/App.tits.integration.test.ts"`  ✅  (app integration contracts pass)
 - `bun test`  ❌  (fails in this workspace due `dist/pack-smoke-*` artifact test discovery, unrelated to source changes)
+- `bun test "$PWD/src/commands/parse.test.ts" "$PWD/src/commands/execute.test.ts" "$PWD/src/commands/help.test.ts" "$PWD/src/cli/main.test.ts" "$PWD/src/cli/noteCommands.test.ts"` ✅ (`71 pass / 0 fail`)
+- `bun test "$PWD/src/notes/links.test.ts" "$PWD/src/notes/index.test.ts" "$PWD/src/notes/service.test.ts" "$PWD/src/notes/commands.test.ts"` ✅ (`20 pass / 0 fail`)
+- `bun test "$PWD/src/app/App.modalFlow.integration.test.ts" -t "suppresses engagement toasts while HELP overlay is open"` ✅ (`1 pass / 0 fail`)
 
 ## Slice Status Summary
 | Slice | Pass/Fail | Evidence | Fixes made |
@@ -45,8 +48,15 @@ OS: Darwin 25.3.0 arm64
 - [x] Recurrence semantics unchanged (complete/skip/snooze/delete-series)
 - [x] Backup/import gates unchanged
 
+## Re-validation of Deferred Flags (2026-03-03)
+- Heading links and block references: `still deferred`.
+  - Evidence: [`src/notes/links.ts`](../../src/notes/links.ts) only parses wikilinks/markdown links and does not implement heading/block-ref resolution.
+- Persisted on-disk notes index cache: `still deferred`.
+  - Evidence: [`src/notes/service.ts`](../../src/notes/service.ts) uses runtime `Map` caches (`cacheByPath`) with no persisted index artifact.
+- CLI/TITS notes command layer (Slice 5): `implemented` (this prior flag is stale).
+  - Evidence: parser + command execution + CLI runner are present in [`src/commands/parse.ts`](../../src/commands/parse.ts), [`src/notes/commands.ts`](../../src/notes/commands.ts), and [`src/cli/main.ts`](../../src/cli/main.ts), with passing tests listed above.
+
 ## Known limitations (explicitly deferred)
 - Heading links and block references are not implemented.
 - Persisted on-disk notes index cache is deferred (runtime in-memory index only).
-- CLI/TITS notes command layer (Slice 5) is not implemented.
 - Full markdown fidelity is intentionally out of scope; renderer is pragmatic terminal-focused.

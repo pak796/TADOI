@@ -163,6 +163,13 @@ export type UITagLifecycleModal = {
   detailLines: string[];
 } & UIModalReturnContext;
 
+export type UINoteCaptureMergeModal = {
+  type: "note_capture_merge";
+  taskId: string;
+  taskTitle: string;
+  primaryNotePath: string;
+} & UIModalReturnContext;
+
 export type UIEmptyNuxModal = {
   type: "emptyNux";
 };
@@ -196,7 +203,8 @@ export type UIConfirmModal =
   | UIUnsavedChangesModal
   | UIBackupFinalCheckpointModal
   | UIRecurringDeleteFutureCheckpointModal
-  | UITagLifecycleModal;
+  | UITagLifecycleModal
+  | UINoteCaptureMergeModal;
 
 export type UIState = {
   mode: ModeType;

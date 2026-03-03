@@ -228,36 +228,10 @@ export function normalizeEngagementState(
   const achievements = normalizeAchievements(record.achievements);
   const inferredStreak = rebuildStreakFromCompletionLog(completionLog);
 
-  const rawStreak =
-    typeof record.streak === "object" && record.streak !== null && !Array.isArray(record.streak)
-      ? (record.streak as Record<string, unknown>)
-      : null;
-
-  const streak = rawStreak
-    ? {
-        currentDays:
-          typeof rawStreak.currentDays === "number" && Number.isFinite(rawStreak.currentDays)
-            ? Math.max(0, Math.floor(rawStreak.currentDays))
-            : inferredStreak.currentDays,
-        bestDays:
-          typeof rawStreak.bestDays === "number" && Number.isFinite(rawStreak.bestDays)
-            ? Math.max(0, Math.floor(rawStreak.bestDays))
-            : inferredStreak.bestDays,
-        lastCompletionDayKey:
-          typeof rawStreak.lastCompletionDayKey === "string" &&
-          parseDayKey(rawStreak.lastCompletionDayKey)
-            ? rawStreak.lastCompletionDayKey
-            : inferredStreak.lastCompletionDayKey
-      }
-    : inferredStreak;
-
   return {
     completionLog,
     achievements,
-    streak: {
-      ...streak,
-      bestDays: Math.max(streak.bestDays, streak.currentDays)
-    }
+    streak: inferredStreak
   };
 }
 
