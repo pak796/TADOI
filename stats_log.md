@@ -1,7 +1,7 @@
 # TADOI Engineering Stats Log
 
 Generated: **2026-03-03** (America/Chicago)
-Baseline: **v0.3.9**
+Baseline: **v0.4.0**
 
 ## 1) Measurement Method
 
@@ -38,7 +38,7 @@ Primary code scope for engineering stats (`core scope`):
 | Test cases (`it` / `test`) | 1,215 |
 | `describe(...)` blocks | 232 |
 | Theme IDs available | 31 |
-| Release tasks marked `Complete` in `TADOI_TASKS_v0.3.9.md` | 56 |
+| Release tasks marked `Complete` in `TADOI_TASKS_v0.4.0.md` | 56 |
 
 ## 3) Scope Delta (Core vs Full Tracked Code)
 
@@ -80,7 +80,7 @@ Interpretation:
 
 ## 5) Feature Analysis (Implemented Capability Surface)
 
-This section summarizes what TADOI can do right now, based on `README`, v0.3.9 spec/task docs, and source module structure.
+This section summarizes what TADOI can do right now, based on `README`, v0.4.0 spec/task docs, and source module structure.
 
 ### 5.1 Core Task Management
 - Full CRUD lifecycle: create, edit, duplicate, complete/reopen, and delete tasks.
@@ -168,9 +168,9 @@ That combination is unusual for terminal task tools and gives TADOI a strong fou
 ## 7) Evidence Sources
 
 - `README.md`
-- `docs/TADOI_Feature_List_v0.3.9.md`
-- `TADOI_SPEC_v0.3.9.md`
-- `TADOI_TASKS_v0.3.9.md`
+- `docs/TADOI_Feature_List_v0.4.0.md`
+- `TADOI_SPEC_v0.4.0.md`
+- `TADOI_TASKS_v0.4.0.md`
 - `src/commands/parse.ts`
 - `src/cli/main.ts`
 - `src/cli/calendarCommands.ts`

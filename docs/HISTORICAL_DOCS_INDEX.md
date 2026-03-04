@@ -1,8 +1,8 @@
 # Historical Docs Index
 
 Updated: 2026-02-27
-Active runtime baseline: `v0.3.9`
-Active package baseline: `0.3.9`
+Active runtime baseline: `v0.4.0`
+Active package baseline: `0.4.0`
 
 Use this index to find historical artifacts that are retained for traceability but are not the active source of truth.
 
@@ -11,10 +11,12 @@ Use this index to find historical artifacts that are retained for traceability b
 - `TADOI_SPEC_v0.3.5.md`
 - `TADOI_SPEC_v0.3.7.md`
 - `TADOI_SPEC_v0.3.8.md`
+- `TADOI_SPEC_v0.3.9.md`
 - `TADOI_TASKS_v0.3.4.md`
 - `TADOI_TASKS_v0.3.5.md`
 - `TADOI_TASKS_v0.3.7.md`
 - `TADOI_TASKS_v0.3.8.md`
+- `TADOI_TASKS_v0.3.9.md`
 
 ## 2) Historical User Guides and QA Sheets (`docs/`)
 - `docs/TADOI_Feature_List_v0.3.0.md`
@@ -22,6 +24,7 @@ Use this index to find historical artifacts that are retained for traceability b
 - `docs/TADOI_Feature_List_v0.3.5.md`
 - `docs/TADOI_Feature_List_v0.3.7.md`
 - `docs/TADOI_Feature_List_v0.3.8.md`
+- `docs/TADOI_Feature_List_v0.3.9.md`
 - `docs/TADOI_QA_Guide_v0.2.8.md`
 - `docs/TADOI_QA_Guide_v0.3.0.md`
 - `docs/TADOI_QA_Guide_v0.3.1.md`
@@ -29,14 +32,16 @@ Use this index to find historical artifacts that are retained for traceability b
 - `docs/TADOI_QA_Guide_v0.3.5.md`
 - `docs/TADOI_QA_Guide_v0.3.7.md`
 - `docs/TADOI_QA_Guide_v0.3.8.md`
+- `docs/TADOI_QA_Guide_v0.3.9.md`
 
 ## 3) Historical Sync/Operations Packs
 - `docs/ops/notion_v0.3.4_sync_pack.md`
 - `docs/ops/notion_v0.3.5_sync_pack.md`
 - `docs/ops/notion_v0.3.7_sync_pack.md`
 - `docs/ops/notion_v0.3.8_sync_pack.md`
+- `docs/ops/notion_v0.3.9_sync_pack.md`
 
 ## 4) Active Source of Truth
-- `docs/DOC_INDEX.md` for active runtime docs (`v0.3.9`)
+- `docs/DOC_INDEX.md` for active runtime docs (`v0.4.0`)
 - `docs/README.md` for active docs landing page
-- `TADOI_SPEC_v0.3.9.md` and `TADOI_TASKS_v0.3.9.md` for current behavior and task governance
+- `TADOI_SPEC_v0.4.0.md` and `TADOI_TASKS_v0.4.0.md` for current behavior and task governance

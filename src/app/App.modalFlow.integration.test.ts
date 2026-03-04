@@ -580,7 +580,7 @@ async function createFakeGitHubCliFixture(options: {
       ownerRepo: options.ownerRepo,
       branch: options.branch,
       pathPrefix: options.pathPrefix,
-      appVersion: "v0.3.9",
+      appVersion: "v0.4.0",
       schemaVersion: 8,
       stateRevision: 7,
       hashes: {

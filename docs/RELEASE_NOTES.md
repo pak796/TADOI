@@ -1,16 +1,21 @@
 # TADOI™ Release Notes
 
-Current release baseline: `v0.3.9` (`package.json`: `0.3.9`).
+Current release baseline: `v0.4.0` (`package.json`: `0.4.0`).
 
 Primary changelog lives at `CHANGELOG.md` in the repo root.
 
-## Latest Notes (v0.3.9)
-- Version: `v0.3.9`
-- Date: `2026-02-27`
+## Latest Notes (v0.4.0)
+- Version: `v0.4.0`
+- Date: `2026-03-04`
 - Release scope:
-  - Version alignment release for runtime and active documentation (`v0.3.9` / `0.3.9`).
-  - New active versioned artifacts for spec, task list, QA guide, feature list, and Notion sync pack.
-  - No runtime behavior changes were introduced in this release note pass.
+  - Beta roll-forward release for runtime and active documentation (`v0.4.0` / `0.4.0`).
+  - New active versioned artifacts for spec, task list, QA guide, feature list, and Notion staging pack.
+  - GitHub cloud backup integration surfaces, encryption path coverage, and status panel flows are included in this beta validation baseline.
+  - Empty-state NUX onboarding route coverage is included in this beta validation baseline.
+- Beta validation focus:
+  - TOME note lifecycle and guide-restore/reindex flows.
+  - Git Backup connect/push/restore and encrypted snapshot behavior.
+  - NUX walkthrough routes (`welcome`, `celebrate`, `what_next`) and onboarding progress chips.
 - Validation snapshot:
   - `bun run docs:lint`: PASS
   - `bun run typecheck`: PASS

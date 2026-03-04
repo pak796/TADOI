@@ -78,7 +78,7 @@ describe("link keybinding contract", () => {
   });
 
   it("keeps backup center key snapshot aligned with routed keyspace", async () => {
-    const specPath = fileURLToPath(new URL("../../TADOI_SPEC_v0.3.9.md", import.meta.url).href);
+    const specPath = fileURLToPath(new URL("../../TADOI_SPEC_v0.4.0.md", import.meta.url).href);
     const specSource = await fs.readFile(specPath, "utf8");
     expect(specSource).toContain("- backup center menu: `1/2/3/4`, `Enter`, `Esc`");
     expect(specSource).toContain(

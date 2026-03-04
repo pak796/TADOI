@@ -1,7 +1,7 @@
 # Local Markdown Notes v0.1 Implementation Notes
 
 ## Scope
-This document captures implemented integration points for Local Markdown Notes slices 1-4 plus slice 5 B6/B7 command-parser/help constraints in TADOI (`v0.3.9` baseline).
+This document captures implemented integration points for Local Markdown Notes slices 1-4 plus slice 5 B6/B7 command-parser/help constraints in TADOI (`v0.4.0` baseline).
 The user-facing product name for this feature is TOME (Terminal Oriented Markdown Environment), a notes-oriented markdown tool.
 
 ## Boot and Load Integration

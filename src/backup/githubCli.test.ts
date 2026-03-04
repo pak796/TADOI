@@ -173,7 +173,7 @@ process.exit(1);
   it("lists snapshot refs newest-first with manifest metadata", async () => {
     const manifestContent = Buffer.from(
       JSON.stringify({
-        appVersion: "v0.3.9",
+        appVersion: "v0.4.0",
         schemaVersion: 8,
         counts: {
           tasksTotal: 7,
@@ -237,7 +237,7 @@ process.exit(1);
     expect(snapshots[0]?.timestamp).toBe("20260227-123000Z");
     expect(snapshots[0]?.tasksTotal).toBe(7);
     expect(snapshots[0]?.tasksOpen).toBe(3);
-    expect(snapshots[0]?.appVersion).toBe("v0.3.9");
+    expect(snapshots[0]?.appVersion).toBe("v0.4.0");
     expect(snapshots[0]?.encrypted).toBe(true);
   });
 

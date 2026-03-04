@@ -32,7 +32,7 @@ TADOI is a keyboard-first terminal task manager with an integrated notes tool ca
 
 ## Where To Learn More
 - Main usage guide: docs/USAGE.md
-- QA guide: docs/TADOI_QA_Guide_v0.3.9.md
+- QA guide: docs/TADOI_QA_Guide_v0.4.0.md
 - Notes implementation notes: docs/specs/local-markdown-notes-implementation-notes.md
 `
   },

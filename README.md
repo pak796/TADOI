@@ -4,16 +4,16 @@ Terminal Accessible Digital Organization Interface
 
 Keyboard-first TUI todo list with due dates, completion, and tag autocomplete (OpenTUI + React on Bun).
 
-Current version: `v0.3.9` (`package.json`: `0.3.9`).
-Feature list: [`docs/TADOI_Feature_List_v0.3.9.md`](./docs/TADOI_Feature_List_v0.3.9.md)
+Current version: `v0.4.0` (`package.json`: `0.4.0`).
+Feature list: [`docs/TADOI_Feature_List_v0.4.0.md`](./docs/TADOI_Feature_List_v0.4.0.md)
 Install guide: see the concise installation document in the docs index.
 Usage guide: [`docs/USAGE.md`](./docs/USAGE.md)
 CLI completions: [`docs/CLI_COMPLETIONS.md`](./docs/CLI_COMPLETIONS.md)
-QA guide: [`docs/TADOI_QA_Guide_v0.3.9.md`](./docs/TADOI_QA_Guide_v0.3.9.md)
+QA guide: [`docs/TADOI_QA_Guide_v0.4.0.md`](./docs/TADOI_QA_Guide_v0.4.0.md)
 Smoke checklist: [`docs/QA/SMOKE_TEST_CHECKLIST.md`](./docs/QA/SMOKE_TEST_CHECKLIST.md)
 Release checklist: see the release section in the docs index.
-Product spec: [`TADOI_SPEC_v0.3.9.md`](./TADOI_SPEC_v0.3.9.md)
-Task list: [`TADOI_TASKS_v0.3.9.md`](./TADOI_TASKS_v0.3.9.md)
+Product spec: [`TADOI_SPEC_v0.4.0.md`](./TADOI_SPEC_v0.4.0.md)
+Task list: [`TADOI_TASKS_v0.4.0.md`](./TADOI_TASKS_v0.4.0.md)
 Documentation index: [`docs/DOC_INDEX.md`](./docs/DOC_INDEX.md)
 Archival path policy: [`docs/ARCHIVAL_PATH_POLICY.md`](./docs/ARCHIVAL_PATH_POLICY.md)
 
@@ -51,7 +51,7 @@ Version check:
 bun run start -- --version
 ```
 
-## TITS Command Layer (v0.3.9)
+## TITS Command Layer (v0.4.0)
 
 TITS (Terminal-in-Terminal System) is the shared command language used by both the in-app command bar and the external CLI.
 
@@ -277,7 +277,7 @@ Behavior notes:
 - `calendar:import` uses the shared runtime exit matrix (`0/2/3/4/5`).
 - Report write failures are non-fatal warnings when import processing succeeds.
 
-## Stability Notes (As of v0.3.9)
+## Stability Notes (As of v0.4.0)
 
 - `Canonical`: filter semantics, routing boundaries, and list/dashboard filtered-data parity.
 - `Current Behavior (May Change)`: dashboard presentation/layout details and theme-onboarding UX flow.
@@ -725,7 +725,7 @@ bun run pack:smoke
 Install from generated tarball (example):
 
 ```bash
-bun add -g ./dist/tarball/tadoi-0.3.9.tgz
+bun add -g ./dist/tarball/tadoi-0.4.0.tgz
 tadoi --help
 ```
 

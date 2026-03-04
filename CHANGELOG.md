@@ -5,6 +5,8 @@ All notable changes to TADOI are documented in this file.
 The format is based on Keep a Changelog.
 
 ## [Unreleased]
+
+## [0.4.0] - 2026-03-04
 ### Added
 - Backup Center now includes `Cloud Backups -> GitHub (CLI)` with:
   - connect flow (create private repo or use existing personal repo),
@@ -29,10 +31,17 @@ The format is based on Keep a Changelog.
 - Backup Center calendar submenu now includes the GitHub cloud backup entry.
 - Backup Center GitHub status now shows snapshot encryption state (`on`/`off`).
 - CLI command surfaces now emit through the redacted logger.
+- App/runtime version surfaces are aligned to `v0.4.0` / `0.4.0`.
+- Active documentation baselines and versioned release artifacts were rolled to `v0.4.0`.
 
 ### Fixed
 - GitHub CLI adapter process spawn now forwards runtime environment (`PATH`) and
   supports Bun stdin sink semantics for `gh api --input -`.
+
+### Beta Validation Focus
+- TOME notes flows and restore-defaults/reindex behavior.
+- GitHub Backup Center connect/push/restore and encrypted snapshot handling.
+- Empty-state NUX onboarding routing (`welcome`, `celebrate`, `what_next`) and progress chips.
 
 ## [0.3.9] - 2026-02-27
 ### Added

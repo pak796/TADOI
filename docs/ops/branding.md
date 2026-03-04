@@ -62,17 +62,17 @@ After:
 TADOI™ Installation Guide (All Platforms)
 ```
 
-### 3) Page: `TADOI QA Guide (v0.3.9)`
+### 3) Page: `TADOI QA Guide (v0.4.0)`
 Section: title/header.
 
 Before:
 ```text
-TADOI QA Guide (v0.3.9)
+TADOI QA Guide (v0.4.0)
 ```
 
 After:
 ```text
-TADOI™ QA Guide (v0.3.9)
+TADOI™ QA Guide (v0.4.0)
 ```
 
 ### 4) Page: `TADOI User Guide (Current Functionality + Spec Review)`
