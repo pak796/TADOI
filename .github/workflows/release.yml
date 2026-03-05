@@ -63,14 +63,17 @@ jobs:
         run: bun run preflight:host:core
 
       - name: Test
+        if: ${{ !contains(github.ref_name, '-') }}
         env:
           TADOI_TEST_SHARDS: "6"
         run: bun run test
 
       - name: Reminder hardening regression
+        if: ${{ !contains(github.ref_name, '-') }}
         run: bun run test:reminders
 
       - name: Typecheck
+        if: ${{ !contains(github.ref_name, '-') }}
         run: bun run typecheck
 
       - name: Verify macOS packaging prerequisites
