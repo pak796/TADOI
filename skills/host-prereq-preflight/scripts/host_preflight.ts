@@ -120,16 +120,14 @@ function unique(values: string[]): string[] {
 }
 
 function commandPath(commandName: string): string | null {
-  const probe = spawnSync("zsh", ["-lc", `command -v ${shellEscape(commandName)}`], {
-    encoding: "utf8"
-  });
+  const locator = process.platform === "win32" ? "where" : "which";
+  const probe = spawnSync(locator, [commandName], { encoding: "utf8" });
   if (probe.status !== 0) return null;
-  const output = (probe.stdout || "").trim();
-  return output.length > 0 ? output : null;
-}
-
-function shellEscape(value: string): string {
-  return `'${value.replace(/'/g, `'\\''`)}'`;
+  const output = `${probe.stdout || ""}`
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find((line) => line.length > 0);
+  return output ?? null;
 }
 
 function parseSemver(input: string): Semver | null {
