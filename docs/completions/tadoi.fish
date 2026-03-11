@@ -1,7 +1,8 @@
-set -l _tadoi_commands add done due recur note capture nq list reminders remind help check:add check:toggle check:edit check:del check:clear bulk:done bulk:tag:add bulk:tag:rm bulk:due bulk:due:clear bulk:priority bulk:assignee bulk:project bulk:stage bulk:delete export import calendar:export calendar:import
+set -l _tadoi_commands add done due recur note capture nq list uninstall reminders remind help check:add check:toggle check:edit check:del check:clear bulk:done bulk:tag:add bulk:tag:rm bulk:due bulk:due:clear bulk:priority bulk:assignee bulk:project bulk:stage bulk:delete export import calendar:export calendar:import
 
 complete -c tadoi -n "not __fish_seen_subcommand_from $_tadoi_commands" -a "$_tadoi_commands"
 complete -c tadoi -n "not __fish_seen_subcommand_from $_tadoi_commands" -l help -s h -d "Show help"
+complete -c tadoi -n "not __fish_seen_subcommand_from $_tadoi_commands" -l uninstall -d "Alias for uninstall"
 complete -c tadoi -n "not __fish_seen_subcommand_from $_tadoi_commands" -l version -d "Print app version"
 complete -c tadoi -n "not __fish_seen_subcommand_from $_tadoi_commands" -l smoke-tui -d "Run minimal TUI smoke render and exit"
 complete -c tadoi -n "not __fish_seen_subcommand_from $_tadoi_commands" -l interactive -d "Force interactive TUI mode"
@@ -18,6 +19,9 @@ complete -c tadoi -n "__fish_seen_subcommand_from list" -l limit -r -d "Limit re
 complete -c tadoi -n "__fish_seen_subcommand_from list" -l json -d "Emit machine-readable output"
 complete -c tadoi -n "__fish_seen_subcommand_from list" -l quiet -d "Suppress non-essential output"
 complete -c tadoi -n "__fish_seen_subcommand_from list" -l data-file -r -d "Override data file path for this invocation"
+
+complete -c tadoi -n "__fish_seen_subcommand_from uninstall" -l help -s h -d "Show uninstall help"
+complete -c tadoi -n "__fish_seen_argument -l uninstall" -l help -s h -d "Show uninstall help"
 
 complete -c tadoi -n "__fish_seen_subcommand_from reminders" -a "install uninstall status test tick" -d "Reminder helper command"
 complete -c tadoi -n "__fish_seen_subcommand_from reminders" -l help -s h -d "Show reminders helper help"

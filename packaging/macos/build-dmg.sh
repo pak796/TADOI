@@ -64,9 +64,12 @@ Install:
 3) Run: tadoi
 
 Uninstall:
-sudo rm -f /usr/local/bin/tadoi
+1) Run: tadoi uninstall
+2) Follow the printed main-install removal step
+3) Manual fallback for PKG installs:
+   sudo rm -f /usr/local/bin/tadoi
 
-Note: This removes only the CLI binary. User data/config are retained.
+Note: The CLI cleanup keeps user data/config. The remaining main-install removal step depends on how TADOI was installed.
 README
 
 DMG_PATH="$OUT_DIR/TADOI-macOS-$VERSION.dmg"

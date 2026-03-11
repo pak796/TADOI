@@ -30,6 +30,8 @@ Completion install behavior:
 - To skip this in automation/CI, set `TADOI_SKIP_COMPLETION_INSTALL=1`.
 - Manual rerun:
   - `bun run completions:install:user`
+- Simple uninstall:
+  - `tadoi uninstall` or `tadoi --uninstall` removes user completions, attempts reminder-helper cleanup, and prints the remaining main-install removal step.
 
 ## Daily Build Artifacts
 When running `bun run build:daily`, artifacts are staged under:

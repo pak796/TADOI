@@ -10,6 +10,20 @@ describe("resolveCliRoute", () => {
     expect(route.args).toEqual(["+work", "--sort", "updated"]);
   });
 
+  it("routes uninstall before global flags", () => {
+    const route = resolveCliRoute(["uninstall"]);
+    expect(route.kind).toBe("uninstall");
+    if (route.kind !== "uninstall") return;
+    expect(route.args).toEqual([]);
+  });
+
+  it("routes --uninstall alias before global flags", () => {
+    const route = resolveCliRoute(["--uninstall"]);
+    expect(route.kind).toBe("uninstall");
+    if (route.kind !== "uninstall") return;
+    expect(route.args).toEqual([]);
+  });
+
   it("routes reminders before global flags", () => {
     const route = resolveCliRoute(["reminders", "status"]);
     expect(route.kind).toBe("reminders");
@@ -68,6 +82,7 @@ describe("runCli", () => {
   function createDeps() {
     const calls = {
       list: 0,
+      uninstall: 0,
       portability: 0,
       calendar: 0,
       tui: 0,
@@ -81,6 +96,10 @@ describe("runCli", () => {
       async runList() {
         calls.list += 1;
         return { exitCode: 0 };
+      },
+      async runUninstall() {
+        calls.uninstall += 1;
+        return 0;
       },
       async runReminders() {
         return 0;
@@ -205,9 +224,28 @@ describe("runCli", () => {
     const code = await runCli(["list"], deps);
     expect(code).toBe(0);
     expect(calls.list).toBe(1);
+    expect(calls.uninstall).toBe(0);
     expect(calls.tui).toBe(0);
     expect(calls.portability).toBe(0);
     expect(calls.calendar).toBe(0);
+  });
+
+  it("runs uninstall in headless mode", async () => {
+    const { calls, deps } = createDeps();
+    const code = await runCli(["uninstall"], deps);
+    expect(code).toBe(0);
+    expect(calls.uninstall).toBe(1);
+    expect(calls.list).toBe(0);
+    expect(calls.tui).toBe(0);
+  });
+
+  it("runs --uninstall alias in headless mode", async () => {
+    const { calls, deps } = createDeps();
+    const code = await runCli(["--uninstall"], deps);
+    expect(code).toBe(0);
+    expect(calls.uninstall).toBe(1);
+    expect(calls.list).toBe(0);
+    expect(calls.tui).toBe(0);
   });
 
   it("rejects json mode for interactive route", async () => {
@@ -254,10 +292,12 @@ describe("printHelp", () => {
     expect(output).toContain("Terminal Accessible Digital Organization Interface");
     expect(output).toContain("Usage: tadoi [options]");
     expect(output).toContain("--interactive");
+    expect(output).toContain("--uninstall");
     expect(output).toContain("--json");
     expect(output).toContain("--quiet");
     expect(output).toContain("--data-file <path>");
     expect(output).toContain("list");
+    expect(output).toContain("uninstall");
     expect(output).toContain("calendar:export");
     expect(output).toContain("calendar:import");
   });

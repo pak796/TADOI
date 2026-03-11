@@ -10,6 +10,7 @@ const COMPLETION_FILES = [
 
 const REQUIRED_COMMAND_TOKENS = [
   "list",
+  "uninstall",
   "capture",
   "nq",
   "check:add",

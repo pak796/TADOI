@@ -25,6 +25,7 @@ bun install
 
 `bun install` runs `postinstall` to install user-level CLI completions (`bash`, `zsh`, `fish`).
 Set `TADOI_SKIP_COMPLETION_INSTALL=1` to skip completion install in CI/automation.
+Run `tadoi uninstall` or `tadoi --uninstall` to remove those user-level completions later and print the remaining main-install removal step.
 
 ## Dependency Policy
 

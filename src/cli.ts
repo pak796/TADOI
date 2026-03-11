@@ -10,6 +10,7 @@ import { runPortabilityCommand } from "./cli/portabilityCommands";
 import { runCalendarCommand } from "./cli/calendarCommands";
 import { runTitsCommandCli, TITS_CLI_EXIT_CODE } from "./cli/main";
 import { runListCommand } from "./cli/listCommand";
+import { runUninstallCommand } from "./cli/uninstallCommand";
 import { runRemindersCommand } from "./cli/remindersCommands";
 import { runRemindCommand } from "./reminders/remindCommand";
 import { runTui, runTuiSmoke, type RunTuiOptions } from "./tui/runTui";
@@ -35,6 +36,7 @@ export type CliRoute =
   | { kind: "version" }
   | { kind: "smoke_tui" }
   | { kind: "list"; args: string[] }
+  | { kind: "uninstall"; args: string[] }
   | { kind: "reminders"; args: string[] }
   | { kind: "remind"; args: string[] }
   | { kind: "portability"; command: "export" | "import"; args: string[] }
@@ -56,6 +58,7 @@ export type CliRunDeps = {
   ) => Promise<number>;
   runCalendar: (command: "export" | "import", args: string[]) => Promise<number>;
   runList: (args: string[], options: { json: boolean }) => Promise<StructuredRunResult>;
+  runUninstall: (args: string[]) => Promise<number>;
   runReminders: (args: string[]) => Promise<number>;
   runRemind: (args: string[]) => Promise<number>;
   runInteractiveTui: (options: RunTuiOptions) => Promise<void>;
@@ -89,6 +92,13 @@ function parseCliOptions(argv: string[]): CliOptions {
   }
 
   return { showHelp, showLogo, showVersion, smokeTui };
+}
+
+function normalizeCliCommandAlias(argv: string[]): string[] {
+  if (argv[0] === "--uninstall") {
+    return ["uninstall", ...argv.slice(1)];
+  }
+  return argv;
 }
 
 function isCoreOptionToken(token: string): boolean {
@@ -304,6 +314,7 @@ export function printHelp(showLogo: boolean): void {
   redactedLogger.log("");
   redactedLogger.log("Options:");
   redactedLogger.log("  -h, --help      Show this help");
+  redactedLogger.log("      --uninstall Alias for: uninstall");
   redactedLogger.log("      --version   Print app version");
   redactedLogger.log("      --smoke-tui Run minimal TUI smoke render and exit");
   redactedLogger.log("      --interactive Force interactive TUI mode");
@@ -321,6 +332,7 @@ export function printHelp(showLogo: boolean): void {
   redactedLogger.log("  capture         Alias for: note q ...");
   redactedLogger.log("  nq              Alias for: note q ...");
   redactedLogger.log("  list            List tasks with selector filters");
+  redactedLogger.log("  uninstall       Remove user-owned TADOI CLI extras and print main uninstall step");
   redactedLogger.log("  reminders       Out-of-app reminder helper commands");
   redactedLogger.log("  remind          Open reminder modal by event id");
   redactedLogger.log("  check:*         Checklist commands (add/toggle/edit/del/clear)");
@@ -347,6 +359,7 @@ const DEFAULT_DEPS: CliRunDeps = {
   runPortability: runPortabilityCommand,
   runCalendar: runCalendarCommand,
   runList: runListCommand,
+  runUninstall: runUninstallCommand,
   runReminders: runRemindersCommand,
   runRemind: runRemindCommand,
   runInteractiveTui: runTui,
@@ -356,53 +369,60 @@ const DEFAULT_DEPS: CliRunDeps = {
 };
 
 export function resolveCliRoute(argv: string[]): CliRoute {
-  const command = argv[0];
+  const normalizedArgv = normalizeCliCommandAlias(argv);
+  const command = normalizedArgv[0];
   if (command === "list") {
     return {
       kind: "list",
-      args: argv.slice(1)
+      args: normalizedArgv.slice(1)
+    };
+  }
+  if (command === "uninstall") {
+    return {
+      kind: "uninstall",
+      args: normalizedArgv.slice(1)
     };
   }
   if (command === "reminders") {
     return {
       kind: "reminders",
-      args: argv.slice(1)
+      args: normalizedArgv.slice(1)
     };
   }
   if (command === "remind") {
     return {
       kind: "remind",
-      args: argv.slice(1)
+      args: normalizedArgv.slice(1)
     };
   }
   if (command === "export" || command === "import") {
     return {
       kind: "portability",
       command,
-      args: argv.slice(1)
+      args: normalizedArgv.slice(1)
     };
   }
   if (command === "calendar:export") {
     return {
       kind: "calendar",
       command: "export",
-      args: argv.slice(1)
+      args: normalizedArgv.slice(1)
     };
   }
   if (command === "calendar:import") {
     return {
       kind: "calendar",
       command: "import",
-      args: argv.slice(1)
+      args: normalizedArgv.slice(1)
     };
   }
 
-  if (argv.length === 0) {
+  if (normalizedArgv.length === 0) {
     return { kind: "tui", showLogo: true };
   }
 
-  const cliOptions = parseCliOptions(argv);
-  const argsOnlyCoreOptions = argv.every(isCoreOptionToken);
+  const cliOptions = parseCliOptions(normalizedArgv);
+  const argsOnlyCoreOptions = normalizedArgv.every(isCoreOptionToken);
 
   if (cliOptions.showHelp && argsOnlyCoreOptions) {
     return { kind: "help", showLogo: cliOptions.showLogo };
@@ -420,7 +440,7 @@ export function resolveCliRoute(argv: string[]): CliRoute {
     return { kind: "tui", showLogo: cliOptions.showLogo };
   }
 
-  const unknownToken = argv.find((arg) => !isCoreOptionToken(arg));
+  const unknownToken = normalizedArgv.find((arg) => !isCoreOptionToken(arg));
   if (unknownToken) {
     return { kind: "unknown", token: unknownToken };
   }
@@ -453,6 +473,9 @@ export async function runCli(
       }
       if (route.kind === "list") {
         return deps.runList(route.args, { json: runtime.json });
+      }
+      if (route.kind === "uninstall") {
+        return deps.runUninstall(route.args);
       }
       if (route.kind === "reminders") {
         return deps.runReminders(route.args);

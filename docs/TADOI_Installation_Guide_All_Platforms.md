@@ -278,9 +278,17 @@ From the project root:
 
 ## 10) Uninstall
 
-1. Delete the project folder.
-2. Optionally remove app data files:
+1. Run `tadoi uninstall` or `tadoi --uninstall`.
+   - Removes user shell completions installed by `bun install`.
+   - Attempts reminder-helper cleanup.
+   - Keeps task data, notes, and settings.
+2. Remove the main install using the method that originally installed TADOI:
+   - macOS PKG/DMG: follow the printed `/usr/local/bin/tadoi` removal step.
+   - Windows EXE: uninstall TADOI from Settings > Apps or Control Panel.
+   - Linux DEB: remove the package with your distro package manager (example: `sudo apt remove tadoi`).
+   - Linux AppImage/manual binary: delete the AppImage or binary you launched.
+3. Optionally remove app data files:
    - macOS: `~/Library/Application Support/tadoi/`
    - Windows: `%APPDATA%\\tadoi\\`
    - Linux: `$XDG_DATA_HOME/tadoi/` or `~/.local/share/tadoi/`
-3. Optionally remove Bun separately if no longer needed.
+4. Optionally remove Bun separately if no longer needed.

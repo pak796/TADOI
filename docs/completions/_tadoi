@@ -4,6 +4,7 @@ local -a root_opts
 root_opts=(
   '--help[Show help]'
   '-h[Show help]'
+  '--uninstall[Alias for uninstall]'
   '--version[Print version]'
   '--smoke-tui[Run minimal TUI smoke render and exit]'
   '--interactive[Force interactive TUI mode]'
@@ -23,6 +24,7 @@ commands=(
   'capture:Alias for note quick capture'
   'nq:Alias for note quick capture'
   'list:List tasks via selector grammar'
+  'uninstall:Remove user-owned CLI extras and print main uninstall step'
   'reminders:Out-of-app reminder helper commands'
   'remind:Open reminder modal by event id'
   'help:Show TITS help topics'
@@ -66,6 +68,11 @@ case "${words[2]}" in
       '--json[Emit machine-readable output]' \
       '--quiet[Suppress non-essential output]' \
       '--data-file[Override data file path]:path:_files'
+    ;;
+  --uninstall|uninstall)
+    _arguments \
+      '--help[Show uninstall help]' \
+      '-h[Show uninstall help]'
     ;;
   reminders)
     _arguments \
