@@ -1,6 +1,6 @@
 # TADOI™ Feature List (v0.4.0)
 
-This list reflects current runtime behavior as of **2026-03-03**.
+This list reflects current runtime behavior as of **2026-03-11**.
 
 ## Core Workflow
 - Create, edit, duplicate, complete/reopen, and delete tasks.
@@ -119,5 +119,5 @@ This list reflects current runtime behavior as of **2026-03-03**.
 - Below minimum, app shows blocking guard: `Terminal too small (min 104x24)`.
 
 ## Version Surface
-- App version: `v0.4.0`.
-- Package version: `0.4.0`.
+- App version: `v0.4.0-beta.2`.
+- Package version: `0.4.0-beta.2`.

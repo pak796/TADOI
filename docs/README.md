@@ -37,8 +37,8 @@ This index links the current user-facing TADOI documentation set.
 - [Security/Privacy Remediation Plan (2026-02-12)](./audits/tadoi-security-privacy-remediation-2026-02-12.md)
 
 ## Release Context
-- Runtime baseline: `v0.4.0`
-- Package baseline: `0.4.0`
+- Runtime baseline: `v0.4.0-beta.2`
+- Package baseline: `0.4.0-beta.2`
 
 ## Trademark Notice
 TADOI™ is a trademark of <OWNER>. Other names may be trademarks of their respective owners.

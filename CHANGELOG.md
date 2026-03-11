@@ -6,6 +6,15 @@ The format is based on Keep a Changelog.
 
 ## [Unreleased]
 
+## [0.4.0-beta.2] - 2026-03-11
+### Changed
+- Runtime/package version surfaces now align to `v0.4.0-beta.2` / `0.4.0-beta.2` for the beta 2 repackaging pass.
+- Release-facing docs were refreshed to point at the beta 2 runtime/package baseline while keeping the existing `v0.4.0` document file set.
+
+### Fixed
+- The CLI uninstall flow is now included in the beta 2 release packaging pass, including user-shell completion cleanup, reminder-helper best-effort cleanup, and printed main-install removal guidance.
+- Tarball and installer artifact naming now differentiate the beta 2 release from the prior `0.4.0` package artifacts.
+
 ## [0.4.0] - 2026-03-04
 ### Added
 - Backup Center now includes `Cloud Backups -> GitHub (CLI)` with:

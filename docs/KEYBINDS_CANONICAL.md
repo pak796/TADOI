@@ -25,7 +25,7 @@ Canonical keybind count: 70
 | `Ctrl+F` | src/app/keyRouter.test.ts:963 |
 | `Ctrl+G` | src/app/keyRouter.test.ts:812<br>src/app/keyRouter.ts:1968 |
 | `Ctrl+L` | src/app/keyRouter.test.ts:1597<br>src/app/keyRouter.ts:1657<br>src/app/keyRouter.ts:1657 |
-| `Ctrl+N` | src/app/keyRouter.test.ts:1931<br>src/app/keyRouter.test.ts:1934<br>src/app/keyRouter.test.ts:1946<br>+2 more |
+| `Ctrl+N` | src/app/keyRouter.test.ts:1931<br>src/app/keyRouter.test.ts:1934<br>src/app/keyRouter.test.ts:1946<br>+3 more |
 | `Ctrl+P` | src/app/keyRouter.test.ts:815<br>src/app/keyRouter.ts:1972 |
 | `Ctrl+S` | src/app/keyRouter.test.ts:1594<br>src/app/keyRouter.test.ts:842<br>src/app/keyRouter.ts:1123<br>+9 more |
 | `Ctrl+U` | src/app/keyRouter.test.ts:1191<br>src/app/keyRouter.test.ts:1450<br>src/app/keyRouter.test.ts:1606<br>+3 more |
@@ -63,7 +63,7 @@ Canonical keybind count: 70
 | `k` | src/app/keyRouter.test.ts:1701<br>src/app/keyRouter.test.ts:1701<br>src/app/keyRouter.test.ts:754<br>+19 more |
 | `l` | src/app/keyRouter.test.ts:1597<br>src/app/keyRouter.test.ts:618<br>src/app/keyRouter.test.ts:618<br>+15 more |
 | `m` | src/app/keyRouter.test.ts:1519<br>src/app/keyRouter.test.ts:1519<br>src/app/keyRouter.test.ts:809<br>+5 more |
-| `n` | src/app/keyRouter.test.ts:1779<br>src/app/keyRouter.test.ts:1779<br>src/app/keyRouter.test.ts:1786<br>+49 more |
+| `n` | src/app/keyRouter.test.ts:1779<br>src/app/keyRouter.test.ts:1779<br>src/app/keyRouter.test.ts:1786<br>+51 more |
 | `o` | src/app/keyRouter.test.ts:1732<br>src/app/keyRouter.test.ts:1732<br>src/app/keyRouter.ts:1587<br>+5 more |
 | `p` | src/app/keyRouter.test.ts:1125<br>src/app/keyRouter.test.ts:1125<br>src/app/keyRouter.test.ts:815<br>+9 more |
 | `q` | src/app/keyRouter.test.ts:1138<br>src/app/keyRouter.test.ts:1138<br>src/app/keyRouter.test.ts:1249<br>+3 more |

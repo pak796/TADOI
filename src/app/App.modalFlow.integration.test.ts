@@ -18,6 +18,7 @@ import type {
 import { addLocalDaysMs, startOfLocalDayMs } from "../domain/dates";
 import { ENV_VARS } from "../brand/brand";
 import { encryptSnapshotPayload } from "../backup/snapshotCrypto";
+import { APP_VERSION } from "./version";
 
 type RenderHarness = Awaited<ReturnType<typeof testRender>>;
 
@@ -580,7 +581,7 @@ async function createFakeGitHubCliFixture(options: {
       ownerRepo: options.ownerRepo,
       branch: options.branch,
       pathPrefix: options.pathPrefix,
-      appVersion: "v0.4.0",
+      appVersion: APP_VERSION,
       schemaVersion: 8,
       stateRevision: 7,
       hashes: {

@@ -1,7 +1,7 @@
 # TADOI™ Installation Guide (macOS, Windows, Linux)
 
 This guide covers binary and source installs on macOS, Windows, and Linux.
-Runtime baseline: **v0.4.0**.
+Runtime baseline: **v0.4.0-beta.2**.
 Manual QA reference: `docs/TADOI_QA_Guide_v0.4.0.md`.
 Concise install: see the short install guide in the docs index.
 

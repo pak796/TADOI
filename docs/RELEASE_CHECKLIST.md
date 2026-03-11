@@ -1,6 +1,6 @@
 # TADOI™ Release Checklist
 
-Verified as of 2026-03-04 (v0.4.0).
+Verified as of 2026-03-11 (v0.4.0-beta.2).
 
 This checklist is required before daily build smoke tests and any tagged release.
 

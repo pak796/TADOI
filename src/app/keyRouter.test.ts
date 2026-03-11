@@ -1986,6 +1986,6 @@ describe("handleKey", () => {
           }
         }
       )
-    ).toEqual([]);
+    ).toEqual([{ scope: "ui", type: "UNWIND" }]);
   });
 });

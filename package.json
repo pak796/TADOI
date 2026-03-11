@@ -1,7 +1,7 @@
 {
   "name": "tadoi",
   "description": "TADOI - Terminal Accessible Digital Organization Interface",
-  "version": "0.4.0",
+  "version": "0.4.0-beta.2",
   "license": "SEE LICENSE IN LICENSE",
   "private": true,
   "type": "module",

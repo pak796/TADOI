@@ -365,6 +365,27 @@ async function waitForFileMissing(filePath: string, timeoutMs = 4000): Promise<v
   throw new Error(`Timed out waiting for file to be removed: ${filePath}`);
 }
 
+async function waitForFileContains(
+  filePath: string,
+  text: string,
+  timeoutMs = 4000
+): Promise<string> {
+  const deadline = Date.now() + timeoutMs;
+  let lastContent = "";
+  while (Date.now() <= deadline) {
+    try {
+      lastContent = await fs.readFile(filePath, "utf8");
+      if (lastContent.includes(text)) {
+        return lastContent;
+      }
+    } catch {
+      // Keep polling until timeout.
+    }
+    await Bun.sleep(20);
+  }
+  throw new Error(`Timed out waiting for file to contain "${text}": ${filePath}\n${lastContent}`);
+}
+
 async function openHelpSettingsFromList(
   mockInput: MockInput,
   harness: RenderHarness
@@ -1130,8 +1151,10 @@ Body`
       await waitForText(harness, "CAPTURE TARGET HAS PRIMARY NOTE");
       await pressKeyAndRender(mockInput, harness, "a");
 
-      await waitForFrame(harness, (frame) => frame.includes("appended"));
-      const appended = await fs.readFile(path.join(notesRoot, "Primary.md"), "utf8");
+      const appended = await waitForFileContains(
+        path.join(notesRoot, "Primary.md"),
+        "Title: Daily capture"
+      );
       expect(appended).toContain("## Capture ");
       expect(appended).toContain("Title: Daily capture");
     } finally {

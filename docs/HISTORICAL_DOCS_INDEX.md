@@ -1,8 +1,8 @@
 # Historical Docs Index
 
-Updated: 2026-02-27
-Active runtime baseline: `v0.4.0`
-Active package baseline: `0.4.0`
+Updated: 2026-03-11
+Active runtime baseline: `v0.4.0-beta.2`
+Active package baseline: `0.4.0-beta.2`
 
 Use this index to find historical artifacts that are retained for traceability but are not the active source of truth.
 

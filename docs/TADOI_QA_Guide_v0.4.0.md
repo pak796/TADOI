@@ -1,8 +1,8 @@
 # TADOI™ QA Guide (v0.4.0)
 
 Validation date: **2026-02-27**
-Runtime baseline: **v0.4.0**
-Package baseline: **0.4.0**
+Runtime baseline: **v0.4.0-beta.2**
+Package baseline: **0.4.0-beta.2**
 
 ## 1) Purpose and Scope
 

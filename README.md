@@ -4,7 +4,7 @@ Terminal Accessible Digital Organization Interface
 
 Keyboard-first TUI todo list with due dates, completion, and tag autocomplete (OpenTUI + React on Bun).
 
-Current version: `v0.4.0` (`package.json`: `0.4.0`).
+Current version: `v0.4.0-beta.2` (`package.json`: `0.4.0-beta.2`).
 Feature list: [`docs/TADOI_Feature_List_v0.4.0.md`](./docs/TADOI_Feature_List_v0.4.0.md)
 Install guide: see the concise installation document in the docs index.
 Usage guide: [`docs/USAGE.md`](./docs/USAGE.md)
@@ -52,7 +52,7 @@ Version check:
 bun run start -- --version
 ```
 
-## TITS Command Layer (v0.4.0)
+## TITS Command Layer (v0.4.0-beta.2)
 
 TITS (Terminal-in-Terminal System) is the shared command language used by both the in-app command bar and the external CLI.
 
@@ -278,7 +278,7 @@ Behavior notes:
 - `calendar:import` uses the shared runtime exit matrix (`0/2/3/4/5`).
 - Report write failures are non-fatal warnings when import processing succeeds.
 
-## Stability Notes (As of v0.4.0)
+## Stability Notes (As of v0.4.0-beta.2)
 
 - `Canonical`: filter semantics, routing boundaries, and list/dashboard filtered-data parity.
 - `Current Behavior (May Change)`: dashboard presentation/layout details and theme-onboarding UX flow.
@@ -726,7 +726,7 @@ bun run pack:smoke
 Install from generated tarball (example):
 
 ```bash
-bun add -g ./dist/tarball/tadoi-0.4.0.tgz
+bun add -g ./dist/tarball/tadoi-0.4.0-beta.2.tgz
 tadoi --help
 ```
 
