@@ -24,6 +24,21 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Host preflight (release)
+        run: bun run preflight:host:release
+
+      - name: Verify macOS packaging prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tool in pkgbuild productbuild hdiutil; do
+            if ! command -v "$tool" >/dev/null 2>&1; then
+              echo "missing required macOS packaging tool: $tool" >&2
+              echo "install Xcode command line tools and retry." >&2
+              exit 1
+            fi
+          done
+
       - name: Test
         env:
           TADOI_TEST_SHARDS: "6"
@@ -38,12 +53,11 @@ jobs:
       - name: Build macOS installer
         run: bun scripts/build-binary.ts --target macos --format installer --mode build
 
-      - name: Smoke test
-        shell: bash
-        run: |
-          dist/bin/macos/tadoi --version
-          dist/bin/macos/tadoi export --help
-          dist/bin/macos/tadoi --smoke-tui
+      - name: Installer artifact manifest gate
+        run: bun run installer:gate --target macos
+
+      - name: Installer smoke test
+        run: bun run installer:smoke --target macos --scope all
 
       - name: SHA256SUMS
         shell: bash

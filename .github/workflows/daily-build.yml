@@ -39,9 +39,35 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Host preflight (release)
+        run: bun run preflight:host:release
+
+      - name: Verify macOS packaging prerequisites
+        if: matrix.target == 'macos'
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tool in pkgbuild productbuild hdiutil; do
+            if ! command -v "$tool" >/dev/null 2>&1; then
+              echo "missing required macOS packaging tool: $tool" >&2
+              echo "install Xcode command line tools and retry." >&2
+              exit 1
+            fi
+          done
+
       - name: Install Inno Setup (Windows)
         if: matrix.target == 'windows'
         run: choco install innosetup --no-progress -y
+
+      - name: Verify Inno Setup compiler (Windows)
+        if: matrix.target == 'windows'
+        shell: pwsh
+        run: |
+          $iscc = Get-Command iscc -ErrorAction SilentlyContinue
+          if (-not $iscc) {
+            throw "Inno Setup compiler (iscc) was not found after installation."
+          }
+          Write-Host "iscc path: $($iscc.Source)"
 
       - name: Install Linux packaging prerequisites
         if: matrix.target == 'linux'
@@ -78,18 +104,11 @@ jobs:
       - name: Build daily artifacts
         run: bun run build:daily
 
-      - name: Assert Windows installer output
-        if: matrix.target == 'windows'
-        shell: pwsh
-        run: |
-          $matches = @(Get-ChildItem -Path "dist/artifacts" -Recurse -File -Filter "TADOI-Setup-x64-*.exe" -ErrorAction SilentlyContinue)
-          if ($matches.Count -lt 1) {
-            Write-Error "Expected Windows installer (TADOI-Setup-x64-*.exe) under dist/artifacts, but none was found."
-            exit 1
-          }
+      - name: Installer artifact manifest gate
+        run: bun run installer:gate --target ${{ matrix.target }}
 
-          Write-Host "Found Windows installer artifact(s):"
-          $matches | ForEach-Object { Write-Host " - $($_.FullName)" }
+      - name: Installer smoke test
+        run: bun run installer:smoke --target ${{ matrix.target }} --scope all
 
       - name: Upload artifacts
         if: always() && github.event_name == 'workflow_dispatch' && inputs.upload_artifacts
