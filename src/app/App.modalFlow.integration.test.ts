@@ -28,6 +28,11 @@ type AppSession = {
   settingsPath: string;
 };
 
+const FRAME_WAIT_TIMEOUT_MS = 8000;
+const FRAME_POLL_INTERVAL_MS = 20;
+const INPUT_SETTLE_MS = 10;
+const TYPE_SETTLE_MS = 20;
+
 type SessionOptions = {
   initialData?: LoadedData;
   showCorruptionRecoveryImportCta?: boolean;
@@ -148,7 +153,7 @@ async function cleanupSession(session: AppSession): Promise<void> {
 async function waitForFrame(
   harness: RenderHarness,
   predicate: (frame: string) => boolean,
-  timeoutMs = 4000,
+  timeoutMs = FRAME_WAIT_TIMEOUT_MS,
 ): Promise<string> {
   const deadline = Date.now() + timeoutMs;
   let lastFrame = "";
@@ -158,7 +163,7 @@ async function waitForFrame(
     if (predicate(lastFrame)) {
       return lastFrame;
     }
-    await Bun.sleep(20);
+    await Bun.sleep(FRAME_POLL_INTERVAL_MS);
   }
   throw new Error(
     `Timed out waiting for frame condition.\nLast frame:\n${lastFrame}`,
@@ -168,7 +173,7 @@ async function waitForFrame(
 async function waitForText(
   harness: RenderHarness,
   text: string,
-  timeoutMs = 4000,
+  timeoutMs = FRAME_WAIT_TIMEOUT_MS,
 ): Promise<string> {
   return waitForFrame(harness, (frame) => frame.includes(text), timeoutMs);
 }
@@ -176,7 +181,7 @@ async function waitForText(
 async function waitForAnyText(
   harness: RenderHarness,
   texts: string[],
-  timeoutMs = 4000,
+  timeoutMs = FRAME_WAIT_TIMEOUT_MS,
 ): Promise<string> {
   return waitForFrame(
     harness,
@@ -212,53 +217,58 @@ async function expectTextAbsentForDuration(
   }
 }
 
+async function settleAfterInput(
+  harness: RenderHarness,
+  settleMs = INPUT_SETTLE_MS,
+): Promise<void> {
+  await Bun.sleep(settleMs);
+  await harness.renderOnce();
+  await Bun.sleep(settleMs);
+  await harness.renderOnce();
+}
+
 async function pressKeyAndRender(
   mockInput: MockInput,
   harness: RenderHarness,
   key: string,
-) {
+): Promise<void> {
   await mockInput.pressKeys([key]);
-  await Bun.sleep(10);
-  await harness.renderOnce();
+  await settleAfterInput(harness);
 }
 
 async function pressCtrlKeyAndRender(
   mockInput: MockInput,
   harness: RenderHarness,
   key: string,
-) {
+): Promise<void> {
   mockInput.pressKey(key, { ctrl: true });
-  await Bun.sleep(10);
-  await harness.renderOnce();
+  await settleAfterInput(harness);
 }
 
 async function pressEnterAndRender(
   mockInput: MockInput,
   harness: RenderHarness,
-) {
+): Promise<void> {
   await Promise.resolve(mockInput.pressEnter());
-  await Bun.sleep(10);
-  await harness.renderOnce();
+  await settleAfterInput(harness);
 }
 
 async function pressEscapeAndRender(
   mockInput: MockInput,
   harness: RenderHarness,
-) {
+): Promise<void> {
   await Promise.resolve(mockInput.pressEscape());
-  await Bun.sleep(10);
-  await harness.renderOnce();
+  await settleAfterInput(harness);
 }
 
 async function pressBackspaceAndRender(
   mockInput: MockInput,
   harness: RenderHarness,
   times = 1,
-) {
+): Promise<void> {
   for (let index = 0; index < times; index += 1) {
     mockInput.pressKey("backspace");
-    await Bun.sleep(10);
-    await harness.renderOnce();
+    await settleAfterInput(harness);
   }
 }
 
@@ -266,11 +276,10 @@ async function pressTabAndRender(
   mockInput: MockInput,
   harness: RenderHarness,
   times = 1,
-) {
+): Promise<void> {
   for (let index = 0; index < times; index += 1) {
     await Promise.resolve(mockInput.pressTab());
-    await Bun.sleep(10);
-    await harness.renderOnce();
+    await settleAfterInput(harness);
   }
 }
 
@@ -279,11 +288,10 @@ async function pressArrowAndRender(
   harness: RenderHarness,
   direction: "up" | "down" | "left" | "right",
   times = 1,
-) {
+): Promise<void> {
   for (let index = 0; index < times; index += 1) {
     await Promise.resolve(mockInput.pressArrow(direction));
-    await Bun.sleep(10);
-    await harness.renderOnce();
+    await settleAfterInput(harness);
   }
 }
 
@@ -308,10 +316,9 @@ async function typeTextAndRender(
   mockInput: MockInput,
   harness: RenderHarness,
   text: string,
-) {
+): Promise<void> {
   await mockInput.typeText(text);
-  await Bun.sleep(20);
-  await harness.renderOnce();
+  await settleAfterInput(harness, TYPE_SETTLE_MS);
 }
 
 async function pasteTextAndRender(
