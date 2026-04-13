@@ -8,6 +8,7 @@ type ParsedArgs = {
 const DEFAULT_SHARD_COUNT = 4;
 const MAX_SHARDS = 64;
 const TEST_GLOBS = ["src/**/*.test.ts", "scripts/**/*.test.ts"] as const;
+const BUN_EXECUTABLE_ENV = "TADOI_BUN_EXECUTABLE";
 
 function parseArgs(argv: string[]): ParsedArgs {
   const passthrough: string[] = [];
@@ -76,8 +77,9 @@ async function runShard(
   const absoluteFiles = files.map((filePath) => path.resolve(cwd, filePath));
   const label = `[test-sharded] shard ${String(shardIndex + 1)}/${String(shardTotal)} (${String(files.length)} files)`;
   console.log(label);
+  const bunExecutable = process.env[BUN_EXECUTABLE_ENV]?.trim() || process.execPath;
   const child = Bun.spawn({
-    cmd: [process.execPath, "test", ...passthrough, ...absoluteFiles],
+    cmd: [bunExecutable, "test", ...passthrough, ...absoluteFiles],
     cwd,
     stdout: "inherit",
     stderr: "inherit",

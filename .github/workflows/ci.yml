@@ -32,6 +32,10 @@ jobs:
         with:
           bun-version: 1.3.12
 
+      - name: Capture setup Bun path
+        shell: bash
+        run: echo "TADOI_BUN_EXECUTABLE=$(command -v bun)" >> "$GITHUB_ENV"
+
       - name: Bun version
         run: bun --version
 
