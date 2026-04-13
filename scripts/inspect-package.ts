@@ -5,14 +5,14 @@ const REQUIRED_FILES = [
   "README.md",
   "bin/tadoi.js",
   "src/index.tsx",
-  "src/brand/brand.ts"
+  "src/brand/brand.ts",
 ];
 
 const FORBIDDEN_PATH_PATTERNS: RegExp[] = [
   /^tadoi_data\.json$/,
   /^tadoi_data_.*\.json$/,
   /^TADOI_SPEC.*$/,
-  /^TADOI_TASKS.*$/
+  /^TADOI_TASKS.*$/,
 ];
 
 function fail(message: string): never {
@@ -21,11 +21,9 @@ function fail(message: string): never {
 }
 
 function runPackDryRun(): { filename: string; files: string[] } {
-  const result = spawnSync(
-    "bun",
-    ["pm", "pack", "--dry-run"],
-    { encoding: "utf8" }
-  );
+  const result = spawnSync("bun", ["pm", "pack", "--dry-run"], {
+    encoding: "utf8",
+  });
 
   if (result.status !== 0) {
     fail(`bun pm pack --dry-run failed\n${result.stderr || result.stdout}`);
@@ -67,8 +65,9 @@ function main(): void {
     }
   }
 
-  const forbiddenMatches = info.files
-    .filter((filePath) => FORBIDDEN_PATH_PATTERNS.some((pattern) => pattern.test(filePath)));
+  const forbiddenMatches = info.files.filter((filePath) =>
+    FORBIDDEN_PATH_PATTERNS.some((pattern) => pattern.test(filePath)),
+  );
 
   if (forbiddenMatches.length > 0) {
     fail(`forbidden files detected in package: ${forbiddenMatches.join(", ")}`);

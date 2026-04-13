@@ -3,7 +3,11 @@ import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
 import { runCalendarImportCommand } from "./calendarImport";
-import { createDefaultLockPayload, getTadoiLockPath, writeTadoiLock } from "../state/lockfile";
+import {
+  createDefaultLockPayload,
+  getTadoiLockPath,
+  writeTadoiLock,
+} from "../state/lockfile";
 
 const SIMPLE_ICS = [
   "BEGIN:VCALENDAR",
@@ -15,7 +19,7 @@ const SIMPLE_ICS = [
   "DTSTART:20260212T090000",
   "DTEND:20260212T093000",
   "END:VEVENT",
-  "END:VCALENDAR"
+  "END:VCALENDAR",
 ].join("\n");
 
 async function captureConsole<T>(run: () => Promise<T>): Promise<{
@@ -51,14 +55,16 @@ describe("calendarImport command", () => {
         mode: "merge",
         horizonDays: 365,
         dryRun: true,
-        help: false
-      })
+        help: false,
+      }),
     );
     expect(code).toBe(2);
   });
 
   it("returns filesystem exit code when state path cannot be read", async () => {
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-calendar-import-cmd-fs-"));
+    const tempDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "tadoi-calendar-import-cmd-fs-"),
+    );
     const inputPath = path.join(tempDir, "incoming.ics");
     await fs.writeFile(inputPath, SIMPLE_ICS, "utf8");
 
@@ -72,8 +78,8 @@ describe("calendarImport command", () => {
           mode: "merge",
           horizonDays: 365,
           dryRun: true,
-          help: false
-        })
+          help: false,
+        }),
       );
       expect(code).toBe(5);
     } finally {
@@ -86,13 +92,19 @@ describe("calendarImport command", () => {
   });
 
   it("returns target-resolution exit code for unknown saved view", async () => {
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-calendar-import-cmd-view-"));
+    const tempDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "tadoi-calendar-import-cmd-view-"),
+    );
     const dataPath = path.join(tempDir, "tadoi_data.json");
     const inputPath = path.join(tempDir, "incoming.ics");
     await fs.writeFile(
       dataPath,
-      JSON.stringify({ schemaVersion: 4, tasks: [], tagIndex: {}, savedViews: [] }, null, 2),
-      "utf8"
+      JSON.stringify(
+        { schemaVersion: 4, tasks: [], tagIndex: {}, savedViews: [] },
+        null,
+        2,
+      ),
+      "utf8",
     );
     await fs.writeFile(inputPath, SIMPLE_ICS, "utf8");
 
@@ -107,8 +119,8 @@ describe("calendarImport command", () => {
           mode: "merge",
           horizonDays: 365,
           dryRun: true,
-          help: false
-        })
+          help: false,
+        }),
       );
       expect(code).toBe(3);
     } finally {
@@ -121,13 +133,19 @@ describe("calendarImport command", () => {
   });
 
   it("prints summary output for successful dry-run and commit", async () => {
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-calendar-import-cmd-ok-"));
+    const tempDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "tadoi-calendar-import-cmd-ok-"),
+    );
     const dataPath = path.join(tempDir, "tadoi_data.json");
     const inputPath = path.join(tempDir, "incoming.ics");
     await fs.writeFile(
       dataPath,
-      JSON.stringify({ schemaVersion: 4, tasks: [], tagIndex: {}, savedViews: [] }, null, 2),
-      "utf8"
+      JSON.stringify(
+        { schemaVersion: 4, tasks: [], tagIndex: {}, savedViews: [] },
+        null,
+        2,
+      ),
+      "utf8",
     );
     await fs.writeFile(inputPath, SIMPLE_ICS, "utf8");
 
@@ -144,12 +162,14 @@ describe("calendarImport command", () => {
           mode: "merge",
           horizonDays: 365,
           dryRun: true,
-          help: false
-        })
+          help: false,
+        }),
       );
       expect(dryRun.value).toBe(0);
       const dryRunOutput = dryRun.logs.join("\n");
-      expect(dryRunOutput).toContain("[calendar:import] events parsed: 1 (dry-run)");
+      expect(dryRunOutput).toContain(
+        "[calendar:import] events parsed: 1 (dry-run)",
+      );
       expect(dryRunOutput).toContain("[calendar:import] created: 1");
 
       const commit = await captureConsole(() =>
@@ -159,8 +179,8 @@ describe("calendarImport command", () => {
           mode: "merge",
           horizonDays: 365,
           dryRun: false,
-          help: false
-        })
+          help: false,
+        }),
       );
       expect(commit.value).toBe(0);
       const commitOutput = commit.logs.join("\n");
@@ -182,20 +202,26 @@ describe("calendarImport command", () => {
   });
 
   it("blocks commit when lock file is present", async () => {
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-calendar-import-cmd-lock-"));
+    const tempDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "tadoi-calendar-import-cmd-lock-"),
+    );
     const dataPath = path.join(tempDir, "tadoi_data.json");
     const inputPath = path.join(tempDir, "incoming.ics");
     await fs.writeFile(
       dataPath,
-      JSON.stringify({ schemaVersion: 4, tasks: [], tagIndex: {}, savedViews: [] }, null, 2),
-      "utf8"
+      JSON.stringify(
+        { schemaVersion: 4, tasks: [], tagIndex: {}, savedViews: [] },
+        null,
+        2,
+      ),
+      "utf8",
     );
     await fs.writeFile(inputPath, SIMPLE_ICS, "utf8");
 
     const lockPath = getTadoiLockPath(dataPath);
     await writeTadoiLock(lockPath, {
       ...createDefaultLockPayload(dataPath),
-      pid: process.pid + 10_000
+      pid: process.pid + 10_000,
     });
 
     const previousDataPath = process.env.TADOI_DATA_PATH;
@@ -208,8 +234,8 @@ describe("calendarImport command", () => {
           mode: "merge",
           horizonDays: 365,
           dryRun: false,
-          help: false
-        })
+          help: false,
+        }),
       );
       expect(code).toBe(4);
     } finally {

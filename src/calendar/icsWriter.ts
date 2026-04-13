@@ -2,7 +2,7 @@ import type {
   CalendarExdates,
   CalendarTemporalValue,
   CalendarTimeContext,
-  CalendarVEvent
+  CalendarVEvent,
 } from "./calendarMapper";
 
 const PROD_ID = "-//TADOI//Calendar Export//EN";
@@ -29,7 +29,10 @@ function pad2(value: number): string {
   return String(value).padStart(2, "0");
 }
 
-function getPart(parts: Intl.DateTimeFormatPart[], type: Intl.DateTimeFormatPartTypes): number {
+function getPart(
+  parts: Intl.DateTimeFormatPart[],
+  type: Intl.DateTimeFormatPartTypes,
+): number {
   const value = parts.find((part) => part.type === type)?.value;
   return Number(value ?? "0");
 }
@@ -46,7 +49,7 @@ function getZonedFormatter(timeZone: string): Intl.DateTimeFormat {
     minute: "2-digit",
     second: "2-digit",
     hour12: false,
-    hourCycle: "h23"
+    hourCycle: "h23",
   });
   ZONED_DATE_TIME_FORMATTERS.set(timeZone, formatter);
   return formatter;
@@ -57,7 +60,7 @@ function getTimeZoneNameFormatter(timeZone: string): Intl.DateTimeFormat {
   if (cached) return cached;
   const formatter = new Intl.DateTimeFormat("en-US", {
     timeZone,
-    timeZoneName: "short"
+    timeZoneName: "short",
   });
   TZ_NAME_FORMATTERS.set(timeZone, formatter);
   return formatter;
@@ -71,7 +74,7 @@ function getZonedParts(date: Date, timeZone: string): ZonedDateParts {
     day: getPart(parts, "day"),
     hour: getPart(parts, "hour"),
     minute: getPart(parts, "minute"),
-    second: getPart(parts, "second")
+    second: getPart(parts, "second"),
   };
 }
 
@@ -87,7 +90,7 @@ function getTimeZoneOffsetMinutes(epochMs: number, timeZone: string): number {
     parts.day,
     parts.hour,
     parts.minute,
-    parts.second
+    parts.second,
   );
   return Math.round((asUtc - epochMs) / 60000);
 }
@@ -101,7 +104,9 @@ function formatOffset(minutes: number): string {
 }
 
 function getTimeZoneName(epochMs: number, timeZone: string): string {
-  const parts = getTimeZoneNameFormatter(timeZone).formatToParts(new Date(epochMs));
+  const parts = getTimeZoneNameFormatter(timeZone).formatToParts(
+    new Date(epochMs),
+  );
   const raw = parts.find((part) => part.type === "timeZoneName")?.value;
   return raw ? raw.replace(/\s+/g, "") : timeZone;
 }
@@ -110,7 +115,7 @@ function findOffsetChange(
   timeZone: string,
   lowMs: number,
   highMs: number,
-  offsetAtLow: number
+  offsetAtLow: number,
 ): number {
   let low = lowMs;
   let high = highMs;
@@ -137,7 +142,7 @@ type TzTransition = {
 function getTransitionsForRange(
   timeZone: string,
   startYear: number,
-  endYear: number
+  endYear: number,
 ): TzTransition[] {
   const dayMs = 24 * 60 * 60 * 1000;
   const transitions: TzTransition[] = [];
@@ -153,19 +158,27 @@ function getTransitionsForRange(
         timeZone,
         previousCursor,
         cursor,
-        previousOffset
+        previousOffset,
       );
-      const beforeOffset = getTimeZoneOffsetMinutes(Math.max(0, transitionMs - 60000), timeZone);
-      const afterOffset = getTimeZoneOffsetMinutes(transitionMs + 60000, timeZone);
+      const beforeOffset = getTimeZoneOffsetMinutes(
+        Math.max(0, transitionMs - 60000),
+        timeZone,
+      );
+      const afterOffset = getTimeZoneOffsetMinutes(
+        transitionMs + 60000,
+        timeZone,
+      );
       const kind = afterOffset > beforeOffset ? "DAYLIGHT" : "STANDARD";
-      const dtstart = formatIcsDateTime(getZonedParts(new Date(transitionMs), timeZone));
+      const dtstart = formatIcsDateTime(
+        getZonedParts(new Date(transitionMs), timeZone),
+      );
       const tzName = getTimeZoneName(transitionMs + 60000, timeZone);
       transitions.push({
         kind,
         dtstart,
         from: beforeOffset,
         to: afterOffset,
-        tzName
+        tzName,
       });
       previousOffset = nextOffset;
     }
@@ -175,21 +188,29 @@ function getTransitionsForRange(
   return transitions;
 }
 
-function buildVTimezoneLines(timeZone: string, events: CalendarVEvent[]): string[] {
+function buildVTimezoneLines(
+  timeZone: string,
+  events: CalendarVEvent[],
+): string[] {
   const eventYears = events
     .map((event) => Number(event.dtstart.value.slice(0, 4)))
     .filter((value) => Number.isFinite(value));
   const currentYear = new Date().getUTCFullYear();
-  const anchorYear = eventYears.length > 0 ? Math.min(...eventYears) : currentYear;
+  const anchorYear =
+    eventYears.length > 0 ? Math.min(...eventYears) : currentYear;
   const minYear = anchorYear - 1;
-  const maxYear = (eventYears.length > 0 ? Math.max(...eventYears) : currentYear) + 1;
+  const maxYear =
+    (eventYears.length > 0 ? Math.max(...eventYears) : currentYear) + 1;
 
   const transitions = getTransitionsForRange(timeZone, minYear, maxYear);
 
   const lines = ["BEGIN:VTIMEZONE", `TZID:${timeZone}`];
 
   if (transitions.length === 0) {
-    const offset = getTimeZoneOffsetMinutes(Date.UTC(anchorYear, 0, 1, 0, 0, 0), timeZone);
+    const offset = getTimeZoneOffsetMinutes(
+      Date.UTC(anchorYear, 0, 1, 0, 0, 0),
+      timeZone,
+    );
     const name = getTimeZoneName(Date.UTC(anchorYear, 0, 1, 0, 0, 0), timeZone);
     lines.push("BEGIN:STANDARD");
     lines.push(`DTSTART:${anchorYear}0101T000000`);
@@ -214,7 +235,10 @@ function buildVTimezoneLines(timeZone: string, events: CalendarVEvent[]): string
   return lines;
 }
 
-function renderTemporalLine(name: string, value: CalendarTemporalValue): string {
+function renderTemporalLine(
+  name: string,
+  value: CalendarTemporalValue,
+): string {
   if (value.kind === "date") {
     return `${name};VALUE=DATE:${value.value}`;
   }
@@ -281,10 +305,7 @@ function sanitizeIcsUrl(value: string): string | undefined {
 }
 
 function renderEventLines(event: CalendarVEvent): string[] {
-  const lines = [
-    "BEGIN:VEVENT",
-    `UID:${escapeIcsText(event.uid)}`
-  ];
+  const lines = ["BEGIN:VEVENT", `UID:${escapeIcsText(event.uid)}`];
 
   if (event.xTaskId) {
     lines.push(`X-TADOI-TASK-ID:${escapeIcsText(event.xTaskId)}`);
@@ -299,7 +320,7 @@ function renderEventLines(event: CalendarVEvent): string[] {
   lines.push(
     `DTSTAMP:${event.dtstampUtc}`,
     renderTemporalLine("DTSTART", event.dtstart),
-    renderTemporalLine("DTEND", event.dtend)
+    renderTemporalLine("DTEND", event.dtend),
   );
 
   if (event.rrule) {
@@ -315,7 +336,9 @@ function renderEventLines(event: CalendarVEvent): string[] {
     lines.push(`DESCRIPTION:${escapeIcsText(event.description)}`);
   }
   if (event.categories.length > 0) {
-    lines.push(`CATEGORIES:${event.categories.map((value) => escapeIcsText(value)).join(",")}`);
+    lines.push(
+      `CATEGORIES:${event.categories.map((value) => escapeIcsText(value)).join(",")}`,
+    );
   }
   if (event.url) {
     const sanitizedUrl = sanitizeIcsUrl(event.url);
@@ -344,12 +367,14 @@ export function renderIcsCalendar(options: RenderCalendarOptions): string {
     `PRODID:${PROD_ID}`,
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    "X-WR-CALNAME:TADOI"
+    "X-WR-CALNAME:TADOI",
   ];
 
   if (options.timeContext.mode === "tzid") {
     lines.push(`X-WR-TIMEZONE:${options.timeContext.timeZone}`);
-    lines.push(...buildVTimezoneLines(options.timeContext.timeZone, sortedEvents));
+    lines.push(
+      ...buildVTimezoneLines(options.timeContext.timeZone, sortedEvents),
+    );
   }
 
   for (const event of sortedEvents) {

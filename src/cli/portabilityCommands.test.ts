@@ -6,9 +6,13 @@ import { fileURLToPath } from "url";
 import {
   parseExportArgs,
   parseImportArgs,
-  runPortabilityCommand
+  runPortabilityCommand,
 } from "./portabilityCommands";
-import { createDefaultLockPayload, getTadoiLockPath, writeTadoiLock } from "../state/lockfile";
+import {
+  createDefaultLockPayload,
+  getTadoiLockPath,
+  writeTadoiLock,
+} from "../state/lockfile";
 
 describe("parseExportArgs", () => {
   it("requires --out", () => {
@@ -26,7 +30,7 @@ describe("parseExportArgs", () => {
       "--out",
       "./export.json",
       "--redact-mode",
-      "strict"
+      "strict",
     ]);
     expect(strict.ok).toBe(true);
     if (strict.ok) {
@@ -37,7 +41,7 @@ describe("parseExportArgs", () => {
       "--out",
       "./export.json",
       "--redact-mode",
-      "strict-v2"
+      "strict-v2",
     ]);
     expect(strictV2.ok).toBe(true);
     if (strictV2.ok) {
@@ -56,7 +60,7 @@ describe("parseExportArgs", () => {
       "--out",
       "./export.json",
       "--redact-mode",
-      "max"
+      "max",
     ]);
     expect(parsed.ok).toBe(false);
   });
@@ -76,7 +80,7 @@ describe("parseImportArgs", () => {
     const fromEquals = parseImportArgs([
       "--in",
       "./import.json",
-      "--backup=false"
+      "--backup=false",
     ]);
     expect(fromEquals.ok).toBe(true);
     if (fromEquals.ok) {
@@ -86,7 +90,7 @@ describe("parseImportArgs", () => {
     const fromNoBackup = parseImportArgs([
       "--in",
       "./import.json",
-      "--no-backup"
+      "--no-backup",
     ]);
     expect(fromNoBackup.ok).toBe(true);
     if (fromNoBackup.ok) {
@@ -111,16 +115,21 @@ describe("runPortabilityCommand", () => {
       "--in",
       "./import.json",
       "--mode",
-      "replace"
+      "replace",
     ]);
     expect(code).toBe(2);
   });
 
   it("imports legacy file without schemaVersion in dry-run mode", async () => {
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-import-dryrun-"));
+    const tempDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "tadoi-import-dryrun-"),
+    );
     const dataPath = path.join(tempDir, "tadoi_data.json");
     const fixturePath = fileURLToPath(
-      new URL("../state/__fixtures__/persisted.legacy.no-schema.json", import.meta.url).href
+      new URL(
+        "../state/__fixtures__/persisted.legacy.no-schema.json",
+        import.meta.url,
+      ).href,
     );
 
     const originalDataPath = process.env.TADOI_DATA_PATH;
@@ -131,7 +140,7 @@ describe("runPortabilityCommand", () => {
         fixturePath,
         "--mode",
         "merge",
-        "--dry-run"
+        "--dry-run",
       ]);
       expect(code).toBe(0);
     } finally {
@@ -144,7 +153,9 @@ describe("runPortabilityCommand", () => {
   });
 
   it("creates a backup before replace overwrite", async () => {
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-import-backup-"));
+    const tempDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "tadoi-import-backup-"),
+    );
     const dataPath = path.join(tempDir, "tadoi_data.json");
     const importPath = path.join(tempDir, "incoming.json");
 
@@ -157,11 +168,11 @@ describe("runPortabilityCommand", () => {
           status: "open",
           createdAt: 1,
           updatedAt: 1,
-          tags: ["local"]
-        }
+          tags: ["local"],
+        },
       ],
       tagIndex: {},
-      savedViews: []
+      savedViews: [],
     };
     const incomingPayload = {
       schemaVersion: 4,
@@ -172,15 +183,19 @@ describe("runPortabilityCommand", () => {
           status: "open",
           createdAt: 2,
           updatedAt: 2,
-          tags: ["incoming"]
-        }
+          tags: ["incoming"],
+        },
       ],
       tagIndex: {},
-      savedViews: []
+      savedViews: [],
     };
 
     await fs.writeFile(dataPath, JSON.stringify(localPayload, null, 2), "utf8");
-    await fs.writeFile(importPath, JSON.stringify(incomingPayload, null, 2), "utf8");
+    await fs.writeFile(
+      importPath,
+      JSON.stringify(incomingPayload, null, 2),
+      "utf8",
+    );
 
     const originalDataPath = process.env.TADOI_DATA_PATH;
     process.env.TADOI_DATA_PATH = dataPath;
@@ -191,7 +206,7 @@ describe("runPortabilityCommand", () => {
         "--mode",
         "replace",
         "--backup",
-        "--yes"
+        "--yes",
       ]);
       expect(code).toBe(0);
     } finally {
@@ -204,12 +219,17 @@ describe("runPortabilityCommand", () => {
 
     const files = await fs.readdir(tempDir);
     const backupName = files.find((name) =>
-      /^tadoi_data\.json\.backup\.\d{8}-\d{6}(\.\d+)?$/.test(name)
+      /^tadoi_data\.json\.backup\.\d{8}-\d{6}(\.\d+)?$/.test(name),
     );
     expect(backupName).toBeDefined();
 
-    const backupRaw = await fs.readFile(path.join(tempDir, backupName as string), "utf8");
-    const backupJson = JSON.parse(backupRaw) as { tasks: Array<{ title: string }> };
+    const backupRaw = await fs.readFile(
+      path.join(tempDir, backupName as string),
+      "utf8",
+    );
+    const backupJson = JSON.parse(backupRaw) as {
+      tasks: Array<{ title: string }>;
+    };
     expect(backupJson.tasks[0]?.title).toBe("LOCAL");
 
     const nextRaw = await fs.readFile(dataPath, "utf8");
@@ -218,14 +238,20 @@ describe("runPortabilityCommand", () => {
   });
 
   it("blocks import commit when lock file is present", async () => {
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-import-locked-"));
+    const tempDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "tadoi-import-locked-"),
+    );
     const dataPath = path.join(tempDir, "tadoi_data.json");
     const importPath = path.join(tempDir, "incoming.json");
 
     await fs.writeFile(
       dataPath,
-      JSON.stringify({ schemaVersion: 4, tasks: [], tagIndex: {}, savedViews: [] }, null, 2),
-      "utf8"
+      JSON.stringify(
+        { schemaVersion: 4, tasks: [], tagIndex: {}, savedViews: [] },
+        null,
+        2,
+      ),
+      "utf8",
     );
     await fs.writeFile(
       importPath,
@@ -239,22 +265,22 @@ describe("runPortabilityCommand", () => {
               status: "open",
               createdAt: 1,
               updatedAt: 1,
-              tags: ["incoming"]
-            }
+              tags: ["incoming"],
+            },
           ],
           tagIndex: {},
-          savedViews: []
+          savedViews: [],
         },
         null,
-        2
+        2,
       ),
-      "utf8"
+      "utf8",
     );
 
     const lockPath = getTadoiLockPath(dataPath);
     await writeTadoiLock(lockPath, {
       ...createDefaultLockPayload(dataPath),
-      pid: process.pid + 10_000
+      pid: process.pid + 10_000,
     });
 
     const originalDataPath = process.env.TADOI_DATA_PATH;
@@ -265,7 +291,7 @@ describe("runPortabilityCommand", () => {
         importPath,
         "--mode",
         "replace",
-        "--yes"
+        "--yes",
       ]);
       expect(code).toBe(4);
     } finally {

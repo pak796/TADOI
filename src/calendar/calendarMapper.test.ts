@@ -17,7 +17,7 @@ function makeTask(partial: Partial<Task> & Pick<Task, "id" | "title">): Task {
     notes: partial.notes,
     links: partial.links,
     recurrence: partial.recurrence,
-    instance_of: partial.instance_of
+    instance_of: partial.instance_of,
   };
 }
 
@@ -27,13 +27,13 @@ describe("calendarMapper", () => {
       id: "all-day",
       title: "All day",
       dueAt: Date.UTC(2026, 1, 15, 0, 0, 0),
-      hasExplicitTime: false
+      hasExplicitTime: false,
     });
 
     const event = mapNonRecurringTaskToEvent(
       task,
       { mode: "utc", timeZone: "UTC" },
-      GENERATED_AT
+      GENERATED_AT,
     );
     expect(event).not.toBeNull();
     if (!event) return;
@@ -48,13 +48,13 @@ describe("calendarMapper", () => {
       id: "timed",
       title: "Timed",
       dueAt: Date.UTC(2026, 1, 16, 14, 0, 0),
-      hasExplicitTime: true
+      hasExplicitTime: true,
     });
 
     const event = mapNonRecurringTaskToEvent(
       task,
       { mode: "utc", timeZone: "UTC" },
-      GENERATED_AT
+      GENERATED_AT,
     );
     expect(event).not.toBeNull();
     if (!event) return;
@@ -62,12 +62,12 @@ describe("calendarMapper", () => {
     expect(event.dtstart).toEqual({
       kind: "date-time",
       value: "20260216T140000Z",
-      utc: true
+      utc: true,
     });
     expect(event.dtend).toEqual({
       kind: "date-time",
       value: "20260216T143000Z",
-      utc: true
+      utc: true,
     });
     expect(event.xTaskId).toBe("timed");
   });
@@ -77,35 +77,35 @@ describe("calendarMapper", () => {
       id: "dst-before",
       title: "DST Before",
       dueAt: Date.parse("2026-03-07T15:00:00Z"),
-      hasExplicitTime: true
+      hasExplicitTime: true,
     });
     const afterDst = makeTask({
       id: "dst-after",
       title: "DST After",
       dueAt: Date.parse("2026-03-10T14:00:00Z"),
-      hasExplicitTime: true
+      hasExplicitTime: true,
     });
 
     const beforeEvent = mapNonRecurringTaskToEvent(
       beforeDst,
       { mode: "tzid", timeZone: "America/Chicago" },
-      GENERATED_AT
+      GENERATED_AT,
     );
     const afterEvent = mapNonRecurringTaskToEvent(
       afterDst,
       { mode: "tzid", timeZone: "America/Chicago" },
-      GENERATED_AT
+      GENERATED_AT,
     );
 
     expect(beforeEvent?.dtstart).toEqual({
       kind: "date-time",
       value: "20260307T090000",
-      tzid: "America/Chicago"
+      tzid: "America/Chicago",
     });
     expect(afterEvent?.dtstart).toEqual({
       kind: "date-time",
       value: "20260310T090000",
-      tzid: "America/Chicago"
+      tzid: "America/Chicago",
     });
   });
 });

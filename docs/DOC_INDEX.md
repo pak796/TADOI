@@ -5,10 +5,12 @@ Active runtime baseline: `v0.4.0-beta.2`
 Active package baseline: `0.4.0-beta.2`
 
 ## 1) Start Here
+
 - `README.md`: product overview, TITS command layer, quickstart, keybindings, packaging, data paths.
 - `docs/README.md`: active docs landing page.
 
 ## 2) Active User Guides
+
 - Install guide (concise): quick install and TITS quick validation.
 - `docs/USAGE.md`: core flows, keybindings, TITS in-app + CLI command contract.
 - `docs/CLI_COMPLETIONS.md`: optional bash/zsh/fish completion install guide.
@@ -22,6 +24,7 @@ Active package baseline: `0.4.0-beta.2`
 - `docs/TADOI_Feature_List_v0.4.0.md`: release-accurate feature catalog.
 
 ## 3) Active Spec and Planning
+
 - `TADOI_SPEC_v0.4.0.md`: current runtime behavior/spec contract.
 - `TADOI_TASKS_v0.4.0.md`: active implementation and documentation task ledger.
 - `docs/specs/tits-m1-commandbar.md`: TITS M1 command bar baseline.
@@ -33,12 +36,14 @@ Active package baseline: `0.4.0-beta.2`
 - `TADOI_Task_Links_Attachments_Spec_v0.2.md`: links/attachments behavior and security rules.
 
 ## 4) Release + Packaging
+
 - Release checklist: release readiness gate.
 - Release notes template: root changelog is canonical.
 - `CHANGELOG.md`: release history.
 - `packaging/*`: platform packaging scripts.
 
 ## 5) Operations and Governance
+
 - `docs/DOC_AUDIT_REPORT.md`: latest docs/code drift audit report.
 - `AGENTS.md`: repo-local Codex workflow defaults.
 - `docs/CODEX_WORKFLOW.md`: repo-local Codex runbook and memory rules.
@@ -55,9 +60,11 @@ Active package baseline: `0.4.0-beta.2`
 - `docs/ops/branding.md`: branding + external GitHub/Notion guidance.
 
 ## 6) Historical Versioned Docs
+
 - Historical release artifacts (`v0.2.x`, `v0.3.0`, `v0.3.1`, `v0.3.4`, `v0.3.5`, `v0.3.7`, `v0.3.8`, `v0.3.9`) are retained for traceability.
 - Use `docs/HISTORICAL_DOCS_INDEX.md` as the single lookup entry.
 - Active release documentation should prefer the `v0.4.0` files listed above.
 
 ## Trademark Notice
+
 TADOI™ is a trademark of <OWNER>. Other names may be trademarks of their respective owners.

@@ -3,6 +3,7 @@
 This index links the current user-facing TADOI documentation set.
 
 ## Core Docs
+
 - [Installation Guide (All Platforms)](./TADOI_Installation_Guide_All_Platforms.md)
 - [Install (Concise)](./INSTALL.md)
 - [Usage Guide](./USAGE.md)
@@ -23,6 +24,7 @@ This index links the current user-facing TADOI documentation set.
 - [Engagement Notifications Spec (v0.1)](../TADOI_Engagement_Notifications_Spec_v0.1.md)
 
 ## Operations and Design Docs
+
 - [Backup Center (In-App)](./backup-center.md)
 - [Recurring Tasks Implementation Plan](./recurring-tasks-implementation-plan.md)
 - [Codex Workflow](./CODEX_WORKFLOW.md)
@@ -40,8 +42,10 @@ This index links the current user-facing TADOI documentation set.
 - [Security/Privacy Remediation Plan (2026-02-12)](./audits/tadoi-security-privacy-remediation-2026-02-12.md)
 
 ## Release Context
+
 - Runtime baseline: `v0.4.0-beta.2`
 - Package baseline: `0.4.0-beta.2`
 
 ## Trademark Notice
+
 TADOI™ is a trademark of <OWNER>. Other names may be trademarks of their respective owners.

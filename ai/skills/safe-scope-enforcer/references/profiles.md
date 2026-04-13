@@ -3,6 +3,7 @@
 ## docs-only
 
 Allow:
+
 - `README.md`
 - `docs/**`
 - `**/*.md`
@@ -12,6 +13,7 @@ Allow:
 - `.github/**`
 
 Deny:
+
 - `src/**`
 - `app/**`
 - `packages/**`
@@ -19,6 +21,7 @@ Deny:
 ## tests-only
 
 Allow:
+
 - `tests/**`
 - `**/*test*.ts`
 - `**/*test*.tsx`
@@ -28,6 +31,7 @@ Allow:
 ## code-only
 
 Allow:
+
 - `src/**`
 - `scripts/**`
 - `package.json`

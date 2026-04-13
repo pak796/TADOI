@@ -5,7 +5,7 @@ import {
   collectTopCalendarImportErrorReasons,
   runCalendarExportFlow,
   runCalendarImportCommitFlow,
-  runCalendarImportDryRunFlow
+  runCalendarImportDryRunFlow,
 } from "./backupCenterCalendarController";
 
 function makeCalendarImportResult() {
@@ -22,7 +22,7 @@ function makeCalendarImportResult() {
       recurringSeriesImported: 1,
       overridesCreated: 1,
       overridesUpdated: 0,
-      cancellationsApplied: 0
+      cancellationsApplied: 0,
     },
     report: {
       generatedAt: "2026-02-12T00:00:00.000Z",
@@ -43,21 +43,27 @@ function makeCalendarImportResult() {
         recurringSeriesImported: 1,
         overridesCreated: 1,
         overridesUpdated: 0,
-        cancellationsApplied: 0
+        cancellationsApplied: 0,
       },
       entries: [] as Array<{
         uid?: string;
         recurrenceId?: string;
-        action: "created" | "updated" | "merged" | "skipped" | "error" | "cancelled";
+        action:
+          | "created"
+          | "updated"
+          | "merged"
+          | "skipped"
+          | "error"
+          | "cancelled";
         match?: "x-task-id" | "uid" | "external-uid" | "none";
         taskId?: string;
         message?: string;
         conflicts?: string[];
       }>,
-      persisted: false
+      persisted: false,
     },
     hasErrors: false,
-    outputReportPath: "/tmp/report.json"
+    outputReportPath: "/tmp/report.json",
   };
 }
 
@@ -79,7 +85,7 @@ describe("backupCenterCalendarController", () => {
         viewName: "Work",
         privacy: "full",
         outputPathInput: "./calendar-export",
-        cwd: tempDir
+        cwd: tempDir,
       },
       {
         exportCalendar: async (options) => {
@@ -87,7 +93,7 @@ describe("backupCenterCalendarController", () => {
             outputPath: options.outputPath,
             range: options.range,
             viewName: options.viewName,
-            privacy: options.privacy
+            privacy: options.privacy,
           };
           return {
             outputPath: options.outputPath,
@@ -101,11 +107,11 @@ describe("backupCenterCalendarController", () => {
             viewApplied: options.viewName,
             timeContext: {
               mode: "tzid",
-              timeZone: "America/Chicago"
-            }
+              timeZone: "America/Chicago",
+            },
           };
-        }
-      }
+        },
+      },
     );
 
     expect(captured).toBeDefined();
@@ -124,7 +130,10 @@ describe("backupCenterCalendarController", () => {
     result.report.entries.push(
       { action: "error", message: "Invalid RRULE: FREQ=NOPE" },
       { action: "error", message: "Invalid RRULE: FREQ=NOPE" },
-      { action: "error", message: "Unable to resolve base recurring series for override" }
+      {
+        action: "error",
+        message: "Unable to resolve base recurring series for override",
+      },
     );
     result.hasErrors = true;
 
@@ -133,22 +142,22 @@ describe("backupCenterCalendarController", () => {
         inputPath: "./incoming.ics",
         range: "all",
         mode: "create",
-        horizonDays: 365
+        horizonDays: 365,
       },
       {
         importCalendar: async (options) => {
           capturedMode = options.mode;
           return result;
-        }
-      }
+        },
+      },
     );
 
     expect(capturedMode).toBe("create");
     expect(dryRun.result.summary.overridesCreated).toBe(2);
     expect(dryRun.errorReasons[0]).toContain("Invalid RRULE");
-    expect(
-      collectTopCalendarImportErrorReasons(result.report)[0]
-    ).toContain("Invalid RRULE");
+    expect(collectTopCalendarImportErrorReasons(result.report)[0]).toContain(
+      "Invalid RRULE",
+    );
   });
 
   it("creates a pre-import backup before calendar commit", async () => {
@@ -163,7 +172,7 @@ describe("backupCenterCalendarController", () => {
         range: "next7",
         mode: "merge",
         horizonDays: 365,
-        importTag: "imported"
+        importTag: "imported",
       },
       {
         resolveDataPath: () => "/tmp/tadoi_data.json",
@@ -175,10 +184,10 @@ describe("backupCenterCalendarController", () => {
           importCalledAfterBackup = backupCreated;
           return {
             ...result,
-            hasErrors: false
+            hasErrors: false,
           };
-        }
-      }
+        },
+      },
     );
 
     expect(backupCreated).toBe(true);
@@ -189,7 +198,7 @@ describe("backupCenterCalendarController", () => {
   it("preserves non-fatal warnings from import service in dry-run and commit results", async () => {
     const withWarnings = {
       ...makeCalendarImportResult(),
-      warnings: ["Failed to write import report: EISDIR"]
+      warnings: ["Failed to write import report: EISDIR"],
     };
 
     const dryRun = await runCalendarImportDryRunFlow(
@@ -197,27 +206,34 @@ describe("backupCenterCalendarController", () => {
         inputPath: "./incoming.ics",
         range: "next7",
         mode: "merge",
-        horizonDays: 365
+        horizonDays: 365,
       },
       {
-        importCalendar: async () => withWarnings
-      }
+        importCalendar: async () => withWarnings,
+      },
     );
-    expect(dryRun.result.warnings).toEqual(["Failed to write import report: EISDIR"]);
+    expect(dryRun.result.warnings).toEqual([
+      "Failed to write import report: EISDIR",
+    ]);
 
     const committed = await runCalendarImportCommitFlow(
       {
         inputPath: "./incoming.ics",
         range: "next7",
         mode: "merge",
-        horizonDays: 365
+        horizonDays: 365,
       },
       {
         resolveDataPath: () => "/tmp/tadoi_data.json",
         createBackup: async () => "/tmp/tadoi_data.json.backup.20260212-000000",
-        importCalendar: async () => ({ ...withWarnings, report: { ...withWarnings.report, dryRun: false } })
-      }
+        importCalendar: async () => ({
+          ...withWarnings,
+          report: { ...withWarnings.report, dryRun: false },
+        }),
+      },
     );
-    expect(committed.result.warnings).toEqual(["Failed to write import report: EISDIR"]);
+    expect(committed.result.warnings).toEqual([
+      "Failed to write import report: EISDIR",
+    ]);
   });
 });

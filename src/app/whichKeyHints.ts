@@ -4,7 +4,7 @@ import {
   getAliasTokensForAction,
   type ActionAliasId,
   type AliasContext,
-  type ResolvedKeymapAliases
+  type ResolvedKeymapAliases,
 } from "./keymapAliases";
 
 export type WhichKeyContext =
@@ -46,7 +46,7 @@ const LIST_HINTS: HintSpec[] = [
   { key: "r", label: "priority", actionId: "list_cycle_priority" },
   { key: "p", label: "tag panel", actionId: "list_open_tag_panel" },
   { key: "b", label: "dashboard", actionId: "list_toggle_dashboard" },
-  { key: "u", label: "backup", actionId: "list_open_backup_center" }
+  { key: "u", label: "backup", actionId: "list_open_backup_center" },
 ];
 
 const DASHBOARD_HINTS: HintSpec[] = [
@@ -59,7 +59,7 @@ const DASHBOARD_HINTS: HintSpec[] = [
   { key: "p", label: "tag panel", actionId: "dashboard_open_tag_panel" },
   { key: "u", label: "backup", actionId: "dashboard_open_backup_center" },
   { key: "?", label: "help", actionId: "dashboard_open_help" },
-  { key: "b", label: "list", actionId: "dashboard_toggle_dashboard" }
+  { key: "b", label: "list", actionId: "dashboard_toggle_dashboard" },
 ];
 
 const BACKUP_HINTS: HintSpec[] = [
@@ -69,7 +69,7 @@ const BACKUP_HINTS: HintSpec[] = [
   { key: "PgUp/PgDn", label: "page", actionId: "backup_page_down" },
   { key: "Home/End", label: "jump", actionId: "backup_jump_end" },
   { key: "m", label: "manual path", actionId: "backup_open_manual_path" },
-  { key: "1..4", label: "menu", actionId: "backup_menu_option_1" }
+  { key: "1..4", label: "menu", actionId: "backup_menu_option_1" },
 ];
 
 const HELP_HINTS: HintSpec[] = [
@@ -78,7 +78,7 @@ const HELP_HINTS: HintSpec[] = [
   { key: "←/→", label: "nav", actionId: "help_nav_forward" },
   { key: "PgUp/PgDn", label: "page", actionId: "help_page_down" },
   { key: "1", label: "backup", actionId: "help_open_backup_center" },
-  { key: "Esc", label: "close", actionId: "help_close" }
+  { key: "Esc", label: "close", actionId: "help_close" },
 ];
 
 const SEARCH_HINTS: HintSpec[] = [
@@ -86,7 +86,7 @@ const SEARCH_HINTS: HintSpec[] = [
   { key: "Ctrl+N", label: "quick capture" },
   { key: "Tab", label: "results" },
   { key: "Enter", label: "close/open" },
-  { key: "Esc", label: "cancel" }
+  { key: "Esc", label: "cancel" },
 ];
 
 const EDITOR_HINTS: HintSpec[] = [
@@ -94,20 +94,20 @@ const EDITOR_HINTS: HintSpec[] = [
   { key: "Ctrl+N", label: "quick capture" },
   { key: "Ctrl+S", label: "save" },
   { key: "Esc", label: "cancel" },
-  { key: "PgUp/PgDn", label: "scroll" }
+  { key: "PgUp/PgDn", label: "scroll" },
 ];
 
 const MODAL_HINTS: HintSpec[] = [
   { key: "y", label: "confirm" },
   { key: "n", label: "cancel" },
-  { key: "Esc", label: "close" }
+  { key: "Esc", label: "close" },
 ];
 
 const TAG_FILTER_HINTS: HintSpec[] = [
   { key: "Tab", label: "bucket" },
   { key: "Enter", label: "add tag" },
   { key: "Ctrl+Enter", label: "apply" },
-  { key: "Esc", label: "close" }
+  { key: "Esc", label: "close" },
 ];
 
 const NOTES_HINTS: HintSpec[] = [
@@ -120,7 +120,7 @@ const NOTES_HINTS: HintSpec[] = [
   { key: "p", label: "tag filter" },
   { key: "i", label: "reindex" },
   { key: "o", label: "tome root" },
-  { key: "Esc", label: "back" }
+  { key: "Esc", label: "back" },
 ];
 
 const NOTES_VIEW_HINTS: HintSpec[] = [
@@ -128,12 +128,12 @@ const NOTES_VIEW_HINTS: HintSpec[] = [
   { key: "Enter", label: "follow link" },
   { key: "d", label: "delete note" },
   { key: "e", label: "edit note" },
-  { key: "Esc", label: "back" }
+  { key: "Esc", label: "back" },
 ];
 
 const NOTES_EDIT_HINTS: HintSpec[] = [
   { key: "Ctrl+S", label: "save" },
-  { key: "Esc", label: "cancel" }
+  { key: "Esc", label: "cancel" },
 ];
 
 const HINTS_BY_CONTEXT: Record<WhichKeyContext, HintSpec[]> = {
@@ -147,21 +147,98 @@ const HINTS_BY_CONTEXT: Record<WhichKeyContext, HintSpec[]> = {
   tag_filter: TAG_FILTER_HINTS,
   notes: NOTES_HINTS,
   notes_view: NOTES_VIEW_HINTS,
-  notes_edit: NOTES_EDIT_HINTS
+  notes_edit: NOTES_EDIT_HINTS,
 };
 
 function resolveAliasBackedKey(
   context: WhichKeyContext,
   actionId: ActionAliasId | undefined,
   fallback: string,
-  resolvedAliases: ResolvedKeymapAliases | null | undefined
+  resolvedAliases: ResolvedKeymapAliases | null | undefined,
 ): string {
   if (!actionId) return fallback;
-  if (context !== "list" && context !== "dashboard" && context !== "backup" && context !== "help") {
+  if (
+    context !== "list" &&
+    context !== "dashboard" &&
+    context !== "backup" &&
+    context !== "help"
+  ) {
     return fallback;
   }
   const tokens = getAliasTokensForAction(context, actionId, resolvedAliases);
   return tokens[0] ?? fallback;
+}
+
+function buildActionHintLine(params: {
+  context: AliasContext;
+  actionId: ActionAliasId;
+  fallback: string;
+  label: string;
+  resolvedAliases: ResolvedKeymapAliases | null | undefined;
+}): string {
+  const key = resolveAliasBackedKey(
+    params.context,
+    params.actionId,
+    params.fallback,
+    params.resolvedAliases,
+  );
+  return `${key}: ${params.label}`;
+}
+
+function buildPairedActionHintLine(params: {
+  context: AliasContext;
+  first: {
+    actionId: ActionAliasId;
+    fallback: string;
+  };
+  second: {
+    actionId: ActionAliasId;
+    fallback: string;
+  };
+  label: string;
+  resolvedAliases: ResolvedKeymapAliases | null | undefined;
+}): string {
+  const firstKey = resolveAliasBackedKey(
+    params.context,
+    params.first.actionId,
+    params.first.fallback,
+    params.resolvedAliases,
+  );
+  const secondKey = resolveAliasBackedKey(
+    params.context,
+    params.second.actionId,
+    params.second.fallback,
+    params.resolvedAliases,
+  );
+  return `${firstKey}/${secondKey}: ${params.label}`;
+}
+
+function buildRangedActionHintLine(params: {
+  context: AliasContext;
+  start: {
+    actionId: ActionAliasId;
+    fallback: string;
+  };
+  end: {
+    actionId: ActionAliasId;
+    fallback: string;
+  };
+  label: string;
+  resolvedAliases: ResolvedKeymapAliases | null | undefined;
+}): string {
+  const startKey = resolveAliasBackedKey(
+    params.context,
+    params.start.actionId,
+    params.start.fallback,
+    params.resolvedAliases,
+  );
+  const endKey = resolveAliasBackedKey(
+    params.context,
+    params.end.actionId,
+    params.end.fallback,
+    params.resolvedAliases,
+  );
+  return `${startKey}..${endKey}: ${params.label}`;
 }
 
 export function resolveWhichKeyContext(params: {
@@ -175,7 +252,11 @@ export function resolveWhichKeyContext(params: {
   if (mode === Mode.HELP) return "help";
   if (mode === Mode.SEARCH) return "search";
   if (mode === Mode.ADD || mode === Mode.EDIT) return "editor";
-  if (mode === Mode.NOTES_LIST || mode === Mode.NOTES_SEARCH || mode === Mode.NOTES_TAG_FILTER) {
+  if (
+    mode === Mode.NOTES_LIST ||
+    mode === Mode.NOTES_SEARCH ||
+    mode === Mode.NOTES_TAG_FILTER
+  ) {
     return "notes";
   }
   if (mode === Mode.NOTES_VIEW) return "notes_view";
@@ -191,9 +272,14 @@ export function buildWhichKeyHintItems(params: {
 }): WhichKeyHintItem[] {
   const { context, resolvedAliases } = params;
   return (HINTS_BY_CONTEXT[context] ?? []).map((hint) => ({
-    key: resolveAliasBackedKey(context, hint.actionId, hint.key, resolvedAliases),
+    key: resolveAliasBackedKey(
+      context,
+      hint.actionId,
+      hint.key,
+      resolvedAliases,
+    ),
     label: hint.label,
-    actionId: hint.actionId
+    actionId: hint.actionId,
   }));
 }
 
@@ -204,41 +290,147 @@ export function buildLeftRailHintLines(params: {
   const { context, resolvedAliases } = params;
   if (context === "dashboard") {
     return [
-      `${resolveAliasBackedKey("dashboard", "dashboard_move_down", "j", resolvedAliases)}/${resolveAliasBackedKey("dashboard", "dashboard_move_up", "k", resolvedAliases)}: MOVE`,
+      buildPairedActionHintLine({
+        context: "dashboard",
+        first: { actionId: "dashboard_move_down", fallback: "j" },
+        second: { actionId: "dashboard_move_up", fallback: "k" },
+        label: "MOVE",
+        resolvedAliases,
+      }),
       "Ctrl+N: CAPTURE",
-      `${resolveAliasBackedKey("dashboard", "dashboard_open_tag_panel", "p", resolvedAliases)}: TAG PANEL`,
-      `${resolveAliasBackedKey("dashboard", "dashboard_cycle_priority", "r", resolvedAliases)}: PRIORITY`,
-      `${resolveAliasBackedKey("dashboard", "dashboard_apply_selection", "Enter", resolvedAliases)}: APPLY`,
-      `${resolveAliasBackedKey("dashboard", "dashboard_toggle_dashboard", "b", resolvedAliases)}: LIST`
+      buildActionHintLine({
+        context: "dashboard",
+        actionId: "dashboard_open_tag_panel",
+        fallback: "p",
+        label: "TAG PANEL",
+        resolvedAliases,
+      }),
+      buildActionHintLine({
+        context: "dashboard",
+        actionId: "dashboard_cycle_priority",
+        fallback: "r",
+        label: "PRIORITY",
+        resolvedAliases,
+      }),
+      buildActionHintLine({
+        context: "dashboard",
+        actionId: "dashboard_apply_selection",
+        fallback: "Enter",
+        label: "APPLY",
+        resolvedAliases,
+      }),
+      buildActionHintLine({
+        context: "dashboard",
+        actionId: "dashboard_toggle_dashboard",
+        fallback: "b",
+        label: "LIST",
+        resolvedAliases,
+      }),
     ];
   }
 
   if (context === "backup") {
     return [
-      `${resolveAliasBackedKey("backup", "backup_primary", "Enter", resolvedAliases)}: SELECT`,
-      `${resolveAliasBackedKey("backup", "backup_back", "Esc", resolvedAliases)}: BACK`,
-      `${resolveAliasBackedKey("backup", "backup_move_down", "j", resolvedAliases)}/${resolveAliasBackedKey("backup", "backup_move_up", "k", resolvedAliases)}: MOVE`,
-      `${resolveAliasBackedKey("backup", "backup_page_down", "PgDn", resolvedAliases)}/${resolveAliasBackedKey("backup", "backup_page_up", "PgUp", resolvedAliases)}: PAGE`,
-      `${resolveAliasBackedKey("backup", "backup_menu_option_1", "1", resolvedAliases)}..${resolveAliasBackedKey("backup", "backup_menu_option_4", "4", resolvedAliases)}: MENU`
+      buildActionHintLine({
+        context: "backup",
+        actionId: "backup_primary",
+        fallback: "Enter",
+        label: "SELECT",
+        resolvedAliases,
+      }),
+      buildActionHintLine({
+        context: "backup",
+        actionId: "backup_back",
+        fallback: "Esc",
+        label: "BACK",
+        resolvedAliases,
+      }),
+      buildPairedActionHintLine({
+        context: "backup",
+        first: { actionId: "backup_move_down", fallback: "j" },
+        second: { actionId: "backup_move_up", fallback: "k" },
+        label: "MOVE",
+        resolvedAliases,
+      }),
+      buildPairedActionHintLine({
+        context: "backup",
+        first: { actionId: "backup_page_down", fallback: "PgDn" },
+        second: { actionId: "backup_page_up", fallback: "PgUp" },
+        label: "PAGE",
+        resolvedAliases,
+      }),
+      buildRangedActionHintLine({
+        context: "backup",
+        start: { actionId: "backup_menu_option_1", fallback: "1" },
+        end: { actionId: "backup_menu_option_4", fallback: "4" },
+        label: "MENU",
+        resolvedAliases,
+      }),
     ];
   }
 
   if (context === "help") {
     return [
-      `${resolveAliasBackedKey("help", "help_move_up", "↑", resolvedAliases)}/${resolveAliasBackedKey("help", "help_move_down", "↓", resolvedAliases)}: MOVE`,
-      `${resolveAliasBackedKey("help", "help_nav_back", "←", resolvedAliases)}/${resolveAliasBackedKey("help", "help_nav_forward", "→", resolvedAliases)}: NAV`,
-      `${resolveAliasBackedKey("help", "help_toggle_focused_section", "Enter", resolvedAliases)}: TOGGLE`,
-      `${resolveAliasBackedKey("help", "help_open_backup_center", "1", resolvedAliases)}: BACKUP`,
-      `${resolveAliasBackedKey("help", "help_close", "Esc", resolvedAliases)}: CLOSE`
+      buildPairedActionHintLine({
+        context: "help",
+        first: { actionId: "help_move_up", fallback: "↑" },
+        second: { actionId: "help_move_down", fallback: "↓" },
+        label: "MOVE",
+        resolvedAliases,
+      }),
+      buildPairedActionHintLine({
+        context: "help",
+        first: { actionId: "help_nav_back", fallback: "←" },
+        second: { actionId: "help_nav_forward", fallback: "→" },
+        label: "NAV",
+        resolvedAliases,
+      }),
+      buildActionHintLine({
+        context: "help",
+        actionId: "help_toggle_focused_section",
+        fallback: "Enter",
+        label: "TOGGLE",
+        resolvedAliases,
+      }),
+      buildActionHintLine({
+        context: "help",
+        actionId: "help_open_backup_center",
+        fallback: "1",
+        label: "BACKUP",
+        resolvedAliases,
+      }),
+      buildActionHintLine({
+        context: "help",
+        actionId: "help_close",
+        fallback: "Esc",
+        label: "CLOSE",
+        resolvedAliases,
+      }),
     ];
   }
 
-  if (context === "notes" || context === "notes_view" || context === "notes_edit") {
+  if (
+    context === "notes" ||
+    context === "notes_view" ||
+    context === "notes_edit"
+  ) {
     if (context === "notes_view") {
-      return ["j/k: LINKS", "Enter: FOLLOW", "d: DELETE TOME", "e: EDIT", "Esc: BACK"];
+      return [
+        "j/k: LINKS",
+        "Enter: FOLLOW",
+        "d: DELETE TOME",
+        "e: EDIT",
+        "Esc: BACK",
+      ];
     }
     if (context === "notes_edit") {
-      return ["Ctrl+S: SAVE", "Esc: CANCEL", "j/k: TYPE NAV", "i: REINDEX", "n: EXIT TOME"];
+      return [
+        "Ctrl+S: SAVE",
+        "Esc: CANCEL",
+        "j/k: TYPE NAV",
+        "i: REINDEX",
+        "n: EXIT TOME",
+      ];
     }
     return [
       "j/k: MOVE",
@@ -248,18 +440,48 @@ export function buildLeftRailHintLines(params: {
       "i: REINDEX",
       "o: ROOT SETTINGS",
       "d: DELETE TOME",
-      "/: SEARCH"
+      "/: SEARCH",
     ];
   }
 
   return [
-    `${resolveAliasBackedKey("list", "list_move_down", "j", resolvedAliases)}/${resolveAliasBackedKey("list", "list_move_up", "k", resolvedAliases)}: MOVE`,
+    buildPairedActionHintLine({
+      context: "list",
+      first: { actionId: "list_move_down", fallback: "j" },
+      second: { actionId: "list_move_up", fallback: "k" },
+      label: "MOVE",
+      resolvedAliases,
+    }),
     "Ctrl+N: CAPTURE",
-    `${resolveAliasBackedKey("list", "list_open_tag_panel", "p", resolvedAliases)}: TAG PANEL`,
-    `${resolveAliasBackedKey("list", "list_cycle_priority", "r", resolvedAliases)}: PRIORITY`,
-    `${resolveAliasBackedKey("list", "list_open_search", "/", resolvedAliases)}: SEARCH`,
-    `${resolveAliasBackedKey("list", "list_toggle_selected", "Space", resolvedAliases)}: TOGGLE`,
-    "`: TITS"
+    buildActionHintLine({
+      context: "list",
+      actionId: "list_open_tag_panel",
+      fallback: "p",
+      label: "TAG PANEL",
+      resolvedAliases,
+    }),
+    buildActionHintLine({
+      context: "list",
+      actionId: "list_cycle_priority",
+      fallback: "r",
+      label: "PRIORITY",
+      resolvedAliases,
+    }),
+    buildActionHintLine({
+      context: "list",
+      actionId: "list_open_search",
+      fallback: "/",
+      label: "SEARCH",
+      resolvedAliases,
+    }),
+    buildActionHintLine({
+      context: "list",
+      actionId: "list_toggle_selected",
+      fallback: "Space",
+      label: "TOGGLE",
+      resolvedAliases,
+    }),
+    "`: TITS",
   ];
 }
 
@@ -273,13 +495,13 @@ export function buildWhichKeyPrefixPopup(params: {
     "list",
     "list_jump_top",
     "g",
-    params.resolvedAliases
+    params.resolvedAliases,
   );
   const jumpBottom = resolveAliasBackedKey(
     "list",
     "list_jump_bottom",
     "G",
-    params.resolvedAliases
+    params.resolvedAliases,
   );
 
   return {
@@ -287,7 +509,7 @@ export function buildWhichKeyPrefixPopup(params: {
     hints: [
       { key: jumpTop, label: "jump top", actionId: "list_jump_top" },
       { key: jumpBottom, label: "jump bottom", actionId: "list_jump_bottom" },
-      { key: "Esc", label: "cancel prefix" }
-    ]
+      { key: "Esc", label: "cancel prefix" },
+    ],
   };
 }

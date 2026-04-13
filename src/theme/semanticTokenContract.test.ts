@@ -3,7 +3,7 @@ import { THEMES } from "./themes";
 import {
   RUNTIME_THEME_ALIAS_TO_TOKEN,
   USER_THEME_ROLE_CONTRACT,
-  runtimeThemeFromContract
+  runtimeThemeFromContract,
 } from "./semanticTokenContract";
 
 describe("semantic token contract", () => {
@@ -39,8 +39,8 @@ describe("semantic token contract", () => {
         "selectionBg",
         "selectionText",
         "text",
-        "warn"
-      ].sort()
+        "warn",
+      ].sort(),
     );
   });
 

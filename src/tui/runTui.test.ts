@@ -4,23 +4,26 @@ import type { LoadedData } from "../state/persistence";
 import {
   normalizeLoadedDataForStartup,
   redactStartupPath,
-  shouldPersistInitialRuntimeState
+  shouldPersistInitialRuntimeState,
 } from "./runTui";
 
 describe("redactStartupPath", () => {
   it("redacts home-directory absolute paths by default", () => {
     expect(
-      redactStartupPath("/Users/patrick/Library/Application Support/tadoi/tadoi_data.json", {
-        homeDir: "/Users/patrick"
-      })
+      redactStartupPath(
+        "/Users/patrick/Library/Application Support/tadoi/tadoi_data.json",
+        {
+          homeDir: "/Users/patrick",
+        },
+      ),
     ).toBe("~/Library/Application Support/tadoi/tadoi_data.json");
   });
 
   it("redacts non-home absolute paths by default", () => {
     expect(
       redactStartupPath("/Volumes/External/data/tadoi_data.json", {
-        homeDir: "/Users/patrick"
-      })
+        homeDir: "/Users/patrick",
+      }),
     ).toBe("~/.../tadoi_data.json");
   });
 
@@ -29,15 +32,17 @@ describe("redactStartupPath", () => {
     expect(
       redactStartupPath(targetPath, {
         homeDir: "/Users/patrick",
-        env: { TADOI_VERBOSE_PATH_LOGS: "1" }
-      })
+        env: { TADOI_VERBOSE_PATH_LOGS: "1" },
+      }),
     ).toBe(targetPath);
   });
 
   it("preserves relative paths", () => {
-    expect(redactStartupPath("./data/tadoi_data.json", { homeDir: "/Users/patrick" })).toBe(
-      "./data/tadoi_data.json"
-    );
+    expect(
+      redactStartupPath("./data/tadoi_data.json", {
+        homeDir: "/Users/patrick",
+      }),
+    ).toBe("./data/tadoi_data.json");
   });
 });
 
@@ -54,14 +59,14 @@ describe("normalizeLoadedDataForStartup", () => {
           createdAt: dueAt,
           updatedAt: dueAt,
           dueAt,
-          tags: [" Work ", "#home", "home"]
-        }
+          tags: [" Work ", "#home", "home"],
+        },
       ],
       tagIndex: {
         Work: { tagName: " Work ", usageCount: 1, lastUsedAt: dueAt },
-        home: { tagName: "home", usageCount: 2, lastUsedAt: dueAt + 1 }
+        home: { tagName: "home", usageCount: 2, lastUsedAt: dueAt + 1 },
       },
-      savedViews: []
+      savedViews: [],
     };
 
     const result = normalizeLoadedDataForStartup(loaded);
@@ -69,8 +74,13 @@ describe("normalizeLoadedDataForStartup", () => {
     expect(result.tagIndexChanged).toBe(true);
     expect(result.normalizedLoaded.tasks[0]?.tags).toEqual(["home", "work"]);
     expect(result.normalizedLoaded.tasks[0]?.hasExplicitTime).toBe(false);
-    expect(result.normalizedLoaded.tasks[0]?.dueAt).toBe(startOfLocalDayMs(dueAt));
-    expect(Object.keys(result.normalizedLoaded.tagIndex).sort()).toEqual(["home", "work"]);
+    expect(result.normalizedLoaded.tasks[0]?.dueAt).toBe(
+      startOfLocalDayMs(dueAt),
+    );
+    expect(Object.keys(result.normalizedLoaded.tagIndex).sort()).toEqual([
+      "home",
+      "work",
+    ]);
   });
 });
 
@@ -82,8 +92,8 @@ describe("shouldPersistInitialRuntimeState", () => {
         tagIndexChanged: false,
         archiveChanged: false,
         didMigrate: false,
-        shouldPersistRecoveredState: false
-      })
+        shouldPersistRecoveredState: false,
+      }),
     ).toBe(false);
   });
 
@@ -94,8 +104,8 @@ describe("shouldPersistInitialRuntimeState", () => {
         tagIndexChanged: false,
         archiveChanged: true,
         didMigrate: false,
-        shouldPersistRecoveredState: false
-      })
+        shouldPersistRecoveredState: false,
+      }),
     ).toBe(true);
   });
 });

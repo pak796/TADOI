@@ -10,7 +10,7 @@ const WEEKDAY_BY_TOKEN: Record<string, unknown> = {
   TH: RRule.TH,
   FR: RRule.FR,
   SA: RRule.SA,
-  SU: RRule.SU
+  SU: RRule.SU,
 };
 
 type ParsedUntil = {
@@ -45,7 +45,15 @@ function pad2(value: number): string {
   return String(value).padStart(2, "0");
 }
 
-function isValidLocalDateTime(date: Date, y: number, m: number, d: number, hh: number, mm: number, ss: number): boolean {
+function isValidLocalDateTime(
+  date: Date,
+  y: number,
+  m: number,
+  d: number,
+  hh: number,
+  mm: number,
+  ss: number,
+): boolean {
   return (
     date.getFullYear() === y &&
     date.getMonth() === m - 1 &&
@@ -68,7 +76,7 @@ function parseUntilToken(token: string): ParsedUntil | undefined {
       hh: 0,
       mm: 0,
       ss: 0,
-      zulu: false
+      zulu: false,
     };
   }
 
@@ -81,7 +89,7 @@ function parseUntilToken(token: string): ParsedUntil | undefined {
     hh: Number(dateTimeMatch[4]),
     mm: Number(dateTimeMatch[5]),
     ss: Number(dateTimeMatch[6]),
-    zulu: dateTimeMatch[7] === "Z"
+    zulu: dateTimeMatch[7] === "Z",
   };
 }
 
@@ -135,8 +143,10 @@ function sanitizeByDay(tokens: string[] | undefined): string[] {
     new Set(
       tokens
         .map((token) => token.trim().toUpperCase())
-        .filter((token) => WEEKDAY_TOKENS.includes(token as (typeof WEEKDAY_TOKENS)[number]))
-    )
+        .filter((token) =>
+          WEEKDAY_TOKENS.includes(token as (typeof WEEKDAY_TOKENS)[number]),
+        ),
+    ),
   );
 }
 
@@ -146,14 +156,16 @@ function sanitizeByMonthDay(values: number[] | undefined): number[] {
     new Set(
       values
         .map((value) => Math.floor(value))
-        .filter((value) => Number.isFinite(value) && value >= 1 && value <= 31)
-    )
+        .filter((value) => Number.isFinite(value) && value >= 1 && value <= 31),
+    ),
   );
 }
 
 export function parseLocalIsoToDate(iso: string): Date | undefined {
   const trimmed = iso.trim();
-  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(trimmed);
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(
+    trimmed,
+  );
   if (!match) return undefined;
   const y = Number(match[1]);
   const m = Number(match[2]);
@@ -161,7 +173,8 @@ export function parseLocalIsoToDate(iso: string): Date | undefined {
   const hh = Number(match[4]);
   const mm = Number(match[5]);
   const ss = match[6] !== undefined ? Number(match[6]) : 0;
-  if ([y, m, d, hh, mm, ss].some((value) => !Number.isFinite(value))) return undefined;
+  if ([y, m, d, hh, mm, ss].some((value) => !Number.isFinite(value)))
+    return undefined;
   const date = new Date(y, m - 1, d, hh, mm, ss);
   if (!isValidLocalDateTime(date, y, m, d, hh, mm, ss)) return undefined;
   return date;
@@ -186,8 +199,8 @@ export function toFloatingUtcDate(localDate: Date): Date {
       localDate.getHours(),
       localDate.getMinutes(),
       localDate.getSeconds(),
-      localDate.getMilliseconds()
-    )
+      localDate.getMilliseconds(),
+    ),
   );
 }
 
@@ -199,7 +212,7 @@ export function fromFloatingUtcDate(floatingDate: Date): Date {
     floatingDate.getUTCHours(),
     floatingDate.getUTCMinutes(),
     floatingDate.getUTCSeconds(),
-    floatingDate.getUTCMilliseconds()
+    floatingDate.getUTCMilliseconds(),
   );
 }
 
@@ -220,17 +233,22 @@ export function parseRRule(rrule: string): ParsedRuleSubset {
   const freq = parseFrequency(values.get("FREQ"));
   const interval = sanitizeInterval(Number(values.get("INTERVAL") ?? "1"));
   const byday = sanitizeByDay(
-    values.get("BYDAY")?.split(",").map((token) => token.trim()) ?? []
+    values
+      .get("BYDAY")
+      ?.split(",")
+      .map((token) => token.trim()) ?? [],
   );
   const bymonthday = sanitizeByMonthDay(
     values
       .get("BYMONTHDAY")
       ?.split(",")
-      .map((value) => Number(value.trim())) ?? []
+      .map((value) => Number(value.trim())) ?? [],
   );
   const countValue = Number(values.get("COUNT"));
   const count =
-    Number.isFinite(countValue) && countValue > 0 ? Math.floor(countValue) : undefined;
+    Number.isFinite(countValue) && countValue > 0
+      ? Math.floor(countValue)
+      : undefined;
 
   const untilToken = values.get("UNTIL");
   let untilIso: string | undefined;
@@ -239,7 +257,14 @@ export function parseRRule(rrule: string): ParsedRuleSubset {
     if (parsed) {
       if (parsed.zulu) {
         const utcDate = new Date(
-          Date.UTC(parsed.y, parsed.m - 1, parsed.d, parsed.hh, parsed.mm, parsed.ss)
+          Date.UTC(
+            parsed.y,
+            parsed.m - 1,
+            parsed.d,
+            parsed.hh,
+            parsed.mm,
+            parsed.ss,
+          ),
         );
         untilIso = formatDateToLocalIso(utcDate);
       } else {
@@ -249,7 +274,7 @@ export function parseRRule(rrule: string): ParsedRuleSubset {
           parsed.d,
           parsed.hh,
           parsed.mm,
-          parsed.ss
+          parsed.ss,
         );
         if (
           isValidLocalDateTime(
@@ -259,7 +284,7 @@ export function parseRRule(rrule: string): ParsedRuleSubset {
             parsed.d,
             parsed.hh,
             parsed.mm,
-            parsed.ss
+            parsed.ss,
           )
         ) {
           untilIso = formatDateToLocalIso(localDate);
@@ -287,7 +312,11 @@ export function formatRRule(options: FormatRRuleOptions): string {
     parts.push(`BYMONTHDAY=${bymonthday.join(",")}`);
   }
 
-  if (options.count !== undefined && Number.isFinite(options.count) && options.count > 0) {
+  if (
+    options.count !== undefined &&
+    Number.isFinite(options.count) &&
+    options.count > 0
+  ) {
     parts.push(`COUNT=${Math.floor(options.count)}`);
   } else if (options.untilIso) {
     const until = formatUntilToken(options.untilIso);
@@ -309,7 +338,7 @@ export function buildRule(recurrence: TaskRecurrence): RRule {
   const options: ConstructorParameters<typeof RRule>[0] = {
     freq: toRRuleFreq(parsed.freq),
     interval: sanitizeInterval(parsed.interval),
-    dtstart: toFloatingUtcDate(dtstartLocal)
+    dtstart: toFloatingUtcDate(dtstartLocal),
   };
 
   if (parsed.byday.length > 0) {

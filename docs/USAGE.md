@@ -17,6 +17,7 @@ bun run start -- --version
 ```
 
 External CLI runtime contract:
+
 - `tadoi` launches interactive TUI.
 - `tadoi --interactive` forces interactive TUI launch.
 - Unknown top-level tokens fail fast with usage (`exit 2`), no interactive fallback.
@@ -28,6 +29,7 @@ External CLI runtime contract:
   - `tadoi add -- --help` creates title `--help`.
 
 ## Core Modes
+
 - LIST
 - ADD
 - EDIT
@@ -52,6 +54,7 @@ Source-of-truth key tokens (as reported by `src/app/keyRouter.ts`):
 `{` `}`
 
 Discoverability and prefix behavior:
+
 - Context hints are shared from a single model:
   - `Navigation Hints` setting controls surfaces: `bottom only` (default), `left rail only`, `both`, `none`
   - left rail `HINTS` block is mode-aware (list/dashboard/backup/help) when enabled
@@ -66,8 +69,8 @@ Discoverability and prefix behavior:
   - P1 token scope: single-key tokens and `Ctrl+<key>`
   - deterministic conflict rule: first action owning a token wins, later conflicting assignments are ignored with a warning
 
-
 LIST mode navigation:
+
 - `j` / `k` / `ArrowUp` / `ArrowDown`: move selection
 - `Ctrl+g` or `Ctrl+p` or `Ctrl+y`, then `g`: jump to top
 - `G`: jump to bottom
@@ -77,6 +80,7 @@ LIST mode navigation:
 - `{` / `}`: previous/next due-today task
 
 LIST mode actions:
+
 - `a`: add task
 - `Ctrl+N`: quick capture (task-target aware)
 - `e`: edit selected task
@@ -100,6 +104,7 @@ LIST mode actions:
 - `Esc`: clear active bulk marks (when any marks exist); otherwise normal unwind behavior
 
 Details pane focus (Tab from list):
+
 - `Tab` / `Shift+Tab`: toggle focus list <-> details (default subpane: links)
 - While focused in details: `ArrowLeft` / `ArrowRight` switches `LINKS` <-> `NOTES` <-> `CHECKLIST`
 - `ArrowUp` / `ArrowDown` / `j` / `k`: move selection
@@ -109,6 +114,7 @@ Details pane focus (Tab from list):
 - `Esc`: return focus to list
 
 Details notes subpane:
+
 - `Enter` / `o`: open selected linked/referencing note
 - `c`: create and link a note for the selected task
 - `l` / `r`: link or relink from picker
@@ -116,6 +122,7 @@ Details notes subpane:
 - Picker mode: `j` / `k` move, `Enter` confirm, `Esc` cancel
 
 Details checklist subpane:
+
 - `ArrowUp` / `ArrowDown` / `j` / `k`: move checklist selection
 - `Space`: toggle selected checklist item
 - `a` / `A`: add checklist item
@@ -125,6 +132,7 @@ Details checklist subpane:
 - `Esc`: return focus to list
 
 DASHBOARD mode:
+
 - `b` / `B`: return to list
 - `Ctrl+N`: quick capture (task-target aware)
 - `u` / `U`: open Backup Center
@@ -138,12 +146,14 @@ DASHBOARD mode:
 - `q`: quit
 
 Saved views overlay:
+
 - `v`: open/close overlay
 - `Ctrl+S`: save current filters as view
 - `1..9`: apply view by slot
 - In overlay: `j` / `k` / `ArrowUp` / `ArrowDown` move, `Enter` apply, `d` delete, `Esc` / `v` close
 
 ADD/EDIT mode:
+
 - `Tab` / `Shift+Tab`: move fields
 - `Ctrl+N`: quick capture (preserves editor context)
 - `Ctrl+S`: save
@@ -158,6 +168,7 @@ ADD/EDIT mode:
   - `STAGE` (token or chip select): `backlog|todo|doing|blocked|review|done` (`doing` maps to `in_progress`)
 
 SEARCH mode:
+
 - Type one query for unified task+note search
 - Scope chips: `All` / `Tasks` / `Notes` (mouse-select)
 - `Ctrl+N`: quick capture targeting selected task result (when selected result is a task)
@@ -166,6 +177,7 @@ SEARCH mode:
 - Results focus: `Enter` opens selected result, `Esc` returns to list
 
 HELP mode:
+
 - `1`: open Backup Center
 - `ArrowUp` / `ArrowDown`: move section
 - `ArrowLeft` / `ArrowRight`: collapse/expand section
@@ -181,6 +193,7 @@ HELP mode:
 - `Esc` or `?`: close Help
 
 BACKUP_CENTER mode:
+
 - `1` / `2` / `3` / `4`: choose root menu option
 - Number keys choose on-screen options
 - `j` / `k`: move menu/picker selection
@@ -191,12 +204,14 @@ BACKUP_CENTER mode:
 - `Esc`: back/close
 
 Overdue modal:
+
 - `s` / `S`: snooze 10 minutes
 - `d` / `D`: mark done
 - `g` / `G`: jump to task
 - `Esc`: dismiss
 
 Empty-state NUX modal:
+
 - `welcome` step:
   - `a` / `Enter`: create first task flow
   - `h`: open shortcuts step
@@ -219,11 +234,13 @@ Empty-state NUX modal:
 ## TITS Command Layer (M1-M3)
 
 Source-of-truth files:
+
 - `src/app/App.tsx` (in-app TITS overlay)
 - `src/commands/*` (shared parser/executor)
 - `src/cli/main.ts` (external TITS CLI)
 
 In-app TITS (LIST, SEARCH, DASHBOARD, ADD, EDIT):
+
 - Open with `` ` ``
 - `Enter` executes current command
 - `Esc` closes TITS without executing
@@ -231,6 +248,7 @@ In-app TITS (LIST, SEARCH, DASHBOARD, ADD, EDIT):
 - While TITS is open, normal list/global routing is suppressed
 
 Supported TITS commands:
+
 - `add <title> [due:YYYY-MM-DD] [at:HH:MM] [#tag ...] [notes:"..."]`
 - `done` / `done @selected` / `done id:<task-id>`
 - `due @selected YYYY-MM-DD [at:HH:MM]`
@@ -258,25 +276,27 @@ Supported TITS commands:
 - `help` / `help add|done|due|recur|check|bulk|note`
 
 TOME COMMANDS (Terminal Oriented Markdown Environment)
-- note new "Title" [--template <id>]  Create note
-- note template <id> ["Title"]         Create note from template
+
+- note new "Title" [--template <id>] Create note
+- note template <id> ["Title"] Create note from template
 - note q|quick|capture "Title" ["Body"] [#tag|tag:x] [--status x] [--alias x] [--meta:key=value] [--template x] [--capture-mode append|new|prompt] [--no-link] [--from-task-notes] [--set-primary] [--clear-task-notes] [@selected|id:task]
-- capture "Title" ...                  top-level alias for note quick capture
-- nq "Title" ["Body"]                  CLI alias for note quick
-- note open "Query"     Open note
-- note search "Query"   Search TOME notes (tag:/-tag:/title:/path:/text:/created:/updated:/limit:/format:)
-- note query "Query"    Alias for search
+- capture "Title" ... top-level alias for note quick capture
+- nq "Title" ["Body"] CLI alias for note quick
+- note open "Query" Open note
+- note search "Query" Search TOME notes (tag:/-tag:/title:/path:/text:/created:/updated:/limit:/format:)
+- note query "Query" Alias for search
 - note graph "Query" [incoming|outgoing|both] [limit:N] [format:text|json]
 - note links "Query" [incoming|outgoing|both] [limit:N] [format:text|json]
-- note delete "Query"   Delete note (same resolver as open)
+- note delete "Query" Delete note (same resolver as open)
 - note restore-defaults Restore missing default guide docs
-- note reindex          Rebuild TOME index
-- note root set "Path"  Migrate TOME root (copy-first)
-- note help             Show this help
+- note reindex Rebuild TOME index
+- note root set "Path" Migrate TOME root (copy-first)
+- note help Show this help
 
 TOME is TADOI's notes-oriented markdown tool.
 
 TOME command examples:
+
 - In-app TITS or CLI wrapper: `tadoi note new "Meeting Notes"`
 - Quick capture (CLI): `tadoi nq "Daily" "body" #work --status done --meta:source=cli`
 - Quick capture from stdin: `printf "body\n" | tadoi note q "Daily" --json`
@@ -290,15 +310,18 @@ TOME command examples:
 - Safe vault migration: `tadoi note root set "./notes-next"` (pre-change backup + copy-first migration)
 
 Built-in TOME guide docs:
+
 - If the notes vault is empty on first startup, TADOI seeds curated defaults under `TADOI Guides/`.
 - Default files are editable/deletable markdown notes.
 - In TOME list and TOME view, `d` opens note delete confirmation (`y` / `n` / `Esc`).
 - `note restore-defaults` is missing-only and will not overwrite existing files.
 
 CLI query command:
+
 - `list [selectors...] [--sort due|updated|created|title] [--limit N]`
 
 CLI TITS TOME:
+
 - Wrapper form: `tadoi add ...`, `tadoi done id:<task-id>`, `tadoi due id:<task-id> ...`, `tadoi recur id:<task-id> ...`, `tadoi check:<op> id:<task-id> ...`, `tadoi bulk:<op> id:<task-id> ...`, `tadoi note ...`, `tadoi list ...`
 - Raw DSL form: `tadoi 'recur id:<task-id> every:week on:mon'`
 - Selector mode for CLI `done` and `due`:
@@ -336,6 +359,7 @@ CLI TITS TOME:
 - Exit codes: `0` success, `2` parse/validation, `3` target resolution, `4` lock present, `5` IO error
 
 ## Recurrence Semantics (Behavioral Contract)
+
 - Complete occurrence: add `EXDATE` + materialize done history instance.
 - Skip occurrence: add `EXDATE` + remove matching override instance.
 - Snooze occurrence: add `EXDATE` + materialize open instance due `+1 day`.
@@ -344,6 +368,7 @@ CLI TITS TOME:
 - `E` edits the series definition, not a single occurrence.
 
 ## Optional Out-of-App Reminder Helper (Offline)
+
 - Feature is OFF by default and requires explicit user opt-in + helper install.
 - Core commands:
   - `tadoi reminders install`
@@ -358,6 +383,7 @@ CLI TITS TOME:
   - Linux: `systemctl --user status tadoi-reminders.timer`
 
 ## Backup/Import Safety (Behavioral Contract)
+
 - Pre-import backup on commit flows.
 - Replace flow requires typed `REPLACE` confirmation.
 - Dry-run before destructive import commit.

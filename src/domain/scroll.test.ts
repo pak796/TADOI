@@ -1,5 +1,9 @@
 import { describe, expect, it } from "bun:test";
-import { clampScrollOffset, clampSelectedIndex, ensureSelectedVisible } from "./scroll";
+import {
+  clampScrollOffset,
+  clampSelectedIndex,
+  ensureSelectedVisible,
+} from "./scroll";
 
 describe("ensureSelectedVisible", () => {
   it("keeps selection visible near top", () => {
@@ -7,7 +11,7 @@ describe("ensureSelectedVisible", () => {
       selectedIndex: 0,
       scrollOffset: 5,
       visibleRows: 5,
-      itemCount: 20
+      itemCount: 20,
     });
     expect(offset).toBe(0);
   });
@@ -17,7 +21,7 @@ describe("ensureSelectedVisible", () => {
       selectedIndex: 10,
       scrollOffset: 5,
       visibleRows: 5,
-      itemCount: 20
+      itemCount: 20,
     });
     expect(offset).toBe(10 - 5 + 1);
   });
@@ -27,7 +31,7 @@ describe("ensureSelectedVisible", () => {
       selectedIndex: 0,
       scrollOffset: 5,
       visibleRows: 10,
-      itemCount: 3
+      itemCount: 3,
     });
     expect(offset).toBe(0);
   });
@@ -37,7 +41,7 @@ describe("ensureSelectedVisible", () => {
       selectedIndex: 0,
       scrollOffset: 2,
       visibleRows: 5,
-      itemCount: 0
+      itemCount: 0,
     });
     expect(offset).toBe(0);
   });
@@ -57,7 +61,7 @@ describe("ensureSelectedVisible", () => {
       selectedIndex: 8,
       scrollOffset: 6,
       visibleRows: 2,
-      itemCount: 9
+      itemCount: 9,
     });
     expect(offset).toBe(7);
   });

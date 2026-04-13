@@ -3,13 +3,15 @@ import { parseIcs, unescapeIcsText, unfoldIcsLines } from "./icsParser";
 
 describe("icsParser helpers", () => {
   it("unfolds folded lines", () => {
-    const lines = unfoldIcsLines("DESCRIPTION:Line one\r\n Line two\r\nSUMMARY:Test\r\n");
+    const lines = unfoldIcsLines(
+      "DESCRIPTION:Line one\r\n Line two\r\nSUMMARY:Test\r\n",
+    );
     expect(lines).toEqual(["DESCRIPTION:Line oneLine two", "SUMMARY:Test"]);
   });
 
   it("unescapes RFC5545 TEXT values", () => {
     expect(unescapeIcsText("alpha\\,beta\\;gamma\\nline2\\\\tail")).toBe(
-      "alpha,beta;gamma\nline2\\tail"
+      "alpha,beta;gamma\nline2\\tail",
     );
   });
 });
@@ -42,7 +44,7 @@ describe("parseIcs", () => {
       "DESCRIPTION:Hello\\, world\\nSecond line",
       "CATEGORIES:one,two",
       "END:VEVENT",
-      "END:VCALENDAR"
+      "END:VCALENDAR",
     ].join("\r\n");
 
     const parsed = parseIcs(ics);
@@ -79,9 +81,9 @@ describe("parseIcs", () => {
       "X-TADOI-TASK-ID:abc",
       "X-TADOI-SERIES-ID:series:abc",
       "X-TADOI-INSTANCE-OF:abc",
-      "DTSTART;TZID=\"America/Chicago\":20260219T090000",
+      'DTSTART;TZID="America/Chicago":20260219T090000',
       "END:VEVENT",
-      "END:VCALENDAR"
+      "END:VCALENDAR",
     ].join("\r\n");
 
     const parsed = parseIcs(ics);
@@ -102,18 +104,18 @@ describe("parseIcs", () => {
       "EXDATE;TZID=America/Chicago:20260220T090000,20260221T090000",
       "RDATE;TZID=America/Chicago:20260222T090000,20260223T090000",
       "END:VEVENT",
-      "END:VCALENDAR"
+      "END:VCALENDAR",
     ].join("\r\n");
 
     const parsed = parseIcs(ics);
     expect(parsed.events).toHaveLength(1);
     expect(parsed.events[0]?.exdates.map((value) => value.raw)).toEqual([
       "20260220T090000",
-      "20260221T090000"
+      "20260221T090000",
     ]);
     expect(parsed.events[0]?.rdates.map((value) => value.raw)).toEqual([
       "20260222T090000",
-      "20260223T090000"
+      "20260223T090000",
     ]);
   });
 
@@ -128,7 +130,7 @@ describe("parseIcs", () => {
       "UID:dst-after",
       "DTSTART;TZID=America/Chicago:20260310T090000",
       "END:VEVENT",
-      "END:VCALENDAR"
+      "END:VCALENDAR",
     ].join("\r\n");
 
     const parsed = parseIcs(ics);
@@ -138,7 +140,9 @@ describe("parseIcs", () => {
     expect(after?.tzid).toBe("America/Chicago");
     expect(before?.epochMs).toBeDefined();
     expect(after?.epochMs).toBeDefined();
-    expect((after?.epochMs ?? 0) - (before?.epochMs ?? 0)).toBe(71 * 60 * 60 * 1000);
+    expect((after?.epochMs ?? 0) - (before?.epochMs ?? 0)).toBe(
+      71 * 60 * 60 * 1000,
+    );
   });
 
   it("throws on invalid temporal values", () => {
@@ -148,7 +152,7 @@ describe("parseIcs", () => {
       "UID:bad-date",
       "DTSTART;VALUE=DATE:20260230",
       "END:VEVENT",
-      "END:VCALENDAR"
+      "END:VCALENDAR",
     ].join("\r\n");
     expect(() => parseIcs(invalidDate)).toThrow("Invalid DATE value");
 
@@ -158,7 +162,7 @@ describe("parseIcs", () => {
       "UID:bad-datetime",
       "DTSTART:20260210T250000",
       "END:VEVENT",
-      "END:VCALENDAR"
+      "END:VCALENDAR",
     ].join("\r\n");
     expect(() => parseIcs(invalidDateTime)).toThrow("Invalid DATE-TIME value");
   });

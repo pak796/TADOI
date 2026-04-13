@@ -10,7 +10,7 @@ import {
   encryptSnapshotPayload,
   isSnapshotEncryptedPayload,
   SNAPSHOT_ENCRYPTION_KIND,
-  SNAPSHOT_ENCRYPTION_SCHEME
+  SNAPSHOT_ENCRYPTION_SCHEME,
 } from "./snapshotCrypto";
 
 export type GhCommandResult = {
@@ -21,7 +21,7 @@ export type GhCommandResult = {
 
 export type GhCommandRunner = (
   args: string[],
-  options?: { cwd?: string; stdin?: string }
+  options?: { cwd?: string; stdin?: string },
 ) => Promise<GhCommandResult>;
 
 export type GitHubBackupRepoConfig = {
@@ -112,7 +112,7 @@ export function formatSnapshotId(now = new Date()): string {
 
 export function buildRemoteSnapshotPaths(
   pathPrefix: string,
-  timestampId: string
+  timestampId: string,
 ): {
   statePath: string;
   settingsPath: string;
@@ -131,21 +131,27 @@ export function buildRemoteSnapshotPaths(
     manifestPath: `${base}.manifest.json`,
     latestStatePath: `${prefix}/latest/state.json`,
     latestSettingsPath: `${prefix}/latest/settings.json`,
-    latestManifestPath: `${prefix}/latest/manifest.json`
+    latestManifestPath: `${prefix}/latest/manifest.json`,
   };
 }
 
-function parseOwnerRepo(ownerRepo: string): { owner: string; repo: string } | null {
+function parseOwnerRepo(
+  ownerRepo: string,
+): { owner: string; repo: string } | null {
   const trimmed = ownerRepo.trim();
   const match = trimmed.match(/^([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/);
   if (!match) return null;
   return {
     owner: match[1],
-    repo: match[2]
+    repo: match[2],
   };
 }
 
-function normalizeGhError(stderr: string, stdout: string, code: number): string {
+function normalizeGhError(
+  stderr: string,
+  stdout: string,
+  code: number,
+): string {
   const detail = [stderr.trim(), stdout.trim()].filter(Boolean).join(" | ");
   return detail.length > 0 ? detail : `gh exited with code ${String(code)}`;
 }
@@ -163,7 +169,7 @@ export const runGhCommand: GhCommandRunner = async (args, options = {}) => {
     cwd: options.cwd,
     stdin: options.stdin !== undefined ? "pipe" : "ignore",
     stdout: "pipe",
-    stderr: "pipe"
+    stderr: "pipe",
   });
 
   if (options.stdin !== undefined && processHandle.stdin) {
@@ -201,13 +207,13 @@ export const runGhCommand: GhCommandRunner = async (args, options = {}) => {
   const [exitCode, stdout, stderr] = await Promise.all([
     processHandle.exited,
     new Response(processHandle.stdout).text(),
-    new Response(processHandle.stderr).text()
+    new Response(processHandle.stderr).text(),
   ]);
 
   return {
     exitCode,
     stdout,
-    stderr
+    stderr,
   };
 };
 
@@ -230,7 +236,9 @@ async function ghApiJson<T>(request: GhApiRequest): Promise<T> {
 
   const result = await runner(args, { stdin });
   if (result.exitCode !== 0) {
-    throw new Error(normalizeGhError(result.stderr, result.stdout, result.exitCode));
+    throw new Error(
+      normalizeGhError(result.stderr, result.stdout, result.exitCode),
+    );
   }
   const raw = result.stdout.trim();
   if (!raw) {
@@ -242,7 +250,7 @@ async function ghApiJson<T>(request: GhApiRequest): Promise<T> {
     throw new Error(
       `Failed to parse gh api JSON response: ${
         error instanceof Error ? error.message : String(error)
-      }`
+      }`,
     );
   }
 }
@@ -267,7 +275,10 @@ export function computeSettingsHashForBackup(settings: TadoiSettings): string {
   return sha256(JSON.stringify(cloned));
 }
 
-export function parseGhAuthStatus(raw: string, exitCode: number): {
+export function parseGhAuthStatus(
+  raw: string,
+  exitCode: number,
+): {
   loggedIn: boolean;
   username?: string;
   raw: string;
@@ -276,7 +287,7 @@ export function parseGhAuthStatus(raw: string, exitCode: number): {
   const patterns = [
     /Logged in to github\.com as ([A-Za-z0-9-]+)/i,
     /Logged in to github\.com account ([A-Za-z0-9-]+)/i,
-    /account\s+([A-Za-z0-9-]+)\s+\(.*\)\s+active/i
+    /account\s+([A-Za-z0-9-]+)\s+\(.*\)\s+active/i,
   ];
   let username: string | undefined;
   for (const pattern of patterns) {
@@ -293,25 +304,30 @@ export function parseGhAuthStatus(raw: string, exitCode: number): {
   return {
     loggedIn,
     ...(username ? { username } : {}),
-    raw: compact
+    raw: compact,
   };
 }
 
-export async function detectGh(runner: GhCommandRunner = runGhCommand): Promise<boolean> {
+export async function detectGh(
+  runner: GhCommandRunner = runGhCommand,
+): Promise<boolean> {
   const result = await runner(["--version"]);
   return result.exitCode === 0;
 }
 
 export async function getAuthStatus(
-  runner: GhCommandRunner = runGhCommand
+  runner: GhCommandRunner = runGhCommand,
 ): Promise<{ loggedIn: boolean; username?: string; raw: string }> {
   const result = await runner(["auth", "status"]);
-  return parseGhAuthStatus([result.stdout, result.stderr].filter(Boolean).join("\n"), result.exitCode);
+  return parseGhAuthStatus(
+    [result.stdout, result.stderr].filter(Boolean).join("\n"),
+    result.exitCode,
+  );
 }
 
 export function ensurePersonalOwner(
   ownerRepo: string,
-  username: string
+  username: string,
 ): { ok: true; ownerRepo: string } | { ok: false; error: string } {
   const parsed = parseOwnerRepo(ownerRepo);
   if (!parsed) {
@@ -320,7 +336,7 @@ export function ensurePersonalOwner(
   if (parsed.owner.toLowerCase() !== username.trim().toLowerCase()) {
     return {
       ok: false,
-      error: `Personal repo only in v1: owner '${parsed.owner}' must match active account '${username}'.`
+      error: `Personal repo only in v1: owner '${parsed.owner}' must match active account '${username}'.`,
     };
   }
   return { ok: true, ownerRepo: `${parsed.owner}/${parsed.repo}` };
@@ -328,12 +344,12 @@ export function ensurePersonalOwner(
 
 export async function ensureRepoPrivate(
   ownerRepo: string,
-  runner: GhCommandRunner = runGhCommand
+  runner: GhCommandRunner = runGhCommand,
 ): Promise<{ ok: true } | { ok: false; isPublic?: boolean; error: string }> {
   try {
     const response = await ghApiJson<{ private?: boolean }>({
       endpoint: `repos/${ownerRepo}`,
-      runner
+      runner,
     });
     if (response.private === true) {
       return { ok: true };
@@ -341,12 +357,12 @@ export async function ensureRepoPrivate(
     return {
       ok: false,
       isPublic: true,
-      error: "Repository is public."
+      error: "Repository is public.",
     };
   } catch (error: unknown) {
     return {
       ok: false,
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     };
   }
 }
@@ -356,18 +372,29 @@ export async function createPrivateRepo(
   options: {
     owner?: string;
     runner?: GhCommandRunner;
-  } = {}
+  } = {},
 ): Promise<string> {
   const repoName = name.trim();
   if (!/^[A-Za-z0-9_.-]+$/.test(repoName)) {
-    throw new Error("Repository name must use letters, numbers, dot, underscore, or dash.");
+    throw new Error(
+      "Repository name must use letters, numbers, dot, underscore, or dash.",
+    );
   }
 
   const runner = options.runner ?? runGhCommand;
   const target = options.owner ? `${options.owner}/${repoName}` : repoName;
-  const result = await runner(["repo", "create", target, "--private", "--add-readme", "--confirm"]);
+  const result = await runner([
+    "repo",
+    "create",
+    target,
+    "--private",
+    "--add-readme",
+    "--confirm",
+  ]);
   if (result.exitCode !== 0) {
-    throw new Error(normalizeGhError(result.stderr, result.stdout, result.exitCode));
+    throw new Error(
+      normalizeGhError(result.stderr, result.stdout, result.exitCode),
+    );
   }
 
   const parsed = parseOwnerRepo(target);
@@ -380,12 +407,12 @@ export async function createPrivateRepo(
 async function readRemoteFile(
   config: GitHubBackupRepoConfig,
   filePath: string,
-  runner: GhCommandRunner
+  runner: GhCommandRunner,
 ): Promise<string> {
   const endpoint = `repos/${config.ownerRepo}/contents/${encodeRepoPath(filePath)}?ref=${encodeURIComponent(config.branch)}`;
   const response = await ghApiJson<GitHubContentResponse>({
     endpoint,
-    runner
+    runner,
   });
   if (response.encoding !== "base64" || typeof response.content !== "string") {
     throw new Error(`Unexpected GitHub content response for ${filePath}`);
@@ -397,31 +424,35 @@ async function readRemoteFile(
 function verifySnapshotPayloadHash(
   payload: string,
   expectedHash: unknown,
-  payloadLabel: "state" | "settings"
+  payloadLabel: "state" | "settings",
 ): void {
   if (typeof expectedHash !== "string" || expectedHash.length === 0) {
     return;
   }
   if (sha256(payload) !== expectedHash) {
-    throw new Error(`Snapshot integrity check failed for ${payloadLabel} payload.`);
+    throw new Error(
+      `Snapshot integrity check failed for ${payloadLabel} payload.`,
+    );
   }
 }
 
 export async function listSnapshots(
   config: GitHubBackupRepoConfig,
-  runner: GhCommandRunner = runGhCommand
+  runner: GhCommandRunner = runGhCommand,
 ): Promise<SnapshotRef[]> {
   const prefix = `${normalizePathPrefix(config.pathPrefix)}/snapshots/`;
   const tree = await ghApiJson<GitHubTreeResponse>({
     endpoint: `repos/${config.ownerRepo}/git/trees/${encodeURIComponent(config.branch)}?recursive=1`,
-    runner
+    runner,
   });
   const manifestPaths =
     tree.tree
       ?.map((entry) => entry.path)
       .filter((candidate): candidate is string => typeof candidate === "string")
-      .filter((candidate) => candidate.startsWith(prefix) && candidate.endsWith(".manifest.json")) ??
-    [];
+      .filter(
+        (candidate) =>
+          candidate.startsWith(prefix) && candidate.endsWith(".manifest.json"),
+      ) ?? [];
 
   const refs = await Promise.all(
     manifestPaths.map(async (manifestPath): Promise<SnapshotRef> => {
@@ -435,12 +466,14 @@ export async function listSnapshots(
         timestamp,
         statePath,
         settingsPath,
-        manifestPath
+        manifestPath,
       };
 
       try {
         const manifestRaw = await readRemoteFile(config, manifestPath, runner);
-        const manifest = JSON.parse(manifestRaw) as Partial<GitHubSnapshotManifest>;
+        const manifest = JSON.parse(
+          manifestRaw,
+        ) as Partial<GitHubSnapshotManifest>;
         if (manifest.counts) {
           ref.tasksTotal = manifest.counts.tasksTotal;
           ref.tasksOpen = manifest.counts.tasksOpen;
@@ -457,10 +490,12 @@ export async function listSnapshots(
       }
 
       return ref;
-    })
+    }),
   );
 
-  return refs.sort((left, right) => right.timestamp.localeCompare(left.timestamp));
+  return refs.sort((left, right) =>
+    right.timestamp.localeCompare(left.timestamp),
+  );
 }
 
 export async function downloadSnapshot(
@@ -469,13 +504,23 @@ export async function downloadSnapshot(
   options: {
     passphrase?: string;
     runner?: GhCommandRunner;
-  } = {}
+  } = {},
 ): Promise<{ statePath: string; settingsPath: string; manifestPath: string }> {
   const runner = options.runner ?? runGhCommand;
-  const stagingDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-gh-restore-"));
+  const stagingDir = await fs.mkdtemp(
+    path.join(os.tmpdir(), "tadoi-gh-restore-"),
+  );
   const stateRaw = await readRemoteFile(config, snapshotRef.statePath, runner);
-  const settingsRaw = await readRemoteFile(config, snapshotRef.settingsPath, runner);
-  const manifestRaw = await readRemoteFile(config, snapshotRef.manifestPath, runner);
+  const settingsRaw = await readRemoteFile(
+    config,
+    snapshotRef.settingsPath,
+    runner,
+  );
+  const manifestRaw = await readRemoteFile(
+    config,
+    snapshotRef.manifestPath,
+    runner,
+  );
   let manifest: Partial<GitHubSnapshotManifest> | undefined;
   try {
     manifest = JSON.parse(manifestRaw) as Partial<GitHubSnapshotManifest>;
@@ -490,21 +535,40 @@ export async function downloadSnapshot(
   const passphrase = options.passphrase?.trim();
   if (encryptedPayload && !passphrase) {
     throw new Error(
-      "Snapshot is encrypted. Set TADOI_GITHUB_SNAPSHOT_PASSPHRASE and retry restore."
+      "Snapshot is encrypted. Set TADOI_GITHUB_SNAPSHOT_PASSPHRASE and retry restore.",
     );
   }
   const statePayload =
-    encryptedPayload && passphrase ? decryptSnapshotPayload(stateRaw, passphrase) : stateRaw;
+    encryptedPayload && passphrase
+      ? decryptSnapshotPayload(stateRaw, passphrase)
+      : stateRaw;
   const settingsPayload =
     encryptedPayload && passphrase
       ? decryptSnapshotPayload(settingsRaw, passphrase)
       : settingsRaw;
-  verifySnapshotPayloadHash(statePayload, manifest?.hashes?.stateSha256, "state");
-  verifySnapshotPayloadHash(settingsPayload, manifest?.hashes?.settingsSha256, "settings");
+  verifySnapshotPayloadHash(
+    statePayload,
+    manifest?.hashes?.stateSha256,
+    "state",
+  );
+  verifySnapshotPayloadHash(
+    settingsPayload,
+    manifest?.hashes?.settingsSha256,
+    "settings",
+  );
 
-  const statePath = path.join(stagingDir, `${snapshotRef.timestamp}.state.json`);
-  const settingsPath = path.join(stagingDir, `${snapshotRef.timestamp}.settings.json`);
-  const manifestPath = path.join(stagingDir, `${snapshotRef.timestamp}.manifest.json`);
+  const statePath = path.join(
+    stagingDir,
+    `${snapshotRef.timestamp}.state.json`,
+  );
+  const settingsPath = path.join(
+    stagingDir,
+    `${snapshotRef.timestamp}.settings.json`,
+  );
+  const manifestPath = path.join(
+    stagingDir,
+    `${snapshotRef.timestamp}.manifest.json`,
+  );
 
   await fs.writeFile(statePath, statePayload, "utf8");
   await fs.writeFile(settingsPath, settingsPayload, "utf8");
@@ -520,15 +584,18 @@ export async function buildRestoreImportPayload(options: {
 }): Promise<string> {
   const [stateRaw, settingsRaw] = await Promise.all([
     fs.readFile(options.statePath, "utf8"),
-    fs.readFile(options.settingsPath, "utf8")
+    fs.readFile(options.settingsPath, "utf8"),
   ]);
   const state = JSON.parse(stateRaw) as Record<string, unknown>;
   const settings = JSON.parse(settingsRaw) as Record<string, unknown>;
   const payload = {
     ...state,
-    settings
+    settings,
   };
-  const outputPath = path.join(path.dirname(options.statePath), `${options.timestampId}.import.json`);
+  const outputPath = path.join(
+    path.dirname(options.statePath),
+    `${options.timestampId}.import.json`,
+  );
   await fs.writeFile(outputPath, JSON.stringify(payload, null, 2), "utf8");
   return outputPath;
 }
@@ -536,16 +603,16 @@ export async function buildRestoreImportPayload(options: {
 async function createBlob(
   ownerRepo: string,
   content: string,
-  runner: GhCommandRunner
+  runner: GhCommandRunner,
 ): Promise<string> {
   const response = await ghApiJson<{ sha?: string }>({
     endpoint: `repos/${ownerRepo}/git/blobs`,
     method: "POST",
     payload: {
       content,
-      encoding: "utf-8"
+      encoding: "utf-8",
     },
-    runner
+    runner,
   });
   if (!response.sha) {
     throw new Error("GitHub blob API response missing sha.");
@@ -556,32 +623,35 @@ async function createBlob(
 export async function pushSnapshot(
   config: GitHubBackupRepoConfig,
   artifacts: GitHubPushArtifacts,
-  runner: GhCommandRunner = runGhCommand
+  runner: GhCommandRunner = runGhCommand,
 ): Promise<{ commitSha?: string }> {
-  const remotePaths = buildRemoteSnapshotPaths(config.pathPrefix, artifacts.timestampId);
+  const remotePaths = buildRemoteSnapshotPaths(
+    config.pathPrefix,
+    artifacts.timestampId,
+  );
   const files: Array<{ path: string; content: string }> = [
     { path: remotePaths.statePath, content: artifacts.stateJson },
     { path: remotePaths.settingsPath, content: artifacts.settingsJson },
     { path: remotePaths.manifestPath, content: artifacts.manifestJson },
     { path: remotePaths.latestStatePath, content: artifacts.stateJson },
     { path: remotePaths.latestSettingsPath, content: artifacts.settingsJson },
-    { path: remotePaths.latestManifestPath, content: artifacts.manifestJson }
+    { path: remotePaths.latestManifestPath, content: artifacts.manifestJson },
   ];
 
   const headRef = await ghApiJson<{ object?: { sha?: string } }>({
     endpoint: `repos/${config.ownerRepo}/git/ref/heads/${encodeURIComponent(config.branch)}`,
-    runner
+    runner,
   });
   const baseCommitSha = headRef.object?.sha;
   if (!baseCommitSha) {
     throw new Error(
-      `Branch '${config.branch}' was not found. Create the repo with an initial commit first.`
+      `Branch '${config.branch}' was not found. Create the repo with an initial commit first.`,
     );
   }
 
   const baseCommit = await ghApiJson<GitHubCommitResponse>({
     endpoint: `repos/${config.ownerRepo}/git/commits/${baseCommitSha}`,
-    runner
+    runner,
   });
   const baseTreeSha = baseCommit.tree?.sha;
   if (!baseTreeSha) {
@@ -593,8 +663,8 @@ export async function pushSnapshot(
       path: file.path,
       mode: "100644",
       type: "blob",
-      sha: await createBlob(config.ownerRepo, file.content, runner)
-    }))
+      sha: await createBlob(config.ownerRepo, file.content, runner),
+    })),
   );
 
   const nextTree = await ghApiJson<{ sha?: string }>({
@@ -602,9 +672,9 @@ export async function pushSnapshot(
     method: "POST",
     payload: {
       base_tree: baseTreeSha,
-      tree: treeEntries
+      tree: treeEntries,
     },
-    runner
+    runner,
   });
   if (!nextTree.sha) {
     throw new Error("GitHub tree API response missing sha.");
@@ -617,9 +687,9 @@ export async function pushSnapshot(
     payload: {
       message: commitMessage,
       tree: nextTree.sha,
-      parents: [baseCommitSha]
+      parents: [baseCommitSha],
     },
-    runner
+    runner,
   });
   if (!nextCommit.sha) {
     throw new Error("GitHub commit API response missing sha.");
@@ -630,9 +700,9 @@ export async function pushSnapshot(
     method: "PATCH",
     payload: {
       sha: nextCommit.sha,
-      force: false
+      force: false,
     },
-    runner
+    runner,
   });
 
   return { commitSha: nextCommit.sha };
@@ -669,19 +739,20 @@ export function buildSnapshotArtifacts(options: {
         : 0,
     hashes: {
       stateSha256: sha256(stateJson),
-      settingsSha256: sha256(settingsJson)
+      settingsSha256: sha256(settingsJson),
     },
     counts: {
       tasksTotal: options.state.tasks.length,
-      tasksOpen: options.state.tasks.filter((task) => task.status === "open").length,
-      tagsTotal: Object.keys(options.state.tagIndex ?? {}).length
-    }
+      tasksOpen: options.state.tasks.filter((task) => task.status === "open")
+        .length,
+      tagsTotal: Object.keys(options.state.tagIndex ?? {}).length,
+    },
   };
   if (encryptionPassphrase) {
     manifest.encryption = {
       enabled: true,
       scheme: SNAPSHOT_ENCRYPTION_SCHEME,
-      payloadKind: SNAPSHOT_ENCRYPTION_KIND
+      payloadKind: SNAPSHOT_ENCRYPTION_KIND,
     };
   }
 
@@ -697,7 +768,7 @@ export function buildSnapshotArtifacts(options: {
     stateJson: statePayload,
     settingsJson: settingsPayload,
     manifestJson: JSON.stringify(manifest, null, 2),
-    stateRevision: manifest.stateRevision
+    stateRevision: manifest.stateRevision,
   };
 }
 

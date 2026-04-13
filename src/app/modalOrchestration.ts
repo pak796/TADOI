@@ -1,17 +1,15 @@
-import {
-  FocusTarget,
-  Mode,
-  type AppState,
-  type Task
-} from "../domain/models";
+import { FocusTarget, Mode, type AppState, type Task } from "../domain/models";
 import { buildVisibleTaskRows } from "../domain/taskRows";
 import {
   applyOverdueMarkDone,
   applyOverdueSnooze,
-  resolveGoToTaskTarget
+  resolveGoToTaskTarget,
 } from "../notifications/overdueTaskActions";
 import { applyReminderDismiss, applyReminderSnooze } from "../domain/reminders";
-import type { TaskOverdueEvent, TaskReminderEvent } from "../notifications/types";
+import type {
+  TaskOverdueEvent,
+  TaskReminderEvent,
+} from "../notifications/types";
 import { deleteRecurringOccurrenceAndFuture } from "../domain/recurrence/delete";
 import {
   clearEmptyNux,
@@ -25,7 +23,7 @@ import {
   type UIRecurringDeleteFutureCheckpointModal,
   type UIState,
   type UIUnsavedChangesModal,
-  type UITaskEditorUnsavedContinuation
+  type UITaskEditorUnsavedContinuation,
 } from "../ui/state";
 import type { BackupCenterScreen } from "../state/backupCenterFlow";
 import { isEditorMode } from "../ui/modeFocus";
@@ -38,15 +36,15 @@ type ModalOrchestrationDeps = {
   backupDispatch: (action: any) => void;
   setTimeSuggestion: (value: any) => void;
   requestTaskEditorUnsavedGuard: (
-    continuation: UITaskEditorUnsavedContinuation
+    continuation: UITaskEditorUnsavedContinuation,
   ) => boolean;
   closeHelp: (options?: { bypassUnsavedGuard?: boolean }) => void;
   runTaskEditorContinuation: (
-    continuation: UITaskEditorUnsavedContinuation
+    continuation: UITaskEditorUnsavedContinuation,
   ) => void;
   runHelpThemeEditorContinuation: (
     source: "help_custom1_editor" | "help_text_tuning_editor",
-    continuation: UIHelpThemeUnsavedContinuation
+    continuation: UIHelpThemeUnsavedContinuation,
   ) => void;
   saveEditor: (options?: {
     forceMode?: typeof Mode.ADD | typeof Mode.EDIT;
@@ -59,7 +57,11 @@ type ModalOrchestrationDeps = {
     previousMode: Mode;
     previousFocus: FocusTarget;
   }) => void;
-  finishDeleteModalAction: (modal: UIDeleteModal, deletedRowId: string, nextTasks: Task[]) => void;
+  finishDeleteModalAction: (
+    modal: UIDeleteModal,
+    deletedRowId: string,
+    nextTasks: Task[],
+  ) => void;
   handleDeleteSelected: () => void;
   runBackupImportCommitFlow: () => void;
   runCalendarImportCommitFromBackupCenter: () => void;
@@ -69,7 +71,11 @@ type ModalOrchestrationDeps = {
   closeViewsOverlay: () => void;
   openListMode: (options?: { bypassUnsavedGuard?: boolean }) => void;
   showShortNavigationBanner: (message: string) => void;
-  emitCompletionFromDiff: (previousTasks: Task[], nextTasks: Task[], at: number) => void;
+  emitCompletionFromDiff: (
+    previousTasks: Task[],
+    nextTasks: Task[],
+    at: number,
+  ) => void;
   openNotesMode: () => void;
   openNotesCreatePrompt: () => void;
   openChecklistAddFromEmptyNux: () => void;
@@ -80,11 +86,11 @@ type ModalHandlers = {
   openUnsavedChangesModal: (modal: UIUnsavedChangesModal) => void;
   openBackupFinalCheckpointModal: (modal: UIBackupFinalCheckpointModal) => void;
   openRecurringDeleteFutureCheckpointModal: (
-    modal: UIRecurringDeleteFutureCheckpointModal
+    modal: UIRecurringDeleteFutureCheckpointModal,
   ) => void;
   openBackupFinalCheckpoint: (
     checkpoint: UIBackupFinalCheckpointModal["checkpoint"],
-    sourceScreen: BackupCenterScreen
+    sourceScreen: BackupCenterScreen,
   ) => void;
   handleUnsavedChangesSaveAndContinue: () => void;
   handleUnsavedChangesDiscardAndContinue: () => void;
@@ -120,8 +126,12 @@ type ModalHandlers = {
   handleReminderModalGoToTask: () => void;
 };
 
-export function useModalOrchestration(deps: ModalOrchestrationDeps): ModalHandlers {
-  function applyEscUnwind(options: { bypassUnsavedGuard?: boolean } = {}): boolean {
+export function useModalOrchestration(
+  deps: ModalOrchestrationDeps,
+): ModalHandlers {
+  function applyEscUnwind(
+    options: { bypassUnsavedGuard?: boolean } = {},
+  ): boolean {
     if (!options.bypassUnsavedGuard && isEditorMode(deps.uiState.mode)) {
       if (deps.requestTaskEditorUnsavedGuard("close_editor")) {
         return true;
@@ -144,7 +154,7 @@ export function useModalOrchestration(deps: ModalOrchestrationDeps): ModalHandle
       type: "replace",
       state: next.clearEditorDraft
         ? { ...next.state, editorScrollOffset: 0 }
-        : next.state
+        : next.state,
     });
     return true;
   }
@@ -163,7 +173,8 @@ export function useModalOrchestration(deps: ModalOrchestrationDeps): ModalHandle
 
   function getRecurringDeleteFutureCheckpointModal(): UIRecurringDeleteFutureCheckpointModal | null {
     const modal = deps.uiState.modal;
-    if (!modal || modal.type !== "recurring_delete_future_checkpoint") return null;
+    if (!modal || modal.type !== "recurring_delete_future_checkpoint")
+      return null;
     return modal;
   }
 
@@ -171,19 +182,21 @@ export function useModalOrchestration(deps: ModalOrchestrationDeps): ModalHandle
     deps.openModalWithContext(modal);
   }
 
-  function openBackupFinalCheckpointModal(modal: UIBackupFinalCheckpointModal): void {
+  function openBackupFinalCheckpointModal(
+    modal: UIBackupFinalCheckpointModal,
+  ): void {
     deps.openModalWithContext(modal);
   }
 
   function openRecurringDeleteFutureCheckpointModal(
-    modal: UIRecurringDeleteFutureCheckpointModal
+    modal: UIRecurringDeleteFutureCheckpointModal,
   ): void {
     deps.openModalWithContext(modal);
   }
 
   function openBackupFinalCheckpoint(
     checkpoint: UIBackupFinalCheckpointModal["checkpoint"],
-    sourceScreen: BackupCenterScreen
+    sourceScreen: BackupCenterScreen,
   ): void {
     deps.runRoutedAction({
       scope: "ui",
@@ -193,8 +206,8 @@ export function useModalOrchestration(deps: ModalOrchestrationDeps): ModalHandle
         checkpoint,
         sourceScreen,
         previousMode: Mode.BACKUP_CENTER,
-        previousFocus: FocusTarget.BACKUP_CENTER
-      }
+        previousFocus: FocusTarget.BACKUP_CENTER,
+      },
     });
   }
 
@@ -204,8 +217,12 @@ export function useModalOrchestration(deps: ModalOrchestrationDeps): ModalHandle
 
     let saveSucceeded = false;
     if (modal.source === "task_editor") {
-      const forcedMode = modal.previousMode === Mode.EDIT ? Mode.EDIT : Mode.ADD;
-      saveSucceeded = deps.saveEditor({ forceMode: forcedMode, closeAfterSave: false });
+      const forcedMode =
+        modal.previousMode === Mode.EDIT ? Mode.EDIT : Mode.ADD;
+      saveSucceeded = deps.saveEditor({
+        forceMode: forcedMode,
+        closeAfterSave: false,
+      });
     } else if (modal.source === "help_custom1_editor") {
       saveSucceeded = deps.saveCustom1Editor();
     } else {
@@ -267,9 +284,13 @@ export function useModalOrchestration(deps: ModalOrchestrationDeps): ModalHandle
       seriesTaskId: deleteModal.seriesTaskId,
       seriesId: deleteModal.seriesId,
       occurrenceIso: deleteModal.occurrenceIso,
-      nowMs
+      nowMs,
     });
-    deps.finishDeleteModalAction(deleteModal, deleteModal.selectedRowId, nextTasks);
+    deps.finishDeleteModalAction(
+      deleteModal,
+      deleteModal.selectedRowId,
+      nextTasks,
+    );
   }
 
   function cancelRecurringDeleteFutureCheckpoint(): void {
@@ -280,7 +301,11 @@ export function useModalOrchestration(deps: ModalOrchestrationDeps): ModalHandle
 
   function requestRecurringDeleteFutureCheckpointFromDeleteModal(): void {
     const modal = deps.uiState.modal;
-    if (!modal || modal.type !== "delete" || modal.target !== "recurring_occurrence") {
+    if (
+      !modal ||
+      modal.type !== "delete" ||
+      modal.target !== "recurring_occurrence"
+    ) {
       return;
     }
     deps.runRoutedAction({
@@ -290,8 +315,8 @@ export function useModalOrchestration(deps: ModalOrchestrationDeps): ModalHandle
         type: "recurring_delete_future_checkpoint",
         deleteModal: modal,
         previousMode: modal.previousMode,
-        previousFocus: modal.previousFocus
-      }
+        previousFocus: modal.previousFocus,
+      },
     });
   }
 
@@ -322,8 +347,8 @@ export function useModalOrchestration(deps: ModalOrchestrationDeps): ModalHandle
     deps.uiDispatch(
       openEmptyNux({
         step: "adding",
-        startedFromNux: true
-      })
+        startedFromNux: true,
+      }),
     );
     deps.uiDispatch({ type: "setModal", modal: null });
     deps.openAdd();
@@ -345,7 +370,7 @@ export function useModalOrchestration(deps: ModalOrchestrationDeps): ModalHandle
     openEmptyNuxModal({
       step: "what_next",
       startedFromNux: deps.uiState.emptyNux?.startedFromNux,
-      createdTaskId: deps.uiState.emptyNux?.createdTaskId
+      createdTaskId: deps.uiState.emptyNux?.createdTaskId,
     });
   }
 
@@ -381,20 +406,27 @@ export function useModalOrchestration(deps: ModalOrchestrationDeps): ModalHandle
 
   function getActiveOverdueModalEvent(): TaskOverdueEvent | null {
     if (deps.uiState.mode !== Mode.MODAL_CONFIRM) return null;
-    if (!deps.uiState.modal || deps.uiState.modal.type !== "overdue") return null;
+    if (!deps.uiState.modal || deps.uiState.modal.type !== "overdue")
+      return null;
     return deps.uiState.modal.event;
   }
 
   function getActiveReminderModalEvent(): TaskReminderEvent | null {
     if (deps.uiState.mode !== Mode.MODAL_CONFIRM) return null;
-    if (!deps.uiState.modal || deps.uiState.modal.type !== "reminder") return null;
+    if (!deps.uiState.modal || deps.uiState.modal.type !== "reminder")
+      return null;
     return deps.uiState.modal.event;
   }
 
   function handleOverdueModalSnooze() {
     const event = getActiveOverdueModalEvent();
     if (!event) return;
-    const updatedTasks = applyOverdueSnooze(deps.state.tasks, event, Date.now(), 10);
+    const updatedTasks = applyOverdueSnooze(
+      deps.state.tasks,
+      event,
+      Date.now(),
+      10,
+    );
     deps.dispatch({ type: "setTasks", tasks: updatedTasks });
     applyEscUnwind();
   }
@@ -422,8 +454,8 @@ export function useModalOrchestration(deps: ModalOrchestrationDeps): ModalHandle
         priority: undefined,
         tag: undefined,
         tagFilter: undefined,
-        searchText: undefined
-      }
+        searchText: undefined,
+      },
     });
 
     const goToTarget = resolveGoToTaskTarget(deps.state.tasks, event);
@@ -435,16 +467,18 @@ export function useModalOrchestration(deps: ModalOrchestrationDeps): ModalHandle
         priority: undefined,
         tag: undefined,
         tagFilter: undefined,
-        searchText: undefined
+        searchText: undefined,
       },
       deps.state.sortMode,
       Date.now(),
-      deps.state.tagAliases
+      deps.state.tagAliases,
     );
     const selectedRow =
       revealRows.find((row) => row.id === goToTarget.preferredTaskId) ??
       (goToTarget.fallbackSourceTaskId
-        ? revealRows.find((row) => row.sourceTaskId === goToTarget.fallbackSourceTaskId)
+        ? revealRows.find(
+            (row) => row.sourceTaskId === goToTarget.fallbackSourceTaskId,
+          )
         : undefined) ??
       revealRows[0];
     if (selectedRow) {
@@ -460,7 +494,7 @@ export function useModalOrchestration(deps: ModalOrchestrationDeps): ModalHandle
       deps.state.tasks,
       event.taskId,
       event.effectiveReminderAt,
-      Date.now()
+      Date.now(),
     );
     deps.dispatch({ type: "setTasks", tasks: updatedTasks });
     applyEscUnwind();
@@ -473,7 +507,7 @@ export function useModalOrchestration(deps: ModalOrchestrationDeps): ModalHandle
       deps.state.tasks,
       event.taskId,
       deltaMs,
-      Date.now()
+      Date.now(),
     );
     deps.dispatch({ type: "setTasks", tasks: updatedTasks });
     applyEscUnwind();
@@ -482,7 +516,9 @@ export function useModalOrchestration(deps: ModalOrchestrationDeps): ModalHandle
   function handleReminderModalGoToTask() {
     const event = getActiveReminderModalEvent();
     if (!event) return;
-    const task = deps.state.tasks.find((candidate) => candidate.id === event.taskId);
+    const task = deps.state.tasks.find(
+      (candidate) => candidate.id === event.taskId,
+    );
 
     deps.openListMode({ bypassUnsavedGuard: true });
     deps.dispatch({
@@ -493,8 +529,8 @@ export function useModalOrchestration(deps: ModalOrchestrationDeps): ModalHandle
         priority: undefined,
         tag: undefined,
         tagFilter: undefined,
-        searchText: undefined
-      }
+        searchText: undefined,
+      },
     });
 
     if (!task) {
@@ -538,7 +574,7 @@ export function useModalOrchestration(deps: ModalOrchestrationDeps): ModalHandle
     handleOverdueModalGoToTask,
     handleReminderModalDismiss,
     handleReminderModalSnooze,
-    handleReminderModalGoToTask
+    handleReminderModalGoToTask,
   };
 }
 

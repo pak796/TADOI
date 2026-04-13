@@ -7,7 +7,7 @@ const OVERDUE_EVENT = {
   taskId: "task-1",
   title: "Task 1",
   dueAt: "2026-02-10T09:00:00.000Z",
-  firedAt: "2026-02-10T09:01:00.000Z"
+  firedAt: "2026-02-10T09:01:00.000Z",
 };
 
 const REMINDER_EVENT = {
@@ -16,7 +16,7 @@ const REMINDER_EVENT = {
   title: "Task 2",
   effectiveReminderAt: Date.parse("2026-02-10T08:00:00.000Z"),
   dueAt: "2026-02-10T09:00:00.000Z",
-  firedAt: "2026-02-10T08:00:00.000Z"
+  firedAt: "2026-02-10T08:00:00.000Z",
 };
 
 describe("ui state", () => {
@@ -31,22 +31,27 @@ describe("ui state", () => {
   it("enqueues and dequeues notification modal events", () => {
     const queued = uiReducer(initialUIState, {
       type: "enqueueNotificationModal",
-      event: OVERDUE_EVENT
+      event: OVERDUE_EVENT,
     });
     const queuedTwice = uiReducer(queued, {
       type: "enqueueNotificationModal",
-      event: REMINDER_EVENT
+      event: REMINDER_EVENT,
     });
-    expect(queuedTwice.notificationModalQueue).toEqual([OVERDUE_EVENT, REMINDER_EVENT]);
+    expect(queuedTwice.notificationModalQueue).toEqual([
+      OVERDUE_EVENT,
+      REMINDER_EVENT,
+    ]);
 
-    const dequeued = uiReducer(queuedTwice, { type: "dequeueNotificationModal" });
+    const dequeued = uiReducer(queuedTwice, {
+      type: "dequeueNotificationModal",
+    });
     expect(dequeued.notificationModalQueue).toEqual([REMINDER_EVENT]);
   });
 
   it("clears notification modal queue", () => {
     const queued = uiReducer(initialUIState, {
       type: "enqueueNotificationModal",
-      event: OVERDUE_EVENT
+      event: OVERDUE_EVENT,
     });
     const cleared = uiReducer(queued, { type: "clearNotificationModalQueue" });
     expect(cleared.notificationModalQueue).toEqual([]);
@@ -55,13 +60,15 @@ describe("ui state", () => {
   it("clears only overdue events from the notification queue", () => {
     const queuedOverdue = uiReducer(initialUIState, {
       type: "enqueueNotificationModal",
-      event: OVERDUE_EVENT
+      event: OVERDUE_EVENT,
     });
     const queuedMixed = uiReducer(queuedOverdue, {
       type: "enqueueNotificationModal",
-      event: REMINDER_EVENT
+      event: REMINDER_EVENT,
     });
-    const pruned = uiReducer(queuedMixed, { type: "clearOverdueNotificationModals" });
+    const pruned = uiReducer(queuedMixed, {
+      type: "clearOverdueNotificationModals",
+    });
     expect(pruned.notificationModalQueue).toEqual([REMINDER_EVENT]);
   });
 
@@ -79,16 +86,16 @@ describe("ui state", () => {
           taskId: "task-1",
           taskTitle: "Task",
           previousMode: Mode.LIST,
-          previousFocus: FocusTarget.TASK_LIST
-        }
+          previousFocus: FocusTarget.TASK_LIST,
+        },
       },
-      { type: "OPEN_EMPTY_NUX" }
+      { type: "OPEN_EMPTY_NUX" },
     );
     expect(blockedByModal.modal?.type).toBe("delete");
 
     const blockedByDismissed = uiReducer(
       { ...initialUIState, emptyNuxDismissed: true },
-      { type: "OPEN_EMPTY_NUX" }
+      { type: "OPEN_EMPTY_NUX" },
     );
     expect(blockedByDismissed.modal).toBeNull();
 
@@ -96,18 +103,18 @@ describe("ui state", () => {
       type: "OPEN_EMPTY_NUX",
       step: "shortcuts",
       startedFromNux: true,
-      createdTaskId: "task-123"
+      createdTaskId: "task-123",
     });
     expect(merged.modal).toEqual({ type: "emptyNux" });
     expect(merged.emptyNux).toEqual({
       step: "shortcuts",
       startedFromNux: true,
-      createdTaskId: "task-123"
+      createdTaskId: "task-123",
     });
 
     const movedToWhatNext = uiReducer(merged, {
       type: "OPEN_EMPTY_NUX",
-      step: "what_next"
+      step: "what_next",
     });
     expect(movedToWhatNext.emptyNux?.step).toBe("what_next");
   });
@@ -119,10 +126,14 @@ describe("ui state", () => {
         mode: Mode.MODAL_CONFIRM,
         focus: FocusTarget.MODAL,
         modal: { type: "emptyNux" },
-        emptyNux: { step: "celebrate", startedFromNux: true, createdTaskId: "task-1" },
-        emptyNuxCelebratePending: true
+        emptyNux: {
+          step: "celebrate",
+          startedFromNux: true,
+          createdTaskId: "task-1",
+        },
+        emptyNuxCelebratePending: true,
       },
-      { type: "DISMISS_EMPTY_NUX" }
+      { type: "DISMISS_EMPTY_NUX" },
     );
 
     expect(dismissed.mode).toBe(Mode.LIST);
@@ -141,9 +152,9 @@ describe("ui state", () => {
         focus: FocusTarget.MODAL,
         modal: { type: "emptyNux" },
         emptyNux: { step: "shortcuts" },
-        emptyNuxCelebratePending: true
+        emptyNuxCelebratePending: true,
       },
-      { type: "CLEAR_EMPTY_NUX" }
+      { type: "CLEAR_EMPTY_NUX" },
     );
 
     expect(cleared.mode).toBe(Mode.LIST);
@@ -157,13 +168,13 @@ describe("ui state", () => {
   it("toggles empty NUX celebrate pending", () => {
     const enabled = uiReducer(initialUIState, {
       type: "SET_EMPTY_NUX_CELEBRATE_PENDING",
-      pending: true
+      pending: true,
     });
     expect(enabled.emptyNuxCelebratePending).toBe(true);
 
     const disabled = uiReducer(enabled, {
       type: "SET_EMPTY_NUX_CELEBRATE_PENDING",
-      pending: false
+      pending: false,
     });
     expect(disabled.emptyNuxCelebratePending).toBe(false);
   });
@@ -181,8 +192,8 @@ describe("unwind", () => {
         taskId: "task-1",
         taskTitle: "Task",
         previousMode: Mode.SEARCH,
-        previousFocus: FocusTarget.SEARCH_INPUT
-      }
+        previousFocus: FocusTarget.SEARCH_INPUT,
+      },
     });
 
     expect(result).toEqual({
@@ -190,9 +201,9 @@ describe("unwind", () => {
         ...initialUIState,
         mode: Mode.SEARCH,
         focus: FocusTarget.SEARCH_INPUT,
-        modal: null
+        modal: null,
       },
-      clearEditorDraft: false
+      clearEditorDraft: false,
     });
   });
 
@@ -205,8 +216,8 @@ describe("unwind", () => {
         type: "overdue",
         event: OVERDUE_EVENT,
         previousMode: Mode.DASHBOARD,
-        previousFocus: FocusTarget.DASHBOARD
-      }
+        previousFocus: FocusTarget.DASHBOARD,
+      },
     });
 
     expect(result).toEqual({
@@ -214,9 +225,9 @@ describe("unwind", () => {
         ...initialUIState,
         mode: Mode.DASHBOARD,
         focus: FocusTarget.DASHBOARD,
-        modal: null
+        modal: null,
       },
-      clearEditorDraft: false
+      clearEditorDraft: false,
     });
   });
 
@@ -229,8 +240,8 @@ describe("unwind", () => {
         type: "reminder",
         event: REMINDER_EVENT,
         previousMode: Mode.LIST,
-        previousFocus: FocusTarget.TASK_LIST
-      }
+        previousFocus: FocusTarget.TASK_LIST,
+      },
     });
 
     expect(result).toEqual({
@@ -238,9 +249,9 @@ describe("unwind", () => {
         ...initialUIState,
         mode: Mode.LIST,
         focus: FocusTarget.TASK_LIST,
-        modal: null
+        modal: null,
       },
-      clearEditorDraft: false
+      clearEditorDraft: false,
     });
   });
 
@@ -255,8 +266,8 @@ describe("unwind", () => {
         toTaskId: "task-b",
         toTaskTitle: "Task B",
         previousMode: Mode.EDIT,
-        previousFocus: FocusTarget.EDITOR_NOTES
-      }
+        previousFocus: FocusTarget.EDITOR_NOTES,
+      },
     });
 
     expect(result).toEqual({
@@ -264,9 +275,9 @@ describe("unwind", () => {
         ...initialUIState,
         mode: Mode.EDIT,
         focus: FocusTarget.EDITOR_NOTES,
-        modal: null
+        modal: null,
       },
-      clearEditorDraft: false
+      clearEditorDraft: false,
     });
   });
 
@@ -280,8 +291,8 @@ describe("unwind", () => {
         source: "task_editor",
         continuation: "open_backup_center",
         previousMode: Mode.EDIT,
-        previousFocus: FocusTarget.EDITOR_TAGS
-      }
+        previousFocus: FocusTarget.EDITOR_TAGS,
+      },
     });
 
     expect(result).toEqual({
@@ -289,9 +300,9 @@ describe("unwind", () => {
         ...initialUIState,
         mode: Mode.EDIT,
         focus: FocusTarget.EDITOR_TAGS,
-        modal: null
+        modal: null,
       },
-      clearEditorDraft: false
+      clearEditorDraft: false,
     });
   });
 
@@ -305,8 +316,8 @@ describe("unwind", () => {
         checkpoint: "calendar_import",
         sourceScreen: "calendar_import_confirm",
         previousMode: Mode.BACKUP_CENTER,
-        previousFocus: FocusTarget.BACKUP_CENTER
-      }
+        previousFocus: FocusTarget.BACKUP_CENTER,
+      },
     });
 
     expect(result).toEqual({
@@ -314,9 +325,9 @@ describe("unwind", () => {
         ...initialUIState,
         mode: Mode.BACKUP_CENTER,
         focus: FocusTarget.BACKUP_CENTER,
-        modal: null
+        modal: null,
       },
-      clearEditorDraft: false
+      clearEditorDraft: false,
     });
   });
 
@@ -333,14 +344,15 @@ describe("unwind", () => {
           seriesTaskId: "series-task-1",
           seriesId: "series:task-1",
           occurrenceIso: "2026-02-10T09:00:00",
-          selectedRowId: "series_occurrence:series%3Atask-1:2026-02-10T09%3A00%3A00",
+          selectedRowId:
+            "series_occurrence:series%3Atask-1:2026-02-10T09%3A00%3A00",
           taskTitle: "Task",
           previousMode: Mode.LIST,
-          previousFocus: FocusTarget.TASK_LIST
+          previousFocus: FocusTarget.TASK_LIST,
         },
         previousMode: Mode.LIST,
-        previousFocus: FocusTarget.TASK_LIST
-      }
+        previousFocus: FocusTarget.TASK_LIST,
+      },
     });
 
     expect(result).toEqual({
@@ -348,9 +360,9 @@ describe("unwind", () => {
         ...initialUIState,
         mode: Mode.LIST,
         focus: FocusTarget.TASK_LIST,
-        modal: null
+        modal: null,
       },
-      clearEditorDraft: false
+      clearEditorDraft: false,
     });
   });
 
@@ -360,8 +372,8 @@ describe("unwind", () => {
       mode: Mode.MODAL_CONFIRM,
       focus: FocusTarget.MODAL,
       modal: {
-        type: "emptyNux"
-      }
+        type: "emptyNux",
+      },
     });
 
     expect(result).toEqual({
@@ -372,9 +384,9 @@ describe("unwind", () => {
         modal: null,
         emptyNuxDismissed: true,
         emptyNux: undefined,
-        emptyNuxCelebratePending: false
+        emptyNuxCelebratePending: false,
       },
-      clearEditorDraft: false
+      clearEditorDraft: false,
     });
   });
 
@@ -383,7 +395,7 @@ describe("unwind", () => {
       ...initialUIState,
       mode: Mode.HELP,
       previousMode: Mode.EDIT,
-      previousFocus: FocusTarget.EDITOR_NOTES
+      previousFocus: FocusTarget.EDITOR_NOTES,
     });
 
     expect(result).toEqual({
@@ -392,9 +404,9 @@ describe("unwind", () => {
         mode: Mode.EDIT,
         focus: FocusTarget.EDITOR_NOTES,
         previousMode: Mode.EDIT,
-        previousFocus: FocusTarget.EDITOR_NOTES
+        previousFocus: FocusTarget.EDITOR_NOTES,
       },
-      clearEditorDraft: false
+      clearEditorDraft: false,
     });
   });
 
@@ -403,7 +415,7 @@ describe("unwind", () => {
       ...initialUIState,
       mode: Mode.BACKUP_CENTER,
       previousMode: Mode.SEARCH,
-      previousFocus: FocusTarget.SEARCH_INPUT
+      previousFocus: FocusTarget.SEARCH_INPUT,
     });
 
     expect(result).toEqual({
@@ -412,9 +424,9 @@ describe("unwind", () => {
         mode: Mode.SEARCH,
         focus: FocusTarget.SEARCH_INPUT,
         previousMode: Mode.SEARCH,
-        previousFocus: FocusTarget.SEARCH_INPUT
+        previousFocus: FocusTarget.SEARCH_INPUT,
       },
-      clearEditorDraft: false
+      clearEditorDraft: false,
     });
   });
 
@@ -424,7 +436,7 @@ describe("unwind", () => {
       mode: Mode.TAG_FILTER,
       focus: FocusTarget.TAG_FILTER_INPUT,
       previousMode: Mode.DASHBOARD,
-      previousFocus: FocusTarget.DASHBOARD
+      previousFocus: FocusTarget.DASHBOARD,
     });
 
     expect(result).toEqual({
@@ -433,9 +445,9 @@ describe("unwind", () => {
         mode: Mode.DASHBOARD,
         focus: FocusTarget.DASHBOARD,
         previousMode: Mode.DASHBOARD,
-        previousFocus: FocusTarget.DASHBOARD
+        previousFocus: FocusTarget.DASHBOARD,
       },
-      clearEditorDraft: false
+      clearEditorDraft: false,
     });
   });
 
@@ -443,16 +455,16 @@ describe("unwind", () => {
     const result = unwind({
       ...initialUIState,
       mode: Mode.SEARCH,
-      focus: FocusTarget.SEARCH_INPUT
+      focus: FocusTarget.SEARCH_INPUT,
     });
 
     expect(result).toEqual({
       state: {
         ...initialUIState,
         mode: Mode.LIST,
-        focus: FocusTarget.TASK_LIST
+        focus: FocusTarget.TASK_LIST,
       },
-      clearEditorDraft: false
+      clearEditorDraft: false,
     });
   });
 
@@ -460,16 +472,16 @@ describe("unwind", () => {
     const result = unwind({
       ...initialUIState,
       mode: Mode.DASHBOARD,
-      focus: FocusTarget.DASHBOARD
+      focus: FocusTarget.DASHBOARD,
     });
 
     expect(result).toEqual({
       state: {
         ...initialUIState,
         mode: Mode.LIST,
-        focus: FocusTarget.TASK_LIST
+        focus: FocusTarget.TASK_LIST,
       },
-      clearEditorDraft: false
+      clearEditorDraft: false,
     });
   });
 
@@ -477,29 +489,29 @@ describe("unwind", () => {
     const addResult = unwind({
       ...initialUIState,
       mode: Mode.ADD,
-      focus: FocusTarget.EDITOR_TITLE
+      focus: FocusTarget.EDITOR_TITLE,
     });
     const editResult = unwind({
       ...initialUIState,
       mode: Mode.EDIT,
-      focus: FocusTarget.EDITOR_NOTES
+      focus: FocusTarget.EDITOR_NOTES,
     });
 
     expect(addResult).toEqual({
       state: {
         ...initialUIState,
         mode: Mode.LIST,
-        focus: FocusTarget.TASK_LIST
+        focus: FocusTarget.TASK_LIST,
       },
-      clearEditorDraft: true
+      clearEditorDraft: true,
     });
     expect(editResult).toEqual({
       state: {
         ...initialUIState,
         mode: Mode.LIST,
-        focus: FocusTarget.TASK_LIST
+        focus: FocusTarget.TASK_LIST,
       },
-      clearEditorDraft: true
+      clearEditorDraft: true,
     });
   });
 
@@ -509,7 +521,7 @@ describe("unwind", () => {
       mode: Mode.NOTES_LIST,
       focus: FocusTarget.NOTES_LIST,
       previousMode: Mode.DASHBOARD,
-      previousFocus: FocusTarget.DASHBOARD
+      previousFocus: FocusTarget.DASHBOARD,
     });
 
     expect(result).toEqual({
@@ -518,9 +530,9 @@ describe("unwind", () => {
         mode: Mode.DASHBOARD,
         focus: FocusTarget.DASHBOARD,
         previousMode: Mode.DASHBOARD,
-        previousFocus: FocusTarget.DASHBOARD
+        previousFocus: FocusTarget.DASHBOARD,
       },
-      clearEditorDraft: false
+      clearEditorDraft: false,
     });
   });
 

@@ -4,7 +4,7 @@ import {
   estimateEditorContentLines,
   getEditorFocusAnchorLine,
   getEditorViewportHeights,
-  hasEditorOverflow
+  hasEditorOverflow,
 } from "./editorPaneLayout";
 
 describe("editorPaneLayout", () => {
@@ -12,13 +12,19 @@ describe("editorPaneLayout", () => {
     const heights = getEditorViewportHeights(20);
     expect(heights).toEqual({
       contentHeight: 20 - EDITOR_FOOTER_HEIGHT,
-      footerHeight: EDITOR_FOOTER_HEIGHT
+      footerHeight: EDITOR_FOOTER_HEIGHT,
     });
   });
 
   it("keeps at least one content row on very small heights", () => {
-    expect(getEditorViewportHeights(1)).toEqual({ contentHeight: 1, footerHeight: 0 });
-    expect(getEditorViewportHeights(2)).toEqual({ contentHeight: 1, footerHeight: 1 });
+    expect(getEditorViewportHeights(1)).toEqual({
+      contentHeight: 1,
+      footerHeight: 0,
+    });
+    expect(getEditorViewportHeights(2)).toEqual({
+      contentHeight: 1,
+      footerHeight: 1,
+    });
   });
 
   it("estimates larger content when optional hint rows are visible", () => {
@@ -27,7 +33,7 @@ describe("editorPaneLayout", () => {
       hasTitleSuggestion: true,
       hasDueSuggestion: true,
       hasTimeSuggestion: true,
-      hasTagSuggestion: true
+      hasTagSuggestion: true,
     });
     expect(withHints).toBeGreaterThan(baseline);
   });
@@ -46,19 +52,19 @@ describe("editorPaneLayout", () => {
     const off = estimateEditorContentLines({ repeatMode: "off" });
     const daily = estimateEditorContentLines({
       repeatMode: "daily",
-      repeatEndMode: "never"
+      repeatEndMode: "never",
     });
     const weekly = estimateEditorContentLines({
       repeatMode: "weekly",
-      repeatEndMode: "never"
+      repeatEndMode: "never",
     });
     const monthly = estimateEditorContentLines({
       repeatMode: "monthly",
-      repeatEndMode: "never"
+      repeatEndMode: "never",
     });
     const custom = estimateEditorContentLines({
       repeatMode: "custom",
-      repeatEndMode: "never"
+      repeatEndMode: "never",
     });
 
     expect(daily).toBeGreaterThan(off);
@@ -71,15 +77,15 @@ describe("editorPaneLayout", () => {
   it("only adds one end-condition row based on repeat end mode", () => {
     const neverLines = estimateEditorContentLines({
       repeatMode: "daily",
-      repeatEndMode: "never"
+      repeatEndMode: "never",
     });
     const untilLines = estimateEditorContentLines({
       repeatMode: "daily",
-      repeatEndMode: "until"
+      repeatEndMode: "until",
     });
     const countLines = estimateEditorContentLines({
       repeatMode: "daily",
-      repeatEndMode: "count"
+      repeatEndMode: "count",
     });
     expect(untilLines).toBeGreaterThan(neverLines);
     expect(countLines).toBe(untilLines);
@@ -88,17 +94,25 @@ describe("editorPaneLayout", () => {
   it("maps focus anchors in top-to-bottom order", () => {
     const title = getEditorFocusAnchorLine("title", { repeatMode: "weekly" });
     const due = getEditorFocusAnchorLine("due", { repeatMode: "weekly" });
-    const repeatMode = getEditorFocusAnchorLine("repeat_mode", { repeatMode: "weekly" });
-    const repeatWeekdays = getEditorFocusAnchorLine("repeat_weekdays", {
-      repeatMode: "weekly"
+    const repeatMode = getEditorFocusAnchorLine("repeat_mode", {
+      repeatMode: "weekly",
     });
-    const assignee = getEditorFocusAnchorLine("assignee", { repeatMode: "weekly" });
-    const project = getEditorFocusAnchorLine("project", { repeatMode: "weekly" });
+    const repeatWeekdays = getEditorFocusAnchorLine("repeat_weekdays", {
+      repeatMode: "weekly",
+    });
+    const assignee = getEditorFocusAnchorLine("assignee", {
+      repeatMode: "weekly",
+    });
+    const project = getEditorFocusAnchorLine("project", {
+      repeatMode: "weekly",
+    });
     const workflowStage = getEditorFocusAnchorLine("workflow_stage", {
-      repeatMode: "weekly"
+      repeatMode: "weekly",
     });
     const tags = getEditorFocusAnchorLine("tags", { repeatMode: "weekly" });
-    const checklist = getEditorFocusAnchorLine("checklist", { repeatMode: "weekly" });
+    const checklist = getEditorFocusAnchorLine("checklist", {
+      repeatMode: "weekly",
+    });
     const notes = getEditorFocusAnchorLine("notes", { repeatMode: "weekly" });
 
     expect(title).toBeLessThan(due);
@@ -115,30 +129,30 @@ describe("editorPaneLayout", () => {
 
   it("anchors hidden recurrence focuses to repeat mode or nearest visible control", () => {
     const offRepeatModeAnchor = getEditorFocusAnchorLine("repeat_mode", {
-      repeatMode: "off"
+      repeatMode: "off",
     });
     const offWeekdaysAnchor = getEditorFocusAnchorLine("repeat_weekdays", {
-      repeatMode: "off"
+      repeatMode: "off",
     });
     expect(offWeekdaysAnchor).toBe(offRepeatModeAnchor);
 
     const dailyIntervalAnchor = getEditorFocusAnchorLine("repeat_interval", {
       repeatMode: "daily",
-      repeatEndMode: "never"
+      repeatEndMode: "never",
     });
     const dailyWeekdaysAnchor = getEditorFocusAnchorLine("repeat_weekdays", {
       repeatMode: "daily",
-      repeatEndMode: "never"
+      repeatEndMode: "never",
     });
     expect(dailyWeekdaysAnchor).toBe(dailyIntervalAnchor);
 
     const untilAnchor = getEditorFocusAnchorLine("repeat_until", {
       repeatMode: "daily",
-      repeatEndMode: "until"
+      repeatEndMode: "until",
     });
     const repeatEndAnchor = getEditorFocusAnchorLine("repeat_end_mode", {
       repeatMode: "daily",
-      repeatEndMode: "until"
+      repeatEndMode: "until",
     });
     expect(untilAnchor).toBeGreaterThan(repeatEndAnchor);
   });

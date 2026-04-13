@@ -1,5 +1,11 @@
 import { describe, expect, it } from "bun:test";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -70,8 +76,16 @@ describe("doc-drift-scan matcher upgrades", () => {
           "- Backup coverage: `src/state/backupCenterFlow.test.ts`, `src/state/backupCenterCalendarController.test.ts`",
         ].join("\n"),
       );
-      write(tempDir, "src/app/keyRouter.test.ts", "describe('router', () => {});");
-      write(tempDir, "src/state/backupCenterFlow.test.ts", "describe('flow', () => {});");
+      write(
+        tempDir,
+        "src/app/keyRouter.test.ts",
+        "describe('router', () => {});",
+      );
+      write(
+        tempDir,
+        "src/state/backupCenterFlow.test.ts",
+        "describe('flow', () => {});",
+      );
       write(
         tempDir,
         "src/state/backupCenterCalendarController.test.ts",
@@ -84,9 +98,14 @@ describe("doc-drift-scan matcher upgrades", () => {
       expect(keyRouter.status).toBe("verified");
       expect(keyRouter.evidence_paths).toContain("src/app/keyRouter.test.ts");
 
-      const backupFlow = findingByClaim(findings, "src/state/backupCenterFlow.test.ts");
+      const backupFlow = findingByClaim(
+        findings,
+        "src/state/backupCenterFlow.test.ts",
+      );
       expect(backupFlow.status).toBe("verified");
-      expect(backupFlow.evidence_paths).toContain("src/state/backupCenterFlow.test.ts");
+      expect(backupFlow.evidence_paths).toContain(
+        "src/state/backupCenterFlow.test.ts",
+      );
 
       const backupCalendar = findingByClaim(
         findings,
@@ -151,7 +170,10 @@ void warning;
       expect(externalCalendar.status).toBe("verified");
       expect(externalCalendar.evidence_paths.length).toBeGreaterThan(0);
 
-      const securityPolicy = findingByClaim(findings, "security.nonHttpLinkPolicy");
+      const securityPolicy = findingByClaim(
+        findings,
+        "security.nonHttpLinkPolicy",
+      );
       expect(securityPolicy.status).toBe("verified");
       expect(securityPolicy.evidence_paths.length).toBeGreaterThan(0);
     } finally {

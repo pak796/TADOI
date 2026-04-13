@@ -1,11 +1,15 @@
-import { spawn, type ChildProcess, type SpawnOptionsWithoutStdio } from "node:child_process";
+import {
+  spawn,
+  type ChildProcess,
+  type SpawnOptionsWithoutStdio,
+} from "node:child_process";
 
 type ClipboardSpawnChild = Pick<ChildProcess, "stdin" | "on" | "once">;
 
 export type ClipboardSpawn = (
   command: string,
   args: string[],
-  options: SpawnOptionsWithoutStdio
+  options: SpawnOptionsWithoutStdio,
 ) => ClipboardSpawnChild;
 
 export type CopyToClipboardOptions = {
@@ -17,13 +21,13 @@ function runClipboardCommand(
   command: string,
   args: string[],
   value: string,
-  spawnImpl: ClipboardSpawn
+  spawnImpl: ClipboardSpawn,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     let settled = false;
     const child = spawnImpl(command, args, {
       stdio: ["pipe", "ignore", "ignore"],
-      windowsHide: true
+      windowsHide: true,
     });
 
     const settleReject = (error: Error) => {
@@ -56,7 +60,7 @@ function runClipboardCommand(
 
 export async function copyToClipboard(
   value: string,
-  options: CopyToClipboardOptions = {}
+  options: CopyToClipboardOptions = {},
 ): Promise<void> {
   const platform = options.platform ?? process.platform;
   const spawnImpl = options.spawnImpl ?? spawn;
@@ -73,10 +77,20 @@ export async function copyToClipboard(
 
   if (platform === "linux") {
     try {
-      await runClipboardCommand("xclip", ["-selection", "clipboard"], value, spawnImpl);
+      await runClipboardCommand(
+        "xclip",
+        ["-selection", "clipboard"],
+        value,
+        spawnImpl,
+      );
       return;
     } catch {
-      await runClipboardCommand("xsel", ["--clipboard", "--input"], value, spawnImpl);
+      await runClipboardCommand(
+        "xsel",
+        ["--clipboard", "--input"],
+        value,
+        spawnImpl,
+      );
       return;
     }
   }

@@ -40,12 +40,15 @@ type TaskListProps = {
   visibleLines: number;
 };
 
-export function shouldShowScrollbar(taskCount: number, visibleRows: number): boolean {
+export function shouldShowScrollbar(
+  taskCount: number,
+  visibleRows: number,
+): boolean {
   return taskCount > visibleRows;
 }
 
 export function resolveTaskListWheelDelta(
-  direction: "up" | "down" | "left" | "right" | undefined
+  direction: "up" | "down" | "left" | "right" | undefined,
 ): 1 | -1 | 0 {
   if (direction === "up") return -1;
   if (direction === "down") return 1;
@@ -58,7 +61,10 @@ export function resolveTaskListWheelSelectionIndex(input: {
   itemCount: number;
 }): number {
   if (input.itemCount <= 0) return 0;
-  const safeIndex = Math.max(0, Math.min(input.currentIndex, input.itemCount - 1));
+  const safeIndex = Math.max(
+    0,
+    Math.min(input.currentIndex, input.itemCount - 1),
+  );
   return Math.max(0, Math.min(safeIndex + input.delta, input.itemCount - 1));
 }
 
@@ -74,13 +80,13 @@ export function TaskList({
   onWheelScroll,
   scrollOffset,
   visibleRows,
-  visibleLines
+  visibleLines,
 }: TaskListProps) {
   const theme = themeForObject("taskList");
   const windowed = tasks.slice(scrollOffset, scrollOffset + visibleRows);
   const clampedOffset = Math.max(
     0,
-    Math.min(scrollOffset, Math.max(0, tasks.length - visibleRows))
+    Math.min(scrollOffset, Math.max(0, tasks.length - visibleRows)),
   );
   const hasScroll = shouldShowScrollbar(tasks.length, visibleRows);
   const thumbSize = hasScroll
@@ -88,7 +94,9 @@ export function TaskList({
     : visibleLines;
   const maxThumbTop = Math.max(0, visibleLines - thumbSize);
   const thumbTop = hasScroll
-    ? Math.round((clampedOffset / Math.max(1, tasks.length - visibleRows)) * maxThumbTop)
+    ? Math.round(
+        (clampedOffset / Math.max(1, tasks.length - visibleRows)) * maxThumbTop,
+      )
     : 0;
   return (
     <box
@@ -128,7 +136,7 @@ export function TaskList({
                 key={index}
                 style={{
                   justifyContent: "center",
-                  alignItems: "center"
+                  alignItems: "center",
                 }}
               >
                 <text style={{ color: active ? theme.text : theme.outline }}>
@@ -162,10 +170,11 @@ function TaskRow({
   pulseOn,
   fastPulseOn,
   flashMode,
-  onTaskRowClick
+  onTaskRowClick,
 }: TaskRowProps) {
   const theme = themeForObject("taskRow");
-  const statusIcon = task.status === "done" ? "✓" : task.status === "archived" ? "✱" : "•";
+  const statusIcon =
+    task.status === "done" ? "✓" : task.status === "archived" ? "✱" : "•";
   const recurringIndicator =
     task.rowKind !== "regular" || task.recurrence ? "↻" : "";
   const closedText =
@@ -183,9 +192,14 @@ function TaskRow({
     task.dueAt !== undefined &&
     now > task.dueAt;
   const isDueToday =
-    task.status === "open" && dayDiff !== null && dayDiff === 0 && !isTimeOverdue;
+    task.status === "open" &&
+    dayDiff !== null &&
+    dayDiff === 0 &&
+    !isTimeOverdue;
   const isOverdue =
-    task.status === "open" && dayDiff !== null && (dayDiff < 0 || isTimeOverdue);
+    task.status === "open" &&
+    dayDiff !== null &&
+    (dayDiff < 0 || isTimeOverdue);
   const isDueSoon =
     task.status === "open" && dayDiff !== null && dayDiff >= 1 && dayDiff <= 7;
   const isDueLater = task.status === "open" && dayDiff !== null && dayDiff >= 8;
@@ -199,7 +213,8 @@ function TaskRow({
         ? "DUE TODAY"
         : `DUE ${formatDate(task.dueAt)}`
     : "NO DUE DATE";
-  const dueInLabel = task.status === "open" && task.dueAt ? getDueInLabel(task, now) : "";
+  const dueInLabel =
+    task.status === "open" && task.dueAt ? getDueInLabel(task, now) : "";
   const checklistProgress = getChecklistProgress(task.checklist);
   const checklistLabel =
     checklistProgress.total > 0
@@ -219,9 +234,9 @@ function TaskRow({
       ? "transparent"
       : selected && isOverdue
         ? theme.warn
-      : selected && (isDueToday || isDueSoon)
+        : selected && (isDueToday || isDueSoon)
           ? theme.dueSoon
-      : selected && isDueLater
+          : selected && isDueLater
             ? theme.dueLater
             : selected
               ? theme.selectionBg
@@ -236,22 +251,20 @@ function TaskRow({
       ? theme.selectionText
       : theme.bg
     : theme.muted;
-  const statusColor =
-    isDone
-      ? theme.bg
-      : task.status === "archived"
-        ? theme.muted
-        : selected
-          ? selectedForeground
-          : baseOpenColor;
-  const titleColor =
-    isDone
-      ? theme.bg
-      : task.status === "archived"
-        ? theme.muted
-        : selected
-          ? selectedForeground
-          : baseOpenColor;
+  const statusColor = isDone
+    ? theme.bg
+    : task.status === "archived"
+      ? theme.muted
+      : selected
+        ? selectedForeground
+        : baseOpenColor;
+  const titleColor = isDone
+    ? theme.bg
+    : task.status === "archived"
+      ? theme.muted
+      : selected
+        ? selectedForeground
+        : baseOpenColor;
 
   const dueTodayPulseOn = flashMode !== "static" && pulseOn;
   const dueHighlightBackground = isOverdue
@@ -270,7 +283,7 @@ function TaskRow({
         paddingLeft: 1,
         paddingRight: 1,
         backgroundColor: rowBackground,
-        color: selectedForeground
+        color: selectedForeground,
       }}
       onMouseDown={(event) => {
         if (event.button !== 0) return;
@@ -284,14 +297,18 @@ function TaskRow({
           </text>
         </box>
         <box style={{ width: 4, justifyContent: "center" }}>
-          <text style={{ color: selectedSecondaryForeground }}>{marked ? "[*]" : "   "}</text>
+          <text style={{ color: selectedSecondaryForeground }}>
+            {marked ? "[*]" : "   "}
+          </text>
         </box>
         <box style={{ flexDirection: "column", flexGrow: 1 }}>
           <box style={{ flexDirection: "row", gap: 1 }}>
             <text style={{ color: statusColor }}>{statusIcon}</text>
             <text style={{ color: titleColor }}>{task.title}</text>
           </box>
-          <box style={{ flexDirection: "row", justifyContent: "space-between" }}>
+          <box
+            style={{ flexDirection: "row", justifyContent: "space-between" }}
+          >
             <box style={{ flexDirection: "row", gap: 1 }}>
               {recurringIndicator ? (
                 <text style={{ color: selectedSecondaryForeground }}>
@@ -308,12 +325,22 @@ function TaskRow({
             </box>
             <box style={{ flexDirection: "row", gap: 1 }}>
               {checklistLabel ? (
-                <text style={{ color: selected ? selectedForeground : theme.muted }}>
+                <text
+                  style={{ color: selected ? selectedForeground : theme.muted }}
+                >
                   {checklistLabel}
                 </text>
               ) : null}
               {closedText ? (
-                <text style={{ color: isDone ? theme.bg : selected ? selectedForeground : theme.ok }}>
+                <text
+                  style={{
+                    color: isDone
+                      ? theme.bg
+                      : selected
+                        ? selectedForeground
+                        : theme.ok,
+                  }}
+                >
                   DONE {closedText}
                 </text>
               ) : isOverdue && dueInLabel ? (
@@ -323,7 +350,9 @@ function TaskRow({
               ) : dueInDays !== null && dueInLabel ? (
                 isDueToday ? (
                   <box style={{ backgroundColor: theme.dueSoon }}>
-                    <text style={{ color: dueTodayPulseOn ? theme.bg : theme.text }}>
+                    <text
+                      style={{ color: dueTodayPulseOn ? theme.bg : theme.text }}
+                    >
                       {dueInLabel}
                     </text>
                   </box>
@@ -342,7 +371,7 @@ function TaskRow({
                     backgroundColor: colorForTag(tag),
                     color: selectedForeground,
                     paddingLeft: 1,
-                    paddingRight: 1
+                    paddingRight: 1,
                   }}
                 >
                   <text>{formatTagForReadOnlyDisplay(tag)}</text>

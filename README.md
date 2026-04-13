@@ -58,6 +58,7 @@ bun run start -- --version
 TITS (Terminal-in-Terminal System) is the shared command language used by both the in-app command bar and the external CLI.
 
 In-app TITS behavior:
+
 - Open from LIST mode with `` ` ``
 - Execute with `Enter`
 - Close with `Esc`
@@ -65,6 +66,7 @@ In-app TITS behavior:
 - While TITS is active, list/global keybinds are intentionally suppressed
 
 Supported commands:
+
 - `add <title> [due:YYYY-MM-DD] [at:HH:MM] [#tag ...] [notes:"..."]`
 - `done` / `done @selected` / `done id:<task-id>`
 - `due @selected YYYY-MM-DD [at:HH:MM]` / `due id:<task-id> YYYY-MM-DD [at:HH:MM]` / `due <target> clear`
@@ -79,6 +81,7 @@ Supported commands:
 TOME (Terminal Oriented Markdown Environment) is TADOI's notes-oriented markdown tool.
 
 TOME command examples (in-app TITS or CLI wrapper `tadoi note ...`):
+
 - `note new "Weekly Review"`
 - `note search "sprint retro tag:inbox"`
 - `note open "Weekly Review"`
@@ -90,15 +93,18 @@ TOME command examples (in-app TITS or CLI wrapper `tadoi note ...`):
 - `note root set "./notes-vault"` (copy-first migration + pre-change backup)
 
 Built-in TOME guides:
+
 - On first boot with an empty notes vault, TADOI seeds curated markdown notes under `TADOI Guides/`.
 - These default notes are normal files and can be edited or deleted.
 - In TOME list and TOME view, `d` opens delete confirmation (`y` / `n` / `Esc`).
 - `note restore-defaults` recreates only missing default guide notes and never overwrites existing files.
 
 CLI query command:
+
 - `list [selectors...] [--sort due|updated|created|title] [--limit N]`
 
 CLI parity and safety:
+
 - CLI accepts wrapper form (`tadoi add ...`) and raw DSL (`tadoi 'add "Task" #tag'`)
 - CLI selector mode for `done` / `due`:
   - `tadoi done +work`
@@ -150,6 +156,7 @@ CLI parity and safety:
   - `5` IO/filesystem/runtime dependency failure
 
 Canonical TITS spec sources (filename rule `*TITS*.md`):
+
 - `docs/specs/tits-m1-commandbar.md`
 - `docs/specs/tits-m2-cli.md`
 - `docs/specs/tits-m3-recurrence.md`
@@ -160,12 +167,14 @@ Canonical TITS spec sources (filename rule `*TITS*.md`):
 ## Supported Environments
 
 Verified baseline terminals:
+
 - macOS Terminal.app
 - iTerm2
 - Windows Terminal
 - GNOME Terminal (Linux baseline)
 
 Minimum supported terminal size:
+
 - `104x24`
 - Below this size, TADOI shows a centered `Terminal too small (min 104x24)` screen and pauses normal interactions until resized.
 
@@ -191,44 +200,52 @@ If the banner reports a concurrent save conflict, press `r` or click the banner 
 ### Data Backup and Corrupt Recovery
 
 Where your data lives:
+
 - Use the resolved data path shown at startup or in the Help panel.
 - By default, it follows the OS-specific locations listed above.
 
 Manual backup examples:
 
 macOS/Linux (replace `<resolved-path>`):
+
 ```bash
 mkdir -p ~/tadoi-backups
 cp "<resolved-path>" "$HOME/tadoi-backups/tadoi_data.$(date +%Y%m%d-%H%M%S).json"
 ```
 
 Windows PowerShell (replace `<resolved-path>`):
+
 ```powershell
 New-Item -ItemType Directory -Force "$HOME\\tadoi-backups" | Out-Null
 Copy-Item "<resolved-path>" "$HOME\\tadoi-backups\\tadoi_data.$(Get-Date -Format 'yyyyMMdd-HHmmss').json"
 ```
 
 Corrupt backups created by recovery look like:
+
 - `tadoi_data.json.corrupt.YYYYMMDD-HHMMSS`
 - `tadoi_data.json.corrupt.YYYYMMDD-HHMMSS.1` (or higher suffix when needed)
 
 ### In-app Backup Center (Recommended)
 
 Open the guided in-app flow from Help:
+
 - `?` to open Help
 - `1` to open `DATA: Backup / Export / Import`
 
 Backup Center flow:
+
 - `Export backup`: creates a timestamped backup in the default backups folder.
 - `Import data...`: path input -> mode select (`merge` or `replace`) -> dry-run summary -> commit.
 - `Show data path`: shows the exact runtime data path.
 - `Calendar (ICS)...`: opens calendar export/import guided flows.
 
 Calendar submenu flow:
+
 - `Export Calendar (.ics)`: intro -> range -> view -> privacy -> path -> confirm -> export.
 - `Import Calendar (.ics)`: intro -> path -> range -> view -> mode -> horizon -> tag -> mandatory dry-run -> commit.
 
 Safety checks:
+
 - `replace` requires typed confirmation: `REPLACE`.
 - Import commit is gated behind dry-run (dry-run always runs first).
 - Commit creates a pre-import backup by default.
@@ -236,6 +253,7 @@ Safety checks:
 - High-impact calendar imports (`mode=update` or `range=all`) require typed `IMPORT`.
 
 Reference:
+
 - [`docs/backup-center.md`](./docs/backup-center.md)
 
 ### Calendar Integration (ICS)
@@ -264,6 +282,7 @@ bun run start -- calendar:import --in ./tadoi.ics --mode update --range all --ho
 ```
 
 Behavior notes:
+
 - In-app Backup Center exposes both `Export Calendar (.ics)` and `Import Calendar (.ics)` guided flows.
 - CLI exposes both `calendar:export` and `calendar:import`.
 - Exports open tasks only (done/archived excluded).
@@ -482,10 +501,12 @@ Type `#` in the Tags field to get suggestions ranked by usage. Selecting a sugge
 ## Settings File
 
 Theme, logo, flash, CRT FX, notification, and security preferences are persisted in `settings.json`:
+
 - Primary: `~/.config/tadoi/settings.json`
 - Fallback: `~/.tadoi/settings.json`
 
 Help Settings pages expose:
+
 - `Theme`
 - `Navigation Hints`
 - `Prefix Popup`
@@ -502,20 +523,24 @@ Help Settings pages expose:
 - `Reminder Helper Next Event`
 
 Hint defaults:
+
 - `hintDisplayMode`: `bottom`
 - `showPrefixHintPopup`: `true`
 
 Flash mode values:
+
 - `slow`: due-today and overdue indicators pulse (default)
 - `static`: flashing is disabled and overdue indicators stay solid red
 
 Theme IDs:
+
 - `default`, `retro`, `highContrast`, `neonHacker`, `lightSlate`, `paperWhite`, `midnightBlack`
 - `jester`, `sonora`, `tigers`, `tech`, `deuteranopia`, `protanopia`, `tritanopia`
 - `blueAngels`, `southwest`, `rams`, `trooper`, `twilight`, `msdos`, `niners`, `mcrn`
 - `zeke`, `gundam`, `crtGreen`, `crtAmber`, `kitty`, `corpo`, `strikefitron`, `custom1`, `rotating` (auto-cycles concrete themes)
 
 Notification defaults:
+
 - `notifications.enabled`: `true`
 - `notifications.inAppOverdueBanner`: `true` (controls in-app overdue popup modal behavior)
 - `notifications.terminalBellOnOverdue`: `false`
@@ -524,6 +549,7 @@ Notification defaults:
 - `notifications.bellCooldownMs`: `2000`
 
 Out-of-app reminder helper workflow (offline/local-only):
+
 - Enable `Out-of-App Reminders` in Help → Settings → Notifications.
 - Install scheduler helper:
   - macOS: `tadoi reminders install`
@@ -537,6 +563,7 @@ Out-of-app reminder helper workflow (offline/local-only):
 - Remove helper: `tadoi reminders uninstall`
 
 CRT FX defaults and persistence:
+
 - `crtFxLite`: `false` by default; only persisted when enabled (`true`)
 - `crtFxColor`: `green|amber`; default `green` (default omitted from file)
 - `crtFxPreset`: `subtle|normal|strong`; default `normal` (default omitted from file)
@@ -549,11 +576,13 @@ CRT FX defaults and persistence:
   - `Amber Strong`
 
 Security defaults:
+
 - `security.nonHttpLinkPolicy`: `prompt`
   - `prompt`: require confirmation for filesystem paths and non-allowlisted schemes.
   - `block`: block those open attempts and show a security banner.
 
 Privacy defaults:
+
 - Startup path logs are redacted (`~/...`) by default.
 - Set `TADOI_VERBOSE_PATH_LOGS=1` only when full absolute startup paths are needed for debugging.
 
@@ -585,6 +614,7 @@ Example:
 
 TADOI uses a GitHub Actions cross-platform matrix on pull requests and pushes to `main`.
 CI runs on:
+
 - `ubuntu-latest`
 - `macos-latest`
 - `windows-latest`
@@ -592,6 +622,7 @@ CI runs on:
 All matrix legs must be green for merges.
 
 Required checks:
+
 - `ci (ubuntu-latest)`: Bun setup, install, test, coverage, typecheck, brand check, tarball packaging validation, installer build, installer manifest gate, and installer smoke checks
 - `ci (macos-latest)`: Bun setup, install, test, coverage, typecheck, brand check, installer build, installer manifest gate, and installer smoke checks
 - `ci (windows-latest)`: Bun setup, install, test, typecheck, brand check, installer build, installer manifest gate, and installer smoke checks
@@ -613,6 +644,7 @@ bun run pack:smoke
 ```
 
 Notes:
+
 - CI and local gates should use `bun run test` / `bun run test:coverage` (not raw `bun test`).
 - `bun run test` uses `scripts/test-sharded.ts` to run absolute-path shards under `src/**/*.test.ts` and `scripts/**/*.test.ts`. This avoids accidental `dist/pack-smoke-*` test discovery and reduces Bun full-suite instability.
 - `bun run test:coverage` uses `scripts/test-coverage-app-shell.ts` to run a deterministic App shell coverage slice used by CI and `coverage:app-shell:check`.
@@ -622,10 +654,12 @@ Notes:
 ### Plan mode vs build mode
 
 `scripts/build-binary.ts` now supports:
+
 - `--mode plan` (default): write plan artifacts only.
 - `--mode build`: create real binaries/installers.
 
 Required flags remain strict:
+
 - `--target macos|windows|linux`
 - `--format raw|installer`
 
@@ -651,6 +685,7 @@ bun run build:daily
 ```
 
 Daily build outputs land in:
+
 - `dist/artifacts/YYYY-MM-DD/BUILD_REPORT.md`
 - `dist/artifacts/YYYY-MM-DD/<platform>/...`
 
@@ -681,10 +716,12 @@ Daily build outputs land in:
 ### Signing and notarization (optional)
 
 macOS optional environment variables:
+
 - `TADOI_MAC_SIGN_IDENTITY_INSTALLER`
 - `TADOI_MAC_NOTARY_PROFILE`
 
 Windows optional environment variables:
+
 - `TADOI_WIN_SIGN_CERT_PATH`
 - `TADOI_WIN_SIGN_CERT_PASSWORD`
 
@@ -738,6 +775,7 @@ bun run release:rc:check
 ```
 
 ## License (Summary)
+
 Licensed under PolyForm Noncommercial 1.0.0.
 See [`./LICENSE`](./LICENSE).
 
@@ -756,4 +794,5 @@ TADOI_PERF_DEBUG=1 bun run dev
 ```
 
 ## Trademark Notice
+
 TADOI™ is a trademark of <OWNER>. Other names may be trademarks of their respective owners.

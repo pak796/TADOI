@@ -2,7 +2,7 @@ import type {
   AchievementUnlock,
   CompletionEvent,
   EngagementState,
-  EngagementToast
+  EngagementToast,
 } from "./models";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -16,13 +16,13 @@ export const ENGAGEMENT_TOAST_DURATIONS_MS = {
   FIRST_TASK_DONE: 12_000,
   STREAK_3_DAYS: 10_000,
   TAG_5_LAST_7_DAYS: 8_000,
-  DONE_3_TODAY: 8_000
+  DONE_3_TODAY: 8_000,
 } as const;
 
 export const ONBOARDING_ENGAGEMENT_ACHIEVEMENTS = {
   FIRST_TOME_CREATED: "FIRST_TOME_CREATED",
   FIRST_CHECKLIST_CREATED: "FIRST_CHECKLIST_CREATED",
-  FIRST_CHECKLIST_FULLY_COMPLETED: "FIRST_CHECKLIST_FULLY_COMPLETED"
+  FIRST_CHECKLIST_FULLY_COMPLETED: "FIRST_CHECKLIST_FULLY_COMPLETED",
 } as const;
 
 export function createDefaultEngagementState(): EngagementState {
@@ -32,8 +32,8 @@ export function createDefaultEngagementState(): EngagementState {
     streak: {
       currentDays: 0,
       bestDays: 0,
-      lastCompletionDayKey: null
-    }
+      lastCompletionDayKey: null,
+    },
   };
 }
 
@@ -63,7 +63,10 @@ function normalizeCompletionLog(events: unknown): CompletionEvent[] {
     .map((event): CompletionEvent | null => {
       if (typeof event !== "object" || event === null) return null;
       const record = event as Record<string, unknown>;
-      if (typeof record.taskId !== "string" || record.taskId.trim().length === 0) {
+      if (
+        typeof record.taskId !== "string" ||
+        record.taskId.trim().length === 0
+      ) {
         return null;
       }
       if (typeof record.at !== "number" || !Number.isFinite(record.at)) {
@@ -72,37 +75,51 @@ function normalizeCompletionLog(events: unknown): CompletionEvent[] {
       return {
         taskId: record.taskId,
         at: Math.floor(record.at),
-        tags: normalizeTags(record.tags)
+        tags: normalizeTags(record.tags),
       };
     })
     .filter((event): event is CompletionEvent => event !== null);
 
   normalized.sort((left, right) => {
     if (left.at !== right.at) return left.at - right.at;
-    if (left.taskId !== right.taskId) return left.taskId.localeCompare(right.taskId);
+    if (left.taskId !== right.taskId)
+      return left.taskId.localeCompare(right.taskId);
     return left.tags.join(",").localeCompare(right.tags.join(","));
   });
   return normalized;
 }
 
-function normalizeAchievements(input: unknown): Record<string, AchievementUnlock> {
+function normalizeAchievements(
+  input: unknown,
+): Record<string, AchievementUnlock> {
   if (typeof input !== "object" || input === null || Array.isArray(input)) {
     return {};
   }
 
   const normalized: Record<string, AchievementUnlock> = {};
   for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
-    if (typeof value !== "object" || value === null || Array.isArray(value)) continue;
+    if (typeof value !== "object" || value === null || Array.isArray(value))
+      continue;
     const record = value as Record<string, unknown>;
-    if (typeof record.id !== "string" || record.id.trim().length === 0) continue;
-    if (typeof record.unlockedAt !== "number" || !Number.isFinite(record.unlockedAt)) {
+    if (typeof record.id !== "string" || record.id.trim().length === 0)
+      continue;
+    if (
+      typeof record.unlockedAt !== "number" ||
+      !Number.isFinite(record.unlockedAt)
+    ) {
       continue;
     }
 
     let meta: Record<string, string | number> | undefined;
-    if (typeof record.meta === "object" && record.meta !== null && !Array.isArray(record.meta)) {
+    if (
+      typeof record.meta === "object" &&
+      record.meta !== null &&
+      !Array.isArray(record.meta)
+    ) {
       const nextMeta: Record<string, string | number> = {};
-      for (const [metaKey, metaValue] of Object.entries(record.meta as Record<string, unknown>)) {
+      for (const [metaKey, metaValue] of Object.entries(
+        record.meta as Record<string, unknown>,
+      )) {
         if (typeof metaValue === "string" || typeof metaValue === "number") {
           nextMeta[metaKey] = metaValue;
         }
@@ -115,7 +132,7 @@ function normalizeAchievements(input: unknown): Record<string, AchievementUnlock
     normalized[key] = {
       id: record.id,
       unlockedAt: Math.floor(record.unlockedAt),
-      ...(meta ? { meta } : {})
+      ...(meta ? { meta } : {}),
     };
   }
   return normalized;
@@ -127,7 +144,11 @@ function parseDayKey(dayKey: string): Date | null {
   const year = Number(match[1]);
   const month = Number(match[2]);
   const day = Number(match[3]);
-  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day)
+  ) {
     return null;
   }
   const date = new Date(year, month - 1, day);
@@ -148,12 +169,12 @@ function diffDayKeys(nextDayKey: string, previousDayKey: string): number {
   const nextMidnight = new Date(
     nextDate.getFullYear(),
     nextDate.getMonth(),
-    nextDate.getDate()
+    nextDate.getDate(),
   ).getTime();
   const previousMidnight = new Date(
     previousDate.getFullYear(),
     previousDate.getMonth(),
-    previousDate.getDate()
+    previousDate.getDate(),
   ).getTime();
   return Math.round((nextMidnight - previousMidnight) / DAY_MS);
 }
@@ -162,13 +183,13 @@ function defaultStreak(): EngagementState["streak"] {
   return {
     currentDays: 0,
     bestDays: 0,
-    lastCompletionDayKey: null
+    lastCompletionDayKey: null,
   };
 }
 
 export function updateStreak(
   previous: EngagementState["streak"],
-  at: number
+  at: number,
 ): EngagementState["streak"] {
   const dayKey = computeDayKey(at);
   const lastCompletionDayKey = previous.lastCompletionDayKey;
@@ -186,13 +207,13 @@ export function updateStreak(
   return {
     currentDays,
     bestDays,
-    lastCompletionDayKey: dayKey
+    lastCompletionDayKey: dayKey,
   };
 }
 
 export function enforceCompletionRetention(
   completionLog: CompletionEvent[],
-  now: number
+  now: number,
 ): CompletionEvent[] {
   const cutoff = now - RETENTION_DAYS * DAY_MS;
   const retained = completionLog.filter((event) => event.at >= cutoff);
@@ -203,7 +224,7 @@ export function enforceCompletionRetention(
 }
 
 export function rebuildStreakFromCompletionLog(
-  completionLog: CompletionEvent[]
+  completionLog: CompletionEvent[],
 ): EngagementState["streak"] {
   let next = defaultStreak();
   for (const event of completionLog) {
@@ -214,7 +235,7 @@ export function rebuildStreakFromCompletionLog(
 
 export function normalizeEngagementState(
   input: unknown,
-  now = Date.now()
+  now = Date.now(),
 ): EngagementState {
   if (typeof input !== "object" || input === null || Array.isArray(input)) {
     return createDefaultEngagementState();
@@ -223,7 +244,7 @@ export function normalizeEngagementState(
 
   const completionLog = enforceCompletionRetention(
     normalizeCompletionLog(record.completionLog),
-    now
+    now,
   );
   const achievements = normalizeAchievements(record.achievements);
   const inferredStreak = rebuildStreakFromCompletionLog(completionLog);
@@ -231,17 +252,17 @@ export function normalizeEngagementState(
   return {
     completionLog,
     achievements,
-    streak: inferredStreak
+    streak: inferredStreak,
   };
 }
 
 function createToast(
   input: Pick<EngagementToast, "id" | "message" | "priority" | "durationMs">,
-  at: number
+  at: number,
 ): EngagementToast {
   return {
     ...input,
-    createdAt: at
+    createdAt: at,
   };
 }
 
@@ -250,11 +271,15 @@ type MilestoneOutcome = {
   toasts: EngagementToast[];
 };
 
-function evaluateTagMilestone(engagement: EngagementState, at: number): {
+function evaluateTagMilestone(
+  engagement: EngagementState,
+  at: number,
+): {
   engagement: EngagementState;
   toast?: EngagementToast;
 } {
-  const latestCompletion = engagement.completionLog[engagement.completionLog.length - 1];
+  const latestCompletion =
+    engagement.completionLog[engagement.completionLog.length - 1];
   if (!latestCompletion) {
     return { engagement };
   }
@@ -291,7 +316,11 @@ function evaluateTagMilestone(engagement: EngagementState, at: number): {
       selectedCount = countNow;
       continue;
     }
-    if (countNow === selectedCount && selectedTag && tag.localeCompare(selectedTag) < 0) {
+    if (
+      countNow === selectedCount &&
+      selectedTag &&
+      tag.localeCompare(selectedTag) < 0
+    ) {
       selectedTag = tag;
       selectedCount = countNow;
     }
@@ -311,10 +340,10 @@ function evaluateTagMilestone(engagement: EngagementState, at: number): {
         unlockedAt: at,
         meta: {
           tag: selectedTag,
-          count: selectedCount
-        }
-      }
-    }
+          count: selectedCount,
+        },
+      },
+    },
   };
 
   return {
@@ -324,16 +353,16 @@ function evaluateTagMilestone(engagement: EngagementState, at: number): {
         id: achievementKey,
         message: `5 #${selectedTag} tasks completed this week.`,
         priority: 3,
-        durationMs: ENGAGEMENT_TOAST_DURATIONS_MS.TAG_5_LAST_7_DAYS
+        durationMs: ENGAGEMENT_TOAST_DURATIONS_MS.TAG_5_LAST_7_DAYS,
       },
-      at
-    )
+      at,
+    ),
   };
 }
 
 export function evaluateMilestones(
   engagement: EngagementState,
-  at: number
+  at: number,
 ): MilestoneOutcome {
   let nextEngagement = engagement;
   const toasts: EngagementToast[] = [];
@@ -349,9 +378,9 @@ export function evaluateMilestones(
         ...nextEngagement.achievements,
         FIRST_TASK_DONE: {
           id: "FIRST_TASK_DONE",
-          unlockedAt: at
-        }
-      }
+          unlockedAt: at,
+        },
+      },
     };
     toasts.push(
       createToast(
@@ -359,10 +388,10 @@ export function evaluateMilestones(
           id: "FIRST_TASK_DONE",
           message: "First task completed.",
           priority: 1,
-          durationMs: ENGAGEMENT_TOAST_DURATIONS_MS.FIRST_TASK_DONE
+          durationMs: ENGAGEMENT_TOAST_DURATIONS_MS.FIRST_TASK_DONE,
         },
-        at
-      )
+        at,
+      ),
     );
   }
 
@@ -376,9 +405,9 @@ export function evaluateMilestones(
         ...nextEngagement.achievements,
         STREAK_3_DAYS: {
           id: "STREAK_3_DAYS",
-          unlockedAt: at
-        }
-      }
+          unlockedAt: at,
+        },
+      },
     };
     toasts.push(
       createToast(
@@ -386,10 +415,10 @@ export function evaluateMilestones(
           id: "STREAK_3_DAYS",
           message: "3-day streak completed tasks 3 days in a row.",
           priority: 2,
-          durationMs: ENGAGEMENT_TOAST_DURATIONS_MS.STREAK_3_DAYS
+          durationMs: ENGAGEMENT_TOAST_DURATIONS_MS.STREAK_3_DAYS,
         },
-        at
-      )
+        at,
+      ),
     );
   }
 
@@ -412,10 +441,10 @@ export function evaluateMilestones(
           id: "DONE_3_TODAY",
           unlockedAt: at,
           meta: {
-            dayKey: todayDayKey
-          }
-        }
-      }
+            dayKey: todayDayKey,
+          },
+        },
+      },
     };
     toasts.push(
       createToast(
@@ -423,16 +452,16 @@ export function evaluateMilestones(
           id: dailyAchievementKey,
           message: "3 tasks completed today.",
           priority: 4,
-          durationMs: ENGAGEMENT_TOAST_DURATIONS_MS.DONE_3_TODAY
+          durationMs: ENGAGEMENT_TOAST_DURATIONS_MS.DONE_3_TODAY,
         },
-        at
-      )
+        at,
+      ),
     );
   }
 
   return {
     engagement: nextEngagement,
-    toasts
+    toasts,
   };
 }
 
@@ -440,9 +469,11 @@ function dropLowestPriorityToast(queue: EngagementToast[]): EngagementToast[] {
   if (queue.length === 0) return queue;
   const lowestPriority = queue.reduce<number>(
     (current, toast) => Math.max(current, toast.priority),
-    queue[0].priority
+    queue[0].priority,
   );
-  const dropIndex = queue.findIndex((toast) => toast.priority === lowestPriority);
+  const dropIndex = queue.findIndex(
+    (toast) => toast.priority === lowestPriority,
+  );
   if (dropIndex < 0) return queue;
   return queue.filter((_, index) => index !== dropIndex);
 }
@@ -450,7 +481,7 @@ function dropLowestPriorityToast(queue: EngagementToast[]): EngagementToast[] {
 export function enqueueToastsWithCap(
   queue: EngagementToast[],
   additions: EngagementToast[],
-  maxQueued = ENGAGEMENT_TOAST_QUEUE_MAX
+  maxQueued = ENGAGEMENT_TOAST_QUEUE_MAX,
 ): EngagementToast[] {
   let nextQueue = [...queue, ...additions];
   while (nextQueue.length > maxQueued) {
@@ -462,7 +493,7 @@ export function enqueueToastsWithCap(
 export function suppressActiveToastWithCap(
   activeToast: EngagementToast,
   queue: EngagementToast[],
-  maxQueued = ENGAGEMENT_TOAST_QUEUE_MAX
+  maxQueued = ENGAGEMENT_TOAST_QUEUE_MAX,
 ): EngagementToast[] {
   let nextQueue = [...queue];
   while (nextQueue.length >= maxQueued) {
@@ -474,11 +505,11 @@ export function suppressActiveToastWithCap(
 export function mergeEngagementStates(
   left: EngagementState,
   right: EngagementState,
-  now = Date.now()
+  now = Date.now(),
 ): EngagementState {
   const mergedLog = enforceCompletionRetention(
     normalizeCompletionLog([...left.completionLog, ...right.completionLog]),
-    now
+    now,
   );
 
   const achievements: Record<string, AchievementUnlock> = {};
@@ -495,6 +526,6 @@ export function mergeEngagementStates(
   return {
     completionLog: mergedLog,
     achievements,
-    streak: rebuildStreakFromCompletionLog(mergedLog)
+    streak: rebuildStreakFromCompletionLog(mergedLog),
   };
 }

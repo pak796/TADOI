@@ -1,15 +1,19 @@
 import {
   normalizePriorityFilterValue,
-  normalizePriorityTags
+  normalizePriorityTags,
 } from "../domain/priorityTags";
 import { normalizeTagFilter } from "../domain/tagFilter";
 import { normalizeEngagementState } from "../domain/engagement";
 import { normalizeTagAliases } from "../domain/tagAliases";
 import {
   formatDateToLocalIso,
-  parseLocalIsoToDate
+  parseLocalIsoToDate,
 } from "../domain/recurrence/rruleAdapter";
-import type { TaskLinkKind, TaskLinkSource, TaskStatus } from "../domain/models";
+import type {
+  TaskLinkKind,
+  TaskLinkSource,
+  TaskStatus,
+} from "../domain/models";
 import type { LoadedData } from "./persistence";
 
 export type ValidationMode = "minimal" | "strict";
@@ -25,11 +29,14 @@ const VALID_WORKFLOW_STAGES = new Set([
   "in_progress",
   "blocked",
   "review",
-  "done"
+  "done",
 ]);
 const VALID_ANALYTICS_WINDOWS = new Set(["7d", "14d", "30d"]);
 const VALID_TASK_LINK_KINDS = new Set<TaskLinkKind>(["url", "path"]);
-const VALID_TASK_LINK_SOURCES = new Set<TaskLinkSource>(["manual", "calendar_import"]);
+const VALID_TASK_LINK_SOURCES = new Set<TaskLinkSource>([
+  "manual",
+  "calendar_import",
+]);
 const VALID_TASK_NOTE_REF_TYPES = new Set(["id", "filename"]);
 const VALID_REMINDER_KINDS = new Set(["none", "absolute", "before_due"]);
 const ASCII_CONTROL_CHARS_RE = /[\u0000-\u001F\u007F]/;
@@ -60,10 +67,14 @@ function areStringArraysEqual(left: string[], right: string[]): boolean {
 
 function areAliasMapsEqual(
   left: Record<string, string>,
-  right: Record<string, string>
+  right: Record<string, string>,
 ): boolean {
-  const leftEntries = Object.entries(left).sort(([a], [b]) => a.localeCompare(b));
-  const rightEntries = Object.entries(right).sort(([a], [b]) => a.localeCompare(b));
+  const leftEntries = Object.entries(left).sort(([a], [b]) =>
+    a.localeCompare(b),
+  );
+  const rightEntries = Object.entries(right).sort(([a], [b]) =>
+    a.localeCompare(b),
+  );
   if (leftEntries.length !== rightEntries.length) return false;
   for (let i = 0; i < leftEntries.length; i += 1) {
     if (
@@ -92,7 +103,7 @@ function normalizeIsoUtc(value: unknown): string | undefined {
 
 export function validatePersistedState(
   input: unknown,
-  mode: ValidationMode = "strict"
+  mode: ValidationMode = "strict",
 ): ValidationResult {
   const errors: string[] = [];
 
@@ -150,10 +161,12 @@ export function validatePersistedState(
     tasks: tasks as LoadedData["tasks"],
     tagIndex: (tagIndex as LoadedData["tagIndex"]) ?? {},
     tagAliases: normalizeTagAliases(
-      isRecord(tagAliases) ? (tagAliases as Record<string, string>) : undefined
+      isRecord(tagAliases) ? (tagAliases as Record<string, string>) : undefined,
     ),
-    savedViews: Array.isArray(savedViews) ? (savedViews as LoadedData["savedViews"]) : [],
-    engagement: normalizeEngagementState(engagement)
+    savedViews: Array.isArray(savedViews)
+      ? (savedViews as LoadedData["savedViews"])
+      : [],
+    engagement: normalizeEngagementState(engagement),
   };
 
   if (mode === "minimal") {
@@ -161,7 +174,9 @@ export function validatePersistedState(
   }
 
   const inputSchemaVersion =
-    typeof schemaVersion === "number" && Number.isFinite(schemaVersion) ? schemaVersion : 0;
+    typeof schemaVersion === "number" && Number.isFinite(schemaVersion)
+      ? schemaVersion
+      : 0;
   const seenIds = new Set<string>();
   for (const task of normalized.tasks) {
     if (!isRecord(task)) {
@@ -178,7 +193,9 @@ export function validatePersistedState(
     }
 
     if (!VALID_STATUS.has(task.status as TaskStatus)) {
-      errors.push(`task.status must be open|done|archived (${String(task.status)})`);
+      errors.push(
+        `task.status must be open|done|archived (${String(task.status)})`,
+      );
     }
 
     if (!isFiniteNumber(task.createdAt)) {
@@ -190,46 +207,72 @@ export function validatePersistedState(
     }
 
     if (task.dueAt !== undefined && !isFiniteNumber(task.dueAt)) {
-      errors.push(`task.dueAt must be a number when present (${String(task.id)})`);
+      errors.push(
+        `task.dueAt must be a number when present (${String(task.id)})`,
+      );
     }
 
     if (task.closedAt !== undefined && !isFiniteNumber(task.closedAt)) {
-      errors.push(`task.closedAt must be a number when present (${String(task.id)})`);
+      errors.push(
+        `task.closedAt must be a number when present (${String(task.id)})`,
+      );
     }
 
     if (task.recurrence !== undefined) {
       if (!isRecord(task.recurrence)) {
-        errors.push(`task.recurrence must be an object when present (${String(task.id)})`);
+        errors.push(
+          `task.recurrence must be an object when present (${String(task.id)})`,
+        );
       } else {
-        if (typeof task.recurrence.series_id !== "string" || task.recurrence.series_id.trim().length === 0) {
-          errors.push(`task.recurrence.series_id must be a non-empty string (${String(task.id)})`);
+        if (
+          typeof task.recurrence.series_id !== "string" ||
+          task.recurrence.series_id.trim().length === 0
+        ) {
+          errors.push(
+            `task.recurrence.series_id must be a non-empty string (${String(task.id)})`,
+          );
         }
-        if (typeof task.recurrence.rrule !== "string" || task.recurrence.rrule.trim().length === 0) {
-          errors.push(`task.recurrence.rrule must be a non-empty string (${String(task.id)})`);
+        if (
+          typeof task.recurrence.rrule !== "string" ||
+          task.recurrence.rrule.trim().length === 0
+        ) {
+          errors.push(
+            `task.recurrence.rrule must be a non-empty string (${String(task.id)})`,
+          );
         }
         const normalizedDtstart = normalizeLocalIso(task.recurrence.dtstart);
         if (!normalizedDtstart) {
-          errors.push(`task.recurrence.dtstart must be a valid local ISO timestamp (${String(task.id)})`);
+          errors.push(
+            `task.recurrence.dtstart must be a valid local ISO timestamp (${String(task.id)})`,
+          );
         } else if (task.recurrence.dtstart !== normalizedDtstart) {
-          errors.push(`task.recurrence.dtstart must be normalized local ISO (${String(task.id)})`);
+          errors.push(
+            `task.recurrence.dtstart must be normalized local ISO (${String(task.id)})`,
+          );
         }
         if (task.recurrence.exdates !== undefined) {
           if (!Array.isArray(task.recurrence.exdates)) {
-            errors.push(`task.recurrence.exdates must be a string array (${String(task.id)})`);
+            errors.push(
+              `task.recurrence.exdates must be a string array (${String(task.id)})`,
+            );
           } else {
             const normalizedExdates = Array.from(
               new Set(
                 task.recurrence.exdates
                   .map((exdate: unknown) => normalizeLocalIso(exdate))
-                  .filter(Boolean) as string[]
-              )
+                  .filter(Boolean) as string[],
+              ),
             ).sort((left, right) => left.localeCompare(right));
             const rawExdates = task.recurrence.exdates as unknown[];
             if (
               normalizedExdates.length !== rawExdates.length ||
-              normalizedExdates.some((value, index) => value !== rawExdates[index])
+              normalizedExdates.some(
+                (value, index) => value !== rawExdates[index],
+              )
             ) {
-              errors.push(`task.recurrence.exdates must be normalized/deduped/sorted (${String(task.id)})`);
+              errors.push(
+                `task.recurrence.exdates must be normalized/deduped/sorted (${String(task.id)})`,
+              );
             }
           }
         }
@@ -238,52 +281,74 @@ export function validatePersistedState(
 
     if (task.instance_of !== undefined) {
       if (!isRecord(task.instance_of)) {
-        errors.push(`task.instance_of must be an object when present (${String(task.id)})`);
+        errors.push(
+          `task.instance_of must be an object when present (${String(task.id)})`,
+        );
       } else {
         if (
           typeof task.instance_of.series_id !== "string" ||
           task.instance_of.series_id.trim().length === 0
         ) {
-          errors.push(`task.instance_of.series_id must be a non-empty string (${String(task.id)})`);
+          errors.push(
+            `task.instance_of.series_id must be a non-empty string (${String(task.id)})`,
+          );
         }
-        const normalizedOccurrence = normalizeLocalIso(task.instance_of.occurrence);
+        const normalizedOccurrence = normalizeLocalIso(
+          task.instance_of.occurrence,
+        );
         if (!normalizedOccurrence) {
-          errors.push(`task.instance_of.occurrence must be a valid local ISO timestamp (${String(task.id)})`);
+          errors.push(
+            `task.instance_of.occurrence must be a valid local ISO timestamp (${String(task.id)})`,
+          );
         } else if (task.instance_of.occurrence !== normalizedOccurrence) {
-          errors.push(`task.instance_of.occurrence must be normalized local ISO (${String(task.id)})`);
+          errors.push(
+            `task.instance_of.occurrence must be normalized local ISO (${String(task.id)})`,
+          );
         }
       }
     }
 
     if (task.recurrence !== undefined && task.instance_of !== undefined) {
-      errors.push(`task cannot include both recurrence and instance_of (${String(task.id)})`);
+      errors.push(
+        `task cannot include both recurrence and instance_of (${String(task.id)})`,
+      );
     }
 
     if (
       task.hasExplicitTime !== undefined &&
       typeof task.hasExplicitTime !== "boolean"
     ) {
-      errors.push(`task.hasExplicitTime must be boolean when present (${String(task.id)})`);
+      errors.push(
+        `task.hasExplicitTime must be boolean when present (${String(task.id)})`,
+      );
     }
 
     if (task.reminder !== undefined) {
       if (!isRecord(task.reminder)) {
-        errors.push(`task.reminder must be an object when present (${String(task.id)})`);
+        errors.push(
+          `task.reminder must be an object when present (${String(task.id)})`,
+        );
       } else {
         if (!VALID_REMINDER_KINDS.has(String(task.reminder.kind))) {
           errors.push(
-            `task.reminder.kind must be none|absolute|before_due (${String(task.id)})`
+            `task.reminder.kind must be none|absolute|before_due (${String(task.id)})`,
           );
         }
-        if (task.reminder.at !== undefined && !isFiniteNumber(task.reminder.at)) {
-          errors.push(`task.reminder.at must be a number when present (${String(task.id)})`);
+        if (
+          task.reminder.at !== undefined &&
+          !isFiniteNumber(task.reminder.at)
+        ) {
+          errors.push(
+            `task.reminder.at must be a number when present (${String(task.id)})`,
+          );
         }
         if (
           task.reminder.offsetMs !== undefined &&
-          (!isFiniteNumber(task.reminder.offsetMs) || task.reminder.offsetMs <= 0)
+          (!isFiniteNumber(task.reminder.offsetMs) ||
+            task.reminder.offsetMs <= 0)
         ) {
           errors.push(
-            `task.reminder.offsetMs must be a positive number when present (${String(task.id)})`
+            `task.reminder.offsetMs must be a positive number when present (${String(task.id)})`,
           );
         }
         if (
@@ -291,7 +356,7 @@ export function validatePersistedState(
           !isFiniteNumber(task.reminder.lastFiredAt)
         ) {
           errors.push(
-            `task.reminder.lastFiredAt must be a number when present (${String(task.id)})`
+            `task.reminder.lastFiredAt must be a number when present (${String(task.id)})`,
           );
         }
         if (
@@ -299,17 +364,21 @@ export function validatePersistedState(
           !isFiniteNumber(task.reminder.snoozedUntilAt)
         ) {
           errors.push(
-            `task.reminder.snoozedUntilAt must be a number when present (${String(task.id)})`
+            `task.reminder.snoozedUntilAt must be a number when present (${String(task.id)})`,
           );
         }
       }
     }
 
     if (task.assignee !== undefined && typeof task.assignee !== "string") {
-      errors.push(`task.assignee must be a string when present (${String(task.id)})`);
+      errors.push(
+        `task.assignee must be a string when present (${String(task.id)})`,
+      );
     }
     if (task.project !== undefined && typeof task.project !== "string") {
-      errors.push(`task.project must be a string when present (${String(task.id)})`);
+      errors.push(
+        `task.project must be a string when present (${String(task.id)})`,
+      );
     }
     if (
       task.workflowStage !== undefined &&
@@ -321,17 +390,23 @@ export function validatePersistedState(
       inputSchemaVersion >= 7 &&
       !VALID_WORKFLOW_STAGES.has(String(task.workflowStage))
     ) {
-      errors.push(`task.workflowStage required for schemaVersion >= 7 (${String(task.id)})`);
+      errors.push(
+        `task.workflowStage required for schemaVersion >= 7 (${String(task.id)})`,
+      );
     }
 
     if (task.checklist !== undefined) {
       if (!Array.isArray(task.checklist)) {
-        errors.push(`task.checklist must be an array when present (${String(task.id)})`);
+        errors.push(
+          `task.checklist must be an array when present (${String(task.id)})`,
+        );
       } else {
         const seenChecklistIds = new Set<string>();
         for (const item of task.checklist) {
           if (!isRecord(item)) {
-            errors.push(`task.checklist[] entry must be an object (${String(task.id)})`);
+            errors.push(
+              `task.checklist[] entry must be an object (${String(task.id)})`,
+            );
             continue;
           }
           const itemId = item.id;
@@ -343,42 +418,56 @@ export function validatePersistedState(
           const itemSort = item.sort;
 
           if (!isNonEmptyString(itemId)) {
-            errors.push(`task.checklist[].id must be a non-empty string (${String(task.id)})`);
+            errors.push(
+              `task.checklist[].id must be a non-empty string (${String(task.id)})`,
+            );
           } else if (seenChecklistIds.has(itemId)) {
-            errors.push(`task.checklist[].id must be unique (${String(task.id)})`);
+            errors.push(
+              `task.checklist[].id must be unique (${String(task.id)})`,
+            );
           } else {
             seenChecklistIds.add(itemId);
           }
 
           if (!isNonEmptyString(itemText)) {
-            errors.push(`task.checklist[].text must be a non-empty string (${String(task.id)})`);
+            errors.push(
+              `task.checklist[].text must be a non-empty string (${String(task.id)})`,
+            );
           } else if (itemText.trim() !== itemText) {
-            errors.push(`task.checklist[].text must be trimmed (${String(task.id)})`);
+            errors.push(
+              `task.checklist[].text must be trimmed (${String(task.id)})`,
+            );
           } else if (hasAsciiControlChars(itemText)) {
             errors.push(
-              `task.checklist[].text must not contain ASCII control characters (${String(task.id)})`
+              `task.checklist[].text must not contain ASCII control characters (${String(task.id)})`,
             );
           }
 
           if (typeof itemIsDone !== "boolean") {
-            errors.push(`task.checklist[].isDone must be boolean (${String(task.id)})`);
+            errors.push(
+              `task.checklist[].isDone must be boolean (${String(task.id)})`,
+            );
           }
 
           const normalizedCreatedAt = normalizeIsoUtc(itemCreatedAt);
           if (!normalizedCreatedAt) {
-            errors.push(`task.checklist[].createdAt must be ISO timestamp (${String(task.id)})`);
+            errors.push(
+              `task.checklist[].createdAt must be ISO timestamp (${String(task.id)})`,
+            );
           } else if (itemCreatedAt !== normalizedCreatedAt) {
             errors.push(
-              `task.checklist[].createdAt must be normalized ISO timestamp (${String(task.id)})`
+              `task.checklist[].createdAt must be normalized ISO timestamp (${String(task.id)})`,
             );
           }
 
           const normalizedUpdatedAt = normalizeIsoUtc(itemUpdatedAt);
           if (!normalizedUpdatedAt) {
-            errors.push(`task.checklist[].updatedAt must be ISO timestamp (${String(task.id)})`);
+            errors.push(
+              `task.checklist[].updatedAt must be ISO timestamp (${String(task.id)})`,
+            );
           } else if (itemUpdatedAt !== normalizedUpdatedAt) {
             errors.push(
-              `task.checklist[].updatedAt must be normalized ISO timestamp (${String(task.id)})`
+              `task.checklist[].updatedAt must be normalized ISO timestamp (${String(task.id)})`,
             );
           }
 
@@ -386,11 +475,11 @@ export function validatePersistedState(
             const normalizedCompletedAt = normalizeIsoUtc(itemCompletedAt);
             if (!normalizedCompletedAt) {
               errors.push(
-                `task.checklist[].completedAt must be ISO timestamp when present (${String(task.id)})`
+                `task.checklist[].completedAt must be ISO timestamp when present (${String(task.id)})`,
               );
             } else if (itemCompletedAt !== normalizedCompletedAt) {
               errors.push(
-                `task.checklist[].completedAt must be normalized ISO timestamp (${String(task.id)})`
+                `task.checklist[].completedAt must be normalized ISO timestamp (${String(task.id)})`,
               );
             }
           }
@@ -401,7 +490,9 @@ export function validatePersistedState(
             !Number.isInteger(itemSort) ||
             itemSort < 0
           ) {
-            errors.push(`task.checklist[].sort must be non-negative integer (${String(task.id)})`);
+            errors.push(
+              `task.checklist[].sort must be non-negative integer (${String(task.id)})`,
+            );
           }
         }
       }
@@ -409,38 +500,50 @@ export function validatePersistedState(
 
     if (task.links !== undefined) {
       if (!Array.isArray(task.links)) {
-        errors.push(`task.links must be an array when present (${String(task.id)})`);
+        errors.push(
+          `task.links must be an array when present (${String(task.id)})`,
+        );
       } else {
         for (const link of task.links) {
           if (!isRecord(link)) {
-            errors.push(`task.links entry must be an object (${String(task.id)})`);
+            errors.push(
+              `task.links entry must be an object (${String(task.id)})`,
+            );
             continue;
           }
           if (!isNonEmptyString(link.id)) {
-            errors.push(`task.links[].id must be a non-empty string (${String(task.id)})`);
+            errors.push(
+              `task.links[].id must be a non-empty string (${String(task.id)})`,
+            );
           }
           if (!isNonEmptyString(link.target)) {
-            errors.push(`task.links[].target must be a non-empty string (${String(task.id)})`);
+            errors.push(
+              `task.links[].target must be a non-empty string (${String(task.id)})`,
+            );
           } else if (hasAsciiControlChars(link.target)) {
             errors.push(
-              `task.links[].target must not contain ASCII control characters (${String(task.id)})`
+              `task.links[].target must not contain ASCII control characters (${String(task.id)})`,
             );
           }
           if (link.label !== undefined && typeof link.label !== "string") {
-            errors.push(`task.links[].label must be a string when present (${String(task.id)})`);
+            errors.push(
+              `task.links[].label must be a string when present (${String(task.id)})`,
+            );
           }
           if (
             link.kind !== undefined &&
             !VALID_TASK_LINK_KINDS.has(link.kind as TaskLinkKind)
           ) {
-            errors.push(`task.links[].kind must be url|path when present (${String(task.id)})`);
+            errors.push(
+              `task.links[].kind must be url|path when present (${String(task.id)})`,
+            );
           }
           if (
             link.source !== undefined &&
             !VALID_TASK_LINK_SOURCES.has(link.source as TaskLinkSource)
           ) {
             errors.push(
-              `task.links[].source must be manual|calendar_import when present (${String(task.id)})`
+              `task.links[].source must be manual|calendar_import when present (${String(task.id)})`,
             );
           }
         }
@@ -449,22 +552,31 @@ export function validatePersistedState(
 
     if (task.noteRef !== undefined) {
       if (!isRecord(task.noteRef)) {
-        errors.push(`task.noteRef must be an object when present (${String(task.id)})`);
+        errors.push(
+          `task.noteRef must be an object when present (${String(task.id)})`,
+        );
       } else {
         if (!VALID_TASK_NOTE_REF_TYPES.has(String(task.noteRef.type))) {
-          errors.push(`task.noteRef.type must be id|filename (${String(task.id)})`);
+          errors.push(
+            `task.noteRef.type must be id|filename (${String(task.id)})`,
+          );
         }
         if (!isNonEmptyString(task.noteRef.value)) {
-          errors.push(`task.noteRef.value must be a non-empty string (${String(task.id)})`);
+          errors.push(
+            `task.noteRef.value must be a non-empty string (${String(task.id)})`,
+          );
         } else if (hasAsciiControlChars(task.noteRef.value)) {
           errors.push(
-            `task.noteRef.value must not contain ASCII control characters (${String(task.id)})`
+            `task.noteRef.value must not contain ASCII control characters (${String(task.id)})`,
           );
         }
       }
     }
 
-    if (!Array.isArray(task.tags) || !task.tags.every((tag) => typeof tag === "string")) {
+    if (
+      !Array.isArray(task.tags) ||
+      !task.tags.every((tag) => typeof tag === "string")
+    ) {
       errors.push(`task.tags must be a string array (${String(task.id)})`);
       continue;
     }
@@ -475,7 +587,7 @@ export function validatePersistedState(
       normalizedTags.some((tag, index) => tag !== task.tags[index])
     ) {
       errors.push(
-        `task.tags must be normalized/deduped (priority-aware, last-wins, priority-first) (${String(task.id)})`
+        `task.tags must be normalized/deduped (priority-aware, last-wins, priority-first) (${String(task.id)})`,
       );
     }
   }
@@ -502,24 +614,36 @@ export function validatePersistedState(
       errors.push(`savedView.filters must be an object (${String(view.id)})`);
       continue;
     }
-    if (!["all", "open", "done", "archived"].includes(String(view.filters.status))) {
+    if (
+      !["all", "open", "done", "archived"].includes(String(view.filters.status))
+    ) {
       errors.push(`savedView.filters.status invalid (${String(view.id)})`);
     }
-    if (!["any", "overdue", "today", "next7"].includes(String(view.filters.due))) {
+    if (
+      !["any", "overdue", "today", "next7"].includes(String(view.filters.due))
+    ) {
       errors.push(`savedView.filters.due invalid (${String(view.id)})`);
     }
     if (
       view.filters.priority !== undefined &&
       typeof view.filters.priority !== "string"
     ) {
-      errors.push(`savedView.filters.priority must be string (${String(view.id)})`);
+      errors.push(
+        `savedView.filters.priority must be string (${String(view.id)})`,
+      );
     }
     if (typeof view.filters.priority === "string") {
-      const normalizedPriority = normalizePriorityFilterValue(view.filters.priority);
+      const normalizedPriority = normalizePriorityFilterValue(
+        view.filters.priority,
+      );
       if (!normalizedPriority) {
-        errors.push(`savedView.filters.priority must be canonical #pN (${String(view.id)})`);
+        errors.push(
+          `savedView.filters.priority must be canonical #pN (${String(view.id)})`,
+        );
       } else if (view.filters.priority !== normalizedPriority) {
-        errors.push(`savedView.filters.priority must be canonical #pN (${String(view.id)})`);
+        errors.push(
+          `savedView.filters.priority must be canonical #pN (${String(view.id)})`,
+        );
       }
     }
     if (
@@ -532,13 +656,17 @@ export function validatePersistedState(
       view.filters.searchText !== undefined &&
       typeof view.filters.searchText !== "string"
     ) {
-      errors.push(`savedView.filters.searchText must be string (${String(view.id)})`);
+      errors.push(
+        `savedView.filters.searchText must be string (${String(view.id)})`,
+      );
     }
     if (
       view.filters.analyticsWindow !== undefined &&
       !VALID_ANALYTICS_WINDOWS.has(String(view.filters.analyticsWindow))
     ) {
-      errors.push(`savedView.filters.analyticsWindow invalid (${String(view.id)})`);
+      errors.push(
+        `savedView.filters.analyticsWindow invalid (${String(view.id)})`,
+      );
     }
     if (view.filters.dueDayOffset !== undefined) {
       if (
@@ -547,30 +675,40 @@ export function validatePersistedState(
         view.filters.dueDayOffset < 1 ||
         view.filters.dueDayOffset > 6
       ) {
-        errors.push(`savedView.filters.dueDayOffset invalid (${String(view.id)})`);
+        errors.push(
+          `savedView.filters.dueDayOffset invalid (${String(view.id)})`,
+        );
       }
     }
     if (
       view.filters.assignee !== undefined &&
       typeof view.filters.assignee !== "string"
     ) {
-      errors.push(`savedView.filters.assignee must be string (${String(view.id)})`);
+      errors.push(
+        `savedView.filters.assignee must be string (${String(view.id)})`,
+      );
     }
     if (
       view.filters.project !== undefined &&
       typeof view.filters.project !== "string"
     ) {
-      errors.push(`savedView.filters.project must be string (${String(view.id)})`);
+      errors.push(
+        `savedView.filters.project must be string (${String(view.id)})`,
+      );
     }
     if (
       view.filters.workflowStage !== undefined &&
       !VALID_WORKFLOW_STAGES.has(String(view.filters.workflowStage))
     ) {
-      errors.push(`savedView.filters.workflowStage invalid (${String(view.id)})`);
+      errors.push(
+        `savedView.filters.workflowStage invalid (${String(view.id)})`,
+      );
     }
     if (view.filters.tagFilter !== undefined) {
       if (!isRecord(view.filters.tagFilter)) {
-        errors.push(`savedView.filters.tagFilter must be an object (${String(view.id)})`);
+        errors.push(
+          `savedView.filters.tagFilter must be an object (${String(view.id)})`,
+        );
       } else {
         const rawAll = view.filters.tagFilter.all;
         const rawAny = view.filters.tagFilter.any;
@@ -578,21 +716,30 @@ export function validatePersistedState(
 
         if (
           rawAll !== undefined &&
-          (!Array.isArray(rawAll) || !rawAll.every((tag) => typeof tag === "string"))
+          (!Array.isArray(rawAll) ||
+            !rawAll.every((tag) => typeof tag === "string"))
         ) {
-          errors.push(`savedView.filters.tagFilter.all must be a string array (${String(view.id)})`);
+          errors.push(
+            `savedView.filters.tagFilter.all must be a string array (${String(view.id)})`,
+          );
         }
         if (
           rawAny !== undefined &&
-          (!Array.isArray(rawAny) || !rawAny.every((tag) => typeof tag === "string"))
+          (!Array.isArray(rawAny) ||
+            !rawAny.every((tag) => typeof tag === "string"))
         ) {
-          errors.push(`savedView.filters.tagFilter.any must be a string array (${String(view.id)})`);
+          errors.push(
+            `savedView.filters.tagFilter.any must be a string array (${String(view.id)})`,
+          );
         }
         if (
           rawNone !== undefined &&
-          (!Array.isArray(rawNone) || !rawNone.every((tag) => typeof tag === "string"))
+          (!Array.isArray(rawNone) ||
+            !rawNone.every((tag) => typeof tag === "string"))
         ) {
-          errors.push(`savedView.filters.tagFilter.none must be a string array (${String(view.id)})`);
+          errors.push(
+            `savedView.filters.tagFilter.none must be a string array (${String(view.id)})`,
+          );
         }
 
         if (
@@ -603,12 +750,17 @@ export function validatePersistedState(
           const normalizedTagFilter = normalizeTagFilter({
             all: Array.isArray(rawAll) ? rawAll : undefined,
             any: Array.isArray(rawAny) ? rawAny : undefined,
-            none: Array.isArray(rawNone) ? rawNone : undefined
+            none: Array.isArray(rawNone) ? rawNone : undefined,
           });
-          const hadAnyBucket = rawAll !== undefined || rawAny !== undefined || rawNone !== undefined;
+          const hadAnyBucket =
+            rawAll !== undefined ||
+            rawAny !== undefined ||
+            rawNone !== undefined;
 
           if (!normalizedTagFilter && hadAnyBucket) {
-            errors.push(`savedView.filters.tagFilter must contain valid tags (${String(view.id)})`);
+            errors.push(
+              `savedView.filters.tagFilter must contain valid tags (${String(view.id)})`,
+            );
           } else if (normalizedTagFilter) {
             const all = Array.isArray(rawAll) ? rawAll : [];
             const any = Array.isArray(rawAny) ? rawAny : [];
@@ -619,7 +771,7 @@ export function validatePersistedState(
               !areStringArraysEqual(none, normalizedTagFilter.none ?? [])
             ) {
               errors.push(
-                `savedView.filters.tagFilter buckets must be normalized/deduped/sorted (${String(view.id)})`
+                `savedView.filters.tagFilter buckets must be normalized/deduped/sorted (${String(view.id)})`,
               );
             }
           }
@@ -645,7 +797,9 @@ export function validatePersistedState(
       }
       const normalizedAliases = normalizeTagAliases(rawAliases);
       if (!areAliasMapsEqual(rawAliases, normalizedAliases)) {
-        errors.push("tagAliases must be normalized, canonicalized, and cycle-compressed");
+        errors.push(
+          "tagAliases must be normalized, canonicalized, and cycle-compressed",
+        );
       }
     }
   }
@@ -656,7 +810,9 @@ export function validatePersistedState(
       !Number.isInteger(stateRevision) ||
       stateRevision < 0
     ) {
-      errors.push("stateRevision must be a non-negative integer for schemaVersion >= 6");
+      errors.push(
+        "stateRevision must be a non-negative integer for schemaVersion >= 6",
+      );
     }
   }
 
@@ -675,24 +831,29 @@ export function validatePersistedState(
           continue;
         }
         if (!isNonEmptyString(event.taskId)) {
-          errors.push("engagement.completionLog[].taskId must be a non-empty string");
+          errors.push(
+            "engagement.completionLog[].taskId must be a non-empty string",
+          );
         }
         if (!isFiniteNumber(event.at)) {
           errors.push("engagement.completionLog[].at must be a number");
         }
-        if (!Array.isArray(event.tags) || !event.tags.every((tag) => typeof tag === "string")) {
+        if (
+          !Array.isArray(event.tags) ||
+          !event.tags.every((tag) => typeof tag === "string")
+        ) {
           errors.push("engagement.completionLog[].tags must be a string array");
         } else {
           const normalizedTags = Array.from(
             new Set(
               event.tags
                 .map((tag) => String(tag).trim())
-                .filter((tag) => tag.length > 0)
-            )
+                .filter((tag) => tag.length > 0),
+            ),
           ).sort((left, right) => left.localeCompare(right));
           if (!areStringArraysEqual(event.tags, normalizedTags)) {
             errors.push(
-              "engagement.completionLog[].tags must be normalized/deduped/sorted"
+              "engagement.completionLog[].tags must be normalized/deduped/sorted",
             );
           }
         }
@@ -709,19 +870,26 @@ export function validatePersistedState(
           continue;
         }
         if (!isNonEmptyString(unlock.id)) {
-          errors.push("engagement.achievements[].id must be a non-empty string");
+          errors.push(
+            "engagement.achievements[].id must be a non-empty string",
+          );
         }
         if (!isFiniteNumber(unlock.unlockedAt)) {
           errors.push("engagement.achievements[].unlockedAt must be a number");
         }
         if (unlock.meta !== undefined) {
           if (!isRecord(unlock.meta)) {
-            errors.push("engagement.achievements[].meta must be an object when present");
+            errors.push(
+              "engagement.achievements[].meta must be an object when present",
+            );
           } else {
             for (const metaValue of Object.values(unlock.meta)) {
-              if (typeof metaValue !== "string" && typeof metaValue !== "number") {
+              if (
+                typeof metaValue !== "string" &&
+                typeof metaValue !== "number"
+              ) {
                 errors.push(
-                  "engagement.achievements[].meta values must be string|number"
+                  "engagement.achievements[].meta values must be string|number",
                 );
               }
             }
@@ -735,7 +903,9 @@ export function validatePersistedState(
       errors.push("engagement.streak must be an object");
     } else {
       if (!isFiniteNumber(streak.currentDays) || streak.currentDays < 0) {
-        errors.push("engagement.streak.currentDays must be a non-negative number");
+        errors.push(
+          "engagement.streak.currentDays must be a non-negative number",
+        );
       }
       if (!isFiniteNumber(streak.bestDays) || streak.bestDays < 0) {
         errors.push("engagement.streak.bestDays must be a non-negative number");
@@ -746,7 +916,7 @@ export function validatePersistedState(
         normalizeDateString(streak.lastCompletionDayKey) === undefined
       ) {
         errors.push(
-          "engagement.streak.lastCompletionDayKey must be YYYY-MM-DD or null"
+          "engagement.streak.lastCompletionDayKey must be YYYY-MM-DD or null",
         );
       }
     }

@@ -3,7 +3,7 @@ import { Task } from "./models";
 import {
   formatPriorityForDisplay,
   isPriorityToken,
-  resolveTaskPriorityTag
+  resolveTaskPriorityTag,
 } from "./priorityTags";
 import { resolveTag, type TagAliases } from "./tagAliases";
 
@@ -39,7 +39,7 @@ export function computeTopTagStats(
   tasks: Task[],
   now: number,
   limit = 5,
-  aliases: TagAliases = {}
+  aliases: TagAliases = {},
 ): TagStat[] {
   const startOfToday = startOfLocalDayMs(now);
   const counts = new Map<string, TagStat>();
@@ -69,7 +69,7 @@ export function computeTopTagStats(
         counts.set(tag, {
           tag,
           total: 1,
-          dueThisWeek: dueThisWeek ? 1 : 0
+          dueThisWeek: dueThisWeek ? 1 : 0,
         });
       }
     }
@@ -98,7 +98,7 @@ export function computeOpenPriorityStats(tasks: Task[]): OpenPriorityStat[] {
     .map(([priorityTag, total]) => ({
       priorityTag,
       displayPriority: formatPriorityForDisplay(priorityTag) ?? priorityTag,
-      total
+      total,
     }))
     .sort((left, right) => {
       const leftDigits = isPriorityToken(left.priorityTag)?.digits;

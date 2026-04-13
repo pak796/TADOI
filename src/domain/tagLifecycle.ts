@@ -7,7 +7,7 @@ import {
   normalizeTagCompat,
   resolveTag,
   resolveTagWithMeta,
-  rewriteTagsOnTask
+  rewriteTagsOnTask,
 } from "./tagAliases";
 import { isPriorityToken } from "./priorityTags";
 
@@ -50,7 +50,7 @@ function sortDeltas(deltas: TagRewriteDelta[]): TagRewriteDelta[] {
 function computeDeltas(
   beforeUsage: Map<string, number>,
   afterUsage: Map<string, number>,
-  rewriteMap: Map<string, string>
+  rewriteMap: Map<string, string>,
 ): TagRewriteDelta[] {
   const deltas: TagRewriteDelta[] = [];
   for (const [from, to] of rewriteMap.entries()) {
@@ -58,7 +58,7 @@ function computeDeltas(
       from,
       to,
       beforeCount: beforeUsage.get(from) ?? 0,
-      afterCount: afterUsage.get(to) ?? 0
+      afterCount: afterUsage.get(to) ?? 0,
     });
   }
   return sortDeltas(deltas);
@@ -68,12 +68,14 @@ function applyRewriteAcrossTasks(
   tasks: Task[],
   aliases: TagAliases,
   rewriteMap: Map<string, string>,
-  now: number
+  now: number,
 ): { nextTasks: Task[]; tasksAffected: number } {
   let tasksAffected = 0;
   const nextTasks = tasks.map((task) => {
     const rewritten = rewriteTagsOnTask(task, rewriteMap, aliases, now);
-    const changed = rewritten.tags.length !== task.tags.length || rewritten.tags.some((tag, index) => tag !== task.tags[index]);
+    const changed =
+      rewritten.tags.length !== task.tags.length ||
+      rewritten.tags.some((tag, index) => tag !== task.tags[index]);
     if (!changed) {
       return task;
     }
@@ -96,7 +98,9 @@ export function findAliasCycles(aliases: TagAliases): string[][] {
         const startIndex = path.indexOf(current);
         if (startIndex >= 0) {
           const cycle = [...path.slice(startIndex), current];
-          const normalizedKey = [...new Set(cycle)].sort((a, b) => a.localeCompare(b)).join("|");
+          const normalizedKey = [...new Set(cycle)]
+            .sort((a, b) => a.localeCompare(b))
+            .join("|");
           if (!seenCycleKeys.has(normalizedKey)) {
             seenCycleKeys.add(normalizedKey);
             cycles.push(cycle);
@@ -110,7 +114,9 @@ export function findAliasCycles(aliases: TagAliases): string[][] {
     }
   }
 
-  return cycles.sort((left, right) => left.join("->").localeCompare(right.join("->")));
+  return cycles.sort((left, right) =>
+    left.join("->").localeCompare(right.join("->")),
+  );
 }
 
 export function planTagRename(params: {
@@ -122,9 +128,16 @@ export function planTagRename(params: {
 }): TagOperationPreview {
   const source = resolveTag(params.oldTag, params.aliases);
   const normalizedTarget = normalizeTagCompat(params.newTag);
-  const target = normalizedTarget ? resolveTag(normalizedTarget, params.aliases) ?? normalizedTarget : null;
+  const target = normalizedTarget
+    ? (resolveTag(normalizedTarget, params.aliases) ?? normalizedTarget)
+    : null;
 
-  if (!source || !target || isPriorityToken(source) || isPriorityToken(target)) {
+  if (
+    !source ||
+    !target ||
+    isPriorityToken(source) ||
+    isPriorityToken(target)
+  ) {
     return {
       operation: "rename",
       summary: "Error: rename requires non-priority canonical tags",
@@ -134,7 +147,7 @@ export function planTagRename(params: {
       nextTasks: params.tasks,
       nextAliases: params.aliases,
       aliasesAdded: [],
-      aliasesRemoved: []
+      aliasesRemoved: [],
     };
   }
 
@@ -148,7 +161,7 @@ export function planTagRename(params: {
       nextTasks: params.tasks,
       nextAliases: params.aliases,
       aliasesAdded: [],
-      aliasesRemoved: []
+      aliasesRemoved: [],
     };
   }
 
@@ -158,12 +171,12 @@ export function planTagRename(params: {
     params.tasks,
     params.aliases,
     rewriteMap,
-    params.now
+    params.now,
   );
 
   const draftAliases = {
     ...params.aliases,
-    [source]: target
+    [source]: target,
   };
   const nextAliases = compressTagAliases(normalizeTagAliases(draftAliases));
   const afterUsage = computeTagUsage(nextTasks, nextAliases);
@@ -177,7 +190,7 @@ export function planTagRename(params: {
     nextTasks,
     nextAliases,
     aliasesAdded: [{ source, target }],
-    aliasesRemoved: []
+    aliasesRemoved: [],
   };
 }
 
@@ -190,7 +203,7 @@ export function planTagMerge(params: {
 }): TagOperationPreview {
   const normalizedTarget = normalizeTagCompat(params.target);
   const resolvedTarget = normalizedTarget
-    ? resolveTag(normalizedTarget, params.aliases) ?? normalizedTarget
+    ? (resolveTag(normalizedTarget, params.aliases) ?? normalizedTarget)
     : null;
 
   if (!resolvedTarget || isPriorityToken(resolvedTarget)) {
@@ -203,7 +216,7 @@ export function planTagMerge(params: {
       nextTasks: params.tasks,
       nextAliases: params.aliases,
       aliasesAdded: [],
-      aliasesRemoved: []
+      aliasesRemoved: [],
     };
   }
 
@@ -211,8 +224,8 @@ export function planTagMerge(params: {
     new Set(
       params.sources
         .map((source) => resolveTag(source, params.aliases))
-        .filter((tag): tag is string => tag !== null && !isPriorityToken(tag))
-    )
+        .filter((tag): tag is string => tag !== null && !isPriorityToken(tag)),
+    ),
   ).filter((source) => source !== resolvedTarget);
 
   if (resolvedSources.length === 0) {
@@ -225,12 +238,12 @@ export function planTagMerge(params: {
       nextTasks: params.tasks,
       nextAliases: params.aliases,
       aliasesAdded: [],
-      aliasesRemoved: []
+      aliasesRemoved: [],
     };
   }
 
   const rewriteMap = new Map<string, string>(
-    resolvedSources.map((source) => [source, resolvedTarget])
+    resolvedSources.map((source) => [source, resolvedTarget]),
   );
 
   const beforeUsage = computeTagUsage(params.tasks, params.aliases);
@@ -238,7 +251,7 @@ export function planTagMerge(params: {
     params.tasks,
     params.aliases,
     rewriteMap,
-    params.now
+    params.now,
   );
 
   const draftAliases: TagAliases = { ...params.aliases };
@@ -256,12 +269,18 @@ export function planTagMerge(params: {
     warnings: [],
     nextTasks,
     nextAliases,
-    aliasesAdded: resolvedSources.map((source) => ({ source, target: resolvedTarget })),
-    aliasesRemoved: []
+    aliasesAdded: resolvedSources.map((source) => ({
+      source,
+      target: resolvedTarget,
+    })),
+    aliasesRemoved: [],
   };
 }
 
-function cleanupAliases(aliases: TagAliases, tasks: Task[]): {
+function cleanupAliases(
+  aliases: TagAliases,
+  tasks: Task[],
+): {
   nextAliases: TagAliases;
   removed: string[];
 } {
@@ -292,7 +311,7 @@ function cleanupAliases(aliases: TagAliases, tasks: Task[]): {
 
   return {
     nextAliases: compressTagAliases(current),
-    removed: Array.from(removed).sort((a, b) => a.localeCompare(b))
+    removed: Array.from(removed).sort((a, b) => a.localeCompare(b)),
   };
 }
 
@@ -303,14 +322,17 @@ export function planTagCleanup(params: {
   const { nextAliases, removed } = cleanupAliases(params.aliases, params.tasks);
   return {
     operation: "cleanup",
-    summary: removed.length > 0 ? `Cleanup removed ${String(removed.length)} aliases` : "Cleanup found no removable aliases",
+    summary:
+      removed.length > 0
+        ? `Cleanup removed ${String(removed.length)} aliases`
+        : "Cleanup found no removable aliases",
     tasksAffected: 0,
     deltas: [],
     warnings: [],
     nextTasks: params.tasks,
     nextAliases,
     aliasesAdded: [],
-    aliasesRemoved: removed
+    aliasesRemoved: removed,
   };
 }
 
@@ -344,11 +366,17 @@ export function reportTagHygiene(params: {
 
   const normalizationCollisions = Array.from(collisionMap.entries())
     .filter(([, raws]) => raws.size > 1)
-    .map(([canonical, raws]) => ({ canonical, raws: Array.from(raws).sort((a, b) => a.localeCompare(b)) }))
+    .map(([canonical, raws]) => ({
+      canonical,
+      raws: Array.from(raws).sort((a, b) => a.localeCompare(b)),
+    }))
     .sort((left, right) => left.canonical.localeCompare(right.canonical));
 
   const aliasChains = Object.keys(params.aliases)
-    .map((source) => ({ source, meta: resolveTagWithMeta(source, params.aliases) }))
+    .map((source) => ({
+      source,
+      meta: resolveTagWithMeta(source, params.aliases),
+    }))
     .filter((entry) => entry.meta.chain.length > 1)
     .map((entry) => ({ source: entry.source, chain: entry.meta.chain }))
     .sort((left, right) => left.source.localeCompare(right.source));
@@ -372,6 +400,6 @@ export function reportTagHygiene(params: {
     normalizationCollisions,
     aliasChains,
     cycles,
-    warnings
+    warnings,
   };
 }

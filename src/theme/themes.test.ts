@@ -4,7 +4,7 @@ import {
   THEME_ORDER,
   THEMES,
   cycleTheme,
-  formatThemeDisplayName
+  formatThemeDisplayName,
 } from "./themes";
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } {
@@ -12,7 +12,7 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } {
   return {
     r: Number.parseInt(normalized.slice(0, 2), 16),
     g: Number.parseInt(normalized.slice(2, 4), 16),
-    b: Number.parseInt(normalized.slice(4, 6), 16)
+    b: Number.parseInt(normalized.slice(4, 6), 16),
   };
 }
 
@@ -27,9 +27,13 @@ function contrastRatio(foreground: string, background: string): number {
   const fg = hexToRgb(foreground);
   const bg = hexToRgb(background);
   const fgLuminance =
-    0.2126 * srgbToLinear(fg.r) + 0.7152 * srgbToLinear(fg.g) + 0.0722 * srgbToLinear(fg.b);
+    0.2126 * srgbToLinear(fg.r) +
+    0.7152 * srgbToLinear(fg.g) +
+    0.0722 * srgbToLinear(fg.b);
   const bgLuminance =
-    0.2126 * srgbToLinear(bg.r) + 0.7152 * srgbToLinear(bg.g) + 0.0722 * srgbToLinear(bg.b);
+    0.2126 * srgbToLinear(bg.r) +
+    0.7152 * srgbToLinear(bg.g) +
+    0.0722 * srgbToLinear(bg.b);
   const lighter = Math.max(fgLuminance, bgLuminance);
   const darker = Math.min(fgLuminance, bgLuminance);
   return (lighter + 0.05) / (darker + 0.05);
@@ -102,7 +106,7 @@ describe("theme registry", () => {
       "corpo",
       "strikefitron",
       "custom1",
-      "rotating"
+      "rotating",
     ]);
   });
 
@@ -136,7 +140,7 @@ describe("theme registry", () => {
       "crtAmber",
       "kitty",
       "corpo",
-      "strikefitron"
+      "strikefitron",
     ]);
   });
 
@@ -153,7 +157,7 @@ describe("theme registry", () => {
       warn: "#f1c40f",
       danger: "#e74c3c",
       selectionBg: "#9b59b6",
-      selectionText: "#0b0f14"
+      selectionText: "#0b0f14",
     });
   });
 
@@ -175,7 +179,7 @@ describe("theme registry", () => {
       warn: "#b08968",
       danger: "#a44a3f",
       selectionBg: "#b8c7cf",
-      selectionText: "#1f2933"
+      selectionText: "#1f2933",
     });
   });
 
@@ -192,7 +196,7 @@ describe("theme registry", () => {
       warn: "#b58b4c",
       danger: "#9f4d42",
       selectionBg: "#d9d4c8",
-      selectionText: "#1d2430"
+      selectionText: "#1d2430",
     });
   });
 
@@ -209,7 +213,7 @@ describe("theme registry", () => {
       warn: "#a88245",
       danger: "#8f3f45",
       selectionBg: "#1a2431",
-      selectionText: "#d7dde7"
+      selectionText: "#d7dde7",
     });
   });
 
@@ -226,7 +230,7 @@ describe("theme registry", () => {
       warn: "#f2c14e",
       danger: "#c94c9b",
       selectionBg: "#6a4bc2",
-      selectionText: "#12081e"
+      selectionText: "#12081e",
     });
   });
 
@@ -243,7 +247,7 @@ describe("theme registry", () => {
       warn: "#d8a25a",
       danger: "#b75b4f",
       selectionBg: "#d6bfa5",
-      selectionText: "#3c3228"
+      selectionText: "#3c3228",
     });
   });
 
@@ -260,7 +264,7 @@ describe("theme registry", () => {
       warn: "#ffde59",
       danger: "#6a32a8",
       selectionBg: "#fdd023",
-      selectionText: "#2f0d57"
+      selectionText: "#2f0d57",
     });
   });
 
@@ -277,7 +281,7 @@ describe("theme registry", () => {
       warn: "#eaaa00",
       danger: "#9d822f",
       selectionBg: "#e0cf99",
-      selectionText: "#002c5f"
+      selectionText: "#002c5f",
     });
   });
 
@@ -294,7 +298,7 @@ describe("theme registry", () => {
       warn: "#ffd166",
       danger: "#b084f5",
       selectionBg: "#2d4761",
-      selectionText: "#f1f5f9"
+      selectionText: "#f1f5f9",
     });
   });
 
@@ -311,7 +315,7 @@ describe("theme registry", () => {
       warn: "#ffd166",
       danger: "#7d6cf0",
       selectionBg: "#2c4f6e",
-      selectionText: "#f6f8fb"
+      selectionText: "#f6f8fb",
     });
   });
 
@@ -328,12 +332,16 @@ describe("theme registry", () => {
       warn: "#f4a261",
       danger: "#d45087",
       selectionBg: "#5a3245",
-      selectionText: "#f7f2f4"
+      selectionText: "#f7f2f4",
     });
   });
 
   it("keeps new color-blindness themes readable", () => {
-    for (const themeId of ["deuteranopia", "protanopia", "tritanopia"] as const) {
+    for (const themeId of [
+      "deuteranopia",
+      "protanopia",
+      "tritanopia",
+    ] as const) {
       const tokens = THEMES[themeId];
       expect(tokens.text).not.toBe(tokens.bg);
       expect(tokens.mutedText).not.toBe(tokens.bg);
@@ -354,7 +362,7 @@ describe("theme registry", () => {
       warn: "#ffd56a",
       danger: "#d67a3c",
       selectionBg: "#f2c24f",
-      selectionText: "#081a35"
+      selectionText: "#081a35",
     });
   });
 
@@ -371,7 +379,7 @@ describe("theme registry", () => {
       warn: "#f9b233",
       danger: "#d63b2e",
       selectionBg: "#f0523f",
-      selectionText: "#ffffff"
+      selectionText: "#ffffff",
     });
   });
 
@@ -388,7 +396,7 @@ describe("theme registry", () => {
       warn: "#ffd54a",
       danger: "#1f4fa3",
       selectionBg: "#ffd100",
-      selectionText: "#003594"
+      selectionText: "#003594",
     });
   });
 
@@ -405,7 +413,7 @@ describe("theme registry", () => {
       warn: "#5c5c5c",
       danger: "#8c8c8c",
       selectionBg: "#000000",
-      selectionText: "#ffffff"
+      selectionText: "#ffffff",
     });
   });
 
@@ -422,7 +430,7 @@ describe("theme registry", () => {
       warn: "#a6a6a6",
       danger: "#737373",
       selectionBg: "#ffffff",
-      selectionText: "#000000"
+      selectionText: "#000000",
     });
   });
 
@@ -439,7 +447,7 @@ describe("theme registry", () => {
       warn: "#ffff55",
       danger: "#ff5555",
       selectionBg: "#aaaaaa",
-      selectionText: "#0000aa"
+      selectionText: "#0000aa",
     });
   });
 
@@ -456,7 +464,7 @@ describe("theme registry", () => {
       warn: "#e3be63",
       danger: "#d95a4e",
       selectionBg: "#b3995d",
-      selectionText: "#1f0a0a"
+      selectionText: "#1f0a0a",
     });
   });
 
@@ -473,7 +481,7 @@ describe("theme registry", () => {
       warn: "#ffc857",
       danger: "#ff4d4d",
       selectionBg: "#ff6a00",
-      selectionText: "#0a0d12"
+      selectionText: "#0a0d12",
     });
   });
 
@@ -490,7 +498,7 @@ describe("theme registry", () => {
       warn: "#e3c265",
       danger: "#d96b6b",
       selectionBg: "#2f6b53",
-      selectionText: "#dff7ea"
+      selectionText: "#dff7ea",
     });
   });
 
@@ -507,7 +515,7 @@ describe("theme registry", () => {
       warn: "#f9d648",
       danger: "#ff5a5a",
       selectionBg: "#f9d648",
-      selectionText: "#0b1e3a"
+      selectionText: "#0b1e3a",
     });
   });
 
@@ -524,7 +532,7 @@ describe("theme registry", () => {
       warn: "#E5C453",
       danger: "#E26B5B",
       selectionBg: "#1A3A2D",
-      selectionText: "#CFFFE2"
+      selectionText: "#CFFFE2",
     });
   });
 
@@ -541,7 +549,7 @@ describe("theme registry", () => {
       warn: "#F2C14E",
       danger: "#E26B5B",
       selectionBg: "#4A2D12",
-      selectionText: "#FFEBCB"
+      selectionText: "#FFEBCB",
     });
   });
 
@@ -558,7 +566,7 @@ describe("theme registry", () => {
       warn: "#E5A63A",
       danger: "#D94A6A",
       selectionBg: "#E86AB1",
-      selectionText: "#2C1624"
+      selectionText: "#2C1624",
     });
   });
 
@@ -575,7 +583,7 @@ describe("theme registry", () => {
       warn: "#E0A63D",
       danger: "#FF3B3B",
       selectionBg: "#8A1017",
-      selectionText: "#FDEDEE"
+      selectionText: "#FDEDEE",
     });
   });
 
@@ -592,7 +600,7 @@ describe("theme registry", () => {
       warn: "#C7D94A",
       danger: "#E06F54",
       selectionBg: "#1A3F24",
-      selectionText: "#CCFFB8"
+      selectionText: "#CCFFB8",
     });
   });
 
@@ -602,9 +610,9 @@ describe("theme registry", () => {
       expect(tokens.text).not.toBe(tokens.bg);
       expect(tokens.selectionText).not.toBe(tokens.selectionBg);
       expect(contrastRatio(tokens.text, tokens.bg)).toBeGreaterThanOrEqual(4.5);
-      expect(contrastRatio(tokens.selectionText, tokens.selectionBg)).toBeGreaterThanOrEqual(
-        4.5
-      );
+      expect(
+        contrastRatio(tokens.selectionText, tokens.selectionBg),
+      ).toBeGreaterThanOrEqual(4.5);
     }
   });
 
@@ -613,7 +621,9 @@ describe("theme registry", () => {
     expect(tokens.text).not.toBe(tokens.bg);
     expect(tokens.selectionText).not.toBe(tokens.selectionBg);
     expect(contrastRatio(tokens.text, tokens.bg)).toBeGreaterThanOrEqual(4.5);
-    expect(contrastRatio(tokens.selectionText, tokens.selectionBg)).toBeGreaterThanOrEqual(4.5);
+    expect(
+      contrastRatio(tokens.selectionText, tokens.selectionBg),
+    ).toBeGreaterThanOrEqual(4.5);
   });
 
   it("keeps crtAmber text and selection contrast readable", () => {
@@ -621,7 +631,9 @@ describe("theme registry", () => {
     expect(tokens.text).not.toBe(tokens.bg);
     expect(tokens.selectionText).not.toBe(tokens.selectionBg);
     expect(contrastRatio(tokens.text, tokens.bg)).toBeGreaterThanOrEqual(4.5);
-    expect(contrastRatio(tokens.selectionText, tokens.selectionBg)).toBeGreaterThanOrEqual(4.5);
+    expect(
+      contrastRatio(tokens.selectionText, tokens.selectionBg),
+    ).toBeGreaterThanOrEqual(4.5);
   });
 
   it("keeps kitty/corpo/strikefitron text and selection contrast readable", () => {
@@ -630,9 +642,9 @@ describe("theme registry", () => {
       expect(tokens.text).not.toBe(tokens.bg);
       expect(tokens.selectionText).not.toBe(tokens.selectionBg);
       expect(contrastRatio(tokens.text, tokens.bg)).toBeGreaterThanOrEqual(4.5);
-      expect(contrastRatio(tokens.selectionText, tokens.selectionBg)).toBeGreaterThanOrEqual(
-        4.5
-      );
+      expect(
+        contrastRatio(tokens.selectionText, tokens.selectionBg),
+      ).toBeGreaterThanOrEqual(4.5);
     }
   });
 

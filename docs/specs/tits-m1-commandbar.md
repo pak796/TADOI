@@ -1,9 +1,11 @@
 # TITS Milestone 1: Command Bar + Engine (Implemented Baseline)
 
 ## Purpose
+
 This document is the canonical M1 baseline for follow-up TITS milestone specs.
 
 ## Implemented scope
+
 - In-app TITS command bar overlay in list mode.
 - Shared command subsystem in `src/commands/*` with no React/OpenTUI imports.
 - Commands: `add`, `done`, `due`, `help`.
@@ -11,6 +13,7 @@ This document is the canonical M1 baseline for follow-up TITS milestone specs.
   - `{ kind: "ok" | "error", text: string }`
 
 ## Command bar behavior
+
 - Open: backtick (`` ` ``) in list mode.
 - Close: `Esc`.
 - Execute: `Enter`.
@@ -19,6 +22,7 @@ This document is the canonical M1 baseline for follow-up TITS milestone specs.
 - Command text is read from the latest input buffer value at execute time (avoids stale first-Enter reads).
 
 ## Command language
+
 - Tokenization: split by whitespace except inside double quotes.
 - Supported token kinds:
   - plain words
@@ -30,15 +34,19 @@ This document is the canonical M1 baseline for follow-up TITS milestone specs.
   - `at:` requires `due:`.
 
 ### add
+
 `add <title> [due:YYYY-MM-DD] [at:HH:MM] [#tag ...] [notes:"..."]`
+
 - If first post-`add` token is option-like (`due:`/`at:`/`notes:`/`#`), title must be quoted.
 - Emits actions: `setTasks`, `setTagIndex`, `setSelected`.
 - Output: `Added task: <title> (id:<id>)`.
 
 ### done
+
 `done`
 `done @selected`
 `done id:<task-id>`
+
 - M1 behavior is deterministic: force `status="done"` (not toggle).
 - Emits actions: `setTasks`, `setSelected`.
 - On `open -> done` only, additionally emits:
@@ -47,26 +55,32 @@ This document is the canonical M1 baseline for follow-up TITS milestone specs.
 - Output: `Done: <title>`.
 
 ### due
+
 `due @selected YYYY-MM-DD [at:HH:MM]`
 `due id:<task-id> YYYY-MM-DD [at:HH:MM]`
 `due @selected clear`
 `due id:<task-id> clear`
+
 - `clear` is supported for both `@selected` and `id:<task-id>` (id-target clear was added in M2 and remains compatible with TITS).
 - Emits actions: `setTasks`, `setSelected`.
 - Output: `Due set: ...` or `Due cleared: ...`.
 
 ### help
+
 `help`
 `help add|done|due`
+
 - No state mutations.
 - Output: single-line help text.
 
 ## Persistence and state boundaries
+
 - TITS UI state stays local to `App.tsx` (`useState` + refs).
 - No TITS UI state is persisted.
 - Existing persistence contract is unchanged.
 
 ## QA checklist (M1)
+
 1. Open TITS with backtick and verify `j/k` do not move selection while open.
 2. `add`:
    - `add "Buy milk" #errands`

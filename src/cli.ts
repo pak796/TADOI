@@ -3,7 +3,7 @@ import {
   APP_TAGLINE,
   CLI_NAME,
   ENV_VARS,
-  getAsciiLogoLines
+  getAsciiLogoLines,
 } from "./brand/brand";
 import { APP_VERSION } from "./app/version";
 import { runPortabilityCommand } from "./cli/portabilityCommands";
@@ -54,10 +54,16 @@ type CliRunResult = number | StructuredRunResult | undefined;
 export type CliRunDeps = {
   runPortability: (
     command: "export" | "import",
-    args: string[]
+    args: string[],
   ) => Promise<number>;
-  runCalendar: (command: "export" | "import", args: string[]) => Promise<number>;
-  runList: (args: string[], options: { json: boolean }) => Promise<StructuredRunResult>;
+  runCalendar: (
+    command: "export" | "import",
+    args: string[],
+  ) => Promise<number>;
+  runList: (
+    args: string[],
+    options: { json: boolean },
+  ) => Promise<StructuredRunResult>;
   runUninstall: (args: string[]) => Promise<number>;
   runReminders: (args: string[]) => Promise<number>;
   runRemind: (args: string[]) => Promise<number>;
@@ -111,14 +117,16 @@ function isCoreOptionToken(token: string): boolean {
   );
 }
 
-function parseRuntimeCliOptions(argv: string[]): {
-  ok: true;
-  argv: string[];
-  runtime: RuntimeCliOptions;
-} | {
-  ok: false;
-  error: string;
-} {
+function parseRuntimeCliOptions(argv: string[]):
+  | {
+      ok: true;
+      argv: string[];
+      runtime: RuntimeCliOptions;
+    }
+  | {
+      ok: false;
+      error: string;
+    } {
   let interactive = false;
   let json = false;
   let quiet = false;
@@ -178,14 +186,14 @@ function parseRuntimeCliOptions(argv: string[]): {
       interactive,
       json,
       quiet,
-      ...(dataFilePath ? { dataFilePath } : {})
-    }
+      ...(dataFilePath ? { dataFilePath } : {}),
+    },
   };
 }
 
 async function withDataFileOverride<T>(
   dataFilePath: string | undefined,
-  run: () => Promise<T>
+  run: () => Promise<T>,
 ): Promise<T> {
   if (!dataFilePath) {
     return run();
@@ -214,7 +222,7 @@ function isStructuredRunResult(value: unknown): value is StructuredRunResult {
 
 async function withOutputMode(
   runtime: RuntimeCliOptions,
-  run: () => Promise<CliRunResult>
+  run: () => Promise<CliRunResult>,
 ): Promise<number | undefined> {
   if (!runtime.json && !runtime.quiet) {
     const value = await run();
@@ -228,7 +236,8 @@ async function withOutputMode(
   const stderr: string[] = [];
   const originalLog = console.log;
   const originalError = console.error;
-  const lineify = (values: unknown[]): string => values.map((value) => String(value)).join(" ");
+  const lineify = (values: unknown[]): string =>
+    values.map((value) => String(value)).join(" ");
 
   console.log = (...values: unknown[]) => {
     if (runtime.json) {
@@ -267,7 +276,7 @@ async function withOutputMode(
             : 0;
     if (thrown !== undefined) {
       stderr.push(
-        `Unhandled error: ${thrown instanceof Error ? thrown.message : String(thrown)}`
+        `Unhandled error: ${thrown instanceof Error ? thrown.message : String(thrown)}`,
       );
     }
     const envelope =
@@ -277,17 +286,15 @@ async function withOutputMode(
             exitCode,
             stdout,
             stderr,
-            data: structured.data
+            data: structured.data,
           }
         : {
             ok: exitCode === 0,
             exitCode,
             stdout,
-            stderr
+            stderr,
           };
-    originalLog(
-      JSON.stringify(envelope, null, 2)
-    );
+    originalLog(JSON.stringify(envelope, null, 2));
     if (thrown !== undefined) {
       return TITS_CLI_EXIT_CODE.IO_ERROR;
     }
@@ -318,37 +325,67 @@ export function printHelp(showLogo: boolean): void {
   redactedLogger.log("      --version   Print app version");
   redactedLogger.log("      --smoke-tui Run minimal TUI smoke render and exit");
   redactedLogger.log("      --interactive Force interactive TUI mode");
-  redactedLogger.log("      --json      Emit machine-readable output for non-interactive commands");
-  redactedLogger.log("      --quiet     Suppress non-essential non-error output");
-  redactedLogger.log("      --data-file <path> Override data file path for this invocation");
+  redactedLogger.log(
+    "      --json      Emit machine-readable output for non-interactive commands",
+  );
+  redactedLogger.log(
+    "      --quiet     Suppress non-essential non-error output",
+  );
+  redactedLogger.log(
+    "      --data-file <path> Override data file path for this invocation",
+  );
   redactedLogger.log("      --no-logo   Hide ASCII logo in app header");
   redactedLogger.log("");
   redactedLogger.log("Commands:");
   redactedLogger.log("  add             Add task via TITS command engine");
-  redactedLogger.log("  done            Mark task done by id via TITS command engine");
-  redactedLogger.log("  due             Set/clear due by id via TITS command engine");
-  redactedLogger.log("  recur           Set/clear recurrence by id via TITS command engine");
-  redactedLogger.log("  note            TOME commands (quick/new/open/search/query/graph/links/reindex/help)");
+  redactedLogger.log(
+    "  done            Mark task done by id via TITS command engine",
+  );
+  redactedLogger.log(
+    "  due             Set/clear due by id via TITS command engine",
+  );
+  redactedLogger.log(
+    "  recur           Set/clear recurrence by id via TITS command engine",
+  );
+  redactedLogger.log(
+    "  note            TOME commands (quick/new/open/search/query/graph/links/reindex/help)",
+  );
   redactedLogger.log("  capture         Alias for: note q ...");
   redactedLogger.log("  nq              Alias for: note q ...");
   redactedLogger.log("  list            List tasks with selector filters");
-  redactedLogger.log("  uninstall       Remove user-owned TADOI CLI extras and print main uninstall step");
+  redactedLogger.log(
+    "  uninstall       Remove user-owned TADOI CLI extras and print main uninstall step",
+  );
   redactedLogger.log("  reminders       Out-of-app reminder helper commands");
   redactedLogger.log("  remind          Open reminder modal by event id");
-  redactedLogger.log("  check:*         Checklist commands (add/toggle/edit/del/clear)");
-  redactedLogger.log("  bulk:*          Bulk commands (done/tag/due/priority/assignee/project/stage/delete)");
+  redactedLogger.log(
+    "  check:*         Checklist commands (add/toggle/edit/del/clear)",
+  );
+  redactedLogger.log(
+    "  bulk:*          Bulk commands (done/tag/due/priority/assignee/project/stage/delete)",
+  );
   redactedLogger.log("  help            Show TITS command help topics");
-  redactedLogger.log("  export          Export full persisted state (plus settings)");
+  redactedLogger.log(
+    "  export          Export full persisted state (plus settings)",
+  );
   redactedLogger.log("  import          Import state from a JSON export");
   redactedLogger.log("  calendar:export Export one-way calendar ICS file");
   redactedLogger.log("  calendar:import Import one-way calendar ICS file");
   redactedLogger.log(`  ${CLI_NAME} 'add \"Task\" due:2026-03-05 #tag'`);
-  redactedLogger.log(`  Run '${CLI_NAME} <command> --help' for command-specific flags`);
-  redactedLogger.log(`  Use '--' to pass literal tokens (example: ${CLI_NAME} add -- --help)`);
+  redactedLogger.log(
+    `  Run '${CLI_NAME} <command> --help' for command-specific flags`,
+  );
+  redactedLogger.log(
+    `  Use '--' to pass literal tokens (example: ${CLI_NAME} add -- --help)`,
+  );
   redactedLogger.log("");
   redactedLogger.log("Environment:");
-  redactedLogger.log(`  ${ENV_VARS.DATA_PATH}=<path>   Override data file location`);
-  redactedLogger.log(`  ${ENV_VARS.PERF_DEBUG}=1        Enable perf debug logs`);
+  redactedLogger.log(
+    `  ${ENV_VARS.DATA_PATH}=<path>   Override data file location`,
+  );
+  redactedLogger.log(
+    `  ${ENV_VARS.PERF_DEBUG}=1        Enable perf debug logs`,
+  );
 }
 
 function printVersion(): void {
@@ -365,7 +402,7 @@ const DEFAULT_DEPS: CliRunDeps = {
   runInteractiveTui: runTui,
   runSmokeTui: runTuiSmoke,
   printHelp,
-  printVersion
+  printVersion,
 };
 
 export function resolveCliRoute(argv: string[]): CliRoute {
@@ -374,46 +411,46 @@ export function resolveCliRoute(argv: string[]): CliRoute {
   if (command === "list") {
     return {
       kind: "list",
-      args: normalizedArgv.slice(1)
+      args: normalizedArgv.slice(1),
     };
   }
   if (command === "uninstall") {
     return {
       kind: "uninstall",
-      args: normalizedArgv.slice(1)
+      args: normalizedArgv.slice(1),
     };
   }
   if (command === "reminders") {
     return {
       kind: "reminders",
-      args: normalizedArgv.slice(1)
+      args: normalizedArgv.slice(1),
     };
   }
   if (command === "remind") {
     return {
       kind: "remind",
-      args: normalizedArgv.slice(1)
+      args: normalizedArgv.slice(1),
     };
   }
   if (command === "export" || command === "import") {
     return {
       kind: "portability",
       command,
-      args: normalizedArgv.slice(1)
+      args: normalizedArgv.slice(1),
     };
   }
   if (command === "calendar:export") {
     return {
       kind: "calendar",
       command: "export",
-      args: normalizedArgv.slice(1)
+      args: normalizedArgv.slice(1),
     };
   }
   if (command === "calendar:import") {
     return {
       kind: "calendar",
       command: "import",
-      args: normalizedArgv.slice(1)
+      args: normalizedArgv.slice(1),
     };
   }
 
@@ -450,7 +487,7 @@ export function resolveCliRoute(argv: string[]): CliRoute {
 
 export async function runCli(
   argv: string[] = process.argv.slice(2),
-  deps: CliRunDeps = DEFAULT_DEPS
+  deps: CliRunDeps = DEFAULT_DEPS,
 ): Promise<number | undefined> {
   const runtimeParsed = parseRuntimeCliOptions(argv);
   if (!runtimeParsed.ok) {
@@ -483,7 +520,7 @@ export async function runCli(
       if (route.kind === "remind") {
         if (runtime.json || runtime.quiet) {
           redactedLogger.error(
-            "Error: --json and --quiet are not supported for reminder modal commands."
+            "Error: --json and --quiet are not supported for reminder modal commands.",
           );
           return TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION;
         }
@@ -495,7 +532,7 @@ export async function runCli(
         if (runtime.json && titsResult.data !== undefined) {
           return {
             exitCode: titsResult.exitCode ?? 0,
-            data: titsResult.data
+            data: titsResult.data,
           };
         }
         return titsResult.exitCode ?? 0;
@@ -516,14 +553,16 @@ export async function runCli(
       }
 
       if (route.kind === "unknown") {
-        redactedLogger.error(`Error: unknown command or option '${route.token}'.`);
+        redactedLogger.error(
+          `Error: unknown command or option '${route.token}'.`,
+        );
         redactedLogger.error(`Run '${CLI_NAME} --help' for usage.`);
         return TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION;
       }
 
       if (runtime.json || runtime.quiet) {
         redactedLogger.error(
-          "Error: --json and --quiet are only supported for non-interactive commands."
+          "Error: --json and --quiet are only supported for non-interactive commands.",
         );
         return TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION;
       }
@@ -538,7 +577,7 @@ export async function runCli(
         }
         throw error;
       }
-    })
+    }),
   );
 }
 

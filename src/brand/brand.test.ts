@@ -14,7 +14,7 @@ import {
   TRADEMARK_OWNER,
   formatLogoModeLabel,
   getAsciiLogoLines,
-  getHeaderLogoVariant
+  getHeaderLogoVariant,
 } from "./brand";
 
 describe("brand constants", () => {
@@ -22,11 +22,13 @@ describe("brand constants", () => {
     expect(PRODUCT_NAME).toBe("TADOI");
     expect(PRODUCT_NAME_TM).toBe("TADOI™");
     expect(APP_NAME).toBe("TADOI");
-    expect(APP_TAGLINE).toBe("Terminal Accessible Digital Organization Interface");
+    expect(APP_TAGLINE).toBe(
+      "Terminal Accessible Digital Organization Interface",
+    );
     expect(CLI_NAME).toBe("tadoi");
     expect(TRADEMARK_OWNER).toBe("<OWNER>");
     expect(TRADEMARK_NOTICE).toBe(
-      "TADOI™ is a trademark of <OWNER>. Other names may be trademarks of their respective owners."
+      "TADOI™ is a trademark of <OWNER>. Other names may be trademarks of their respective owners.",
     );
   });
 
@@ -83,19 +85,25 @@ describe("brand logo rendering helpers", () => {
       "taag_bulbhead32",
       "taag_braced32",
       "taag_double32",
-      "taag_small32"
+      "taag_small32",
     ]);
   });
 
   it("keeps blocks logo top row non-blank", () => {
-    expect(LOGO_VARIANTS.alternate_blocks32[0].trim().length).toBeGreaterThan(0);
+    expect(LOGO_VARIANTS.alternate_blocks32[0].trim().length).toBeGreaterThan(
+      0,
+    );
   });
 
   it("provides labels for each logo mode including rotate", () => {
     for (const variantId of Object.keys(LOGO_VARIANTS)) {
       const typedVariant = variantId as keyof typeof LOGO_VARIANT_LABELS;
-      expect(LOGO_VARIANT_LABELS[typedVariant].trim().length).toBeGreaterThan(0);
-      expect(formatLogoModeLabel(typedVariant).trim().length).toBeGreaterThan(0);
+      expect(LOGO_VARIANT_LABELS[typedVariant].trim().length).toBeGreaterThan(
+        0,
+      );
+      expect(formatLogoModeLabel(typedVariant).trim().length).toBeGreaterThan(
+        0,
+      );
     }
     expect(formatLogoModeLabel("rotate")).toBe("Rotate");
   });

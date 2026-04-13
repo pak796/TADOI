@@ -75,9 +75,7 @@ export type CheckCommand =
       target: CommandTarget;
     };
 
-export type BulkTarget =
-  | { type: "marked" }
-  | { type: "ids"; ids: string[] };
+export type BulkTarget = { type: "marked" } | { type: "ids"; ids: string[] };
 
 export type BulkCommand =
   | {

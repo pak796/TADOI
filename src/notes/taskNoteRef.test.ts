@@ -11,7 +11,7 @@ function createEmptyGraphIndex(): NoteGraphIndex {
     outgoingNoteRefs: new Map<NotePath, NoteRef[]>(),
     outgoingTaskRefs: new Map<NotePath, TaskRef[]>(),
     backlinks: new Map<NotePath, Set<NotePath>>(),
-    warningsByPath: new Map()
+    warningsByPath: new Map(),
   };
 }
 
@@ -25,16 +25,16 @@ describe("resolveTaskNoteRef", () => {
       title: "One",
       tags: [],
       aliases: [],
-      mtimeMs: 1
+      mtimeMs: 1,
     });
     snapshot.notesById.set("note-1", "Tasks/One.md");
 
     const result = resolveTaskNoteRef(
       {
         type: "id",
-        value: "note-1"
+        value: "note-1",
       },
-      snapshot
+      snapshot,
     );
     expect(result.status).toBe("resolved");
     if (result.status === "resolved") {
@@ -50,7 +50,7 @@ describe("resolveTaskNoteRef", () => {
       title: "One A",
       tags: [],
       aliases: [],
-      mtimeMs: 1
+      mtimeMs: 1,
     });
     snapshot.notesByPath.set("B/One.md", {
       path: "B/One.md",
@@ -58,15 +58,15 @@ describe("resolveTaskNoteRef", () => {
       title: "One B",
       tags: [],
       aliases: [],
-      mtimeMs: 1
+      mtimeMs: 1,
     });
 
     const result = resolveTaskNoteRef(
       {
         type: "filename",
-        value: "One.md"
+        value: "One.md",
       },
-      snapshot
+      snapshot,
     );
     expect(result.status).toBe("ambiguous");
     if (result.status === "ambiguous") {
@@ -82,15 +82,15 @@ describe("resolveTaskNoteRef", () => {
       title: "One A",
       tags: [],
       aliases: [],
-      mtimeMs: 1
+      mtimeMs: 1,
     });
 
     const result = resolveTaskNoteRef(
       {
         type: "filename",
-        value: "One.md"
+        value: "One.md",
       },
-      snapshot
+      snapshot,
     );
     expect(result.status).toBe("resolved");
     if (result.status === "resolved") {
@@ -103,9 +103,9 @@ describe("resolveTaskNoteRef", () => {
     const result = resolveTaskNoteRef(
       {
         type: "id",
-        value: "missing-id"
+        value: "missing-id",
       },
-      snapshot
+      snapshot,
     );
     expect(result.status).toBe("missing");
     if (result.status === "missing") {
@@ -119,22 +119,22 @@ describe("createTaskNoteRefFromNote", () => {
     expect(
       createTaskNoteRefFromNote({
         id: "note-123",
-        filename: "Any.md"
-      })
+        filename: "Any.md",
+      }),
     ).toEqual({
       type: "id",
-      value: "note-123"
+      value: "note-123",
     });
   });
 
   it("falls back to filename", () => {
     expect(
       createTaskNoteRefFromNote({
-        filename: "Any.md"
-      })
+        filename: "Any.md",
+      }),
     ).toEqual({
       type: "filename",
-      value: "Any.md"
+      value: "Any.md",
     });
   });
 });

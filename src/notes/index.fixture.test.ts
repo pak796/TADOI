@@ -12,12 +12,12 @@ describe("notes fixture vault", () => {
       "test",
       "fixtures",
       "notes_vault_basic",
-      "notes"
+      "notes",
     );
     const service = createNotesService({
       dataFilePath: path.join(repoRoot, "tadoi_data.json"),
       rootPath: fixtureRoot,
-      enabled: true
+      enabled: true,
     });
 
     await service.initialize();
@@ -26,8 +26,12 @@ describe("notes fixture vault", () => {
     expect(list.length).toBeGreaterThanOrEqual(5);
 
     const snapshot = service.getIndexSnapshot();
-    expect(Array.from(snapshot.tagToNotes.get("inbox") ?? [])).toContain("Tags.md");
-    expect(Array.from(snapshot.tagToNotes.get("inbox/to-read") ?? [])).toContain("Tags.md");
+    expect(Array.from(snapshot.tagToNotes.get("inbox") ?? [])).toContain(
+      "Tags.md",
+    );
+    expect(
+      Array.from(snapshot.tagToNotes.get("inbox/to-read") ?? []),
+    ).toContain("Tags.md");
 
     const backlinksForB = service.getBacklinks("B.md");
     expect(backlinksForB).toContain("A.md");
@@ -36,13 +40,18 @@ describe("notes fixture vault", () => {
 
     const mentions = service.getUnlinkedMentions("A.md");
     expect(mentions.some((mention) => mention.from === "B.md")).toBe(true);
-    expect(mentions.some((mention) => mention.from === "Conflicts/SameTitle2.md")).toBe(false);
+    expect(
+      mentions.some((mention) => mention.from === "Conflicts/SameTitle2.md"),
+    ).toBe(false);
 
     const outgoingFromA = service.getResolvedOutgoingRefs("A.md");
     expect(
       outgoingFromA.some(
-        (ref) => ref.kind === "wikilink" && ref.toRaw === "B" && ref.toResolved === "B.md"
-      )
+        (ref) =>
+          ref.kind === "wikilink" &&
+          ref.toRaw === "B" &&
+          ref.toResolved === "B.md",
+      ),
     ).toBe(true);
     expect(
       outgoingFromA.some(
@@ -50,8 +59,8 @@ describe("notes fixture vault", () => {
           ref.kind === "wikilink" &&
           ref.toRaw === "Duplicate" &&
           ref.ambiguous === true &&
-          !ref.toResolved
-      )
+          !ref.toResolved,
+      ),
     ).toBe(true);
     expect(
       outgoingFromA.some(
@@ -59,15 +68,18 @@ describe("notes fixture vault", () => {
           ref.kind === "wikilink" &&
           ref.toRaw === "id:note-dup-primary" &&
           ref.toResolved === "Conflicts/SameTitle1.md" &&
-          ref.ambiguous === false
-      )
+          ref.ambiguous === false,
+      ),
     ).toBe(true);
 
     const outgoingFromB = service.getResolvedOutgoingRefs("B.md");
     expect(
       outgoingFromB.some(
-        (ref) => ref.kind === "mdlink" && ref.toRaw === "Tags.md" && ref.toResolved === "Tags.md"
-      )
+        (ref) =>
+          ref.kind === "mdlink" &&
+          ref.toRaw === "Tags.md" &&
+          ref.toResolved === "Tags.md",
+      ),
     ).toBe(true);
   });
 });

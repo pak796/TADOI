@@ -13,7 +13,7 @@ import type { LoadedData } from "../state/persistence";
 import type {
   GitHubBackupSettings,
   NotificationSettings,
-  RetroFxMode
+  RetroFxMode,
 } from "../settings/settings";
 import { addLocalDaysMs, startOfLocalDayMs } from "../domain/dates";
 import { ENV_VARS } from "../brand/brand";
@@ -58,7 +58,7 @@ const SIMPLE_CALENDAR_ICS = [
   "DTSTART:20260225T090000",
   "DTEND:20260225T093000",
   "END:VEVENT",
-  "END:VCALENDAR"
+  "END:VCALENDAR",
 ].join("\n");
 const REPO_CWD = process.cwd();
 
@@ -68,7 +68,7 @@ function withSchemaV7WorkflowStage(task: Task): Task {
   }
   return {
     ...task,
-    workflowStage: task.status === "open" ? "todo" : "done"
+    workflowStage: task.status === "open" ? "todo" : "done",
   };
 }
 
@@ -80,25 +80,27 @@ function makeTask(id: string, title: string, nowMs = Date.now()): Task {
     createdAt: nowMs,
     updatedAt: nowMs,
     tags: [],
-    workflowStage: "todo"
+    workflowStage: "todo",
   };
 }
 
-function makeInitialData(tasks: Task[] = [makeTask("task-1", "Existing task")]): LoadedData {
+function makeInitialData(
+  tasks: Task[] = [makeTask("task-1", "Existing task")],
+): LoadedData {
   return {
     schemaVersion: 8,
     stateRevision: 0,
     tasks: tasks.map(withSchemaV7WorkflowStage),
     tagIndex: {},
     savedViews: [],
-    engagement: createDefaultEngagementState()
+    engagement: createDefaultEngagementState(),
   };
 }
 
 function makeReminderDueTask(
   id: string,
   title: string,
-  nowMs = Date.now()
+  nowMs = Date.now(),
 ): Task {
   return {
     ...makeTask(id, title, nowMs),
@@ -106,13 +108,17 @@ function makeReminderDueTask(
     hasExplicitTime: true,
     reminder: {
       kind: "absolute",
-      at: nowMs - 2 * 60_000
-    }
+      at: nowMs - 2 * 60_000,
+    },
   };
 }
 
-async function createSession(options: SessionOptions = {}): Promise<AppSession> {
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-app-modal-flow-"));
+async function createSession(
+  options: SessionOptions = {},
+): Promise<AppSession> {
+  const tempDir = await fs.mkdtemp(
+    path.join(os.tmpdir(), "tadoi-app-modal-flow-"),
+  );
   const settingsPath = path.join(tempDir, "settings.json");
   const harness = await testRender(
     React.createElement(App, {
@@ -123,12 +129,12 @@ async function createSession(options: SessionOptions = {}): Promise<AppSession> 
       initialRetroFxMode: options.initialRetroFxMode,
       initialNotificationSettings: options.initialNotificationSettings,
       initialGithubBackup: options.initialGithubBackup,
-      showLogo: false
+      showLogo: false,
     }),
     {
       width: options.width ?? 150,
-      height: options.height ?? 44
-    }
+      height: options.height ?? 44,
+    },
   );
   await harness.renderOnce();
   return { harness, tempDir, settingsPath };
@@ -142,7 +148,7 @@ async function cleanupSession(session: AppSession): Promise<void> {
 async function waitForFrame(
   harness: RenderHarness,
   predicate: (frame: string) => boolean,
-  timeoutMs = 4000
+  timeoutMs = 4000,
 ): Promise<string> {
   const deadline = Date.now() + timeoutMs;
   let lastFrame = "";
@@ -154,13 +160,15 @@ async function waitForFrame(
     }
     await Bun.sleep(20);
   }
-  throw new Error(`Timed out waiting for frame condition.\nLast frame:\n${lastFrame}`);
+  throw new Error(
+    `Timed out waiting for frame condition.\nLast frame:\n${lastFrame}`,
+  );
 }
 
 async function waitForText(
   harness: RenderHarness,
   text: string,
-  timeoutMs = 4000
+  timeoutMs = 4000,
 ): Promise<string> {
   return waitForFrame(harness, (frame) => frame.includes(text), timeoutMs);
 }
@@ -168,12 +176,12 @@ async function waitForText(
 async function waitForAnyText(
   harness: RenderHarness,
   texts: string[],
-  timeoutMs = 4000
+  timeoutMs = 4000,
 ): Promise<string> {
   return waitForFrame(
     harness,
     (frame) => texts.some((text) => frame.includes(text)),
-    timeoutMs
+    timeoutMs,
   );
 }
 
@@ -193,7 +201,7 @@ async function waitForFile(pathname: string, timeoutMs = 4000): Promise<void> {
 async function expectTextAbsentForDuration(
   harness: RenderHarness,
   text: string,
-  durationMs = 900
+  durationMs = 900,
 ): Promise<void> {
   const deadline = Date.now() + durationMs;
   while (Date.now() <= deadline) {
@@ -204,7 +212,11 @@ async function expectTextAbsentForDuration(
   }
 }
 
-async function pressKeyAndRender(mockInput: MockInput, harness: RenderHarness, key: string) {
+async function pressKeyAndRender(
+  mockInput: MockInput,
+  harness: RenderHarness,
+  key: string,
+) {
   await mockInput.pressKeys([key]);
   await Bun.sleep(10);
   await harness.renderOnce();
@@ -213,20 +225,26 @@ async function pressKeyAndRender(mockInput: MockInput, harness: RenderHarness, k
 async function pressCtrlKeyAndRender(
   mockInput: MockInput,
   harness: RenderHarness,
-  key: string
+  key: string,
 ) {
   mockInput.pressKey(key, { ctrl: true });
   await Bun.sleep(10);
   await harness.renderOnce();
 }
 
-async function pressEnterAndRender(mockInput: MockInput, harness: RenderHarness) {
+async function pressEnterAndRender(
+  mockInput: MockInput,
+  harness: RenderHarness,
+) {
   await Promise.resolve(mockInput.pressEnter());
   await Bun.sleep(10);
   await harness.renderOnce();
 }
 
-async function pressEscapeAndRender(mockInput: MockInput, harness: RenderHarness) {
+async function pressEscapeAndRender(
+  mockInput: MockInput,
+  harness: RenderHarness,
+) {
   await Promise.resolve(mockInput.pressEscape());
   await Bun.sleep(10);
   await harness.renderOnce();
@@ -235,7 +253,7 @@ async function pressEscapeAndRender(mockInput: MockInput, harness: RenderHarness
 async function pressBackspaceAndRender(
   mockInput: MockInput,
   harness: RenderHarness,
-  times = 1
+  times = 1,
 ) {
   for (let index = 0; index < times; index += 1) {
     mockInput.pressKey("backspace");
@@ -247,7 +265,7 @@ async function pressBackspaceAndRender(
 async function pressTabAndRender(
   mockInput: MockInput,
   harness: RenderHarness,
-  times = 1
+  times = 1,
 ) {
   for (let index = 0; index < times; index += 1) {
     await Promise.resolve(mockInput.pressTab());
@@ -260,7 +278,7 @@ async function pressArrowAndRender(
   mockInput: MockInput,
   harness: RenderHarness,
   direction: "up" | "down" | "left" | "right",
-  times = 1
+  times = 1,
 ) {
   for (let index = 0; index < times; index += 1) {
     await Promise.resolve(mockInput.pressArrow(direction));
@@ -272,7 +290,7 @@ async function pressArrowAndRender(
 async function focusEditorSaveAndSubmit(
   mockInput: MockInput,
   harness: RenderHarness,
-  mode: "ADD" | "EDIT"
+  mode: "ADD" | "EDIT",
 ): Promise<void> {
   for (let index = 0; index < 32; index += 1) {
     await harness.renderOnce();
@@ -289,7 +307,7 @@ async function focusEditorSaveAndSubmit(
 async function typeTextAndRender(
   mockInput: MockInput,
   harness: RenderHarness,
-  text: string
+  text: string,
 ) {
   await mockInput.typeText(text);
   await Bun.sleep(20);
@@ -299,7 +317,7 @@ async function typeTextAndRender(
 async function pasteTextAndRender(
   mockInput: MockInput,
   harness: RenderHarness,
-  text: string
+  text: string,
 ) {
   await mockInput.pasteBracketedText(text);
   await Bun.sleep(20);
@@ -308,7 +326,7 @@ async function pasteTextAndRender(
 
 async function scrollMouseAndRender(
   harness: RenderHarness,
-  options: { x: number; y: number; direction: "up" | "down"; times?: number }
+  options: { x: number; y: number; direction: "up" | "down"; times?: number },
 ) {
   const { x, y, direction, times = 1 } = options;
   for (let index = 0; index < times; index += 1) {
@@ -318,7 +336,10 @@ async function scrollMouseAndRender(
   }
 }
 
-function findTextPositions(frame: string, text: string): Array<{ x: number; y: number }> {
+function findTextPositions(
+  frame: string,
+  text: string,
+): Array<{ x: number; y: number }> {
   const lines = frame.split("\n");
   const positions: Array<{ x: number; y: number }> = [];
 
@@ -330,7 +351,7 @@ function findTextPositions(frame: string, text: string): Array<{ x: number; y: n
       if (x < 0) break;
       positions.push({
         x: x + Math.max(0, Math.floor(text.length / 2)),
-        y
+        y,
       });
       start = x + 1;
     }
@@ -342,7 +363,7 @@ function findTextPositions(frame: string, text: string): Array<{ x: number; y: n
 function findTextPosition(
   frame: string,
   text: string,
-  occurrence: "first" | "last" = "first"
+  occurrence: "first" | "last" = "first",
 ): { x: number; y: number } {
   const positions = findTextPositions(frame, text);
   const found =
@@ -381,7 +402,7 @@ function extractHelpSettingsRowValue(frame: string, label: string): string {
 async function clickTextAndRender(
   harness: RenderHarness,
   text: string,
-  occurrence: "first" | "last" = "first"
+  occurrence: "first" | "last" = "first",
 ) {
   await harness.renderOnce();
   const frame = harness.captureCharFrame();
@@ -396,7 +417,7 @@ async function clickTextUntil(
   harness: RenderHarness,
   text: string,
   predicate: (frame: string) => boolean,
-  occurrence: "first" | "last" = "first"
+  occurrence: "first" | "last" = "first",
 ): Promise<string> {
   await harness.renderOnce();
   const frame = harness.captureCharFrame();
@@ -415,7 +436,7 @@ async function clickTextUntil(
     [1, 1],
     [-1, 1],
     [1, -1],
-    [-1, -1]
+    [-1, -1],
   ] as const;
 
   for (const position of orderedPositions) {
@@ -436,7 +457,10 @@ async function clickTextUntil(
   throw new Error(`Unable to trigger mouse interaction for text: "${text}"`);
 }
 
-async function withDataPath<T>(dataPath: string, run: () => Promise<T>): Promise<T> {
+async function withDataPath<T>(
+  dataPath: string,
+  run: () => Promise<T>,
+): Promise<T> {
   const originalDataPath = process.env.TADOI_DATA_PATH;
   process.env.TADOI_DATA_PATH = dataPath;
   try {
@@ -453,7 +477,7 @@ async function withDataPath<T>(dataPath: string, run: () => Promise<T>): Promise
 async function withDataPathAndCwd<T>(
   dataPath: string,
   cwd: string,
-  run: () => Promise<T>
+  run: () => Promise<T>,
 ): Promise<T> {
   const originalCwd = process.cwd();
   return withDataPath(dataPath, async () => {
@@ -476,7 +500,7 @@ async function prepareBackupRuntimeFixture(
     localTasks?: Task[];
     backupImportPayload?: unknown;
     calendarIcs?: string;
-  } = {}
+  } = {},
 ): Promise<BackupRuntimeFixture> {
   const dataPath = path.join(session.tempDir, "tadoi_data.json");
   const backupDir = path.join(session.tempDir, "backups");
@@ -485,23 +509,35 @@ async function prepareBackupRuntimeFixture(
   const calendarImportPath = path.join(backupDir, "incoming.ics");
   const calendarExportPath = path.join(backupDir, "calendar-export-output.ics");
 
-  const backupImportPayload =
-    options.backupImportPayload ??
-    {
-      schemaVersion: 4,
-      tasks: [makeTask("incoming-task", "Incoming task")],
-      tagIndex: {},
-      savedViews: []
-    };
+  const backupImportPayload = options.backupImportPayload ?? {
+    schemaVersion: 4,
+    tasks: [makeTask("incoming-task", "Incoming task")],
+    tagIndex: {},
+    savedViews: [],
+  };
 
   await fs.mkdir(backupDir, { recursive: true });
   await fs.writeFile(
     dataPath,
-    JSON.stringify(makeInitialData(options.localTasks ?? [makeTask("local-task", "Local task")]), null, 2),
-    "utf8"
+    JSON.stringify(
+      makeInitialData(
+        options.localTasks ?? [makeTask("local-task", "Local task")],
+      ),
+      null,
+      2,
+    ),
+    "utf8",
   );
-  await fs.writeFile(backupImportPath, JSON.stringify(backupImportPayload, null, 2), "utf8");
-  await fs.writeFile(calendarImportPath, options.calendarIcs ?? SIMPLE_CALENDAR_ICS, "utf8");
+  await fs.writeFile(
+    backupImportPath,
+    JSON.stringify(backupImportPayload, null, 2),
+    "utf8",
+  );
+  await fs.writeFile(
+    calendarImportPath,
+    options.calendarIcs ?? SIMPLE_CALENDAR_ICS,
+    "utf8",
+  );
 
   return {
     dataPath,
@@ -509,7 +545,7 @@ async function prepareBackupRuntimeFixture(
     backupFilename,
     backupImportPath,
     calendarImportPath,
-    calendarExportPath
+    calendarExportPath,
   };
 }
 
@@ -537,10 +573,10 @@ async function createFakeGitHubCliFixture(options: {
       stateRevision: 7,
       tasks: [makeTask("restored-encrypted-1", "Restored encrypted task")],
       tagIndex: {},
-      savedViews: []
+      savedViews: [],
     },
     null,
-    2
+    2,
   );
   const restoreSettings = JSON.stringify(
     {
@@ -552,10 +588,10 @@ async function createFakeGitHubCliFixture(options: {
         inAppOverdueBanner: true,
         terminalBellOnOverdue: false,
         bannerDurationMs: 5000,
-        bellCooldownMs: 2000
+        bellCooldownMs: 2000,
       },
       security: {
-        nonHttpLinkPolicy: "prompt"
+        nonHttpLinkPolicy: "prompt",
       },
       githubBackup: {
         enabled: true,
@@ -563,15 +599,15 @@ async function createFakeGitHubCliFixture(options: {
         branch: options.branch,
         deviceId: "dev_test",
         pathPrefix: options.pathPrefix,
-        autoPushPolicy: "off"
+        autoPushPolicy: "off",
       },
       notes: {
         enabled: true,
-        rootPath: null
-      }
+        rootPath: null,
+      },
     },
     null,
-    2
+    2,
   );
   const restoreManifest = JSON.stringify(
     {
@@ -586,25 +622,33 @@ async function createFakeGitHubCliFixture(options: {
       stateRevision: 7,
       hashes: {
         stateSha256: createHash("sha256").update(restoreState).digest("hex"),
-        settingsSha256: createHash("sha256").update(restoreSettings).digest("hex")
+        settingsSha256: createHash("sha256")
+          .update(restoreSettings)
+          .digest("hex"),
       },
       counts: {
         tasksTotal: 1,
         tasksOpen: 1,
-        tagsTotal: 0
+        tagsTotal: 0,
       },
       encryption: {
         enabled: true,
         scheme: "aes-256-gcm+scrypt-v1",
-        payloadKind: "tadoi.snapshot.encrypted.v1"
-      }
+        payloadKind: "tadoi.snapshot.encrypted.v1",
+      },
     },
     null,
-    2
+    2,
   );
 
-  const encryptedState = encryptSnapshotPayload(restoreState, options.passphrase);
-  const encryptedSettings = encryptSnapshotPayload(restoreSettings, options.passphrase);
+  const encryptedState = encryptSnapshotPayload(
+    restoreState,
+    options.passphrase,
+  );
+  const encryptedSettings = encryptSnapshotPayload(
+    restoreSettings,
+    options.passphrase,
+  );
 
   const binDir = path.join(options.rootDir, "fake-gh-bin");
   const ghPath = path.join(binDir, "gh");
@@ -762,14 +806,20 @@ async function openHelpSettingsPage(harness: RenderHarness) {
     }
     await pressArrowAndRender(mockInput, harness, "down");
   }
-  throw new Error(`Unable to open Help settings page.\nLast frame:\n${lastFrame}`);
+  throw new Error(
+    `Unable to open Help settings page.\nLast frame:\n${lastFrame}`,
+  );
 }
 
 function isHelpSettingsRootFrame(frame: string): boolean {
-  return frame.includes("Help / Settings") && !frame.includes("Help / Settings /");
+  return (
+    frame.includes("Help / Settings") && !frame.includes("Help / Settings /")
+  );
 }
 
-async function waitForHelpSettingsRoot(harness: RenderHarness): Promise<string> {
+async function waitForHelpSettingsRoot(
+  harness: RenderHarness,
+): Promise<string> {
   return waitForFrame(harness, (frame) => isHelpSettingsRootFrame(frame));
 }
 
@@ -791,7 +841,7 @@ async function ensureHelpSettingsPage(harness: RenderHarness): Promise<void> {
 async function focusHelpSettingsItem(
   harness: RenderHarness,
   selectedItemPrefix: string,
-  maxSteps = 16
+  maxSteps = 16,
 ): Promise<string> {
   const { mockInput } = harness;
   for (let step = 0; step < maxSteps; step += 1) {
@@ -808,7 +858,7 @@ async function focusHelpSettingsItem(
 async function openHelpSettingsSection(
   harness: RenderHarness,
   sectionItemPrefix: string,
-  expectedHeaderText: string
+  expectedHeaderText: string,
 ): Promise<string> {
   await ensureHelpSettingsPage(harness);
   await focusHelpSettingsItem(harness, sectionItemPrefix);
@@ -822,27 +872,31 @@ async function openHelpSettingsSection(
       harness,
       clickToken,
       (frame) => frame.includes(expectedHeaderText),
-      "first"
+      "first",
     );
   }
 }
 
 async function cycleRetroFxModeSettingFromHelp(harness: RenderHarness) {
   const { mockInput } = harness;
-  await openHelpSettingsSection(harness, "▶ Appearance", "Help / Settings / Appearance");
+  await openHelpSettingsSection(
+    harness,
+    "▶ Appearance",
+    "Help / Settings / Appearance",
+  );
   await focusHelpSettingsItem(harness, "▶ Retro FX Mode:");
   await pressEnterAndRender(mockInput, harness);
 }
 
 async function selectNavigationHintsMode(
   harness: RenderHarness,
-  label: "Bottom only" | "Left rail only" | "Both" | "None"
+  label: "Bottom only" | "Left rail only" | "Both" | "None",
 ): Promise<void> {
   const { mockInput } = harness;
   await openHelpSettingsSection(
     harness,
     "▶ Navigation & Keymaps",
-    "Help / Settings / Navigation & Keymaps"
+    "Help / Settings / Navigation & Keymaps",
   );
   await focusHelpSettingsItem(harness, "▶ Navigation Hints:");
   for (let attempt = 0; attempt < 6; attempt += 1) {
@@ -858,13 +912,13 @@ async function selectNavigationHintsMode(
 
 async function setPrefixPopupEnabled(
   harness: RenderHarness,
-  enabled: boolean
+  enabled: boolean,
 ): Promise<void> {
   const { mockInput } = harness;
   await openHelpSettingsSection(
     harness,
     "▶ Navigation & Keymaps",
-    "Help / Settings / Navigation & Keymaps"
+    "Help / Settings / Navigation & Keymaps",
   );
   await focusHelpSettingsItem(harness, "▶ Prefix Popup:");
   const targetLabel = enabled ? "on" : "off";
@@ -881,12 +935,16 @@ async function setPrefixPopupEnabled(
 
 async function setSecurityNonHttpPolicy(
   harness: RenderHarness,
-  targetLabel: "Prompt" | "Block"
+  targetLabel: "Prompt" | "Block",
 ): Promise<string> {
   const { mockInput } = harness;
   const targetToken = `Non-HTTP Link Policy: ${targetLabel}`;
   for (let attempt = 0; attempt < 4; attempt += 1) {
-    await openHelpSettingsSection(harness, "▶ Security", "Help / Settings / Security");
+    await openHelpSettingsSection(
+      harness,
+      "▶ Security",
+      "Help / Settings / Security",
+    );
     await focusHelpSettingsItem(harness, "▶ Non-HTTP Link Policy:");
     await harness.renderOnce();
     let frame = harness.captureCharFrame();
@@ -912,7 +970,7 @@ type HelpSettingsInputEdit = {
 
 async function setHelpSettingsInputValue(
   harness: RenderHarness,
-  edit: HelpSettingsInputEdit
+  edit: HelpSettingsInputEdit,
 ): Promise<string> {
   const { mockInput } = harness;
   await focusHelpSettingsItem(harness, edit.rowPrefix);
@@ -935,14 +993,15 @@ async function setHelpSettingsInputValue(
       }
     }
   }
-  if (!opened) throw new Error(`Unable to open settings input: ${edit.inputTitle}`);
+  if (!opened)
+    throw new Error(`Unable to open settings input: ${edit.inputTitle}`);
   try {
     await waitForText(harness, edit.inputTitle);
   } catch (error) {
     throw new Error(
       `Opened input not stable for ${edit.inputTitle}: ${
         error instanceof Error ? error.message : String(error)
-      }`
+      }`,
     );
   }
   const clearChars = edit.clearChars ?? Math.max(32, edit.value.length + 16);
@@ -952,13 +1011,13 @@ async function setHelpSettingsInputValue(
     await waitForFrame(
       harness,
       (frame) => frame.includes(edit.inputTitle) && frame.includes(edit.value),
-      1200
+      1200,
     );
   } catch (error) {
     throw new Error(
       `Typed value did not settle for ${edit.inputTitle}: ${
         error instanceof Error ? error.message : String(error)
-      }`
+      }`,
     );
   }
   await pressEnterAndRender(mockInput, harness);
@@ -968,14 +1027,18 @@ async function setHelpSettingsInputValue(
     throw new Error(
       `Submit did not persist ${edit.inputTitle}: ${
         error instanceof Error ? error.message : String(error)
-      }`
+      }`,
     );
   }
 }
 
 async function openCustom1Editor(harness: RenderHarness) {
   const { mockInput } = harness;
-  await openHelpSettingsSection(harness, "▶ Appearance", "Help / Settings / Appearance");
+  await openHelpSettingsSection(
+    harness,
+    "▶ Appearance",
+    "Help / Settings / Appearance",
+  );
   await pressEnterAndRender(mockInput, harness);
   await waitForText(harness, "Theme mode: Default");
   await pressArrowAndRender(mockInput, harness, "down", 1);
@@ -987,7 +1050,11 @@ async function openCustom1Editor(harness: RenderHarness) {
 
 async function openTextTuningEditor(harness: RenderHarness) {
   const { mockInput } = harness;
-  await openHelpSettingsSection(harness, "▶ Appearance", "Help / Settings / Appearance");
+  await openHelpSettingsSection(
+    harness,
+    "▶ Appearance",
+    "Help / Settings / Appearance",
+  );
   await pressEnterAndRender(mockInput, harness);
   await waitForText(harness, "Theme mode: Default");
   await pressArrowAndRender(mockInput, harness, "down", 2);
@@ -1021,7 +1088,7 @@ async function openCalendarMenu(harness: RenderHarness) {
 
 async function openDataImportDryRun(
   harness: RenderHarness,
-  expectedBackupFilename: string
+  expectedBackupFilename: string,
 ) {
   const { mockInput } = harness;
   await openBackupCenterMenu(harness);
@@ -1035,7 +1102,7 @@ async function openDataImportDryRun(
 
 async function runCalendarExportGuidedFlow(
   harness: RenderHarness,
-  outputPath: string
+  outputPath: string,
 ): Promise<string> {
   const { mockInput } = harness;
   await openCalendarMenu(harness);
@@ -1056,7 +1123,11 @@ async function runCalendarExportGuidedFlow(
   await waitForText(harness, "Confirm calendar export");
 
   await pressEnterAndRender(mockInput, harness);
-  await waitForAnyText(harness, ["Exporting calendar ICS...", "Calendar export complete"], 8000);
+  await waitForAnyText(
+    harness,
+    ["Exporting calendar ICS...", "Calendar export complete"],
+    8000,
+  );
   return waitForText(harness, "Calendar export complete", 8000);
 }
 
@@ -1067,7 +1138,7 @@ async function runCalendarImportGuidedFlowToDryRun(
     rangeDigit?: "1" | "2" | "3";
     modeDigit?: "1" | "2" | "3";
     importTag?: string;
-  } = {}
+  } = {},
 ): Promise<string> {
   const { mockInput } = harness;
   const rangeDigit = options.rangeDigit ?? "1";
@@ -1075,12 +1146,12 @@ async function runCalendarImportGuidedFlowToDryRun(
   const rangeLabelByDigit: Record<"1" | "2" | "3", string> = {
     "1": "next7",
     "2": "month",
-    "3": "all"
+    "3": "all",
   };
   const modeLabelByDigit: Record<"1" | "2" | "3", string> = {
     "1": "merge",
     "2": "update",
-    "3": "create"
+    "3": "create",
   };
   const waitStep = async (step: string, text: string) => {
     try {
@@ -1106,7 +1177,10 @@ async function runCalendarImportGuidedFlowToDryRun(
   await waitStep("range", "Choose range");
   if (rangeDigit !== "1") {
     await pressKeyAndRender(mockInput, harness, rangeDigit);
-    await waitStep("range-selected", `${rangeDigit}) ${rangeLabelByDigit[rangeDigit]} (selected)`);
+    await waitStep(
+      "range-selected",
+      `${rangeDigit}) ${rangeLabelByDigit[rangeDigit]} (selected)`,
+    );
   }
   await pressEnterAndRender(mockInput, harness);
 
@@ -1116,7 +1190,10 @@ async function runCalendarImportGuidedFlowToDryRun(
   await waitStep("mode", "Choose import mode");
   if (modeDigit !== "1") {
     await pressKeyAndRender(mockInput, harness, modeDigit);
-    await waitStep("mode-selected", `${modeDigit}) ${modeLabelByDigit[modeDigit]} (selected)`);
+    await waitStep(
+      "mode-selected",
+      `${modeDigit}) ${modeLabelByDigit[modeDigit]} (selected)`,
+    );
   }
   await pressEnterAndRender(mockInput, harness);
 
@@ -1129,7 +1206,11 @@ async function runCalendarImportGuidedFlowToDryRun(
   }
   await pressEnterAndRender(mockInput, harness);
 
-  await waitForAnyText(harness, ["Running dry-run import...", "Dry-run summary (required)"], 8000);
+  await waitForAnyText(
+    harness,
+    ["Running dry-run import...", "Dry-run summary (required)"],
+    8000,
+  );
   return waitForText(harness, "Dry-run summary (required)", 8000);
 }
 
@@ -1172,7 +1253,7 @@ describe("App modal flow integration", () => {
       await pressKeyAndRender(mockInput, harness, "c");
       frame = await waitForFrame(
         harness,
-        (next) => !next.includes("Task editor changes are unsaved.")
+        (next) => !next.includes("Task editor changes are unsaved."),
       );
       expect(frame).not.toContain("UNSAVED CHANGES");
 
@@ -1183,7 +1264,7 @@ describe("App modal flow integration", () => {
       await pressKeyAndRender(mockInput, harness, "d");
       frame = await waitForFrame(
         harness,
-        (next) => !next.includes("Task editor changes are unsaved.")
+        (next) => !next.includes("Task editor changes are unsaved."),
       );
       expect(frame).toContain("Existing task");
       expect(frame).not.toContain("UNSAVED CHANGES");
@@ -1202,7 +1283,10 @@ describe("App modal flow integration", () => {
       await dirtyThemeEditor(harness);
       await pressEscapeAndRender(mockInput, harness);
 
-      let frame = await waitForText(harness, "Custom1 theme changes are unsaved.");
+      let frame = await waitForText(
+        harness,
+        "Custom1 theme changes are unsaved.",
+      );
       expect(frame).toContain("UNSAVED CHANGES");
       expect(frame).toContain("Continue action: leave theme editor.");
 
@@ -1225,7 +1309,10 @@ describe("App modal flow integration", () => {
       await dirtyThemeEditor(harness);
       await pressKeyAndRender(mockInput, harness, "?");
 
-      let frame = await waitForText(harness, "Built-in text tuning changes are unsaved.");
+      let frame = await waitForText(
+        harness,
+        "Built-in text tuning changes are unsaved.",
+      );
       expect(frame).toContain("UNSAVED CHANGES");
       expect(frame).toContain("Continue action: close help.");
 
@@ -1234,7 +1321,7 @@ describe("App modal flow integration", () => {
         harness,
         (next) =>
           !next.includes("Built-in text tuning changes are unsaved.") &&
-          next.includes("Existing task")
+          next.includes("Existing task"),
       );
       expect(frame).not.toContain("UNSAVED CHANGES");
     } finally {
@@ -1268,7 +1355,7 @@ describe("App modal flow integration", () => {
         "Notifications",
         "Security",
         "TOME Notes",
-        "Cloud Backup"
+        "Cloud Backup",
       ]);
     } finally {
       await cleanupSession(session);
@@ -1284,7 +1371,7 @@ describe("App modal flow integration", () => {
       await openHelpSettingsSection(
         harness,
         "▶ Notifications",
-        "Help / Settings / Notifications"
+        "Help / Settings / Notifications",
       );
       await pressEscapeAndRender(mockInput, harness);
       await waitForHelpSettingsRoot(harness);
@@ -1305,7 +1392,10 @@ describe("App modal flow integration", () => {
       await waitForText(harness, "Help / Settings / Navigation & Keymaps");
       await focusHelpSettingsItem(harness, "▶ Keymap Aliases");
       await pressEnterAndRender(mockInput, harness);
-      let frame = await waitForText(harness, "Help / Settings / Keymap Aliases");
+      let frame = await waitForText(
+        harness,
+        "Help / Settings / Keymap Aliases",
+      );
       expect(frame).toContain("List aliases: off");
 
       await pressEnterAndRender(mockInput, harness);
@@ -1354,7 +1444,7 @@ describe("App modal flow integration", () => {
       await openHelpSettingsSection(
         harness,
         "▶ Notifications",
-        "Help / Settings / Notifications"
+        "Help / Settings / Notifications",
       );
       await focusHelpSettingsItem(harness, "▶ Banner Duration:");
       await pressArrowAndRender(mockInput, harness, "right");
@@ -1372,7 +1462,11 @@ describe("App modal flow integration", () => {
       await pressEscapeAndRender(mockInput, harness);
       await waitForHelpSettingsRoot(harness);
 
-      await openHelpSettingsSection(harness, "▶ TOME Notes", "Help / Settings / TOME Notes");
+      await openHelpSettingsSection(
+        harness,
+        "▶ TOME Notes",
+        "Help / Settings / TOME Notes",
+      );
       await focusHelpSettingsItem(harness, "▶ TOME Enabled:");
       await pressArrowAndRender(mockInput, harness, "right");
       await waitForText(harness, "TOME Enabled: off");
@@ -1382,7 +1476,11 @@ describe("App modal flow integration", () => {
       await pressEscapeAndRender(mockInput, harness);
       await waitForHelpSettingsRoot(harness);
 
-      await openHelpSettingsSection(harness, "▶ Cloud Backup", "Help / Settings / Cloud Backup");
+      await openHelpSettingsSection(
+        harness,
+        "▶ Cloud Backup",
+        "Help / Settings / Cloud Backup",
+      );
       await focusHelpSettingsItem(harness, "▶ Owner/Repo:");
       await pressArrowAndRender(mockInput, harness, "right");
       await waitForText(harness, "Cloud Owner/Repo");
@@ -1433,7 +1531,11 @@ describe("App modal flow integration", () => {
     const { mockInput } = harness;
 
     try {
-      await openHelpSettingsSection(harness, "▶ Cloud Backup", "Help / Settings / Cloud Backup");
+      await openHelpSettingsSection(
+        harness,
+        "▶ Cloud Backup",
+        "Help / Settings / Cloud Backup",
+      );
       await focusHelpSettingsItem(harness, "▶ Open Cloud Operations");
       await pressEnterAndRender(mockInput, harness);
       const frame = await waitForText(harness, "GitHub (CLI) Cloud Backups");
@@ -1444,50 +1546,51 @@ describe("App modal flow integration", () => {
     }
   });
 
-  it(
-    "runs encrypted GitHub push + restore flows end-to-end in Backup Center",
-    async () => {
-      const ownerRepo = "patrick/tadoi-backups";
-      const branch = "main";
-      const deviceId = "dev_test";
-      const pathPrefix = `tadoi/devices/${deviceId}`;
-      const passphrase = "modal-flow-encryption-passphrase";
-      const session = await createSession({
-        initialGithubBackup: {
-          enabled: true,
-          ownerRepo,
-          branch,
-          deviceId,
-          pathPrefix,
-          autoPushPolicy: "off"
-        }
-      });
-      const { harness, tempDir } = session;
-      const { mockInput } = harness;
-      const fixture = await prepareBackupRuntimeFixture(session);
-      const fakeGh = await createFakeGitHubCliFixture({
-        rootDir: tempDir,
+  it("runs encrypted GitHub push + restore flows end-to-end in Backup Center", async () => {
+    const ownerRepo = "patrick/tadoi-backups";
+    const branch = "main";
+    const deviceId = "dev_test";
+    const pathPrefix = `tadoi/devices/${deviceId}`;
+    const passphrase = "modal-flow-encryption-passphrase";
+    const session = await createSession({
+      initialGithubBackup: {
+        enabled: true,
         ownerRepo,
         branch,
+        deviceId,
         pathPrefix,
-        passphrase
-      });
+        autoPushPolicy: "off",
+      },
+    });
+    const { harness, tempDir } = session;
+    const { mockInput } = harness;
+    const fixture = await prepareBackupRuntimeFixture(session);
+    const fakeGh = await createFakeGitHubCliFixture({
+      rootDir: tempDir,
+      ownerRepo,
+      branch,
+      pathPrefix,
+      passphrase,
+    });
 
-      const originalPath = process.env.PATH;
-      const originalPassphrase = process.env[ENV_VARS.GITHUB_SNAPSHOT_PASSPHRASE];
-      const originalGhLogPath = process.env.TADOI_TEST_GH_LOG_PATH;
-      process.env.PATH = `${fakeGh.binDir}:${originalPath ?? ""}`;
-      process.env[ENV_VARS.GITHUB_SNAPSHOT_PASSPHRASE] = passphrase;
-      process.env.TADOI_TEST_GH_LOG_PATH = fakeGh.logPath;
+    const originalPath = process.env.PATH;
+    const originalPassphrase = process.env[ENV_VARS.GITHUB_SNAPSHOT_PASSPHRASE];
+    const originalGhLogPath = process.env.TADOI_TEST_GH_LOG_PATH;
+    process.env.PATH = `${fakeGh.binDir}:${originalPath ?? ""}`;
+    process.env[ENV_VARS.GITHUB_SNAPSHOT_PASSPHRASE] = passphrase;
+    process.env.TADOI_TEST_GH_LOG_PATH = fakeGh.logPath;
 
-      try {
-        await withDataPathAndCwd(fixture.dataPath, fixture.backupDir, async () => {
+    try {
+      await withDataPathAndCwd(
+        fixture.dataPath,
+        fixture.backupDir,
+        async () => {
           await openCalendarMenu(harness);
           await pressKeyAndRender(mockInput, harness, "3");
           let frame = await waitForText(
             harness,
             "snapshot encryption: on (passphrase set)",
-            10_000
+            10_000,
           );
           expect(frame).toContain("GitHub (CLI) Cloud Backups");
 
@@ -1495,7 +1598,7 @@ describe("App modal flow integration", () => {
           await waitForAnyText(
             harness,
             ["Pushing snapshot to GitHub...", "GitHub snapshot pushed"],
-            10000
+            10000,
           );
           frame = await waitForText(harness, "GitHub snapshot pushed", 10000);
           expect(frame).toContain("Last push:");
@@ -1506,12 +1609,12 @@ describe("App modal flow integration", () => {
           await waitForAnyText(
             harness,
             ["Loading remote snapshots...", "Select snapshot to restore"],
-            10000
+            10000,
           );
           frame = await waitForAnyText(
             harness,
             ["Select snapshot to restore", "Restore from GitHub"],
-            10_000
+            10_000,
           );
           expect(frame).toContain("20260227-123000Z");
 
@@ -1519,41 +1622,42 @@ describe("App modal flow integration", () => {
           await waitForAnyText(
             harness,
             ["Downloading selected snapshot...", "Dry-run summary"],
-            10000
+            10000,
           );
           frame = await waitForText(harness, "Dry-run summary", 10000);
           expect(frame).toContain("Mode: MERGE");
-        });
+        },
+      );
 
-        const ghLog = await fs.readFile(fakeGh.logPath, "utf8");
-        expect(ghLog).toContain("BLOB_HAS_ENCRYPTION yes");
-        expect(ghLog).toContain(`API GET repos/${ownerRepo}/git/trees/${branch}?recursive=1`);
-        expect(ghLog).toContain(`API GET repos/${ownerRepo}/contents/${pathPrefix}/snapshots/`);
-      } finally {
-        if (originalPath === undefined) {
-          delete process.env.PATH;
-        } else {
-          process.env.PATH = originalPath;
-        }
-        if (originalPassphrase === undefined) {
-          delete process.env[ENV_VARS.GITHUB_SNAPSHOT_PASSPHRASE];
-        } else {
-          process.env[ENV_VARS.GITHUB_SNAPSHOT_PASSPHRASE] = originalPassphrase;
-        }
-        if (originalGhLogPath === undefined) {
-          delete process.env.TADOI_TEST_GH_LOG_PATH;
-        } else {
-          process.env.TADOI_TEST_GH_LOG_PATH = originalGhLogPath;
-        }
-        await cleanupSession(session);
+      const ghLog = await fs.readFile(fakeGh.logPath, "utf8");
+      expect(ghLog).toContain("BLOB_HAS_ENCRYPTION yes");
+      expect(ghLog).toContain(
+        `API GET repos/${ownerRepo}/git/trees/${branch}?recursive=1`,
+      );
+      expect(ghLog).toContain(
+        `API GET repos/${ownerRepo}/contents/${pathPrefix}/snapshots/`,
+      );
+    } finally {
+      if (originalPath === undefined) {
+        delete process.env.PATH;
+      } else {
+        process.env.PATH = originalPath;
       }
-    },
-    25_000
-  );
+      if (originalPassphrase === undefined) {
+        delete process.env[ENV_VARS.GITHUB_SNAPSHOT_PASSPHRASE];
+      } else {
+        process.env[ENV_VARS.GITHUB_SNAPSHOT_PASSPHRASE] = originalPassphrase;
+      }
+      if (originalGhLogPath === undefined) {
+        delete process.env.TADOI_TEST_GH_LOG_PATH;
+      } else {
+        process.env.TADOI_TEST_GH_LOG_PATH = originalGhLogPath;
+      }
+      await cleanupSession(session);
+    }
+  }, 25_000);
 
-  it(
-    "persists settingsInput values for notification and cloud text fields",
-    async () => {
+  it("persists settingsInput values for notification and cloud text fields", async () => {
     const session = await createSession();
     const { harness, settingsPath } = session;
     const { mockInput } = harness;
@@ -1562,45 +1666,55 @@ describe("App modal flow integration", () => {
       await openHelpSettingsSection(
         harness,
         "▶ Notifications",
-        "Help / Settings / Notifications"
+        "Help / Settings / Notifications",
       );
       await setHelpSettingsInputValue(harness, {
         rowPrefix: "▶ Banner Duration:",
         inputTitle: "Notification Banner Duration (ms)",
         value: "8675309",
         expectedRowContains: "Banner Duration: 50008675309 ms",
-        clearChars: 0
+        clearChars: 0,
       });
       await setHelpSettingsInputValue(harness, {
         rowPrefix: "▶ Bell Cooldown:",
         inputTitle: "Terminal Bell Cooldown (ms)",
         value: "24681357",
         expectedRowContains: "Bell Cooldown: 200024681357 ms",
-        clearChars: 0
+        clearChars: 0,
       });
 
       await pressEscapeAndRender(mockInput, harness);
       await waitForHelpSettingsRoot(harness);
 
-      await openHelpSettingsSection(harness, "▶ Cloud Backup", "Help / Settings / Cloud Backup");
+      await openHelpSettingsSection(
+        harness,
+        "▶ Cloud Backup",
+        "Help / Settings / Cloud Backup",
+      );
       await setHelpSettingsInputValue(harness, {
         rowPrefix: "▶ Owner/Repo:",
         inputTitle: "Cloud Owner/Repo",
         value: "org/repo",
         expectedRowContains: "Owner/Repo: org/repo",
-        clearChars: 0
+        clearChars: 0,
       });
       await setHelpSettingsInputValue(harness, {
         rowPrefix: "▶ Branch:",
         inputTitle: "Cloud Branch",
         value: "-sync",
         expectedRowContains: "Branch: main-sync",
-        clearChars: 0
+        clearChars: 0,
       });
       await harness.renderOnce();
       const cloudFrame = harness.captureCharFrame();
-      const currentDeviceId = extractHelpSettingsRowValue(cloudFrame, "Device ID");
-      const currentPathPrefix = extractHelpSettingsRowValue(cloudFrame, "Path Prefix");
+      const currentDeviceId = extractHelpSettingsRowValue(
+        cloudFrame,
+        "Device ID",
+      );
+      const currentPathPrefix = extractHelpSettingsRowValue(
+        cloudFrame,
+        "Path Prefix",
+      );
       const nextDeviceId = `${currentDeviceId}-qa1`;
       const nextPathPrefix = `${currentPathPrefix}/qa1`;
       await setHelpSettingsInputValue(harness, {
@@ -1608,14 +1722,14 @@ describe("App modal flow integration", () => {
         inputTitle: "Cloud Device ID",
         value: "-qa1",
         expectedRowContains: `Device ID: ${nextDeviceId}`,
-        clearChars: 0
+        clearChars: 0,
       });
       await setHelpSettingsInputValue(harness, {
         rowPrefix: "▶ Path Prefix:",
         inputTitle: "Cloud Path Prefix",
         value: "/qa1",
         expectedRowContains: `Path Prefix: ${nextPathPrefix}`,
-        clearChars: 0
+        clearChars: 0,
       });
 
       await pressKeyAndRender(mockInput, harness, "?");
@@ -1646,9 +1760,7 @@ describe("App modal flow integration", () => {
     } finally {
       await cleanupSession(session);
     }
-    },
-    20_000
-  );
+  }, 20_000);
 
   it("backup final checkpoint modal cancel returns to import dry-run screen", async () => {
     const session = await createSession();
@@ -1684,7 +1796,10 @@ describe("App modal flow integration", () => {
         await waitForText(harness, "FINAL IMPORT CHECKPOINT");
 
         await pressKeyAndRender(harness.mockInput, harness, "y");
-        const frame = await waitForAnyText(harness, ["Applying import...", "Import complete"]);
+        const frame = await waitForAnyText(harness, [
+          "Applying import...",
+          "Import complete",
+        ]);
         expect(frame).not.toContain("FINAL IMPORT CHECKPOINT");
       });
     } finally {
@@ -1699,7 +1814,10 @@ describe("App modal flow integration", () => {
 
     try {
       await withDataPath(fixture.dataPath, async () => {
-        const frame = await runCalendarExportGuidedFlow(harness, fixture.calendarExportPath);
+        const frame = await runCalendarExportGuidedFlow(
+          harness,
+          fixture.calendarExportPath,
+        );
         expect(frame).toContain("Calendar export complete");
         expect(frame).toContain(path.basename(fixture.calendarExportPath));
       });
@@ -1714,11 +1832,18 @@ describe("App modal flow integration", () => {
     const fixture = await prepareBackupRuntimeFixture(session);
 
     try {
-      await withDataPathAndCwd(fixture.dataPath, fixture.backupDir, async () => {
-        const frame = await runCalendarImportGuidedFlowToDryRun(harness, "incoming.ics");
-        expect(frame).toContain("Dry-run summary (required)");
-        expect(frame).toContain("Events parsed");
-      });
+      await withDataPathAndCwd(
+        fixture.dataPath,
+        fixture.backupDir,
+        async () => {
+          const frame = await runCalendarImportGuidedFlowToDryRun(
+            harness,
+            "incoming.ics",
+          );
+          expect(frame).toContain("Dry-run summary (required)");
+          expect(frame).toContain("Events parsed");
+        },
+      );
     } finally {
       await cleanupSession(session);
     }
@@ -1768,7 +1893,10 @@ describe("App modal flow integration", () => {
       for (let index = 0; index < 16; index += 1) {
         await harness.renderOnce();
         const focusFrame = harness.captureCharFrame();
-        if (focusFrame.includes("MODE:  EDIT") && focusFrame.includes("FOCUS: CHECKLIST")) {
+        if (
+          focusFrame.includes("MODE:  EDIT") &&
+          focusFrame.includes("FOCUS: CHECKLIST")
+        ) {
           checklistFocused = true;
           break;
         }
@@ -1806,7 +1934,7 @@ describe("App modal flow integration", () => {
           createdAt: nowIso,
           updatedAt: nowIso,
           completedAt: nowIso,
-          sort: 0
+          sort: 0,
         },
         {
           id: "item-2",
@@ -1814,11 +1942,13 @@ describe("App modal flow integration", () => {
           isDone: false,
           createdAt: nowIso,
           updatedAt: nowIso,
-          sort: 1
-        }
-      ]
+          sort: 1,
+        },
+      ],
     };
-    const session = await createSession({ initialData: makeInitialData([checklistTask]) });
+    const session = await createSession({
+      initialData: makeInitialData([checklistTask]),
+    });
     const { harness } = session;
     const { mockInput } = harness;
 
@@ -1839,84 +1969,98 @@ describe("App modal flow integration", () => {
     }
   });
 
-  it(
-    "reminder modal key path applies snooze actions for 1/2/3 and exits for Enter/Esc",
-    async () => {
-      const cases: Array<{
-        label: string;
-        key: "1" | "2" | "3" | "enter" | "escape";
-        expectedSnoozeMs?: number;
-      }> = [
-        { label: "snooze +10m", key: "1", expectedSnoozeMs: 10 * 60_000 },
-        { label: "snooze +1h", key: "2", expectedSnoozeMs: 60 * 60_000 },
-        { label: "snooze +1d", key: "3", expectedSnoozeMs: 24 * 60 * 60_000 },
-        { label: "dismiss enter", key: "enter" },
-        { label: "dismiss esc", key: "escape" }
-      ];
+  it("reminder modal key path applies snooze actions for 1/2/3 and exits for Enter/Esc", async () => {
+    const cases: Array<{
+      label: string;
+      key: "1" | "2" | "3" | "enter" | "escape";
+      expectedSnoozeMs?: number;
+    }> = [
+      { label: "snooze +10m", key: "1", expectedSnoozeMs: 10 * 60_000 },
+      { label: "snooze +1h", key: "2", expectedSnoozeMs: 60 * 60_000 },
+      { label: "snooze +1d", key: "3", expectedSnoozeMs: 24 * 60 * 60_000 },
+      { label: "dismiss enter", key: "enter" },
+      { label: "dismiss esc", key: "escape" },
+    ];
 
-      for (const testCase of cases) {
-        const nowMs = Date.now();
-        const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-app-reminder-modal-"));
-        const dataPath = path.join(dataDir, "tadoi_data.json");
-        const taskId = `task-reminder-${testCase.key}`;
-        const task = makeReminderDueTask(taskId, `Reminder ${testCase.label}`, nowMs);
-        let session: AppSession | undefined;
+    for (const testCase of cases) {
+      const nowMs = Date.now();
+      const dataDir = await fs.mkdtemp(
+        path.join(os.tmpdir(), "tadoi-app-reminder-modal-"),
+      );
+      const dataPath = path.join(dataDir, "tadoi_data.json");
+      const taskId = `task-reminder-${testCase.key}`;
+      const task = makeReminderDueTask(
+        taskId,
+        `Reminder ${testCase.label}`,
+        nowMs,
+      );
+      let session: AppSession | undefined;
 
-        try {
-          await withDataPath(dataPath, async () => {
-            session = await createSession({
-              initialData: makeInitialData([task]),
-              skipInitialSave: false
-            });
-            const { harness } = session;
-            const { mockInput } = harness;
-
-            let frame = await waitForText(harness, "REMINDER [ENTER/ESC/1/2/3/G]", 8000);
-            expect(frame).toContain("SNOOZE +10M [1]");
-            expect(frame).toContain("SNOOZE +1H [2]");
-            expect(frame).toContain("SNOOZE +1D [3]");
-
-            if (testCase.key === "enter") {
-              await pressEnterAndRender(mockInput, harness);
-            } else if (testCase.key === "escape") {
-              await pressEscapeAndRender(mockInput, harness);
-            } else {
-              await pressKeyAndRender(mockInput, harness, testCase.key);
-            }
-
-            frame = await waitForFrame(
-              harness,
-              (next) => next.includes("MODE:  LIST") && !next.includes("REMINDER [ENTER/ESC/1/2/3/G]"),
-              8000
-            );
-            expect(frame).toContain("MODE:  LIST");
-
-            await waitForFile(dataPath, 4000);
-            await Bun.sleep(320);
-            const savedRaw = await fs.readFile(dataPath, "utf8");
-            const saved = JSON.parse(savedRaw) as { tasks?: Array<{ id: string; reminder?: any }> };
-            const savedTask = saved.tasks?.find((candidate) => candidate.id === taskId);
-            expect(savedTask).toBeDefined();
-            expect(savedTask?.reminder?.kind).toBe("absolute");
-
-            if (typeof testCase.expectedSnoozeMs === "number") {
-              const snoozedUntilAt = Number(savedTask?.reminder?.snoozedUntilAt);
-              expect(Number.isFinite(snoozedUntilAt)).toBe(true);
-              expect(snoozedUntilAt).toBeGreaterThanOrEqual(nowMs + testCase.expectedSnoozeMs - 2 * 60_000);
-            } else {
-              expect(savedTask?.reminder?.snoozedUntilAt).toBeUndefined();
-            }
+      try {
+        await withDataPath(dataPath, async () => {
+          session = await createSession({
+            initialData: makeInitialData([task]),
+            skipInitialSave: false,
           });
-        } finally {
-          if (session) {
-            await cleanupSession(session);
+          const { harness } = session;
+          const { mockInput } = harness;
+
+          let frame = await waitForText(
+            harness,
+            "REMINDER [ENTER/ESC/1/2/3/G]",
+            8000,
+          );
+          expect(frame).toContain("SNOOZE +10M [1]");
+          expect(frame).toContain("SNOOZE +1H [2]");
+          expect(frame).toContain("SNOOZE +1D [3]");
+
+          if (testCase.key === "enter") {
+            await pressEnterAndRender(mockInput, harness);
+          } else if (testCase.key === "escape") {
+            await pressEscapeAndRender(mockInput, harness);
+          } else {
+            await pressKeyAndRender(mockInput, harness, testCase.key);
           }
-          await fs.rm(dataDir, { recursive: true, force: true });
+
+          frame = await waitForFrame(
+            harness,
+            (next) =>
+              next.includes("MODE:  LIST") &&
+              !next.includes("REMINDER [ENTER/ESC/1/2/3/G]"),
+            8000,
+          );
+          expect(frame).toContain("MODE:  LIST");
+
+          await waitForFile(dataPath, 4000);
+          await Bun.sleep(320);
+          const savedRaw = await fs.readFile(dataPath, "utf8");
+          const saved = JSON.parse(savedRaw) as {
+            tasks?: Array<{ id: string; reminder?: any }>;
+          };
+          const savedTask = saved.tasks?.find(
+            (candidate) => candidate.id === taskId,
+          );
+          expect(savedTask).toBeDefined();
+          expect(savedTask?.reminder?.kind).toBe("absolute");
+
+          if (typeof testCase.expectedSnoozeMs === "number") {
+            const snoozedUntilAt = Number(savedTask?.reminder?.snoozedUntilAt);
+            expect(Number.isFinite(snoozedUntilAt)).toBe(true);
+            expect(snoozedUntilAt).toBeGreaterThanOrEqual(
+              nowMs + testCase.expectedSnoozeMs - 2 * 60_000,
+            );
+          } else {
+            expect(savedTask?.reminder?.snoozedUntilAt).toBeUndefined();
+          }
+        });
+      } finally {
+        if (session) {
+          await cleanupSession(session);
         }
+        await fs.rm(dataDir, { recursive: true, force: true });
       }
-    },
-    40_000
-  );
+    }
+  }, 40_000);
 
   it("shows Ctrl+g prefix popup and clears it after non-prefix continuation without side effects", async () => {
     const session = await createSession();
@@ -1951,7 +2095,9 @@ describe("App modal flow integration", () => {
       expect(frame).toMatch(/DUE \(G\):\s+ANY/);
 
       await pressKeyAndRender(mockInput, harness, "g");
-      frame = await waitForFrame(harness, (next) => /DUE \(G\):\s+(?!ANY)/.test(next));
+      frame = await waitForFrame(harness, (next) =>
+        /DUE \(G\):\s+(?!ANY)/.test(next),
+      );
       expect(frame).not.toContain("PREFIX: Ctrl+g / Ctrl+p / Ctrl+y");
     } finally {
       await cleanupSession(session);
@@ -1979,7 +2125,7 @@ describe("App modal flow integration", () => {
       frame = await waitForFrame(
         harness,
         (next) => !next.includes("PREFIX: Ctrl+g / Ctrl+p / Ctrl+y"),
-        2500
+        2500,
       );
       expect(frame).toMatch(/DUE \(G\):\s+ANY/);
     } finally {
@@ -2002,7 +2148,7 @@ describe("App modal flow integration", () => {
       await pressKeyAndRender(mockInput, harness, "?");
       frame = await waitForFrame(
         harness,
-        (next) => next.includes("KEYS") && !next.includes("HINTS")
+        (next) => next.includes("KEYS") && !next.includes("HINTS"),
       );
       expect(frame).toContain("KEYS");
       expect(frame).not.toContain("HINTS");
@@ -2012,7 +2158,7 @@ describe("App modal flow integration", () => {
       await pressKeyAndRender(mockInput, harness, "?");
       frame = await waitForFrame(
         harness,
-        (next) => next.includes("HINTS") && next.includes("KEYS")
+        (next) => next.includes("HINTS") && next.includes("KEYS"),
       );
       expect(frame).toContain("HINTS");
       expect(frame).toContain("KEYS");
@@ -2022,7 +2168,7 @@ describe("App modal flow integration", () => {
       await pressKeyAndRender(mockInput, harness, "?");
       frame = await waitForFrame(
         harness,
-        (next) => !next.includes("HINTS") && !next.includes("KEYS")
+        (next) => !next.includes("HINTS") && !next.includes("KEYS"),
       );
       expect(frame).not.toContain("HINTS");
       expect(frame).not.toContain("KEYS");
@@ -2035,20 +2181,24 @@ describe("App modal flow integration", () => {
     const viewports = [
       { width: 104, height: 24 },
       { width: 120, height: 30 },
-      { width: 150, height: 44 }
+      { width: 150, height: 44 },
     ] as const;
 
     for (const viewport of viewports) {
       const session = await createSession({
         width: viewport.width,
-        height: viewport.height
+        height: viewport.height,
       });
       try {
-        await pressKeyAndRender(session.harness.mockInput, session.harness, "?");
+        await pressKeyAndRender(
+          session.harness.mockInput,
+          session.harness,
+          "?",
+        );
         const frame = await waitForText(session.harness, "Getting Started");
         const lines = frame.split("\n");
         const footerHintLineIndex = lines.findIndex((line) =>
-          line.includes("Enter/Right on Settings opens Settings pages")
+          line.includes("Enter/Right on Settings opens Settings pages"),
         );
         expect(footerHintLineIndex).toBeGreaterThanOrEqual(0);
         expect(frame).toContain("Data path:");
@@ -2071,7 +2221,7 @@ describe("App modal flow integration", () => {
 
       let frame = await waitForFrame(
         harness,
-        (next) => !next.includes("HINTS") && !next.includes("KEYS")
+        (next) => !next.includes("HINTS") && !next.includes("KEYS"),
       );
       expect(frame).not.toContain("HINTS");
       expect(frame).not.toContain("KEYS");
@@ -2082,7 +2232,7 @@ describe("App modal flow integration", () => {
       await pressKeyAndRender(mockInput, harness, "j");
       await waitForFrame(
         harness,
-        (next) => !next.includes("PREFIX: Ctrl+g / Ctrl+p / Ctrl+y")
+        (next) => !next.includes("PREFIX: Ctrl+g / Ctrl+p / Ctrl+y"),
       );
 
       await openHelpSettingsPage(harness);
@@ -2094,7 +2244,7 @@ describe("App modal flow integration", () => {
       await expectTextAbsentForDuration(
         harness,
         "PREFIX: Ctrl+g / Ctrl+p / Ctrl+y",
-        220
+        220,
       );
       await pressKeyAndRender(mockInput, harness, "j");
       frame = harness.captureCharFrame();
@@ -2114,7 +2264,10 @@ describe("App modal flow integration", () => {
 
       for (const fallbackKey of ["p", "y"]) {
         await pressCtrlKeyAndRender(mockInput, harness, fallbackKey);
-        let frame = await waitForText(harness, "PREFIX: Ctrl+g / Ctrl+p / Ctrl+y");
+        let frame = await waitForText(
+          harness,
+          "PREFIX: Ctrl+g / Ctrl+p / Ctrl+y",
+        );
         expect(frame).toContain("jump top");
         await pressKeyAndRender(mockInput, harness, "g");
         frame = await waitForText(harness, "Existing task");
@@ -2131,29 +2284,33 @@ describe("App modal flow integration", () => {
     const fixture = await prepareBackupRuntimeFixture(session);
 
     try {
-      await withDataPathAndCwd(fixture.dataPath, fixture.backupDir, async () => {
-        await runCalendarImportGuidedFlowToDryRun(harness, "incoming.ics");
+      await withDataPathAndCwd(
+        fixture.dataPath,
+        fixture.backupDir,
+        async () => {
+          await runCalendarImportGuidedFlowToDryRun(harness, "incoming.ics");
 
-        let frame = await waitForText(harness, "Dry-run summary (required)");
-        expect(frame).toContain("Events parsed");
-        expect(frame).toContain("COMMIT IMPORT");
-        expect(frame).toContain("BACK");
+          let frame = await waitForText(harness, "Dry-run summary (required)");
+          expect(frame).toContain("Events parsed");
+          expect(frame).toContain("COMMIT IMPORT");
+          expect(frame).toContain("BACK");
 
-        await pressCtrlKeyAndRender(harness.mockInput, harness, "d");
-        await pressCtrlKeyAndRender(harness.mockInput, harness, "d");
-        await pressCtrlKeyAndRender(harness.mockInput, harness, "d");
-        frame = harness.captureCharFrame();
-        expect(frame).not.toContain("Events parsed");
-        expect(frame).toContain("COMMIT IMPORT");
+          await pressCtrlKeyAndRender(harness.mockInput, harness, "d");
+          await pressCtrlKeyAndRender(harness.mockInput, harness, "d");
+          await pressCtrlKeyAndRender(harness.mockInput, harness, "d");
+          frame = harness.captureCharFrame();
+          expect(frame).not.toContain("Events parsed");
+          expect(frame).toContain("COMMIT IMPORT");
 
-        await pressCtrlKeyAndRender(harness.mockInput, harness, "u");
-        await pressCtrlKeyAndRender(harness.mockInput, harness, "u");
-        await pressCtrlKeyAndRender(harness.mockInput, harness, "u");
-        frame = harness.captureCharFrame();
-        expect(frame).toContain("Events parsed");
-        expect(frame).toContain("COMMIT IMPORT");
-        expect(frame).toContain("BACK");
-      });
+          await pressCtrlKeyAndRender(harness.mockInput, harness, "u");
+          await pressCtrlKeyAndRender(harness.mockInput, harness, "u");
+          await pressCtrlKeyAndRender(harness.mockInput, harness, "u");
+          frame = harness.captureCharFrame();
+          expect(frame).toContain("Events parsed");
+          expect(frame).toContain("COMMIT IMPORT");
+          expect(frame).toContain("BACK");
+        },
+      );
     } finally {
       await cleanupSession(session);
     }
@@ -2165,35 +2322,39 @@ describe("App modal flow integration", () => {
     const fixture = await prepareBackupRuntimeFixture(session);
 
     try {
-      await withDataPathAndCwd(fixture.dataPath, fixture.backupDir, async () => {
-        await runCalendarImportGuidedFlowToDryRun(harness, "incoming.ics");
+      await withDataPathAndCwd(
+        fixture.dataPath,
+        fixture.backupDir,
+        async () => {
+          await runCalendarImportGuidedFlowToDryRun(harness, "incoming.ics");
 
-        let frame = await waitForText(harness, "Dry-run summary (required)");
-        expect(frame).toContain("Events parsed");
-        expect(frame).toContain("COMMIT IMPORT");
-        expect(frame).toContain("BACK");
+          let frame = await waitForText(harness, "Dry-run summary (required)");
+          expect(frame).toContain("Events parsed");
+          expect(frame).toContain("COMMIT IMPORT");
+          expect(frame).toContain("BACK");
 
-        await scrollMouseAndRender(harness, {
-          x: 26,
-          y: 12,
-          direction: "down",
-          times: 4
-        });
-        frame = harness.captureCharFrame();
-        expect(frame).not.toContain("Events parsed");
-        expect(frame).toContain("COMMIT IMPORT");
+          await scrollMouseAndRender(harness, {
+            x: 26,
+            y: 12,
+            direction: "down",
+            times: 4,
+          });
+          frame = harness.captureCharFrame();
+          expect(frame).not.toContain("Events parsed");
+          expect(frame).toContain("COMMIT IMPORT");
 
-        await scrollMouseAndRender(harness, {
-          x: 26,
-          y: 12,
-          direction: "up",
-          times: 4
-        });
-        frame = harness.captureCharFrame();
-        expect(frame).toContain("Events parsed");
-        expect(frame).toContain("COMMIT IMPORT");
-        expect(frame).toContain("BACK");
-      });
+          await scrollMouseAndRender(harness, {
+            x: 26,
+            y: 12,
+            direction: "up",
+            times: 4,
+          });
+          frame = harness.captureCharFrame();
+          expect(frame).toContain("Events parsed");
+          expect(frame).toContain("COMMIT IMPORT");
+          expect(frame).toContain("BACK");
+        },
+      );
     } finally {
       await cleanupSession(session);
     }
@@ -2203,7 +2364,7 @@ describe("App modal flow integration", () => {
     const wheelTasks = [
       makeTask("wheelA01-task", "Wheel Task Alpha"),
       makeTask("wheelB02-task", "Wheel Task Beta"),
-      makeTask("wheelC03-task", "Wheel Task Gamma")
+      makeTask("wheelC03-task", "Wheel Task Gamma"),
     ];
     const session = await createSession({
       initialData: makeInitialData(wheelTasks),
@@ -2212,8 +2373,8 @@ describe("App modal flow integration", () => {
         inAppOverdueBanner: false,
         terminalBellOnOverdue: false,
         bannerDurationMs: 4000,
-        bellCooldownMs: 300000
-      }
+        bellCooldownMs: 300000,
+      },
     });
     const { harness } = session;
     const taskPrefixes = wheelTasks.map((task) => task.id.slice(0, 8));
@@ -2221,13 +2382,18 @@ describe("App modal flow integration", () => {
 
     const readSelectedTaskPrefix = async (): Promise<string> => {
       await pressKeyAndRender(harness.mockInput, harness, "d");
-      const frame = await waitForText(harness, "DELETE SELECTED TASK? [Y/N/ESC]");
-      const selectedPrefix = taskPrefixes.find((prefix) => frame.includes(`ID: ${prefix}`));
+      const frame = await waitForText(
+        harness,
+        "DELETE SELECTED TASK? [Y/N/ESC]",
+      );
+      const selectedPrefix = taskPrefixes.find((prefix) =>
+        frame.includes(`ID: ${prefix}`),
+      );
       expect(selectedPrefix).toBeTruthy();
       await pressKeyAndRender(harness.mockInput, harness, "n");
       await waitForFrame(
         harness,
-        (next) => !next.includes("DELETE SELECTED TASK? [Y/N/ESC]")
+        (next) => !next.includes("DELETE SELECTED TASK? [Y/N/ESC]"),
       );
       return selectedPrefix as string;
     };
@@ -2239,7 +2405,7 @@ describe("App modal flow integration", () => {
         x: taskListWheelTarget.x,
         y: taskListWheelTarget.y,
         direction: "up",
-        times: 20
+        times: 20,
       });
       const topSelection = await readSelectedTaskPrefix();
 
@@ -2247,7 +2413,7 @@ describe("App modal flow integration", () => {
         x: taskListWheelTarget.x,
         y: taskListWheelTarget.y,
         direction: "up",
-        times: 1
+        times: 1,
       });
       const topNoOpSelection = await readSelectedTaskPrefix();
       expect(topNoOpSelection).toBe(topSelection);
@@ -2256,7 +2422,7 @@ describe("App modal flow integration", () => {
         x: taskListWheelTarget.x,
         y: taskListWheelTarget.y,
         direction: "down",
-        times: 1
+        times: 1,
       });
       const movedDownSelection = await readSelectedTaskPrefix();
       expect(movedDownSelection).not.toBe(topSelection);
@@ -2265,7 +2431,7 @@ describe("App modal flow integration", () => {
         x: taskListWheelTarget.x,
         y: taskListWheelTarget.y,
         direction: "down",
-        times: 20
+        times: 20,
       });
       const bottomSelection = await readSelectedTaskPrefix();
 
@@ -2273,7 +2439,7 @@ describe("App modal flow integration", () => {
         x: taskListWheelTarget.x,
         y: taskListWheelTarget.y,
         direction: "down",
-        times: 1
+        times: 1,
       });
       const bottomNoOpSelection = await readSelectedTaskPrefix();
       expect(bottomNoOpSelection).toBe(bottomSelection);
@@ -2282,7 +2448,7 @@ describe("App modal flow integration", () => {
         x: taskListWheelTarget.x,
         y: taskListWheelTarget.y,
         direction: "up",
-        times: 1
+        times: 1,
       });
       const movedUpSelection = await readSelectedTaskPrefix();
       expect(movedUpSelection).not.toBe(bottomSelection);
@@ -2302,7 +2468,7 @@ describe("App modal flow integration", () => {
         createdAt: now,
         updatedAt: now,
         dueAt: today,
-        tags: ["work"]
+        tags: ["work"],
       },
       {
         id: "tag-home-1",
@@ -2311,7 +2477,7 @@ describe("App modal flow integration", () => {
         createdAt: now,
         updatedAt: now,
         dueAt: addLocalDaysMs(today, 1),
-        tags: ["home"]
+        tags: ["home"],
       },
       {
         id: "tag-work-2",
@@ -2320,11 +2486,13 @@ describe("App modal flow integration", () => {
         createdAt: now,
         updatedAt: now,
         dueAt: addLocalDaysMs(today, 2),
-        tags: ["work"]
-      }
+        tags: ["work"],
+      },
     ];
 
-    const session = await createSession({ initialData: makeInitialData(tasks) });
+    const session = await createSession({
+      initialData: makeInitialData(tasks),
+    });
     const { harness } = session;
     const { mockInput } = harness;
 
@@ -2355,7 +2523,7 @@ describe("App modal flow integration", () => {
         createdAt: now,
         updatedAt: now,
         dueAt: addLocalDaysMs(today, -1),
-        tags: []
+        tags: [],
       },
       {
         id: "today-task",
@@ -2364,7 +2532,7 @@ describe("App modal flow integration", () => {
         createdAt: now,
         updatedAt: now,
         dueAt: today,
-        tags: []
+        tags: [],
       },
       {
         id: "next7-task",
@@ -2373,7 +2541,7 @@ describe("App modal flow integration", () => {
         createdAt: now,
         updatedAt: now,
         dueAt: addLocalDaysMs(today, 3),
-        tags: []
+        tags: [],
       },
       {
         id: "done-task",
@@ -2382,68 +2550,74 @@ describe("App modal flow integration", () => {
         createdAt: now,
         updatedAt: doneAt,
         closedAt: doneAt,
-        tags: []
-      }
+        tags: [],
+      },
     ];
 
-    const session = await createSession({ initialData: makeInitialData(tasks) });
+    const session = await createSession({
+      initialData: makeInitialData(tasks),
+    });
     const { harness } = session;
     const { mockInput } = harness;
 
     try {
       await pressKeyAndRender(mockInput, harness, "b");
-      await waitForFrame(harness, (frame) => frame.includes("STATUS=ALL") && frame.includes("DUE=ANY"));
+      await waitForFrame(
+        harness,
+        (frame) => frame.includes("STATUS=ALL") && frame.includes("DUE=ANY"),
+      );
 
       await clickTextUntil(
         harness,
         "DUE THIS WEEK",
         (frame) => frame.includes("STATUS=OPEN") && frame.includes("DUE=NEXT7"),
-        "last"
+        "last",
       );
       await clickTextUntil(
         harness,
         "DUE THIS WEEK",
         (frame) => frame.includes("STATUS=ALL") && frame.includes("DUE=ANY"),
-        "last"
+        "last",
       );
 
       await clickTextUntil(
         harness,
         "DUE TODAY",
         (frame) => frame.includes("STATUS=OPEN") && frame.includes("DUE=TODAY"),
-        "last"
+        "last",
       );
       await clickTextUntil(
         harness,
         "DUE TODAY",
         (frame) => frame.includes("STATUS=ALL") && frame.includes("DUE=ANY"),
-        "last"
+        "last",
       );
 
       await clickTextUntil(
         harness,
         "OVERDUE",
-        (frame) => frame.includes("STATUS=OPEN") && frame.includes("DUE=OVERDUE"),
-        "last"
+        (frame) =>
+          frame.includes("STATUS=OPEN") && frame.includes("DUE=OVERDUE"),
+        "last",
       );
       await clickTextUntil(
         harness,
         "OVERDUE",
         (frame) => frame.includes("STATUS=ALL") && frame.includes("DUE=ANY"),
-        "last"
+        "last",
       );
 
       await clickTextUntil(
         harness,
         "COMPLETED THIS WEEK",
         (frame) => frame.includes("STATUS=DONE") && frame.includes("DUE=ANY"),
-        "last"
+        "last",
       );
       await clickTextUntil(
         harness,
         "COMPLETED THIS WEEK",
         (frame) => frame.includes("STATUS=ALL") && frame.includes("DUE=ANY"),
-        "last"
+        "last",
       );
     } finally {
       await cleanupSession(session);
@@ -2461,7 +2635,7 @@ describe("App modal flow integration", () => {
         createdAt: now,
         updatedAt: now,
         dueAt: addLocalDaysMs(today, 3),
-        tags: []
+        tags: [],
       },
       {
         id: "plus1-a",
@@ -2470,11 +2644,13 @@ describe("App modal flow integration", () => {
         createdAt: now,
         updatedAt: now,
         dueAt: addLocalDaysMs(today, 1),
-        tags: []
-      }
+        tags: [],
+      },
     ];
 
-    const session = await createSession({ initialData: makeInitialData(tasks) });
+    const session = await createSession({
+      initialData: makeInitialData(tasks),
+    });
     const { harness } = session;
 
     try {
@@ -2488,7 +2664,7 @@ describe("App modal flow integration", () => {
         (frame) =>
           frame.includes("STATUS=OPEN") &&
           frame.includes("DUE=ANY") &&
-          frame.includes("DUE+N=+3")
+          frame.includes("DUE+N=+3"),
       );
     } finally {
       await cleanupSession(session);
@@ -2501,62 +2677,82 @@ describe("App modal flow integration", () => {
     const fixture = await prepareBackupRuntimeFixture(session);
 
     try {
-      await withDataPathAndCwd(fixture.dataPath, fixture.backupDir, async () => {
-        await runCalendarImportGuidedFlowToDryRun(harness, "incoming.ics", {
-          rangeDigit: "3",
-          modeDigit: "2"
-        });
+      await withDataPathAndCwd(
+        fixture.dataPath,
+        fixture.backupDir,
+        async () => {
+          await runCalendarImportGuidedFlowToDryRun(harness, "incoming.ics", {
+            rangeDigit: "3",
+            modeDigit: "2",
+          });
 
-        await pressEnterAndRender(harness.mockInput, harness);
-        let frame = await waitForText(harness, "High-impact import confirmation required.");
-        expect(frame).toContain("Type IMPORT to continue");
+          await pressEnterAndRender(harness.mockInput, harness);
+          let frame = await waitForText(
+            harness,
+            "High-impact import confirmation required.",
+          );
+          expect(frame).toContain("Type IMPORT to continue");
 
-        await pressEnterAndRender(harness.mockInput, harness);
-        frame = await waitForText(harness, "Type IMPORT to confirm this high-impact import.");
-        expect(frame).toContain("Operation failed");
+          await pressEnterAndRender(harness.mockInput, harness);
+          frame = await waitForText(
+            harness,
+            "Type IMPORT to confirm this high-impact import.",
+          );
+          expect(frame).toContain("Operation failed");
 
-        await pressEscapeAndRender(harness.mockInput, harness);
-        frame = await waitForText(harness, "High-impact import confirmation required.");
-        expect(frame).toContain("mode=update, range=all");
+          await pressEscapeAndRender(harness.mockInput, harness);
+          frame = await waitForText(
+            harness,
+            "High-impact import confirmation required.",
+          );
+          expect(frame).toContain("mode=update, range=all");
 
-        await pasteTextAndRender(harness.mockInput, harness, "IMPORT");
-        await pressEnterAndRender(harness.mockInput, harness);
-        frame = await waitForText(harness, "FINAL IMPORT CHECKPOINT");
-        expect(frame).toContain("Commit calendar import now?");
+          await pasteTextAndRender(harness.mockInput, harness, "IMPORT");
+          await pressEnterAndRender(harness.mockInput, harness);
+          frame = await waitForText(harness, "FINAL IMPORT CHECKPOINT");
+          expect(frame).toContain("Commit calendar import now?");
 
-        await pressKeyAndRender(harness.mockInput, harness, "n");
-        frame = await waitForText(harness, "High-impact import confirmation required.");
-        expect(frame).toContain("Type IMPORT to continue");
-      });
+          await pressKeyAndRender(harness.mockInput, harness, "n");
+          frame = await waitForText(
+            harness,
+            "High-impact import confirmation required.",
+          );
+          expect(frame).toContain("Type IMPORT to continue");
+        },
+      );
     } finally {
       await cleanupSession(session);
     }
   });
 
-  it(
-    "calendar final checkpoint confirm path starts import and reaches running or done state",
-    async () => {
-      const session = await createSession({
-        initialNotificationSettings: {
-          enabled: false,
-          inAppOverdueBanner: false,
-          terminalBellOnOverdue: false,
-          bannerDurationMs: 4000,
-          bellCooldownMs: 300000
-        }
-      });
-      const { harness } = session;
-      const fixture = await prepareBackupRuntimeFixture(session);
+  it("calendar final checkpoint confirm path starts import and reaches running or done state", async () => {
+    const session = await createSession({
+      initialNotificationSettings: {
+        enabled: false,
+        inAppOverdueBanner: false,
+        terminalBellOnOverdue: false,
+        bannerDurationMs: 4000,
+        bellCooldownMs: 300000,
+      },
+    });
+    const { harness } = session;
+    const fixture = await prepareBackupRuntimeFixture(session);
 
-      try {
-        await withDataPathAndCwd(fixture.dataPath, fixture.backupDir, async () => {
+    try {
+      await withDataPathAndCwd(
+        fixture.dataPath,
+        fixture.backupDir,
+        async () => {
           await runCalendarImportGuidedFlowToDryRun(harness, "incoming.ics", {
             rangeDigit: "3",
-            modeDigit: "2"
+            modeDigit: "2",
           });
 
           await pressEnterAndRender(harness.mockInput, harness);
-          await waitForText(harness, "High-impact import confirmation required.");
+          await waitForText(
+            harness,
+            "High-impact import confirmation required.",
+          );
           await pasteTextAndRender(harness.mockInput, harness, "IMPORT");
           await pressEnterAndRender(harness.mockInput, harness);
           await waitForText(harness, "FINAL IMPORT CHECKPOINT");
@@ -2565,16 +2761,15 @@ describe("App modal flow integration", () => {
           const frame = await waitForAnyText(
             harness,
             ["Applying calendar import...", "Calendar import complete"],
-            10000
+            10000,
           );
           expect(frame).not.toContain("FINAL IMPORT CHECKPOINT");
-        });
-      } finally {
-        await cleanupSession(session);
-      }
-    },
-    15_000
-  );
+        },
+      );
+    } finally {
+      await cleanupSession(session);
+    }
+  }, 15_000);
 
   it("keeps boot overlay disabled while Retro FX settings still update", async () => {
     const session = await createSession({ initialRetroFxMode: "classic" });
@@ -2582,7 +2777,11 @@ describe("App modal flow integration", () => {
     const { mockInput } = harness;
 
     try {
-      await expectTextAbsentForDuration(harness, "TADOI BOOT ROM // CASSETTE LINK", 1200);
+      await expectTextAbsentForDuration(
+        harness,
+        "TADOI BOOT ROM // CASSETTE LINK",
+        1200,
+      );
 
       await openHelpSettingsPage(harness);
       await focusHelpSettingsItem(harness, "▶ Appearance");
@@ -2595,7 +2794,11 @@ describe("App modal flow integration", () => {
       await pressEnterAndRender(mockInput, harness);
       frame = await waitForFrame(harness, (next) => next.includes("Broadcast"));
       expect(frame).toContain("Help / Settings / Appearance");
-      await expectTextAbsentForDuration(harness, "TADOI BOOT ROM // CASSETTE LINK", 1200);
+      await expectTextAbsentForDuration(
+        harness,
+        "TADOI BOOT ROM // CASSETTE LINK",
+        1200,
+      );
     } finally {
       await cleanupSession(session);
     }
@@ -2606,83 +2809,96 @@ describe("App modal flow integration", () => {
     const { harness } = session;
 
     try {
-      await expectTextAbsentForDuration(harness, "TADOI BOOT ROM // CASSETTE LINK", 1200);
+      await expectTextAbsentForDuration(
+        harness,
+        "TADOI BOOT ROM // CASSETTE LINK",
+        1200,
+      );
       await cycleRetroFxModeSettingFromHelp(harness);
       await waitForFrame(harness, (frame) => frame.includes("Broadcast"));
-      await expectTextAbsentForDuration(harness, "TADOI BOOT ROM // CASSETTE LINK", 1100);
+      await expectTextAbsentForDuration(
+        harness,
+        "TADOI BOOT ROM // CASSETTE LINK",
+        1100,
+      );
     } finally {
       await cleanupSession(session);
     }
   });
 
-  it(
-    "recurring editor flow triggers recurring-created milestone once",
-    async () => {
-      const now = new Date(2026, 1, 26, 12, 0).getTime();
-      const dueAt = new Date(2026, 2, 10, 9, 0).getTime();
-      const task: Task = {
-        id: "task-editor-recur-1",
-        title: "Recurring editor task",
-        status: "open",
-        createdAt: now - 1000,
-        updatedAt: now - 1000,
-        dueAt,
-        hasExplicitTime: true,
-        tags: [],
-        workflowStage: "todo"
-      };
+  it("recurring editor flow triggers recurring-created milestone once", async () => {
+    const now = new Date(2026, 1, 26, 12, 0).getTime();
+    const dueAt = new Date(2026, 2, 10, 9, 0).getTime();
+    const task: Task = {
+      id: "task-editor-recur-1",
+      title: "Recurring editor task",
+      status: "open",
+      createdAt: now - 1000,
+      updatedAt: now - 1000,
+      dueAt,
+      hasExplicitTime: true,
+      tags: [],
+      workflowStage: "todo",
+    };
 
-      const session = await createSession({
-        initialData: makeInitialData([task])
-      });
-      try {
-        const { harness } = session;
-        const { mockInput } = harness;
+    const session = await createSession({
+      initialData: makeInitialData([task]),
+    });
+    try {
+      const { harness } = session;
+      const { mockInput } = harness;
 
-        await waitForText(harness, "RECURRING EDITOR TASK");
+      await waitForText(harness, "RECURRING EDITOR TASK");
 
-        await pressKeyAndRender(mockInput, harness, "e");
-        await waitForText(harness, "REPEAT");
-        await clickTextUntil(
-          harness,
-          "WLY",
-          (frame) => frame.includes("WLY") && frame.includes("REPEAT")
-        );
-        await pressCtrlKeyAndRender(mockInput, harness, "s");
-        let frame = await waitForText(harness, "Created your first recurring task.");
-        expect(frame).toContain("↻");
+      await pressKeyAndRender(mockInput, harness, "e");
+      await waitForText(harness, "REPEAT");
+      await clickTextUntil(
+        harness,
+        "WLY",
+        (frame) => frame.includes("WLY") && frame.includes("REPEAT"),
+      );
+      await pressCtrlKeyAndRender(mockInput, harness, "s");
+      let frame = await waitForText(
+        harness,
+        "Created your first recurring task.",
+      );
+      expect(frame).toContain("↻");
 
-        await waitForFrame(
-          harness,
-          (next) => !next.includes("Created your first recurring task."),
-          12_000
-        );
+      await waitForFrame(
+        harness,
+        (next) => !next.includes("Created your first recurring task."),
+        12_000,
+      );
 
-        await pressKeyAndRender(mockInput, harness, "e");
-        await waitForText(harness, "REPEAT");
-        await clickTextUntil(
-          harness,
-          "MLY",
-          (next) => next.includes("MLY") && next.includes("REPEAT")
-        );
-        await pressCtrlKeyAndRender(mockInput, harness, "s");
-        frame = await waitForText(harness, "RECURRING EDITOR TASK");
-        expect(frame).toContain("↻");
-        await expectTextAbsentForDuration(harness, "Created your first recurring task.", 1200);
-      } finally {
-        await cleanupSession(session);
-      }
-    },
-    20_000
-  );
+      await pressKeyAndRender(mockInput, harness, "e");
+      await waitForText(harness, "REPEAT");
+      await clickTextUntil(
+        harness,
+        "MLY",
+        (next) => next.includes("MLY") && next.includes("REPEAT"),
+      );
+      await pressCtrlKeyAndRender(mockInput, harness, "s");
+      frame = await waitForText(harness, "RECURRING EDITOR TASK");
+      expect(frame).toContain("↻");
+      await expectTextAbsentForDuration(
+        harness,
+        "Created your first recurring task.",
+        1200,
+      );
+    } finally {
+      await cleanupSession(session);
+    }
+  }, 20_000);
 
   it("empty NUX shortcuts/back path and backup import CTA route into Backup Center import", async () => {
     const session = await createSession({
       initialData: makeInitialData([]),
-      showCorruptionRecoveryImportCta: true
+      showCorruptionRecoveryImportCta: true,
     });
     const { harness } = session;
-    const fixture = await prepareBackupRuntimeFixture(session, { localTasks: [] });
+    const fixture = await prepareBackupRuntimeFixture(session, {
+      localTasks: [],
+    });
 
     try {
       await withDataPath(fixture.dataPath, async () => {
@@ -2698,7 +2914,11 @@ describe("App modal flow integration", () => {
         expect(frame).toContain("SHORTCUTS [H]");
 
         await pressKeyAndRender(harness.mockInput, harness, "i");
-        await waitForAnyText(harness, ["Loading backups...", "Select backup file"], 8000);
+        await waitForAnyText(
+          harness,
+          ["Loading backups...", "Select backup file"],
+          8000,
+        );
         frame = await waitForText(harness, "Select backup file", 8000);
         expect(frame).toContain("STEP: DATA / IMPORT");
       });
@@ -2708,13 +2928,15 @@ describe("App modal flow integration", () => {
   });
 
   it("empty NUX celebrate enter opens what-next with onboarding chips and enter returns to list", async () => {
-    const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-app-nux-what-next-"));
+    const dataDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "tadoi-app-nux-what-next-"),
+    );
     const dataPath = path.join(dataDir, "tadoi_data.json");
     const originalDataPath = process.env.TADOI_DATA_PATH;
     process.env.TADOI_DATA_PATH = dataPath;
     const session = await createSession({
       initialData: makeInitialData([]),
-      skipInitialSave: false
+      skipInitialSave: false,
     });
     const { harness } = session;
     const { mockInput } = harness;
@@ -2756,13 +2978,15 @@ describe("App modal flow integration", () => {
   });
 
   it("what-next checklist action opens checklist add modal on the created task", async () => {
-    const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-app-nux-checklist-route-"));
+    const dataDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "tadoi-app-nux-checklist-route-"),
+    );
     const dataPath = path.join(dataDir, "tadoi_data.json");
     const originalDataPath = process.env.TADOI_DATA_PATH;
     process.env.TADOI_DATA_PATH = dataPath;
     const session = await createSession({
       initialData: makeInitialData([]),
-      skipInitialSave: false
+      skipInitialSave: false,
     });
     const { harness } = session;
     const { mockInput } = harness;
@@ -2796,13 +3020,15 @@ describe("App modal flow integration", () => {
   });
 
   it("what-next tome action opens the TOME create prompt", async () => {
-    const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-app-nux-tome-route-"));
+    const dataDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "tadoi-app-nux-tome-route-"),
+    );
     const dataPath = path.join(dataDir, "tadoi_data.json");
     const originalDataPath = process.env.TADOI_DATA_PATH;
     process.env.TADOI_DATA_PATH = dataPath;
     const session = await createSession({
       initialData: makeInitialData([]),
-      skipInitialSave: false
+      skipInitialSave: false,
     });
     const { harness } = session;
     const { mockInput } = harness;
@@ -2838,7 +3064,7 @@ describe("App modal flow engagement toast protections", () => {
     harness: RenderHarness,
     mockInput: MockInput,
     openOverlay: () => Promise<void>,
-    closeOverlay: () => Promise<void>
+    closeOverlay: () => Promise<void>,
   ): Promise<void> {
     const toastMessage = "First task completed.";
     await pressKeyAndRender(mockInput, harness, " ");
@@ -2866,7 +3092,7 @@ describe("App modal flow engagement toast protections", () => {
         async () => {
           await pressEscapeAndRender(mockInput, harness);
           await waitForText(harness, "MODE:  LIST");
-        }
+        },
       );
     } finally {
       await cleanupSession(session);
@@ -2889,7 +3115,7 @@ describe("App modal flow engagement toast protections", () => {
         async () => {
           await pressEscapeAndRender(mockInput, harness);
           await waitForText(harness, "MODE:  LIST");
-        }
+        },
       );
     } finally {
       await cleanupSession(session);
@@ -2912,7 +3138,7 @@ describe("App modal flow engagement toast protections", () => {
         async () => {
           await pressEscapeAndRender(mockInput, harness);
           await waitForText(harness, "MODE:  LIST");
-        }
+        },
       );
     } finally {
       await cleanupSession(session);
@@ -2935,7 +3161,7 @@ describe("App modal flow engagement toast protections", () => {
         async () => {
           await pressKeyAndRender(mockInput, harness, "n");
           await waitForText(harness, "MODE:  LIST");
-        }
+        },
       );
     } finally {
       await cleanupSession(session);

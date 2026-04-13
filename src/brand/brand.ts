@@ -6,7 +6,7 @@ export const TRADEMARK_NOTICE =
   "Other names may be trademarks of their respective owners.";
 export const TRADEMARK_NOTICE_LINES = [
   `${PRODUCT_NAME_TM} is a trademark of ${TRADEMARK_OWNER}.`,
-  "Other names may be trademarks of their respective owners."
+  "Other names may be trademarks of their respective owners.",
 ] as const;
 
 export const APP_NAME = PRODUCT_NAME;
@@ -18,7 +18,7 @@ export const ENV_VARS = {
   DATA_PATH: "TADOI_DATA_PATH",
   PERF_DEBUG: "TADOI_PERF_DEBUG",
   VERBOSE_PATH_LOGS: "TADOI_VERBOSE_PATH_LOGS",
-  GITHUB_SNAPSHOT_PASSPHRASE: "TADOI_GITHUB_SNAPSHOT_PASSPHRASE"
+  GITHUB_SNAPSHOT_PASSPHRASE: "TADOI_GITHUB_SNAPSHOT_PASSPHRASE",
 } as const;
 
 export const DATA_FILE_NAME = `${BRAND_SLUG}_data.json`;
@@ -35,7 +35,7 @@ export const ASCII_LOGO = {
     |_|/_/   \\_\\____/ \\___/___|`,
   COMPACT: `TTTT  A  DD   OO  III
   T  AAA D D O  O  I`,
-  MICRO: `[TADOI]`
+  MICRO: `[TADOI]`,
 } as const;
 
 export type AsciiLogoVariant = keyof typeof ASCII_LOGO;
@@ -79,7 +79,7 @@ const TAAG_SLANT_LOGO_32 = [
   " /_  __/   |  / __ \\/ __ \\/  _/",
   "  / / / /| | / / / / / / // /",
   " / / / ___ |/ /_/ / /_/ // /",
-  "/_/ /_/  |_/_____/\\____/___/"
+  "/_/ /_/  |_/_____/\\____/___/",
 ].join("\n");
 
 const TAAG_RECTANGLES_LOGO_32 = [
@@ -87,7 +87,7 @@ const TAAG_RECTANGLES_LOGO_32 = [
   " _____ _____ ____  _____ _____",
   "|_   _|  _  |    \\|     |     |",
   "  | | |     |  |  |  |  |-   -|",
-  "  |_| |__|__|____/|_____|_____|"
+  "  |_| |__|__|____/|_____|_____|",
 ].join("\n");
 
 const TAAG_LCD_LOGO_32 = [
@@ -95,7 +95,7 @@ const TAAG_LCD_LOGO_32 = [
   "  |   |   |   | | |   |   |",
   "  +   |-+-|   + | |   |   +",
   "  |   |   |   | | |   |   |",
-  "             ---   ---   ---"
+  "             ---   ---   ---",
 ].join("\n");
 
 const TAAG_PUFFY_LOGO_32 = [
@@ -104,35 +104,35 @@ const TAAG_PUFFY_LOGO_32 = [
   "  | |  | (_) || | ) || ( ) || |",
   "  | |  |  _  || | | )| | | || |",
   "  | |  | | | || |_) || (_) || |",
-  "  (_)  (_) (_)(____/'(_____)(_)"
+  "  (_)  (_) (_)(____/'(_____)(_)",
 ].join("\n");
 
 const TAAG_BULBHEAD_LOGO_32 = [
   " ____   __    ____  _____  ____",
   "(_  _) /__\\  (  _ \\(  _  )(_  _)",
   "  )(  /(__)\\  )(_) ))(_)(  _)(_",
-  " (__)(__)(__)(____/(_____)(____)"
+  " (__)(__)(__)(____/(_____)(____)",
 ].join("\n");
 
 const TAAG_BRACED_LOGO_32 = [
   ".-----. .--.  .----.  .---. .-.",
   "`-' '-'/ {} \\ } {-. \\/ {-. \\{ |",
   "  } { /  /\\  \\} '-} /\\ '-} /| }",
-  "  `-' `-'  `-'`----'  `---' `-'"
+  "  `-' `-'  `-'`----'  `---' `-'",
 ].join("\n");
 
 const TAAG_DOUBLE_LOGO_32 = [
   " ______  ___  ____     ___   __",
   " | || | // \\\\ || \\\\   // \\\\  ||",
   "   ||   ||=|| ||  )) ((   )) ||",
-  "   ||   || || ||_//   \\\\_//  ||"
+  "   ||   || || ||_//   \\\\_//  ||",
 ].join("\n");
 
 const TAAG_SMALL_LOGO_32 = [
   "  _____ _   ___   ___ ___",
   " |_   _/_\\ |   \\ / _ \\_ _|",
   "   | |/ _ \\| |) | (_) | |",
-  "   |_/_/ \\_\\___/ \\___/___|"
+  "   |_/_/ \\_\\___/ \\___/___|",
 ].join("\n");
 
 export const LOGO_VARIANTS: Record<LogoVariantId, string[]> = {
@@ -147,7 +147,7 @@ export const LOGO_VARIANTS: Record<LogoVariantId, string[]> = {
   taag_bulbhead32: TAAG_BULBHEAD_LOGO_32.split("\n"),
   taag_braced32: TAAG_BRACED_LOGO_32.split("\n"),
   taag_double32: TAAG_DOUBLE_LOGO_32.split("\n"),
-  taag_small32: TAAG_SMALL_LOGO_32.split("\n")
+  taag_small32: TAAG_SMALL_LOGO_32.split("\n"),
 };
 
 export const LOGO_VARIANT_LABELS: Record<LogoVariantId, string> = {
@@ -162,7 +162,7 @@ export const LOGO_VARIANT_LABELS: Record<LogoVariantId, string> = {
   taag_bulbhead32: "Bulbhead",
   taag_braced32: "Braced",
   taag_double32: "Double",
-  taag_small32: "Small"
+  taag_small32: "Small",
 };
 
 export const ROTATING_LOGO_ORDER: LogoVariantId[] = [
@@ -177,7 +177,7 @@ export const ROTATING_LOGO_ORDER: LogoVariantId[] = [
   "taag_bulbhead32",
   "taag_braced32",
   "taag_double32",
-  "taag_small32"
+  "taag_small32",
 ];
 
 export function formatLogoModeLabel(mode: LogoVariantId | "rotate"): string {

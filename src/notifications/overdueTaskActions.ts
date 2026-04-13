@@ -13,7 +13,10 @@ function parseEventDueAtMs(event: TaskOverdueEvent): number | undefined {
   return Number.isFinite(dueAtMs) ? dueAtMs : undefined;
 }
 
-function getSeriesTaskFromEvent(tasks: Task[], event: TaskOverdueEvent): Task | undefined {
+function getSeriesTaskFromEvent(
+  tasks: Task[],
+  event: TaskOverdueEvent,
+): Task | undefined {
   const eventTask = tasks.find((task) => task.id === event.taskId);
   if (!eventTask) return undefined;
   if (!eventTask.recurrence || eventTask.instance_of) return undefined;
@@ -23,12 +26,12 @@ function getSeriesTaskFromEvent(tasks: Task[], event: TaskOverdueEvent): Task | 
 function findMaterializedOccurrenceInstance(
   tasks: Task[],
   seriesId: string,
-  occurrenceIso: string
+  occurrenceIso: string,
 ): Task | undefined {
   return tasks.find(
     (task) =>
       task.instance_of?.series_id === seriesId &&
-      task.instance_of?.occurrence === occurrenceIso
+      task.instance_of?.occurrence === occurrenceIso,
   );
 }
 
@@ -36,20 +39,22 @@ function withSeriesOccurrenceExcluded(
   tasks: Task[],
   seriesTaskId: string,
   occurrenceIso: string,
-  nowMs: number
+  nowMs: number,
 ): Task[] {
   return tasks.map((task) => {
     if (task.id !== seriesTaskId || !task.recurrence) {
       return task;
     }
-    const exdates = Array.from(new Set([...(task.recurrence.exdates ?? []), occurrenceIso]));
+    const exdates = Array.from(
+      new Set([...(task.recurrence.exdates ?? []), occurrenceIso]),
+    );
     return {
       ...task,
       updatedAt: nowMs,
       recurrence: {
         ...task.recurrence,
-        exdates
-      }
+        exdates,
+      },
     };
   });
 }
@@ -58,7 +63,7 @@ export function applyOverdueSnooze(
   tasks: Task[],
   event: TaskOverdueEvent,
   nowMs: number,
-  snoozeMinutes = 10
+  snoozeMinutes = 10,
 ): Task[] {
   const snoozeMs = Math.max(1, Math.floor(snoozeMinutes)) * 60_000;
   const snoozedDueAt = nowMs + snoozeMs;
@@ -70,7 +75,7 @@ export function applyOverdueSnooze(
         ...task,
         dueAt: snoozedDueAt,
         hasExplicitTime: true,
-        updatedAt: nowMs
+        updatedAt: nowMs,
       };
     });
   }
@@ -81,7 +86,11 @@ export function applyOverdueSnooze(
   }
   const occurrenceIso = formatDateToLocalIso(new Date(dueAtMs));
   const seriesId = seriesTask.recurrence.series_id;
-  const existingInstance = findMaterializedOccurrenceInstance(tasks, seriesId, occurrenceIso);
+  const existingInstance = findMaterializedOccurrenceInstance(
+    tasks,
+    seriesId,
+    occurrenceIso,
+  );
   const source = existingInstance ?? seriesTask;
   const snoozedInstance: Task = {
     id: existingInstance?.id ?? crypto.randomUUID(),
@@ -95,21 +104,28 @@ export function applyOverdueSnooze(
     tags: source.tags,
     instance_of: {
       series_id: seriesId,
-      occurrence: occurrenceIso
-    }
+      occurrence: occurrenceIso,
+    },
   };
 
-  const withExdate = withSeriesOccurrenceExcluded(tasks, seriesTask.id, occurrenceIso, nowMs);
+  const withExdate = withSeriesOccurrenceExcluded(
+    tasks,
+    seriesTask.id,
+    occurrenceIso,
+    nowMs,
+  );
   if (!existingInstance) {
     return [...withExdate, snoozedInstance];
   }
-  return withExdate.map((task) => (task.id === existingInstance.id ? snoozedInstance : task));
+  return withExdate.map((task) =>
+    task.id === existingInstance.id ? snoozedInstance : task,
+  );
 }
 
 export function applyOverdueMarkDone(
   tasks: Task[],
   event: TaskOverdueEvent,
-  nowMs: number
+  nowMs: number,
 ): Task[] {
   const seriesTask = getSeriesTaskFromEvent(tasks, event);
   if (!seriesTask || !seriesTask.recurrence) {
@@ -119,7 +135,7 @@ export function applyOverdueMarkDone(
         ...task,
         status: "done",
         updatedAt: nowMs,
-        closedAt: nowMs
+        closedAt: nowMs,
       };
     });
   }
@@ -130,8 +146,17 @@ export function applyOverdueMarkDone(
   }
   const occurrenceIso = formatDateToLocalIso(new Date(dueAtMs));
   const seriesId = seriesTask.recurrence.series_id;
-  const existingInstance = findMaterializedOccurrenceInstance(tasks, seriesId, occurrenceIso);
-  const withExdate = withSeriesOccurrenceExcluded(tasks, seriesTask.id, occurrenceIso, nowMs);
+  const existingInstance = findMaterializedOccurrenceInstance(
+    tasks,
+    seriesId,
+    occurrenceIso,
+  );
+  const withExdate = withSeriesOccurrenceExcluded(
+    tasks,
+    seriesTask.id,
+    occurrenceIso,
+    nowMs,
+  );
 
   if (existingInstance) {
     return withExdate.map((task) => {
@@ -140,7 +165,7 @@ export function applyOverdueMarkDone(
         ...task,
         status: "done",
         updatedAt: nowMs,
-        closedAt: nowMs
+        closedAt: nowMs,
       };
     });
   }
@@ -158,14 +183,17 @@ export function applyOverdueMarkDone(
     tags: seriesTask.tags,
     instance_of: {
       series_id: seriesId,
-      occurrence: occurrenceIso
-    }
+      occurrence: occurrenceIso,
+    },
   };
 
   return [...withExdate, doneInstance];
 }
 
-export function resolveGoToTaskTarget(tasks: Task[], event: TaskOverdueEvent): GoToTaskTarget {
+export function resolveGoToTaskTarget(
+  tasks: Task[],
+  event: TaskOverdueEvent,
+): GoToTaskTarget {
   const seriesTask = getSeriesTaskFromEvent(tasks, event);
   if (!seriesTask || !seriesTask.recurrence) {
     return { preferredTaskId: event.taskId };
@@ -175,7 +203,7 @@ export function resolveGoToTaskTarget(tasks: Task[], event: TaskOverdueEvent): G
   if (dueAtMs === undefined) {
     return {
       preferredTaskId: event.taskId,
-      fallbackSourceTaskId: seriesTask.id
+      fallbackSourceTaskId: seriesTask.id,
     };
   }
 
@@ -183,16 +211,19 @@ export function resolveGoToTaskTarget(tasks: Task[], event: TaskOverdueEvent): G
   const existingInstance = findMaterializedOccurrenceInstance(
     tasks,
     seriesTask.recurrence.series_id,
-    occurrenceIso
+    occurrenceIso,
   );
   if (existingInstance) {
     return {
       preferredTaskId: existingInstance.id,
-      fallbackSourceTaskId: seriesTask.id
+      fallbackSourceTaskId: seriesTask.id,
     };
   }
   return {
-    preferredTaskId: buildSeriesOccurrenceRowId(seriesTask.recurrence.series_id, occurrenceIso),
-    fallbackSourceTaskId: seriesTask.id
+    preferredTaskId: buildSeriesOccurrenceRowId(
+      seriesTask.recurrence.series_id,
+      occurrenceIso,
+    ),
+    fallbackSourceTaskId: seriesTask.id,
   };
 }

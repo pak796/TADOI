@@ -8,12 +8,12 @@ describe("NoteGraphRuntimeIndex", () => {
     runtime.upsertDocument({
       path: "A.md",
       mtimeMs: 1,
-      content: "# A\n\n[[B]]\n@task:task-1\n#inbox/to-read"
+      content: "# A\n\n[[B]]\n@task:task-1\n#inbox/to-read",
     });
     runtime.upsertDocument({
       path: "B.md",
       mtimeMs: 1,
-      content: "# B\n\nHello"
+      content: "# B\n\nHello",
     });
 
     const snapshot = runtime.snapshot();
@@ -32,10 +32,12 @@ describe("NoteGraphRuntimeIndex", () => {
     runtime.upsertDocument({
       path: "A.md",
       mtimeMs: 1,
-      content: "# A\n\n[[Missing]]"
+      content: "# A\n\n[[Missing]]",
     });
 
     const warnings = runtime.snapshot().warningsByPath.get("A.md") ?? [];
-    expect(warnings.some((warning) => warning.code === "link_broken")).toBe(true);
+    expect(warnings.some((warning) => warning.code === "link_broken")).toBe(
+      true,
+    );
   });
 });

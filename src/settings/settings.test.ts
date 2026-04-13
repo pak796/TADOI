@@ -16,7 +16,7 @@ import {
   resolveSettingsPaths,
   saveSettingsDebounced,
   saveSettingsStrict,
-  type SettingsFsOps
+  type SettingsFsOps,
 } from "./settings";
 import { THEMES, type ThemeId, type ThemeTokens } from "../theme/themes";
 
@@ -25,20 +25,21 @@ const DEFAULT_NOTIFICATIONS = {
   inAppOverdueBanner: true,
   terminalBellOnOverdue: false,
   bannerDurationMs: 5000,
-  bellCooldownMs: 2000
+  bellCooldownMs: 2000,
 };
 const DEFAULT_SECURITY = {
-  nonHttpLinkPolicy: "prompt"
+  nonHttpLinkPolicy: "prompt",
 } as const;
 const DEFAULT_LOGO_MODE = getDefaultSettings().logoMode;
 const DEFAULT_CUSTOM_THEMES = getDefaultSettings().customThemes;
 const DEFAULT_GITHUB_BACKUP = getDefaultSettings().githubBackup;
-const DEFAULT_HINT_DISPLAY_MODE = getDefaultSettings().hintDisplayMode ?? "bottom";
+const DEFAULT_HINT_DISPLAY_MODE =
+  getDefaultSettings().hintDisplayMode ?? "bottom";
 const DEFAULT_SHOW_PREFIX_HINT_POPUP =
   getDefaultSettings().showPrefixHintPopup ?? true;
 const DEFAULT_NOTES = getDefaultSettings().notes ?? {
   enabled: true,
-  rootPath: null
+  rootPath: null,
 };
 
 function withHintDefaults<T extends Record<string, unknown>>(settings: T) {
@@ -47,7 +48,7 @@ function withHintDefaults<T extends Record<string, unknown>>(settings: T) {
     showPrefixHintPopup: DEFAULT_SHOW_PREFIX_HINT_POPUP,
     githubBackup: DEFAULT_GITHUB_BACKUP,
     notes: DEFAULT_NOTES,
-    ...settings
+    ...settings,
   };
 }
 
@@ -64,16 +65,18 @@ function normalizeTokens(tokens: ThemeTokens): ThemeTokens {
     warn: tokens.warn.toUpperCase(),
     danger: tokens.danger.toUpperCase(),
     selectionBg: tokens.selectionBg.toUpperCase(),
-    selectionText: tokens.selectionText.toUpperCase()
+    selectionText: tokens.selectionText.toUpperCase(),
   };
 }
 
-function expectedCustomThemesFor(themeId: ThemeId): typeof DEFAULT_CUSTOM_THEMES {
+function expectedCustomThemesFor(
+  themeId: ThemeId,
+): typeof DEFAULT_CUSTOM_THEMES {
   const seed = themeId === "rotating" ? THEMES.default : THEMES[themeId];
   return {
     custom1: {
-      global: normalizeTokens(seed)
-    }
+      global: normalizeTokens(seed),
+    },
   };
 }
 
@@ -90,7 +93,10 @@ function isMissingFileError(error: unknown): boolean {
   );
 }
 
-async function readFileEventually(filePath: string, timeoutMs = 2000): Promise<string> {
+async function readFileEventually(
+  filePath: string,
+  timeoutMs = 2000,
+): Promise<string> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() <= deadline) {
     try {
@@ -108,7 +114,7 @@ async function readFileEventually(filePath: string, timeoutMs = 2000): Promise<s
 async function readJsonEventually(
   filePath: string,
   predicate: (value: unknown) => boolean,
-  timeoutMs = 2000
+  timeoutMs = 2000,
 ): Promise<unknown> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() <= deadline) {
@@ -154,16 +160,20 @@ describe("loadSettings", () => {
     expect(result.settings.logoMode).toBe(DEFAULT_LOGO_MODE);
     expect(result.settings.notifications).toEqual(DEFAULT_NOTIFICATIONS);
     expect(result.settings.security).toEqual(DEFAULT_SECURITY);
-    expect(result.settings.customThemes).toEqual(expectedCustomThemesFor("default"));
+    expect(result.settings.customThemes).toEqual(
+      expectedCustomThemesFor("default"),
+    );
     expect(result.settings.customThemes?.textByTheme).toBeUndefined();
     expect(result.settings.hintDisplayMode).toBe(DEFAULT_HINT_DISPLAY_MODE);
-    expect(result.settings.showPrefixHintPopup).toBe(DEFAULT_SHOW_PREFIX_HINT_POPUP);
+    expect(result.settings.showPrefixHintPopup).toBe(
+      DEFAULT_SHOW_PREFIX_HINT_POPUP,
+    );
     expect(result.settings.crtFxLite).toBeUndefined();
     expect(result.settings.crtFxColor).toBeUndefined();
     expect(result.settings.crtFxPreset).toBeUndefined();
     expect(result.settings.githubBackup).toEqual(DEFAULT_GITHUB_BACKUP);
     expect(result.resolvedPath).toBe(
-      path.posix.join(homeDir, ".config", "tadoi", "settings.json")
+      path.posix.join(homeDir, ".config", "tadoi", "settings.json"),
     );
   });
 
@@ -183,11 +193,11 @@ describe("loadSettings", () => {
           autoPushPolicy: "always",
           lastPushed: {
             stateRevision: -1,
-            settingsHash: 7
-          }
-        }
+            settingsHash: 7,
+          },
+        },
       }),
-      "utf8"
+      "utf8",
     );
 
     const result = await loadSettings({ homeDir, platform: "linux" });
@@ -203,10 +213,10 @@ describe("loadSettings", () => {
       JSON.stringify({
         notes: {
           enabled: "yes",
-          rootPath: 123
-        }
+          rootPath: 123,
+        },
       }),
-      "utf8"
+      "utf8",
     );
 
     const result = await loadSettings({ homeDir, platform: "linux" });
@@ -231,11 +241,11 @@ describe("loadSettings", () => {
             stateRevision: 12,
             settingsHash: "abc",
             timestamp: "2026-02-27T00:00:00.000Z",
-            remoteCommitSha: "deadbeef"
-          }
-        }
+            remoteCommitSha: "deadbeef",
+          },
+        },
       }),
-      "utf8"
+      "utf8",
     );
 
     const result = await loadSettings({ homeDir, platform: "linux" });
@@ -250,25 +260,28 @@ describe("loadSettings", () => {
         stateRevision: 12,
         settingsHash: "abc",
         timestamp: "2026-02-27T00:00:00.000Z",
-        remoteCommitSha: "deadbeef"
-      }
+        remoteCommitSha: "deadbeef",
+      },
     });
   });
 
   it("reads primary settings file first when valid", async () => {
     const homeDir = await makeTempDir();
-    const { primary, fallback } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    const { primary, fallback } = resolveSettingsPaths({
+      homeDir,
+      platform: "linux",
+    });
     await fs.mkdir(path.dirname(primary), { recursive: true });
     await fs.mkdir(path.dirname(fallback), { recursive: true });
     await fs.writeFile(
       primary,
       JSON.stringify({ themeId: "retro", flashMode: "static" }),
-      "utf8"
+      "utf8",
     );
     await fs.writeFile(
       fallback,
       JSON.stringify({ themeId: "neonHacker", flashMode: "slow" }),
-      "utf8"
+      "utf8",
     );
 
     const result = await loadSettings({ homeDir, platform: "linux" });
@@ -279,7 +292,9 @@ describe("loadSettings", () => {
     expect(result.settings.crtFxColor).toBeUndefined();
     expect(result.settings.crtFxPreset).toBeUndefined();
     expect(result.settings.notifications).toEqual(DEFAULT_NOTIFICATIONS);
-    expect(result.settings.customThemes).toEqual(expectedCustomThemesFor("retro"));
+    expect(result.settings.customThemes).toEqual(
+      expectedCustomThemesFor("retro"),
+    );
     expect(result.resolvedPath).toBe(primary);
   });
 
@@ -290,7 +305,7 @@ describe("loadSettings", () => {
     await fs.writeFile(
       fallback,
       JSON.stringify({ themeId: "highContrast", flashMode: "static" }),
-      "utf8"
+      "utf8",
     );
 
     const result = await loadSettings({ homeDir, platform: "linux" });
@@ -298,7 +313,9 @@ describe("loadSettings", () => {
     expect(result.settings.logoMode).toBe(DEFAULT_LOGO_MODE);
     expect(result.settings.flashMode).toBe("static");
     expect(result.settings.notifications).toEqual(DEFAULT_NOTIFICATIONS);
-    expect(result.settings.customThemes).toEqual(expectedCustomThemesFor("highContrast"));
+    expect(result.settings.customThemes).toEqual(
+      expectedCustomThemesFor("highContrast"),
+    );
     expect(result.resolvedPath).toBe(fallback);
   });
 
@@ -310,7 +327,9 @@ describe("loadSettings", () => {
 
     const result = await loadSettings({ homeDir, platform: "linux" });
     expect(result.settings.themeId).toBe("trooper");
-    expect(result.settings.customThemes).toEqual(expectedCustomThemesFor("trooper"));
+    expect(result.settings.customThemes).toEqual(
+      expectedCustomThemesFor("trooper"),
+    );
   });
 
   it("accepts niners as a valid theme id and seeds custom1 from niners", async () => {
@@ -321,21 +340,29 @@ describe("loadSettings", () => {
 
     const result = await loadSettings({ homeDir, platform: "linux" });
     expect(result.settings.themeId).toBe("niners");
-    expect(result.settings.customThemes).toEqual(expectedCustomThemesFor("niners"));
+    expect(result.settings.customThemes).toEqual(
+      expectedCustomThemesFor("niners"),
+    );
   });
 
   it("normalizes invalid theme ids to default", async () => {
     const homeDir = await makeTempDir();
     const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
     await fs.mkdir(path.dirname(primary), { recursive: true });
-    await fs.writeFile(primary, JSON.stringify({ themeId: "bad-theme" }), "utf8");
+    await fs.writeFile(
+      primary,
+      JSON.stringify({ themeId: "bad-theme" }),
+      "utf8",
+    );
 
     const result = await loadSettings({ homeDir, platform: "linux" });
     expect(result.settings.themeId).toBe("default");
     expect(result.settings.logoMode).toBe(DEFAULT_LOGO_MODE);
     expect(result.settings.flashMode).toBe("slow");
     expect(result.settings.notifications).toEqual(DEFAULT_NOTIFICATIONS);
-    expect(result.settings.customThemes).toEqual(expectedCustomThemesFor("default"));
+    expect(result.settings.customThemes).toEqual(
+      expectedCustomThemesFor("default"),
+    );
   });
 
   it("defaults flash mode when missing or invalid", async () => {
@@ -344,29 +371,33 @@ describe("loadSettings", () => {
     await fs.mkdir(path.dirname(primary), { recursive: true });
     await fs.writeFile(primary, JSON.stringify({ themeId: "retro" }), "utf8");
     const missing = await loadSettings({ homeDir, platform: "linux" });
-    expect(missing.settings).toEqual(withHintDefaults({
-      themeId: "retro",
-      logoMode: DEFAULT_LOGO_MODE,
-      flashMode: "slow",
-      notifications: DEFAULT_NOTIFICATIONS,
-      security: DEFAULT_SECURITY,
-      customThemes: expectedCustomThemesFor("retro")
-    }));
+    expect(missing.settings).toEqual(
+      withHintDefaults({
+        themeId: "retro",
+        logoMode: DEFAULT_LOGO_MODE,
+        flashMode: "slow",
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY,
+        customThemes: expectedCustomThemesFor("retro"),
+      }),
+    );
 
     await fs.writeFile(
       primary,
       JSON.stringify({ themeId: "retro", flashMode: "fast" }),
-      "utf8"
+      "utf8",
     );
     const invalid = await loadSettings({ homeDir, platform: "linux" });
-    expect(invalid.settings).toEqual(withHintDefaults({
-      themeId: "retro",
-      logoMode: DEFAULT_LOGO_MODE,
-      flashMode: "slow",
-      notifications: DEFAULT_NOTIFICATIONS,
-      security: DEFAULT_SECURITY,
-      customThemes: expectedCustomThemesFor("retro")
-    }));
+    expect(invalid.settings).toEqual(
+      withHintDefaults({
+        themeId: "retro",
+        logoMode: DEFAULT_LOGO_MODE,
+        flashMode: "slow",
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY,
+        customThemes: expectedCustomThemesFor("retro"),
+      }),
+    );
   });
 
   it("normalizes crtFxLite to true only when explicitly true", async () => {
@@ -377,7 +408,7 @@ describe("loadSettings", () => {
     await fs.writeFile(
       primary,
       JSON.stringify({ themeId: "retro", flashMode: "slow", crtFxLite: true }),
-      "utf8"
+      "utf8",
     );
     const enabled = await loadSettings({ homeDir, platform: "linux" });
     expect(enabled.settings.crtFxLite).toBe(true);
@@ -385,7 +416,7 @@ describe("loadSettings", () => {
     await fs.writeFile(
       primary,
       JSON.stringify({ themeId: "retro", flashMode: "slow", crtFxLite: false }),
-      "utf8"
+      "utf8",
     );
     const disabled = await loadSettings({ homeDir, platform: "linux" });
     expect(disabled.settings.crtFxLite).toBeUndefined();
@@ -393,7 +424,7 @@ describe("loadSettings", () => {
     await fs.writeFile(
       primary,
       JSON.stringify({ themeId: "retro", flashMode: "slow", crtFxLite: "yes" }),
-      "utf8"
+      "utf8",
     );
     const invalid = await loadSettings({ homeDir, platform: "linux" });
     expect(invalid.settings.crtFxLite).toBeUndefined();
@@ -406,24 +437,36 @@ describe("loadSettings", () => {
 
     await fs.writeFile(
       primary,
-      JSON.stringify({ themeId: "retro", flashMode: "slow", crtFxPreset: "strong" }),
-      "utf8"
+      JSON.stringify({
+        themeId: "retro",
+        flashMode: "slow",
+        crtFxPreset: "strong",
+      }),
+      "utf8",
     );
     const strong = await loadSettings({ homeDir, platform: "linux" });
     expect(strong.settings.crtFxPreset).toBe("strong");
 
     await fs.writeFile(
       primary,
-      JSON.stringify({ themeId: "retro", flashMode: "slow", crtFxPreset: "normal" }),
-      "utf8"
+      JSON.stringify({
+        themeId: "retro",
+        flashMode: "slow",
+        crtFxPreset: "normal",
+      }),
+      "utf8",
     );
     const normal = await loadSettings({ homeDir, platform: "linux" });
     expect(normal.settings.crtFxPreset).toBeUndefined();
 
     await fs.writeFile(
       primary,
-      JSON.stringify({ themeId: "retro", flashMode: "slow", crtFxPreset: "loud" }),
-      "utf8"
+      JSON.stringify({
+        themeId: "retro",
+        flashMode: "slow",
+        crtFxPreset: "loud",
+      }),
+      "utf8",
     );
     const invalid = await loadSettings({ homeDir, platform: "linux" });
     expect(invalid.settings.crtFxPreset).toBeUndefined();
@@ -436,24 +479,36 @@ describe("loadSettings", () => {
 
     await fs.writeFile(
       primary,
-      JSON.stringify({ themeId: "retro", flashMode: "slow", crtFxColor: "amber" }),
-      "utf8"
+      JSON.stringify({
+        themeId: "retro",
+        flashMode: "slow",
+        crtFxColor: "amber",
+      }),
+      "utf8",
     );
     const amber = await loadSettings({ homeDir, platform: "linux" });
     expect(amber.settings.crtFxColor).toBe("amber");
 
     await fs.writeFile(
       primary,
-      JSON.stringify({ themeId: "retro", flashMode: "slow", crtFxColor: "green" }),
-      "utf8"
+      JSON.stringify({
+        themeId: "retro",
+        flashMode: "slow",
+        crtFxColor: "green",
+      }),
+      "utf8",
     );
     const green = await loadSettings({ homeDir, platform: "linux" });
     expect(green.settings.crtFxColor).toBeUndefined();
 
     await fs.writeFile(
       primary,
-      JSON.stringify({ themeId: "retro", flashMode: "slow", crtFxColor: "blue" }),
-      "utf8"
+      JSON.stringify({
+        themeId: "retro",
+        flashMode: "slow",
+        crtFxColor: "blue",
+      }),
+      "utf8",
     );
     const invalid = await loadSettings({ homeDir, platform: "linux" });
     expect(invalid.settings.crtFxColor).toBeUndefined();
@@ -466,24 +521,36 @@ describe("loadSettings", () => {
 
     await fs.writeFile(
       primary,
-      JSON.stringify({ themeId: "retro", flashMode: "slow", retroFxMode: "broadcast" }),
-      "utf8"
+      JSON.stringify({
+        themeId: "retro",
+        flashMode: "slow",
+        retroFxMode: "broadcast",
+      }),
+      "utf8",
     );
     const broadcast = await loadSettings({ homeDir, platform: "linux" });
     expect(broadcast.settings.retroFxMode).toBe("broadcast");
 
     await fs.writeFile(
       primary,
-      JSON.stringify({ themeId: "retro", flashMode: "slow", retroFxMode: "off" }),
-      "utf8"
+      JSON.stringify({
+        themeId: "retro",
+        flashMode: "slow",
+        retroFxMode: "off",
+      }),
+      "utf8",
     );
     const off = await loadSettings({ homeDir, platform: "linux" });
     expect(off.settings.retroFxMode).toBeUndefined();
 
     await fs.writeFile(
       primary,
-      JSON.stringify({ themeId: "retro", flashMode: "slow", retroFxMode: "extreme" }),
-      "utf8"
+      JSON.stringify({
+        themeId: "retro",
+        flashMode: "slow",
+        retroFxMode: "extreme",
+      }),
+      "utf8",
     );
     const invalid = await loadSettings({ homeDir, platform: "linux" });
     expect(invalid.settings.retroFxMode).toBeUndefined();
@@ -497,15 +564,19 @@ describe("loadSettings", () => {
     await fs.writeFile(
       primary,
       JSON.stringify({ themeId: "retro", flashMode: "slow" }),
-      "utf8"
+      "utf8",
     );
     const missing = await loadSettings({ homeDir, platform: "linux" });
     expect(missing.settings.logoMode).toBe(DEFAULT_LOGO_MODE);
 
     await fs.writeFile(
       primary,
-      JSON.stringify({ themeId: "retro", logoMode: "invalid-mode", flashMode: "slow" }),
-      "utf8"
+      JSON.stringify({
+        themeId: "retro",
+        logoMode: "invalid-mode",
+        flashMode: "slow",
+      }),
+      "utf8",
     );
     const invalid = await loadSettings({ homeDir, platform: "linux" });
     expect(invalid.settings.logoMode).toBe(DEFAULT_LOGO_MODE);
@@ -521,9 +592,9 @@ describe("loadSettings", () => {
         JSON.stringify({
           themeId: "retro",
           logoMode,
-          flashMode: "slow"
+          flashMode: "slow",
         }),
-        "utf8"
+        "utf8",
       );
       const result = await loadSettings({ homeDir, platform: "linux" });
       expect(result.settings.logoMode).toBe(logoMode);
@@ -544,21 +615,23 @@ describe("loadSettings", () => {
           inAppOverdueBanner: true,
           terminalBellOnOverdue: false,
           bannerDurationMs: 0,
-          bellCooldownMs: -5
-        }
+          bellCooldownMs: -5,
+        },
       }),
-      "utf8"
+      "utf8",
     );
 
     const result = await loadSettings({ homeDir, platform: "linux" });
-    expect(result.settings).toEqual(withHintDefaults({
-      themeId: "retro",
-      logoMode: DEFAULT_LOGO_MODE,
-      flashMode: "static",
-      notifications: DEFAULT_NOTIFICATIONS,
-      security: DEFAULT_SECURITY,
-      customThemes: expectedCustomThemesFor("retro")
-    }));
+    expect(result.settings).toEqual(
+      withHintDefaults({
+        themeId: "retro",
+        logoMode: DEFAULT_LOGO_MODE,
+        flashMode: "static",
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY,
+        customThemes: expectedCustomThemesFor("retro"),
+      }),
+    );
   });
 
   it("normalizes notification durations to positive integers", async () => {
@@ -574,10 +647,10 @@ describe("loadSettings", () => {
           inAppOverdueBanner: true,
           terminalBellOnOverdue: false,
           bannerDurationMs: 1234.9,
-          bellCooldownMs: 2000.1
-        }
+          bellCooldownMs: 2000.1,
+        },
       }),
-      "utf8"
+      "utf8",
     );
 
     const result = await loadSettings({ homeDir, platform: "linux" });
@@ -596,14 +669,16 @@ describe("loadSettings", () => {
         notifications: {
           enabled: true,
           inAppOverdueBanner: true,
-          terminalBellOnOverdue: false
-        }
+          terminalBellOnOverdue: false,
+        },
       }),
-      "utf8"
+      "utf8",
     );
 
     const defaults = await loadSettings({ homeDir, platform: "linux" });
-    expect(defaults.settings.notifications.outOfAppRemindersEnabled).toBeUndefined();
+    expect(
+      defaults.settings.notifications.outOfAppRemindersEnabled,
+    ).toBeUndefined();
 
     await fs.writeFile(
       primary,
@@ -613,10 +688,10 @@ describe("loadSettings", () => {
           enabled: true,
           inAppOverdueBanner: true,
           terminalBellOnOverdue: false,
-          outOfAppRemindersEnabled: true
-        }
+          outOfAppRemindersEnabled: true,
+        },
       }),
-      "utf8"
+      "utf8",
     );
     const explicit = await loadSettings({ homeDir, platform: "linux" });
     expect(explicit.settings.notifications.outOfAppRemindersEnabled).toBe(true);
@@ -632,10 +707,10 @@ describe("loadSettings", () => {
       JSON.stringify({
         themeId: "retro",
         security: {
-          nonHttpLinkPolicy: "block"
-        }
+          nonHttpLinkPolicy: "block",
+        },
       }),
-      "utf8"
+      "utf8",
     );
     const blocked = await loadSettings({ homeDir, platform: "linux" });
     expect(blocked.settings.security.nonHttpLinkPolicy).toBe("block");
@@ -645,10 +720,10 @@ describe("loadSettings", () => {
       JSON.stringify({
         themeId: "retro",
         security: {
-          nonHttpLinkPolicy: "danger"
-        }
+          nonHttpLinkPolicy: "danger",
+        },
       }),
-      "utf8"
+      "utf8",
     );
     const normalized = await loadSettings({ homeDir, platform: "linux" });
     expect(normalized.settings.security.nonHttpLinkPolicy).toBe("prompt");
@@ -665,24 +740,24 @@ describe("loadSettings", () => {
         keymapAliases: {
           list: {
             list_open_search: ["ctrl+f", "/", "not-valid-token"],
-            dashboard_open_help: ["?"]
+            dashboard_open_help: ["?"],
           },
           help: {
-            help_close: ["esc", "escape"]
-          }
-        }
+            help_close: ["esc", "escape"],
+          },
+        },
       }),
-      "utf8"
+      "utf8",
     );
 
     const result = await loadSettings({ homeDir, platform: "linux" });
     expect(result.settings.keymapAliases).toEqual({
       list: {
-        list_open_search: ["Ctrl+F", "/"]
+        list_open_search: ["Ctrl+F", "/"],
       },
       help: {
-        help_close: ["Esc"]
-      }
+        help_close: ["Esc"],
+      },
     });
   });
 
@@ -694,7 +769,9 @@ describe("loadSettings", () => {
 
     const result = await loadSettings({ homeDir, platform: "linux" });
     expect(result.settings.hintDisplayMode).toBe(DEFAULT_HINT_DISPLAY_MODE);
-    expect(result.settings.showPrefixHintPopup).toBe(DEFAULT_SHOW_PREFIX_HINT_POPUP);
+    expect(result.settings.showPrefixHintPopup).toBe(
+      DEFAULT_SHOW_PREFIX_HINT_POPUP,
+    );
   });
 
   it("normalizes hint display mode and prefix popup values", async () => {
@@ -706,9 +783,9 @@ describe("loadSettings", () => {
       JSON.stringify({
         themeId: "retro",
         hintDisplayMode: "left_rail",
-        showPrefixHintPopup: false
+        showPrefixHintPopup: false,
       }),
-      "utf8"
+      "utf8",
     );
 
     const valid = await loadSettings({ homeDir, platform: "linux" });
@@ -720,20 +797,26 @@ describe("loadSettings", () => {
       JSON.stringify({
         themeId: "retro",
         hintDisplayMode: "invalid-mode",
-        showPrefixHintPopup: "no"
+        showPrefixHintPopup: "no",
       }),
-      "utf8"
+      "utf8",
     );
     const invalid = await loadSettings({ homeDir, platform: "linux" });
     expect(invalid.settings.hintDisplayMode).toBe(DEFAULT_HINT_DISPLAY_MODE);
-    expect(invalid.settings.showPrefixHintPopup).toBe(DEFAULT_SHOW_PREFIX_HINT_POPUP);
+    expect(invalid.settings.showPrefixHintPopup).toBe(
+      DEFAULT_SHOW_PREFIX_HINT_POPUP,
+    );
   });
 
   it("seeds custom1 global palette from active non-rotating theme when missing", async () => {
     const homeDir = await makeTempDir();
     const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
     await fs.mkdir(path.dirname(primary), { recursive: true });
-    await fs.writeFile(primary, JSON.stringify({ themeId: "retro", flashMode: "slow" }), "utf8");
+    await fs.writeFile(
+      primary,
+      JSON.stringify({ themeId: "retro", flashMode: "slow" }),
+      "utf8",
+    );
 
     const result = await loadSettings({ homeDir, platform: "linux" });
     expect(result.settings.customThemes?.custom1?.global.bg).toBe("#121316");
@@ -744,7 +827,11 @@ describe("loadSettings", () => {
     const homeDir = await makeTempDir();
     const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
     await fs.mkdir(path.dirname(primary), { recursive: true });
-    await fs.writeFile(primary, JSON.stringify({ themeId: "rotating", flashMode: "slow" }), "utf8");
+    await fs.writeFile(
+      primary,
+      JSON.stringify({ themeId: "rotating", flashMode: "slow" }),
+      "utf8",
+    );
 
     const result = await loadSettings({ homeDir, platform: "linux" });
     expect(result.settings.customThemes?.custom1?.global.bg).toBe("#0B0F14");
@@ -764,74 +851,80 @@ describe("loadSettings", () => {
             retro: {
               global: {
                 text: "#abc123",
-                panel: "#FFFFFF"
+                panel: "#FFFFFF",
               },
               objects: {
                 taskList: {
                   mutedText: "#123abc",
                   selectionText: "#ffff00",
-                  border: "#888888"
+                  border: "#888888",
                 },
                 modal: {
-                  text: "oops"
-                }
-              }
+                  text: "oops",
+                },
+              },
             },
             rotating: {
               global: {
-                text: "#FFFFFF"
-              }
+                text: "#FFFFFF",
+              },
             },
             fakeTheme: {
               global: {
-                text: "#FFFFFF"
-              }
-            }
-          }
-        }
+                text: "#FFFFFF",
+              },
+            },
+          },
+        },
       }),
-      "utf8"
+      "utf8",
     );
 
     const result = await loadSettings({ homeDir, platform: "linux" });
     expect(result.settings.customThemes?.textByTheme).toEqual({
       retro: {
         global: {
-          text: "#ABC123"
+          text: "#ABC123",
         },
         objects: {
           taskList: {
             mutedText: "#123ABC",
-            selectionText: "#FFFF00"
-          }
-        }
-      }
+            selectionText: "#FFFF00",
+          },
+        },
+      },
     });
   });
 
   it("reports warning and falls back when primary settings JSON is malformed", async () => {
     const homeDir = await makeTempDir();
-    const { primary, fallback } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    const { primary, fallback } = resolveSettingsPaths({
+      homeDir,
+      platform: "linux",
+    });
     await fs.mkdir(path.dirname(primary), { recursive: true });
     await fs.mkdir(path.dirname(fallback), { recursive: true });
     await fs.writeFile(primary, "{broken", "utf8");
     await fs.writeFile(
       fallback,
       JSON.stringify({ themeId: "retro", flashMode: "static" }),
-      "utf8"
+      "utf8",
     );
 
     const result = await loadSettings({ homeDir, platform: "linux" });
     expect(result.settings.themeId).toBe("retro");
     expect(result.resolvedPath).toBe(fallback);
     expect(result.warnings).toContain(
-      "primary settings file is not valid JSON; using fallback/default settings"
+      "primary settings file is not valid JSON; using fallback/default settings",
     );
   });
 
   it("reports both warnings and returns defaults when primary/fallback are malformed", async () => {
     const homeDir = await makeTempDir();
-    const { primary, fallback } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    const { primary, fallback } = resolveSettingsPaths({
+      homeDir,
+      platform: "linux",
+    });
     await fs.mkdir(path.dirname(primary), { recursive: true });
     await fs.mkdir(path.dirname(fallback), { recursive: true });
     await fs.writeFile(primary, "{broken", "utf8");
@@ -842,7 +935,7 @@ describe("loadSettings", () => {
     expect(result.settings).toEqual(getDefaultSettings());
     expect(result.warnings).toEqual([
       "primary settings file is not valid JSON; using fallback/default settings",
-      "fallback settings file is not valid JSON; using fallback/default settings"
+      "fallback settings file is not valid JSON; using fallback/default settings",
     ]);
   });
 });
@@ -857,21 +950,23 @@ describe("saveSettingsDebounced", () => {
         logoMode: "default",
         flashMode: "static",
         notifications: DEFAULT_NOTIFICATIONS,
-        security: DEFAULT_SECURITY
+        security: DEFAULT_SECURITY,
       },
       20,
-      { filePath: primary, homeDir, platform: "linux" }
+      { filePath: primary, homeDir, platform: "linux" },
     );
 
     const raw = await readFileEventually(primary);
-    expect(JSON.parse(raw)).toEqual(withHintDefaults({
-      themeId: "highContrast",
-      logoMode: "default",
-      flashMode: "static",
-      notifications: DEFAULT_NOTIFICATIONS,
-      security: DEFAULT_SECURITY,
-      customThemes: expectedCustomThemesFor("highContrast")
-    }));
+    expect(JSON.parse(raw)).toEqual(
+      withHintDefaults({
+        themeId: "highContrast",
+        logoMode: "default",
+        flashMode: "static",
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY,
+        customThemes: expectedCustomThemesFor("highContrast"),
+      }),
+    );
   });
 
   it("persists normalized keymap aliases when provided", async () => {
@@ -886,28 +981,30 @@ describe("saveSettingsDebounced", () => {
         security: DEFAULT_SECURITY,
         keymapAliases: {
           list: {
-            list_open_search: ["ctrl+f", "/", "invalid token"]
-          }
-        }
+            list_open_search: ["ctrl+f", "/", "invalid token"],
+          },
+        },
       },
       20,
-      { filePath: primary, homeDir, platform: "linux" }
+      { filePath: primary, homeDir, platform: "linux" },
     );
 
     const raw = await readFileEventually(primary);
-    expect(JSON.parse(raw)).toEqual(withHintDefaults({
-      themeId: "retro",
-      logoMode: "default",
-      flashMode: "slow",
-      notifications: DEFAULT_NOTIFICATIONS,
-      security: DEFAULT_SECURITY,
-      customThemes: expectedCustomThemesFor("retro"),
-      keymapAliases: {
-        list: {
-          list_open_search: ["Ctrl+F", "/"]
-        }
-      }
-    }));
+    expect(JSON.parse(raw)).toEqual(
+      withHintDefaults({
+        themeId: "retro",
+        logoMode: "default",
+        flashMode: "slow",
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY,
+        customThemes: expectedCustomThemesFor("retro"),
+        keymapAliases: {
+          list: {
+            list_open_search: ["Ctrl+F", "/"],
+          },
+        },
+      }),
+    );
   });
 
   it("coalesces rapid updates and persists only the latest value", async () => {
@@ -919,10 +1016,10 @@ describe("saveSettingsDebounced", () => {
         logoMode: "default",
         flashMode: "slow",
         notifications: DEFAULT_NOTIFICATIONS,
-        security: DEFAULT_SECURITY
+        security: DEFAULT_SECURITY,
       },
       20,
-      { filePath: primary, homeDir, platform: "linux" }
+      { filePath: primary, homeDir, platform: "linux" },
     );
     saveSettingsDebounced(
       {
@@ -930,21 +1027,23 @@ describe("saveSettingsDebounced", () => {
         logoMode: "default",
         flashMode: "static",
         notifications: DEFAULT_NOTIFICATIONS,
-        security: DEFAULT_SECURITY
+        security: DEFAULT_SECURITY,
       },
       20,
-      { filePath: primary, homeDir, platform: "linux" }
+      { filePath: primary, homeDir, platform: "linux" },
     );
 
     const raw = await readFileEventually(primary);
-    expect(JSON.parse(raw)).toEqual(withHintDefaults({
-      themeId: "neonHacker",
-      logoMode: "default",
-      flashMode: "static",
-      notifications: DEFAULT_NOTIFICATIONS,
-      security: DEFAULT_SECURITY,
-      customThemes: expectedCustomThemesFor("neonHacker")
-    }));
+    expect(JSON.parse(raw)).toEqual(
+      withHintDefaults({
+        themeId: "neonHacker",
+        logoMode: "default",
+        flashMode: "static",
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY,
+        customThemes: expectedCustomThemesFor("neonHacker"),
+      }),
+    );
   });
 
   it("persists crtFxLite only when enabled", async () => {
@@ -958,10 +1057,10 @@ describe("saveSettingsDebounced", () => {
         flashMode: "slow",
         crtFxLite: true,
         notifications: DEFAULT_NOTIFICATIONS,
-        security: DEFAULT_SECURITY
+        security: DEFAULT_SECURITY,
       },
       20,
-      { filePath: primary, homeDir, platform: "linux" }
+      { filePath: primary, homeDir, platform: "linux" },
     );
 
     const enabledJson = await readJsonEventually(primary, (value) => {
@@ -970,15 +1069,17 @@ describe("saveSettingsDebounced", () => {
       }
       return (value as { crtFxLite?: unknown }).crtFxLite === true;
     });
-    expect(enabledJson).toEqual(withHintDefaults({
-      themeId: "retro",
-      logoMode: "default",
-      flashMode: "slow",
-      crtFxLite: true,
-      notifications: DEFAULT_NOTIFICATIONS,
-      security: DEFAULT_SECURITY,
-      customThemes: expectedCustomThemesFor("retro")
-    }));
+    expect(enabledJson).toEqual(
+      withHintDefaults({
+        themeId: "retro",
+        logoMode: "default",
+        flashMode: "slow",
+        crtFxLite: true,
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY,
+        customThemes: expectedCustomThemesFor("retro"),
+      }),
+    );
 
     saveSettingsDebounced(
       {
@@ -987,10 +1088,10 @@ describe("saveSettingsDebounced", () => {
         flashMode: "slow",
         crtFxLite: false,
         notifications: DEFAULT_NOTIFICATIONS,
-        security: DEFAULT_SECURITY
+        security: DEFAULT_SECURITY,
       },
       20,
-      { filePath: primary, homeDir, platform: "linux" }
+      { filePath: primary, homeDir, platform: "linux" },
     );
 
     const disabledJson = await readJsonEventually(primary, (value) => {
@@ -999,14 +1100,16 @@ describe("saveSettingsDebounced", () => {
       }
       return !Object.prototype.hasOwnProperty.call(value, "crtFxLite");
     });
-    expect(disabledJson).toEqual(withHintDefaults({
-      themeId: "retro",
-      logoMode: "default",
-      flashMode: "slow",
-      notifications: DEFAULT_NOTIFICATIONS,
-      security: DEFAULT_SECURITY,
-      customThemes: expectedCustomThemesFor("retro")
-    }));
+    expect(disabledJson).toEqual(
+      withHintDefaults({
+        themeId: "retro",
+        logoMode: "default",
+        flashMode: "slow",
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY,
+        customThemes: expectedCustomThemesFor("retro"),
+      }),
+    );
   });
 
   it("persists crtFxPreset only when non-default", async () => {
@@ -1020,10 +1123,10 @@ describe("saveSettingsDebounced", () => {
         flashMode: "slow",
         crtFxPreset: "strong",
         notifications: DEFAULT_NOTIFICATIONS,
-        security: DEFAULT_SECURITY
+        security: DEFAULT_SECURITY,
       },
       20,
-      { filePath: primary, homeDir, platform: "linux" }
+      { filePath: primary, homeDir, platform: "linux" },
     );
 
     const strongJson = await readJsonEventually(primary, (value) => {
@@ -1032,15 +1135,17 @@ describe("saveSettingsDebounced", () => {
       }
       return (value as { crtFxPreset?: unknown }).crtFxPreset === "strong";
     });
-    expect(strongJson).toEqual(withHintDefaults({
-      themeId: "retro",
-      logoMode: "default",
-      flashMode: "slow",
-      crtFxPreset: "strong",
-      notifications: DEFAULT_NOTIFICATIONS,
-      security: DEFAULT_SECURITY,
-      customThemes: expectedCustomThemesFor("retro")
-    }));
+    expect(strongJson).toEqual(
+      withHintDefaults({
+        themeId: "retro",
+        logoMode: "default",
+        flashMode: "slow",
+        crtFxPreset: "strong",
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY,
+        customThemes: expectedCustomThemesFor("retro"),
+      }),
+    );
 
     saveSettingsDebounced(
       {
@@ -1049,10 +1154,10 @@ describe("saveSettingsDebounced", () => {
         flashMode: "slow",
         crtFxPreset: "normal",
         notifications: DEFAULT_NOTIFICATIONS,
-        security: DEFAULT_SECURITY
+        security: DEFAULT_SECURITY,
       },
       20,
-      { filePath: primary, homeDir, platform: "linux" }
+      { filePath: primary, homeDir, platform: "linux" },
     );
 
     const normalJson = await readJsonEventually(primary, (value) => {
@@ -1061,14 +1166,16 @@ describe("saveSettingsDebounced", () => {
       }
       return !Object.prototype.hasOwnProperty.call(value, "crtFxPreset");
     });
-    expect(normalJson).toEqual(withHintDefaults({
-      themeId: "retro",
-      logoMode: "default",
-      flashMode: "slow",
-      notifications: DEFAULT_NOTIFICATIONS,
-      security: DEFAULT_SECURITY,
-      customThemes: expectedCustomThemesFor("retro")
-    }));
+    expect(normalJson).toEqual(
+      withHintDefaults({
+        themeId: "retro",
+        logoMode: "default",
+        flashMode: "slow",
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY,
+        customThemes: expectedCustomThemesFor("retro"),
+      }),
+    );
   });
 
   it("persists crtFxColor only when non-default", async () => {
@@ -1082,10 +1189,10 @@ describe("saveSettingsDebounced", () => {
         flashMode: "slow",
         crtFxColor: "amber",
         notifications: DEFAULT_NOTIFICATIONS,
-        security: DEFAULT_SECURITY
+        security: DEFAULT_SECURITY,
       },
       20,
-      { filePath: primary, homeDir, platform: "linux" }
+      { filePath: primary, homeDir, platform: "linux" },
     );
 
     const amberJson = await readJsonEventually(primary, (value) => {
@@ -1094,15 +1201,17 @@ describe("saveSettingsDebounced", () => {
       }
       return (value as { crtFxColor?: unknown }).crtFxColor === "amber";
     });
-    expect(amberJson).toEqual(withHintDefaults({
-      themeId: "retro",
-      logoMode: "default",
-      flashMode: "slow",
-      crtFxColor: "amber",
-      notifications: DEFAULT_NOTIFICATIONS,
-      security: DEFAULT_SECURITY,
-      customThemes: expectedCustomThemesFor("retro")
-    }));
+    expect(amberJson).toEqual(
+      withHintDefaults({
+        themeId: "retro",
+        logoMode: "default",
+        flashMode: "slow",
+        crtFxColor: "amber",
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY,
+        customThemes: expectedCustomThemesFor("retro"),
+      }),
+    );
 
     saveSettingsDebounced(
       {
@@ -1111,10 +1220,10 @@ describe("saveSettingsDebounced", () => {
         flashMode: "slow",
         crtFxColor: "green",
         notifications: DEFAULT_NOTIFICATIONS,
-        security: DEFAULT_SECURITY
+        security: DEFAULT_SECURITY,
       },
       20,
-      { filePath: primary, homeDir, platform: "linux" }
+      { filePath: primary, homeDir, platform: "linux" },
     );
 
     const greenJson = await readJsonEventually(primary, (value) => {
@@ -1123,14 +1232,16 @@ describe("saveSettingsDebounced", () => {
       }
       return !Object.prototype.hasOwnProperty.call(value, "crtFxColor");
     });
-    expect(greenJson).toEqual(withHintDefaults({
-      themeId: "retro",
-      logoMode: "default",
-      flashMode: "slow",
-      notifications: DEFAULT_NOTIFICATIONS,
-      security: DEFAULT_SECURITY,
-      customThemes: expectedCustomThemesFor("retro")
-    }));
+    expect(greenJson).toEqual(
+      withHintDefaults({
+        themeId: "retro",
+        logoMode: "default",
+        flashMode: "slow",
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY,
+        customThemes: expectedCustomThemesFor("retro"),
+      }),
+    );
   });
 
   it("persists retroFxMode only when non-default", async () => {
@@ -1144,10 +1255,10 @@ describe("saveSettingsDebounced", () => {
         flashMode: "slow",
         retroFxMode: "broadcast",
         notifications: DEFAULT_NOTIFICATIONS,
-        security: DEFAULT_SECURITY
+        security: DEFAULT_SECURITY,
       },
       20,
-      { filePath: primary, homeDir, platform: "linux" }
+      { filePath: primary, homeDir, platform: "linux" },
     );
 
     const broadcastJson = await readJsonEventually(primary, (value) => {
@@ -1156,15 +1267,17 @@ describe("saveSettingsDebounced", () => {
       }
       return (value as { retroFxMode?: unknown }).retroFxMode === "broadcast";
     });
-    expect(broadcastJson).toEqual(withHintDefaults({
-      themeId: "retro",
-      logoMode: "default",
-      flashMode: "slow",
-      retroFxMode: "broadcast",
-      notifications: DEFAULT_NOTIFICATIONS,
-      security: DEFAULT_SECURITY,
-      customThemes: expectedCustomThemesFor("retro")
-    }));
+    expect(broadcastJson).toEqual(
+      withHintDefaults({
+        themeId: "retro",
+        logoMode: "default",
+        flashMode: "slow",
+        retroFxMode: "broadcast",
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY,
+        customThemes: expectedCustomThemesFor("retro"),
+      }),
+    );
 
     saveSettingsDebounced(
       {
@@ -1173,10 +1286,10 @@ describe("saveSettingsDebounced", () => {
         flashMode: "slow",
         retroFxMode: "off",
         notifications: DEFAULT_NOTIFICATIONS,
-        security: DEFAULT_SECURITY
+        security: DEFAULT_SECURITY,
       },
       20,
-      { filePath: primary, homeDir, platform: "linux" }
+      { filePath: primary, homeDir, platform: "linux" },
     );
 
     const offJson = await readJsonEventually(primary, (value) => {
@@ -1185,19 +1298,24 @@ describe("saveSettingsDebounced", () => {
       }
       return !Object.prototype.hasOwnProperty.call(value, "retroFxMode");
     });
-    expect(offJson).toEqual(withHintDefaults({
-      themeId: "retro",
-      logoMode: "default",
-      flashMode: "slow",
-      notifications: DEFAULT_NOTIFICATIONS,
-      security: DEFAULT_SECURITY,
-      customThemes: expectedCustomThemesFor("retro")
-    }));
+    expect(offJson).toEqual(
+      withHintDefaults({
+        themeId: "retro",
+        logoMode: "default",
+        flashMode: "slow",
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY,
+        customThemes: expectedCustomThemesFor("retro"),
+      }),
+    );
   });
 
   it("falls back to ~/.tadoi/settings.json when primary write fails", async () => {
     const homeDir = await makeTempDir();
-    const { primary, fallback } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    const { primary, fallback } = resolveSettingsPaths({
+      homeDir,
+      platform: "linux",
+    });
 
     const fsOps: SettingsFsOps = {
       ...fs,
@@ -1208,9 +1326,9 @@ describe("saveSettingsDebounced", () => {
         return fs.writeFile(
           targetPath,
           data as Parameters<typeof fs.writeFile>[1],
-          encoding as Parameters<typeof fs.writeFile>[2]
+          encoding as Parameters<typeof fs.writeFile>[2],
         );
-      }) as SettingsFsOps["writeFile"]
+      }) as SettingsFsOps["writeFile"],
     };
 
     saveSettingsDebounced(
@@ -1219,21 +1337,23 @@ describe("saveSettingsDebounced", () => {
         logoMode: "default",
         flashMode: "static",
         notifications: DEFAULT_NOTIFICATIONS,
-        security: DEFAULT_SECURITY
+        security: DEFAULT_SECURITY,
       },
       20,
-      { homeDir, platform: "linux", fsOps }
+      { homeDir, platform: "linux", fsOps },
     );
 
     const fallbackRaw = await readFileEventually(fallback);
-    expect(JSON.parse(fallbackRaw)).toEqual(withHintDefaults({
-      themeId: "retro",
-      logoMode: "default",
-      flashMode: "static",
-      notifications: DEFAULT_NOTIFICATIONS,
-      security: DEFAULT_SECURITY,
-      customThemes: expectedCustomThemesFor("retro")
-    }));
+    expect(JSON.parse(fallbackRaw)).toEqual(
+      withHintDefaults({
+        themeId: "retro",
+        logoMode: "default",
+        flashMode: "static",
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY,
+        customThemes: expectedCustomThemesFor("retro"),
+      }),
+    );
   });
 });
 
@@ -1248,23 +1368,25 @@ describe("saveSettingsStrict", () => {
         logoMode: "default",
         flashMode: "slow",
         notifications: DEFAULT_NOTIFICATIONS,
-        security: DEFAULT_SECURITY
+        security: DEFAULT_SECURITY,
       },
-      { filePath: primary, homeDir, platform: "linux" }
+      { filePath: primary, homeDir, platform: "linux" },
     );
 
     expect(result.resolvedPath).toBe(primary);
     expect(result.usedFallback).toBe(false);
     const raw = await fs.readFile(primary, "utf8");
     await expectUnixPrivateFileMode(primary);
-    expect(JSON.parse(raw)).toEqual(withHintDefaults({
-      themeId: "retro",
-      logoMode: "default",
-      flashMode: "slow",
-      notifications: DEFAULT_NOTIFICATIONS,
-      security: DEFAULT_SECURITY,
-      customThemes: expectedCustomThemesFor("retro")
-    }));
+    expect(JSON.parse(raw)).toEqual(
+      withHintDefaults({
+        themeId: "retro",
+        logoMode: "default",
+        flashMode: "slow",
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY,
+        customThemes: expectedCustomThemesFor("retro"),
+      }),
+    );
   });
 
   it("round-trips hint display mode and prefix popup settings", async () => {
@@ -1279,9 +1401,9 @@ describe("saveSettingsStrict", () => {
         hintDisplayMode: "none",
         showPrefixHintPopup: false,
         notifications: DEFAULT_NOTIFICATIONS,
-        security: DEFAULT_SECURITY
+        security: DEFAULT_SECURITY,
       },
-      { filePath: primary, homeDir, platform: "linux" }
+      { filePath: primary, homeDir, platform: "linux" },
     );
 
     const result = await loadSettings({ homeDir, platform: "linux" });
@@ -1291,7 +1413,10 @@ describe("saveSettingsStrict", () => {
 
   it("falls back from primary to fallback path when primary write fails", async () => {
     const homeDir = await makeTempDir();
-    const { primary, fallback } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    const { primary, fallback } = resolveSettingsPaths({
+      homeDir,
+      platform: "linux",
+    });
 
     const fsOps: SettingsFsOps = {
       ...fs,
@@ -1302,9 +1427,9 @@ describe("saveSettingsStrict", () => {
         return fs.writeFile(
           targetPath,
           data as Parameters<typeof fs.writeFile>[1],
-          encoding as Parameters<typeof fs.writeFile>[2]
+          encoding as Parameters<typeof fs.writeFile>[2],
         );
-      }) as SettingsFsOps["writeFile"]
+      }) as SettingsFsOps["writeFile"],
     };
 
     const result = await saveSettingsStrict(
@@ -1313,23 +1438,25 @@ describe("saveSettingsStrict", () => {
         logoMode: "default",
         flashMode: "static",
         notifications: DEFAULT_NOTIFICATIONS,
-        security: DEFAULT_SECURITY
+        security: DEFAULT_SECURITY,
       },
-      { homeDir, platform: "linux", fsOps }
+      { homeDir, platform: "linux", fsOps },
     );
 
     expect(result.resolvedPath).toBe(fallback);
     expect(result.usedFallback).toBe(true);
     const raw = await fs.readFile(fallback, "utf8");
     await expectUnixPrivateFileMode(fallback);
-    expect(JSON.parse(raw)).toEqual(withHintDefaults({
-      themeId: "highContrast",
-      logoMode: "default",
-      flashMode: "static",
-      notifications: DEFAULT_NOTIFICATIONS,
-      security: DEFAULT_SECURITY,
-      customThemes: expectedCustomThemesFor("highContrast")
-    }));
+    expect(JSON.parse(raw)).toEqual(
+      withHintDefaults({
+        themeId: "highContrast",
+        logoMode: "default",
+        flashMode: "static",
+        notifications: DEFAULT_NOTIFICATIONS,
+        security: DEFAULT_SECURITY,
+        customThemes: expectedCustomThemesFor("highContrast"),
+      }),
+    );
   });
 });
 
@@ -1352,7 +1479,7 @@ describe("logo mode helpers", () => {
 
     expect(cycleLogoMode(current, 1)).toBe(LOGO_MODE_ORDER[0]);
     expect(cycleLogoMode(LOGO_MODE_ORDER[0], -1)).toBe(
-      LOGO_MODE_ORDER[LOGO_MODE_ORDER.length - 1]
+      LOGO_MODE_ORDER[LOGO_MODE_ORDER.length - 1],
     );
   });
 });
@@ -1360,7 +1487,9 @@ describe("logo mode helpers", () => {
 describe("CRT FX profile helpers", () => {
   it("formats combined profile labels for settings display", () => {
     expect(formatCrtFxLiteProfileLabel("green", "subtle")).toBe("Green Subtle");
-    expect(formatCrtFxLiteProfileLabel("green", "normal")).toBe("Green Regular");
+    expect(formatCrtFxLiteProfileLabel("green", "normal")).toBe(
+      "Green Regular",
+    );
     expect(formatCrtFxLiteProfileLabel("amber", "strong")).toBe("Amber Strong");
   });
 

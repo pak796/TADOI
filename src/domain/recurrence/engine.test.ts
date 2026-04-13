@@ -5,7 +5,7 @@ import {
   applyExdates,
   getOccurrences,
   latestOverdueOccurrence,
-  nextOccurrence
+  nextOccurrence,
 } from "./engine";
 import { formatDateToLocalIso } from "./rruleAdapter";
 
@@ -29,8 +29,8 @@ function makeSeriesTask(options: {
       dtstart: formatDateToLocalIso(options.start),
       rrule: options.rrule,
       exdates: options.exdates,
-      series_id: `series:${options.id}`
-    }
+      series_id: `series:${options.id}`,
+    },
   };
 }
 
@@ -40,7 +40,7 @@ describe("recurrence engine", () => {
     const task = makeSeriesTask({
       id: "weekly",
       start,
-      rrule: "FREQ=WEEKLY;INTERVAL=1;BYDAY=MO,WE"
+      rrule: "FREQ=WEEKLY;INTERVAL=1;BYDAY=MO,WE",
     });
     const rangeStart = startOfLocalDayMs(start.getTime());
     const rangeEnd = addLocalDaysMs(rangeStart, 8) - 1;
@@ -49,7 +49,7 @@ describe("recurrence engine", () => {
     expect(occurrences).toEqual([
       formatDateToLocalIso(new Date(2026, 1, 9, 9, 0, 0)),
       formatDateToLocalIso(new Date(2026, 1, 11, 9, 0, 0)),
-      formatDateToLocalIso(new Date(2026, 1, 16, 9, 0, 0))
+      formatDateToLocalIso(new Date(2026, 1, 16, 9, 0, 0)),
     ]);
   });
 
@@ -58,16 +58,20 @@ describe("recurrence engine", () => {
     const task = makeSeriesTask({
       id: "monthly-31",
       start,
-      rrule: "FREQ=MONTHLY;INTERVAL=1;BYMONTHDAY=31;COUNT=5"
+      rrule: "FREQ=MONTHLY;INTERVAL=1;BYMONTHDAY=31;COUNT=5",
     });
 
-    const rangeStart = startOfLocalDayMs(new Date(2026, 0, 1, 0, 0, 0).getTime());
-    const rangeEnd = startOfLocalDayMs(new Date(2026, 3, 30, 23, 59, 59).getTime());
+    const rangeStart = startOfLocalDayMs(
+      new Date(2026, 0, 1, 0, 0, 0).getTime(),
+    );
+    const rangeEnd = startOfLocalDayMs(
+      new Date(2026, 3, 30, 23, 59, 59).getTime(),
+    );
     const occurrences = getOccurrences(task, rangeStart, rangeEnd);
 
     expect(occurrences).toEqual([
       formatDateToLocalIso(new Date(2026, 0, 31, 9, 0, 0)),
-      formatDateToLocalIso(new Date(2026, 2, 31, 9, 0, 0))
+      formatDateToLocalIso(new Date(2026, 2, 31, 9, 0, 0)),
     ]);
   });
 
@@ -78,7 +82,7 @@ describe("recurrence engine", () => {
       id: "with-exdate",
       start,
       rrule: "FREQ=DAILY;INTERVAL=1;COUNT=4",
-      exdates: [excluded]
+      exdates: [excluded],
     });
 
     const rangeStart = startOfLocalDayMs(start.getTime());
@@ -88,7 +92,7 @@ describe("recurrence engine", () => {
     expect(occurrences).toEqual([
       formatDateToLocalIso(new Date(2026, 1, 9, 9, 0, 0)),
       formatDateToLocalIso(new Date(2026, 1, 10, 9, 0, 0)),
-      formatDateToLocalIso(new Date(2026, 1, 12, 9, 0, 0))
+      formatDateToLocalIso(new Date(2026, 1, 12, 9, 0, 0)),
     ]);
   });
 
@@ -97,19 +101,18 @@ describe("recurrence engine", () => {
     const task = makeSeriesTask({
       id: "dst-weekly",
       start,
-      rrule: "FREQ=WEEKLY;INTERVAL=1;BYDAY=SU;COUNT=4"
+      rrule: "FREQ=WEEKLY;INTERVAL=1;BYDAY=SU;COUNT=4",
     });
 
     const rangeStart = startOfLocalDayMs(start.getTime());
     const rangeEnd = addLocalDaysMs(rangeStart, 30) - 1;
     const occurrences = getOccurrences(task, rangeStart, rangeEnd);
-    const occurrenceDates = occurrences
-      .map((iso) => {
-        const [date, time] = iso.split("T");
-        const [y, m, d] = date.split("-").map((value) => Number(value));
-        const [hh, mm, ss] = time.split(":").map((value) => Number(value));
-        return new Date(y, m - 1, d, hh, mm, ss);
-      });
+    const occurrenceDates = occurrences.map((iso) => {
+      const [date, time] = iso.split("T");
+      const [y, m, d] = date.split("-").map((value) => Number(value));
+      const [hh, mm, ss] = time.split(":").map((value) => Number(value));
+      return new Date(y, m - 1, d, hh, mm, ss);
+    });
 
     expect(occurrenceDates.length).toBeGreaterThanOrEqual(3);
     for (const date of occurrenceDates) {
@@ -125,7 +128,7 @@ describe("recurrence engine", () => {
       id: "complete-one",
       start,
       rrule: "FREQ=DAILY;INTERVAL=1",
-      exdates: [firstOccurrence]
+      exdates: [firstOccurrence],
     });
 
     const after = new Date(2026, 1, 9, 0, 0, 0).getTime();
@@ -134,18 +137,20 @@ describe("recurrence engine", () => {
 
     const overdueNow = new Date(2026, 1, 11, 12, 0, 0).getTime();
     const latestOverdue = latestOverdueOccurrence(task, overdueNow);
-    expect(latestOverdue).toBe(formatDateToLocalIso(new Date(2026, 1, 11, 9, 0, 0)));
+    expect(latestOverdue).toBe(
+      formatDateToLocalIso(new Date(2026, 1, 11, 9, 0, 0)),
+    );
   });
 
   it("filters explicit exdates from occurrence arrays", () => {
     const occurrences = [
       "2026-02-09T09:00:00",
       "2026-02-10T09:00:00",
-      "2026-02-11T09:00:00"
+      "2026-02-11T09:00:00",
     ];
     expect(applyExdates(occurrences, ["2026-02-10T09:00:00"])).toEqual([
       "2026-02-09T09:00:00",
-      "2026-02-11T09:00:00"
+      "2026-02-11T09:00:00",
     ]);
   });
 
@@ -154,7 +159,7 @@ describe("recurrence engine", () => {
     const task = makeSeriesTask({
       id: "invalid-dtstart",
       start,
-      rrule: "FREQ=DAILY;INTERVAL=1"
+      rrule: "FREQ=DAILY;INTERVAL=1",
     });
     if (!task.recurrence) {
       throw new Error("Expected recurrence for test setup");

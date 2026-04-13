@@ -1,7 +1,7 @@
 import type {
   CrtFxLiteColor,
   CrtFxLitePreset,
-  RetroFxMode
+  RetroFxMode,
 } from "../settings/settings";
 
 type CrtFxLiteProps = {
@@ -29,7 +29,7 @@ type RetroFxSweepConfig = {
 
 const CRT_TINT_COLORS: Record<CrtFxLiteColor, string> = {
   green: "#4EE39B",
-  amber: "#F2A64A"
+  amber: "#F2A64A",
 };
 
 const CRT_FX_PRESETS: Record<CrtFxLitePreset, CrtFxPresetConfig> = {
@@ -38,58 +38,63 @@ const CRT_FX_PRESETS: Record<CrtFxLitePreset, CrtFxPresetConfig> = {
       bg: 0.04,
       panel: 0.06,
       accent: 0.05,
-      border: 0.05
+      border: 0.05,
     },
     flickerDelta: -1,
-    flickerEveryTicks: 16
+    flickerEveryTicks: 16,
   },
   normal: {
     tintStrengthByRole: {
       bg: 0.06,
       panel: 0.1,
       accent: 0.08,
-      border: 0.08
+      border: 0.08,
     },
     flickerDelta: -2,
-    flickerEveryTicks: 12
+    flickerEveryTicks: 12,
   },
   strong: {
     tintStrengthByRole: {
       bg: 0.1,
       panel: 0.15,
       accent: 0.12,
-      border: 0.12
+      border: 0.12,
     },
     flickerDelta: -3,
-    flickerEveryTicks: 8
-  }
+    flickerEveryTicks: 8,
+  },
 };
 
-const RETRO_FX_SWEEP_CONFIG: Record<Exclude<RetroFxMode, "off">, RetroFxSweepConfig> = {
+const RETRO_FX_SWEEP_CONFIG: Record<
+  Exclude<RetroFxMode, "off">,
+  RetroFxSweepConfig
+> = {
   classic: {
     cycleLength: 16,
     highlightDelta: 14,
-    ambientDelta: 0
+    ambientDelta: 0,
   },
   broadcast: {
     cycleLength: 10,
     highlightDelta: 22,
-    ambientDelta: 2
-  }
+    ambientDelta: 2,
+  },
 };
 
 function clampColorChannel(value: number): number {
   return Math.max(0, Math.min(255, Math.round(value)));
 }
 
-function parseHexColor(hex: string): { r: number; g: number; b: number } | null {
+function parseHexColor(
+  hex: string,
+): { r: number; g: number; b: number } | null {
   const match = hex.trim().match(/^#([0-9a-fA-F]{6})$/);
   if (!match) return null;
   const raw = match[1];
   return {
     r: Number.parseInt(raw.slice(0, 2), 16),
     g: Number.parseInt(raw.slice(2, 4), 16),
-    b: Number.parseInt(raw.slice(4, 6), 16)
+    b: Number.parseInt(raw.slice(4, 6), 16),
   };
 }
 
@@ -108,11 +113,15 @@ function adjustHexColor(hex: string, delta: number): string {
   return toHexColor({
     r: parsed.r + delta,
     g: parsed.g + delta,
-    b: parsed.b + delta
+    b: parsed.b + delta,
   });
 }
 
-function blendHexColors(baseHex: string, tintHex: string, tintStrength: number): string {
+function blendHexColors(
+  baseHex: string,
+  tintHex: string,
+  tintStrength: number,
+): string {
   const base = parseHexColor(baseHex);
   const tint = parseHexColor(tintHex);
   if (!base || !tint) return baseHex;
@@ -120,7 +129,7 @@ function blendHexColors(baseHex: string, tintHex: string, tintStrength: number):
   return toHexColor({
     r: base.r * (1 - weight) + tint.r * weight,
     g: base.g * (1 - weight) + tint.g * weight,
-    b: base.b * (1 - weight) + tint.b * weight
+    b: base.b * (1 - weight) + tint.b * weight,
   });
 }
 
@@ -136,7 +145,11 @@ export function resolveCrtFxColor(params: {
   const role = params.role ?? "panel";
   const config = CRT_FX_PRESETS[params.preset];
   const tintHex = CRT_TINT_COLORS[params.color];
-  const tinted = blendHexColors(params.baseColor, tintHex, config.tintStrengthByRole[role]);
+  const tinted = blendHexColors(
+    params.baseColor,
+    tintHex,
+    config.tintStrengthByRole[role],
+  );
   const flickerFrame = params.tick % config.flickerEveryTicks === 0;
   return adjustHexColor(tinted, flickerFrame ? config.flickerDelta : 0);
 }
@@ -155,10 +168,16 @@ export function resolveRetroSweepBorderColor(params: {
     return adjustHexColor(params.baseColor, config.highlightDelta);
   }
   if (frame === 1) {
-    return adjustHexColor(params.baseColor, Math.round(config.highlightDelta * 0.6));
+    return adjustHexColor(
+      params.baseColor,
+      Math.round(config.highlightDelta * 0.6),
+    );
   }
   if (frame === 2) {
-    return adjustHexColor(params.baseColor, Math.round(config.highlightDelta * 0.3));
+    return adjustHexColor(
+      params.baseColor,
+      Math.round(config.highlightDelta * 0.3),
+    );
   }
   if (config.ambientDelta !== 0) {
     return adjustHexColor(params.baseColor, config.ambientDelta);
@@ -172,14 +191,14 @@ export function CrtFxLite({
   baseColor,
   tick,
   preset = "normal",
-  color = "green"
+  color = "green",
 }: CrtFxLiteProps) {
   void resolveCrtFxColor({
     baseColor,
     enabled,
     preset,
     color,
-    tick
+    tick,
   });
   return null;
 }

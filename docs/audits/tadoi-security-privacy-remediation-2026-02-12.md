@@ -6,8 +6,10 @@ Date: 2026-02-12
 Source audit: `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/docs/audits/tadoi-security-privacy-audit-2026-02-12.md`
 
 ## Summary
+
 This backlog maps 1:1 to all non-informational findings in the audit.  
 Priorities:
+
 - Now: high-risk and externally visible trust/privacy issues.
 - Next: release hardening and deterministic dependency controls.
 - Later: low-probability local hardening and observability polish.
@@ -15,6 +17,7 @@ Priorities:
 ## Remediation Backlog (1:1 Mapping)
 
 ### SEC-001
+
 - Finding: Unbounded import file size enables memory/CPU denial of service.
 - Priority: Now
 - Effort: M
@@ -32,6 +35,7 @@ Priorities:
 - Add boundary tests at `limit-1`, `limit`, `limit+1`.
 
 ### PRIV-001
+
 - Finding: ICS export leaks notes/tags/links by default.
 - Priority: Now
 - Effort: M
@@ -53,6 +57,7 @@ Priorities:
 - Ensure URL/description fields are absent in minimal mode.
 
 ### SEC-002
+
 - Finding: Imported links can trigger local file/path execution flows with limited friction.
 - Priority: Now
 - Effort: M
@@ -71,6 +76,7 @@ Priorities:
 - Add tests for imported-link source policy behavior.
 
 ### SEC-003
+
 - Finding: Windows open path uses `cmd /c start` with untrusted target input.
 - Priority: Now
 - Effort: M
@@ -87,6 +93,7 @@ Priorities:
 - Verify known-safe URLs/paths still open.
 
 ### PRIV-002
+
 - Finding: Backup redaction is partial and may leak metadata.
 - Priority: Next
 - Effort: M
@@ -106,6 +113,7 @@ Priorities:
 - Verify strict mode excludes all declared sensitive fields.
 
 ### SCM-001
+
 - Finding: Floating `latest` dependencies reduce determinism.
 - Priority: Next
 - Effort: S
@@ -121,6 +129,7 @@ Priorities:
 - Lockfile refresh and verify `bun install --frozen-lockfile` reproducibility in CI.
 
 ### REL-001
+
 - Finding: Actions are tag-pinned, not commit-SHA pinned.
 - Priority: Next
 - Effort: S
@@ -138,6 +147,7 @@ Priorities:
 - One dry run of each workflow path.
 
 ### REL-002
+
 - Finding: Signing scripts can skip with exit success when secrets are missing.
 - Priority: Next
 - Effort: S
@@ -155,6 +165,7 @@ Priorities:
 - CI tests for both strict and non-strict execution paths.
 
 ### REL-003
+
 - Finding: Typecheck currently fails while release assumes pass.
 - Priority: Next
 - Effort: M
@@ -174,6 +185,7 @@ Priorities:
 - Targeted calendar tests must pass.
 
 ### PRIV-003
+
 - Finding: Startup logs expose absolute filesystem paths.
 - Priority: Later
 - Effort: S
@@ -189,6 +201,7 @@ Priorities:
 - Snapshot/log tests for default and debug path modes.
 
 ### SEC-004
+
 - Finding: Deterministic `.tmp` write path without additional hardening controls.
 - Priority: Later
 - Effort: M
@@ -205,6 +218,7 @@ Priorities:
 - Ensure no partial writes after interrupted operations.
 
 ### PRIV-004
+
 - Finding: Settings read failures are silent.
 - Priority: Later
 - Effort: S
@@ -220,6 +234,7 @@ Priorities:
 - Invalid settings fixture should emit warning and fallback predictably.
 
 ### SCM-002
+
 - Finding: Known low-severity transitive vulnerability (`diff`) present.
 - Priority: Later (or Next if easy upgrade path appears)
 - Effort: S
@@ -235,13 +250,16 @@ Priorities:
 - `bun audit` should report zero known vulnerabilities for this advisory after patch.
 
 ## Cross-Cutting Implementation Notes
+
 - Keep changes staged by finding ID to simplify review and rollback.
 - Add concise changelog notes for any user-visible privacy behavior change.
 - Update CLI help text and docs whenever default behavior changes.
 - Maintain backward-compatibility toggles when defaults become stricter.
 
 ## Validation Matrix After Remediation
+
 Required green checks:
+
 - `bun audit` (or documented accepted residual risks).
 - `bun run test`.
 - `bun run typecheck`.
@@ -253,6 +271,7 @@ Required green checks:
 - release workflow strict-signing path fails when signing secrets are absent.
 
 ## Rollout Order
+
 1. Now: `SEC-001`, `PRIV-001`, `SEC-002`, `SEC-003`
 2. Next: `PRIV-002`, `SCM-001`, `REL-001`, `REL-002`, `REL-003`
 3. Later: `PRIV-003`, `SEC-004`, `PRIV-004`, `SCM-002`

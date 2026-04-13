@@ -5,10 +5,18 @@ import {
   formatDateToLocalIso,
   formatRRule,
   parseLocalIsoToDate,
-  parseRRule
+  parseRRule,
 } from "./rruleAdapter";
 
-export const WEEKDAY_ORDER = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"] as const;
+export const WEEKDAY_ORDER = [
+  "MO",
+  "TU",
+  "WE",
+  "TH",
+  "FR",
+  "SA",
+  "SU",
+] as const;
 
 export type BuildRecurrenceResult = {
   recurrence?: TaskRecurrence;
@@ -27,14 +35,14 @@ function sanitizeByDayTokens(values: string[]): string[] {
   const tokens = values
     .map((value) => value.trim().toUpperCase())
     .filter((value): value is (typeof WEEKDAY_ORDER)[number] =>
-      WEEKDAY_ORDER.includes(value as (typeof WEEKDAY_ORDER)[number])
+      WEEKDAY_ORDER.includes(value as (typeof WEEKDAY_ORDER)[number]),
     );
   return Array.from(new Set(tokens));
 }
 
 function buildUntilIso(
   untilDateText: string,
-  dueDate: Date
+  dueDate: Date,
 ): string | undefined {
   const untilDay = parseDateToLocalMidnight(untilDateText);
   if (!untilDay) return undefined;
@@ -44,12 +52,15 @@ function buildUntilIso(
     untilDay.getDate(),
     dueDate.getHours(),
     dueDate.getMinutes(),
-    dueDate.getSeconds()
+    dueDate.getSeconds(),
   );
   return formatDateToLocalIso(untilDate);
 }
 
-function buildPresetRRule(draft: EditorDraft, dueDate: Date): BuildRecurrenceResult {
+function buildPresetRRule(
+  draft: EditorDraft,
+  dueDate: Date,
+): BuildRecurrenceResult {
   const interval = parsePositiveInt(draft.repeatIntervalText, 1);
   const endMode = draft.repeatEndMode;
 
@@ -58,7 +69,7 @@ function buildPresetRRule(draft: EditorDraft, dueDate: Date): BuildRecurrenceRes
     count?: number;
     untilIso?: string;
   } = {
-    interval
+    interval,
   };
 
   if (endMode === "count") {
@@ -83,10 +94,10 @@ function buildPresetRRule(draft: EditorDraft, dueDate: Date): BuildRecurrenceRes
           freq: "DAILY",
           interval: common.interval,
           count: common.count,
-          untilIso: common.untilIso
+          untilIso: common.untilIso,
         }),
-        series_id: ""
-      }
+        series_id: "",
+      },
     };
   }
 
@@ -102,10 +113,10 @@ function buildPresetRRule(draft: EditorDraft, dueDate: Date): BuildRecurrenceRes
           interval: common.interval,
           byday: finalByday,
           count: common.count,
-          untilIso: common.untilIso
+          untilIso: common.untilIso,
         }),
-        series_id: ""
-      }
+        series_id: "",
+      },
     };
   }
 
@@ -126,17 +137,20 @@ function buildPresetRRule(draft: EditorDraft, dueDate: Date): BuildRecurrenceRes
           interval: common.interval,
           bymonthday: [monthday],
           count: common.count,
-          untilIso: common.untilIso
+          untilIso: common.untilIso,
         }),
-        series_id: ""
-      }
+        series_id: "",
+      },
     };
   }
 
   return { error: "Unsupported repeat mode." };
 }
 
-function buildCustomRRule(draft: EditorDraft, dueDate: Date): BuildRecurrenceResult {
+function buildCustomRRule(
+  draft: EditorDraft,
+  dueDate: Date,
+): BuildRecurrenceResult {
   const raw = draft.repeatCustomRRuleText.trim();
   if (!raw) {
     return { error: "Custom RRULE is required." };
@@ -151,15 +165,15 @@ function buildCustomRRule(draft: EditorDraft, dueDate: Date): BuildRecurrenceRes
     recurrence: {
       dtstart: formatDateToLocalIso(dueDate),
       rrule: raw,
-      series_id: ""
-    }
+      series_id: "",
+    },
   };
 }
 
 export function buildRecurrenceFromDraft(
   draft: EditorDraft,
   dueAt: number | undefined,
-  seriesId: string
+  seriesId: string,
 ): BuildRecurrenceResult {
   if (draft.repeatMode === "off") {
     return {};
@@ -182,8 +196,8 @@ export function buildRecurrenceFromDraft(
   return {
     recurrence: {
       ...built.recurrence,
-      series_id: seriesId
-    }
+      series_id: seriesId,
+    },
   };
 }
 
@@ -192,7 +206,7 @@ export function buildRecurrencePreviewFromDraft(
   dueAt: number | undefined,
   hasExplicitTime: boolean,
   nowMs: number,
-  count = 3
+  count = 3,
 ): string[] {
   if (count <= 0) return [];
 
@@ -210,7 +224,7 @@ export function buildRecurrencePreviewFromDraft(
     dueAt,
     hasExplicitTime,
     tags: [],
-    recurrence: built.recurrence
+    recurrence: built.recurrence,
   };
 
   const results: string[] = [];
@@ -232,7 +246,9 @@ export function buildRecurrencePreviewFromDraft(
   return results;
 }
 
-export function getRecurrenceSummary(recurrence: TaskRecurrence | undefined): string | undefined {
+export function getRecurrenceSummary(
+  recurrence: TaskRecurrence | undefined,
+): string | undefined {
   if (!recurrence) return undefined;
   const parsed = parseRRule(recurrence.rrule);
 

@@ -10,13 +10,16 @@ Prevent scope creep by verifying changed files against allow/deny rules.
 ## Workflow
 
 1. Select profile:
+
 - `docs-only`
 - `tests-only`
 - `code-only`
 - `custom`
+
 2. Run scope audit on working-tree or staged files.
 3. Fail the run if any file violates policy.
 4. Review violation list and either:
+
 - revert out-of-scope changes, or
 - adjust policy intentionally and rerun.
 

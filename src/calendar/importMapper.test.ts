@@ -1,6 +1,10 @@
 import { describe, expect, it } from "bun:test";
 import type { ParsedIcsEvent } from "./icsParser";
-import { createTaskFromDraft, mapEventToTaskDraft, mergeTaskFromDraft } from "./importMapper";
+import {
+  createTaskFromDraft,
+  mapEventToTaskDraft,
+  mergeTaskFromDraft,
+} from "./importMapper";
 import type { Task } from "../domain/models";
 
 function buildTimedValue(localIso: string) {
@@ -9,7 +13,7 @@ function buildTimedValue(localIso: string) {
     raw: localIso,
     isUtc: false,
     epochMs: Date.parse(localIso),
-    localIso
+    localIso,
   };
 }
 
@@ -23,12 +27,14 @@ describe("importMapper link provenance", () => {
       url: "https://calendar.example/event/1",
       dtstart: buildTimedValue("2026-02-12T09:00:00"),
       exdates: [],
-      rdates: []
+      rdates: [],
     };
 
     const draft = mapEventToTaskDraft(event);
     expect(draft.links.length).toBe(3);
-    expect(draft.links.every((link) => link.source === "calendar_import")).toBe(true);
+    expect(draft.links.every((link) => link.source === "calendar_import")).toBe(
+      true,
+    );
   });
 
   it("preserves imported source metadata when merging links", () => {
@@ -39,7 +45,7 @@ describe("importMapper link provenance", () => {
       categories: [],
       dtstart: buildTimedValue("2026-02-12T10:00:00"),
       exdates: [],
-      rdates: []
+      rdates: [],
     };
     const draft = mapEventToTaskDraft(event);
 
@@ -55,19 +61,19 @@ describe("importMapper link provenance", () => {
           id: "link-1",
           target: "https://example.com/manual",
           kind: "url",
-          source: "manual"
-        }
-      ]
+          source: "manual",
+        },
+      ],
     };
 
     const merged = mergeTaskFromDraft(existing, draft, {
       nowMs: 2,
       importedAtIso: "2026-02-12T10:00:00.000Z",
       mode: "merge",
-      allowOverwrite: true
+      allowOverwrite: true,
     });
     const importedLink = merged.task.links?.find(
-      (link) => link.target === "https://example.com/new-doc"
+      (link) => link.target === "https://example.com/new-doc",
     );
     expect(importedLink?.source).toBe("calendar_import");
   });
@@ -83,7 +89,7 @@ describe("importMapper merge/update behavior", () => {
       notes: "Incoming notes",
       tags: ["imported"],
       links: [],
-      timeZone: "America/Chicago"
+      timeZone: "America/Chicago",
     };
     const existing: Task = {
       id: "task-1",
@@ -94,14 +100,14 @@ describe("importMapper merge/update behavior", () => {
       dueAt: Date.parse("2026-02-12T09:00:00"),
       hasExplicitTime: true,
       notes: "Local notes",
-      tags: ["local"]
+      tags: ["local"],
     };
 
     const merged = mergeTaskFromDraft(existing, draft, {
       nowMs: 200,
       importedAtIso: "2026-02-12T12:00:00.000Z",
       mode: "merge",
-      allowOverwrite: false
+      allowOverwrite: false,
     });
 
     expect(merged.action).toBe("merged");
@@ -120,7 +126,7 @@ describe("importMapper merge/update behavior", () => {
       hasExplicitTime: true,
       tags: ["ops"],
       notes: "updated notes",
-      links: []
+      links: [],
     };
     const existing: Task = {
       id: "task-2",
@@ -131,13 +137,13 @@ describe("importMapper merge/update behavior", () => {
       dueAt: Date.parse("2026-02-12T10:00:00"),
       hasExplicitTime: true,
       tags: ["local"],
-      notes: "old notes"
+      notes: "old notes",
     };
     const updated = mergeTaskFromDraft(existing, draft, {
       nowMs: 20,
       importedAtIso: "2026-02-13T00:00:00.000Z",
       mode: "update",
-      allowOverwrite: false
+      allowOverwrite: false,
     });
 
     expect(updated.action).toBe("updated");
@@ -155,19 +161,15 @@ describe("importMapper merge/update behavior", () => {
       categories: ["ops"],
       dtstart: buildTimedValue("2026-02-14T09:00:00"),
       exdates: [],
-      rdates: []
+      rdates: [],
     };
     const draft = mapEventToTaskDraft(event);
-    const created = createTaskFromDraft(
-      draft,
-      1,
-      "2026-02-14T09:00:00.000Z"
-    );
+    const created = createTaskFromDraft(draft, 1, "2026-02-14T09:00:00.000Z");
     const remerged = mergeTaskFromDraft(created, draft, {
       nowMs: 2,
       importedAtIso: "2026-02-14T09:01:00.000Z",
       mode: "merge",
-      allowOverwrite: true
+      allowOverwrite: true,
     });
 
     expect(remerged.action).toBe("skipped");
@@ -185,10 +187,10 @@ describe("importMapper merge/update behavior", () => {
         raw: "20260215",
         isUtc: false,
         epochMs: Date.parse("2026-02-15T00:00:00"),
-        localIso: "2026-02-15T00:00:00"
+        localIso: "2026-02-15T00:00:00",
       },
       exdates: [],
-      rdates: []
+      rdates: [],
     };
     const draft = mapEventToTaskDraft(event);
     expect(draft.hasExplicitTime).toBe(false);

@@ -13,12 +13,14 @@ Split big requests into deterministic patch batches with acceptance checks.
 2. Extract discrete objectives.
 3. Create at most `--max-patches` atomic patches.
 4. For each patch, define:
+
 - goal
 - likely file targets
 - dependencies
 - tests
 - rollback note
 - acceptance criteria
+
 5. Emit Markdown and JSON plans.
 
 ## Command

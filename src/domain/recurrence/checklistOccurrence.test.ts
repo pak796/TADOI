@@ -16,7 +16,7 @@ function baseSeriesTask(nowMs: number): Task {
       dtstart: "2026-02-01T09:00:00",
       rrule: "FREQ=DAILY;INTERVAL=1",
       series_id: "series:task-1",
-      exdates: ["2026-02-03T09:00:00"]
+      exdates: ["2026-02-03T09:00:00"],
     },
     checklist: [
       {
@@ -25,9 +25,9 @@ function baseSeriesTask(nowMs: number): Task {
         isDone: false,
         createdAt: "2026-02-01T09:00:00.000Z",
         updatedAt: "2026-02-01T09:00:00.000Z",
-        sort: 0
-      }
-    ]
+        sort: 0,
+      },
+    ],
   };
 }
 
@@ -40,7 +40,7 @@ describe("materializeChecklistOccurrenceOverride", () => {
       context: {
         seriesTask,
         seriesId: "series:task-1",
-        occurrenceIso: "2026-02-10T09:00:00"
+        occurrenceIso: "2026-02-10T09:00:00",
       },
       checklist: [
         {
@@ -50,23 +50,27 @@ describe("materializeChecklistOccurrenceOverride", () => {
           createdAt: "2026-02-01T09:00:00.000Z",
           updatedAt: "2026-02-10T12:00:00.000Z",
           completedAt: "2026-02-10T12:00:00.000Z",
-          sort: 0
-        }
+          sort: 0,
+        },
       ],
-      nowMs
+      nowMs,
     });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    const persistedSeries = result.tasks.find((task) => task.id === seriesTask.id);
+    const persistedSeries = result.tasks.find(
+      (task) => task.id === seriesTask.id,
+    );
     const instance = result.tasks.find(
       (task) =>
         task.instance_of?.series_id === "series:task-1" &&
-        task.instance_of?.occurrence === "2026-02-10T09:00:00"
+        task.instance_of?.occurrence === "2026-02-10T09:00:00",
     );
     expect(instance).toBeDefined();
     expect(instance?.checklist?.[0]?.isDone).toBe(true);
-    expect(persistedSeries?.recurrence?.exdates).toEqual(["2026-02-03T09:00:00"]);
+    expect(persistedSeries?.recurrence?.exdates).toEqual([
+      "2026-02-03T09:00:00",
+    ]);
   });
 
   it("replaces an existing materialized occurrence override deterministically", () => {
@@ -88,13 +92,13 @@ describe("materializeChecklistOccurrenceOverride", () => {
           isDone: false,
           createdAt: "2026-02-01T09:00:00.000Z",
           updatedAt: "2026-02-10T11:50:00.000Z",
-          sort: 0
-        }
+          sort: 0,
+        },
       ],
       instance_of: {
         series_id: "series:task-1",
-        occurrence: "2026-02-10T09:00:00"
-      }
+        occurrence: "2026-02-10T09:00:00",
+      },
     };
 
     const result = materializeChecklistOccurrenceOverride({
@@ -103,7 +107,7 @@ describe("materializeChecklistOccurrenceOverride", () => {
         seriesTask,
         seriesId: "series:task-1",
         occurrenceIso: "2026-02-10T09:00:00",
-        instanceTask: existingInstance
+        instanceTask: existingInstance,
       },
       checklist: [
         {
@@ -113,10 +117,10 @@ describe("materializeChecklistOccurrenceOverride", () => {
           createdAt: "2026-02-01T09:00:00.000Z",
           updatedAt: "2026-02-10T12:00:00.000Z",
           completedAt: "2026-02-10T12:00:00.000Z",
-          sort: 0
-        }
+          sort: 0,
+        },
       ],
-      nowMs
+      nowMs,
     });
 
     expect(result.ok).toBe(true);
@@ -124,12 +128,16 @@ describe("materializeChecklistOccurrenceOverride", () => {
     const matchingInstances = result.tasks.filter(
       (task) =>
         task.instance_of?.series_id === "series:task-1" &&
-        task.instance_of?.occurrence === "2026-02-10T09:00:00"
+        task.instance_of?.occurrence === "2026-02-10T09:00:00",
     );
     expect(matchingInstances).toHaveLength(1);
     expect(matchingInstances[0]?.id).toBe("instance-1");
     expect(matchingInstances[0]?.checklist?.[0]?.isDone).toBe(true);
-    const persistedSeries = result.tasks.find((task) => task.id === seriesTask.id);
-    expect(persistedSeries?.recurrence?.exdates).toEqual(["2026-02-03T09:00:00"]);
+    const persistedSeries = result.tasks.find(
+      (task) => task.id === seriesTask.id,
+    );
+    expect(persistedSeries?.recurrence?.exdates).toEqual([
+      "2026-02-03T09:00:00",
+    ]);
   });
 });

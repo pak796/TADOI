@@ -4,7 +4,7 @@ import {
   resolveTaskListWheelDelta,
   resolveTaskListWheelSelectionIndex,
   resolveTaskRowClickIntent,
-  shouldShowScrollbar
+  shouldShowScrollbar,
 } from "./TaskList";
 
 describe("task list scrollbar visibility", () => {
@@ -28,8 +28,8 @@ describe("task row click intent", () => {
       resolveTaskRowClickIntent({
         button: 0,
         wasSelected: false,
-        mode: Mode.LIST
-      })
+        mode: Mode.LIST,
+      }),
     ).toBe("select");
   });
 
@@ -38,8 +38,8 @@ describe("task row click intent", () => {
       resolveTaskRowClickIntent({
         button: 0,
         wasSelected: true,
-        mode: Mode.LIST
-      })
+        mode: Mode.LIST,
+      }),
     ).toBe("open_edit");
   });
 
@@ -48,8 +48,8 @@ describe("task row click intent", () => {
       resolveTaskRowClickIntent({
         button: 0,
         wasSelected: true,
-        mode: Mode.SEARCH
-      })
+        mode: Mode.SEARCH,
+      }),
     ).toBe("open_edit");
   });
 
@@ -58,8 +58,8 @@ describe("task row click intent", () => {
       resolveTaskRowClickIntent({
         button: 0,
         wasSelected: true,
-        mode: Mode.ADD
-      })
+        mode: Mode.ADD,
+      }),
     ).toBe("none");
   });
 
@@ -68,8 +68,8 @@ describe("task row click intent", () => {
       resolveTaskRowClickIntent({
         button: 0,
         wasSelected: true,
-        mode: Mode.EDIT
-      })
+        mode: Mode.EDIT,
+      }),
     ).toBe("none");
   });
 
@@ -78,8 +78,8 @@ describe("task row click intent", () => {
       resolveTaskRowClickIntent({
         button: 2,
         wasSelected: true,
-        mode: Mode.LIST
-      })
+        mode: Mode.LIST,
+      }),
     ).toBe("none");
   });
 });
@@ -101,29 +101,29 @@ describe("task list wheel direction mapping", () => {
       resolveTaskListWheelSelectionIndex({
         currentIndex: 0,
         delta: -1,
-        itemCount: 3
-      })
+        itemCount: 3,
+      }),
     ).toBe(0);
     expect(
       resolveTaskListWheelSelectionIndex({
         currentIndex: 2,
         delta: 1,
-        itemCount: 3
-      })
+        itemCount: 3,
+      }),
     ).toBe(2);
     expect(
       resolveTaskListWheelSelectionIndex({
         currentIndex: 1,
         delta: 1,
-        itemCount: 3
-      })
+        itemCount: 3,
+      }),
     ).toBe(2);
     expect(
       resolveTaskListWheelSelectionIndex({
         currentIndex: 1,
         delta: -1,
-        itemCount: 3
-      })
+        itemCount: 3,
+      }),
     ).toBe(0);
   });
 });

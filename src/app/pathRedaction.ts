@@ -9,7 +9,7 @@ export type PathRedactionOptions = {
 
 export function redactPathForDisplay(
   pathValue: string,
-  options: PathRedactionOptions = {}
+  options: PathRedactionOptions = {},
 ): string {
   const env = options.env ?? process.env;
   if (env[ENV_VARS.VERBOSE_PATH_LOGS] === "1") {

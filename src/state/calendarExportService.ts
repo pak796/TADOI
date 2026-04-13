@@ -10,15 +10,18 @@ import {
   mapInstanceOverrideTaskToEvent,
   mapNonRecurringTaskToEvent,
   mapSeriesOccurrenceToEvent,
-  mapSeriesTaskToRecurringEvent
+  mapSeriesTaskToRecurringEvent,
 } from "../calendar/calendarMapper";
 import { renderIcsCalendar } from "../calendar/icsWriter";
 import {
   type CalendarExportRange,
   isTimestampInRange,
-  resolveCalendarRangeWindow
+  resolveCalendarRangeWindow,
 } from "../calendar/range";
-import { isValidRRuleFragment, normalizeRRuleFragment } from "../calendar/rrule";
+import {
+  isValidRRuleFragment,
+  normalizeRRuleFragment,
+} from "../calendar/rrule";
 import { loadSettings } from "../settings/settings";
 import { loadStateStrict, resolveDataPath } from "./persistence";
 
@@ -80,13 +83,19 @@ function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
 
 function resolveViewByDisplayName(
   savedViews: SavedView[],
-  viewName: string
+  viewName: string,
 ): SavedView | undefined {
   const normalizedName = viewName.trim().toLowerCase();
-  return savedViews.find((view) => view.name.trim().toLowerCase() === normalizedName);
+  return savedViews.find(
+    (view) => view.name.trim().toLowerCase() === normalizedName,
+  );
 }
 
-function filterTasksThroughSavedView(tasks: Task[], view: SavedView, nowMs: number): Task[] {
+function filterTasksThroughSavedView(
+  tasks: Task[],
+  view: SavedView,
+  nowMs: number,
+): Task[] {
   const filters = applySavedView(view);
   const rows = buildVisibleTaskRows(tasks, filters, "due", nowMs);
   const regularIds = new Set<string>();
@@ -133,12 +142,14 @@ function resolveConfiguredTimeZone(settings: unknown): string | undefined {
   return typeof candidate === "string" ? candidate.trim() : undefined;
 }
 
-function resolveTimeContext(explicitTimeZone: string | undefined): CalendarTimeContext {
+function resolveTimeContext(
+  explicitTimeZone: string | undefined,
+): CalendarTimeContext {
   const preferred = explicitTimeZone?.trim();
   if (preferred && isValidTimeZone(preferred)) {
     return {
       mode: "tzid",
-      timeZone: preferred
+      timeZone: preferred,
     };
   }
 
@@ -146,23 +157,28 @@ function resolveTimeContext(explicitTimeZone: string | undefined): CalendarTimeC
   if (systemTz && isValidTimeZone(systemTz)) {
     return {
       mode: "tzid",
-      timeZone: systemTz
+      timeZone: systemTz,
     };
   }
 
   return {
     mode: "utc",
-    timeZone: "UTC"
+    timeZone: "UTC",
   };
 }
 
-async function resolveIcsOutputPath(outPath: string, cwd: string): Promise<string> {
+async function resolveIcsOutputPath(
+  outPath: string,
+  cwd: string,
+): Promise<string> {
   const raw = outPath.trim();
   if (!raw) {
     throw new CalendarExportUsageError("--out is required for calendar:export");
   }
 
-  let resolved = path.isAbsolute(raw) ? path.normalize(raw) : path.resolve(cwd, raw);
+  let resolved = path.isAbsolute(raw)
+    ? path.normalize(raw)
+    : path.resolve(cwd, raw);
   let treatAsDirectory = /[\\/]+$/.test(raw);
 
   if (!treatAsDirectory) {
@@ -174,7 +190,7 @@ async function resolveIcsOutputPath(outPath: string, cwd: string): Promise<strin
         treatAsDirectory = false;
       } else {
         throw new CalendarExportFilesystemError(
-          `Failed to inspect output path ${resolved}: ${toErrorMessage(error)}`
+          `Failed to inspect output path ${resolved}: ${toErrorMessage(error)}`,
         );
       }
     }
@@ -192,7 +208,7 @@ async function resolveIcsOutputPath(outPath: string, cwd: string): Promise<strin
 
 function getRelatedSeriesUid(
   task: Task,
-  seriesTaskBySeriesId: Map<string, Task>
+  seriesTaskBySeriesId: Map<string, Task>,
 ): string | undefined {
   if (!task.instance_of) return undefined;
   const series = seriesTaskBySeriesId.get(task.instance_of.series_id);
@@ -201,7 +217,7 @@ function getRelatedSeriesUid(
 }
 
 export async function exportCalendarIcs(
-  options: CalendarExportOptions
+  options: CalendarExportOptions,
 ): Promise<CalendarExportResult> {
   const warnings: string[] = [];
   const now = options.now ?? new Date();
@@ -226,19 +242,26 @@ export async function exportCalendarIcs(
       warnings.push(`Settings: ${warning}`);
     }
   } catch (error: unknown) {
-    warnings.push(`Settings unavailable during export: ${toErrorMessage(error)}`);
+    warnings.push(
+      `Settings unavailable during export: ${toErrorMessage(error)}`,
+    );
   }
-  const timeContext = resolveTimeContext(options.timeZone?.trim() || settingsTz);
+  const timeContext = resolveTimeContext(
+    options.timeZone?.trim() || settingsTz,
+  );
 
   const stateTasks = loadedState.data.tasks;
   let filteredByView = stateTasks;
   let viewApplied: string | undefined;
 
   if (options.viewName && options.viewName.trim().length > 0) {
-    const view = resolveViewByDisplayName(loadedState.data.savedViews, options.viewName);
+    const view = resolveViewByDisplayName(
+      loadedState.data.savedViews,
+      options.viewName,
+    );
     if (!view) {
       throw new CalendarExportDomainError(
-        `Saved view not found: ${options.viewName.trim()}`
+        `Saved view not found: ${options.viewName.trim()}`,
       );
     }
     viewApplied = view.name;
@@ -246,7 +269,8 @@ export async function exportCalendarIcs(
   }
 
   const eligibleTasks = filteredByView.filter(
-    (task) => task.status === "open" && (task.dueAt !== undefined || task.recurrence)
+    (task) =>
+      task.status === "open" && (task.dueAt !== undefined || task.recurrence),
   );
 
   const seriesTaskBySeriesId = new Map<string, Task>();
@@ -264,7 +288,10 @@ export async function exportCalendarIcs(
 
   for (const task of eligibleTasks) {
     if (task.instance_of) {
-      if (task.dueAt === undefined || !isTimestampInRange(task.dueAt, rangeWindow)) {
+      if (
+        task.dueAt === undefined ||
+        !isTimestampInRange(task.dueAt, rangeWindow)
+      ) {
         continue;
       }
       const event = mapInstanceOverrideTaskToEvent(
@@ -272,7 +299,7 @@ export async function exportCalendarIcs(
         timeContext,
         now,
         getRelatedSeriesUid(task, seriesTaskBySeriesId),
-        privacy
+        privacy,
       );
       if (!event) continue;
       events.push(event);
@@ -285,7 +312,7 @@ export async function exportCalendarIcs(
       if (!hasValidRRule) {
         if (range === "all") {
           throw new CalendarExportDomainError(
-            `Recurring task ${task.id} has invalid RRULE (${normalizeRRuleFragment(task.recurrence.rrule ?? "") || "<empty>"}). Use --range next7 or --range month.`
+            `Recurring task ${task.id} has invalid RRULE (${normalizeRRuleFragment(task.recurrence.rrule ?? "") || "<empty>"}). Use --range next7 or --range month.`,
           );
         }
 
@@ -300,7 +327,7 @@ export async function exportCalendarIcs(
         const occurrences = getOccurrences(
           task,
           rangeWindow.startMs,
-          rangeWindow.endMs - 1
+          rangeWindow.endMs - 1,
         );
         for (const occurrence of occurrences) {
           const event = mapSeriesOccurrenceToEvent(
@@ -308,7 +335,7 @@ export async function exportCalendarIcs(
             occurrence,
             timeContext,
             now,
-            privacy
+            privacy,
           );
           if (event) {
             events.push(event);
@@ -321,12 +348,18 @@ export async function exportCalendarIcs(
         rangeWindow.range !== "all" &&
         rangeWindow.startMs !== undefined &&
         rangeWindow.endMs !== undefined &&
-        getOccurrences(task, rangeWindow.startMs, rangeWindow.endMs - 1).length === 0
+        getOccurrences(task, rangeWindow.startMs, rangeWindow.endMs - 1)
+          .length === 0
       ) {
         continue;
       }
 
-      const event = mapSeriesTaskToRecurringEvent(task, timeContext, now, privacy);
+      const event = mapSeriesTaskToRecurringEvent(
+        task,
+        timeContext,
+        now,
+        privacy,
+      );
       if (!event) continue;
       events.push(event);
       seriesRruleExported += 1;
@@ -334,7 +367,10 @@ export async function exportCalendarIcs(
       continue;
     }
 
-    if (task.dueAt === undefined || !isTimestampInRange(task.dueAt, rangeWindow)) {
+    if (
+      task.dueAt === undefined ||
+      !isTimestampInRange(task.dueAt, rangeWindow)
+    ) {
       continue;
     }
     const event = mapNonRecurringTaskToEvent(task, timeContext, now, privacy);
@@ -345,18 +381,21 @@ export async function exportCalendarIcs(
 
   const rendered = renderIcsCalendar({
     events,
-    timeContext
+    timeContext,
   });
 
   try {
-    await fs.mkdir(path.dirname(outputPath), { recursive: true, mode: PRIVATE_DIR_MODE });
+    await fs.mkdir(path.dirname(outputPath), {
+      recursive: true,
+      mode: PRIVATE_DIR_MODE,
+    });
     await fs.writeFile(outputPath, rendered, {
       encoding: "utf8",
-      mode: PRIVATE_FILE_MODE
+      mode: PRIVATE_FILE_MODE,
     });
   } catch (error: unknown) {
     throw new CalendarExportFilesystemError(
-      `Failed to write ICS file at ${outputPath}: ${toErrorMessage(error)}`
+      `Failed to write ICS file at ${outputPath}: ${toErrorMessage(error)}`,
     );
   }
 
@@ -371,6 +410,6 @@ export async function exportCalendarIcs(
     privacyApplied: privacy,
     ...(viewApplied ? { viewApplied } : {}),
     timeContext,
-    ...(warnings.length > 0 ? { warnings } : {})
+    ...(warnings.length > 0 ? { warnings } : {}),
   };
 }

@@ -3,7 +3,7 @@ import {
   isTadoiLockPayloadStale,
   isTadoiLockPresent,
   readTadoiLockPayload,
-  TADOI_LOCK_STALE_AFTER_MS
+  TADOI_LOCK_STALE_AFTER_MS,
 } from "../state/lockfile";
 
 export type TadoiRunningProbeResult = {
@@ -27,7 +27,7 @@ export async function probeTadoiRunningState(options: {
     return {
       running: false,
       lockPath,
-      reason: "no_lock"
+      reason: "no_lock",
     };
   }
 
@@ -36,21 +36,21 @@ export async function probeTadoiRunningState(options: {
     return {
       running: false,
       lockPath,
-      reason: "invalid_lock"
+      reason: "invalid_lock",
     };
   }
 
   if (
     isTadoiLockPayloadStale(payload, {
       nowMs,
-      staleAfterMs
+      staleAfterMs,
     })
   ) {
     return {
       running: false,
       lockPath,
       reason: "stale_lock",
-      pid: payload.pid
+      pid: payload.pid,
     };
   }
 
@@ -58,6 +58,6 @@ export async function probeTadoiRunningState(options: {
     running: true,
     lockPath,
     reason: "active_lock",
-    pid: payload.pid
+    pid: payload.pid,
   };
 }

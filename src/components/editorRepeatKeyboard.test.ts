@@ -6,7 +6,7 @@ import {
   REMINDER_KIND_KEYBOARD_ORDER,
   REPEAT_END_MODE_KEYBOARD_ORDER,
   REPEAT_MODE_KEYBOARD_ORDER,
-  shouldInterceptRepeatArrowAtEdge
+  shouldInterceptRepeatArrowAtEdge,
 } from "./editorRepeatKeyboard";
 
 describe("editorRepeatKeyboard", () => {
@@ -16,10 +16,14 @@ describe("editorRepeatKeyboard", () => {
       "daily",
       "weekly",
       "monthly",
-      "custom"
+      "custom",
     ]);
     expect(REPEAT_END_MODE_KEYBOARD_ORDER).toEqual(["never", "until", "count"]);
-    expect(REMINDER_KIND_KEYBOARD_ORDER).toEqual(["none", "absolute", "before_due"]);
+    expect(REMINDER_KIND_KEYBOARD_ORDER).toEqual([
+      "none",
+      "absolute",
+      "before_due",
+    ]);
   });
 
   it("cycles repeat mode forward/backward with clamp behavior", () => {
@@ -54,40 +58,40 @@ describe("editorRepeatKeyboard", () => {
         keyName: "left",
         cursorOffset: 0,
         valueLength: 5,
-        hasSelection: false
-      })
+        hasSelection: false,
+      }),
     ).toBe(true);
     expect(
       shouldInterceptRepeatArrowAtEdge({
         keyName: "right",
         cursorOffset: 5,
         valueLength: 5,
-        hasSelection: false
-      })
+        hasSelection: false,
+      }),
     ).toBe(true);
     expect(
       shouldInterceptRepeatArrowAtEdge({
         keyName: "left",
         cursorOffset: 2,
         valueLength: 5,
-        hasSelection: false
-      })
+        hasSelection: false,
+      }),
     ).toBe(false);
     expect(
       shouldInterceptRepeatArrowAtEdge({
         keyName: "right",
         cursorOffset: 2,
         valueLength: 5,
-        hasSelection: false
-      })
+        hasSelection: false,
+      }),
     ).toBe(false);
     expect(
       shouldInterceptRepeatArrowAtEdge({
         keyName: "left",
         cursorOffset: 0,
         valueLength: 5,
-        hasSelection: true
-      })
+        hasSelection: true,
+      }),
     ).toBe(false);
   });
 });

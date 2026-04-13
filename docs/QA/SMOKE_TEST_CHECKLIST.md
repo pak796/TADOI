@@ -5,11 +5,13 @@ Verified as of 2026-02-20 (v0.4.0).
 Run on macOS, Windows, Linux.
 
 ## Preconditions
+
 - Terminal >= `104x24`
 - Fresh data path override recommended
 - Build artifact under test is the current daily build
 
 ## Smoke Checklist (Traceable IDs)
+
 - [ ] `QA-001` App launches and renders at `>=104x24`
 - [ ] `QA-002` Resize below `104x24` shows blocking guard; resizing back resumes
 - [ ] `QA-008` `a` opens Add; `Ctrl+S` saves a task; task appears in list
@@ -25,6 +27,7 @@ Run on macOS, Windows, Linux.
 - [ ] `QA-GH-001` Cloud backup status entry points open correctly (`Help / Settings / Cloud Backup` -> `Open Cloud Operations`, and `Backup Center` -> `Cloud Backups -> GitHub (CLI)`)
 
 ## Pass Criteria
+
 - All checks pass on all three platforms
 - No crash, hang, or stuck modal state
 - TITS in-app + CLI lock semantics match expected results

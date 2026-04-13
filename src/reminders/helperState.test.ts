@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   isReminderEventAlreadyFired,
   markReminderEventFired,
-  pruneReminderHelperState
+  pruneReminderHelperState,
 } from "./helperState";
 
 describe("reminder helper state", () => {
@@ -10,14 +10,14 @@ describe("reminder helper state", () => {
     const base = {
       version: 1,
       updatedAt: "2026-03-03T00:00:00.000Z",
-      fired: {}
+      fired: {},
     };
 
     const next = markReminderEventFired(
       base,
       "evt-1",
       "2026-03-03T00:10:00.000Z",
-      Date.parse("2026-03-03T00:10:00.000Z")
+      Date.parse("2026-03-03T00:10:00.000Z"),
     );
 
     expect(isReminderEventAlreadyFired(next, "evt-1")).toBe(true);
@@ -31,11 +31,15 @@ describe("reminder helper state", () => {
       updatedAt: "2026-03-10T00:00:00.000Z",
       fired: {
         old: "2026-03-01T00:00:00.000Z",
-        fresh: "2026-03-09T00:00:00.000Z"
-      }
+        fresh: "2026-03-09T00:00:00.000Z",
+      },
     };
 
-    const pruned = pruneReminderHelperState(state, nowMs, 7 * 24 * 60 * 60 * 1000);
+    const pruned = pruneReminderHelperState(
+      state,
+      nowMs,
+      7 * 24 * 60 * 60 * 1000,
+    );
     expect(pruned.fired.old).toBeUndefined();
     expect(pruned.fired.fresh).toBe("2026-03-09T00:00:00.000Z");
   });

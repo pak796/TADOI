@@ -6,7 +6,9 @@ describe("settings + validation contracts", () => {
   it("keeps default settings values in allowed runtime ranges/enums", () => {
     const defaults = getDefaultSettings();
     expect(["prompt", "block"]).toContain(defaults.security.nonHttpLinkPolicy);
-    expect(Number.isInteger(defaults.notifications.bannerDurationMs)).toBe(true);
+    expect(Number.isInteger(defaults.notifications.bannerDurationMs)).toBe(
+      true,
+    );
     expect(defaults.notifications.bannerDurationMs).toBeGreaterThan(0);
     expect(Number.isInteger(defaults.notifications.bellCooldownMs)).toBe(true);
     expect(defaults.notifications.bellCooldownMs).toBeGreaterThan(0);
@@ -29,21 +31,21 @@ describe("settings + validation contracts", () => {
                 id: "manual-link",
                 target: "https://example.com",
                 kind: "url",
-                source: "manual"
+                source: "manual",
               },
               {
                 id: "imported-path",
                 target: "/tmp/notes.txt",
                 kind: "path",
-                source: "calendar_import"
-              }
-            ]
-          }
+                source: "calendar_import",
+              },
+            ],
+          },
         ],
         tagIndex: {},
-        savedViews: []
+        savedViews: [],
       },
-      "strict"
+      "strict",
     );
     expect(result.ok).toBe(true);
   });

@@ -18,7 +18,7 @@ export function getTitleQuery(titleText: string): string | null {
 
 export function rankTaskTitles(
   tasks: Array<Pick<Task, "title" | "createdAt" | "updatedAt">>,
-  query: string
+  query: string,
 ): string[] {
   const normalizedQuery = normalizeTitleForMatch(query);
   if (!normalizedQuery) return [];
@@ -26,7 +26,8 @@ export function rankTaskTitles(
   const entries = new Map<string, TitleHistoryEntry>();
   for (const task of tasks) {
     const normalizedTitle = normalizeTitleForMatch(task.title);
-    if (!normalizedTitle || !normalizedTitle.startsWith(normalizedQuery)) continue;
+    if (!normalizedTitle || !normalizedTitle.startsWith(normalizedQuery))
+      continue;
 
     const title = task.title.trim();
     const lastUsedAt = Math.max(task.updatedAt, task.createdAt);
@@ -35,7 +36,7 @@ export function rankTaskTitles(
       entries.set(normalizedTitle, {
         title,
         usageCount: 1,
-        lastUsedAt
+        lastUsedAt,
       });
       continue;
     }
@@ -61,14 +62,14 @@ export function rankTaskTitles(
 
 export function getTitleCompletion(
   query: string,
-  titles: string[]
+  titles: string[],
 ): { full: string; remainder: string } | null {
   const normalizedQuery = normalizeTitleForMatch(query);
   if (!normalizedQuery) return null;
 
   const trimmedQuery = query.trim();
   const match = titles.find((title) =>
-    title.trim().toLocaleLowerCase().startsWith(normalizedQuery)
+    title.trim().toLocaleLowerCase().startsWith(normalizedQuery),
   );
   if (!match) return null;
 

@@ -4,7 +4,7 @@ import {
   buildReminderIndex,
   loadReminderIndexForDataFile,
   saveReminderIndexForDataFile,
-  writeReminderIndexForDataFile
+  writeReminderIndexForDataFile,
 } from "../reminders/indexer";
 import {
   clearReminderEventFired,
@@ -12,21 +12,21 @@ import {
   loadReminderHelperState,
   markReminderEventFired,
   pruneReminderHelperState,
-  saveReminderHelperState
+  saveReminderHelperState,
 } from "../reminders/helperState";
 import { resolveCurrentTadoiInvocation } from "../reminders/invocation";
 import {
   getReminderInstallCommandsForPlatform,
   getReminderSchedulerStatus,
   installReminderScheduler,
-  uninstallReminderScheduler
+  uninstallReminderScheduler,
 } from "../reminders/scheduler";
 import { launchReminderTerminal } from "../reminders/terminalLauncher";
 import { probeTadoiRunningState } from "../reminders/isRunning";
 import {
   REMINDER_HELPER_STATE_TTL_MS,
   type ReminderIndex,
-  type ReminderIndexEvent
+  type ReminderIndexEvent,
 } from "../reminders/types";
 import { CLI_EXIT_CODE } from "./exitCodes";
 import { loadSettings } from "../settings/settings";
@@ -79,7 +79,7 @@ const DEFAULT_RUNTIME: RemindersCommandRuntime = {
   buildReminderIndex,
   loadSettings,
   log: (line) => redactedLogger.log(line),
-  error: (line) => redactedLogger.error(line)
+  error: (line) => redactedLogger.error(line),
 };
 
 function usage(): string {
@@ -89,11 +89,15 @@ function usage(): string {
     "  tadoi reminders uninstall",
     "  tadoi reminders status",
     "  tadoi reminders test",
-    "  tadoi reminders tick"
+    "  tadoi reminders tick",
   ].join("\n");
 }
 
-function hashEventId(taskId: string, occurrenceKey: string, remindAtIso: string): string {
+function hashEventId(
+  taskId: string,
+  occurrenceKey: string,
+  remindAtIso: string,
+): string {
   return createHash("sha256")
     .update(taskId)
     .update("|")
@@ -124,12 +128,12 @@ function renderSchedulerStatusLines(status: {
 
 async function refreshReminderIndex(
   dataFilePath: string,
-  runtime: RemindersCommandRuntime
+  runtime: RemindersCommandRuntime,
 ): Promise<void> {
   const loaded = await runtime.loadStateStrict({ filePath: dataFilePath });
   await runtime.writeReminderIndexForDataFile({
     dataFilePath,
-    tasks: loaded.data.tasks
+    tasks: loaded.data.tasks,
   });
 }
 
@@ -171,13 +175,13 @@ export function mergeReminderIndexWithHelperEvents(options: {
   return {
     version: options.rebuiltIndex.version,
     generatedAt: options.rebuiltIndex.generatedAt,
-    events
+    events,
   };
 }
 
 async function runInstallCommand(
   dataFilePath: string,
-  runtime: RemindersCommandRuntime
+  runtime: RemindersCommandRuntime,
 ): Promise<number> {
   const invocation = runtime.resolveCurrentTadoiInvocation();
   const status = await runtime.installReminderScheduler({ invocation });
@@ -193,7 +197,9 @@ async function runInstallCommand(
   return CLI_EXIT_CODE.SUCCESS;
 }
 
-async function runUninstallCommand(runtime: RemindersCommandRuntime): Promise<number> {
+async function runUninstallCommand(
+  runtime: RemindersCommandRuntime,
+): Promise<number> {
   const status = await runtime.uninstallReminderScheduler({});
   const lines = renderSchedulerStatusLines(status);
   for (const line of lines) {
@@ -204,11 +210,11 @@ async function runUninstallCommand(runtime: RemindersCommandRuntime): Promise<nu
 
 async function runStatusCommand(
   dataFilePath: string,
-  runtime: RemindersCommandRuntime
+  runtime: RemindersCommandRuntime,
 ): Promise<number> {
   const invocation = runtime.resolveCurrentTadoiInvocation();
   const schedulerStatus = await runtime.getReminderSchedulerStatus({
-    invocation
+    invocation,
   });
 
   const settings = await runtime.loadSettings().catch(() => undefined);
@@ -233,7 +239,7 @@ async function runStatusCommand(
 
 async function runTestCommand(
   dataFilePath: string,
-  runtime: RemindersCommandRuntime
+  runtime: RemindersCommandRuntime,
 ): Promise<number> {
   const nowMs = runtime.nowMs();
   const remindAtMs = nowMs + 60_000;
@@ -254,21 +260,36 @@ async function runTestCommand(
     dueAt,
     title: "TADOI test reminder",
     priority: "",
-    tags: ["test"]
+    tags: ["test"],
   };
 
-  const filtered = index.events.filter((event) => !event.occurrenceKey.startsWith("test:"));
+  const filtered = index.events.filter(
+    (event) => !event.occurrenceKey.startsWith("test:"),
+  );
   const nextIndex = {
     version: index.version,
     generatedAt: new Date(nowMs).toISOString(),
-    events: [...filtered, testEvent].sort((left, right) => left.remindAt.localeCompare(right.remindAt))
+    events: [...filtered, testEvent].sort((left, right) =>
+      left.remindAt.localeCompare(right.remindAt),
+    ),
   };
 
-  await runtime.saveReminderIndexForDataFile({ dataFilePath, index: nextIndex });
+  await runtime.saveReminderIndexForDataFile({
+    dataFilePath,
+    index: nextIndex,
+  });
 
   const state = await runtime.loadReminderHelperState({ dataFilePath, nowMs });
-  const nextState = runtime.clearReminderEventFired(state, testEvent.eventId, nowMs);
-  await runtime.saveReminderHelperState({ dataFilePath, state: nextState, nowMs });
+  const nextState = runtime.clearReminderEventFired(
+    state,
+    testEvent.eventId,
+    nowMs,
+  );
+  await runtime.saveReminderHelperState({
+    dataFilePath,
+    state: nextState,
+    nowMs,
+  });
 
   runtime.log(`scheduled_test_event: ${testEvent.eventId}`);
   runtime.log(`remind_at: ${testEvent.remindAt}`);
@@ -277,7 +298,7 @@ async function runTestCommand(
 
 async function runTickCommand(
   dataFilePath: string,
-  runtime: RemindersCommandRuntime
+  runtime: RemindersCommandRuntime,
 ): Promise<number> {
   const settings = await runtime.loadSettings();
   const outOfAppEnabled =
@@ -289,37 +310,47 @@ async function runTickCommand(
   }
 
   const nowMs = runtime.nowMs();
-  const previousIndex = await runtime.loadReminderIndexForDataFile({ dataFilePath, nowMs });
+  const previousIndex = await runtime.loadReminderIndexForDataFile({
+    dataFilePath,
+    nowMs,
+  });
   const loaded = await runtime.loadStateStrict({ filePath: dataFilePath });
   const rebuiltIndex = runtime.buildReminderIndex(loaded.data.tasks, nowMs);
   const index = mergeReminderIndexWithHelperEvents({
     rebuiltIndex,
     existingIndex: previousIndex,
-    nowMs
+    nowMs,
   });
   await runtime.saveReminderIndexForDataFile({ dataFilePath, index });
 
-  const runningProbe = await runtime.probeTadoiRunningState({ dataFilePath, nowMs });
+  const runningProbe = await runtime.probeTadoiRunningState({
+    dataFilePath,
+    nowMs,
+  });
   if (runningProbe.running) {
     runtime.log(
-      `tadoi is running (pid ${String(runningProbe.pid ?? "unknown")}); reminder popups skipped`
+      `tadoi is running (pid ${String(runningProbe.pid ?? "unknown")}); reminder popups skipped`,
     );
     return CLI_EXIT_CODE.SUCCESS;
   }
 
   let helperState = runtime.pruneReminderHelperState(
     await runtime.loadReminderHelperState({ dataFilePath, nowMs }),
-    nowMs
+    nowMs,
   );
 
   const dueEvents = index.events.filter(
     (event) =>
       Date.parse(event.remindAt) <= nowMs &&
-      !runtime.isReminderEventAlreadyFired(helperState, event.eventId)
+      !runtime.isReminderEventAlreadyFired(helperState, event.eventId),
   );
 
   if (dueEvents.length === 0) {
-    await runtime.saveReminderHelperState({ dataFilePath, state: helperState, nowMs });
+    await runtime.saveReminderHelperState({
+      dataFilePath,
+      state: helperState,
+      nowMs,
+    });
     runtime.log("no due reminder events");
     return CLI_EXIT_CODE.SUCCESS;
   }
@@ -330,7 +361,7 @@ async function runTickCommand(
   for (const event of dueEvents) {
     const launch = await runtime.launchReminderTerminal({
       eventId: event.eventId,
-      invocation
+      invocation,
     });
 
     if (launch.ok) {
@@ -338,18 +369,22 @@ async function runTickCommand(
         helperState,
         event.eventId,
         new Date(nowMs).toISOString(),
-        nowMs
+        nowMs,
       );
       runtime.log(`launched reminder: ${formatReminderEventLine(event)}`);
       continue;
     }
 
     launchFailures.push(
-      `${event.eventId}: ${launch.error ?? "unknown launch error"}`
+      `${event.eventId}: ${launch.error ?? "unknown launch error"}`,
     );
   }
 
-  await runtime.saveReminderHelperState({ dataFilePath, state: helperState, nowMs });
+  await runtime.saveReminderHelperState({
+    dataFilePath,
+    state: helperState,
+    nowMs,
+  });
 
   if (launchFailures.length > 0) {
     for (const line of launchFailures) {
@@ -363,11 +398,11 @@ async function runTickCommand(
 
 export async function runRemindersCommandWithRuntime(
   args: string[],
-  runtimeOverrides: Partial<RemindersCommandRuntime> = {}
+  runtimeOverrides: Partial<RemindersCommandRuntime> = {},
 ): Promise<number> {
   const runtime: RemindersCommandRuntime = {
     ...DEFAULT_RUNTIME,
-    ...runtimeOverrides
+    ...runtimeOverrides,
   };
   const subcommand = args[0];
   const dataFilePath = runtime.getDataFilePath();
@@ -399,7 +434,7 @@ export async function runRemindersCommandWithRuntime(
     return CLI_EXIT_CODE.PARSE_OR_VALIDATION;
   } catch (error: unknown) {
     runtime.error(
-      `Error: reminders command failed (${error instanceof Error ? error.message : String(error)})`
+      `Error: reminders command failed (${error instanceof Error ? error.message : String(error)})`,
     );
     return CLI_EXIT_CODE.IO_ERROR;
   }
@@ -409,12 +444,16 @@ export async function runRemindersCommand(args: string[]): Promise<number> {
   return runRemindersCommandWithRuntime(args);
 }
 
-export function getReminderSettingsHelpLines(platform = process.platform): string[] {
-  const [install, statusCheck] = getReminderInstallCommandsForPlatform({ platform });
+export function getReminderSettingsHelpLines(
+  platform = process.platform,
+): string[] {
+  const [install, statusCheck] = getReminderInstallCommandsForPlatform({
+    platform,
+  });
   return [
     `Install helper: ${install}`,
     `Check helper: ${statusCheck}`,
     "Test reminder: tadoi reminders test",
-    "Uninstall helper: tadoi reminders uninstall"
+    "Uninstall helper: tadoi reminders uninstall",
   ];
 }

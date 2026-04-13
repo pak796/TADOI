@@ -21,7 +21,10 @@ export type RuntimeThemeAlias =
   | "selectionBg"
   | "selectionText";
 
-export const RUNTIME_THEME_ALIAS_TO_TOKEN: Record<RuntimeThemeAlias, keyof ThemeTokens> = {
+export const RUNTIME_THEME_ALIAS_TO_TOKEN: Record<
+  RuntimeThemeAlias,
+  keyof ThemeTokens
+> = {
   bg: "bg",
   panel: "panel",
   accentOrange: "accent",
@@ -40,10 +43,15 @@ export const RUNTIME_THEME_ALIAS_TO_TOKEN: Record<RuntimeThemeAlias, keyof Theme
   outline: "border",
   border: "border",
   selectionBg: "selectionBg",
-  selectionText: "selectionText"
+  selectionText: "selectionText",
 };
 
-export type UserThemeRoleId = "surface" | "text" | "accent" | "status" | "selection";
+export type UserThemeRoleId =
+  | "surface"
+  | "text"
+  | "accent"
+  | "status"
+  | "selection";
 
 export type UserThemeRoleContract = {
   label: string;
@@ -52,15 +60,18 @@ export type UserThemeRoleContract = {
   consumerExamples: string[];
 };
 
-export const USER_THEME_ROLE_CONTRACT: Record<UserThemeRoleId, UserThemeRoleContract> = {
+export const USER_THEME_ROLE_CONTRACT: Record<
+  UserThemeRoleId,
+  UserThemeRoleContract
+> = {
   surface: {
     label: "Surface",
     internalTokens: ["bg", "panel", "border"],
     runtimeAliases: ["bg", "panel", "outline", "border"],
     consumerExamples: [
       "src/app/App.tsx",
-      "src/components/BackupCenterScreen.tsx"
-    ]
+      "src/components/BackupCenterScreen.tsx",
+    ],
   },
   text: {
     label: "Text",
@@ -68,17 +79,20 @@ export const USER_THEME_ROLE_CONTRACT: Record<UserThemeRoleId, UserThemeRoleCont
     runtimeAliases: ["text", "muted", "mutedText"],
     consumerExamples: [
       "src/components/TaskList.tsx",
-      "src/components/DetailsPane.tsx"
-    ]
+      "src/components/DetailsPane.tsx",
+    ],
   },
   accent: {
     label: "Accent",
     internalTokens: ["accent", "accent2"],
-    runtimeAliases: ["accentOrange", "accentBlue", "accent", "accent2", "dueLater"],
-    consumerExamples: [
-      "src/app/App.tsx",
-      "src/components/LeftRail.tsx"
-    ]
+    runtimeAliases: [
+      "accentOrange",
+      "accentBlue",
+      "accent",
+      "accent2",
+      "dueLater",
+    ],
+    consumerExamples: ["src/app/App.tsx", "src/components/LeftRail.tsx"],
   },
   status: {
     label: "Status",
@@ -86,8 +100,8 @@ export const USER_THEME_ROLE_CONTRACT: Record<UserThemeRoleId, UserThemeRoleCont
     runtimeAliases: ["ok", "warn", "danger", "dueSoon"],
     consumerExamples: [
       "src/components/TaskList.tsx",
-      "src/components/BackupCenterScreen.tsx"
-    ]
+      "src/components/BackupCenterScreen.tsx",
+    ],
   },
   selection: {
     label: "Selection",
@@ -95,15 +109,17 @@ export const USER_THEME_ROLE_CONTRACT: Record<UserThemeRoleId, UserThemeRoleCont
     runtimeAliases: ["selectionBg", "selectionText", "accentPurple"],
     consumerExamples: [
       "src/components/TaskList.tsx",
-      "src/components/LeftRail.tsx"
-    ]
-  }
+      "src/components/LeftRail.tsx",
+    ],
+  },
 };
 
-export function runtimeThemeFromContract(tokens: ThemeTokens): Record<RuntimeThemeAlias, string> {
+export function runtimeThemeFromContract(
+  tokens: ThemeTokens,
+): Record<RuntimeThemeAlias, string> {
   const next = {} as Record<RuntimeThemeAlias, string>;
   for (const [alias, tokenKey] of Object.entries(
-    RUNTIME_THEME_ALIAS_TO_TOKEN
+    RUNTIME_THEME_ALIAS_TO_TOKEN,
   ) as Array<[RuntimeThemeAlias, keyof ThemeTokens]>) {
     next[alias] = tokens[tokenKey];
   }

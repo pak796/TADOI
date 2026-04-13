@@ -44,7 +44,7 @@ export function normalizeTagsFromInput(input: string): string[] {
 
 export function getTagCompletion(
   prefix: string,
-  tags: string[]
+  tags: string[],
 ): { full: string; remainder: string } | null {
   const normalizedPrefix = normalizeTagPrefix(prefix);
   if (!normalizedPrefix) return null;
@@ -56,7 +56,7 @@ export function getTagCompletion(
 }
 
 export function normalizeTagIndex(
-  tagIndex: Record<string, TagIndexEntry>
+  tagIndex: Record<string, TagIndexEntry>,
 ): Record<string, TagIndexEntry> {
   const next: Record<string, TagIndexEntry> = {};
   for (const entry of Object.values(tagIndex)) {
@@ -67,13 +67,13 @@ export function normalizeTagIndex(
       next[normalized] = {
         tagName: normalized,
         usageCount: existing.usageCount + entry.usageCount,
-        lastUsedAt: Math.max(existing.lastUsedAt, entry.lastUsedAt)
+        lastUsedAt: Math.max(existing.lastUsedAt, entry.lastUsedAt),
       };
     } else {
       next[normalized] = {
         tagName: normalized,
         usageCount: entry.usageCount,
-        lastUsedAt: entry.lastUsedAt
+        lastUsedAt: entry.lastUsedAt,
       };
     }
   }
@@ -83,7 +83,7 @@ export function normalizeTagIndex(
 export function updateTagIndex(
   tagIndex: Record<string, TagIndexEntry>,
   tags: string[],
-  now: number
+  now: number,
 ): Record<string, TagIndexEntry> {
   const next: Record<string, TagIndexEntry> = { ...tagIndex };
   const normalized = normalizeTags(tags);
@@ -93,13 +93,13 @@ export function updateTagIndex(
       next[tag] = {
         tagName: existing.tagName,
         usageCount: existing.usageCount + 1,
-        lastUsedAt: now
+        lastUsedAt: now,
       };
     } else {
       next[tag] = {
         tagName: tag,
         usageCount: 1,
-        lastUsedAt: now
+        lastUsedAt: now,
       };
     }
   }
@@ -108,7 +108,7 @@ export function updateTagIndex(
 
 export function rankTags(
   tagIndex: Record<string, TagIndexEntry>,
-  query: string
+  query: string,
 ): string[] {
   const normalizedQuery = normalizeTagPrefix(query);
   const entries = Object.values(tagIndex);
@@ -132,7 +132,7 @@ export function rankTags(
 export function mergeTagIndexWithTaskHistory(
   tagIndex: Record<string, TagIndexEntry>,
   tasks: Array<Pick<Task, "tags" | "createdAt" | "updatedAt">>,
-  aliases: Record<string, string> = {}
+  aliases: Record<string, string> = {},
 ): Record<string, TagIndexEntry> {
   const merged: Record<string, TagIndexEntry> = {};
 
@@ -154,14 +154,14 @@ export function mergeTagIndexWithTaskHistory(
   const mergeEntry = (
     tagName: string,
     usageCount: number,
-    lastUsedAt: number
+    lastUsedAt: number,
   ) => {
     const existing = merged[tagName];
     if (!existing) {
       merged[tagName] = {
         tagName,
         usageCount,
-        lastUsedAt
+        lastUsedAt,
       };
       return;
     }
@@ -169,7 +169,7 @@ export function mergeTagIndexWithTaskHistory(
     merged[tagName] = {
       tagName,
       usageCount: existing.usageCount + usageCount,
-      lastUsedAt: Math.max(existing.lastUsedAt, lastUsedAt)
+      lastUsedAt: Math.max(existing.lastUsedAt, lastUsedAt),
     };
   };
 

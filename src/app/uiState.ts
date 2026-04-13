@@ -3,7 +3,7 @@ import {
   EditorDraft,
   EditorFocus,
   FocusTarget,
-  Mode
+  Mode,
 } from "../domain/models";
 import { getEditorRecurrenceVisibility } from "../domain/editorPaneLayout";
 
@@ -20,7 +20,7 @@ const EDITOR_BASE_FOCUS_ORDER: FocusTarget[] = [
   FocusTarget.EDITOR_CHECKLIST,
   FocusTarget.EDITOR_NOTES,
   FocusTarget.EDITOR_SAVE,
-  FocusTarget.EDITOR_CANCEL
+  FocusTarget.EDITOR_CANCEL,
 ];
 
 const RECURRENCE_DETAIL_FOCUS_ORDER: FocusTarget[] = [
@@ -30,34 +30,34 @@ const RECURRENCE_DETAIL_FOCUS_ORDER: FocusTarget[] = [
   FocusTarget.EDITOR_REPEAT_CUSTOM,
   FocusTarget.EDITOR_REPEAT_END_MODE,
   FocusTarget.EDITOR_REPEAT_UNTIL,
-  FocusTarget.EDITOR_REPEAT_COUNT
+  FocusTarget.EDITOR_REPEAT_COUNT,
 ];
 
 const REMINDER_DETAIL_FOCUS_ORDER: FocusTarget[] = [
   FocusTarget.EDITOR_REMINDER_AT_DATE,
   FocusTarget.EDITOR_REMINDER_AT_TIME,
   FocusTarget.EDITOR_REMINDER_OFFSET_VALUE,
-  FocusTarget.EDITOR_REMINDER_OFFSET_UNIT
+  FocusTarget.EDITOR_REMINDER_OFFSET_UNIT,
 ];
 
 function getFirstVisibleRecurrenceFocusTarget(
-  order: FocusTarget[]
+  order: FocusTarget[],
 ): FocusTarget | undefined {
   return order.find((target) => RECURRENCE_DETAIL_FOCUS_ORDER.includes(target));
 }
 
 function getFirstVisibleReminderFocusTarget(
-  order: FocusTarget[]
+  order: FocusTarget[],
 ): FocusTarget | undefined {
   return order.find((target) => REMINDER_DETAIL_FOCUS_ORDER.includes(target));
 }
 
 export function getVisibleEditorFocusOrder(
-  editorDraft: EditorDraft | null | undefined
+  editorDraft: EditorDraft | null | undefined,
 ): FocusTarget[] {
   const recurrenceVisibility = getEditorRecurrenceVisibility(
     editorDraft?.repeatMode,
-    editorDraft?.repeatEndMode
+    editorDraft?.repeatEndMode,
   );
   const reminderKind = editorDraft?.reminderKind ?? "none";
   const reminderShowsAbsolute = reminderKind === "absolute";
@@ -68,16 +68,19 @@ export function getVisibleEditorFocusOrder(
     FocusTarget.EDITOR_DUE_DATE,
     FocusTarget.EDITOR_DUE_TIME,
     FocusTarget.EDITOR_REMINDER_KIND,
-    FocusTarget.EDITOR_REPEAT_MODE
+    FocusTarget.EDITOR_REPEAT_MODE,
   ];
 
   if (reminderShowsAbsolute) {
-    order.push(FocusTarget.EDITOR_REMINDER_AT_DATE, FocusTarget.EDITOR_REMINDER_AT_TIME);
+    order.push(
+      FocusTarget.EDITOR_REMINDER_AT_DATE,
+      FocusTarget.EDITOR_REMINDER_AT_TIME,
+    );
   }
   if (reminderShowsBeforeDue) {
     order.push(
       FocusTarget.EDITOR_REMINDER_OFFSET_VALUE,
-      FocusTarget.EDITOR_REMINDER_OFFSET_UNIT
+      FocusTarget.EDITOR_REMINDER_OFFSET_UNIT,
     );
   }
 
@@ -111,14 +114,14 @@ export function getVisibleEditorFocusOrder(
     FocusTarget.EDITOR_CHECKLIST,
     FocusTarget.EDITOR_NOTES,
     FocusTarget.EDITOR_SAVE,
-    FocusTarget.EDITOR_CANCEL
+    FocusTarget.EDITOR_CANCEL,
   );
 
   return order;
 }
 
 export function isEditorMode(
-  mode: Mode
+  mode: Mode,
 ): mode is typeof Mode.ADD | typeof Mode.EDIT {
   return mode === Mode.ADD || mode === Mode.EDIT;
 }
@@ -236,19 +239,20 @@ export function toEditorFocus(focus: FocusTarget): EditorFocus {
 export function nextEditorFocusTarget(
   current: FocusTarget,
   direction: 1 | -1,
-  editorDraft: EditorDraft | null | undefined
+  editorDraft: EditorDraft | null | undefined,
 ): FocusTarget {
   const editorFocusOrder = getVisibleEditorFocusOrder(editorDraft);
   const index = editorFocusOrder.indexOf(current);
   const safeIndex = index === -1 ? 0 : index;
-  const nextIndex = (safeIndex + direction + editorFocusOrder.length) % editorFocusOrder.length;
+  const nextIndex =
+    (safeIndex + direction + editorFocusOrder.length) % editorFocusOrder.length;
   return editorFocusOrder[nextIndex];
 }
 
 export function resolveEditorFocusAfterDraftChange(
   current: FocusTarget,
   previousDraft: EditorDraft | null | undefined,
-  nextDraft: EditorDraft | null | undefined
+  nextDraft: EditorDraft | null | undefined,
 ): FocusTarget {
   if (
     !EDITOR_BASE_FOCUS_ORDER.includes(current) &&
@@ -266,13 +270,14 @@ export function resolveEditorFocusAfterDraftChange(
   if (RECURRENCE_DETAIL_FOCUS_ORDER.includes(current)) {
     const nextRecurrenceVisibility = getEditorRecurrenceVisibility(
       nextDraft?.repeatMode,
-      nextDraft?.repeatEndMode
+      nextDraft?.repeatEndMode,
     );
     if (!nextRecurrenceVisibility.repeatEnabled) {
       return FocusTarget.EDITOR_REPEAT_MODE;
     }
     return (
-      getFirstVisibleRecurrenceFocusTarget(nextOrder) ?? FocusTarget.EDITOR_REPEAT_MODE
+      getFirstVisibleRecurrenceFocusTarget(nextOrder) ??
+      FocusTarget.EDITOR_REPEAT_MODE
     );
   }
 
@@ -282,7 +287,8 @@ export function resolveEditorFocusAfterDraftChange(
       return FocusTarget.EDITOR_REMINDER_KIND;
     }
     return (
-      getFirstVisibleReminderFocusTarget(nextOrder) ?? FocusTarget.EDITOR_REMINDER_KIND
+      getFirstVisibleReminderFocusTarget(nextOrder) ??
+      FocusTarget.EDITOR_REMINDER_KIND
     );
   }
 
@@ -292,13 +298,16 @@ export function resolveEditorFocusAfterDraftChange(
     return nextOrder[0] ?? FocusTarget.EDITOR_TITLE;
   }
 
-  const clampedIndex = Math.max(0, Math.min(previousIndex, nextOrder.length - 1));
+  const clampedIndex = Math.max(
+    0,
+    Math.min(previousIndex, nextOrder.length - 1),
+  );
   return nextOrder[clampedIndex] ?? FocusTarget.EDITOR_TITLE;
 }
 
 export function resolveModalAction(
   name: string,
-  sequence: string
+  sequence: string,
 ): "confirm" | "cancel" | "none" {
   if (sequence === "y" || name === "y") return "confirm";
   if (sequence === "n" || name === "n" || name === "escape") return "cancel";
@@ -334,7 +343,7 @@ export function resolveEscUnwindTarget(params: {
         mode: Mode.LIST,
         focus: FocusTarget.TASK_LIST,
         clearEditor: false,
-        clearModal: true
+        clearModal: true,
       };
     }
     if (modal) {
@@ -342,14 +351,14 @@ export function resolveEscUnwindTarget(params: {
         mode: modal.previousMode,
         focus: modal.previousFocus,
         clearEditor: false,
-        clearModal: true
+        clearModal: true,
       };
     }
     return {
       mode: Mode.LIST,
       focus: FocusTarget.TASK_LIST,
       clearEditor: false,
-      clearModal: true
+      clearModal: true,
     };
   }
 
@@ -362,7 +371,7 @@ export function resolveEscUnwindTarget(params: {
       mode: helpReturnMode,
       focus: helpReturnFocus,
       clearEditor: false,
-      clearModal: false
+      clearModal: false,
     };
   }
 
@@ -371,7 +380,7 @@ export function resolveEscUnwindTarget(params: {
       mode: Mode.LIST,
       focus: FocusTarget.TASK_LIST,
       clearEditor: false,
-      clearModal: false
+      clearModal: false,
     };
   }
 
@@ -380,7 +389,7 @@ export function resolveEscUnwindTarget(params: {
       mode: Mode.LIST,
       focus: FocusTarget.TASK_LIST,
       clearEditor: true,
-      clearModal: false
+      clearModal: false,
     };
   }
 
@@ -389,7 +398,7 @@ export function resolveEscUnwindTarget(params: {
 
 export function getNextSelectedIdAfterDelete(
   visibleIds: string[],
-  deletedId: string
+  deletedId: string,
 ): string | undefined {
   if (visibleIds.length <= 1) return undefined;
   const index = visibleIds.indexOf(deletedId);

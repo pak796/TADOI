@@ -5,7 +5,7 @@ const APP_SHELL_COVERAGE_TEST_FILES = [
   "src/app/App.modalFlow.integration.test.ts",
   "src/app/App.tits.integration.test.ts",
   "src/app/App.tome.integration.test.ts",
-  "src/app/App.bulk.integration.test.ts"
+  "src/app/App.bulk.integration.test.ts",
 ] as const;
 
 async function main(): Promise<void> {
@@ -14,7 +14,7 @@ async function main(): Promise<void> {
   await fs.rm(coverageDir, { recursive: true, force: true });
 
   const absoluteFiles = APP_SHELL_COVERAGE_TEST_FILES.map((filePath) =>
-    path.resolve(cwd, filePath)
+    path.resolve(cwd, filePath),
   );
 
   const child = Bun.spawn({
@@ -26,12 +26,12 @@ async function main(): Promise<void> {
       "--coverage-reporter=lcov",
       "--coverage-dir",
       coverageDir,
-      ...absoluteFiles
+      ...absoluteFiles,
     ],
     cwd,
     stdout: "inherit",
     stderr: "inherit",
-    stdin: "inherit"
+    stdin: "inherit",
   });
 
   const exitCode = await child.exited;

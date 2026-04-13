@@ -3,7 +3,7 @@ import { Filters, SortMode, Task, TaskStatus } from "./models";
 import {
   normalizePriorityFilterValue,
   normalizePriorityTags,
-  resolveTaskPriorityTag
+  resolveTaskPriorityTag,
 } from "./priorityTags";
 import { sortTasks } from "./query";
 import { matchesTagFilter } from "./tagFilter";
@@ -12,11 +12,11 @@ import { normalizeTag } from "./tagIndex";
 import {
   getOccurrences,
   latestOverdueOccurrence,
-  nextOccurrence
+  nextOccurrence,
 } from "./recurrence/engine";
 import {
   formatDateToLocalIso,
-  parseLocalIsoToDate
+  parseLocalIsoToDate,
 } from "./recurrence/rruleAdapter";
 
 export type VisibleTaskRowKind =
@@ -45,20 +45,23 @@ function decodeRowPart(value: string): string {
   }
 }
 
-export function buildSeriesOccurrenceRowId(seriesId: string, occurrenceIso: string): string {
+export function buildSeriesOccurrenceRowId(
+  seriesId: string,
+  occurrenceIso: string,
+): string {
   return `${VIRTUAL_ROW_PREFIX}:${encodeRowPart(seriesId)}:${encodeRowPart(occurrenceIso)}`;
 }
 
-export function parseSeriesOccurrenceRowId(rowId: string):
-  | { seriesId: string; occurrenceIso: string }
-  | null {
+export function parseSeriesOccurrenceRowId(
+  rowId: string,
+): { seriesId: string; occurrenceIso: string } | null {
   const parts = rowId.split(":");
   if (parts.length !== 3 || parts[0] !== VIRTUAL_ROW_PREFIX) {
     return null;
   }
   return {
     seriesId: decodeRowPart(parts[1]),
-    occurrenceIso: decodeRowPart(parts[2])
+    occurrenceIso: decodeRowPart(parts[2]),
   };
 }
 
@@ -69,11 +72,17 @@ function normalizeOccurrenceIso(iso: string | undefined): string | undefined {
   return formatDateToLocalIso(date);
 }
 
-function buildSeriesOccurrenceKey(seriesId: string, occurrenceIso: string): string {
+function buildSeriesOccurrenceKey(
+  seriesId: string,
+  occurrenceIso: string,
+): string {
   return `${seriesId}|${occurrenceIso}`;
 }
 
-function matchesStatusFilter(status: TaskStatus, filterStatus: Filters["status"]): boolean {
+function matchesStatusFilter(
+  status: TaskStatus,
+  filterStatus: Filters["status"],
+): boolean {
   if (filterStatus === "all") {
     return status !== "archived";
   }
@@ -83,7 +92,7 @@ function matchesStatusFilter(status: TaskStatus, filterStatus: Filters["status"]
 function matchesSearchFilter(
   task: Pick<Task, "title" | "tags">,
   search: string,
-  aliases: TagAliases
+  aliases: TagAliases,
 ): boolean {
   if (!search) return true;
   const titleMatches = task.title.toLowerCase().includes(search);
@@ -107,14 +116,18 @@ function matchesSearchFilter(
 
 function matchesPriorityFilter(
   task: Pick<Task, "tags">,
-  priority: Filters["priority"]
+  priority: Filters["priority"],
 ): boolean {
   const normalizedPriority = normalizePriorityFilterValue(priority);
   if (!normalizedPriority) return true;
   return resolveTaskPriorityTag(task.tags) === normalizedPriority;
 }
 
-function matchesDueFilter(task: Pick<Task, "status" | "dueAt" | "hasExplicitTime">, due: Filters["due"], now: number): boolean {
+function matchesDueFilter(
+  task: Pick<Task, "status" | "dueAt" | "hasExplicitTime">,
+  due: Filters["due"],
+  now: number,
+): boolean {
   if (due === "any") return true;
   if (task.status === "archived") return false;
   if (task.dueAt === undefined) return false;
@@ -138,7 +151,7 @@ function matchesCommonFilters(
   filters: Filters,
   search: string,
   now: number,
-  aliases: TagAliases
+  aliases: TagAliases,
 ): boolean {
   if (!matchesStatusFilter(task.status, filters.status)) {
     return false;
@@ -166,7 +179,7 @@ function toRegularRow(task: Task): VisibleTaskRow {
       rowKind: "series_occurrence_instance",
       sourceTaskId: task.id,
       seriesId: task.instance_of.series_id,
-      occurrenceIso: task.instance_of.occurrence
+      occurrenceIso: task.instance_of.occurrence,
     };
   }
 
@@ -174,7 +187,7 @@ function toRegularRow(task: Task): VisibleTaskRow {
     ...task,
     tags: normalizePriorityTags(task.tags),
     rowKind: "regular",
-    sourceTaskId: task.id
+    sourceTaskId: task.id,
   };
 }
 
@@ -183,7 +196,7 @@ function buildSeriesVirtualRows(
   now: number,
   filters: Filters,
   materializedKeys: Set<string>,
-  aliases: TagAliases
+  aliases: TagAliases,
 ): VisibleTaskRow[] {
   const recurrence = seriesTask.recurrence;
   if (!recurrence || seriesTask.status !== "open") {
@@ -246,7 +259,7 @@ function buildSeriesVirtualRows(
       rowKind: "series_occurrence_virtual",
       sourceTaskId: seriesTask.id,
       seriesId: recurrence.series_id,
-      occurrenceIso
+      occurrenceIso,
     };
 
     rows.push(row);
@@ -260,7 +273,7 @@ export function buildVisibleTaskRows(
   filters: Filters,
   sortMode: SortMode,
   now: number,
-  aliases: TagAliases = {}
+  aliases: TagAliases = {},
 ): VisibleTaskRow[] {
   const search = (filters.searchText ?? "").trim().toLowerCase();
   const rows: VisibleTaskRow[] = [];
@@ -270,7 +283,9 @@ export function buildVisibleTaskRows(
     if (!task.instance_of) continue;
     const occurrenceIso = normalizeOccurrenceIso(task.instance_of.occurrence);
     if (!occurrenceIso) continue;
-    materializedKeys.add(buildSeriesOccurrenceKey(task.instance_of.series_id, occurrenceIso));
+    materializedKeys.add(
+      buildSeriesOccurrenceKey(task.instance_of.series_id, occurrenceIso),
+    );
   }
 
   for (const task of tasks) {
@@ -290,7 +305,15 @@ export function buildVisibleTaskRows(
       ) {
         continue;
       }
-      rows.push(...buildSeriesVirtualRows(task, now, filters, materializedKeys, aliases));
+      rows.push(
+        ...buildSeriesVirtualRows(
+          task,
+          now,
+          filters,
+          materializedKeys,
+          aliases,
+        ),
+      );
       continue;
     }
 

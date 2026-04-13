@@ -11,9 +11,9 @@ describe("parseSelectorTokens", () => {
         "assignee:Alice",
         "status:done",
         "due:today",
-        "stage:doing"
+        "stage:doing",
       ],
-      { status: "open", due: "any" }
+      { status: "open", due: "any" },
     );
 
     expect(result).toEqual({
@@ -26,54 +26,53 @@ describe("parseSelectorTokens", () => {
         workflowStage: "in_progress",
         tagFilter: {
           all: ["work"],
-          none: ["home"]
-        }
-      }
+          none: ["home"],
+        },
+      },
     });
   });
 
   it("rejects duplicate singleton selectors", () => {
-    const result = parseSelectorTokens(
-      ["status:open", "status:done"],
-      { status: "open", due: "any" }
-    );
+    const result = parseSelectorTokens(["status:open", "status:done"], {
+      status: "open",
+      due: "any",
+    });
     expect(result).toEqual({
       ok: false,
-      error: 'Error: duplicate selector for "status".'
+      error: 'Error: duplicate selector for "status".',
     });
   });
 
   it("rejects mixed id and selector mode token", () => {
-    const result = parseSelectorTokens(
-      ["+work", "id:task-1"],
-      { status: "open", due: "any" }
-    );
+    const result = parseSelectorTokens(["+work", "id:task-1"], {
+      status: "open",
+      due: "any",
+    });
     expect(result).toEqual({
       ok: false,
-      error: 'Error: selector mode does not accept "id:<task-id>" tokens.'
+      error: 'Error: selector mode does not accept "id:<task-id>" tokens.',
     });
   });
 
   it("rejects unknown selector token", () => {
     const result = parseSelectorTokens(["priority:p2"], {
       status: "open",
-      due: "any"
+      due: "any",
     });
     expect(result).toEqual({
       ok: false,
-      error: 'Error: unrecognized selector "priority:p2"'
+      error: 'Error: unrecognized selector "priority:p2"',
     });
   });
 
   it("rejects conflicting include/exclude tag selectors", () => {
     const result = parseSelectorTokens(["+work", "-work"], {
       status: "open",
-      due: "any"
+      due: "any",
     });
     expect(result).toEqual({
       ok: false,
-      error: "Error: conflicting selectors for tag(s): work"
+      error: "Error: conflicting selectors for tag(s): work",
     });
   });
 });
-

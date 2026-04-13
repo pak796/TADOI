@@ -10,6 +10,7 @@ This guide defines a robust manual QA process for TADOI across macOS, Windows, a
 It is intended for full regression validation, not only smoke testing.
 
 In scope:
+
 - Launch/layout guard behavior (`104x24` minimum).
 - Task lifecycle, keyboard routing, and mode safety.
 - Search, legacy tag cycle, boolean tag filtering, and saved views.
@@ -25,12 +26,14 @@ In scope:
 - Data safety and corruption recovery.
 
 Note on key casing:
+
 - Prefer lowercase key actions unless explicitly testing Shift variants.
 - If uppercase behavior is unverified, log as `needs-verification` instead of failing the run.
 
 ## 2) Current Automated Validation Snapshot
 
 Local workspace snapshot (captured for transparency):
+
 - Dashboard-focused gate:
   - `bun test src/domain/dashboard.test.ts src/domain/dashboardKpis.test.ts src/components/DashboardPane.test.ts src/app/dashboardTagFilterContract.test.ts src/app/keyRouter.test.ts src/app/App.modalFlow.integration.test.ts src/state/migrations.test.ts src/state/validation.test.ts src/domain/savedViews.test.ts src/domain/query.test.ts`
   - Result: **146 pass / 0 fail**
@@ -40,20 +43,22 @@ Manual QA is still required for cross-platform interaction and rendering coverag
 
 ## 3) Platform Matrix
 
-| Platform | Terminal baseline | Data path baseline |
-|---|---|---|
-| macOS | Terminal.app / iTerm2 | `~/Library/Application Support/tadoi/tadoi_data.json` |
-| Windows | Windows Terminal | `%APPDATA%\\tadoi\\tadoi_data.json` (fallback `%USERPROFILE%\\AppData\\Roaming\\tadoi\\tadoi_data.json`) |
-| Linux | GNOME Terminal | `$XDG_DATA_HOME/tadoi/tadoi_data.json` (fallback `~/.local/share/tadoi/tadoi_data.json`) |
+| Platform | Terminal baseline     | Data path baseline                                                                                       |
+| -------- | --------------------- | -------------------------------------------------------------------------------------------------------- |
+| macOS    | Terminal.app / iTerm2 | `~/Library/Application Support/tadoi/tadoi_data.json`                                                    |
+| Windows  | Windows Terminal      | `%APPDATA%\\tadoi\\tadoi_data.json` (fallback `%USERPROFILE%\\AppData\\Roaming\\tadoi\\tadoi_data.json`) |
+| Linux    | GNOME Terminal        | `$XDG_DATA_HOME/tadoi/tadoi_data.json` (fallback `~/.local/share/tadoi/tadoi_data.json`)                 |
 
 ## 4) Environment and Data Isolation Setup
 
 Prerequisites:
+
 1. Bun `>=1.3.9`
 2. `bun install`
 3. `bun run dev`
 
 Use isolated data files for repeatable QA:
+
 - macOS/Linux: `TADOI_DATA_PATH=/tmp/tadoi_data.qa.json bun run dev`
 - Windows PowerShell: `$env:TADOI_DATA_PATH="$env:TEMP\\tadoi_data.qa.json"; bun run dev`
 
@@ -62,9 +67,11 @@ Clear or rotate the override file between major suites to avoid cross-suite cont
 ## 5) Expedited Smoke Runbook
 
 Run these first for a fast confidence pass:
+
 - `QA-001`, `QA-002`, `QA-005`, `QA-008`, `QA-013`, `QA-019`, `QA-023`, `QA-029`, `QA-032`, `QA-036`, `QA-039`, `QA-042`, `QA-052`, `QA-053`, `QA-065`, `QA-066`, `QA-068`, `QA-083`, `QA-085`, `QA-GH-001`.
 
 Smoke pass criteria:
+
 1. All smoke cases pass on all three platforms.
 2. No crash, frozen mode, or unhandled modal state.
 3. No P0/P1 defect found in smoke path.
@@ -509,33 +516,35 @@ Smoke pass criteria:
 
 ## 7) Automated Coverage Mapping
 
-| Manual area | Primary automated references |
-|---|---|
-| Layout + size guard | `src/app/layoutGuard.test.ts` |
-| Key routing + modal routing | `src/app/keyRouter.test.ts`, `src/app/uiState.test.ts`, `src/ui/state.test.ts` |
-| Search/filter/tag precedence | `src/domain/query.test.ts`, `src/domain/tagFilter.test.ts`, `src/domain/savedViews.test.ts`, `src/app/dashboardTagFilterContract.test.ts` |
-| Recurrence engine + draft + delete | `src/domain/recurrence/engine.test.ts`, `src/domain/recurrence/draft.test.ts`, `src/domain/recurrence/delete.test.ts`, `src/domain/taskRows.test.ts` |
-| Dashboard KPIs, drill-through, and layout fallback | `src/domain/dashboard.test.ts`, `src/domain/dashboardKpis.test.ts`, `src/components/DashboardPane.test.ts`, `src/domain/query.test.ts`, `src/domain/savedViews.test.ts`, `src/app/dashboardTagFilterContract.test.ts`, `src/app/keyRouter.test.ts`, `src/app/App.modalFlow.integration.test.ts` |
-| Backup/import/export + portability | `src/state/backupCenterFlow.test.ts`, `src/state/backupService.test.ts`, `src/state/portability.test.ts` |
+| Manual area                                                 | Primary automated references                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Layout + size guard                                         | `src/app/layoutGuard.test.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Key routing + modal routing                                 | `src/app/keyRouter.test.ts`, `src/app/uiState.test.ts`, `src/ui/state.test.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Search/filter/tag precedence                                | `src/domain/query.test.ts`, `src/domain/tagFilter.test.ts`, `src/domain/savedViews.test.ts`, `src/app/dashboardTagFilterContract.test.ts`                                                                                                                                                                                                                                                                                                                                                                                       |
+| Recurrence engine + draft + delete                          | `src/domain/recurrence/engine.test.ts`, `src/domain/recurrence/draft.test.ts`, `src/domain/recurrence/delete.test.ts`, `src/domain/taskRows.test.ts`                                                                                                                                                                                                                                                                                                                                                                            |
+| Dashboard KPIs, drill-through, and layout fallback          | `src/domain/dashboard.test.ts`, `src/domain/dashboardKpis.test.ts`, `src/components/DashboardPane.test.ts`, `src/domain/query.test.ts`, `src/domain/savedViews.test.ts`, `src/app/dashboardTagFilterContract.test.ts`, `src/app/keyRouter.test.ts`, `src/app/App.modalFlow.integration.test.ts`                                                                                                                                                                                                                                 |
+| Backup/import/export + portability                          | `src/state/backupCenterFlow.test.ts`, `src/state/backupService.test.ts`, `src/state/portability.test.ts`                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | Calendar ICS export/import (CLI + Backup Center + services) | `src/cli/calendarCommands.test.ts`, `src/commands/calendarImport.test.ts`, `src/cli.test.ts`, `src/state/backupCenterFlow.test.ts`, `src/state/backupCenterCalendarController.test.ts`, `src/calendar/icsWriter.test.ts`, `src/calendar/icsParser.test.ts`, `src/calendar/importMapper.test.ts`, `src/calendar/calendarMapper.test.ts`, `src/calendar/range.test.ts`, `src/calendar/rrule.test.ts`, `src/state/calendarExportService.test.ts`, `src/state/calendarImportService.test.ts`, `src/state/calendarRoundTrip.test.ts` |
-| TITS command layer (M1-M3 + check/bulk) | `src/commands/parse.test.ts`, `src/commands/execute.test.ts`, `src/commands/help.test.ts`, `src/cli/main.test.ts`, `src/app/keyRouter.test.ts`, `src/app/App.tits.integration.test.ts`, `src/state/store.test.ts` |
-| Out-of-app reminders helper + modal command action flows | `src/cli/remindersCommands.test.ts`, `src/reminders/helperState.test.ts`, `src/reminders/indexer.test.ts`, `src/reminders/invocation.test.ts`, `src/reminders/isRunning.test.ts`, `src/reminders/remindCommand.test.ts`, `src/reminders/scheduler.test.ts`, `src/reminders/terminalLauncher.test.ts` |
-| Checklist migration + persistence | `src/state/migrations.test.ts`, `src/state/validation.test.ts`, `src/state/store.test.ts`, `src/state/portability.test.ts`, `src/state/persistence.test.ts` |
-| Notifications + engagement toasts | `src/notifications/notificationManager.test.ts`, `src/notifications/overdueTaskActions.test.ts`, `src/notifications/notifiers/inAppModalNotifier.test.ts`, `src/notifications/notifiers/terminalBellNotifier.test.ts`, `src/state/store.test.ts` |
-| Settings/theme/custom1/CRT FX | `src/settings/settings.test.ts`, `src/theme/themes.test.ts`, `src/theme/resolveThemeTokens.test.ts`, `src/theme/custom1ColorUtils.test.ts`, `src/components/CrtFxLite.test.ts` |
-| Brand/logo + left rail | `src/brand/brand.test.ts`, `src/components/LeftRail.tsx`, `src/app/keyRouter.test.ts` |
-| Task links/attachments | `src/domain/taskLinks.test.ts`, `src/app/keyRouter.test.ts`, `src/ui/state.test.ts` |
-| Persistence and recovery | `src/state/persistence.test.ts`, `src/state/validation.test.ts` |
+| TITS command layer (M1-M3 + check/bulk)                     | `src/commands/parse.test.ts`, `src/commands/execute.test.ts`, `src/commands/help.test.ts`, `src/cli/main.test.ts`, `src/app/keyRouter.test.ts`, `src/app/App.tits.integration.test.ts`, `src/state/store.test.ts`                                                                                                                                                                                                                                                                                                               |
+| Out-of-app reminders helper + modal command action flows    | `src/cli/remindersCommands.test.ts`, `src/reminders/helperState.test.ts`, `src/reminders/indexer.test.ts`, `src/reminders/invocation.test.ts`, `src/reminders/isRunning.test.ts`, `src/reminders/remindCommand.test.ts`, `src/reminders/scheduler.test.ts`, `src/reminders/terminalLauncher.test.ts`                                                                                                                                                                                                                            |
+| Checklist migration + persistence                           | `src/state/migrations.test.ts`, `src/state/validation.test.ts`, `src/state/store.test.ts`, `src/state/portability.test.ts`, `src/state/persistence.test.ts`                                                                                                                                                                                                                                                                                                                                                                     |
+| Notifications + engagement toasts                           | `src/notifications/notificationManager.test.ts`, `src/notifications/overdueTaskActions.test.ts`, `src/notifications/notifiers/inAppModalNotifier.test.ts`, `src/notifications/notifiers/terminalBellNotifier.test.ts`, `src/state/store.test.ts`                                                                                                                                                                                                                                                                                |
+| Settings/theme/custom1/CRT FX                               | `src/settings/settings.test.ts`, `src/theme/themes.test.ts`, `src/theme/resolveThemeTokens.test.ts`, `src/theme/custom1ColorUtils.test.ts`, `src/components/CrtFxLite.test.ts`                                                                                                                                                                                                                                                                                                                                                  |
+| Brand/logo + left rail                                      | `src/brand/brand.test.ts`, `src/components/LeftRail.tsx`, `src/app/keyRouter.test.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Task links/attachments                                      | `src/domain/taskLinks.test.ts`, `src/app/keyRouter.test.ts`, `src/ui/state.test.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Persistence and recovery                                    | `src/state/persistence.test.ts`, `src/state/validation.test.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 
 ## 8) Known Issues in Current Workspace
 
 No known automated failures in targeted checklist/bulk/onboarding validation (`2026-03-01`):
+
 - `bun test src/commands/parse.test.ts src/commands/execute.test.ts src/cli/main.test.ts src/app/keyRouter.test.ts src/app/App.tits.integration.test.ts src/state/migrations.test.ts src/state/portability.test.ts`: passing.
 - `bun run typecheck`: passing.
 - Reminder hardening regression snapshot (`2026-03-03`):
   - `bun test src/cli/remindersCommands.test.ts src/reminders/helperState.test.ts src/reminders/indexer.test.ts src/reminders/invocation.test.ts src/reminders/isRunning.test.ts src/reminders/remindCommand.test.ts src/reminders/scheduler.test.ts src/reminders/terminalLauncher.test.ts`: passing.
 
 Residual risk still covered by manual QA:
+
 - cross-platform terminal rendering differences
 - mouse input behavior differences by terminal emulator
 - packaging/install verification outside source-run workflows
@@ -543,6 +552,7 @@ Residual risk still covered by manual QA:
 ## 9) Evidence and Defect Reporting Template
 
 For each platform run, capture:
+
 - Platform + terminal + version.
 - App/package version.
 - Case IDs executed.
@@ -551,6 +561,7 @@ For each platform run, capture:
 - New defect reports.
 
 Defect report format:
+
 1. `ID`
 2. `Severity` (`P0`, `P1`, `P2`)
 3. `Case ID`
@@ -563,6 +574,7 @@ Defect report format:
 ## 10) Exit Criteria
 
 Release candidate is manual-QA ready when:
+
 1. All smoke cases pass on macOS, Windows, Linux.
 2. Full case set (`QA-001` to `QA-092`, plus `QA-GH-001` to `QA-GH-004`) is executed at least once per target platform.
 3. No open `P0` or `P1` defects remain.

@@ -38,7 +38,7 @@ export type FrontmatterUpsertPatch = {
 function unquote(value: string): string {
   const trimmed = value.trim();
   if (
-    (trimmed.startsWith("\"") && trimmed.endsWith("\"")) ||
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
     (trimmed.startsWith("'") && trimmed.endsWith("'"))
   ) {
     return trimmed.slice(1, -1);
@@ -60,7 +60,10 @@ function parseArrayInline(value: string): string[] {
     .filter((item) => item.length > 0);
 }
 
-function parseArrayBlock(lines: string[], start: number): { values: string[]; nextIndex: number } {
+function parseArrayBlock(
+  lines: string[],
+  start: number,
+): { values: string[]; nextIndex: number } {
   const values: string[] = [];
   let index = start;
   while (index < lines.length) {
@@ -76,20 +79,20 @@ function parseArrayBlock(lines: string[], start: number): { values: string[]; ne
   return { values, nextIndex: index };
 }
 
-function normalizeString(value: FrontmatterValue | undefined): string | undefined {
+function normalizeString(
+  value: FrontmatterValue | undefined,
+): string | undefined {
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
-function normalizeStringArray(value: FrontmatterValue | undefined): string[] | undefined {
+function normalizeStringArray(
+  value: FrontmatterValue | undefined,
+): string[] | undefined {
   if (!Array.isArray(value)) return undefined;
   const normalized = Array.from(
-    new Set(
-      value
-        .map((item) => item.trim())
-        .filter((item) => item.length > 0)
-    )
+    new Set(value.map((item) => item.trim()).filter((item) => item.length > 0)),
   );
   return normalized.length > 0 ? normalized : undefined;
 }
@@ -156,7 +159,7 @@ function formatFrontmatterValue(value: FrontmatterValue): string {
 function setOrDeleteString(
   record: Record<string, FrontmatterValue>,
   key: string,
-  value: string | undefined
+  value: string | undefined,
 ): void {
   if (value === undefined) return;
   const normalized = value.trim();
@@ -170,10 +173,12 @@ function setOrDeleteString(
 function setOrDeleteArray(
   record: Record<string, FrontmatterValue>,
   key: string,
-  values: string[] | undefined
+  values: string[] | undefined,
 ): void {
   if (values === undefined) return;
-  const normalized = Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
+  const normalized = Array.from(
+    new Set(values.map((value) => value.trim()).filter(Boolean)),
+  );
   if (normalized.length === 0) {
     delete record[key];
     return;
@@ -181,9 +186,11 @@ function setOrDeleteArray(
   record[key] = normalized;
 }
 
-function frontmatterToParsed(record: Record<string, FrontmatterValue>): ParsedFrontmatter {
+function frontmatterToParsed(
+  record: Record<string, FrontmatterValue>,
+): ParsedFrontmatter {
   const parsed: ParsedFrontmatter = {
-    extra: {}
+    extra: {},
   };
 
   const id = normalizeString(record.id);
@@ -207,7 +214,7 @@ function frontmatterToParsed(record: Record<string, FrontmatterValue>): ParsedFr
   if (captureSource || captureTimestamp) {
     parsed.capture = {
       ...(captureSource ? { source: captureSource } : {}),
-      ...(captureTimestamp ? { timestamp: captureTimestamp } : {})
+      ...(captureTimestamp ? { timestamp: captureTimestamp } : {}),
     };
   }
 
@@ -220,7 +227,7 @@ function frontmatterToParsed(record: Record<string, FrontmatterValue>): ParsedFr
     "aliases",
     "status",
     "capture.source",
-    "capture.timestamp"
+    "capture.timestamp",
   ]);
   for (const [key, value] of Object.entries(record)) {
     if (reservedKeys.has(key)) continue;
@@ -230,7 +237,9 @@ function frontmatterToParsed(record: Record<string, FrontmatterValue>): ParsedFr
   return parsed;
 }
 
-function renderFrontmatterRecord(record: Record<string, FrontmatterValue>): string[] {
+function renderFrontmatterRecord(
+  record: Record<string, FrontmatterValue>,
+): string[] {
   const reservedOrder = [
     "id",
     "title",
@@ -240,25 +249,32 @@ function renderFrontmatterRecord(record: Record<string, FrontmatterValue>): stri
     "capture.source",
     "capture.timestamp",
     "tags",
-    "aliases"
+    "aliases",
   ];
   const lines: string[] = [];
 
   for (const key of reservedOrder) {
     if (!(key in record)) continue;
-    lines.push(`${key}: ${formatFrontmatterValue(record[key] as FrontmatterValue)}`);
+    lines.push(
+      `${key}: ${formatFrontmatterValue(record[key] as FrontmatterValue)}`,
+    );
   }
 
   const extras = Object.keys(record)
     .filter((key) => !reservedOrder.includes(key))
     .sort((left, right) => left.localeCompare(right));
   for (const key of extras) {
-    lines.push(`${key}: ${formatFrontmatterValue(record[key] as FrontmatterValue)}`);
+    lines.push(
+      `${key}: ${formatFrontmatterValue(record[key] as FrontmatterValue)}`,
+    );
   }
   return lines;
 }
 
-function buildContentWithFrontmatter(body: string, record: Record<string, FrontmatterValue>): string {
+function buildContentWithFrontmatter(
+  body: string,
+  record: Record<string, FrontmatterValue>,
+): string {
   const lines = renderFrontmatterRecord(record);
   if (lines.length === 0) {
     return body;
@@ -276,7 +292,7 @@ export function parseFrontmatter(content: string): FrontmatterParseResult {
       frontmatter: { extra: {} },
       raw: {},
       body: content,
-      warnings: []
+      warnings: [],
     };
   }
 
@@ -294,7 +310,7 @@ export function parseFrontmatter(content: string): FrontmatterParseResult {
       frontmatter: { extra: {} },
       raw: {},
       body: content,
-      warnings: ["Frontmatter start marker found but no closing marker."]
+      warnings: ["Frontmatter start marker found but no closing marker."],
     };
   }
 
@@ -305,14 +321,20 @@ export function parseFrontmatter(content: string): FrontmatterParseResult {
     frontmatter: frontmatterToParsed(parsed.record),
     raw: parsed.record,
     body,
-    warnings: parsed.warnings
+    warnings: parsed.warnings,
   };
 }
 
-export function upsertFrontmatter(content: string, patch: FrontmatterUpsertPatch): string {
+export function upsertFrontmatter(
+  content: string,
+  patch: FrontmatterUpsertPatch,
+): string {
   const parsed = parseFrontmatter(content);
   const nextRecord: Record<string, FrontmatterValue> = Object.fromEntries(
-    Object.entries(parsed.raw).map(([key, value]) => [key, Array.isArray(value) ? [...value] : value])
+    Object.entries(parsed.raw).map(([key, value]) => [
+      key,
+      Array.isArray(value) ? [...value] : value,
+    ]),
   );
 
   setOrDeleteString(nextRecord, "id", patch.id);
@@ -333,7 +355,9 @@ export function upsertFrontmatter(content: string, patch: FrontmatterUpsertPatch
       continue;
     }
     if (Array.isArray(value)) {
-      const normalizedArray = Array.from(new Set(value.map((item) => item.trim()).filter(Boolean)));
+      const normalizedArray = Array.from(
+        new Set(value.map((item) => item.trim()).filter(Boolean)),
+      );
       if (normalizedArray.length === 0) {
         delete nextRecord[normalizedKey];
       } else {
@@ -354,6 +378,6 @@ export function upsertFrontmatter(content: string, patch: FrontmatterUpsertPatch
 
 export function upsertFrontmatterTags(content: string, tags: string[]): string {
   return upsertFrontmatter(content, {
-    tags
+    tags,
   });
 }

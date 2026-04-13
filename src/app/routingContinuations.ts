@@ -2,7 +2,7 @@ import type { LeftRailMenuItem } from "../components/LeftRail";
 import type { UITaskEditorUnsavedContinuation } from "../ui/state";
 
 export function resolveTaskEditorContinuationForLeftRail(
-  item: LeftRailMenuItem
+  item: LeftRailMenuItem,
 ): UITaskEditorUnsavedContinuation | null {
   switch (item) {
     case "LIST":
@@ -31,7 +31,7 @@ export function resolveTaskEditorContinuationForLeftRail(
 }
 
 export function describeTaskEditorContinuation(
-  continuation: UITaskEditorUnsavedContinuation
+  continuation: UITaskEditorUnsavedContinuation,
 ): string {
   switch (continuation) {
     case "close_editor":

@@ -7,7 +7,7 @@ import {
   computeDueBuckets8,
   computeOverdueAgingBuckets,
   computePriorityBucketBreakdown,
-  computeTopTagsOpen
+  computeTopTagsOpen,
 } from "./dashboard";
 import { buildVisibleTaskRows } from "./taskRows";
 
@@ -24,7 +24,7 @@ function baseTask(partial: Partial<Task>): Task {
     notes: partial.notes,
     tags: partial.tags ?? [],
     recurrence: partial.recurrence,
-    instance_of: partial.instance_of
+    instance_of: partial.instance_of,
   };
 }
 
@@ -38,13 +38,13 @@ describe("computeDueBuckets8", () => {
       baseTask({
         id: "ovd-time",
         dueAt: today + 8 * 60 * 60 * 1000,
-        hasExplicitTime: true
+        hasExplicitTime: true,
       }),
       baseTask({ id: "tod", dueAt: addLocalDaysMs(today, 0) }),
       baseTask({ id: "p1", dueAt: addLocalDaysMs(today, 1) }),
       baseTask({ id: "p6", dueAt: addLocalDaysMs(today, 6) }),
       baseTask({ id: "p7", dueAt: addLocalDaysMs(today, 7) }),
-      baseTask({ id: "nodue" })
+      baseTask({ id: "nodue" }),
     ];
 
     const buckets = computeDueBuckets8(tasks, now);
@@ -71,7 +71,7 @@ describe("computeBacklogTrend7", () => {
         id: "a",
         status: "open",
         createdAt: addLocalDaysMs(today, -6),
-        updatedAt: addLocalDaysMs(today, -6)
+        updatedAt: addLocalDaysMs(today, -6),
       }),
       // Open on day -3 and -2, then closed day -1 midday.
       baseTask({
@@ -79,22 +79,22 @@ describe("computeBacklogTrend7", () => {
         status: "done",
         createdAt: addLocalDaysMs(today, -3),
         updatedAt: addLocalDaysMs(today, -1) + 12 * 60 * 60 * 1000,
-        closedAt: addLocalDaysMs(today, -1) + 12 * 60 * 60 * 1000
+        closedAt: addLocalDaysMs(today, -1) + 12 * 60 * 60 * 1000,
       }),
       // Open only today.
       baseTask({
         id: "c",
         status: "open",
         createdAt: addLocalDaysMs(today, 0),
-        updatedAt: addLocalDaysMs(today, 0)
+        updatedAt: addLocalDaysMs(today, 0),
       }),
       // Done task without closedAt uses updatedAt as effective close.
       baseTask({
         id: "d",
         status: "done",
         createdAt: addLocalDaysMs(today, -5),
-        updatedAt: addLocalDaysMs(today, -2) + 12 * 60 * 60 * 1000
-      })
+        updatedAt: addLocalDaysMs(today, -2) + 12 * 60 * 60 * 1000,
+      }),
     ];
 
     const trend = computeBacklogTrend7(tasks, now);
@@ -115,13 +115,13 @@ describe("computeTopTagsOpen", () => {
       baseTask({ id: "o2", status: "open", tags: ["work", "tadoi"] }),
       baseTask({ id: "o3", status: "open", tags: ["tadoi", "#P2"] }),
       baseTask({ id: "o4", status: "done", tags: ["work", "zzz"] }),
-      baseTask({ id: "o5", status: "archived", tags: ["home", "zzz"] })
+      baseTask({ id: "o5", status: "archived", tags: ["home", "zzz"] }),
     ];
 
     expect(computeTopTagsOpen(tasks, 10)).toEqual([
       { tag: "tadoi", count: 2 },
       { tag: "work", count: 2 },
-      { tag: "home", count: 1 }
+      { tag: "home", count: 1 },
     ]);
   });
 
@@ -129,7 +129,7 @@ describe("computeTopTagsOpen", () => {
     const tasks: Task[] = [
       baseTask({ id: "a", status: "open", tags: ["work", "p2"] }),
       baseTask({ id: "b", status: "open", tags: ["work"] }),
-      baseTask({ id: "c", status: "open", tags: ["#P1"] })
+      baseTask({ id: "c", status: "open", tags: ["#P1"] }),
     ];
 
     expect(computeTopTagsOpen(tasks, 10)).toEqual([{ tag: "work", count: 2 }]);
@@ -138,7 +138,7 @@ describe("computeTopTagsOpen", () => {
   it("excludes all priority tokens including #p10", () => {
     const tasks: Task[] = [
       baseTask({ id: "a", status: "open", tags: ["#p10", "work"] }),
-      baseTask({ id: "b", status: "open", tags: ["work"] })
+      baseTask({ id: "b", status: "open", tags: ["work"] }),
     ];
 
     expect(computeTopTagsOpen(tasks, 10)).toEqual([{ tag: "work", count: 2 }]);
@@ -148,7 +148,7 @@ describe("computeTopTagsOpen", () => {
     const tasks: Task[] = [
       baseTask({ id: "a", status: "open", tags: ["alpha"] }),
       baseTask({ id: "b", status: "open", tags: ["beta"] }),
-      baseTask({ id: "c", status: "open", tags: ["alpha"] })
+      baseTask({ id: "c", status: "open", tags: ["alpha"] }),
     ];
 
     expect(computeTopTagsOpen(tasks, 1)).toEqual([{ tag: "alpha", count: 2 }]);
@@ -159,7 +159,7 @@ describe("computeTopTagsOpen", () => {
   it("returns empty when there are no tagged open tasks", () => {
     const tasks: Task[] = [
       baseTask({ id: "x", status: "open", tags: [] }),
-      baseTask({ id: "y", status: "done", tags: ["work"] })
+      baseTask({ id: "y", status: "done", tags: ["work"] }),
     ];
     expect(computeTopTagsOpen(tasks, 5)).toEqual([]);
   });
@@ -167,10 +167,12 @@ describe("computeTopTagsOpen", () => {
   it("resolves aliases and dedupes per task when counting top tags", () => {
     const tasks: Task[] = [
       baseTask({ id: "a", status: "open", tags: ["work", "wrk"] }),
-      baseTask({ id: "b", status: "open", tags: ["wrk"] })
+      baseTask({ id: "b", status: "open", tags: ["wrk"] }),
     ];
     const aliases = { wrk: "work" };
-    expect(computeTopTagsOpen(tasks, 5, aliases)).toEqual([{ tag: "work", count: 2 }]);
+    expect(computeTopTagsOpen(tasks, 5, aliases)).toEqual([
+      { tag: "work", count: 2 },
+    ]);
   });
 });
 
@@ -180,12 +182,12 @@ describe("computePriorityBucketBreakdown", () => {
       baseTask({ id: "a", status: "open", tags: ["work", "P1"] }),
       baseTask({ id: "b", status: "open", tags: ["#p1", "home"] }),
       baseTask({ id: "c", status: "open", tags: ["p2"] }),
-      baseTask({ id: "d", status: "open", tags: ["work", "#P2"] })
+      baseTask({ id: "d", status: "open", tags: ["work", "#P2"] }),
     ];
 
     expect(computePriorityBucketBreakdown(tasks)).toEqual([
       { priority: "P1", count: 2 },
-      { priority: "P2", count: 2 }
+      { priority: "P2", count: 2 },
     ]);
   });
 
@@ -193,19 +195,23 @@ describe("computePriorityBucketBreakdown", () => {
     const tasks: Task[] = [
       baseTask({ id: "a", status: "open", tags: ["work"] }),
       baseTask({ id: "b", status: "open", tags: ["p2"] }),
-      baseTask({ id: "c", status: "done", tags: ["#P2"] })
+      baseTask({ id: "c", status: "done", tags: ["#P2"] }),
     ];
 
-    expect(computePriorityBucketBreakdown(tasks)).toEqual([{ priority: "P2", count: 2 }]);
+    expect(computePriorityBucketBreakdown(tasks)).toEqual([
+      { priority: "P2", count: 2 },
+    ]);
   });
 
   it("ignores non-P1..P5 priorities", () => {
     const tasks: Task[] = [
       baseTask({ id: "a", status: "open", tags: ["#p10"] }),
-      baseTask({ id: "b", status: "open", tags: ["p5"] })
+      baseTask({ id: "b", status: "open", tags: ["p5"] }),
     ];
 
-    expect(computePriorityBucketBreakdown(tasks)).toEqual([{ priority: "P5", count: 1 }]);
+    expect(computePriorityBucketBreakdown(tasks)).toEqual([
+      { priority: "P5", count: 1 },
+    ]);
   });
 
   it("respects visible-task row pipeline inputs", () => {
@@ -220,15 +226,24 @@ describe("computePriorityBucketBreakdown", () => {
         recurrence: {
           dtstart: "2026-02-13T09:00:00",
           rrule: "FREQ=DAILY;INTERVAL=1;COUNT=3",
-          series_id: "series:standup"
-        }
-      })
+          series_id: "series:standup",
+        },
+      }),
     ];
 
-    const visibleRows = buildVisibleTaskRows(tasks, { status: "all", due: "today" }, "due", now);
+    const visibleRows = buildVisibleTaskRows(
+      tasks,
+      { status: "all", due: "today" },
+      "due",
+      now,
+    );
     expect(visibleRows).toHaveLength(1);
-    expect(computeTopTagsOpen(visibleRows, 5)).toEqual([{ tag: "work", count: 1 }]);
-    expect(computePriorityBucketBreakdown(visibleRows)).toEqual([{ priority: "P2", count: 1 }]);
+    expect(computeTopTagsOpen(visibleRows, 5)).toEqual([
+      { tag: "work", count: 1 },
+    ]);
+    expect(computePriorityBucketBreakdown(visibleRows)).toEqual([
+      { priority: "P2", count: 1 },
+    ]);
   });
 });
 
@@ -241,16 +256,32 @@ describe("computeOverdueAgingBuckets", () => {
         id: "d0-time",
         status: "open",
         dueAt: today + 8 * 60 * 60 * 1000,
-        hasExplicitTime: true
+        hasExplicitTime: true,
       }),
       baseTask({ id: "d1", status: "open", dueAt: addLocalDaysMs(today, -1) }),
       baseTask({ id: "d2", status: "open", dueAt: addLocalDaysMs(today, -2) }),
       baseTask({ id: "d5", status: "open", dueAt: addLocalDaysMs(today, -5) }),
-      baseTask({ id: "d10", status: "open", dueAt: addLocalDaysMs(today, -10) }),
-      baseTask({ id: "d20", status: "open", dueAt: addLocalDaysMs(today, -20) }),
-      baseTask({ id: "d31", status: "open", dueAt: addLocalDaysMs(today, -31) }),
-      baseTask({ id: "done", status: "done", dueAt: addLocalDaysMs(today, -3) }),
-      baseTask({ id: "nodue", status: "open" })
+      baseTask({
+        id: "d10",
+        status: "open",
+        dueAt: addLocalDaysMs(today, -10),
+      }),
+      baseTask({
+        id: "d20",
+        status: "open",
+        dueAt: addLocalDaysMs(today, -20),
+      }),
+      baseTask({
+        id: "d31",
+        status: "open",
+        dueAt: addLocalDaysMs(today, -31),
+      }),
+      baseTask({
+        id: "done",
+        status: "done",
+        dueAt: addLocalDaysMs(today, -3),
+      }),
+      baseTask({ id: "nodue", status: "open" }),
     ];
 
     expect(computeOverdueAgingBuckets(tasks, now)).toEqual([
@@ -260,7 +291,7 @@ describe("computeOverdueAgingBuckets", () => {
       { label: "4-7d", count: 1 },
       { label: "8-14d", count: 1 },
       { label: "15-30d", count: 1 },
-      { label: "30d+", count: 1 }
+      { label: "30d+", count: 1 },
     ]);
   });
 
@@ -273,8 +304,8 @@ describe("computeOverdueAgingBuckets", () => {
         id: "today-early-time",
         status: "open",
         dueAt: today + 60 * 1000,
-        hasExplicitTime: true
-      })
+        hasExplicitTime: true,
+      }),
     ];
 
     expect(computeOverdueAgingBuckets(tasks, now)).toEqual([
@@ -284,7 +315,7 @@ describe("computeOverdueAgingBuckets", () => {
       { label: "4-7d", count: 0 },
       { label: "8-14d", count: 0 },
       { label: "15-30d", count: 0 },
-      { label: "30d+", count: 0 }
+      { label: "30d+", count: 0 },
     ]);
   });
 });
@@ -300,14 +331,14 @@ describe("computeCreatedCompleted7d", () => {
         createdAt: addLocalDaysMs(today, -3),
         status: "done",
         closedAt: addLocalDaysMs(today, -2),
-        updatedAt: addLocalDaysMs(today, -2)
+        updatedAt: addLocalDaysMs(today, -2),
       }),
       baseTask({
         id: "c",
         createdAt: addLocalDaysMs(today, 0),
         status: "done",
         closedAt: addLocalDaysMs(today, 0),
-        updatedAt: addLocalDaysMs(today, 0)
+        updatedAt: addLocalDaysMs(today, 0),
       }),
       baseTask({ id: "d", createdAt: addLocalDaysMs(today, -7) }),
       baseTask({
@@ -315,15 +346,15 @@ describe("computeCreatedCompleted7d", () => {
         createdAt: addLocalDaysMs(today, -1),
         status: "done",
         closedAt: addLocalDaysMs(today, -8),
-        updatedAt: addLocalDaysMs(today, -8)
+        updatedAt: addLocalDaysMs(today, -8),
       }),
       baseTask({
         id: "f",
         createdAt: addLocalDaysMs(today, -10),
         status: "done",
         closedAt: addLocalDaysMs(today, -4),
-        updatedAt: addLocalDaysMs(today, -4)
-      })
+        updatedAt: addLocalDaysMs(today, -4),
+      }),
     ];
 
     expect(computeCreatedCompleted7d(tasks, now)).toEqual({
@@ -333,8 +364,8 @@ describe("computeCreatedCompleted7d", () => {
       totals: {
         created: 4,
         completed: 3,
-        net: 1
-      }
+        net: 1,
+      },
     });
   });
 
@@ -344,26 +375,26 @@ describe("computeCreatedCompleted7d", () => {
     const tasks: Task[] = [
       baseTask({
         id: "created-in-oldest",
-        createdAt: addLocalDaysMs(today, -6) + (23 * 60 * 60 + 59 * 60) * 1000
+        createdAt: addLocalDaysMs(today, -6) + (23 * 60 * 60 + 59 * 60) * 1000,
       }),
       baseTask({
         id: "created-out",
-        createdAt: addLocalDaysMs(today, -7) + (23 * 60 * 60 + 59 * 60) * 1000
+        createdAt: addLocalDaysMs(today, -7) + (23 * 60 * 60 + 59 * 60) * 1000,
       }),
       baseTask({
         id: "closed-in-today",
         status: "done",
         createdAt: addLocalDaysMs(today, -9),
         closedAt: today,
-        updatedAt: today
+        updatedAt: today,
       }),
       baseTask({
         id: "closed-out-tomorrow",
         status: "done",
         createdAt: addLocalDaysMs(today, -9),
         closedAt: addLocalDaysMs(today, 1),
-        updatedAt: addLocalDaysMs(today, 1)
-      })
+        updatedAt: addLocalDaysMs(today, 1),
+      }),
     ];
 
     expect(computeCreatedCompleted7d(tasks, now)).toEqual({
@@ -373,8 +404,8 @@ describe("computeCreatedCompleted7d", () => {
       totals: {
         created: 1,
         completed: 1,
-        net: 0
-      }
+        net: 0,
+      },
     });
   });
 });

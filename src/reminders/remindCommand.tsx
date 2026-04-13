@@ -7,19 +7,26 @@ import { completeTaskWithRecurrence } from "../domain/recurrence";
 import { applyReminderSnooze } from "../domain/reminders";
 import {
   completeRecurringOccurrenceInTasks,
-  snoozeRecurringOccurrenceInTasks
+  snoozeRecurringOccurrenceInTasks,
 } from "../domain/recurrence/occurrenceMutations";
-import { getDataFilePath, loadStateStrict, saveStateAtomic } from "../state/persistence";
+import {
+  getDataFilePath,
+  loadStateStrict,
+  saveStateAtomic,
+} from "../state/persistence";
 import { recomputeTagIndex } from "../state/portability";
 import {
   createDefaultLockPayload,
   getTadoiLockPath,
   removeTadoiLock,
-  tryAcquireTadoiLock
+  tryAcquireTadoiLock,
 } from "../state/lockfile";
 import { loadReminderIndexForDataFile } from "./indexer";
 import type { ReminderIndexEvent } from "./types";
-import { OutOfAppReminderModal, type OutOfAppReminderActionId } from "../components/OutOfAppReminderModal";
+import {
+  OutOfAppReminderModal,
+  type OutOfAppReminderActionId,
+} from "../components/OutOfAppReminderModal";
 import { resolveCurrentTadoiInvocation } from "./invocation";
 import { CLI_EXIT_CODE } from "../cli/exitCodes";
 import type { Task } from "../domain/models";
@@ -62,13 +69,16 @@ function notesSnippetFromTask(task: Task | undefined): string | undefined {
   return `${compact.slice(0, 93)}...`;
 }
 
-function findTaskForReminderEvent(tasks: Task[], event: ReminderIndexEvent): Task | undefined {
+function findTaskForReminderEvent(
+  tasks: Task[],
+  event: ReminderIndexEvent,
+): Task | undefined {
   const series = parseSeriesOccurrenceRowId(event.occurrenceKey);
   if (series) {
     const instance = tasks.find(
       (task) =>
         task.instance_of?.series_id === series.seriesId &&
-        task.instance_of?.occurrence === series.occurrenceIso
+        task.instance_of?.occurrence === series.occurrenceIso,
     );
     if (instance) return instance;
     return tasks.find((task) => task.recurrence?.series_id === series.seriesId);
@@ -86,7 +96,7 @@ function applyActionToTasks(
   tasks: Task[],
   event: ReminderIndexEvent,
   action: OutOfAppReminderActionId,
-  nowMs: number
+  nowMs: number,
 ): Task[] {
   const series = parseSeriesOccurrenceRowId(event.occurrenceKey);
   if (series) {
@@ -94,14 +104,18 @@ function applyActionToTasks(
       return completeRecurringOccurrenceInTasks(tasks, {
         seriesId: series.seriesId,
         occurrenceIso: series.occurrenceIso,
-        nowMs
+        nowMs,
       });
     }
-    if (action === "snooze10m" || action === "snooze1h" || action === "snooze1d") {
+    if (
+      action === "snooze10m" ||
+      action === "snooze1h" ||
+      action === "snooze1d"
+    ) {
       return snoozeRecurringOccurrenceInTasks(tasks, {
         seriesId: series.seriesId,
         occurrenceIso: series.occurrenceIso,
-        nowMs
+        nowMs,
       });
     }
     return tasks;
@@ -135,20 +149,27 @@ function applyActionToTasks(
 export async function mutateReminderAction(
   event: ReminderIndexEvent,
   action: OutOfAppReminderActionId,
-  dataFilePath: string
+  dataFilePath: string,
 ): Promise<void> {
   const lockPath = getTadoiLockPath(dataFilePath);
   const lockPayload = createDefaultLockPayload(dataFilePath);
 
   const acquired = await tryAcquireTadoiLock(lockPath, lockPayload);
   if (!acquired) {
-    throw new Error("TADOI is running (lock present). Close TADOI before handling this reminder.");
+    throw new Error(
+      "TADOI is running (lock present). Close TADOI before handling this reminder.",
+    );
   }
 
   try {
     const nowMs = Date.now();
     const loaded = await loadStateStrict({ filePath: dataFilePath });
-    const nextTasks = applyActionToTasks(loaded.data.tasks, event, action, nowMs);
+    const nextTasks = applyActionToTasks(
+      loaded.data.tasks,
+      event,
+      action,
+      nowMs,
+    );
 
     if (nextTasks === loaded.data.tasks) {
       return;
@@ -158,13 +179,13 @@ export async function mutateReminderAction(
       {
         ...loaded.data,
         tasks: nextTasks,
-        tagIndex: recomputeTagIndex(nextTasks, nowMs)
+        tagIndex: recomputeTagIndex(nextTasks, nowMs),
       },
       dataFilePath,
       undefined,
       {
-        expectedStateRevision: loaded.data.stateRevision
-      }
+        expectedStateRevision: loaded.data.stateRevision,
+      },
     );
   } finally {
     await removeTadoiLock(lockPath).catch(() => undefined);
@@ -176,14 +197,14 @@ export async function openMainTadoiApp(
   spawnImpl: (
     command: string,
     args: readonly string[] | undefined,
-    options?: Parameters<typeof spawn>[2]
-  ) => ReturnType<typeof spawn> = spawn
+    options?: Parameters<typeof spawn>[2],
+  ) => ReturnType<typeof spawn> = spawn,
 ): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     const child = spawnImpl(invocation.command, invocation.baseArgs, {
       detached: true,
       stdio: "ignore",
-      windowsHide: true
+      windowsHide: true,
     });
 
     let settled = false;
@@ -207,16 +228,17 @@ const ACTION_ORDER: OutOfAppReminderActionId[] = [
   "snooze1h",
   "snooze1d",
   "open",
-  "close"
+  "close",
 ];
 
 export function cycleReminderAction(
   current: OutOfAppReminderActionId,
-  direction: 1 | -1
+  direction: 1 | -1,
 ): OutOfAppReminderActionId {
   const index = ACTION_ORDER.indexOf(current);
   const safeIndex = index >= 0 ? index : 0;
-  const nextIndex = (safeIndex + direction + ACTION_ORDER.length) % ACTION_ORDER.length;
+  const nextIndex =
+    (safeIndex + direction + ACTION_ORDER.length) % ACTION_ORDER.length;
   return ACTION_ORDER[nextIndex];
 }
 
@@ -226,7 +248,8 @@ function ReminderModalApp(props: {
   onAction: (action: OutOfAppReminderActionId) => Promise<void>;
   onError: (message: string) => void;
 }) {
-  const [selectedAction, setSelectedAction] = React.useState<OutOfAppReminderActionId>("complete");
+  const [selectedAction, setSelectedAction] =
+    React.useState<OutOfAppReminderActionId>("complete");
   const [busy, setBusy] = React.useState(false);
 
   const confirmAction = React.useCallback(
@@ -240,7 +263,7 @@ function ReminderModalApp(props: {
         setBusy(false);
       }
     },
-    [busy, props]
+    [busy, props],
   );
 
   useKeyboard((key) => {
@@ -256,7 +279,12 @@ function ReminderModalApp(props: {
       return;
     }
 
-    if (keyName === "tab" || keyName === "right" || keyName === "down" || sequence === "j") {
+    if (
+      keyName === "tab" ||
+      keyName === "right" ||
+      keyName === "down" ||
+      sequence === "j"
+    ) {
       setSelectedAction((current) => cycleReminderAction(current, 1));
       return;
     }
@@ -287,7 +315,7 @@ function ReminderModalApp(props: {
         width: "100%",
         height: "100%",
         justifyContent: "center",
-        alignItems: "center"
+        alignItems: "center",
       }}
     >
       <box style={{ flexDirection: "column", gap: 1 }}>
@@ -331,16 +359,16 @@ const DEFAULT_DEPS: RunRemindCommandDeps = {
   openMainTadoiApp,
   mutateReminderAction,
   log: (line) => redactedLogger.log(line),
-  error: (line) => redactedLogger.error(line)
+  error: (line) => redactedLogger.error(line),
 };
 
 export async function runRemindCommandWithDeps(
   args: string[],
-  depsOverrides: Partial<RunRemindCommandDeps> = {}
+  depsOverrides: Partial<RunRemindCommandDeps> = {},
 ): Promise<number> {
   const deps: RunRemindCommandDeps = {
     ...DEFAULT_DEPS,
-    ...depsOverrides
+    ...depsOverrides,
   };
 
   if (args.includes("--help") || args.includes("-h")) {
@@ -366,12 +394,15 @@ export async function runRemindCommandWithDeps(
   const loaded = await deps.loadStateStrict({ filePath: dataFilePath });
   const task = findTaskForReminderEvent(loaded.data.tasks, event);
   const notesSnippet = notesSnippetFromTask(task);
-  const invocation = deps.resolveCurrentTadoiInvocation(process.argv, process.execPath);
+  const invocation = deps.resolveCurrentTadoiInvocation(
+    process.argv,
+    process.execPath,
+  );
 
   const renderer = await deps.createCliRenderer({
     exitOnCtrlC: true,
     useAlternateScreen: true,
-    useMouse: true
+    useMouse: true,
   });
 
   let exitCode = CLI_EXIT_CODE.SUCCESS;
@@ -403,20 +434,22 @@ export async function runRemindCommandWithDeps(
         await close(CLI_EXIT_CODE.SUCCESS);
       };
 
-      deps.createRoot(renderer).render(
-        <ReminderModalApp
-          event={event}
-          notesSnippet={notesSnippet}
-          onAction={onAction}
-          onError={reportError}
-        />
-      );
+      deps
+        .createRoot(renderer)
+        .render(
+          <ReminderModalApp
+            event={event}
+            notesSnippet={notesSnippet}
+            onAction={onAction}
+            onError={reportError}
+          />,
+        );
     });
 
     return exitCode;
   } catch (error: unknown) {
     deps.error(
-      `Error: failed to run reminder modal (${error instanceof Error ? error.message : String(error)})`
+      `Error: failed to run reminder modal (${error instanceof Error ? error.message : String(error)})`,
     );
     return CLI_EXIT_CODE.IO_ERROR;
   } finally {

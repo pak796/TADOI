@@ -13,7 +13,7 @@ describe("TagFilterPanel helpers", () => {
     const draft: TagFilter = {
       all: ["work", "urgent"],
       any: ["home"],
-      none: ["blocked"]
+      none: ["blocked"],
     };
     expect(getBucketTags(draft, "all")).toEqual(["work", "urgent"]);
     expect(getBucketTags(draft, "any")).toEqual(["home"]);
@@ -21,7 +21,10 @@ describe("TagFilterPanel helpers", () => {
   });
 
   it("splits visible and hidden tags by limit", () => {
-    const tags = Array.from({ length: 30 }, (_, index) => `tag-${String(index)}`);
+    const tags = Array.from(
+      { length: 30 },
+      (_, index) => `tag-${String(index)}`,
+    );
     const { visibleTags, hiddenTagCount } = splitBucketTags(tags, 24);
     expect(visibleTags.length).toBe(24);
     expect(hiddenTagCount).toBe(6);

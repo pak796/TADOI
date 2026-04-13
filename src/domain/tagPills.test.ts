@@ -6,7 +6,7 @@ describe("computeVisibleTagPills", () => {
     const result = computeVisibleTagPills(["help", "work"], 20);
     expect(result).toEqual({
       visibleTags: ["help", "work"],
-      hiddenCount: 0
+      hiddenCount: 0,
     });
   });
 
@@ -14,7 +14,7 @@ describe("computeVisibleTagPills", () => {
     const result = computeVisibleTagPills(["help", "work", "docs"], 20);
     expect(result).toEqual({
       visibleTags: ["help", "work"],
-      hiddenCount: 1
+      hiddenCount: 1,
     });
   });
 
@@ -22,7 +22,7 @@ describe("computeVisibleTagPills", () => {
     const result = computeVisibleTagPills(["help", "work"], 4);
     expect(result).toEqual({
       visibleTags: [],
-      hiddenCount: 2
+      hiddenCount: 2,
     });
   });
 
@@ -30,7 +30,7 @@ describe("computeVisibleTagPills", () => {
     const result = computeVisibleTagPills(["p1", "help", "work"], 12);
     expect(result).toEqual({
       visibleTags: ["p1"],
-      hiddenCount: 2
+      hiddenCount: 2,
     });
   });
 });

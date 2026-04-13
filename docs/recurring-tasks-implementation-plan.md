@@ -1,11 +1,13 @@
 # TADOI™ Recurring Tasks Implementation Plan (Implemented)
 
 ## Summary
+
 Recurring tasks are implemented with RRULE-style series metadata and sparse materialization.
 The app keeps one series task in storage, renders virtual occurrences for list/dashboard/query windows, and materializes occurrence rows only when an occurrence needs independent state.
 This implementation is part of the `v0.4.0` runtime baseline.
 
 ## Locked Decisions
+
 - Internal recurrence format: `dtstart + rrule + exdates + series_id`.
 - Sparse materialization: virtual rows by default, materialized rows for complete/skip/snooze/edit-occurrence.
 - Local floating ISO timestamps are used for recurrence `dtstart` and `exdates`.
@@ -16,6 +18,7 @@ This implementation is part of the `v0.4.0` runtime baseline.
 - `e` edits occurrence row context; `E` edits whole series.
 
 ## File Map
+
 - Domain
   - `src/domain/models.ts`: recurrence and instance types on `Task`, recurrence fields on `EditorDraft`.
   - `src/domain/recurrence/rruleAdapter.ts`: RRULE parse/format/build adapter.
@@ -36,6 +39,7 @@ This implementation is part of the `v0.4.0` runtime baseline.
   - `src/state/portability.ts`: recurrence-aware task equivalence in merge logic.
 
 ## Behavior Semantics
+
 - Complete recurring occurrence:
   - Exclude occurrence via `exdates` on series.
   - Create/update materialized done instance row for history.
@@ -53,11 +57,13 @@ This implementation is part of the `v0.4.0` runtime baseline.
   - Existing materialized instances remain intact.
 
 ## Test Coverage
+
 - Recurrence engine tests: weekly BYDAY, monthly day-31, EXDATE, DST, next-occurrence continuity.
 - Selector tests: due-window policies and materialized suppression behavior.
 - Key routing tests: recurrence action keys.
 - Persistence tests: migration, validation, portability with recurrence fields.
 
 ## Notes
+
 - Persistence format remains JSON; schema evolves from v3 to v4.
 - Non-recurring task flows remain unchanged and are covered by full test suite regression.

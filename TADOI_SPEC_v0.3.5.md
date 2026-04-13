@@ -6,11 +6,13 @@ Package baseline: `0.3.5`
 Persistence schema baseline: `5`
 
 Historical status:
+
 - This document is retained as a v0.3.5 historical snapshot and is not the active source of truth.
 - Current source-of-truth spec: `TADOI_SPEC_v0.3.8.md` (runtime `v0.3.8`, package `0.3.8`, schema `6`).
 - For active install/usage/release docs, use `docs/DOC_INDEX.md`.
 
 Stability taxonomy:
+
 - `Canonical`: compatibility contract expected to remain stable across patch/minor updates.
 - `Current Behavior (May Change)`: documented runtime behavior that may evolve without migration.
 
@@ -19,6 +21,7 @@ Stability taxonomy:
 TADOI is a keyboard-first terminal task manager focused on fast personal execution workflows.
 
 Core experience:
+
 - List-first task management with strong keyboard routing and clear mode boundaries.
 - Recurrence-aware planning with occurrence-level actions.
 - Unified filtering across list and dashboard analytics surfaces.
@@ -27,13 +30,16 @@ Core experience:
 ## 2) Runtime Contracts
 
 ### 2.1 Terminal and Layout
+
 - Minimum supported terminal size: `104x24`.
 - When below minimum, app blocks interactions and shows:
   - `Terminal too small (min 104x24)`.
 - On resize back to supported size, interaction resumes without restart.
 
 ### 2.2 Mode and Focus Boundaries
+
 Primary modes:
+
 - `LIST`
 - `DASHBOARD`
 - `ADD`
@@ -45,40 +51,47 @@ Primary modes:
 - `MODAL_CONFIRM`
 
 Routing priorities:
+
 1. modal handling (blocking)
 2. help/back subpage handling
 3. search/editor text contexts
 4. list/dashboard actions
 
 ### 2.3 Search Lifecycle
+
 - `/` opens search.
 - `Enter` or `Esc` closes search.
 - Active search text remains in filter state after close.
 
 ### 2.4 Tag Filtering Contract
+
 TADOI supports two tag flows:
+
 - Legacy cycle (`t`): single tag include across open-task tags.
 - Boolean panel (`p`): `ALL` / `ANY` / `NONE` buckets.
 
 Precedence rule:
+
 - Non-empty boolean `tagFilter` overrides legacy single `tag`.
 
 Canonical invariant table:
 
-| ID | Invariant | Automated lock |
-|---|---|---|
-| DTF-001 | Non-empty boolean `tagFilter` overrides legacy `tag`. | `src/app/dashboardTagFilterContract.test.ts` |
-| DTF-002 | Empty boolean buckets are no-op and legacy `tag` matching applies. | `src/app/dashboardTagFilterContract.test.ts` |
-| DTF-003 | `due=next7` uses local-day rolling window `today..+6`. | `src/app/dashboardTagFilterContract.test.ts` |
+| ID      | Invariant                                                                                               | Automated lock                               |
+| ------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| DTF-001 | Non-empty boolean `tagFilter` overrides legacy `tag`.                                                   | `src/app/dashboardTagFilterContract.test.ts` |
+| DTF-002 | Empty boolean buckets are no-op and legacy `tag` matching applies.                                      | `src/app/dashboardTagFilterContract.test.ts` |
+| DTF-003 | `due=next7` uses local-day rolling window `today..+6`.                                                  | `src/app/dashboardTagFilterContract.test.ts` |
 | DTF-004 | `due=overdue` includes prior-day overdue and same-day explicit-time overdue only after due time passes. | `src/app/dashboardTagFilterContract.test.ts` |
 
 ### 2.5 Recurrence Contract
+
 - Recurrence fields: `dtstart`, `rrule`, optional `exdates`, `series_id`.
 - Sparse occurrence materialization:
   - Virtual rows render future occurrences.
   - Materialized instance rows represent occurrence overrides/history.
 
 Occurrence actions:
+
 - `Space`: complete/reopen occurrence.
 - `x`: skip occurrence.
 - `z`: snooze occurrence by +1 day.
@@ -90,6 +103,7 @@ Occurrence actions:
   - `n` / `Esc`: cancel
 
 ### 2.6 Task Links / Attachments Contract
+
 - Tasks support `links[]` entries with:
   - `id`
   - `target`
@@ -105,6 +119,7 @@ Occurrence actions:
 - Unknown URL schemes require explicit user confirmation modal before open.
 
 ### 2.7 Dashboard Contract
+
 - `b` / `B` toggles list and dashboard (blocked in text-entry contexts).
 - Dashboard uses the same filtered dataset as list.
 - Widgets:
@@ -115,13 +130,14 @@ Occurrence actions:
 
 Canonical invariant table:
 
-| ID | Invariant | Automated lock |
-|---|---|---|
+| ID      | Invariant                                                                                                                       | Automated lock                               |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
 | DTF-005 | In `DASHBOARD` mode, `up/down` moves top-tag selection and `Enter` applies selected tag action; list movement keys do not leak. | `src/app/dashboardTagFilterContract.test.ts` |
-| DTF-006 | In `TAG_FILTER` mode, list/dashboard routing is blocked until unwind (`Esc`). | `src/app/dashboardTagFilterContract.test.ts` |
-| DTF-007 | Dashboard analytics include recurrence occurrences through `buildVisibleTaskRows` parity, not raw tasks-only filtering. | `src/app/dashboardTagFilterContract.test.ts` |
+| DTF-006 | In `TAG_FILTER` mode, list/dashboard routing is blocked until unwind (`Esc`).                                                   | `src/app/dashboardTagFilterContract.test.ts` |
+| DTF-007 | Dashboard analytics include recurrence occurrences through `buildVisibleTaskRows` parity, not raw tasks-only filtering.         | `src/app/dashboardTagFilterContract.test.ts` |
 
 ### 2.8 Notifications Contract
+
 - Tier 1: in-app overdue modal queue.
 - Tier 2: optional terminal bell with cooldown.
 - Tier 3: OS notifier adapter scaffold (current no-op).
@@ -132,10 +148,13 @@ Canonical invariant table:
   - `Esc`: dismiss
 
 ### 2.9 Backup and Portability Contract
+
 Backup Center entry:
+
 - `?` then `1` (`DATA: Backup / Export / Import`).
 
 Capabilities:
+
 - timestamped export backups
 - import with `merge` or `replace`
 - required dry-run before commit
@@ -143,13 +162,16 @@ Capabilities:
 - pre-import backup on commit path
 
 ### 2.10 Calendar Integration Contract
+
 Export (user-facing CLI):
+
 - `tadoi calendar:export --out <file.ics> [--view <name>] [--range next7|month|all] [--privacy minimal|full]`
 - default privacy is `minimal`
 - `--include-details` aliases to `--privacy full`
 - export includes open tasks only, with recurrence support (`RRULE`, `EXDATE`, instance overrides)
 
 Import:
+
 - User-facing CLI import:
   - `tadoi calendar:import --in <file.ics> [--view <name>] [--range next7|month|all] [--mode merge|update|create] [--dry-run]`
 - In-app Backup Center exposes guided calendar import flow:
@@ -162,6 +184,7 @@ Import:
   - bounded horizon and hard expansion caps
 
 ### 2.11 Security and Privacy Contract
+
 - External link policy is settings-driven:
   - `security.nonHttpLinkPolicy: prompt|block`
   - `prompt` requires explicit confirmation for paths and non-allowlisted schemes.
@@ -171,6 +194,7 @@ Import:
 - Startup logs redact absolute paths by default; full paths are opt-in via `TADOI_VERBOSE_PATH_LOGS=1`.
 
 ### 2.12 Branding / Left Rail Contract
+
 - Left rail includes `TAG PANEL (P)` menu row.
 - Hint strip includes `p: TAG PANEL`.
 - Logo modes include:
@@ -181,6 +205,7 @@ Import:
   - `rotate`
 
 ### 2.13 Engagement Toast Contract
+
 - Bottom-bar engagement toasts are non-interactive and auto-dismiss.
 - Toast queue is bounded and priority-ordered; blocking overlays suppress rendering while preserving queue state.
 - Current milestone set includes:
@@ -194,6 +219,7 @@ Import:
 ## 3) Data Model Contract
 
 Domain core (`src/domain/models.ts`):
+
 - `Task` includes:
   - `tags[]`
   - optional `links[]`
@@ -209,6 +235,7 @@ Domain core (`src/domain/models.ts`):
 - `SortMode`: `due`, `updated`, `created`, `title`
 
 Persistence expectations:
+
 - local JSON storage
 - schema migrations applied at load
 - current schema version `5`
@@ -218,14 +245,17 @@ Persistence expectations:
 ## 4) Keybindings Snapshot (Primary)
 
 List mode:
+
 - navigation: `j/k`, arrows, `gg`, `G`, `Ctrl+U`, `Ctrl+D`, `PageUp`, `PageDown`, `[`, `]`, `{`, `}`
 - actions: `a`, `e`, `E`, `c`, `Space`, `x`, `z`, `d`, `/`, `f`, `g`, `s`, `t`, `p`, `v`, `Ctrl+S`, `q`
 
 Details links focus:
+
 - `Tab` / `Shift+Tab` toggles focus between task list and links.
 - `Enter`/`o`, `c`, `l`, `e`, `d`/`Backspace`, `Esc`
 
 Global/overlay:
+
 - help: `?` open, `Esc`/`?` close
 - search close: `Enter`/`Esc`
 - backup center: `1/2/3`, `Enter`, `Esc`
@@ -233,13 +263,16 @@ Global/overlay:
 ## 5) Quality and Validation Baseline
 
 Automated snapshot captured during docs audit:
+
 - `bun run test`: `555 pass / 0 fail / 555 total`
 - `bun run typecheck`: `pass`
 
 Manual coverage baseline:
+
 - `docs/TADOI_QA_Guide_v0.3.5.md`
 
 ## 6) Non-goals (Current Baseline)
+
 - cloud sync or accounts
 - collaboration/multi-user editing
 - background daemon delivery while app is closed
@@ -247,6 +280,7 @@ Manual coverage baseline:
 - bi-directional or background calendar sync (current behavior is one-way import/export commands)
 
 ## 7) Related Documents
+
 - `README.md`
 - `TADOI_SPEC_v0.3.8.md` (active spec)
 - `TADOI_TASKS_v0.3.8.md` (active task list)
@@ -261,4 +295,5 @@ Manual coverage baseline:
 - `TADOI_Notifications_Spec_Tier1-2_v0.2.md`
 
 ## Trademark Notice
+
 TADOI™ is a trademark of <OWNER>. Other names may be trademarks of their respective owners.

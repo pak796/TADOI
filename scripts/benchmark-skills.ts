@@ -1,4 +1,10 @@
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  writeFileSync,
+} from "node:fs";
 import path from "node:path";
 import os from "node:os";
 
@@ -39,23 +45,30 @@ function parseArgs(argv: string[]): Args {
   const defaults: SkillTarget[] = [
     {
       name: "host-prereq-preflight",
-      path: path.resolve("skills/host-prereq-preflight")
+      path: path.resolve("skills/host-prereq-preflight"),
     },
     {
       name: "find-skills",
-      path: path.join(home, ".codex", "skills", "find-skills")
+      path: path.join(home, ".codex", "skills", "find-skills"),
     },
     {
       name: "writing-clearly-and-concisely",
-      path: path.join(home, ".codex", "skills", "writing-clearly-and-concisely")
-    }
+      path: path.join(
+        home,
+        ".codex",
+        "skills",
+        "writing-clearly-and-concisely",
+      ),
+    },
   ];
 
   const args: Args = {
-    baselineJson: path.resolve("docs/skills/data/benchmark_scores_2026-02-11.json"),
+    baselineJson: path.resolve(
+      "docs/skills/data/benchmark_scores_2026-02-11.json",
+    ),
     outJson: "",
     outMd: "",
-    skillTargets: defaults
+    skillTargets: defaults,
   };
 
   const customTargets: SkillTarget[] = [];
@@ -92,7 +105,8 @@ function parseArgs(argv: string[]): Args {
       const value = argv[i + 1];
       if (!value) throw new Error("--skill requires <name>=<path>");
       const split = value.indexOf("=");
-      if (split === -1) throw new Error("--skill must be formatted as <name>=<path>");
+      if (split === -1)
+        throw new Error("--skill must be formatted as <name>=<path>");
       const name = value.slice(0, split).trim();
       const targetPath = path.resolve(value.slice(split + 1).trim());
       if (!name) throw new Error("skill name cannot be empty");
@@ -139,7 +153,8 @@ function scoreTrigger(description: string, skillMd: string): number {
 
 function scoreWorkflow(skillMd: string): number {
   let score = 0;
-  if (/##\s+(deterministic workflow|workflow|runbook)/i.test(skillMd)) score += 8;
+  if (/##\s+(deterministic workflow|workflow|runbook)/i.test(skillMd))
+    score += 8;
   const stepCount = countMatches(skillMd, /^\d+\.\s+/gm);
   if (stepCount >= 3) score += 6;
   if (/##\s+output contract/i.test(skillMd)) score += 3;
@@ -155,9 +170,7 @@ function scoreDeterminism(skillMd: string, scriptsPath: string): number {
 
   if (existsSync(scriptsPath)) {
     const files = listFiles(scriptsPath);
-    const joined = files
-      .map((file) => readFileSync(file, "utf8"))
-      .join("\n");
+    const joined = files.map((file) => readFileSync(file, "utf8")).join("\n");
     if (/process\.exitCode|overall=PASS|overall=FAIL|BLOCKED/i.test(joined)) {
       score += 3;
     }
@@ -174,9 +187,7 @@ function scoreSafety(skillMd: string, scriptsPath: string): number {
 
   if (existsSync(scriptsPath)) {
     const files = listFiles(scriptsPath);
-    const joined = files
-      .map((file) => readFileSync(file, "utf8"))
-      .join("\n");
+    const joined = files.map((file) => readFileSync(file, "utf8")).join("\n");
     if (/BLOCKED|fixHint|error|exitCodeForOverall/i.test(joined)) {
       score = clamp(20, score + 2);
     }
@@ -213,12 +224,14 @@ function listFiles(root: string): string[] {
   return files.sort((a, b) => a.localeCompare(b));
 }
 
-function safeReadDir(dirPath: string): Array<{ path: string; isDirectory: boolean }> {
+function safeReadDir(
+  dirPath: string,
+): Array<{ path: string; isDirectory: boolean }> {
   if (!existsSync(dirPath)) return [];
   const entries = readdirSync(dirPath, { withFileTypes: true });
   return entries.map((entry) => ({
     path: path.join(dirPath, entry.name),
-    isDirectory: entry.isDirectory()
+    isDirectory: entry.isDirectory(),
   }));
 }
 
@@ -241,7 +254,7 @@ function evaluateSkill(target: SkillTarget): SkillEval {
     determinism_automation: scoreDeterminism(skillMd, scriptsPath),
     safety_guardrails: scoreSafety(skillMd, scriptsPath),
     reusability_maintainability: scoreReuse(target.path, lineCount),
-    total: 0
+    total: 0,
   };
   scores.total =
     scores.trigger_precision +
@@ -258,7 +271,7 @@ function evaluateSkill(target: SkillTarget): SkillEval {
     has_references: existsSync(referencesPath),
     has_assets: existsSync(assetsPath),
     has_openai: existsSync(path.join(target.path, "agents", "openai.yaml")),
-    scores
+    scores,
   };
 }
 
@@ -267,9 +280,7 @@ function ensureParentDir(filePath: string): void {
   if (!existsSync(parent)) mkdirSync(parent, { recursive: true });
 }
 
-function readBaselineMap(
-  baselinePath: string
-): Map<string, DimensionScores> {
+function readBaselineMap(baselinePath: string): Map<string, DimensionScores> {
   if (!existsSync(baselinePath)) return new Map();
   const raw = readFileSync(baselinePath, "utf8");
   const parsed = JSON.parse(raw) as {
@@ -294,7 +305,7 @@ function toFixed2(value: number): number {
 function renderMarkdown(
   dateLabel: string,
   rows: SkillEval[],
-  baselineMap: Map<string, DimensionScores>
+  baselineMap: Map<string, DimensionScores>,
 ): string {
   const lines: string[] = [];
   lines.push(`# Skill Robustness Benchmark (${dateLabel})`);
@@ -303,13 +314,15 @@ function renderMarkdown(
   lines.push("");
   lines.push(`- Skills scored: ${rows.length}`);
   lines.push(
-    `- Average total score: ${toFixed2(average(rows.map((r) => r.scores.total)))}`
+    `- Average total score: ${toFixed2(average(rows.map((r) => r.scores.total)))}`,
   );
 
   const comparable = rows.filter((r) => baselineMap.has(r.skill));
   if (comparable.length > 0) {
     const deltaAvg = average(
-      comparable.map((r) => r.scores.total - (baselineMap.get(r.skill)?.total || 0))
+      comparable.map(
+        (r) => r.scores.total - (baselineMap.get(r.skill)?.total || 0),
+      ),
     );
     lines.push(`- Average delta vs baseline: ${toFixed2(deltaAvg)}`);
   }
@@ -317,12 +330,14 @@ function renderMarkdown(
   lines.push("");
   lines.push("## Scores");
   lines.push("");
-  lines.push("| Skill | Trigger | Workflow | Determinism | Safety | Reuse | Total |");
+  lines.push(
+    "| Skill | Trigger | Workflow | Determinism | Safety | Reuse | Total |",
+  );
   lines.push("|---|---:|---:|---:|---:|---:|---:|");
   for (const row of rows) {
     const s = row.scores;
     lines.push(
-      `| \`${row.skill}\` | ${s.trigger_precision} | ${s.workflow_completeness} | ${s.determinism_automation} | ${s.safety_guardrails} | ${s.reusability_maintainability} | ${s.total} |`
+      `| \`${row.skill}\` | ${s.trigger_precision} | ${s.workflow_completeness} | ${s.determinism_automation} | ${s.safety_guardrails} | ${s.reusability_maintainability} | ${s.total} |`,
     );
   }
 
@@ -339,7 +354,9 @@ function renderMarkdown(
     }
     const delta = row.scores.total - before.total;
     const signed = delta > 0 ? `+${delta}` : `${delta}`;
-    lines.push(`| \`${row.skill}\` | ${before.total} | ${row.scores.total} | ${signed} |`);
+    lines.push(
+      `| \`${row.skill}\` | ${before.total} | ${row.scores.total} | ${signed} |`,
+    );
   }
 
   return lines.join("\n");
@@ -362,27 +379,33 @@ function main(): void {
         skill: row.skill,
         before_total: before?.total ?? null,
         after_total: row.scores.total,
-        delta_total: before ? row.scores.total - before.total : null
+        delta_total: before ? row.scores.total - before.total : null,
       };
-    })
+    }),
   };
 
   ensureParentDir(args.outJson);
   writeFileSync(args.outJson, JSON.stringify(payload, null, 2), "utf8");
 
   ensureParentDir(args.outMd);
-  writeFileSync(args.outMd, renderMarkdown(dateLabel, rows, baselineMap), "utf8");
+  writeFileSync(
+    args.outMd,
+    renderMarkdown(dateLabel, rows, baselineMap),
+    "utf8",
+  );
 
   for (const row of rows) {
     const baseline = baselineMap.get(row.skill);
     if (!baseline) {
-      console.log(`[SCORE] ${row.skill} total=${row.scores.total} baseline=n/a`);
+      console.log(
+        `[SCORE] ${row.skill} total=${row.scores.total} baseline=n/a`,
+      );
       continue;
     }
     const delta = row.scores.total - baseline.total;
     const signed = delta > 0 ? `+${delta}` : `${delta}`;
     console.log(
-      `[SCORE] ${row.skill} before=${baseline.total} after=${row.scores.total} delta=${signed}`
+      `[SCORE] ${row.skill} before=${baseline.total} after=${row.scores.total} delta=${signed}`,
     );
   }
   console.log(`[OUTPUT] json=${args.outJson}`);

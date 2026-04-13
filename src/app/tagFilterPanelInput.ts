@@ -3,10 +3,13 @@ import type { TagFilter } from "../domain/models";
 import {
   normalizeTagFilter,
   normalizeTagToken,
-  type TagFilterBucket
+  type TagFilterBucket,
 } from "../domain/tagFilter";
 
-export type TagFilterInlineSuggestion = { full: string; remainder: string } | null | undefined;
+export type TagFilterInlineSuggestion =
+  | { full: string; remainder: string }
+  | null
+  | undefined;
 
 type TagFilterPanelKey = Pick<KeyEvent, "name" | "sequence" | "ctrl" | "shift">;
 
@@ -20,7 +23,9 @@ export type TagFilterPanelHotkeyAction =
   | { type: "removeLastDraftTag" }
   | { type: "addInputCandidate" };
 
-export function isEnterLikeKey(key: Pick<KeyEvent, "name" | "sequence">): boolean {
+export function isEnterLikeKey(
+  key: Pick<KeyEvent, "name" | "sequence">,
+): boolean {
   return (
     key.name === "return" ||
     key.name === "enter" ||
@@ -30,13 +35,16 @@ export function isEnterLikeKey(key: Pick<KeyEvent, "name" | "sequence">): boolea
 }
 
 export function isTagFilterPanelApplyKey(
-  key: Pick<KeyEvent, "name" | "sequence" | "ctrl">
+  key: Pick<KeyEvent, "name" | "sequence" | "ctrl">,
 ): boolean {
   const ctrlEnterFromModifyOtherKeys = key.sequence === "\u001b[13;5u";
   const ctrlEnter = key.ctrl && isEnterLikeKey(key);
   const ctrlS =
     key.ctrl &&
-    (key.name === "s" || key.name === "S" || key.sequence === "s" || key.sequence === "S");
+    (key.name === "s" ||
+      key.name === "S" ||
+      key.sequence === "s" ||
+      key.sequence === "S");
   return ctrlEnterFromModifyOtherKeys || ctrlEnter || ctrlS;
 }
 
@@ -81,7 +89,7 @@ export function resolveTagFilterPanelHotkeyAction(params: {
 
 export function resolveTagFilterInputCandidateValue(
   inputValue: string,
-  inlineSuggestion: TagFilterInlineSuggestion
+  inlineSuggestion: TagFilterInlineSuggestion,
 ): string {
   return inlineSuggestion?.full ?? inputValue;
 }
@@ -90,7 +98,7 @@ export function addTagToTagFilterDraftBucket(
   current: TagFilter | undefined,
   rawTag: string,
   bucket: TagFilterBucket,
-  aliases: Record<string, string> = {}
+  aliases: Record<string, string> = {},
 ): TagFilter | undefined {
   const normalizedTag = normalizeTagToken(rawTag, aliases);
   if (!normalizedTag) return normalizeTagFilter(current);
@@ -98,7 +106,7 @@ export function addTagToTagFilterDraftBucket(
   const next: TagFilter = {
     all: [...(current?.all ?? [])],
     any: [...(current?.any ?? [])],
-    none: [...(current?.none ?? [])]
+    none: [...(current?.none ?? [])],
   };
   const bucketTags = new Set(next[bucket] ?? []);
   bucketTags.add(normalizedTag);
@@ -117,8 +125,11 @@ export function resolveTagFilterDraftForApplyFromInput(params: {
   if (!params.includeInputCandidate) return params.draft;
   return addTagToTagFilterDraftBucket(
     params.draft,
-    resolveTagFilterInputCandidateValue(params.inputValue, params.inlineSuggestion),
+    resolveTagFilterInputCandidateValue(
+      params.inputValue,
+      params.inlineSuggestion,
+    ),
     params.bucket,
-    params.aliases
+    params.aliases,
   );
 }

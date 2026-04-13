@@ -4,15 +4,15 @@ import { normalizeTaskReminder } from "../domain/reminders";
 import {
   createDefaultEngagementState,
   mergeEngagementStates,
-  normalizeEngagementState
+  normalizeEngagementState,
 } from "../domain/engagement";
 import {
   normalizePriorityFilterValue,
-  normalizePriorityTags
+  normalizePriorityTags,
 } from "../domain/priorityTags";
 import {
   normalizeTagToken,
-  stripPriorityTokensFromTagFilter
+  stripPriorityTokensFromTagFilter,
 } from "../domain/tagFilter";
 import { compressTagAliases, normalizeTagAliases } from "../domain/tagAliases";
 import type { SavedView, TagIndexEntry, Task } from "../domain/models";
@@ -81,11 +81,11 @@ function asTimestamp(value: unknown, fallback = 0): number {
 
 function mergeTagAliasesForImport(
   currentAliases: Record<string, string> | undefined,
-  incomingAliases: Record<string, string> | undefined
+  incomingAliases: Record<string, string> | undefined,
 ): Record<string, string> {
   return compressTagAliases({
     ...normalizeTagAliases(currentAliases),
-    ...normalizeTagAliases(incomingAliases)
+    ...normalizeTagAliases(incomingAliases),
   });
 }
 
@@ -94,7 +94,7 @@ function normalizeTask(task: Task): Task {
     ...task,
     tags: normalizePriorityTags(Array.isArray(task.tags) ? task.tags : []),
     checklist: normalizeChecklist(task.checklist),
-    reminder: normalizeTaskReminder(task.reminder)
+    reminder: normalizeTaskReminder(task.reminder),
   };
 }
 
@@ -110,7 +110,10 @@ function areStringArraysEqual(left: string[], right: string[]): boolean {
   return true;
 }
 
-function areTaskLinksEquivalent(left: Task["links"], right: Task["links"]): boolean {
+function areTaskLinksEquivalent(
+  left: Task["links"],
+  right: Task["links"],
+): boolean {
   const leftLinks = left ?? [];
   const rightLinks = right ?? [];
   if (leftLinks.length !== rightLinks.length) return false;
@@ -132,7 +135,7 @@ function areTaskLinksEquivalent(left: Task["links"], right: Task["links"]): bool
 
 function areTaskChecklistEquivalent(
   left: Task["checklist"],
-  right: Task["checklist"]
+  right: Task["checklist"],
 ): boolean {
   const leftChecklist = sortChecklistItems(left ?? []);
   const rightChecklist = sortChecklistItems(right ?? []);
@@ -157,7 +160,7 @@ function areTaskChecklistEquivalent(
 
 function areTaskRemindersEquivalent(
   left: Task["reminder"],
-  right: Task["reminder"]
+  right: Task["reminder"],
 ): boolean {
   const normalizedLeft = normalizeTaskReminder(left);
   const normalizedRight = normalizeTaskReminder(right);
@@ -179,7 +182,10 @@ function areTasksEquivalent(left: Task, right: Task): boolean {
     left.recurrence?.dtstart === right.recurrence?.dtstart &&
     left.recurrence?.rrule === right.recurrence?.rrule &&
     left.recurrence?.series_id === right.recurrence?.series_id &&
-    areStringArraysEqual(left.recurrence?.exdates ?? [], right.recurrence?.exdates ?? []);
+    areStringArraysEqual(
+      left.recurrence?.exdates ?? [],
+      right.recurrence?.exdates ?? [],
+    );
   const instanceEqual =
     left.instance_of?.series_id === right.instance_of?.series_id &&
     left.instance_of?.occurrence === right.instance_of?.occurrence;
@@ -205,14 +211,23 @@ function areTasksEquivalent(left: Task, right: Task): boolean {
 
 function areTagFiltersEquivalent(
   left: SavedView["filters"]["tagFilter"],
-  right: SavedView["filters"]["tagFilter"]
+  right: SavedView["filters"]["tagFilter"],
 ): boolean {
   const normalizedLeft = stripPriorityTokensFromTagFilter(left);
   const normalizedRight = stripPriorityTokensFromTagFilter(right);
   return (
-    areStringArraysEqual(normalizedLeft?.all ?? [], normalizedRight?.all ?? []) &&
-    areStringArraysEqual(normalizedLeft?.any ?? [], normalizedRight?.any ?? []) &&
-    areStringArraysEqual(normalizedLeft?.none ?? [], normalizedRight?.none ?? [])
+    areStringArraysEqual(
+      normalizedLeft?.all ?? [],
+      normalizedRight?.all ?? [],
+    ) &&
+    areStringArraysEqual(
+      normalizedLeft?.any ?? [],
+      normalizedRight?.any ?? [],
+    ) &&
+    areStringArraysEqual(
+      normalizedLeft?.none ?? [],
+      normalizedRight?.none ?? [],
+    )
   );
 }
 
@@ -223,8 +238,12 @@ function areViewsEquivalent(left: SavedView, right: SavedView): boolean {
   const rightPriority =
     normalizePriorityFilterValue(right.filters.priority) ??
     normalizePriorityFilterValue(right.filters.tag);
-  const leftTag = left.filters.tag ? normalizeTagToken(left.filters.tag) : undefined;
-  const rightTag = right.filters.tag ? normalizeTagToken(right.filters.tag) : undefined;
+  const leftTag = left.filters.tag
+    ? normalizeTagToken(left.filters.tag)
+    : undefined;
+  const rightTag = right.filters.tag
+    ? normalizeTagToken(right.filters.tag)
+    : undefined;
   return (
     left.id === right.id &&
     left.name === right.name &&
@@ -239,12 +258,18 @@ function areViewsEquivalent(left: SavedView, right: SavedView): boolean {
   );
 }
 
-function chooseTaskWinner(localTask: Task, incomingTask: Task): {
+function chooseTaskWinner(
+  localTask: Task,
+  incomingTask: Task,
+): {
   winner: Task;
   resolvedByUpdatedAt: boolean;
 } {
   const localUpdated = asTimestamp((localTask as Partial<Task>).updatedAt, 0);
-  const incomingUpdated = asTimestamp((incomingTask as Partial<Task>).updatedAt, 0);
+  const incomingUpdated = asTimestamp(
+    (incomingTask as Partial<Task>).updatedAt,
+    0,
+  );
 
   if (incomingUpdated > localUpdated) {
     return { winner: incomingTask, resolvedByUpdatedAt: true };
@@ -254,7 +279,10 @@ function chooseTaskWinner(localTask: Task, incomingTask: Task): {
   }
 
   const localCreated = asTimestamp((localTask as Partial<Task>).createdAt, 0);
-  const incomingCreated = asTimestamp((incomingTask as Partial<Task>).createdAt, 0);
+  const incomingCreated = asTimestamp(
+    (incomingTask as Partial<Task>).createdAt,
+    0,
+  );
   if (incomingCreated > localCreated) {
     return { winner: incomingTask, resolvedByUpdatedAt: false };
   }
@@ -268,13 +296,13 @@ function chooseTaskWinner(localTask: Task, incomingTask: Task): {
 
 export function mergeTasksByIdNewestUpdatedAt(
   localTasks: Task[],
-  incomingTasks: Task[]
+  incomingTasks: Task[],
 ): MergeTasksResult {
   const stats: MergeTasksStats = {
     added: 0,
     updated: 0,
     unchanged: 0,
-    conflictsResolvedByUpdatedAt: 0
+    conflictsResolvedByUpdatedAt: 0,
   };
 
   const merged: Task[] = [];
@@ -301,13 +329,16 @@ export function mergeTasksByIdNewestUpdatedAt(
 
     const { winner, resolvedByUpdatedAt } = chooseTaskWinner(
       normalizedLocalTask,
-      incomingTask
+      incomingTask,
     );
     if (resolvedByUpdatedAt) {
       stats.conflictsResolvedByUpdatedAt += 1;
     }
 
-    if (winner === incomingTask && !areTasksEquivalent(normalizedLocalTask, incomingTask)) {
+    if (
+      winner === incomingTask &&
+      !areTasksEquivalent(normalizedLocalTask, incomingTask)
+    ) {
       stats.updated += 1;
     } else {
       stats.unchanged += 1;
@@ -329,12 +360,12 @@ export function mergeTasksByIdNewestUpdatedAt(
 
 export function mergeSavedViewsByNameNewestUpdatedAt(
   localSavedViews: SavedView[],
-  incomingSavedViews: SavedView[]
+  incomingSavedViews: SavedView[],
 ): MergeSavedViewsResult {
   const stats: MergeSavedViewsStats = {
     added: 0,
     updated: 0,
-    unchanged: 0
+    unchanged: 0,
   };
 
   const merged = localSavedViews.map((view) => ({ ...view }));
@@ -379,12 +410,14 @@ export function mergeSavedViewsByNameNewestUpdatedAt(
 
 export function recomputeTagIndex(
   tasks: Task[],
-  now = Date.now()
+  now = Date.now(),
 ): Record<string, TagIndexEntry> {
   const byTag = new Map<string, TagIndexEntry>();
 
   for (const task of tasks) {
-    const normalizedTags = normalizeTags(Array.isArray(task.tags) ? task.tags : []);
+    const normalizedTags = normalizeTags(
+      Array.isArray(task.tags) ? task.tags : [],
+    );
     const updatedAt = asTimestamp((task as Partial<Task>).updatedAt, 0);
     const createdAt = asTimestamp((task as Partial<Task>).createdAt, 0);
     const lastUsedAt = Math.max(updatedAt, createdAt, 0) || now;
@@ -395,7 +428,7 @@ export function recomputeTagIndex(
         byTag.set(tag, {
           tagName: tag,
           usageCount: 1,
-          lastUsedAt
+          lastUsedAt,
         });
         continue;
       }
@@ -403,13 +436,13 @@ export function recomputeTagIndex(
       byTag.set(tag, {
         tagName: tag,
         usageCount: existing.usageCount + 1,
-        lastUsedAt: Math.max(existing.lastUsedAt, lastUsedAt)
+        lastUsedAt: Math.max(existing.lastUsedAt, lastUsedAt),
       });
     }
   }
 
   const sorted = Array.from(byTag.entries()).sort(([left], [right]) =>
-    left.localeCompare(right)
+    left.localeCompare(right),
   );
 
   const next: Record<string, TagIndexEntry> = {};
@@ -419,13 +452,18 @@ export function recomputeTagIndex(
   return next;
 }
 
-function computeReplaceTaskStats(localTasks: Task[], incomingTasks: Task[]): {
+function computeReplaceTaskStats(
+  localTasks: Task[],
+  incomingTasks: Task[],
+): {
   added: number;
   updated: number;
   unchanged: number;
   removed: number;
 } {
-  const localById = new Map(localTasks.map((task) => [task.id, normalizeTask(task)]));
+  const localById = new Map(
+    localTasks.map((task) => [task.id, normalizeTask(task)]),
+  );
   const incomingIds = new Set<string>();
 
   let added = 0;
@@ -460,10 +498,10 @@ function computeReplaceTaskStats(localTasks: Task[], incomingTasks: Task[]): {
 
 function computeReplaceSavedViewStats(
   localSavedViews: SavedView[],
-  incomingSavedViews: SavedView[]
+  incomingSavedViews: SavedView[],
 ): MergeSavedViewsStats {
   const localByName = new Map(
-    localSavedViews.map((view) => [normalizeViewKey(view.name), view])
+    localSavedViews.map((view) => [normalizeViewKey(view.name), view]),
   );
 
   let added = 0;
@@ -491,17 +529,20 @@ function computeReplaceSavedViewStats(
 export function importState(
   currentState: LoadedData,
   incomingState: LoadedData,
-  options: ImportStateOptions = {}
+  options: ImportStateOptions = {},
 ): ImportStateResult {
   const mode = options.mode ?? "merge";
   const now = options.now ?? Date.now();
 
   if (mode === "replace") {
     const normalizedTasks = incomingState.tasks.map(normalizeTask);
-    const taskStats = computeReplaceTaskStats(currentState.tasks, normalizedTasks);
+    const taskStats = computeReplaceTaskStats(
+      currentState.tasks,
+      normalizedTasks,
+    );
     const savedViewStats = computeReplaceSavedViewStats(
       currentState.savedViews,
-      incomingState.savedViews
+      incomingState.savedViews,
     );
     const nextState: LoadedData = {
       schemaVersion: incomingState.schemaVersion,
@@ -509,7 +550,7 @@ export function importState(
       tagIndex: recomputeTagIndex(normalizedTasks, now),
       tagAliases: normalizeTagAliases(incomingState.tagAliases),
       savedViews: incomingState.savedViews.map((view) => ({ ...view })),
-      engagement: normalizeEngagementState(incomingState.engagement, now)
+      engagement: normalizeEngagementState(incomingState.engagement, now),
     };
 
     return {
@@ -519,31 +560,34 @@ export function importState(
         tasks: taskStats,
         conflictsResolvedByUpdatedAt: 0,
         savedViews: savedViewStats,
-        schemaVersion: nextState.schemaVersion
-      }
+        schemaVersion: nextState.schemaVersion,
+      },
     };
   }
 
   const mergedTasks = mergeTasksByIdNewestUpdatedAt(
     currentState.tasks,
-    incomingState.tasks
+    incomingState.tasks,
   );
   const mergedViews = mergeSavedViewsByNameNewestUpdatedAt(
     currentState.savedViews,
-    incomingState.savedViews
+    incomingState.savedViews,
   );
 
   const nextState: LoadedData = {
     schemaVersion: incomingState.schemaVersion,
     tasks: mergedTasks.merged,
     tagIndex: recomputeTagIndex(mergedTasks.merged, now),
-    tagAliases: mergeTagAliasesForImport(currentState.tagAliases, incomingState.tagAliases),
+    tagAliases: mergeTagAliasesForImport(
+      currentState.tagAliases,
+      incomingState.tagAliases,
+    ),
     savedViews: mergedViews.merged,
     engagement: mergeEngagementStates(
       normalizeEngagementState(currentState.engagement, now),
       normalizeEngagementState(incomingState.engagement, now),
-      now
-    )
+      now,
+    ),
   };
 
   return {
@@ -554,18 +598,19 @@ export function importState(
         added: mergedTasks.stats.added,
         updated: mergedTasks.stats.updated,
         unchanged: mergedTasks.stats.unchanged,
-        removed: 0
+        removed: 0,
       },
-      conflictsResolvedByUpdatedAt: mergedTasks.stats.conflictsResolvedByUpdatedAt,
+      conflictsResolvedByUpdatedAt:
+        mergedTasks.stats.conflictsResolvedByUpdatedAt,
       savedViews: mergedViews.stats,
-      schemaVersion: nextState.schemaVersion
-    }
+      schemaVersion: nextState.schemaVersion,
+    },
   };
 }
 
 export function redactStateForExport(
   payload: PortableExportPayload,
-  mode: RedactMode = "basic"
+  mode: RedactMode = "basic",
 ): PortableExportPayload {
   if (mode === "basic") {
     return {
@@ -573,8 +618,8 @@ export function redactStateForExport(
       tasks: payload.tasks.map((task) => ({
         ...task,
         title: "",
-        notes: ""
-      }))
+        notes: "",
+      })),
     };
   }
 
@@ -592,13 +637,13 @@ export function redactStateForExport(
         recurrence: undefined,
         instance_of: undefined,
         external: undefined,
-        reminder: undefined
+        reminder: undefined,
       })),
       tagIndex: {},
       tagAliases: {},
       savedViews: [],
       engagement: createDefaultEngagementState(),
-      settings: undefined
+      settings: undefined,
     };
   }
 
@@ -616,15 +661,15 @@ export function redactStateForExport(
       recurrence: undefined,
       instance_of: undefined,
       external: undefined,
-      reminder: undefined
+      reminder: undefined,
     })),
     engagement: createDefaultEngagementState(),
     settings: payload.settings
       ? {
           ...payload.settings,
           notifications: defaultSettings.notifications,
-          security: defaultSettings.security
+          security: defaultSettings.security,
         }
-      : undefined
+      : undefined,
   };
 }

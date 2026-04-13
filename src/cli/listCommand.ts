@@ -2,7 +2,11 @@ import type { Filters, SortMode, Task } from "../domain/models";
 import { filterTasks, sortTasks } from "../domain/query";
 import { CLI_EXIT_CODE } from "./exitCodes";
 import { parseSelectorTokens } from "./selectors";
-import { getDataFilePath, safeLoadState, type LoadedData } from "../state/persistence";
+import {
+  getDataFilePath,
+  safeLoadState,
+  type LoadedData,
+} from "../state/persistence";
 import { initialState, reducer } from "../state/store";
 import { redactedLogger } from "../logging/redactedLogger";
 
@@ -55,10 +59,15 @@ const DEFAULT_DEPS: ListCommandDeps = {
     return result.data;
   },
   log: (line: string) => redactedLogger.log(line),
-  error: (line: string) => redactedLogger.error(line)
+  error: (line: string) => redactedLogger.error(line),
 };
 
-const VALID_SORT_MODE = new Set<SortMode>(["due", "updated", "created", "title"]);
+const VALID_SORT_MODE = new Set<SortMode>([
+  "due",
+  "updated",
+  "created",
+  "title",
+]);
 
 function parsePositiveInteger(raw: string, flag: string): number | null {
   if (!/^[0-9]+$/.test(raw.trim())) {
@@ -91,7 +100,10 @@ export function parseListArgs(args: string[]): ListParseResult {
       }
       const normalized = next.trim().toLowerCase();
       if (!VALID_SORT_MODE.has(normalized as SortMode)) {
-        return { ok: false, error: `--sort must be due, updated, created, or title` };
+        return {
+          ok: false,
+          error: `--sort must be due, updated, created, or title`,
+        };
       }
       sortMode = normalized as SortMode;
       i += 1;
@@ -100,7 +112,10 @@ export function parseListArgs(args: string[]): ListParseResult {
     if (arg.startsWith("--sort=")) {
       const normalized = arg.slice("--sort=".length).trim().toLowerCase();
       if (!VALID_SORT_MODE.has(normalized as SortMode)) {
-        return { ok: false, error: `--sort must be due, updated, created, or title` };
+        return {
+          ok: false,
+          error: `--sort must be due, updated, created, or title`,
+        };
       }
       sortMode = normalized as SortMode;
       continue;
@@ -120,7 +135,10 @@ export function parseListArgs(args: string[]): ListParseResult {
       continue;
     }
     if (arg.startsWith("--limit=")) {
-      const parsed = parsePositiveInteger(arg.slice("--limit=".length), "--limit");
+      const parsed = parsePositiveInteger(
+        arg.slice("--limit=".length),
+        "--limit",
+      );
       if (parsed === null) {
         return { ok: false, error: "--limit must be a positive integer" };
       }
@@ -140,12 +158,16 @@ export function parseListArgs(args: string[]): ListParseResult {
     selectors,
     sortMode,
     ...(limit !== undefined ? { limit } : {}),
-    help
+    help,
   };
 }
 
-export function printListHelp(log: (line: string) => void = redactedLogger.log): void {
-  log("Usage: tadoi list [selectors...] [--sort <due|updated|created|title>] [--limit <n>] [--json]");
+export function printListHelp(
+  log: (line: string) => void = redactedLogger.log,
+): void {
+  log(
+    "Usage: tadoi list [selectors...] [--sort <due|updated|created|title>] [--limit <n>] [--json]",
+  );
   log("");
   log("Selectors:");
   log("  +tag            Require tag");
@@ -172,14 +194,14 @@ function toListTaskRecord(task: Task): ListTaskRecord {
     tags: [...task.tags],
     assignee: task.assignee ?? null,
     project: task.project ?? null,
-    workflowStage: task.workflowStage ?? null
+    workflowStage: task.workflowStage ?? null,
   };
 }
 
 export async function runListCommandWithDeps(
   args: string[],
   options: { json: boolean },
-  deps: ListCommandDeps
+  deps: ListCommandDeps,
 ): Promise<{ exitCode: number; data?: ListJsonData }> {
   const parsed = parseListArgs(args);
   if (!parsed.ok) {
@@ -194,7 +216,7 @@ export async function runListCommandWithDeps(
 
   const selectorResult = parseSelectorTokens(parsed.selectors, {
     status: "open",
-    due: "any"
+    due: "any",
   });
   if (!selectorResult.ok) {
     deps.error(selectorResult.error);
@@ -207,7 +229,8 @@ export async function runListCommandWithDeps(
     const now = deps.now();
     const filtered = filterTasks(state.tasks, selectorResult.filters, now);
     const sorted = sortTasks(filtered, now, parsed.sortMode);
-    const limited = parsed.limit !== undefined ? sorted.slice(0, parsed.limit) : sorted;
+    const limited =
+      parsed.limit !== undefined ? sorted.slice(0, parsed.limit) : sorted;
     const records = limited.map(toListTaskRecord);
 
     const payload: ListJsonData = {
@@ -216,7 +239,7 @@ export async function runListCommandWithDeps(
       filters: selectorResult.filters,
       sort: parsed.sortMode,
       count: records.length,
-      tasks: records
+      tasks: records,
     };
 
     if (options.json) {
@@ -230,7 +253,7 @@ export async function runListCommandWithDeps(
     return { exitCode: CLI_EXIT_CODE.SUCCESS };
   } catch (error: unknown) {
     deps.error(
-      `Error: could not read data file (${error instanceof Error ? error.message : String(error)})`
+      `Error: could not read data file (${error instanceof Error ? error.message : String(error)})`,
     );
     return { exitCode: CLI_EXIT_CODE.IO_ERROR };
   }
@@ -238,7 +261,7 @@ export async function runListCommandWithDeps(
 
 export async function runListCommand(
   args: string[],
-  options: { json: boolean }
+  options: { json: boolean },
 ): Promise<{ exitCode: number; data?: ListJsonData }> {
   return runListCommandWithDeps(args, options, DEFAULT_DEPS);
 }

@@ -3,41 +3,47 @@ import { resolveTaskRowClickIntent } from "../components/TaskList";
 import { buildRecurrenceFromDraft } from "../domain/recurrence/draft";
 import {
   reconcileOverrideChecklistWithSeries,
-  sortChecklistItems
+  sortChecklistItems,
 } from "../domain/checklist";
 import {
   formatDateToLocalIso,
-  parseLocalIsoToDate
+  parseLocalIsoToDate,
 } from "../domain/recurrence/rruleAdapter";
-import { buildReminderFromDraft, stripReminderRuntimeState } from "../domain/reminders";
-import { getSuggestedTime, type SuggestedTime } from "../domain/timeAutocomplete";
+import {
+  buildReminderFromDraft,
+  stripReminderRuntimeState,
+} from "../domain/reminders";
+import {
+  getSuggestedTime,
+  type SuggestedTime,
+} from "../domain/timeAutocomplete";
 import {
   MINI_DEFAULT_TIMEZONE,
   canonicalizeDueAtInput,
-  canonicalizeTimeOnlyInput
+  canonicalizeTimeOnlyInput,
 } from "../lib/datetime/due_at_canonicalizer";
 import {
   combineDueDateTime,
   createDraftFromTask,
   createEmptyDraft,
-  formatDate
+  formatDate,
 } from "../state/store";
 import { updateTagIndex } from "../domain/tagIndex";
 import {
   cloneEditorDraft,
-  isEditorDraftDirty
+  isEditorDraftDirty,
 } from "../domain/editorDraftDirty";
 import {
   FocusTarget,
   Mode,
   type AppState,
   type EditorDraft,
-  type Task
+  type Task,
 } from "../domain/models";
 import type { VisibleTaskRow } from "../domain/taskRows";
 import type {
   UIEditTargetSwitchModal,
-  UITaskEditorUnsavedContinuation
+  UITaskEditorUnsavedContinuation,
 } from "../ui/state";
 import { resolveEditorFocusAfterDraftChange } from "./uiState";
 import { decideEditTargetSwitch } from "./editTargetSwitchFlow";
@@ -71,7 +77,7 @@ type EditorFlowDeps = {
   closeViewsOverlay: () => void;
   clearPendingGPrefix: () => void;
   requestTaskEditorUnsavedGuard: (
-    continuation: UITaskEditorUnsavedContinuation
+    continuation: UITaskEditorUnsavedContinuation,
   ) => boolean;
   resetEditorSessionTracking: () => void;
   openModalWithContext: (modal: any) => void;
@@ -81,9 +87,11 @@ type EditorFlowDeps = {
   }) => void;
   showShortNavigationBanner: (message: string) => void;
   resolveOccurrenceContextForRow: (
-    row: VisibleTaskRow | undefined
+    row: VisibleTaskRow | undefined,
   ) => OccurrenceContext | null;
-  resolvePersistedTaskForRow: (row: VisibleTaskRow | undefined) => Task | undefined;
+  resolvePersistedTaskForRow: (
+    row: VisibleTaskRow | undefined,
+  ) => Task | undefined;
   findSeriesTaskBySeriesId: (seriesId: string | undefined) => Task | undefined;
   findTaskById: (taskId: string | undefined) => Task | undefined;
   normalizeOccurrenceIso: (value: string | undefined) => string | undefined;
@@ -91,19 +99,19 @@ type EditorFlowDeps = {
     tasks: Task[],
     seriesTaskId: string,
     occurrenceIso: string,
-    nowMs: number
+    nowMs: number,
   ) => Task[];
   removeMaterializedOccurrenceInstance: (
     tasks: Task[],
     seriesId: string,
-    occurrenceIso: string
+    occurrenceIso: string,
   ) => Task[];
   parseTagsInput: (input: string) => string[];
   triggerFirstRecurringTaskCreated: (at: number, seriesId: string) => void;
   triggerChecklistMilestonesForTaskTransition: (
     previousTask: Task | undefined,
     nextTask: Task | undefined,
-    at: number
+    at: number,
   ) => void;
   selectTaskById: (taskId: string) => void;
 };
@@ -136,7 +144,8 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
   function getEditSwitchModal(): UIEditTargetSwitchModal | null {
     const modal = deps.uiState.modal;
     if (!modal || typeof modal !== "object") return null;
-    if ((modal as { type?: string }).type !== "edit_switch_confirm") return null;
+    if ((modal as { type?: string }).type !== "edit_switch_confirm")
+      return null;
     return modal as UIEditTargetSwitchModal;
   }
 
@@ -159,7 +168,7 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
       isDirty:
         deps.editorDirtyIntentRef.current ||
         isEditorDraftDirty(editorDraft, deps.editorBaselineDraftRef.current),
-      hasActiveModal: deps.uiState.modal !== null
+      hasActiveModal: deps.uiState.modal !== null,
     });
 
     if (decision.type === "ignore") return;
@@ -174,7 +183,7 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
       toTaskId: decision.toTaskId,
       toTaskTitle: targetRow.title,
       previousMode: Mode.EDIT,
-      previousFocus: deps.uiState.focus
+      previousFocus: deps.uiState.focus,
     });
   }
 
@@ -183,7 +192,7 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
     if (!modal) return;
     const saveSucceeded = saveEditor({
       forceMode: Mode.EDIT,
-      closeAfterSave: false
+      closeAfterSave: false,
     });
     if (!saveSucceeded) return;
     deps.closeModalWithPreviousContext(modal);
@@ -206,7 +215,9 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
 
   function handleTaskRowClick(input: { taskId: string; wasSelected: boolean }) {
     if (deps.uiState.mode === Mode.MODAL_CONFIRM && deps.uiState.modal) return;
-    const targetExists = deps.visibleTaskRows.some((task) => task.id === input.taskId);
+    const targetExists = deps.visibleTaskRows.some(
+      (task) => task.id === input.taskId,
+    );
     if (!targetExists) return;
     const effectiveWasSelected =
       input.wasSelected || deps.selectedRowIdRef.current === input.taskId;
@@ -219,7 +230,7 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
     const intent = resolveTaskRowClickIntent({
       button: 0,
       wasSelected: effectiveWasSelected,
-      mode: deps.uiState.mode
+      mode: deps.uiState.mode,
     });
 
     if (intent === "none") return;
@@ -248,7 +259,7 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
     deps.uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
     deps.dispatch({
       type: "setEditor",
-      editor: emptyDraft
+      editor: emptyDraft,
     });
   }
 
@@ -289,7 +300,7 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
             id: `occurrence:${context.seriesId}:${context.occurrenceIso}`,
             dueAt: occurrenceDate.getTime(),
             reminder: stripReminderRuntimeState(context.seriesTask.reminder),
-            recurrence: undefined
+            recurrence: undefined,
           };
       const baseDraft = createDraftFromTask(editSource);
       return {
@@ -306,7 +317,7 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
         editKind: "occurrence",
         sourceTaskId: context.seriesTask.id,
         sourceSeriesId: context.seriesId,
-        occurrenceIso: context.occurrenceIso
+        occurrenceIso: context.occurrenceIso,
       };
     }
 
@@ -314,7 +325,7 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
     if (!persisted) return null;
     return {
       ...createDraftFromTask(persisted),
-      editKind: "regular"
+      editKind: "regular",
     };
   }
 
@@ -345,7 +356,7 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
       ...createDraftFromTask(seriesTask),
       editKind: "series",
       sourceTaskId: seriesTask.id,
-      sourceSeriesId: seriesTask.recurrence?.series_id
+      sourceSeriesId: seriesTask.recurrence?.series_id,
     });
   }
 
@@ -367,7 +378,8 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
     deps.resetEditorSessionTracking();
     deps.closeViewsOverlay();
     const baseDraft = createDraftFromTask(persisted);
-    const dueText = persisted.status === "done" ? formatDate(deps.now) : baseDraft.dueText;
+    const dueText =
+      persisted.status === "done" ? formatDate(deps.now) : baseDraft.dueText;
     const timeText = persisted.status === "done" ? "" : baseDraft.timeText;
     deps.setTimeSuggestion(getSuggestedTime(new Date()));
     const duplicateDraft: EditorDraft = {
@@ -378,7 +390,7 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
       editKind: "regular",
       sourceTaskId: undefined,
       sourceSeriesId: undefined,
-      occurrenceIso: undefined
+      occurrenceIso: undefined,
     };
     deps.editorDraftRef.current = duplicateDraft;
     deps.editorDirtyIntentRef.current = false;
@@ -387,7 +399,7 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
     deps.uiDispatch({ type: "setEditorScrollOffset", scrollOffset: 0 });
     deps.dispatch({
       type: "setEditor",
-      editor: duplicateDraft
+      editor: duplicateDraft,
     });
   }
 
@@ -406,19 +418,19 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
     if (!previousDraft) return;
     const nextDraft: EditorDraft = {
       ...previousDraft,
-      ...patch
+      ...patch,
     };
     deps.editorDraftRef.current = nextDraft;
     if (deps.uiState.mode === Mode.EDIT) {
       deps.editorDirtyIntentRef.current = isEditorDraftDirty(
         nextDraft,
-        deps.editorBaselineDraftRef.current
+        deps.editorBaselineDraftRef.current,
       );
     }
     const reconciledFocus = resolveEditorFocusAfterDraftChange(
       deps.uiState.focus,
       previousDraft,
-      nextDraft
+      nextDraft,
     );
     if (reconciledFocus !== deps.uiState.focus) {
       deps.uiDispatch({ type: "setFocus", focus: reconciledFocus });
@@ -444,12 +456,18 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
     let normalizedTimeText = timeText;
 
     if (dueText) {
-      const canonicalizedDue = canonicalizeDueAtInput(dueText, timeText || undefined, {
-        now: nowMs,
-        tz: MINI_DEFAULT_TIMEZONE
-      });
+      const canonicalizedDue = canonicalizeDueAtInput(
+        dueText,
+        timeText || undefined,
+        {
+          now: nowMs,
+          tz: MINI_DEFAULT_TIMEZONE,
+        },
+      );
       if (!canonicalizedDue.ok) {
-        deps.showShortNavigationBanner(canonicalizedDue.message.replace(/^Error:\s*/, ""));
+        deps.showShortNavigationBanner(
+          canonicalizedDue.message.replace(/^Error:\s*/, ""),
+        );
         return false;
       }
       normalizedDueText = canonicalizedDue.dueDate;
@@ -457,10 +475,12 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
     } else if (timeText) {
       const canonicalizedTime = canonicalizeTimeOnlyInput(timeText, {
         now: nowMs,
-        tz: MINI_DEFAULT_TIMEZONE
+        tz: MINI_DEFAULT_TIMEZONE,
       });
       if (!canonicalizedTime.ok) {
-        deps.showShortNavigationBanner(canonicalizedTime.message.replace(/^Error:\s*/, ""));
+        deps.showShortNavigationBanner(
+          canonicalizedTime.message.replace(/^Error:\s*/, ""),
+        );
         return false;
       }
     }
@@ -470,15 +490,23 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
       : { dueAt: undefined, hasExplicitTime: false };
     const tags = deps.parseTagsInput(draft.tagsText);
     const notes = draft.notes.length > 0 ? draft.notes : undefined;
-    const assignee = draft.assigneeText.trim().length > 0 ? draft.assigneeText.trim() : undefined;
-    const project = draft.projectText.trim().length > 0 ? draft.projectText.trim() : undefined;
+    const assignee =
+      draft.assigneeText.trim().length > 0
+        ? draft.assigneeText.trim()
+        : undefined;
+    const project =
+      draft.projectText.trim().length > 0
+        ? draft.projectText.trim()
+        : undefined;
     const links = draft.links.map((link) => ({ ...link }));
-    const checklist = sortChecklistItems(draft.checklist.map((item) => ({ ...item })));
+    const checklist = sortChecklistItems(
+      draft.checklist.map((item) => ({ ...item })),
+    );
 
     if (activeMode === Mode.ADD) {
       const reminderBuild = buildReminderFromDraft({
         draft,
-        dueAt
+        dueAt,
       });
       if (reminderBuild.validationMessage) {
         deps.showShortNavigationBanner(reminderBuild.validationMessage);
@@ -488,7 +516,7 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
       const recurrenceBuild = buildRecurrenceFromDraft(
         draft,
         dueAt,
-        `series:${taskId}`
+        `series:${taskId}`,
       );
       if (recurrenceBuild.error) {
         deps.showShortNavigationBanner(recurrenceBuild.error);
@@ -511,17 +539,29 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
         workflowStage: draft.workflowStage ?? "todo",
         ...(reminderBuild.reminder ? { reminder: reminderBuild.reminder } : {}),
         ...(links.length > 0 ? { links } : {}),
-        ...(recurrenceBuild.recurrence ? { recurrence: recurrenceBuild.recurrence } : {})
+        ...(recurrenceBuild.recurrence
+          ? { recurrence: recurrenceBuild.recurrence }
+          : {}),
       };
 
-      deps.dispatch({ type: "setTasks", tasks: [...deps.state.tasks, newTask] });
+      deps.dispatch({
+        type: "setTasks",
+        tasks: [...deps.state.tasks, newTask],
+      });
       deps.dispatch({
         type: "setTagIndex",
-        tagIndex: updateTagIndex(deps.state.tagIndex, tags, nowMs)
+        tagIndex: updateTagIndex(deps.state.tagIndex, tags, nowMs),
       });
-      deps.triggerChecklistMilestonesForTaskTransition(undefined, newTask, nowMs);
+      deps.triggerChecklistMilestonesForTaskTransition(
+        undefined,
+        newTask,
+        nowMs,
+      );
       if (recurrenceBuild.recurrence) {
-        deps.triggerFirstRecurringTaskCreated(nowMs, recurrenceBuild.recurrence.series_id);
+        deps.triggerFirstRecurringTaskCreated(
+          nowMs,
+          recurrenceBuild.recurrence.series_id,
+        );
       }
       deps.dispatch({ type: "setSelected", id: newTask.id });
       if (closeAfterSave) {
@@ -538,7 +578,8 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
         const seriesId = draft.sourceSeriesId;
         const occurrenceIso = deps.normalizeOccurrenceIso(draft.occurrenceIso);
         const seriesTask =
-          deps.findTaskById(draft.sourceTaskId) ?? deps.findSeriesTaskBySeriesId(seriesId);
+          deps.findTaskById(draft.sourceTaskId) ??
+          deps.findSeriesTaskBySeriesId(seriesId);
 
         if (!seriesId || !occurrenceIso || !seriesTask?.recurrence) {
           deps.showShortNavigationBanner("Unable to edit occurrence");
@@ -549,20 +590,23 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
           deps.state.tasks,
           seriesTask.id,
           occurrenceIso,
-          nowMs
+          nowMs,
         );
-        const withoutPreviousInstance = deps.removeMaterializedOccurrenceInstance(
-          tasksWithSeriesExdate,
-          seriesId,
-          occurrenceIso
-        );
+        const withoutPreviousInstance =
+          deps.removeMaterializedOccurrenceInstance(
+            tasksWithSeriesExdate,
+            seriesId,
+            occurrenceIso,
+          );
 
         const instanceId = draft.id ?? crypto.randomUUID();
-        const existingInstance = draft.id ? deps.findTaskById(draft.id) : undefined;
+        const existingInstance = draft.id
+          ? deps.findTaskById(draft.id)
+          : undefined;
         const reminderBuild = buildReminderFromDraft({
           draft,
           dueAt,
-          previousReminder: existingInstance?.reminder
+          previousReminder: existingInstance?.reminder,
         });
         if (reminderBuild.validationMessage) {
           deps.showShortNavigationBanner(reminderBuild.validationMessage);
@@ -575,7 +619,10 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
           updatedAt: nowMs,
           dueAt,
           hasExplicitTime,
-          closedAt: existingInstance?.status === "done" ? existingInstance.closedAt : undefined,
+          closedAt:
+            existingInstance?.status === "done"
+              ? existingInstance.closedAt
+              : undefined,
           notes,
           tags,
           checklist,
@@ -585,23 +632,25 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
             draft.workflowStage ??
             existingInstance?.workflowStage ??
             ((existingInstance?.status ?? "open") === "done" ? "done" : "todo"),
-          ...(reminderBuild.reminder ? { reminder: reminderBuild.reminder } : {}),
+          ...(reminderBuild.reminder
+            ? { reminder: reminderBuild.reminder }
+            : {}),
           instance_of: {
             series_id: seriesId,
-            occurrence: occurrenceIso
-          }
+            occurrence: occurrenceIso,
+          },
         };
 
         tasksWithSeriesExdate = [...withoutPreviousInstance, instance];
         deps.dispatch({ type: "setTasks", tasks: tasksWithSeriesExdate });
         deps.dispatch({
           type: "setTagIndex",
-          tagIndex: updateTagIndex(deps.state.tagIndex, tags, nowMs)
+          tagIndex: updateTagIndex(deps.state.tagIndex, tags, nowMs),
         });
         deps.triggerChecklistMilestonesForTaskTransition(
           existingInstance ?? seriesTask,
           instance,
-          nowMs
+          nowMs,
         );
         deps.dispatch({ type: "setSelected", id: instanceId });
       } else if (draft.editKind === "series") {
@@ -616,7 +665,9 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
         const recurrenceBuild = buildRecurrenceFromDraft(
           draft,
           dueAt,
-          seriesTask.recurrence?.series_id ?? draft.sourceSeriesId ?? `series:${seriesTask.id}`
+          seriesTask.recurrence?.series_id ??
+            draft.sourceSeriesId ??
+            `series:${seriesTask.id}`,
         );
         if (recurrenceBuild.error) {
           deps.showShortNavigationBanner(recurrenceBuild.error);
@@ -627,7 +678,7 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
         const reminderBuild = buildReminderFromDraft({
           draft,
           dueAt,
-          previousReminder: seriesTask.reminder
+          previousReminder: seriesTask.reminder,
         });
         if (reminderBuild.validationMessage) {
           deps.showShortNavigationBanner(reminderBuild.validationMessage);
@@ -651,13 +702,18 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
               workflowStage:
                 draft.workflowStage ??
                 task.workflowStage ??
-                (task.status === "done" || task.status === "archived" ? "done" : "todo"),
+                (task.status === "done" || task.status === "archived"
+                  ? "done"
+                  : "todo"),
               updatedAt: nowMs,
               reminder: reminderBuild.reminder,
-              recurrence: recurrenceBuild.recurrence
+              recurrence: recurrenceBuild.recurrence,
             };
           }
-          if (!resolvedSeriesId || task.instance_of?.series_id !== resolvedSeriesId) {
+          if (
+            !resolvedSeriesId ||
+            task.instance_of?.series_id !== resolvedSeriesId
+          ) {
             return task;
           }
           return {
@@ -666,17 +722,23 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
             checklist: reconcileOverrideChecklistWithSeries(
               task.checklist,
               checklist,
-              nowIso
-            )
+              nowIso,
+            ),
           };
         });
         deps.dispatch({ type: "setTasks", tasks: updatedTasks });
         deps.dispatch({
           type: "setTagIndex",
-          tagIndex: updateTagIndex(deps.state.tagIndex, tags, nowMs)
+          tagIndex: updateTagIndex(deps.state.tagIndex, tags, nowMs),
         });
-        const updatedSeriesTask = updatedTasks.find((task) => task.id === seriesTask.id);
-        deps.triggerChecklistMilestonesForTaskTransition(seriesTask, updatedSeriesTask, nowMs);
+        const updatedSeriesTask = updatedTasks.find(
+          (task) => task.id === seriesTask.id,
+        );
+        deps.triggerChecklistMilestonesForTaskTransition(
+          seriesTask,
+          updatedSeriesTask,
+          nowMs,
+        );
         deps.dispatch({ type: "setSelected", id: seriesTask.id });
       } else {
         const targetTask = draft.id ? deps.findTaskById(draft.id) : undefined;
@@ -685,7 +747,7 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
         const recurrenceBuild = buildRecurrenceFromDraft(
           draft,
           dueAt,
-          targetTask.recurrence?.series_id ?? `series:${targetTask.id}`
+          targetTask.recurrence?.series_id ?? `series:${targetTask.id}`,
         );
         if (recurrenceBuild.error) {
           deps.showShortNavigationBanner(recurrenceBuild.error);
@@ -695,7 +757,7 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
         const reminderBuild = buildReminderFromDraft({
           draft,
           dueAt,
-          previousReminder: targetTask.reminder
+          previousReminder: targetTask.reminder,
         });
         if (reminderBuild.validationMessage) {
           deps.showShortNavigationBanner(reminderBuild.validationMessage);
@@ -715,25 +777,32 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
             workflowStage:
               draft.workflowStage ??
               task.workflowStage ??
-              (task.status === "done" || task.status === "archived" ? "done" : "todo"),
+              (task.status === "done" || task.status === "archived"
+                ? "done"
+                : "todo"),
             updatedAt: nowMs,
             reminder: reminderBuild.reminder,
-            recurrence: recurrenceBuild.recurrence
+            recurrence: recurrenceBuild.recurrence,
           };
         });
         deps.dispatch({ type: "setTasks", tasks: updatedTasks });
         deps.dispatch({
           type: "setTagIndex",
-          tagIndex: updateTagIndex(deps.state.tagIndex, tags, nowMs)
+          tagIndex: updateTagIndex(deps.state.tagIndex, tags, nowMs),
         });
-        const updatedTargetTask = updatedTasks.find((task) => task.id === targetTask.id);
+        const updatedTargetTask = updatedTasks.find(
+          (task) => task.id === targetTask.id,
+        );
         deps.triggerChecklistMilestonesForTaskTransition(
           targetTask,
           updatedTargetTask,
-          nowMs
+          nowMs,
         );
         if (!targetTask.recurrence && recurrenceBuild.recurrence) {
-          deps.triggerFirstRecurringTaskCreated(nowMs, recurrenceBuild.recurrence.series_id);
+          deps.triggerFirstRecurringTaskCreated(
+            nowMs,
+            recurrenceBuild.recurrence.series_id,
+          );
         }
       }
     }
@@ -765,7 +834,7 @@ export function useEditorFlow(deps: EditorFlowDeps): EditorFlowHandlers {
     openDuplicate,
     cancelEditor,
     updateEditorDraft,
-    saveEditor
+    saveEditor,
   };
 }
 

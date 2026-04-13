@@ -5,20 +5,27 @@ All notable changes to TADOI are documented in this file.
 The format is based on Keep a Changelog.
 
 ## [Unreleased]
+
 ### Added
+
 - Imported the `VWA AIRPORT` and `guttenburg` Codex workflow layer into `TADOI`, including repo-local `AGENTS.md`, `docs/ai` durable memory, `docs/codex` task-memory scaffolding, vendored skill snapshots in `ai/skills/`, and repo-owned workflow scripts under `scripts/codex/`.
 
 ## [0.4.0-beta.2] - 2026-03-11
+
 ### Changed
+
 - Runtime/package version surfaces now align to `v0.4.0-beta.2` / `0.4.0-beta.2` for the beta 2 repackaging pass.
 - Release-facing docs were refreshed to point at the beta 2 runtime/package baseline while keeping the existing `v0.4.0` document file set.
 
 ### Fixed
+
 - The CLI uninstall flow is now included in the beta 2 release packaging pass, including user-shell completion cleanup, reminder-helper best-effort cleanup, and printed main-install removal guidance.
 - Tarball and installer artifact naming now differentiate the beta 2 release from the prior `0.4.0` package artifacts.
 
 ## [0.4.0] - 2026-03-04
+
 ### Added
+
 - Backup Center now includes `Cloud Backups -> GitHub (CLI)` with:
   - connect flow (create private repo or use existing personal repo),
   - status panel (`gh` detect/login/account/repo/last push/last restore),
@@ -37,6 +44,7 @@ The format is based on Keep a Changelog.
   coverage for encrypted push + restore.
 
 ### Changed
+
 - Settings schema/normalization now includes non-secret `githubBackup` config with safe defaults:
   - `enabled`, `ownerRepo`, `branch`, `deviceId`, `pathPrefix`, `autoPushPolicy`, `lastPushed`.
 - Backup Center calendar submenu now includes the GitHub cloud backup entry.
@@ -46,16 +54,20 @@ The format is based on Keep a Changelog.
 - Active documentation baselines and versioned release artifacts were rolled to `v0.4.0`.
 
 ### Fixed
+
 - GitHub CLI adapter process spawn now forwards runtime environment (`PATH`) and
   supports Bun stdin sink semantics for `gh api --input -`.
 
 ### Beta Validation Focus
+
 - TOME notes flows and restore-defaults/reindex behavior.
 - GitHub Backup Center connect/push/restore and encrypted snapshot handling.
 - Empty-state NUX onboarding routing (`welcome`, `celebrate`, `what_next`) and progress chips.
 
 ## [0.3.9] - 2026-02-27
+
 ### Added
+
 - New active versioned documentation artifacts:
   - `TADOI_SPEC_v0.3.9.md`
   - `TADOI_TASKS_v0.3.9.md`
@@ -64,6 +76,7 @@ The format is based on Keep a Changelog.
   - `docs/ops/notion_v0.3.9_sync_pack.md`
 
 ### Changed
+
 - App/runtime version surfaces now align to `v0.3.9` / `0.3.9`:
   - `src/app/version.ts`
   - `package.json`
@@ -71,7 +84,9 @@ The format is based on Keep a Changelog.
 - Historical index coverage was expanded to include `v0.3.8` artifacts now that `v0.3.9` is active.
 
 ## [0.3.8] - 2026-02-27
+
 ### Added
+
 - Persistence schema baseline moved to `7` with migration `6 -> 7` backfilling
   `workflowStage` (`open -> todo`, `done|archived -> done`).
 - Dashboard analytics dimensions and filters were expanded in active v0.3.8 contracts:
@@ -80,6 +95,7 @@ The format is based on Keep a Changelog.
   - exact due-bucket drill-through via `dueDayOffset` (`+N`)
 
 ### Changed
+
 - DTF contract coverage now includes `DTF-008` and `DTF-009` named tests.
 - Release governance docs were refreshed to current `v0.3.8` evidence:
   - `docs/RELEASE_RUN_REPORT.md`
@@ -87,13 +103,16 @@ The format is based on Keep a Changelog.
 - Documentation governance sweep aligned active docs, spec sheets, and Notion staging runbooks to current `v0.3.8` implementation.
 
 ### Validation
+
 - `bun run docs:lint`: PASS (`[docs-lint] PASS: local markdown links and anchors resolved.`)
 - `bun run keybind:canonical:check`: PASS (`canonical=64 missing_in_docs=0 missing_in_code=0`)
 - `bun run contract:dtf:check`: PASS (`OK: 9 DTF IDs from DASHBOARD_SPEC_MVP.md, TADOI_SPEC_v0.3.8.md are covered by named test cases in 107 test files.`)
 - `bun run notion:sync:validate`: PASS (`[sync] validation OK: items=14`)
 
 ## [0.3.7] - 2026-02-25
+
 ### Added
+
 - Non-interactive engagement toasts in the bottom bar for completion milestones:
   - first completed task
   - first recurring task created
@@ -105,6 +124,7 @@ The format is based on Keep a Changelog.
   and deterministic cooldown/unlock tracking.
 
 ### Changed
+
 - Engagement toasts are queued (cap 3), priority ordered, auto-dismissed, and suppressed while
   blocking overlays are open, then resumed after overlays close.
 - Persistence schema baseline for this release was `6` with `stateRevision` concurrency hardening.
@@ -116,7 +136,9 @@ The format is based on Keep a Changelog.
   - `docs/ops/notion_v0.3.7_sync_pack.md`
 
 ## [0.3.6] - 2026-02-13
+
 ### Changed
+
 - Version surfaces are aligned to `v0.3.6` / `0.3.6` in runtime and active documentation.
 - Active release docs now point to the `v0.3.6` artifacts:
   - `TADOI_SPEC_v0.3.6.md`
@@ -133,7 +155,9 @@ The format is based on Keep a Changelog.
   - `docs/TADOI_Installation_Guide_All_Platforms.md`
 
 ## [0.3.5] - 2026-02-12
+
 ### Added
+
 - Task links / attachments runtime:
   - per-task `links[]` support with optional labels/kind hints
   - details-links focus actions (open/copy/add/edit/delete)
@@ -155,6 +179,7 @@ The format is based on Keep a Changelog.
   - `docs/ops/notion_v0.3.5_sync_pack.md`
 
 ### Changed
+
 - List-mode routing now supports explicit list/details focus toggle via `Tab` / `Shift+Tab`.
 - Link-open policy is source-aware and policy-driven:
   - calendar-imported links default to confirm-on-open behavior
@@ -164,7 +189,9 @@ The format is based on Keep a Changelog.
 - Active docs baselines are aligned to `v0.3.5` / `0.3.5`, including install, QA, feature, spec, and task artifacts.
 
 ## [0.3.4] - 2026-02-12
+
 ### Added
+
 - New release documentation artifacts:
   - `TADOI_SPEC_v0.3.4.md`
   - `TADOI_TASKS_v0.3.4.md`
@@ -176,6 +203,7 @@ The format is based on Keep a Changelog.
   - `docs/ops/notion_v0.3.4_sync_pack.md`
 
 ### Changed
+
 - Tag panel open key is standardized to `p` in list/dashboard routing and reflected in Help copy.
 - Left rail now includes a dedicated `TAG PANEL (P)` menu row and matching hints.
 - Brand/logo surface now includes `alternate_blocks32` as a first-class logo mode and in rotating mode order.
@@ -195,7 +223,9 @@ The format is based on Keep a Changelog.
   - `docs/recurring-tasks-implementation-plan.md`
 
 ## [0.3.0] - 2026-02-11
+
 ### Added
+
 - Versioned release documentation artifacts for `v0.3.0`:
   - `TADOI_SPEC_v0.3.0.md`
   - `TADOI_TASKS_v0.3.0.md`
@@ -203,6 +233,7 @@ The format is based on Keep a Changelog.
   - `docs/TADOI_Feature_List_v0.3.0.md`
 
 ### Changed
+
 - Version surfaces are aligned to `0.3.0` / `v0.3.0` in runtime and documentation.
 - Documentation contracts are synchronized to current behavior:
   - tag filtering now documents legacy cycle (`t`) and boolean panel (`p`, `ALL/ANY/NONE`)
@@ -213,7 +244,9 @@ The format is based on Keep a Changelog.
 - Notion documents in `Patrick’s Projects > TADOI > Documents` were updated in place for the same `v0.3.0` accuracy sync.
 
 ## [0.2.9] - 2026-02-11
+
 ### Added
+
 - Installable distribution pipeline scaffolding-to-execution upgrade:
   - new CLI router split (`src/cli.ts`) and TUI runner module (`src/tui/runTui.tsx`)
   - headless-safe `--version` and `--smoke-tui` command paths
@@ -239,6 +272,7 @@ The format is based on Keep a Changelog.
   - `go to task` resolves recurring-row fallbacks for reliable reveal behavior
 
 ### Changed
+
 - Version surfaces are now aligned to `0.2.9` / `v0.2.9` in app/runtime docs.
 - Backup Center copy/layout polish for clearer step labels, safety messaging, and action hints.
 - Documentation refreshed for Backup Center usage and keybindings (`README.md`, in-app Help text).
@@ -250,12 +284,15 @@ The format is based on Keep a Changelog.
 - Settings schema now includes `notifications.*` preferences with backward-compatible defaults and portability/import-export support.
 
 ### Fixed
+
 - Aligned `next7`/`DUE THIS WEEK` semantics across query, recurrence row expansion, and dashboard paths to a consistent rolling 7-day window (`today..+6`).
 - Help pane section navigation now keeps the selected section visible while moving with arrow keys, with page-based navigation support (`Ctrl+U`/`Ctrl+D`) in Help mode.
 - Help pane row spacing/layout no longer inserts extra blank spacer rows, improving visual consistency and scroll-follow behavior.
 
 ## [0.2.8]
+
 ### Added
+
 - Recurring tasks end-to-end (schema v4):
   - RRULE-style recurrence metadata on tasks (`dtstart`, `rrule`, `exdates`, `series_id`)
   - Materialized instance rows via `instance_of` for per-occurrence overrides/history
@@ -279,6 +316,7 @@ The format is based on Keep a Changelog.
   - editor page scrolling via `ctrl+u`/`ctrl+d` and `PageUp`/`PageDown`
 
 ### Changed
+
 - Task list/dashboard now render recurrence-aware visible rows (single source of truth for filters).
 - Dashboard/top-tags/KPI counts consume recurrence-expanded rows, keeping list and dashboard in sync for recurrence windows.
 - Persistence/validation/migration/portability updated for recurrence fields and schema version `4`.
@@ -298,6 +336,7 @@ The format is based on Keep a Changelog.
 - Version surfaces are aligned to `0.2.8` / `v0.2.8`.
 
 ### Fixed
+
 - Replaced direct `process.exit(...)` usage in interactive app exit paths with OpenTUI renderer teardown (`renderer.destroy()`), improving terminal state cleanup on quit.
 - Border/frame redraw reliability after dashboard mode toggles and terminal resizes.
 - Editor Save/Cancel mouse interactions now use OpenTUI mouse events (`onMouseDown`) instead of unsupported `onClick`.
@@ -305,7 +344,9 @@ The format is based on Keep a Changelog.
 - Add/Edit pane fields no longer clip/overlap into footer hints at constrained heights; footer actions remain visible.
 
 ## [0.2.7]
+
 ### Added
+
 - Dashboard mode (`b` / `B`) with two analytics widgets:
   - 8-bucket due chart (overdue, today, +1..+6 days)
   - 7-day backlog trend reconstruction
@@ -317,74 +358,98 @@ The format is based on Keep a Changelog.
 - Product-wrapper documentation for contribution policy, support intake, and release tracking.
 
 ### Changed
+
 - In-app Help and README keybindings now document dashboard usage and data portability commands.
 - Left rail/menu mode and focus surfaces now include `DASHBOARD`.
 - Version surfaces now aligned to `0.2.7` / `v0.2.7`.
 
 ### Fixed
+
 - Key-routing leakage prevention for dashboard mode so list navigation keys do not fire while dashboard is focused.
 
 ## [0.2.5]
+
 ### Added
+
 - Daily-driver list navigation primitives (`gg`/`G`, paging, overdue/today jumps).
 - Saved Views filter presets with persistence and migration support.
 - Packaging readiness workflow (`pack:dry`, `pack:inspect`, `pack:smoke`) and CI package gate.
 
 ### Changed
+
 - Sort-mode cycling and global active-tag filter cycling behavior.
 - Version surfaces and package metadata alignment to `0.2.5`.
 
 ### Fixed
+
 - Selection stability by task id across filter/search/sort changes.
 - Help/readability polish for high-contrast and task-list UI details.
 
 ## [0.2.4]
+
 ### Added
+
 - Platform contract documentation (baseline terminals and minimum size `80x24`).
 - Persistent save-failure banner and retry-on-next-domain-mutation behavior.
 - Performance debug instrumentation (`TADOI_PERF_DEBUG=1`).
 
 ### Fixed
+
 - Persistence interruption and recovery test coverage for real-user reliability cases.
 
 ## [0.2.3]
+
 ### Added
+
 - Formal mode/focus model with centralized key routing and Esc unwind behavior.
 - CI merge gates for test coverage and typecheck.
 
 ### Changed
+
 - Versioning discipline across app and package surfaces.
 - UI state routing boundaries to prevent key leakage across modes.
 
 ### Fixed
+
 - Modal correctness for blocking delete confirmations and deterministic outcomes.
 
 ## [0.2.2]
+
 ### Added
+
 - Corruption recovery path with automatic backup files (`*.corrupt.YYYYMMDD-HHMMSS`).
 - Cross-platform standardized data-path resolution and explicit data-path surfacing.
 
 ### Changed
+
 - Schema migration/validation discipline for persisted state.
 
 ### Fixed
+
 - Corrupt JSON and invalid-shape recovery behavior to keep app startup resilient.
 
 ## [0.2.1]
+
 ### Added
+
 - Date/time ergonomics (due-time handling and inline autocomplete improvements).
 - Tag normalization and autocomplete ranking updates.
 
 ### Changed
+
 - Theme/settings and due-label behavior refinement for day-based UX.
 
 ### Fixed
+
 - Local-day and DST-sensitive date logic edge cases.
 
 ## [0.2.0]
+
 ### Added
+
 - Initial polished MVP hardening layer for focus model, modal correctness, and selection-following scroll.
 - Keyboard-first task workflow with list/editor/help/search mode structure.
 
 ### Fixed
+
 - Scroll and selection visibility behavior under navigation/filter/resize changes.

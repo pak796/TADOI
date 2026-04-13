@@ -36,7 +36,7 @@ function parseArgs(argv: string[]): ParsedArgs {
     profile: "core",
     requireCmd: [],
     requireEnv: [],
-    checkXcodeLicense: false
+    checkXcodeLicense: false,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -136,7 +136,7 @@ function parseSemver(input: string): Semver | null {
   return {
     major: Number(match[1]),
     minor: Number(match[2]),
-    patch: Number(match[3])
+    patch: Number(match[3]),
   };
 }
 
@@ -155,7 +155,7 @@ function checkCommand(commandName: string): Check {
       target: commandName,
       status: "FAIL",
       message: `command not found: ${commandName}`,
-      fixHint: `Install ${commandName} and ensure it is on PATH.`
+      fixHint: `Install ${commandName} and ensure it is on PATH.`,
     };
   }
   return {
@@ -164,7 +164,7 @@ function checkCommand(commandName: string): Check {
     target: commandName,
     status: "PASS",
     message: `command found`,
-    evidence: found
+    evidence: found,
   };
 }
 
@@ -180,7 +180,7 @@ function checkBunVersion(minVersion: string): Check {
       target: "bun",
       status: "FAIL",
       message: "unable to read Bun version",
-      evidence: stderr || stdout
+      evidence: stderr || stdout,
     };
   }
 
@@ -192,7 +192,7 @@ function checkBunVersion(minVersion: string): Check {
       kind: "host",
       target: "bun",
       status: "FAIL",
-      message: `invalid semver comparison (current='${stdout}', required='${minVersion}')`
+      message: `invalid semver comparison (current='${stdout}', required='${minVersion}')`,
     };
   }
 
@@ -203,7 +203,7 @@ function checkBunVersion(minVersion: string): Check {
       target: "bun",
       status: "FAIL",
       message: `bun version ${stdout} is below required ${minVersion}`,
-      fixHint: `Upgrade Bun to >= ${minVersion}.`
+      fixHint: `Upgrade Bun to >= ${minVersion}.`,
     };
   }
 
@@ -212,7 +212,7 @@ function checkBunVersion(minVersion: string): Check {
     kind: "host",
     target: "bun",
     status: "PASS",
-    message: `bun version ${stdout} satisfies >= ${minVersion}`
+    message: `bun version ${stdout} satisfies >= ${minVersion}`,
   };
 }
 
@@ -234,7 +234,7 @@ function checkPythonXcodeBlocker(): Check | null {
       kind: "host",
       target: "xcode-license",
       status: "PASS",
-      message: "no Xcode license blocker detected via python3 probe"
+      message: "no Xcode license blocker detected via python3 probe",
     };
   }
 
@@ -243,9 +243,11 @@ function checkPythonXcodeBlocker(): Check | null {
     kind: "host",
     target: "xcode-license",
     status: "BLOCKED",
-    message: "Xcode license is not accepted; python3-dependent checks will fail",
-    fixHint: "Run `sudo xcodebuild -license` and accept terms, then rerun preflight.",
-    evidence: `${run.stderr || run.stdout || ""}`.trim()
+    message:
+      "Xcode license is not accepted; python3-dependent checks will fail",
+    fixHint:
+      "Run `sudo xcodebuild -license` and accept terms, then rerun preflight.",
+    evidence: `${run.stderr || run.stdout || ""}`.trim(),
   };
 }
 
@@ -259,11 +261,13 @@ function checkXcodeFirstLaunchStatus(): Check | null {
       target: "xcodebuild",
       status: "FAIL",
       message: "xcodebuild not found on PATH",
-      fixHint: "Install Xcode Command Line Tools."
+      fixHint: "Install Xcode Command Line Tools.",
     };
   }
 
-  const run = spawnSync("xcodebuild", ["-checkFirstLaunchStatus"], { encoding: "utf8" });
+  const run = spawnSync("xcodebuild", ["-checkFirstLaunchStatus"], {
+    encoding: "utf8",
+  });
   const combined = `${run.stdout || ""}\n${run.stderr || ""}`.toLowerCase();
   if (run.status === 0) {
     return {
@@ -271,7 +275,7 @@ function checkXcodeFirstLaunchStatus(): Check | null {
       kind: "host",
       target: "xcodebuild",
       status: "PASS",
-      message: "xcode first-launch status is complete"
+      message: "xcode first-launch status is complete",
     };
   }
   return {
@@ -280,8 +284,9 @@ function checkXcodeFirstLaunchStatus(): Check | null {
     target: "xcodebuild",
     status: "BLOCKED",
     message: "xcode first-launch status is incomplete or blocked",
-    fixHint: "Run `sudo xcodebuild -runFirstLaunch` (or complete CLT setup) and retry.",
-    evidence: combined.trim()
+    fixHint:
+      "Run `sudo xcodebuild -runFirstLaunch` (or complete CLT setup) and retry.",
+    evidence: combined.trim(),
   };
 }
 
@@ -293,7 +298,7 @@ function checkEnvVar(name: string): Check {
       kind: "env",
       target: name,
       status: "PASS",
-      message: "environment variable is set"
+      message: "environment variable is set",
     };
   }
   return {
@@ -302,7 +307,7 @@ function checkEnvVar(name: string): Check {
     target: name,
     status: "FAIL",
     message: "environment variable is missing",
-    fixHint: `Export ${name} before running dependent workflows.`
+    fixHint: `Export ${name} before running dependent workflows.`,
   };
 }
 
@@ -331,13 +336,15 @@ function toMarkdown(checks: Check[], profile: string, overall: string): string {
   lines.push(`Profile: ${profile}`);
   lines.push(`Platform: ${process.platform}`);
   lines.push(`Overall: ${overall}`);
-  lines.push(`Counts: PASS=${passCount} FAIL=${failCount} BLOCKED=${blockedCount}`);
+  lines.push(
+    `Counts: PASS=${passCount} FAIL=${failCount} BLOCKED=${blockedCount}`,
+  );
   lines.push("");
   lines.push("| Status | Kind | Target | Message | Fix |");
   lines.push("|---|---|---|---|---|");
   for (const check of checks) {
     lines.push(
-      `| ${check.status} | ${check.kind} | ${check.target} | ${check.message.replace(/\|/g, "\\|")} | ${(check.fixHint || "").replace(/\|/g, "\\|")} |`
+      `| ${check.status} | ${check.kind} | ${check.target} | ${check.message.replace(/\|/g, "\\|")} | ${(check.fixHint || "").replace(/\|/g, "\\|")} |`,
     );
   }
   return lines.join("\n");
@@ -353,7 +360,10 @@ function exitCodeForOverall(status: string): number {
 function main(): void {
   const args = parseArgs(process.argv.slice(2));
   const checks: Check[] = [];
-  const commands = unique([...commandsForProfile(args.profile), ...args.requireCmd]);
+  const commands = unique([
+    ...commandsForProfile(args.profile),
+    ...args.requireCmd,
+  ]);
   for (const commandName of commands) {
     checks.push(checkCommand(commandName));
   }
@@ -369,7 +379,9 @@ function main(): void {
 
   const shouldCheckXcode =
     process.platform === "darwin" &&
-    (args.checkXcodeLicense || args.profile === "docs" || args.profile === "release");
+    (args.checkXcodeLicense ||
+      args.profile === "docs" ||
+      args.profile === "release");
 
   if (shouldCheckXcode) {
     const pythonLicense = checkPythonXcodeBlocker();
@@ -386,10 +398,12 @@ function main(): void {
   for (const check of checks) {
     const prefix = `[${check.status}]`;
     const suffix = check.fixHint ? ` | fix: ${check.fixHint}` : "";
-    console.log(`${prefix} ${check.kind}:${check.target} ${check.message}${suffix}`);
+    console.log(
+      `${prefix} ${check.kind}:${check.target} ${check.message}${suffix}`,
+    );
   }
   console.log(
-    `[SUMMARY] profile=${args.profile} PASS=${passCount} FAIL=${failCount} BLOCKED=${blockedCount} overall=${overall}`
+    `[SUMMARY] profile=${args.profile} PASS=${passCount} FAIL=${failCount} BLOCKED=${blockedCount} overall=${overall}`,
   );
 
   const payload = {
@@ -399,19 +413,27 @@ function main(): void {
     counts: {
       pass: passCount,
       fail: failCount,
-      blocked: blockedCount
+      blocked: blockedCount,
     },
     overall,
-    checks
+    checks,
   };
 
   if (args.jsonOut) {
     ensureParentDir(args.jsonOut);
-    writeFileSync(path.resolve(args.jsonOut), JSON.stringify(payload, null, 2), "utf8");
+    writeFileSync(
+      path.resolve(args.jsonOut),
+      JSON.stringify(payload, null, 2),
+      "utf8",
+    );
   }
   if (args.mdOut) {
     ensureParentDir(args.mdOut);
-    writeFileSync(path.resolve(args.mdOut), toMarkdown(checks, args.profile, overall), "utf8");
+    writeFileSync(
+      path.resolve(args.mdOut),
+      toMarkdown(checks, args.profile, overall),
+      "utf8",
+    );
   }
 
   process.exitCode = exitCodeForOverall(overall);

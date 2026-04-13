@@ -12,7 +12,7 @@ export const Mode = {
   NOTES_TAG_FILTER: "notes_tag_filter",
   HELP: "help",
   BACKUP_CENTER: "backup_center",
-  MODAL_CONFIRM: "modal_confirm"
+  MODAL_CONFIRM: "modal_confirm",
 } as const;
 
 export type Mode = (typeof Mode)[keyof typeof Mode];
@@ -56,19 +56,17 @@ export const FocusTarget = {
   EDITOR_NOTES: "editor_notes",
   // Compatibility targets for current editor controls.
   EDITOR_SAVE: "editor_save",
-  EDITOR_CANCEL: "editor_cancel"
+  EDITOR_CANCEL: "editor_cancel",
 } as const;
 
 export type FocusTarget = (typeof FocusTarget)[keyof typeof FocusTarget];
 
 export function isEditorMode(
-  mode: Mode
+  mode: Mode,
 ): mode is typeof Mode.ADD | typeof Mode.EDIT {
   return mode === Mode.ADD || mode === Mode.EDIT;
 }
 
-export function isModalMode(
-  mode: Mode
-): mode is typeof Mode.MODAL_CONFIRM {
+export function isModalMode(mode: Mode): mode is typeof Mode.MODAL_CONFIRM {
   return mode === Mode.MODAL_CONFIRM;
 }

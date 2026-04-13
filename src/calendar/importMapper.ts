@@ -4,7 +4,7 @@ import type {
   Task,
   TaskExternalCalendarMetadata,
   TaskLink,
-  TaskRecurrence
+  TaskRecurrence,
 } from "../domain/models";
 import { normalizeRRuleFragment } from "./rrule";
 import type { ParsedIcsEvent, ParsedIcsTemporalValue } from "./icsParser";
@@ -61,7 +61,9 @@ function toTimestamp(iso: string | undefined): number | undefined {
   return Number.isFinite(value) ? value : undefined;
 }
 
-function normalizeOccurrenceIso(value: ParsedIcsTemporalValue | undefined): string | undefined {
+function normalizeOccurrenceIso(
+  value: ParsedIcsTemporalValue | undefined,
+): string | undefined {
   if (!value) return undefined;
   if (value.kind === "date") {
     return `${value.localIso.slice(0, 10)}T00:00:00`;
@@ -69,9 +71,7 @@ function normalizeOccurrenceIso(value: ParsedIcsTemporalValue | undefined): stri
   return value.localIso;
 }
 
-function parseDescriptionLines(
-  description: string | undefined
-): {
+function parseDescriptionLines(description: string | undefined): {
   notes?: string;
   tags: string[];
   links: Array<{ target: string; label?: string }>;
@@ -120,13 +120,13 @@ function parseDescriptionLines(
   return {
     ...(notesLines.length > 0 ? { notes: notesLines.join("\n") } : {}),
     tags,
-    links
+    links,
   };
 }
 
 function buildImportedLinks(
   event: ParsedIcsEvent,
-  parsedDescription: ReturnType<typeof parseDescriptionLines>
+  parsedDescription: ReturnType<typeof parseDescriptionLines>,
 ): TaskLink[] {
   const links: TaskLink[] = [];
   const pushUnique = (target: string, label?: string) => {
@@ -140,7 +140,7 @@ function buildImportedLinks(
       target: normalizedTarget,
       ...(label ? { label } : {}),
       kind: inferTaskLinkKind(normalizedTarget),
-      source: "calendar_import"
+      source: "calendar_import",
     });
   };
 
@@ -154,12 +154,21 @@ function buildImportedLinks(
   return links;
 }
 
-function buildNotesAppendBlock(uid: string | undefined, importedAtIso: string, notes: string): string {
-  const suffix = uid ? ` (UID ${uid} at ${importedAtIso})` : ` (${importedAtIso})`;
+function buildNotesAppendBlock(
+  uid: string | undefined,
+  importedAtIso: string,
+  notes: string,
+): string {
+  const suffix = uid
+    ? ` (UID ${uid} at ${importedAtIso})`
+    : ` (${importedAtIso})`;
   return `${IMPORT_NOTES_PREFIX}${suffix} ---\n${notes}`;
 }
 
-function unionLinks(existing: TaskLink[] | undefined, incoming: TaskLink[]): TaskLink[] {
+function unionLinks(
+  existing: TaskLink[] | undefined,
+  incoming: TaskLink[],
+): TaskLink[] {
   const next = [...(existing ?? [])];
   const seenTargets = new Set(next.map((link) => link.target));
   for (const link of incoming) {
@@ -169,7 +178,7 @@ function unionLinks(existing: TaskLink[] | undefined, incoming: TaskLink[]): Tas
       target: link.target,
       ...(link.label ? { label: link.label } : {}),
       ...(link.kind ? { kind: link.kind } : {}),
-      ...(link.source ? { source: link.source } : {})
+      ...(link.source ? { source: link.source } : {}),
     });
     seenTargets.add(link.target);
   }
@@ -180,7 +189,7 @@ function mergeNotes(
   existingNotes: string | undefined,
   incomingNotes: string | undefined,
   uid: string | undefined,
-  importedAtIso: string
+  importedAtIso: string,
 ): string | undefined {
   const existing = existingNotes?.trim();
   const incoming = incomingNotes?.trim();
@@ -212,10 +221,10 @@ function computeImportHash(draft: CalendarMappedTaskDraft): string {
       target: link.target,
       label: link.label ?? "",
       kind: link.kind ?? inferTaskLinkKind(link.target),
-      source: link.source ?? "manual"
+      source: link.source ?? "manual",
     })),
     recurrenceId: draft.recurrenceId ?? "",
-    seriesUid: draft.seriesUid ?? ""
+    seriesUid: draft.seriesUid ?? "",
   };
   return Buffer.from(JSON.stringify(payload), "utf8").toString("base64");
 }
@@ -224,7 +233,7 @@ function mergeCalendarMetadata(
   existing: TaskExternalCalendarMetadata | undefined,
   draft: CalendarMappedTaskDraft,
   importedAtIso: string,
-  forceUpdateTimestamp: boolean
+  forceUpdateTimestamp: boolean,
 ): TaskExternalCalendarMetadata | undefined {
   const uid = normalizeUidValue(draft.uid ?? existing?.uid);
   if (!uid) {
@@ -235,8 +244,14 @@ function mergeCalendarMetadata(
   const next: TaskExternalCalendarMetadata = {
     uid,
     source: "ics-import",
-    ...(draft.timeZone ? { tzid: draft.timeZone } : existing?.tzid ? { tzid: existing.tzid } : {}),
-    lastImportedAt: forceUpdateTimestamp ? importedAtIso : existing?.lastImportedAt ?? importedAtIso,
+    ...(draft.timeZone
+      ? { tzid: draft.timeZone }
+      : existing?.tzid
+        ? { tzid: existing.tzid }
+        : {}),
+    lastImportedAt: forceUpdateTimestamp
+      ? importedAtIso
+      : (existing?.lastImportedAt ?? importedAtIso),
     lastImportedHash: hash,
     ...(draft.recurrenceId
       ? { recurrenceId: draft.recurrenceId }
@@ -247,7 +262,7 @@ function mergeCalendarMetadata(
       ? { seriesUid: draft.seriesUid }
       : existing?.seriesUid
         ? { seriesUid: existing.seriesUid }
-        : {})
+        : {}),
   };
 
   return next;
@@ -263,7 +278,8 @@ function areTaskFieldsEqual(left: Task, right: Task): boolean {
     if (
       l.target !== r.target ||
       (l.label ?? "") !== (r.label ?? "") ||
-      (l.kind ?? inferTaskLinkKind(l.target)) !== (r.kind ?? inferTaskLinkKind(r.target)) ||
+      (l.kind ?? inferTaskLinkKind(l.target)) !==
+        (r.kind ?? inferTaskLinkKind(r.target)) ||
       (l.source ?? "manual") !== (r.source ?? "manual")
     ) {
       return false;
@@ -281,7 +297,9 @@ function areTaskFieldsEqual(left: Task, right: Task): boolean {
   );
 }
 
-export function parseTadoiIdentityFromUid(uid: string | undefined): CalendarEventIdentity | null {
+export function parseTadoiIdentityFromUid(
+  uid: string | undefined,
+): CalendarEventIdentity | null {
   const normalized = normalizeUidValue(uid);
   if (!normalized) return null;
 
@@ -305,7 +323,7 @@ export function parseTadoiIdentityFromUid(uid: string | undefined): CalendarEven
 
 export function mapEventToTaskDraft(
   event: ParsedIcsEvent,
-  opts: { importTag?: string } = {}
+  opts: { importTag?: string } = {},
 ): CalendarMappedTaskDraft {
   const parsedDescription = parseDescriptionLines(event.description);
   const dueSource = event.dtstart ?? event.recurrenceId;
@@ -314,7 +332,7 @@ export function mapEventToTaskDraft(
   const tags = normalizeTags([
     ...event.categories,
     ...parsedDescription.tags,
-    ...(opts.importTag ? [opts.importTag] : [])
+    ...(opts.importTag ? [opts.importTag] : []),
   ]);
   const links = buildImportedLinks(event, parsedDescription);
 
@@ -326,16 +344,22 @@ export function mapEventToTaskDraft(
     ...(parsedDescription.notes ? { notes: parsedDescription.notes } : {}),
     tags,
     links,
-    ...(event.recurrenceId ? { recurrenceId: normalizeOccurrenceIso(event.recurrenceId) } : {}),
-    ...(event.relatedTo ? { seriesUid: event.relatedTo } : event.uid ? { seriesUid: event.uid } : {}),
-    ...(event.dtstart?.tzid ? { timeZone: event.dtstart.tzid } : {})
+    ...(event.recurrenceId
+      ? { recurrenceId: normalizeOccurrenceIso(event.recurrenceId) }
+      : {}),
+    ...(event.relatedTo
+      ? { seriesUid: event.relatedTo }
+      : event.uid
+        ? { seriesUid: event.uid }
+        : {}),
+    ...(event.dtstart?.tzid ? { timeZone: event.dtstart.tzid } : {}),
   };
 }
 
 export function createTaskFromDraft(
   draft: CalendarMappedTaskDraft,
   nowMs: number,
-  importedAtIso: string
+  importedAtIso: string,
 ): Task {
   const metadata = mergeCalendarMetadata(undefined, draft, importedAtIso, true);
 
@@ -351,29 +375,33 @@ export function createTaskFromDraft(
     ...(draft.notes ? { notes: draft.notes } : {}),
     tags: draft.tags,
     ...(draft.links.length > 0 ? { links: draft.links } : {}),
-    ...(metadata ? { external: { calendar: metadata } } : {})
+    ...(metadata ? { external: { calendar: metadata } } : {}),
   };
 }
 
 export function mergeTaskFromDraft(
   existingTask: Task,
   draft: CalendarMappedTaskDraft,
-  options: CalendarMergeOptions
+  options: CalendarMergeOptions,
 ): CalendarMergeResult {
   const conflicts: string[] = [];
   let nextTask: Task = {
-    ...existingTask
+    ...existingTask,
   };
 
   if (options.mode === "update") {
     nextTask = {
       ...nextTask,
       title: draft.summary,
-      ...(draft.dueAt !== undefined ? { dueAt: draft.dueAt } : { dueAt: undefined }),
+      ...(draft.dueAt !== undefined
+        ? { dueAt: draft.dueAt }
+        : { dueAt: undefined }),
       hasExplicitTime: draft.hasExplicitTime,
       ...(draft.notes ? { notes: draft.notes } : { notes: undefined }),
       tags: draft.tags,
-      ...(draft.links.length > 0 ? { links: draft.links } : { links: undefined })
+      ...(draft.links.length > 0
+        ? { links: draft.links }
+        : { links: undefined }),
     };
   } else {
     if (draft.summary !== nextTask.title) {
@@ -389,7 +417,7 @@ export function mergeTaskFromDraft(
         nextTask = {
           ...nextTask,
           dueAt: draft.dueAt,
-          hasExplicitTime: draft.hasExplicitTime
+          hasExplicitTime: draft.hasExplicitTime,
         };
       } else {
         conflicts.push("dueAt");
@@ -400,7 +428,7 @@ export function mergeTaskFromDraft(
     if (JSON.stringify(mergedTags) !== JSON.stringify(nextTask.tags)) {
       nextTask = {
         ...nextTask,
-        tags: mergedTags
+        tags: mergedTags,
       };
     }
 
@@ -408,15 +436,20 @@ export function mergeTaskFromDraft(
     if (JSON.stringify(mergedLinks) !== JSON.stringify(nextTask.links ?? [])) {
       nextTask = {
         ...nextTask,
-        links: mergedLinks
+        links: mergedLinks,
       };
     }
 
-    const mergedNotes = mergeNotes(nextTask.notes, draft.notes, draft.uid, options.importedAtIso);
+    const mergedNotes = mergeNotes(
+      nextTask.notes,
+      draft.notes,
+      draft.uid,
+      options.importedAtIso,
+    );
     if ((mergedNotes ?? "") !== (nextTask.notes ?? "")) {
       nextTask = {
         ...nextTask,
-        ...(mergedNotes ? { notes: mergedNotes } : { notes: undefined })
+        ...(mergedNotes ? { notes: mergedNotes } : { notes: undefined }),
       };
     }
   }
@@ -424,13 +457,15 @@ export function mergeTaskFromDraft(
   const existingHash = existingTask.external?.calendar?.lastImportedHash;
   const nextHash = computeImportHash(draft);
   const fieldChanged = !areTaskFieldsEqual(existingTask, nextTask);
-  const metadataChanged = existingHash !== nextHash || existingTask.external?.calendar?.uid !== draft.uid;
+  const metadataChanged =
+    existingHash !== nextHash ||
+    existingTask.external?.calendar?.uid !== draft.uid;
   const shouldTouchTimestamp = fieldChanged || metadataChanged;
   const mergedMetadata = mergeCalendarMetadata(
     existingTask.external?.calendar,
     draft,
     options.importedAtIso,
-    shouldTouchTimestamp
+    shouldTouchTimestamp,
   );
 
   if (mergedMetadata) {
@@ -438,15 +473,15 @@ export function mergeTaskFromDraft(
       ...nextTask,
       external: {
         ...nextTask.external,
-        calendar: mergedMetadata
-      }
+        calendar: mergedMetadata,
+      },
     };
   }
 
   if (fieldChanged || metadataChanged) {
     nextTask = {
       ...nextTask,
-      updatedAt: options.nowMs
+      updatedAt: options.nowMs,
     };
   }
 
@@ -457,13 +492,13 @@ export function mergeTaskFromDraft(
   return {
     task: nextTask,
     action: options.mode === "update" ? "updated" : "merged",
-    conflicts
+    conflicts,
   };
 }
 
 export function buildRecurrenceFromSeriesEvent(
   event: ParsedIcsEvent,
-  seriesId: string
+  seriesId: string,
 ): TaskRecurrence | null {
   if (!event.rrule || !event.dtstart) {
     return null;
@@ -472,25 +507,33 @@ export function buildRecurrenceFromSeriesEvent(
     new Set(
       event.exdates
         .map((value) => normalizeOccurrenceIso(value))
-        .filter((value): value is string => typeof value === "string" && value.length > 0)
-    )
+        .filter(
+          (value): value is string =>
+            typeof value === "string" && value.length > 0,
+        ),
+    ),
   ).sort((left, right) => left.localeCompare(right));
 
   return {
     dtstart: normalizeOccurrenceIso(event.dtstart) ?? event.dtstart.localIso,
     rrule: normalizeRRuleFragment(event.rrule),
     ...(exdates.length > 0 ? { exdates } : {}),
-    series_id: seriesId
+    series_id: seriesId,
   };
 }
 
-export function normalizeExdateIsoValues(values: ParsedIcsTemporalValue[]): string[] {
+export function normalizeExdateIsoValues(
+  values: ParsedIcsTemporalValue[],
+): string[] {
   return Array.from(
     new Set(
       values
         .map((value) => normalizeOccurrenceIso(value))
-        .filter((value): value is string => typeof value === "string" && value.length > 0)
-    )
+        .filter(
+          (value): value is string =>
+            typeof value === "string" && value.length > 0,
+        ),
+    ),
   ).sort((left, right) => left.localeCompare(right));
 }
 

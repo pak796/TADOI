@@ -7,31 +7,38 @@ Project: TADOI (`v0.3.4`)
 Repository: `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI`
 
 ## Executive Summary
+
 TADOI is a local-first terminal application with a relatively small direct network surface, but its import/export and link-opening features create meaningful security and privacy risk boundaries. The highest-impact findings are around untrusted input handling (large import files and imported links), privacy leakage in calendar/export flows, and supply-chain/release hardening gaps.
 
 Finding counts:
+
 - High: 2
 - Medium: 7
 - Low: 4
 - Informational: 1
 
 ## Scope
+
 - Runtime code review (TUI, CLI, persistence, import/export, calendar, links, settings).
 - Privacy/data lifecycle review (local storage, backup/export, logs).
 - Dependency and release pipeline review (package metadata, CI/release workflows, signing scripts).
 - No code changes made in this audit.
 
 ## Evidence Preflight
+
 Preflight log file:
+
 - `/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/docs/audits/logs/preflight-2026-02-12.txt`
 
 Captured run window:
+
 - Start (local): 2026-02-12 01:34:36 CST
 - Start (UTC): 2026-02-12T07:34:36Z
 - End (local): 2026-02-12 01:34:39 CST
 - End (UTC): 2026-02-12T07:34:39Z
 
 Command results:
+
 - `bun audit`: exit `1`, `1 vulnerabilities (1 low)` (`diff` advisory GHSA-73rr-hh4g-fpgx).
 - `bun run test`: exit `0`, `378 pass / 0 fail`.
 - `bun run typecheck`: exit `2`, TypeScript errors in calendar import/export test and service typing.
@@ -51,6 +58,7 @@ flowchart LR
 ```
 
 Trust zones:
+
 - Trusted runtime state: in-memory task/settings state.
 - Semi-trusted local files: existing persisted data/settings.
 - Untrusted inbound content: imported JSON and ICS files, imported links, calendar metadata.
@@ -58,6 +66,7 @@ Trust zones:
 - External distribution boundary: CI/release workflows and artifact signing.
 
 ## Runtime Attack Surface
+
 - File ingestion:
 - JSON import: `src/state/backupService.ts:254`
 - ICS import: `src/state/calendarImportService.ts:398`
@@ -72,6 +81,7 @@ Trust zones:
 - Backup redaction behavior: `src/state/portability.ts:474`
 
 ## Privacy and Data Lifecycle
+
 - Data persisted in plaintext JSON/settings under user directories.
 - Backup and corrupt snapshots are automatically generated in adjacent directories.
 - Startup logs include absolute user data/settings paths (`src/tui/runTui.tsx:23`).
@@ -82,6 +92,7 @@ Trust zones:
 ## High
 
 ### SEC-001: Unbounded import file size enables memory/CPU denial of service
+
 - Severity: High
 - Affected area: JSON and ICS import pipelines
 - Evidence:
@@ -95,6 +106,7 @@ Trust zones:
 - Availability loss (hang/crash), potential interrupted workflows and partial state operations.
 
 ### PRIV-001: ICS export leaks notes/tags/links by default
+
 - Severity: High
 - Affected area: Calendar export privacy
 - Evidence:
@@ -111,6 +123,7 @@ Trust zones:
 ## Medium
 
 ### SEC-002: Imported links can trigger local file/path execution flows with limited friction
+
 - Severity: Medium
 - Affected area: Link import + link open
 - Evidence:
@@ -124,6 +137,7 @@ Trust zones:
 - Potential unsafe local execution or exposure through social-engineered link opens.
 
 ### SEC-003: Windows open implementation relies on `cmd /c start` with untrusted target input
+
 - Severity: Medium
 - Affected area: Windows command invocation
 - Evidence:
@@ -135,6 +149,7 @@ Trust zones:
 - Elevated command-parsing risk and unexpected open behavior on Windows.
 
 ### PRIV-002: Backup redaction mode is partial and may create false privacy expectations
+
 - Severity: Medium
 - Affected area: Portable backup export
 - Evidence:
@@ -146,6 +161,7 @@ Trust zones:
 - Metadata leakage (categories, relationships, schedules, references) despite “redacted” export.
 
 ### SCM-001: Floating `latest` dependencies reduce build determinism and increase supply-chain risk
+
 - Severity: Medium
 - Affected area: Dependency management
 - Evidence:
@@ -157,6 +173,7 @@ Trust zones:
 - Integrity and reproducibility risk for development and release builds.
 
 ### REL-001: GitHub Actions are tag-pinned, not commit-SHA pinned
+
 - Severity: Medium
 - Affected area: CI/CD hardening
 - Evidence:
@@ -168,6 +185,7 @@ Trust zones:
 - Pipeline integrity risk and reduced provenance guarantees.
 
 ### REL-002: Signing scripts allow silent “skip” success when signing secrets are absent
+
 - Severity: Medium
 - Affected area: Artifact trust and release policy
 - Evidence:
@@ -179,6 +197,7 @@ Trust zones:
 - Distribution trust degradation and downstream verification gaps.
 
 ### REL-003: Local quality gate drift (typecheck failing while release flow expects pass)
+
 - Severity: Medium
 - Affected area: Release confidence
 - Evidence:
@@ -192,6 +211,7 @@ Trust zones:
 ## Low
 
 ### PRIV-003: Startup logs expose absolute user filesystem paths
+
 - Severity: Low
 - Affected area: Operational privacy
 - Evidence:
@@ -202,6 +222,7 @@ Trust zones:
 - Minor but avoidable environmental information disclosure.
 
 ### SEC-004: Atomic write uses predictable `.tmp` sibling path without stronger local-hardening controls
+
 - Severity: Low
 - Affected area: Persistence integrity
 - Evidence:
@@ -213,6 +234,7 @@ Trust zones:
 - Low-probability local integrity risk.
 
 ### PRIV-004: Settings read errors are silently swallowed, reducing operator visibility
+
 - Severity: Low
 - Affected area: Configuration safety/diagnostics
 - Evidence:
@@ -224,6 +246,7 @@ Trust zones:
 - Configuration reliability and troubleshooting risk; limited direct security impact.
 
 ### SCM-002: Known low-severity vulnerable transitive dependency present in lock state
+
 - Severity: Low
 - Affected area: Transitive dependency posture
 - Evidence:
@@ -234,6 +257,7 @@ Trust zones:
 ## Informational
 
 ### INFO-001: Positive controls already in place
+
 - Severity: Informational
 - Evidence:
 - Strict persisted-state validation and migrations (`src/state/validation.ts`, `src/state/persistence.ts`).
@@ -242,8 +266,10 @@ Trust zones:
 - Tests are broad and currently passing (`bun run test` preflight result).
 
 ## Release and Supply-Chain Observations
+
 - CI and release workflows perform tests, typecheck, and packaging checks, which is a strong baseline.
 - Hardening gaps remain around action pinning, signing enforcement, and dependency pin discipline.
 
 ## Conclusion
+
 TADOI’s primary risk profile is not remote-network compromise; it is local trust-boundary misuse (imports and link opens), privacy leakage through export defaults, and distribution integrity weaknesses in release hygiene. Addressing the high and medium findings will materially improve both user safety and release trust without major architectural change.

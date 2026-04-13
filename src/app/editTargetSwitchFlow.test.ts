@@ -8,11 +8,11 @@ describe("decideEditTargetSwitch", () => {
         fromTaskId: "task-a",
         toTaskId: "task-b",
         isDirty: false,
-        hasActiveModal: false
-      })
+        hasActiveModal: false,
+      }),
     ).toEqual({
       type: "switch_now",
-      toTaskId: "task-b"
+      toTaskId: "task-b",
     });
   });
 
@@ -22,11 +22,11 @@ describe("decideEditTargetSwitch", () => {
         fromTaskId: "task-current",
         toTaskId: "task-clicked",
         isDirty: false,
-        hasActiveModal: false
-      })
+        hasActiveModal: false,
+      }),
     ).toEqual({
       type: "switch_now",
-      toTaskId: "task-clicked"
+      toTaskId: "task-clicked",
     });
   });
 
@@ -36,12 +36,12 @@ describe("decideEditTargetSwitch", () => {
         fromTaskId: "task-a",
         toTaskId: "task-b",
         isDirty: true,
-        hasActiveModal: false
-      })
+        hasActiveModal: false,
+      }),
     ).toEqual({
       type: "prompt",
       fromTaskId: "task-a",
-      toTaskId: "task-b"
+      toTaskId: "task-b",
     });
   });
 
@@ -51,8 +51,8 @@ describe("decideEditTargetSwitch", () => {
         fromTaskId: "task-a",
         toTaskId: "task-a",
         isDirty: true,
-        hasActiveModal: false
-      })
+        hasActiveModal: false,
+      }),
     ).toEqual({ type: "ignore" });
   });
 
@@ -62,8 +62,8 @@ describe("decideEditTargetSwitch", () => {
         fromTaskId: "task-a",
         toTaskId: "task-b",
         isDirty: true,
-        hasActiveModal: true
-      })
+        hasActiveModal: true,
+      }),
     ).toEqual({ type: "ignore" });
   });
 });

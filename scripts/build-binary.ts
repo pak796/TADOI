@@ -3,7 +3,7 @@ import {
   mkdirSync,
   readFileSync,
   statSync,
-  writeFileSync
+  writeFileSync,
 } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -56,7 +56,11 @@ function requiredSigningEnvVars(target: Target): string[] {
   return [];
 }
 
-function assertStrictSigningPrerequisites(target: Target, format: Format, mode: Mode): void {
+function assertStrictSigningPrerequisites(
+  target: Target,
+  format: Format,
+  mode: Mode,
+): void {
   if (mode !== "build" || format !== "installer") return;
   if (process.env.TADOI_REQUIRE_SIGNING !== "1") return;
 
@@ -69,8 +73,8 @@ function assertStrictSigningPrerequisites(target: Target, format: Format, mode: 
   if (missing.length > 0) {
     console.error(
       `[build-binary] strict signing enabled (TADOI_REQUIRE_SIGNING=1); missing required env vars for ${target}: ${missing.join(
-        ", "
-      )}`
+        ", ",
+      )}`,
     );
     process.exit(1);
   }
@@ -79,17 +83,21 @@ function assertStrictSigningPrerequisites(target: Target, format: Format, mode: 
 function commandExists(command: string): boolean {
   const result = spawnSync(command, ["--help"], {
     stdio: "ignore",
-    env: process.env
+    env: process.env,
   });
   return !result.error;
 }
 
-function assertLinuxInstallerPrerequisites(target: Target, format: Format, mode: Mode): void {
+function assertLinuxInstallerPrerequisites(
+  target: Target,
+  format: Format,
+  mode: Mode,
+): void {
   if (target !== "linux" || format !== "installer" || mode !== "build") return;
 
   if (!commandExists("dpkg-deb")) {
     console.error(
-      "[build-binary] missing required Linux tool: dpkg-deb. Install dpkg-dev (Debian/Ubuntu) and retry."
+      "[build-binary] missing required Linux tool: dpkg-deb. Install dpkg-dev (Debian/Ubuntu) and retry.",
     );
     process.exit(1);
   }
@@ -99,8 +107,8 @@ function assertLinuxInstallerPrerequisites(target: Target, format: Format, mode:
       [
         "[build-binary] missing required Linux tool: appimagetool.",
         "Install AppImageKit appimagetool and ensure it is on PATH.",
-        "CI hint: use an AppImage wrapper with APPIMAGE_EXTRACT_AND_RUN=1."
-      ].join(" ")
+        "CI hint: use an AppImage wrapper with APPIMAGE_EXTRACT_AND_RUN=1.",
+      ].join(" "),
     );
     process.exit(1);
   }
@@ -121,11 +129,12 @@ function parseArg(name: string): string | null {
 }
 
 function asTarget(value: string | null): Target {
-  if (value === "macos" || value === "windows" || value === "linux") return value;
+  if (value === "macos" || value === "windows" || value === "linux")
+    return value;
   console.error(
     `[build-binary] invalid --target. expected macos|windows|linux, got: ${
       value ?? "<missing>"
-    }`
+    }`,
   );
   process.exit(1);
 }
@@ -135,7 +144,7 @@ function asFormat(value: string | null): Format {
   console.error(
     `[build-binary] invalid --format. expected raw|installer, got: ${
       value ?? "<missing>"
-    }`
+    }`,
   );
   process.exit(1);
 }
@@ -143,7 +152,9 @@ function asFormat(value: string | null): Format {
 function asMode(value: string | null): Mode {
   if (value === null) return "plan";
   if (value === "plan" || value === "build") return value;
-  console.error(`[build-binary] invalid --mode. expected plan|build, got: ${value}`);
+  console.error(
+    `[build-binary] invalid --mode. expected plan|build, got: ${value}`,
+  );
   process.exit(1);
 }
 
@@ -182,21 +193,25 @@ function releaseTargetIdFor(target: Target): string {
 export function resolveOutputDirs(target: Target): OutputDirs {
   const defaults: OutputDirs = {
     rawDir: path.resolve("dist", "bin", target),
-    installerDir: path.resolve("dist", "installers")
+    installerDir: path.resolve("dist", "installers"),
   };
 
   const releaseTargets = readReleaseTargets();
   if (!releaseTargets) return defaults;
 
   const targetId = releaseTargetIdFor(target);
-  const metadata = releaseTargets.targets.find((entry) => entry.id === targetId);
+  const metadata = releaseTargets.targets.find(
+    (entry) => entry.id === targetId,
+  );
   if (!metadata) return defaults;
 
   return {
-    rawDir: metadata.outputDir ? path.resolve(metadata.outputDir) : defaults.rawDir,
+    rawDir: metadata.outputDir
+      ? path.resolve(metadata.outputDir)
+      : defaults.rawDir,
     installerDir: metadata.installerOutputDir
       ? path.resolve(metadata.installerOutputDir)
-      : defaults.installerDir
+      : defaults.installerDir,
   };
 }
 
@@ -217,14 +232,14 @@ function hostTarget(): Target {
 function runOrThrow(command: string, args: string[]): void {
   const result = spawnSync(command, args, {
     stdio: "inherit",
-    env: process.env
+    env: process.env,
   });
 
   if (result.status !== 0) {
     throw new Error(
       `[build-binary] command failed (${result.status ?? "unknown"}): ${command} ${args.join(
-        " "
-      )}`
+        " ",
+      )}`,
     );
   }
 }
@@ -247,7 +262,11 @@ function ensureRawBinary(target: Target, outputDirs: OutputDirs): string {
   return outPath;
 }
 
-function buildMacInstaller(binaryPath: string, version: string, outputDirs: OutputDirs): void {
+function buildMacInstaller(
+  binaryPath: string,
+  version: string,
+  outputDirs: OutputDirs,
+): void {
   const pkgScript = path.resolve("packaging", "macos", "build-pkg.sh");
   const signScript = path.resolve("packaging", "macos", "sign-notarize.sh");
   const dmgScript = path.resolve("packaging", "macos", "build-dmg.sh");
@@ -262,7 +281,7 @@ function buildMacInstaller(binaryPath: string, version: string, outputDirs: Outp
     "--identifier",
     identifier,
     "--out-dir",
-    outputDirs.installerDir
+    outputDirs.installerDir,
   ]);
 
   const pkgPath = path.resolve(outputDirs.installerDir, `TADOI-${version}.pkg`);
@@ -275,16 +294,24 @@ function buildMacInstaller(binaryPath: string, version: string, outputDirs: Outp
     "--version",
     version,
     "--out-dir",
-    outputDirs.installerDir
+    outputDirs.installerDir,
   ]);
 }
 
-function buildWindowsInstaller(binaryPath: string, version: string, outputDirs: OutputDirs): void {
-  const buildScript = path.resolve("packaging", "windows", "build-installer.ps1");
+function buildWindowsInstaller(
+  binaryPath: string,
+  version: string,
+  outputDirs: OutputDirs,
+): void {
+  const buildScript = path.resolve(
+    "packaging",
+    "windows",
+    "build-installer.ps1",
+  );
   const signScript = path.resolve("packaging", "windows", "sign.ps1");
   const installerPath = path.resolve(
     outputDirs.installerDir,
-    `TADOI-Setup-x64-${version}.exe`
+    `TADOI-Setup-x64-${version}.exe`,
   );
 
   runOrThrow("powershell", [
@@ -298,7 +325,7 @@ function buildWindowsInstaller(binaryPath: string, version: string, outputDirs: 
     "-Version",
     version,
     "-InstallerDir",
-    outputDirs.installerDir
+    outputDirs.installerDir,
   ]);
 
   runOrThrow("powershell", [
@@ -308,13 +335,21 @@ function buildWindowsInstaller(binaryPath: string, version: string, outputDirs: 
     "-File",
     signScript,
     "-FilePath",
-    installerPath
+    installerPath,
   ]);
 }
 
-function buildLinuxInstallers(binaryPath: string, version: string, outputDirs: OutputDirs): void {
+function buildLinuxInstallers(
+  binaryPath: string,
+  version: string,
+  outputDirs: OutputDirs,
+): void {
   const debScript = path.resolve("packaging", "linux", "build-deb.sh");
-  const appImageScript = path.resolve("packaging", "linux", "build-appimage.sh");
+  const appImageScript = path.resolve(
+    "packaging",
+    "linux",
+    "build-appimage.sh",
+  );
 
   runOrThrow("bash", [
     debScript,
@@ -323,7 +358,7 @@ function buildLinuxInstallers(binaryPath: string, version: string, outputDirs: O
     "--version",
     version,
     "--out-dir",
-    outputDirs.installerDir
+    outputDirs.installerDir,
   ]);
 
   runOrThrow("bash", [
@@ -333,26 +368,33 @@ function buildLinuxInstallers(binaryPath: string, version: string, outputDirs: O
     "--version",
     version,
     "--out-dir",
-    outputDirs.installerDir
+    outputDirs.installerDir,
   ]);
 }
 
-function manifestPathFor(target: Target, version: string, installerDir: string): string {
+function manifestPathFor(
+  target: Target,
+  version: string,
+  installerDir: string,
+): string {
   return path.resolve(installerDir, `TADOI-${target}-${version}-manifest.json`);
 }
 
 function expectedInstallerOutputs(
   target: Target,
   version: string,
-  installerDir: string
+  installerDir: string,
 ): Array<{ kind: Exclude<ManifestOutputKind, "binary">; filePath: string }> {
   if (target === "macos") {
     return [
-      { kind: "pkg", filePath: path.resolve(installerDir, `TADOI-${version}.pkg`) },
+      {
+        kind: "pkg",
+        filePath: path.resolve(installerDir, `TADOI-${version}.pkg`),
+      },
       {
         kind: "dmg",
-        filePath: path.resolve(installerDir, `TADOI-macOS-${version}.dmg`)
-      }
+        filePath: path.resolve(installerDir, `TADOI-macOS-${version}.dmg`),
+      },
     ];
   }
 
@@ -360,20 +402,20 @@ function expectedInstallerOutputs(
     return [
       {
         kind: "exe",
-        filePath: path.resolve(installerDir, `TADOI-Setup-x64-${version}.exe`)
-      }
+        filePath: path.resolve(installerDir, `TADOI-Setup-x64-${version}.exe`),
+      },
     ];
   }
 
   return [
     {
       kind: "deb",
-      filePath: path.resolve(installerDir, `tadoi_${version}_amd64.deb`)
+      filePath: path.resolve(installerDir, `tadoi_${version}_amd64.deb`),
     },
     {
       kind: "appimage",
-      filePath: path.resolve(installerDir, `tadoi-${version}-x86_64.AppImage`)
-    }
+      filePath: path.resolve(installerDir, `tadoi-${version}-x86_64.AppImage`),
+    },
   ];
 }
 
@@ -393,20 +435,21 @@ export function createInstallerManifest(
   version: string,
   binaryPath: string,
   installerDir: string,
-  rootDir: string = process.cwd()
+  rootDir: string = process.cwd(),
 ): InstallerBuildManifest {
   const rootPath = path.resolve(rootDir);
   const outputs: InstallerBuildManifestOutput[] = [];
 
-  const requiredOutputs: Array<{ kind: ManifestOutputKind; filePath: string }> = [
-    { kind: "binary", filePath: path.resolve(binaryPath) },
-    ...expectedInstallerOutputs(target, version, installerDir)
-  ];
+  const requiredOutputs: Array<{ kind: ManifestOutputKind; filePath: string }> =
+    [
+      { kind: "binary", filePath: path.resolve(binaryPath) },
+      ...expectedInstallerOutputs(target, version, installerDir),
+    ];
 
   for (const entry of requiredOutputs) {
     if (!existsSync(entry.filePath)) {
       throw new Error(
-        `[build-binary] expected output missing for manifest (${entry.kind}): ${entry.filePath}`
+        `[build-binary] expected output missing for manifest (${entry.kind}): ${entry.filePath}`,
       );
     }
     const stats = statSync(entry.filePath);
@@ -414,7 +457,7 @@ export function createInstallerManifest(
       kind: entry.kind,
       path: toRelativeOutputPath(rootPath, entry.filePath),
       sizeBytes: stats.size,
-      sha256: sha256File(entry.filePath)
+      sha256: sha256File(entry.filePath),
     });
   }
 
@@ -423,7 +466,7 @@ export function createInstallerManifest(
     target,
     packageVersion: version,
     generatedAt: new Date().toISOString(),
-    outputs
+    outputs,
   };
 }
 
@@ -432,7 +475,7 @@ export function writeInstallerManifest(
   version: string,
   binaryPath: string,
   installerDir: string,
-  rootDir: string = process.cwd()
+  rootDir: string = process.cwd(),
 ): string {
   const manifestPath = manifestPathFor(target, version, installerDir);
   mkdirSync(path.dirname(manifestPath), { recursive: true });
@@ -442,13 +485,17 @@ export function writeInstallerManifest(
     version,
     binaryPath,
     installerDir,
-    rootDir
+    rootDir,
   );
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
   return manifestPath;
 }
 
-function writeRawPlan(target: Target, timestamp: string, outputDirs: OutputDirs): void {
+function writeRawPlan(
+  target: Target,
+  timestamp: string,
+  outputDirs: OutputDirs,
+): void {
   const filePath = path.resolve(outputDirs.rawDir, "BUILD_PLAN.txt");
   writePlanFile(
     filePath,
@@ -460,16 +507,20 @@ function writeRawPlan(target: Target, timestamp: string, outputDirs: OutputDirs)
       "",
       "This is a plan-mode output only.",
       "No native binary is produced in plan mode.",
-      "Run with --mode build to emit a real binary."
-    ].join("\n")
+      "Run with --mode build to emit a real binary.",
+    ].join("\n"),
   );
   console.log(`[build-binary] scaffold written: ${filePath}`);
 }
 
-function writeInstallerPlan(target: Target, timestamp: string, outputDirs: OutputDirs): void {
+function writeInstallerPlan(
+  target: Target,
+  timestamp: string,
+  outputDirs: OutputDirs,
+): void {
   const filePath = path.resolve(
     outputDirs.installerDir,
-    `${target.toUpperCase()}_INSTALLER_PLAN.txt`
+    `${target.toUpperCase()}_INSTALLER_PLAN.txt`,
   );
   const plannedOutput =
     target === "macos"
@@ -492,8 +543,8 @@ function writeInstallerPlan(target: Target, timestamp: string, outputDirs: Outpu
       plannedOutput,
       "",
       "Run with --mode build to generate installer artifacts.",
-      "See packaging docs for signing/notarization prerequisites."
-    ].join("\n")
+      "See packaging docs for signing/notarization prerequisites.",
+    ].join("\n"),
   );
   console.log(`[build-binary] installer scaffold written: ${filePath}`);
 }
@@ -521,7 +572,7 @@ function main(): void {
   const currentHostTarget = hostTarget();
   if (currentHostTarget !== target) {
     console.error(
-      `[build-binary] --mode build requires native host. target=${target}, host=${currentHostTarget}`
+      `[build-binary] --mode build requires native host. target=${target}, host=${currentHostTarget}`,
     );
     process.exit(1);
   }
@@ -549,10 +600,12 @@ function main(): void {
     target,
     version,
     binaryPath,
-    outputDirs.installerDir
+    outputDirs.installerDir,
   );
   console.log(`[build-binary] installer manifest written: ${manifestPath}`);
-  console.log(`[build-binary] installer build complete: ${outputDirs.installerDir}`);
+  console.log(
+    `[build-binary] installer build complete: ${outputDirs.installerDir}`,
+  );
 }
 
 if (import.meta.main) {

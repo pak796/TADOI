@@ -17,7 +17,7 @@ function makeTask(partial: Partial<Task> & Pick<Task, "id" | "title">): Task {
     tags: partial.tags ?? [],
     assignee: partial.assignee,
     project: partial.project,
-    workflowStage: partial.workflowStage
+    workflowStage: partial.workflowStage,
   };
 }
 
@@ -28,7 +28,7 @@ describe("filterTasks next7/THIS WEEK boundaries", () => {
     const tasks: Task[] = [
       makeTask({ id: "t0", title: "today", dueAt: start }),
       makeTask({ id: "t6", title: "plus6", dueAt: addLocalDaysMs(start, 6) }),
-      makeTask({ id: "t7", title: "plus7", dueAt: addLocalDaysMs(start, 7) })
+      makeTask({ id: "t7", title: "plus7", dueAt: addLocalDaysMs(start, 7) }),
     ];
     const filters: Filters = { status: "all", due: "next7" };
     const result = filterTasks(tasks, filters, now).map((task) => task.id);
@@ -43,9 +43,17 @@ describe("filterTasks due=today boundaries", () => {
     const now = new Date(2026, 1, 8, 12, 0, 0, 0).getTime();
     const start = startOfLocalDayMs(now);
     const tasks: Task[] = [
-      makeTask({ id: "yesterday", title: "yesterday", dueAt: addLocalDaysMs(start, -1) }),
+      makeTask({
+        id: "yesterday",
+        title: "yesterday",
+        dueAt: addLocalDaysMs(start, -1),
+      }),
       makeTask({ id: "today", title: "today", dueAt: start }),
-      makeTask({ id: "tomorrow", title: "tomorrow", dueAt: addLocalDaysMs(start, 1) })
+      makeTask({
+        id: "tomorrow",
+        title: "tomorrow",
+        dueAt: addLocalDaysMs(start, 1),
+      }),
     ];
     const filters: Filters = { status: "all", due: "today" };
     const result = filterTasks(tasks, filters, now).map((task) => task.id);
@@ -58,20 +66,28 @@ describe("filterTasks due=overdue boundaries", () => {
     const now = new Date(2026, 1, 8, 12, 0, 0, 0).getTime();
     const start = startOfLocalDayMs(now);
     const tasks: Task[] = [
-      makeTask({ id: "yesterday", title: "yesterday", dueAt: addLocalDaysMs(start, -1) }),
+      makeTask({
+        id: "yesterday",
+        title: "yesterday",
+        dueAt: addLocalDaysMs(start, -1),
+      }),
       makeTask({
         id: "today-past-time",
         title: "today-past-time",
         dueAt: new Date(2026, 1, 8, 9, 0, 0, 0).getTime(),
-        hasExplicitTime: true
+        hasExplicitTime: true,
       }),
       makeTask({
         id: "today-future-time",
         title: "today-future-time",
         dueAt: new Date(2026, 1, 8, 13, 0, 0, 0).getTime(),
-        hasExplicitTime: true
+        hasExplicitTime: true,
       }),
-      makeTask({ id: "tomorrow", title: "tomorrow", dueAt: addLocalDaysMs(start, 1) })
+      makeTask({
+        id: "tomorrow",
+        title: "tomorrow",
+        dueAt: addLocalDaysMs(start, 1),
+      }),
     ];
     const filters: Filters = { status: "all", due: "overdue" };
     const result = filterTasks(tasks, filters, now).map((task) => task.id);
@@ -89,10 +105,12 @@ describe("filterTasks due-day offset", () => {
     const tasks: Task[] = [
       makeTask({ id: "p1", title: "plus1", dueAt: addLocalDaysMs(start, 1) }),
       makeTask({ id: "p3", title: "plus3", dueAt: addLocalDaysMs(start, 3) }),
-      makeTask({ id: "p6", title: "plus6", dueAt: addLocalDaysMs(start, 6) })
+      makeTask({ id: "p6", title: "plus6", dueAt: addLocalDaysMs(start, 6) }),
     ];
     const filters: Filters = { status: "all", due: "any", dueDayOffset: 3 };
-    expect(filterTasks(tasks, filters, now).map((task) => task.id)).toEqual(["p3"]);
+    expect(filterTasks(tasks, filters, now).map((task) => task.id)).toEqual([
+      "p3",
+    ]);
   });
 });
 
@@ -105,23 +123,29 @@ describe("filterTasks slicing dimensions", () => {
         title: "alpha",
         assignee: "alice",
         project: "platform",
-        workflowStage: "in_progress"
+        workflowStage: "in_progress",
       }),
       makeTask({
         id: "b",
         title: "beta",
         assignee: "bob",
         project: "ops",
-        workflowStage: "todo"
-      })
+        workflowStage: "todo",
+      }),
     ];
 
     expect(
       filterTasks(
         tasks,
-        { status: "all", due: "any", assignee: "alice", project: "platform", workflowStage: "in_progress" },
-        now
-      ).map((task) => task.id)
+        {
+          status: "all",
+          due: "any",
+          assignee: "alice",
+          project: "platform",
+          workflowStage: "in_progress",
+        },
+        now,
+      ).map((task) => task.id),
     ).toEqual(["a"]);
   });
 });
@@ -140,26 +164,32 @@ describe("filterTasks tagFilter boolean semantics", () => {
   const tasks: Task[] = [
     makeTask({ id: "a", title: "a", tags: ["work", "urgent"] }),
     makeTask({ id: "b", title: "b", tags: ["work"] }),
-    makeTask({ id: "c", title: "c", tags: ["home"] })
+    makeTask({ id: "c", title: "c", tags: ["home"] }),
   ];
 
   it("supports ALL/ANY/NONE matching", () => {
     expect(
-      filterTasks(tasks, { status: "all", due: "any", tagFilter: { all: ["work"] } }, now).map(
-        (task) => task.id
-      )
+      filterTasks(
+        tasks,
+        { status: "all", due: "any", tagFilter: { all: ["work"] } },
+        now,
+      ).map((task) => task.id),
     ).toEqual(["a", "b"]);
 
     expect(
-      filterTasks(tasks, { status: "all", due: "any", tagFilter: { any: ["home", "urgent"] } }, now).map(
-        (task) => task.id
-      )
+      filterTasks(
+        tasks,
+        { status: "all", due: "any", tagFilter: { any: ["home", "urgent"] } },
+        now,
+      ).map((task) => task.id),
     ).toEqual(["a", "c"]);
 
     expect(
-      filterTasks(tasks, { status: "all", due: "any", tagFilter: { none: ["work"] } }, now).map(
-        (task) => task.id
-      )
+      filterTasks(
+        tasks,
+        { status: "all", due: "any", tagFilter: { none: ["work"] } },
+        now,
+      ).map((task) => task.id),
     ).toEqual(["c"]);
   });
 
@@ -168,9 +198,11 @@ describe("filterTasks tagFilter boolean semantics", () => {
       status: "all",
       due: "any",
       tag: "work",
-      tagFilter: { any: ["home"] }
+      tagFilter: { any: ["home"] },
     };
-    expect(filterTasks(tasks, filters, now).map((task) => task.id)).toEqual(["c"]);
+    expect(filterTasks(tasks, filters, now).map((task) => task.id)).toEqual([
+      "c",
+    ]);
   });
 
   it("resolves alias tags for boolean filters and search", () => {
@@ -178,22 +210,20 @@ describe("filterTasks tagFilter boolean semantics", () => {
     const aliasFilters: Filters = {
       status: "all",
       due: "any",
-      tagFilter: { all: ["wrk"] }
+      tagFilter: { all: ["wrk"] },
     };
-    expect(filterTasks(tasks, aliasFilters, now, aliases).map((task) => task.id)).toEqual([
-      "a",
-      "b"
-    ]);
+    expect(
+      filterTasks(tasks, aliasFilters, now, aliases).map((task) => task.id),
+    ).toEqual(["a", "b"]);
 
     const searchFilters: Filters = {
       status: "all",
       due: "any",
-      searchText: "wrk"
+      searchText: "wrk",
     };
-    expect(filterTasks(tasks, searchFilters, now, aliases).map((task) => task.id)).toEqual([
-      "a",
-      "b"
-    ]);
+    expect(
+      filterTasks(tasks, searchFilters, now, aliases).map((task) => task.id),
+    ).toEqual(["a", "b"]);
   });
 });
 
@@ -203,26 +233,32 @@ describe("filterTasks priority filter semantics", () => {
     makeTask({ id: "a", title: "a", tags: ["work", "p1"] }),
     makeTask({ id: "b", title: "b", tags: ["work", "#P2"] }),
     makeTask({ id: "c", title: "c", tags: ["work", "P1", "#p3"] }),
-    makeTask({ id: "d", title: "d", tags: ["work"] })
+    makeTask({ id: "d", title: "d", tags: ["work"] }),
   ];
 
   it("matches canonical and legacy priority tokens with last-wins normalization", () => {
     expect(
-      filterTasks(tasks, { status: "all", due: "any", priority: "#p1" }, now).map(
-        (task) => task.id
-      )
+      filterTasks(
+        tasks,
+        { status: "all", due: "any", priority: "#p1" },
+        now,
+      ).map((task) => task.id),
     ).toEqual(["a"]);
 
     expect(
-      filterTasks(tasks, { status: "all", due: "any", priority: "P2" }, now).map(
-        (task) => task.id
-      )
+      filterTasks(
+        tasks,
+        { status: "all", due: "any", priority: "P2" },
+        now,
+      ).map((task) => task.id),
     ).toEqual(["b"]);
 
     expect(
-      filterTasks(tasks, { status: "all", due: "any", priority: "p3" }, now).map(
-        (task) => task.id
-      )
+      filterTasks(
+        tasks,
+        { status: "all", due: "any", priority: "p3" },
+        now,
+      ).map((task) => task.id),
     ).toEqual(["c"]);
   });
 
@@ -235,24 +271,28 @@ describe("filterTasks priority filter semantics", () => {
           due: "any",
           priority: "#p1",
           tagFilter: { all: ["work"] },
-          searchText: "a"
+          searchText: "a",
         },
-        now
-      ).map((task) => task.id)
+        now,
+      ).map((task) => task.id),
     ).toEqual(["a"]);
   });
 
   it("keeps priority filtering exclusive to filters.priority", () => {
     expect(
-      filterTasks(tasks, { status: "all", due: "any", tagFilter: { all: ["#p2"] } }, now).map(
-        (task) => task.id
-      )
+      filterTasks(
+        tasks,
+        { status: "all", due: "any", tagFilter: { all: ["#p2"] } },
+        now,
+      ).map((task) => task.id),
     ).toEqual(["a", "b", "c", "d"]);
 
     expect(
-      filterTasks(tasks, { status: "all", due: "any", priority: "#p2" }, now).map(
-        (task) => task.id
-      )
+      filterTasks(
+        tasks,
+        { status: "all", due: "any", priority: "#p2" },
+        now,
+      ).map((task) => task.id),
     ).toEqual(["b"]);
   });
 });
@@ -265,26 +305,30 @@ describe("sortTasks with explicit time on same day", () => {
       makeTask({
         id: "date-only",
         title: "date-only",
-        dueAt: dayStart
+        dueAt: dayStart,
       }),
       makeTask({
         id: "time-late",
         title: "time-late",
         dueAt: new Date(2026, 1, 8, 16, 0, 0, 0).getTime(),
-        hasExplicitTime: true
+        hasExplicitTime: true,
       }),
       makeTask({
         id: "time-early",
         title: "time-early",
         dueAt: new Date(2026, 1, 8, 9, 0, 0, 0).getTime(),
-        hasExplicitTime: true
-      })
+        hasExplicitTime: true,
+      }),
     ];
 
     const sorted = sortTasks(tasks, now).map((task) => task.id);
     expect(sorted).toEqual(["time-early", "time-late", "date-only"]);
-    expect(sorted.indexOf("time-early")).toBeLessThan(sorted.indexOf("time-late"));
-    expect(sorted.indexOf("time-late")).toBeLessThan(sorted.indexOf("date-only"));
+    expect(sorted.indexOf("time-early")).toBeLessThan(
+      sorted.indexOf("time-late"),
+    );
+    expect(sorted.indexOf("time-late")).toBeLessThan(
+      sorted.indexOf("date-only"),
+    );
   });
 });
 
@@ -293,11 +337,26 @@ describe("sortTasks due mode priority", () => {
     const now = new Date(2026, 1, 8, 12, 0, 0, 0).getTime();
     const start = startOfLocalDayMs(now);
     const tasks: Task[] = [
-      makeTask({ id: "done-due", title: "done-due", status: "done", dueAt: addLocalDaysMs(start, -1) }),
+      makeTask({
+        id: "done-due",
+        title: "done-due",
+        status: "done",
+        dueAt: addLocalDaysMs(start, -1),
+      }),
       makeTask({ id: "open-no-due", title: "open-no-due", status: "open" }),
-      makeTask({ id: "open-due-later", title: "open-due-later", status: "open", dueAt: addLocalDaysMs(start, 1) }),
-      makeTask({ id: "open-due-soon", title: "open-due-soon", status: "open", dueAt: addLocalDaysMs(start, 0) }),
-      makeTask({ id: "done-no-due", title: "done-no-due", status: "done" })
+      makeTask({
+        id: "open-due-later",
+        title: "open-due-later",
+        status: "open",
+        dueAt: addLocalDaysMs(start, 1),
+      }),
+      makeTask({
+        id: "open-due-soon",
+        title: "open-due-soon",
+        status: "open",
+        dueAt: addLocalDaysMs(start, 0),
+      }),
+      makeTask({ id: "done-no-due", title: "done-no-due", status: "done" }),
     ];
 
     expect(sortTasks(tasks, now).map((task) => task.id)).toEqual([
@@ -305,7 +364,7 @@ describe("sortTasks due mode priority", () => {
       "open-due-later",
       "open-no-due",
       "done-due",
-      "done-no-due"
+      "done-no-due",
     ]);
   });
 });
@@ -316,12 +375,12 @@ describe("sortTasks by mode", () => {
     const tasks: Task[] = [
       makeTask({ id: "older", title: "older", updatedAt: 100 }),
       makeTask({ id: "newest", title: "newest", updatedAt: 300 }),
-      makeTask({ id: "middle", title: "middle", updatedAt: 200 })
+      makeTask({ id: "middle", title: "middle", updatedAt: 200 }),
     ];
     expect(sortTasks(tasks, now, "updated").map((task) => task.id)).toEqual([
       "newest",
       "middle",
-      "older"
+      "older",
     ]);
   });
 
@@ -329,13 +388,23 @@ describe("sortTasks by mode", () => {
     const now = new Date(2026, 1, 8, 12, 0, 0, 0).getTime();
     const tasks: Task[] = [
       makeTask({ id: "older", title: "older", createdAt: 100, updatedAt: 100 }),
-      makeTask({ id: "newest", title: "newest", createdAt: 300, updatedAt: 100 }),
-      makeTask({ id: "middle", title: "middle", createdAt: 200, updatedAt: 100 })
+      makeTask({
+        id: "newest",
+        title: "newest",
+        createdAt: 300,
+        updatedAt: 100,
+      }),
+      makeTask({
+        id: "middle",
+        title: "middle",
+        createdAt: 200,
+        updatedAt: 100,
+      }),
     ];
     expect(sortTasks(tasks, now, "created").map((task) => task.id)).toEqual([
       "newest",
       "middle",
-      "older"
+      "older",
     ]);
   });
 
@@ -344,12 +413,12 @@ describe("sortTasks by mode", () => {
     const tasks: Task[] = [
       makeTask({ id: "b", title: "beta", updatedAt: 1, createdAt: 1 }),
       makeTask({ id: "a2", title: "Alpha", updatedAt: 1, createdAt: 1 }),
-      makeTask({ id: "a1", title: "alpha", updatedAt: 1, createdAt: 1 })
+      makeTask({ id: "a1", title: "alpha", updatedAt: 1, createdAt: 1 }),
     ];
     expect(sortTasks(tasks, now, "title").map((task) => task.id)).toEqual([
       "a1",
       "a2",
-      "b"
+      "b",
     ]);
   });
 });

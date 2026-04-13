@@ -17,7 +17,10 @@ function chipsRowWidth(labels: string[]): number {
   }, 0);
 }
 
-export function computeVisibleTagPills(tags: string[], maxColumns: number): TagPillLayout {
+export function computeVisibleTagPills(
+  tags: string[],
+  maxColumns: number,
+): TagPillLayout {
   if (tags.length === 0) {
     return { visibleTags: [], hiddenCount: 0 };
   }
@@ -45,7 +48,8 @@ export function computeVisibleTagPills(tags: string[], maxColumns: number): TagP
   let hiddenCount = tags.length - visibleCount;
   while (visibleCount >= 0) {
     const overflowLabel = `+${String(hiddenCount)}`;
-    const overflowNeeded = chipWidth(overflowLabel) + (visibleCount > 0 ? 1 : 0);
+    const overflowNeeded =
+      chipWidth(overflowLabel) + (visibleCount > 0 ? 1 : 0);
     if (visibleCount === 0 || usedWidth + overflowNeeded <= safeMaxColumns) {
       break;
     }
@@ -57,6 +61,6 @@ export function computeVisibleTagPills(tags: string[], maxColumns: number): TagP
   const safeVisibleCount = Math.max(0, visibleCount);
   return {
     visibleTags: tags.slice(0, safeVisibleCount),
-    hiddenCount: Math.max(0, tags.length - safeVisibleCount)
+    hiddenCount: Math.max(0, tags.length - safeVisibleCount),
   };
 }

@@ -2,7 +2,7 @@ import type {
   BuiltInThemeTextOverrides,
   CustomThemeConfig,
   TadoiSettings,
-  ThemeObjectId
+  ThemeObjectId,
 } from "../settings/settings";
 
 export type ThemeId =
@@ -69,7 +69,7 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     warn: "#f1c40f",
     danger: "#e74c3c",
     selectionBg: "#9b59b6",
-    selectionText: "#0b0f14"
+    selectionText: "#0b0f14",
   },
   retro: {
     bg: "#121316",
@@ -83,7 +83,7 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     warn: "#c9c38d",
     danger: "#b78484",
     selectionBg: "#5f6480",
-    selectionText: "#f0f2f7"
+    selectionText: "#f0f2f7",
   },
   highContrast: {
     bg: "#000000",
@@ -97,7 +97,7 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     warn: "#ffff00",
     danger: "#ff0033",
     selectionBg: "#00aacc",
-    selectionText: "#000000"
+    selectionText: "#000000",
   },
   neonHacker: {
     bg: "#05090b",
@@ -111,7 +111,7 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     warn: "#ffea00",
     danger: "#ff29c3",
     selectionBg: "#1a4a36",
-    selectionText: "#05090b"
+    selectionText: "#05090b",
   },
   lightSlate: {
     bg: "#e7ecef",
@@ -125,7 +125,7 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     warn: "#b08968",
     danger: "#a44a3f",
     selectionBg: "#b8c7cf",
-    selectionText: "#1f2933"
+    selectionText: "#1f2933",
   },
   paperWhite: {
     bg: "#f8f7f3",
@@ -139,7 +139,7 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     warn: "#b58b4c",
     danger: "#9f4d42",
     selectionBg: "#d9d4c8",
-    selectionText: "#1d2430"
+    selectionText: "#1d2430",
   },
   midnightBlack: {
     bg: "#040507",
@@ -153,7 +153,7 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     warn: "#a88245",
     danger: "#8f3f45",
     selectionBg: "#1a2431",
-    selectionText: "#d7dde7"
+    selectionText: "#d7dde7",
   },
   jester: {
     bg: "#12081e",
@@ -167,7 +167,7 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     warn: "#f2c14e",
     danger: "#c94c9b",
     selectionBg: "#6a4bc2",
-    selectionText: "#12081e"
+    selectionText: "#12081e",
   },
   sonora: {
     bg: "#f3e8d7",
@@ -181,7 +181,7 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     warn: "#d8a25a",
     danger: "#b75b4f",
     selectionBg: "#d6bfa5",
-    selectionText: "#3c3228"
+    selectionText: "#3c3228",
   },
   tigers: {
     bg: "#2f0d57",
@@ -195,7 +195,7 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     warn: "#ffde59",
     danger: "#6a32a8",
     selectionBg: "#fdd023",
-    selectionText: "#2f0d57"
+    selectionText: "#2f0d57",
   },
   tech: {
     bg: "#002c5f",
@@ -209,7 +209,7 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     warn: "#eaaa00",
     danger: "#9d822f",
     selectionBg: "#e0cf99",
-    selectionText: "#002c5f"
+    selectionText: "#002c5f",
   },
   deuteranopia: {
     bg: "#11161d",
@@ -223,7 +223,7 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     warn: "#ffd166",
     danger: "#b084f5",
     selectionBg: "#2d4761",
-    selectionText: "#f1f5f9"
+    selectionText: "#f1f5f9",
   },
   protanopia: {
     bg: "#101821",
@@ -237,7 +237,7 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     warn: "#ffd166",
     danger: "#7d6cf0",
     selectionBg: "#2c4f6e",
-    selectionText: "#f6f8fb"
+    selectionText: "#f6f8fb",
   },
   tritanopia: {
     bg: "#1a1416",
@@ -251,7 +251,7 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     warn: "#f4a261",
     danger: "#d45087",
     selectionBg: "#5a3245",
-    selectionText: "#f7f2f4"
+    selectionText: "#f7f2f4",
   },
   blueAngels: {
     bg: "#081a35",
@@ -265,7 +265,7 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     warn: "#ffd56a",
     danger: "#d67a3c",
     selectionBg: "#f2c24f",
-    selectionText: "#081a35"
+    selectionText: "#081a35",
   },
   southwest: {
     bg: "#1f2f5a",
@@ -279,7 +279,7 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     warn: "#f9b233",
     danger: "#d63b2e",
     selectionBg: "#f0523f",
-    selectionText: "#ffffff"
+    selectionText: "#ffffff",
   },
   rams: {
     bg: "#003594",
@@ -293,7 +293,7 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     warn: "#ffd54a",
     danger: "#1f4fa3",
     selectionBg: "#ffd100",
-    selectionText: "#003594"
+    selectionText: "#003594",
   },
   trooper: {
     bg: "#ffffff",
@@ -307,7 +307,7 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     warn: "#5c5c5c",
     danger: "#8c8c8c",
     selectionBg: "#000000",
-    selectionText: "#ffffff"
+    selectionText: "#ffffff",
   },
   twilight: {
     bg: "#000000",
@@ -321,7 +321,7 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     warn: "#a6a6a6",
     danger: "#737373",
     selectionBg: "#ffffff",
-    selectionText: "#000000"
+    selectionText: "#000000",
   },
   msdos: {
     bg: "#0000aa",
@@ -335,7 +335,7 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     warn: "#ffff55",
     danger: "#ff5555",
     selectionBg: "#aaaaaa",
-    selectionText: "#0000aa"
+    selectionText: "#0000aa",
   },
   niners: {
     bg: "#1f0a0a",
@@ -349,7 +349,7 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     warn: "#e3be63",
     danger: "#d95a4e",
     selectionBg: "#b3995d",
-    selectionText: "#1f0a0a"
+    selectionText: "#1f0a0a",
   },
   mcrn: {
     bg: "#0a0d12",
@@ -363,7 +363,7 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     warn: "#ffc857",
     danger: "#ff4d4d",
     selectionBg: "#ff6a00",
-    selectionText: "#0a0d12"
+    selectionText: "#0a0d12",
   },
   zeke: {
     bg: "#0e1a14",
@@ -377,7 +377,7 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     warn: "#e3c265",
     danger: "#d96b6b",
     selectionBg: "#2f6b53",
-    selectionText: "#dff7ea"
+    selectionText: "#dff7ea",
   },
   gundam: {
     bg: "#0b1e3a",
@@ -391,7 +391,7 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     warn: "#f9d648",
     danger: "#ff5a5a",
     selectionBg: "#f9d648",
-    selectionText: "#0b1e3a"
+    selectionText: "#0b1e3a",
   },
   crtGreen: {
     bg: "#060B08",
@@ -405,7 +405,7 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     warn: "#E5C453",
     danger: "#E26B5B",
     selectionBg: "#1A3A2D",
-    selectionText: "#CFFFE2"
+    selectionText: "#CFFFE2",
   },
   crtAmber: {
     bg: "#0C0906",
@@ -419,7 +419,7 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     warn: "#F2C14E",
     danger: "#E26B5B",
     selectionBg: "#4A2D12",
-    selectionText: "#FFEBCB"
+    selectionText: "#FFEBCB",
   },
   kitty: {
     bg: "#FFF4FB",
@@ -433,7 +433,7 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     warn: "#E5A63A",
     danger: "#D94A6A",
     selectionBg: "#E86AB1",
-    selectionText: "#2C1624"
+    selectionText: "#2C1624",
   },
   corpo: {
     bg: "#070707",
@@ -447,7 +447,7 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     warn: "#E0A63D",
     danger: "#FF3B3B",
     selectionBg: "#8A1017",
-    selectionText: "#FDEDEE"
+    selectionText: "#FDEDEE",
   },
   strikefitron: {
     bg: "#020704",
@@ -461,7 +461,7 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     warn: "#C7D94A",
     danger: "#E06F54",
     selectionBg: "#1A3F24",
-    selectionText: "#CCFFB8"
+    selectionText: "#CCFFB8",
   },
   custom1: {
     bg: "#0b0f14",
@@ -475,7 +475,7 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     warn: "#f1c40f",
     danger: "#e74c3c",
     selectionBg: "#9b59b6",
-    selectionText: "#0b0f14"
+    selectionText: "#0b0f14",
   },
   // "rotating" is a virtual mode; this fallback prevents invalid lookups before
   // runtime rotation applies a concrete palette.
@@ -491,8 +491,8 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     warn: "#f1c40f",
     danger: "#e74c3c",
     selectionBg: "#9b59b6",
-    selectionText: "#0b0f14"
-  }
+    selectionText: "#0b0f14",
+  },
 };
 
 export const THEME_ORDER: ThemeId[] = [
@@ -526,7 +526,7 @@ export const THEME_ORDER: ThemeId[] = [
   "corpo",
   "strikefitron",
   "custom1",
-  "rotating"
+  "rotating",
 ];
 
 export const ROTATING_THEME_ORDER: RotatingThemeId[] = [
@@ -558,7 +558,7 @@ export const ROTATING_THEME_ORDER: RotatingThemeId[] = [
   "crtAmber",
   "kitty",
   "corpo",
-  "strikefitron"
+  "strikefitron",
 ];
 
 export function cycleTheme(current: ThemeId): ThemeId {
@@ -567,7 +567,9 @@ export function cycleTheme(current: ThemeId): ThemeId {
   return THEME_ORDER[(safeIndex + 1) % THEME_ORDER.length];
 }
 
-export function formatThemeDisplayName(themeId: ThemeId | RotatingThemeId): string {
+export function formatThemeDisplayName(
+  themeId: ThemeId | RotatingThemeId,
+): string {
   if (themeId === "msdos") return "MS-DOS";
   if (themeId === "mcrn") return "MCRN";
   if (themeId === "gundam") return "GUNDAM";
@@ -592,11 +594,13 @@ export type ResolveThemeTokensOptions = {
 export function resolveThemeTokens(
   themeId: ThemeId,
   settings: Pick<TadoiSettings, "customThemes"> | undefined,
-  options: ResolveThemeTokensOptions = {}
+  options: ResolveThemeTokensOptions = {},
 ): ThemeTokens {
   if (themeId === "custom1") {
     const base =
-      options.draft?.global ?? settings?.customThemes?.custom1?.global ?? THEMES.default;
+      options.draft?.global ??
+      settings?.customThemes?.custom1?.global ??
+      THEMES.default;
     if (!options.objectId) {
       return { ...base };
     }
@@ -606,29 +610,33 @@ export function resolveThemeTokens(
       settings?.customThemes?.custom1?.objects?.[options.objectId];
     return {
       ...base,
-      ...override
+      ...override,
     };
   }
 
   const base = THEMES[themeId];
-  const isRotatingTheme = ROTATING_THEME_ORDER.includes(themeId as RotatingThemeId);
+  const isRotatingTheme = ROTATING_THEME_ORDER.includes(
+    themeId as RotatingThemeId,
+  );
   if (!isRotatingTheme) {
     return base;
   }
 
   const rotatingThemeId = themeId as RotatingThemeId;
-  const persistedTextOverrides = settings?.customThemes?.textByTheme?.[rotatingThemeId];
+  const persistedTextOverrides =
+    settings?.customThemes?.textByTheme?.[rotatingThemeId];
   const draftTextOverrides = options.builtInTextDraft?.[rotatingThemeId];
-  const globalTextOverride = draftTextOverrides?.global ?? persistedTextOverrides?.global;
+  const globalTextOverride =
+    draftTextOverrides?.global ?? persistedTextOverrides?.global;
   const objectTextOverride = options.objectId
-    ? draftTextOverrides?.objects?.[options.objectId] ??
-      persistedTextOverrides?.objects?.[options.objectId]
+    ? (draftTextOverrides?.objects?.[options.objectId] ??
+      persistedTextOverrides?.objects?.[options.objectId])
     : undefined;
 
   return {
     ...base,
     ...globalTextOverride,
-    ...objectTextOverride
+    ...objectTextOverride,
   };
 }
 

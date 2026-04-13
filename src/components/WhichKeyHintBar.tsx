@@ -16,7 +16,8 @@ export function fitHintLine(items: WhichKeyHintItem[], width: number): string {
 
   for (const item of items) {
     const segment = formatHintSegment(item);
-    const candidate = built === "KEYS " ? `${built}${segment}` : `${built} · ${segment}`;
+    const candidate =
+      built === "KEYS " ? `${built}${segment}` : `${built} · ${segment}`;
     if (candidate.length <= safeWidth) {
       built = candidate;
       continue;
@@ -49,7 +50,7 @@ export function WhichKeyHintBar({ items, width }: WhichKeyHintBarProps) {
         borderStyle: "single",
         borderColor: theme.outline,
         paddingLeft: 1,
-        paddingRight: 1
+        paddingRight: 1,
       }}
     >
       <text style={{ color: theme.muted }}>{fitHintLine(items, width)}</text>

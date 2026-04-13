@@ -15,7 +15,9 @@ function escapeRegExp(value: string): string {
 }
 
 function buildMentionPatterns(terms: string[]): RegExp[] {
-  const unique = Array.from(new Set(terms.map((term) => term.trim()).filter((term) => term.length > 0)));
+  const unique = Array.from(
+    new Set(terms.map((term) => term.trim()).filter((term) => term.length > 0)),
+  );
   return unique.map((term) => new RegExp(`\\b${escapeRegExp(term)}\\b`, "i"));
 }
 
@@ -30,7 +32,7 @@ export function findUnlinkedMentions(options: {
   const mentions: NoteMention[] = [];
   const patterns = buildMentionPatterns([
     options.targetTitle,
-    ...(options.targetAliases ?? [])
+    ...(options.targetAliases ?? []),
   ]);
   if (patterns.length === 0) return mentions;
 
@@ -39,14 +41,17 @@ export function findUnlinkedMentions(options: {
 
     if (
       options.hideWhenLinked &&
-      parsed.outgoingNoteRefs.some((ref) => ref.toResolved === options.targetPath)
+      parsed.outgoingNoteRefs.some(
+        (ref) => ref.toResolved === options.targetPath,
+      )
     ) {
       continue;
     }
 
-    const source = options.excludeCodeFences === false
-      ? parsed.content
-      : stripCodeFences(parsed.content);
+    const source =
+      options.excludeCodeFences === false
+        ? parsed.content
+        : stripCodeFences(parsed.content);
     const lines = source.split(/\r?\n/);
 
     for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
@@ -58,7 +63,7 @@ export function findUnlinkedMentions(options: {
       mentions.push({
         from: path,
         line: lineIndex + 1,
-        excerpt: line.trim()
+        excerpt: line.trim(),
       });
       break;
     }

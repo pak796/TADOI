@@ -1,5 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { formatDueDateTimeLabel, formatOverdueBy } from "./OverdueNotificationModal";
+import {
+  formatDueDateTimeLabel,
+  formatOverdueBy,
+} from "./OverdueNotificationModal";
 
 describe("OverdueNotificationModal helpers", () => {
   it("passes through invalid due date strings", () => {

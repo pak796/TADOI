@@ -9,7 +9,7 @@ function makeTask(id: string): Task {
     status: "open",
     createdAt: 1,
     updatedAt: 1,
-    tags: []
+    tags: [],
   };
 }
 

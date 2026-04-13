@@ -13,12 +13,12 @@ import {
   DEFAULT_CRT_FX_LITE_COLOR,
   DEFAULT_CRT_FX_LITE_PRESET,
   DEFAULT_RETRO_FX_MODE,
-  loadSettings
+  loadSettings,
 } from "../settings/settings";
 import {
   CURRENT_SCHEMA_VERSION,
   safeLoadState,
-  type LoadedData
+  type LoadedData,
 } from "../state/persistence";
 import {
   acquireTadoiLockOrThrow,
@@ -27,7 +27,7 @@ import {
   refreshTadoiLockHeartbeat,
   removeTadoiLock,
   removeTadoiLockSync,
-  TADOI_LOCK_HEARTBEAT_INTERVAL_MS
+  TADOI_LOCK_HEARTBEAT_INTERVAL_MS,
 } from "../state/lockfile";
 import { applyArchiveAging } from "../state/store";
 import { APP_NAME, PRODUCT_NAME_TM } from "../brand/brand";
@@ -44,13 +44,13 @@ export type StartupNormalizationResult = {
 
 export function redactStartupPath(
   pathValue: string,
-  options: { homeDir?: string; env?: NodeJS.ProcessEnv } = {}
+  options: { homeDir?: string; env?: NodeJS.ProcessEnv } = {},
 ): string {
   return redactPathForDisplay(pathValue, options);
 }
 
 export function normalizeLoadedDataForStartup(
-  loaded: LoadedData
+  loaded: LoadedData,
 ): StartupNormalizationResult {
   let tasksChanged = false;
   const normalizedTasks = loaded.tasks.map((task) => {
@@ -80,7 +80,10 @@ export function normalizeLoadedDataForStartup(
       if (task.dueAt !== normalizedDueAt) {
         tasksChanged = true;
       }
-      if (JSON.stringify(task.reminder ?? null) !== JSON.stringify(normalizedReminder ?? null)) {
+      if (
+        JSON.stringify(task.reminder ?? null) !==
+        JSON.stringify(normalizedReminder ?? null)
+      ) {
         tasksChanged = true;
       }
     }
@@ -89,13 +92,14 @@ export function normalizeLoadedDataForStartup(
       tags: nextTags,
       hasExplicitTime,
       dueAt: normalizedDueAt,
-      reminder: normalizedReminder
+      reminder: normalizedReminder,
     };
   });
 
   const normalizedTagIndex = normalizeTagIndex(loaded.tagIndex ?? {});
   const tagIndexChanged =
-    JSON.stringify(normalizedTagIndex) !== JSON.stringify(loaded.tagIndex ?? {});
+    JSON.stringify(normalizedTagIndex) !==
+    JSON.stringify(loaded.tagIndex ?? {});
 
   return {
     normalizedLoaded: {
@@ -104,10 +108,10 @@ export function normalizeLoadedDataForStartup(
       tagIndex: normalizedTagIndex,
       tagAliases: normalizeTagAliases(loaded.tagAliases),
       savedViews: Array.isArray(loaded.savedViews) ? loaded.savedViews : [],
-      engagement: normalizeEngagementState(loaded.engagement)
+      engagement: normalizeEngagementState(loaded.engagement),
     },
     tasksChanged,
-    tagIndexChanged
+    tagIndexChanged,
   };
 }
 
@@ -130,7 +134,10 @@ export function shouldPersistInitialRuntimeState(options: {
 export async function runTui(options: RunTuiOptions): Promise<void> {
   const renderer = await createCliRenderer({ exitOnCtrlC: true });
   const settingsResult = await loadSettings();
-  applyThemeWithSettings(settingsResult.settings.themeId, settingsResult.settings);
+  applyThemeWithSettings(
+    settingsResult.settings.themeId,
+    settingsResult.settings,
+  );
   const loadResult = await safeLoadState();
   const lockPath = getTadoiLockPath(loadResult.resolvedPath);
   const lockPayload = createDefaultLockPayload(loadResult.resolvedPath);
@@ -159,7 +166,7 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
       redactedLogger.warn(
         `[${APP_NAME}] failed to remove lock file (${redactedLockPath}): ${
           error instanceof Error ? error.message : String(error)
-        }`
+        }`,
       );
     }
   };
@@ -181,16 +188,16 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
           ? ` (archived to ${redactStartupPath(event.archivedPath)})`
           : "";
         lockRecoveryWarnings.push(
-          `Recovered stale lock from previous run at ${redactStartupPath(event.lockPath)}${archivedSuffix}`
+          `Recovered stale lock from previous run at ${redactStartupPath(event.lockPath)}${archivedSuffix}`,
         );
-      }
+      },
     });
     lockAcquired = true;
     heartbeatTimer = setInterval(() => {
       void refreshTadoiLockHeartbeat(lockPath, {
         pid: lockPayload.pid,
         lockId: lockPayload.lockId,
-        expectedDataFile: loadResult.resolvedPath
+        expectedDataFile: loadResult.resolvedPath,
       }).catch((error: unknown) => {
         if (lockCleanedUp) {
           return;
@@ -198,17 +205,19 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
         redactedLogger.warn(
           `[${APP_NAME}] failed to refresh lock heartbeat (${redactedLockPath}): ${
             error instanceof Error ? error.message : String(error)
-          }`
+          }`,
         );
       });
     }, TADOI_LOCK_HEARTBEAT_INTERVAL_MS);
     heartbeatTimer.unref?.();
   } catch (error: unknown) {
     if (error instanceof Error) {
-      redactedLogger.warn(`[${APP_NAME}] ${error.message} (${redactedLockPath})`);
+      redactedLogger.warn(
+        `[${APP_NAME}] ${error.message} (${redactedLockPath})`,
+      );
     } else {
       redactedLogger.warn(
-        `[${APP_NAME}] failed to acquire lock (${redactedLockPath}): ${String(error)}`
+        `[${APP_NAME}] failed to acquire lock (${redactedLockPath}): ${String(error)}`,
       );
     }
     throw error;
@@ -223,9 +232,11 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
   const startupBanner =
     startupWarnings.length > 0 ? startupWarnings.join(" | ") : undefined;
 
-  redactedLogger.log(`[${APP_NAME}] data path: ${redactStartupPath(loadResult.resolvedPath)}`);
   redactedLogger.log(
-    `[${APP_NAME}] settings path: ${redactStartupPath(settingsResult.resolvedPath)}`
+    `[${APP_NAME}] data path: ${redactStartupPath(loadResult.resolvedPath)}`,
+  );
+  redactedLogger.log(
+    `[${APP_NAME}] settings path: ${redactStartupPath(settingsResult.resolvedPath)}`,
   );
   for (const warning of settingsResult.warnings) {
     redactedLogger.warn(`[${APP_NAME}] ${warning}`);
@@ -243,16 +254,17 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
   const now = Date.now();
   const { data: agedData, changed: archiveChanged } = applyArchiveAging(
     normalizedLoaded,
-    now
+    now,
   );
   const shouldSaveInitial = shouldPersistInitialRuntimeState({
     tasksChanged,
     tagIndexChanged,
     archiveChanged,
     didMigrate: loadResult.didMigrate,
-    shouldPersistRecoveredState: loadResult.shouldPersistRecoveredState
+    shouldPersistRecoveredState: loadResult.shouldPersistRecoveredState,
   });
-  const showCorruptionRecoveryImportCta = loadResult.shouldPersistRecoveredState;
+  const showCorruptionRecoveryImportCta =
+    loadResult.shouldPersistRecoveredState;
 
   createRoot(renderer).render(
     <App
@@ -263,9 +275,15 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
       initialFlashMode={settingsResult.settings.flashMode}
       initialHintDisplayMode={settingsResult.settings.hintDisplayMode}
       initialCrtFxLite={settingsResult.settings.crtFxLite === true}
-      initialCrtFxColor={settingsResult.settings.crtFxColor ?? DEFAULT_CRT_FX_LITE_COLOR}
-      initialCrtFxPreset={settingsResult.settings.crtFxPreset ?? DEFAULT_CRT_FX_LITE_PRESET}
-      initialRetroFxMode={settingsResult.settings.retroFxMode ?? DEFAULT_RETRO_FX_MODE}
+      initialCrtFxColor={
+        settingsResult.settings.crtFxColor ?? DEFAULT_CRT_FX_LITE_COLOR
+      }
+      initialCrtFxPreset={
+        settingsResult.settings.crtFxPreset ?? DEFAULT_CRT_FX_LITE_PRESET
+      }
+      initialRetroFxMode={
+        settingsResult.settings.retroFxMode ?? DEFAULT_RETRO_FX_MODE
+      }
       initialNotificationSettings={settingsResult.settings.notifications}
       initialSecuritySettings={settingsResult.settings.security}
       initialCustomThemes={settingsResult.settings.customThemes}
@@ -275,7 +293,7 @@ export async function runTui(options: RunTuiOptions): Promise<void> {
       showLogo={options.showLogo}
       startupBanner={startupBanner}
       showCorruptionRecoveryImportCta={showCorruptionRecoveryImportCta}
-    />
+    />,
   );
 }
 
@@ -283,14 +301,14 @@ export async function runTuiSmoke(): Promise<number> {
   const renderer = await createCliRenderer({
     exitOnCtrlC: true,
     useAlternateScreen: false,
-    useMouse: false
+    useMouse: false,
   });
 
   try {
     createRoot(renderer).render(
       <box>
         <text>{`${PRODUCT_NAME_TM} smoke`}</text>
-      </box>
+      </box>,
     );
     renderer.requestRender();
     await renderer.idle();

@@ -18,22 +18,22 @@ export function withSeriesOccurrenceExcluded(
   tasks: Task[],
   seriesTaskId: string,
   occurrenceIso: string,
-  nowMs: number
+  nowMs: number,
 ): Task[] {
   return tasks.map((task) => {
     if (task.id !== seriesTaskId || !task.recurrence) {
       return task;
     }
     const nextExdates = Array.from(
-      new Set([...(task.recurrence.exdates ?? []), occurrenceIso])
+      new Set([...(task.recurrence.exdates ?? []), occurrenceIso]),
     ).sort((left, right) => left.localeCompare(right));
     return {
       ...task,
       updatedAt: nowMs,
       recurrence: {
         ...task.recurrence,
-        exdates: nextExdates
-      }
+        exdates: nextExdates,
+      },
     };
   });
 }
@@ -41,36 +41,39 @@ export function withSeriesOccurrenceExcluded(
 export function removeMaterializedOccurrenceInstance(
   tasks: Task[],
   seriesId: string,
-  occurrenceIso: string
+  occurrenceIso: string,
 ): Task[] {
   return tasks.filter(
     (task) =>
       !(
         task.instance_of?.series_id === seriesId &&
         task.instance_of?.occurrence === occurrenceIso
-      )
+      ),
   );
 }
 
-function findSeriesTaskBySeriesId(tasks: Task[], seriesId: string): Task | undefined {
+function findSeriesTaskBySeriesId(
+  tasks: Task[],
+  seriesId: string,
+): Task | undefined {
   return tasks.find((task) => task.recurrence?.series_id === seriesId);
 }
 
 function findMaterializedInstance(
   tasks: Task[],
   seriesId: string,
-  occurrenceIso: string
+  occurrenceIso: string,
 ): Task | undefined {
   return tasks.find(
     (task) =>
       task.instance_of?.series_id === seriesId &&
-      task.instance_of?.occurrence === occurrenceIso
+      task.instance_of?.occurrence === occurrenceIso,
   );
 }
 
 export function completeRecurringOccurrenceInTasks(
   tasks: Task[],
-  input: RecurringOccurrenceMutationTarget
+  input: RecurringOccurrenceMutationTarget,
 ): Task[] {
   const normalizedIso = normalizeOccurrenceIso(input.occurrenceIso);
   if (!normalizedIso) return tasks;
@@ -81,8 +84,17 @@ export function completeRecurringOccurrenceInTasks(
   const occurrenceDate = parseLocalIsoToDate(normalizedIso);
   if (!occurrenceDate) return tasks;
 
-  const withExdate = withSeriesOccurrenceExcluded(tasks, seriesTask.id, normalizedIso, input.nowMs);
-  const existingInstance = findMaterializedInstance(withExdate, input.seriesId, normalizedIso);
+  const withExdate = withSeriesOccurrenceExcluded(
+    tasks,
+    seriesTask.id,
+    normalizedIso,
+    input.nowMs,
+  );
+  const existingInstance = findMaterializedInstance(
+    withExdate,
+    input.seriesId,
+    normalizedIso,
+  );
 
   if (existingInstance) {
     if (existingInstance.status === "done") {
@@ -94,7 +106,7 @@ export function completeRecurringOccurrenceInTasks(
         ...task,
         status: "done",
         updatedAt: input.nowMs,
-        closedAt: input.nowMs
+        closedAt: input.nowMs,
       };
     });
   }
@@ -115,8 +127,8 @@ export function completeRecurringOccurrenceInTasks(
     ...(reminder ? { reminder } : {}),
     instance_of: {
       series_id: input.seriesId,
-      occurrence: normalizedIso
-    }
+      occurrence: normalizedIso,
+    },
   };
 
   return [...withExdate, doneInstance];
@@ -124,7 +136,7 @@ export function completeRecurringOccurrenceInTasks(
 
 export function skipRecurringOccurrenceInTasks(
   tasks: Task[],
-  input: RecurringOccurrenceMutationTarget
+  input: RecurringOccurrenceMutationTarget,
 ): Task[] {
   const normalizedIso = normalizeOccurrenceIso(input.occurrenceIso);
   if (!normalizedIso) return tasks;
@@ -132,13 +144,22 @@ export function skipRecurringOccurrenceInTasks(
   const seriesTask = findSeriesTaskBySeriesId(tasks, input.seriesId);
   if (!seriesTask || !seriesTask.recurrence) return tasks;
 
-  const withExdate = withSeriesOccurrenceExcluded(tasks, seriesTask.id, normalizedIso, input.nowMs);
-  return removeMaterializedOccurrenceInstance(withExdate, input.seriesId, normalizedIso);
+  const withExdate = withSeriesOccurrenceExcluded(
+    tasks,
+    seriesTask.id,
+    normalizedIso,
+    input.nowMs,
+  );
+  return removeMaterializedOccurrenceInstance(
+    withExdate,
+    input.seriesId,
+    normalizedIso,
+  );
 }
 
 export function snoozeRecurringOccurrenceInTasks(
   tasks: Task[],
-  input: RecurringOccurrenceMutationTarget
+  input: RecurringOccurrenceMutationTarget,
 ): Task[] {
   const normalizedIso = normalizeOccurrenceIso(input.occurrenceIso);
   if (!normalizedIso) return tasks;
@@ -149,7 +170,11 @@ export function snoozeRecurringOccurrenceInTasks(
   const occurrenceDate = parseLocalIsoToDate(normalizedIso);
   if (!occurrenceDate) return tasks;
 
-  const existingInstance = findMaterializedInstance(tasks, input.seriesId, normalizedIso);
+  const existingInstance = findMaterializedInstance(
+    tasks,
+    input.seriesId,
+    normalizedIso,
+  );
   const source = existingInstance ?? seriesTask;
 
   const snoozedDate = new Date(
@@ -158,7 +183,7 @@ export function snoozeRecurringOccurrenceInTasks(
     occurrenceDate.getDate() + 1,
     occurrenceDate.getHours(),
     occurrenceDate.getMinutes(),
-    occurrenceDate.getSeconds()
+    occurrenceDate.getSeconds(),
   );
 
   const reminder = existingInstance
@@ -178,15 +203,20 @@ export function snoozeRecurringOccurrenceInTasks(
     ...(reminder ? { reminder } : {}),
     instance_of: {
       series_id: input.seriesId,
-      occurrence: normalizedIso
-    }
+      occurrence: normalizedIso,
+    },
   };
 
-  const withExdate = withSeriesOccurrenceExcluded(tasks, seriesTask.id, normalizedIso, input.nowMs);
+  const withExdate = withSeriesOccurrenceExcluded(
+    tasks,
+    seriesTask.id,
+    normalizedIso,
+    input.nowMs,
+  );
   const withoutPreviousInstance = removeMaterializedOccurrenceInstance(
     withExdate,
     input.seriesId,
-    normalizedIso
+    normalizedIso,
   );
   return [...withoutPreviousInstance, snoozedInstance];
 }

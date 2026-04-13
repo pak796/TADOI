@@ -13,7 +13,10 @@ function queueKey(filePath: string): string {
   return process.platform === "win32" ? resolved.toLowerCase() : resolved;
 }
 
-async function withWriteLock(filePath: string, task: () => Promise<void>): Promise<void> {
+async function withWriteLock(
+  filePath: string,
+  task: () => Promise<void>,
+): Promise<void> {
   const key = queueKey(filePath);
   const previous = writeQueueByPath.get(key) ?? Promise.resolve();
   const current = previous.catch(() => undefined).then(task);
@@ -76,7 +79,10 @@ function sanitizeTitleToFilename(title: string): string {
   return cleaned.length > 0 ? cleaned : fallback;
 }
 
-export function resolveNotesRootPath(dataFilePath: string, rootPath: string | null | undefined): string {
+export function resolveNotesRootPath(
+  dataFilePath: string,
+  rootPath: string | null | undefined,
+): string {
   const dataDir = path.dirname(dataFilePath);
   if (!rootPath || rootPath.trim().length === 0) {
     return path.join(dataDir, "notes");
@@ -94,19 +100,25 @@ export async function ensureNotesRoot(notesRoot: string): Promise<void> {
   await fs.mkdir(notesRoot, { recursive: true, mode: PRIVATE_DIR_MODE });
 }
 
-export async function hasDefaultGuideSeedMarker(notesRoot: string): Promise<boolean> {
+export async function hasDefaultGuideSeedMarker(
+  notesRoot: string,
+): Promise<boolean> {
   return pathExists(getDefaultGuideSeedMarkerPath(notesRoot));
 }
 
-export async function writeDefaultGuideSeedMarker(notesRoot: string): Promise<void> {
+export async function writeDefaultGuideSeedMarker(
+  notesRoot: string,
+): Promise<void> {
   await ensureNotesRoot(notesRoot);
   await fs.writeFile(getDefaultGuideSeedMarkerPath(notesRoot), "seeded\n", {
     encoding: "utf8",
-    mode: PRIVATE_FILE_MODE
+    mode: PRIVATE_FILE_MODE,
   });
 }
 
-export async function scanMarkdownFiles(notesRoot: string): Promise<NoteListItem[]> {
+export async function scanMarkdownFiles(
+  notesRoot: string,
+): Promise<NoteListItem[]> {
   const entries: NoteListItem[] = [];
 
   async function walk(current: string): Promise<void> {
@@ -126,27 +138,33 @@ export async function scanMarkdownFiles(notesRoot: string): Promise<NoteListItem
         path: relative,
         title: path.basename(entry.name, path.extname(entry.name)),
         mtimeMs: stat.mtimeMs,
-        tags: []
+        tags: [],
       });
     }
   }
 
   await ensureNotesRoot(notesRoot);
   await walk(notesRoot);
-  entries.sort((left, right) => right.mtimeMs - left.mtimeMs || left.path.localeCompare(right.path));
+  entries.sort(
+    (left, right) =>
+      right.mtimeMs - left.mtimeMs || left.path.localeCompare(right.path),
+  );
   return entries;
 }
 
-export async function readNoteDocument(notesRoot: string, notePath: NotePath): Promise<NoteDocument> {
+export async function readNoteDocument(
+  notesRoot: string,
+  notePath: NotePath,
+): Promise<NoteDocument> {
   const fullPath = toAbsolutePath(notesRoot, notePath);
   const [content, stat] = await Promise.all([
     fs.readFile(fullPath, "utf8"),
-    fs.stat(fullPath)
+    fs.stat(fullPath),
   ]);
   return {
     path: notePath,
     content,
-    mtimeMs: stat.mtimeMs
+    mtimeMs: stat.mtimeMs,
   };
 }
 
@@ -157,12 +175,15 @@ export async function writeNoteDocumentAtomic(options: {
 }): Promise<void> {
   const fullPath = toAbsolutePath(options.notesRoot, options.notePath);
   await withWriteLock(fullPath, async () => {
-    await fs.mkdir(path.dirname(fullPath), { recursive: true, mode: PRIVATE_DIR_MODE });
+    await fs.mkdir(path.dirname(fullPath), {
+      recursive: true,
+      mode: PRIVATE_DIR_MODE,
+    });
     const tmpPath = await nextAtomicTempPath(fullPath);
 
     await fs.writeFile(tmpPath, options.content, {
       encoding: "utf8",
-      mode: PRIVATE_FILE_MODE
+      mode: PRIVATE_FILE_MODE,
     });
 
     await fs.rename(tmpPath, fullPath);
@@ -188,7 +209,7 @@ export async function createNoteFile(options: {
   await writeNoteDocumentAtomic({
     notesRoot: options.notesRoot,
     notePath: candidate,
-    content
+    content,
   });
 
   return readNoteDocument(options.notesRoot, candidate);
@@ -259,7 +280,9 @@ export async function statNoteFile(options: {
   notePath: NotePath;
 }): Promise<number | null> {
   try {
-    const stat = await fs.stat(toAbsolutePath(options.notesRoot, options.notePath));
+    const stat = await fs.stat(
+      toAbsolutePath(options.notesRoot, options.notePath),
+    );
     return stat.mtimeMs;
   } catch (error: unknown) {
     const maybeErrno = error as NodeJS.ErrnoException;
@@ -270,7 +293,10 @@ export async function statNoteFile(options: {
   }
 }
 
-async function copyDirectoryRecursive(source: string, destination: string): Promise<void> {
+async function copyDirectoryRecursive(
+  source: string,
+  destination: string,
+): Promise<void> {
   await fs.mkdir(destination, { recursive: true, mode: PRIVATE_DIR_MODE });
   const entries = await fs.readdir(source, { withFileTypes: true });
 

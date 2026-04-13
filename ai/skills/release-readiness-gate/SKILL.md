@@ -6,14 +6,17 @@ description: Prepare a repository for release by running a deterministic release
 # Release Readiness + Packaging (Build/Package/Version, Minimal Surface Area)
 
 ## Intent
+
 Bring the app to release-ready state by running a release checklist, optionally bumping version only when `TARGET_VERSION` is provided, and regenerating packaging artifacts from a clean output state.
 
 ## Inputs
+
 - `TARGET_VERSION` (optional): SemVer string such as `0.2.9` or `0.2.9-beta.1`.
 - If `TARGET_VERSION` is provided, update version references.
 - If `TARGET_VERSION` is not provided, do not mutate version and validate packaging against the current version.
 
 ## Apply Relevant Skills
+
 - Use available skills and workflows for build and test execution.
 - Use available skills and workflows for packaging and installer generation.
 - Use available skills and workflows for CI and release automation validation.
@@ -24,6 +27,7 @@ Bring the app to release-ready state by running a release checklist, optionally 
 ## Scope
 
 ### Allowed
+
 - Edit packaging scripts and configs under paths such as `scripts/` and `packaging/`.
 - Edit CI workflows only when they block packaging or release verification.
 - Edit version sources and dependent version strings.
@@ -31,6 +35,7 @@ Bring the app to release-ready state by running a release checklist, optionally 
 - Create or update release checklist artifacts under `docs/`.
 
 ### Not Allowed
+
 - Implement feature work.
 - Perform UX redesign.
 - Perform refactors unrelated to release or packaging correctness.
@@ -40,10 +45,12 @@ Bring the app to release-ready state by running a release checklist, optionally 
 Rule: if a change does not improve release determinism, do not make it.
 
 ## Hard Constraints
+
 1. Repackage means clean rebuild. Always clear prior output and regenerate artifacts.
 2. Never claim packaging success when required toolchains are unavailable.
 3. Use one canonical version source, typically `package.json`, and derive all dependent version strings from it.
 4. Mark every checklist item as exactly one of:
+
 - `PASS` with command and output evidence snippet.
 - `FAIL` with root cause and fix.
 - `BLOCKED` with reason and reproducible local or CI command plan.
@@ -51,6 +58,7 @@ Rule: if a change does not improve release determinism, do not make it.
 ## Runbook
 
 ### Step 1: Discover Release Surfaces
+
 - Identify build entry points.
 - Identify packaging entry points and installer tooling.
 - Identify version locations across source, CLI, and UI strings.
@@ -58,6 +66,7 @@ Rule: if a change does not improve release determinism, do not make it.
 - Create or refresh `docs/RELEASE_CHECKLIST.md` with exact commands.
 
 ### Step 2: Optional Version Bump
+
 - Execute this step only if `TARGET_VERSION` is provided.
 - Validate SemVer and ensure version progression unless prerelease policy explicitly allows otherwise.
 - Update canonical version source first.
@@ -67,6 +76,7 @@ Rule: if a change does not improve release determinism, do not make it.
 - If `TARGET_VERSION` is not provided, skip mutation and verify `--version` matches canonical source.
 
 ### Step 3: Execute Release Checklist (Build Verification)
+
 - Run dependency install using lockfile-respecting command.
 - Run lint when present.
 - Run typecheck when present.
@@ -79,6 +89,7 @@ Rule: if a change does not improve release determinism, do not make it.
 - Record all outcomes in `docs/RELEASE_RUN_REPORT.md`.
 
 ### Step 4: Packaging and Repackaging
+
 - Clean output directories before packaging. Example: remove and recreate `dist/`.
 - Run packaging for each repository-supported target.
 - Verify artifact naming includes version when versioned naming is the project convention.
@@ -86,6 +97,7 @@ Rule: if a change does not improve release determinism, do not make it.
 - If toolchain is not available, keep scaffold behavior and mark packaging status as `BLOCKED` with required toolchain and commands.
 
 ### Step 5: Artifact Verification
+
 - For each artifact, verify file exists.
 - Verify non-trivial size.
 - Verify naming and embedded version expectations.
@@ -95,18 +107,21 @@ Rule: if a change does not improve release determinism, do not make it.
 - Verify debug and development flags are not enabled in release artifacts.
 
 ### Step 6: Release Hygiene (Prepare, Do Not Publish)
+
 - Prepare release notes file such as `docs/RELEASE_NOTES_<version>.md`, or update changelog.
 - Verify build output paths are correctly ignored by git.
 - Verify install and packaging instructions align with produced artifacts.
 - Do not push, tag, or publish unless explicitly requested.
 
 ## Required Deliverables
+
 1. `docs/RELEASE_CHECKLIST.md` with commands, expected outputs, and platform notes.
 2. `docs/RELEASE_RUN_REPORT.md` with PASS or FAIL or BLOCKED status and evidence snippets.
 3. Updated version references only when `TARGET_VERSION` is provided.
 4. Fresh packaging artifacts in standard output directory, or explicit `BLOCKED` section with toolchain requirements and reproducible command plan.
 
 ## Acceptance Criteria
+
 - Clean rebuild completed, or marked `BLOCKED` with exact reproduction steps.
 - Packaging artifacts regenerated and listed with version-accurate naming.
 - `--version` output matches canonical version source.
@@ -114,6 +129,7 @@ Rule: if a change does not improve release determinism, do not make it.
 - No unrelated feature changes or refactors.
 
 ## End-of-Run Safety Check
+
 - Summarize diff by category:
 - versioning changes
 - packaging changes
@@ -122,5 +138,6 @@ Rule: if a change does not improve release determinism, do not make it.
 - Confirm all changes are release-related and minimal.
 
 ## Legacy Resources
+
 - Optional gate helper script: `scripts/release_gate.py`.
 - Optional references: `references/check-catalog.md`, `references/remediation-playbook.md`.

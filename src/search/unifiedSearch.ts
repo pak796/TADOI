@@ -94,10 +94,15 @@ function buildContentExcerpt(content: string, terms: string[]): string {
       const lowered = line.toLowerCase();
       return loweredTerms.some((term) => lowered.includes(term));
     }) ?? lines[0];
-  return matchedLine.length <= 56 ? matchedLine : `${matchedLine.slice(0, 55)}…`;
+  return matchedLine.length <= 56
+    ? matchedLine
+    : `${matchedLine.slice(0, 55)}…`;
 }
 
-function compareResults(left: UnifiedSearchResult, right: UnifiedSearchResult): number {
+function compareResults(
+  left: UnifiedSearchResult,
+  right: UnifiedSearchResult,
+): number {
   if (left.score !== right.score) {
     return right.score - left.score;
   }
@@ -108,7 +113,10 @@ function compareResults(left: UnifiedSearchResult, right: UnifiedSearchResult): 
     return left.title.localeCompare(right.title);
   }
   if (left.kind === "note" && right.kind === "note") {
-    return left.title.localeCompare(right.title) || left.notePath.localeCompare(right.notePath);
+    return (
+      left.title.localeCompare(right.title) ||
+      left.notePath.localeCompare(right.notePath)
+    );
   }
   return 0;
 }
@@ -134,7 +142,7 @@ export function runUnifiedSearch(params: {
         taskId: task.id,
         title: task.title,
         secondary: `tags: ${task.tags.join(", ") || "(none)"}`,
-        score
+        score,
       });
     }
   }
@@ -148,7 +156,7 @@ export function runUnifiedSearch(params: {
         notePath: note.path,
         title: note.title,
         secondary: `${note.path} · ${buildContentExcerpt(note.content, terms)}`,
-        score
+        score,
       });
     }
   }

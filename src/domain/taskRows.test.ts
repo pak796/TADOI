@@ -3,7 +3,7 @@ import { Filters, SortMode, Task } from "./models";
 import {
   buildSeriesOccurrenceRowId,
   buildVisibleTaskRows,
-  parseSeriesOccurrenceRowId
+  parseSeriesOccurrenceRowId,
 } from "./taskRows";
 
 function makeTask(partial: Partial<Task> & Pick<Task, "id" | "title">): Task {
@@ -19,7 +19,7 @@ function makeTask(partial: Partial<Task> & Pick<Task, "id" | "title">): Task {
     notes: partial.notes,
     tags: partial.tags ?? [],
     recurrence: partial.recurrence,
-    instance_of: partial.instance_of
+    instance_of: partial.instance_of,
   };
 }
 
@@ -28,17 +28,20 @@ function buildRows(
   filters: Filters,
   now: number,
   sortMode: SortMode = "due",
-  aliases: Record<string, string> = {}
+  aliases: Record<string, string> = {},
 ) {
   return buildVisibleTaskRows(tasks, filters, sortMode, now, aliases);
 }
 
 describe("taskRows row-id helpers", () => {
   it("builds and parses virtual row ids", () => {
-    const rowId = buildSeriesOccurrenceRowId("series:alpha", "2026-02-10T09:00:00");
+    const rowId = buildSeriesOccurrenceRowId(
+      "series:alpha",
+      "2026-02-10T09:00:00",
+    );
     expect(parseSeriesOccurrenceRowId(rowId)).toEqual({
       seriesId: "series:alpha",
-      occurrenceIso: "2026-02-10T09:00:00"
+      occurrenceIso: "2026-02-10T09:00:00",
     });
   });
 });
@@ -57,9 +60,9 @@ describe("buildVisibleTaskRows recurring expansion", () => {
         recurrence: {
           dtstart: "2026-02-08T09:00:00",
           rrule: "FREQ=DAILY;INTERVAL=1",
-          series_id: "series:standup"
-        }
-      })
+          series_id: "series:standup",
+        },
+      }),
     ];
 
     const rows = buildRows(tasks, { status: "all", due: "any" }, now);
@@ -81,9 +84,9 @@ describe("buildVisibleTaskRows recurring expansion", () => {
         recurrence: {
           dtstart: "2026-02-08T09:00:00",
           rrule: "FREQ=DAILY;INTERVAL=1",
-          series_id: "series:standup"
-        }
-      })
+          series_id: "series:standup",
+        },
+      }),
     ];
 
     const rows = buildRows(tasks, { status: "all", due: "overdue" }, now);
@@ -104,9 +107,9 @@ describe("buildVisibleTaskRows recurring expansion", () => {
         recurrence: {
           dtstart: "2026-02-10T09:00:00",
           rrule: "FREQ=DAILY;INTERVAL=1;COUNT=10",
-          series_id: "series:daily"
-        }
-      })
+          series_id: "series:daily",
+        },
+      }),
     ];
 
     const todayRows = buildRows(tasks, { status: "all", due: "today" }, now);
@@ -130,22 +133,26 @@ describe("buildVisibleTaskRows recurring expansion", () => {
         recurrence: {
           dtstart: "2026-02-10T09:00:00",
           rrule: "FREQ=DAILY;INTERVAL=1;COUNT=2",
-          series_id: "series:daily"
-        }
-      })
+          series_id: "series:daily",
+        },
+      }),
     ];
 
     const allRows = buildRows(
       tasks,
-      { status: "all", due: "today", tagFilter: { all: ["work"], none: ["home"] } },
-      now
+      {
+        status: "all",
+        due: "today",
+        tagFilter: { all: ["work"], none: ["home"] },
+      },
+      now,
     );
     expect(allRows).toHaveLength(1);
 
     const excludedRows = buildRows(
       tasks,
       { status: "all", due: "today", tagFilter: { none: ["work"] } },
-      now
+      now,
     );
     expect(excludedRows).toHaveLength(0);
   });
@@ -162,9 +169,9 @@ describe("buildVisibleTaskRows recurring expansion", () => {
         recurrence: {
           dtstart: "2026-02-10T09:00:00",
           rrule: "FREQ=DAILY;INTERVAL=1;COUNT=2",
-          series_id: "series:daily-alias"
-        }
-      })
+          series_id: "series:daily-alias",
+        },
+      }),
     ];
 
     const tagRows = buildRows(
@@ -172,7 +179,7 @@ describe("buildVisibleTaskRows recurring expansion", () => {
       { status: "all", due: "today", tagFilter: { all: ["wrk"] } },
       now,
       "due",
-      aliases
+      aliases,
     );
     expect(tagRows).toHaveLength(1);
 
@@ -181,7 +188,7 @@ describe("buildVisibleTaskRows recurring expansion", () => {
       { status: "all", due: "today", searchText: "wrk" },
       now,
       "due",
-      aliases
+      aliases,
     );
     expect(searchRows).toHaveLength(1);
   });
@@ -192,8 +199,8 @@ describe("buildVisibleTaskRows recurring expansion", () => {
         id: "task-priority",
         title: "priority task",
         status: "open",
-        tags: ["work", "P3", "home", "#p1", "home"]
-      })
+        tags: ["work", "P3", "home", "#p1", "home"],
+      }),
     ];
 
     const rows = buildRows(tasks, { status: "all", due: "any" }, now);
@@ -213,9 +220,9 @@ describe("buildVisibleTaskRows recurring expansion", () => {
         recurrence: {
           dtstart: "2026-02-10T09:00:00",
           rrule: "FREQ=DAILY;INTERVAL=1;COUNT=2",
-          series_id: "series:priority"
-        }
-      })
+          series_id: "series:priority",
+        },
+      }),
     ];
 
     const rows = buildRows(tasks, { status: "all", due: "today" }, now);
@@ -231,13 +238,13 @@ describe("buildVisibleTaskRows recurring expansion", () => {
         id: "regular-priority",
         title: "regular priority",
         status: "open",
-        tags: ["work", "#p2"]
+        tags: ["work", "#p2"],
       }),
       makeTask({
         id: "regular-non-priority",
         title: "regular non-priority",
         status: "open",
-        tags: ["work", "#p3"]
+        tags: ["work", "#p3"],
       }),
       makeTask({
         id: "series-priority-filter",
@@ -248,20 +255,28 @@ describe("buildVisibleTaskRows recurring expansion", () => {
         recurrence: {
           dtstart: "2026-02-10T09:00:00",
           rrule: "FREQ=DAILY;INTERVAL=1;COUNT=2",
-          series_id: "series:priority-filter"
-        }
-      })
+          series_id: "series:priority-filter",
+        },
+      }),
     ];
 
-    const rows = buildRows(tasks, { status: "all", due: "today", priority: "P2" }, now);
+    const rows = buildRows(
+      tasks,
+      { status: "all", due: "today", priority: "P2" },
+      now,
+    );
     expect(rows.map((row) => row.id)).toEqual([
-      "series_occurrence:series%3Apriority-filter:2026-02-10T09%3A00%3A00"
+      "series_occurrence:series%3Apriority-filter:2026-02-10T09%3A00%3A00",
     ]);
 
-    const anyDueRows = buildRows(tasks, { status: "all", due: "any", priority: "#p2" }, now);
+    const anyDueRows = buildRows(
+      tasks,
+      { status: "all", due: "any", priority: "#p2" },
+      now,
+    );
     expect(anyDueRows.map((row) => row.id)).toEqual([
       "series_occurrence:series%3Apriority-filter:2026-02-10T09%3A00%3A00",
-      "regular-priority"
+      "regular-priority",
     ]);
   });
 
@@ -276,8 +291,8 @@ describe("buildVisibleTaskRows recurring expansion", () => {
         recurrence: {
           dtstart: "2026-02-10T09:00:00",
           rrule: "FREQ=DAILY;INTERVAL=1;COUNT=3",
-          series_id: "series:standup"
-        }
+          series_id: "series:standup",
+        },
       }),
       makeTask({
         id: "instance-task",
@@ -288,9 +303,9 @@ describe("buildVisibleTaskRows recurring expansion", () => {
         tags: ["work"],
         instance_of: {
           series_id: "series:standup",
-          occurrence: "2026-02-10T09:00:00"
-        }
-      })
+          occurrence: "2026-02-10T09:00:00",
+        },
+      }),
     ];
 
     const rows = buildRows(tasks, { status: "all", due: "today" }, now);

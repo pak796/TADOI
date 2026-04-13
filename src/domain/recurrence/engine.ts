@@ -5,7 +5,7 @@ import {
   formatDateToLocalIso,
   fromFloatingUtcDate,
   parseLocalIsoToDate,
-  toFloatingUtcDate
+  toFloatingUtcDate,
 } from "./rruleAdapter";
 
 function normalizeIso(iso: string): string | null {
@@ -24,7 +24,11 @@ function exdateSet(exdates: string[] | undefined): Set<string> {
   return set;
 }
 
-function isOccurrenceOverdue(occurrenceMs: number, hasExplicitTime: boolean, nowMs: number): boolean {
+function isOccurrenceOverdue(
+  occurrenceMs: number,
+  hasExplicitTime: boolean,
+  nowMs: number,
+): boolean {
   const startOfToday = startOfLocalDayMs(nowMs);
   const dayDiff = diffLocalDays(occurrenceMs, startOfToday);
   const timeOverdue = hasExplicitTime && dayDiff === 0 && nowMs > occurrenceMs;
@@ -48,23 +52,35 @@ function safeBuildRule(seriesTask: Task): ReturnType<typeof buildRule> | null {
   }
 }
 
-export function applyExdates(occurrenceIsos: string[], exdates: string[] | undefined): string[] {
+export function applyExdates(
+  occurrenceIsos: string[],
+  exdates: string[] | undefined,
+): string[] {
   const excluded = exdateSet(exdates);
   return occurrenceIsos.filter((iso) => !excluded.has(iso));
 }
 
-export function getOccurrences(seriesTask: Task, rangeStartMs: number, rangeEndMs: number): string[] {
+export function getOccurrences(
+  seriesTask: Task,
+  rangeStartMs: number,
+  rangeEndMs: number,
+): string[] {
   if (!hasRecurrence(seriesTask) || !seriesTask.recurrence) return [];
   if (rangeEndMs < rangeStartMs) return [];
   const rule = safeBuildRule(seriesTask);
   if (!rule) return [];
   const start = toFloatingUtcDate(new Date(rangeStartMs));
   const end = toFloatingUtcDate(new Date(rangeEndMs));
-  const occurrences = rule.between(start, end, true).map(mapFloatingDateToLocalIso);
+  const occurrences = rule
+    .between(start, end, true)
+    .map(mapFloatingDateToLocalIso);
   return applyExdates(occurrences, seriesTask.recurrence.exdates);
 }
 
-export function nextOccurrence(seriesTask: Task, afterMs: number): string | null {
+export function nextOccurrence(
+  seriesTask: Task,
+  afterMs: number,
+): string | null {
   if (!hasRecurrence(seriesTask) || !seriesTask.recurrence) return null;
   const rule = safeBuildRule(seriesTask);
   if (!rule) return null;
@@ -83,7 +99,10 @@ export function nextOccurrence(seriesTask: Task, afterMs: number): string | null
   return null;
 }
 
-export function latestOverdueOccurrence(seriesTask: Task, nowMs: number): string | null {
+export function latestOverdueOccurrence(
+  seriesTask: Task,
+  nowMs: number,
+): string | null {
   if (!hasRecurrence(seriesTask) || !seriesTask.recurrence) return null;
   const rule = safeBuildRule(seriesTask);
   if (!rule) return null;

@@ -5,7 +5,7 @@ import {
   combineDueDateTime,
   createDraftFromTask,
   initialState,
-  reducer
+  reducer,
 } from "./store";
 import { LoadedData } from "./persistence";
 import { Task } from "../domain/models";
@@ -22,7 +22,7 @@ function makeTask(partial: Partial<Task> & Pick<Task, "id" | "title">): Task {
     dueAt: partial.dueAt,
     closedAt: partial.closedAt,
     notes: partial.notes,
-    tags: partial.tags ?? []
+    tags: partial.tags ?? [],
   };
 }
 
@@ -37,31 +37,34 @@ describe("applyArchiveAging startup behavior", () => {
           id: "old",
           title: "old done",
           status: "done",
-          closedAt: now - 8 * DAY_MS
+          closedAt: now - 8 * DAY_MS,
         }),
         makeTask({
           id: "recent",
           title: "recent done",
           status: "done",
-          closedAt: now - 3 * DAY_MS
+          closedAt: now - 3 * DAY_MS,
         }),
         makeTask({
           id: "open",
           title: "open task",
-          status: "open"
-        })
+          status: "open",
+        }),
       ],
       tagIndex: {},
       savedViews: [],
-      engagement: createDefaultEngagementState()
+      engagement: createDefaultEngagementState(),
     };
 
     const result = applyArchiveAging(data, now);
     expect(result.changed).toBe(true);
-    const statuses = result.data.tasks.reduce<Record<string, string>>((acc, task) => {
-      acc[task.id] = task.status;
-      return acc;
-    }, {});
+    const statuses = result.data.tasks.reduce<Record<string, string>>(
+      (acc, task) => {
+        acc[task.id] = task.status;
+        return acc;
+      },
+      {},
+    );
     expect(statuses.old).toBe("archived");
     expect(statuses.recent).toBe("done");
     expect(statuses.open).toBe("open");
@@ -74,8 +77,8 @@ describe("createDraftFromTask priority tag display", () => {
       makeTask({
         id: "priority",
         title: "priority task",
-        tags: ["work", "P3", "home", "#p1", "home"]
-      })
+        tags: ["work", "P3", "home", "#p1", "home"],
+      }),
     );
 
     expect(draft.tagsText).toBe("#p1 #work #home");
@@ -89,7 +92,7 @@ describe("engagement reducer actions", () => {
       type: "recordCompletion",
       taskId: "task-1",
       at,
-      tags: ["work"]
+      tags: ["work"],
     });
 
     expect(recorded.engagement.completionLog).toHaveLength(1);
@@ -106,13 +109,13 @@ describe("engagement reducer actions", () => {
       type: "recordCompletion",
       taskId: "task-1",
       at: day,
-      tags: []
+      tags: [],
     });
     const withSecond = reducer(withFirst, {
       type: "recordCompletion",
       taskId: "task-2",
       at: day + 60_000,
-      tags: []
+      tags: [],
     });
 
     expect(withSecond.engagement.streak.currentDays).toBe(1);
@@ -127,21 +130,21 @@ describe("engagement reducer actions", () => {
         message: "First task completed.",
         priority: 1,
         createdAt: now,
-        durationMs: 1000
-      }
+        durationMs: 1000,
+      },
     });
 
     const blockedTick = reducer(queued, {
       type: "tickEngagementToast",
       now: now + 200,
-      overlayBlocked: true
+      overlayBlocked: true,
     });
     expect(blockedTick.engagementToastActive).toBeNull();
 
     const clearTick = reducer(blockedTick, {
       type: "tickEngagementToast",
       now: now + 300,
-      overlayBlocked: false
+      overlayBlocked: false,
     });
     expect(clearTick.engagementToastActive?.id).toBe("toast-1");
     expect(clearTick.engagementToastQueue).toHaveLength(0);
@@ -158,12 +161,16 @@ describe("engagement reducer actions", () => {
       toast: {
         message: "Created your first recurring task.",
         priority: 3,
-        durationMs: 10_000
-      }
+        durationMs: 10_000,
+      },
     });
 
-    expect(withRecurringCreated.engagement.achievements.FIRST_RECURRING_TASK_CREATED).toBeDefined();
-    expect(withRecurringCreated.engagementToastQueue[0]?.id).toBe("FIRST_RECURRING_TASK_CREATED");
+    expect(
+      withRecurringCreated.engagement.achievements.FIRST_RECURRING_TASK_CREATED,
+    ).toBeDefined();
+    expect(withRecurringCreated.engagementToastQueue[0]?.id).toBe(
+      "FIRST_RECURRING_TASK_CREATED",
+    );
 
     const repeated = reducer(withRecurringCreated, {
       type: "triggerEngagementMilestone",
@@ -173,8 +180,8 @@ describe("engagement reducer actions", () => {
       toast: {
         message: "Created your first recurring task.",
         priority: 3,
-        durationMs: 10_000
-      }
+        durationMs: 10_000,
+      },
     });
     expect(repeated.engagementToastQueue).toHaveLength(1);
 
@@ -185,16 +192,19 @@ describe("engagement reducer actions", () => {
       at: now + 2_000,
       meta: {
         seriesId: "series:task-1",
-        occurrenceIso: "2026-02-15T09:00:00"
+        occurrenceIso: "2026-02-15T09:00:00",
       },
       toast: {
         message: "Completed your first recurring repeat occurrence.",
         priority: 2,
-        durationMs: 10_000
-      }
+        durationMs: 10_000,
+      },
     });
 
-    expect(withRecurringRepeatDone.engagement.achievements.FIRST_RECURRING_REPEAT_DONE).toBeDefined();
+    expect(
+      withRecurringRepeatDone.engagement.achievements
+        .FIRST_RECURRING_REPEAT_DONE,
+    ).toBeDefined();
     expect(withRecurringRepeatDone.engagementToastQueue).toHaveLength(2);
   });
 
@@ -209,8 +219,8 @@ describe("engagement reducer actions", () => {
       toast: {
         message: "Created your first checklist.",
         priority: 3,
-        durationMs: 10_000
-      }
+        durationMs: 10_000,
+      },
     });
 
     const repeatedChecklistCreated = reducer(withFirstChecklistCreated, {
@@ -222,27 +232,31 @@ describe("engagement reducer actions", () => {
       toast: {
         message: "Created your first checklist.",
         priority: 3,
-        durationMs: 10_000
-      }
+        durationMs: 10_000,
+      },
     });
 
     expect(
-      repeatedChecklistCreated.engagement.achievements.FIRST_CHECKLIST_CREATED?.unlockedAt
+      repeatedChecklistCreated.engagement.achievements.FIRST_CHECKLIST_CREATED
+        ?.unlockedAt,
     ).toBe(now);
     expect(repeatedChecklistCreated.engagementToastQueue).toHaveLength(1);
 
-    const withRemainingOnboardingMilestones = reducer(repeatedChecklistCreated, {
-      type: "triggerEngagementMilestone",
-      achievementKey: "FIRST_TOME_CREATED",
-      achievementId: "FIRST_TOME_CREATED",
-      at: now + 2400,
-      meta: { notePath: "First Tome Milestone.md" },
-      toast: {
-        message: "Created your first TOME note.",
-        priority: 3,
-        durationMs: 10_000
-      }
-    });
+    const withRemainingOnboardingMilestones = reducer(
+      repeatedChecklistCreated,
+      {
+        type: "triggerEngagementMilestone",
+        achievementKey: "FIRST_TOME_CREATED",
+        achievementId: "FIRST_TOME_CREATED",
+        at: now + 2400,
+        meta: { notePath: "First Tome Milestone.md" },
+        toast: {
+          message: "Created your first TOME note.",
+          priority: 3,
+          durationMs: 10_000,
+        },
+      },
+    );
 
     const withChecklistCompleted = reducer(withRemainingOnboardingMilestones, {
       type: "triggerEngagementMilestone",
@@ -253,13 +267,16 @@ describe("engagement reducer actions", () => {
       toast: {
         message: "Completed your first checklist.",
         priority: 2,
-        durationMs: 10_000
-      }
+        durationMs: 10_000,
+      },
     });
 
-    expect(withChecklistCompleted.engagement.achievements.FIRST_TOME_CREATED).toBeDefined();
     expect(
-      withChecklistCompleted.engagement.achievements.FIRST_CHECKLIST_FULLY_COMPLETED
+      withChecklistCompleted.engagement.achievements.FIRST_TOME_CREATED,
+    ).toBeDefined();
+    expect(
+      withChecklistCompleted.engagement.achievements
+        .FIRST_CHECKLIST_FULLY_COMPLETED,
     ).toBeDefined();
     expect(withChecklistCompleted.engagementToastQueue).toHaveLength(3);
   });
@@ -268,78 +285,80 @@ describe("engagement reducer actions", () => {
 describe("combineDueDateTime", () => {
   const miniOptions = {
     now: Date.parse("2026-03-02T10:00:00-06:00"),
-    tz: "America/Chicago"
+    tz: "America/Chicago",
   };
 
   it("resolves mini time as same-day datetime when still in future", () => {
     const result = combineDueDateTime("3pm", "", {
-      ...miniOptions
+      ...miniOptions,
     });
     expect(result).toEqual({
       dueAt: new Date(2026, 2, 2, 15, 0, 0, 0).getTime(),
-      hasExplicitTime: true
+      hasExplicitTime: true,
     });
   });
 
   it("resolves mini time as next-day datetime when today's time has passed", () => {
     const result = combineDueDateTime("3pm", "", {
       ...miniOptions,
-      now: Date.parse("2026-03-02T16:00:00-06:00")
+      now: Date.parse("2026-03-02T16:00:00-06:00"),
     });
     expect(result).toEqual({
       dueAt: new Date(2026, 2, 3, 15, 0, 0, 0).getTime(),
-      hasExplicitTime: true
+      hasExplicitTime: true,
     });
   });
 
   it("resolves mini weekday+time using today when in the future", () => {
     const result = combineDueDateTime("mon 3pm", "", {
       now: Date.parse("2026-03-02T10:00:00-06:00"),
-      tz: "America/Chicago"
+      tz: "America/Chicago",
     });
     expect(result).toEqual({
       dueAt: new Date(2026, 2, 2, 15, 0, 0, 0).getTime(),
-      hasExplicitTime: true
+      hasExplicitTime: true,
     });
   });
 
   it("resolves mini weekday+time to next occurrence when current weekday time has passed", () => {
     const result = combineDueDateTime("mon 3pm", "", {
       now: Date.parse("2026-03-02T16:00:00-06:00"),
-      tz: "America/Chicago"
+      tz: "America/Chicago",
     });
     expect(result).toEqual({
       dueAt: new Date(2026, 2, 9, 15, 0, 0, 0).getTime(),
-      hasExplicitTime: true
+      hasExplicitTime: true,
     });
   });
 
   it("supports 24-hour mini time", () => {
     const result = combineDueDateTime("15:30", "", {
       now: Date.parse("2026-03-02T10:00:00-06:00"),
-      tz: "America/Chicago"
+      tz: "America/Chicago",
     });
     expect(result).toEqual({
       dueAt: new Date(2026, 2, 2, 15, 30, 0, 0).getTime(),
-      hasExplicitTime: true
+      hasExplicitTime: true,
     });
   });
 
   it("ignores ambiguous single-number time in mini preview parse", () => {
-    expect(combineDueDateTime("3", "", {
-      now: Date.parse("2026-03-02T10:00:00-06:00"),
-      tz: "America/Chicago"
-    })).toEqual({ dueAt: undefined, hasExplicitTime: false });
+    expect(
+      combineDueDateTime("3", "", {
+        now: Date.parse("2026-03-02T10:00:00-06:00"),
+        tz: "America/Chicago",
+      }),
+    ).toEqual({ dueAt: undefined, hasExplicitTime: false });
   });
 
   it("keeps strict ISO behavior with options provided", () => {
     const result = combineDueDateTime("2026-03-05", "09:00", {
       now: Date.parse("2026-03-02T10:00:00-06:00"),
-      tz: "America/Chicago"
+      tz: "America/Chicago",
     });
     expect(result).toEqual({
       dueAt: new Date(2026, 2, 5, 9, 0, 0, 0).getTime(),
-      hasExplicitTime: true
+      hasExplicitTime: true,
     });
   });
 });

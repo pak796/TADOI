@@ -8,7 +8,7 @@ import {
   parseTimeToMinutes,
   parseDateToLocalMidnight,
   startOfLocalDayMs,
-  toLocalMidnight
+  toLocalMidnight,
 } from "./dates";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -57,7 +57,9 @@ describe("date-only helpers", () => {
     const midnight = toLocalMidnight(now).getTime();
     const laterSameDay = new Date(2026, 1, 9, 23, 59, 59, 999).getTime();
     expect(diffLocalDays(laterSameDay, midnight)).toBe(0);
-    expect(isSameLocalDay(new Date(midnight), new Date(laterSameDay))).toBe(true);
+    expect(isSameLocalDay(new Date(midnight), new Date(laterSameDay))).toBe(
+      true,
+    );
   });
 
   it("handles DST boundaries using local-day math when applicable", () => {

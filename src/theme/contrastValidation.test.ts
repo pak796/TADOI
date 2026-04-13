@@ -3,7 +3,7 @@ import {
   computeContrastRatio,
   validateBuiltInTextContrast,
   validateCustomThemeContrast,
-  validateThemeTokensContrast
+  validateThemeTokensContrast,
 } from "./contrastValidation";
 import { THEMES } from "./themes";
 
@@ -14,7 +14,11 @@ describe("theme contrast validation", () => {
   });
 
   it("passes unchanged baseline tokens (regression-aware gate)", () => {
-    const result = validateThemeTokensContrast(THEMES.default, "default", THEMES.default);
+    const result = validateThemeTokensContrast(
+      THEMES.default,
+      "default",
+      THEMES.default,
+    );
     expect(result.ok).toBe(true);
     expect(result.issues).toHaveLength(0);
   });
@@ -23,13 +27,15 @@ describe("theme contrast validation", () => {
     const result = validateThemeTokensContrast(
       {
         ...THEMES.default,
-        selectionText: "#333333"
+        selectionText: "#333333",
       },
       "default",
-      THEMES.default
+      THEMES.default,
     );
     expect(result.ok).toBe(false);
-    expect(result.issues.some((issue) => issue.label.includes("selection text"))).toBe(true);
+    expect(
+      result.issues.some((issue) => issue.label.includes("selection text")),
+    ).toBe(true);
   });
 
   it("fails clearly for unreadable custom token sets", () => {
@@ -41,9 +47,9 @@ describe("theme contrast validation", () => {
         bg: "#777777",
         panel: "#777777",
         selectionBg: "#777777",
-        selectionText: "#777777"
+        selectionText: "#777777",
       },
-      "global"
+      "global",
     );
     expect(result.ok).toBe(false);
     expect(result.issues.length).toBeGreaterThan(0);
@@ -56,12 +62,14 @@ describe("theme contrast validation", () => {
       objects: {
         taskRow: {
           text: "#777777",
-          bg: "#777777"
-        }
-      }
+          bg: "#777777",
+        },
+      },
     });
     expect(result.ok).toBe(false);
-    expect(result.issues.some((issue) => issue.scope === "object:taskRow")).toBe(true);
+    expect(
+      result.issues.some((issue) => issue.scope === "object:taskRow"),
+    ).toBe(true);
   });
 
   it("validates built-in text tuning against base theme tokens", () => {
@@ -71,10 +79,12 @@ describe("theme contrast validation", () => {
       global: {
         text: "#777777",
         mutedText: "#777777",
-        selectionText: "#777777"
-      }
+        selectionText: "#777777",
+      },
     });
     expect(result.ok).toBe(false);
-    expect(result.issues.some((issue) => issue.scope.startsWith("theme:retro"))).toBe(true);
+    expect(
+      result.issues.some((issue) => issue.scope.startsWith("theme:retro")),
+    ).toBe(true);
   });
 });

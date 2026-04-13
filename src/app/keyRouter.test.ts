@@ -6,14 +6,14 @@ import { normalizeKeymapAliases, resolveKeymapAliases } from "./keymapAliases";
 
 function run(
   key: Partial<KeyInput>,
-  contextOverrides: Partial<KeyRouterContext> = {}
+  contextOverrides: Partial<KeyRouterContext> = {},
 ) {
   const input: KeyInput = {
     name: "",
     sequence: "",
     ctrl: false,
     shift: false,
-    ...key
+    ...key,
   };
   const context: KeyRouterContext = {
     uiState: initialUIState,
@@ -28,7 +28,7 @@ function run(
     allowEmptyNuxRecoveryImport: false,
     backupScreen: null,
     selectedTaskHasChecklistItems: false,
-    ...contextOverrides
+    ...contextOverrides,
   };
   return handleKey(input, context);
 }
@@ -43,10 +43,10 @@ describe("handleKey", () => {
           uiState: {
             ...initialUIState,
             mode: Mode.MODAL_CONFIRM,
-            focus: FocusTarget.MODAL
-          }
-        }
-      )
+            focus: FocusTarget.MODAL,
+          },
+        },
+      ),
     ).toEqual([{ scope: "ui", type: "UNWIND" }]);
     expect(
       run(
@@ -57,70 +57,61 @@ describe("handleKey", () => {
             mode: Mode.MODAL_CONFIRM,
             focus: FocusTarget.MODAL,
             modal: {
-              type: "emptyNux" as const
-            }
-          }
-        }
-      )
-    ).toEqual([{ scope: "ui", type: "DISMISS_EMPTY_NUX" }]);
-    expect(
-      run(
-        { name: "escape" },
-        { hasPendingGPrefix: true }
-      )
-    ).toEqual([{ scope: "ui", type: "SET_G_PREFIX", active: false }]);
-    expect(
-      run(
-        { name: "escape" },
-        { viewsOverlayOpen: true }
-      )
-    ).toEqual([{ scope: "ui", type: "CLOSE_VIEWS_OVERLAY" }]);
-    expect(
-      run(
-        { name: "escape" },
-        { saveViewPromptOpen: true }
-      )
-    ).toEqual([{ scope: "ui", type: "CANCEL_SAVE_VIEW_PROMPT" }]);
-    expect(
-      run(
-        { name: "escape" },
-        {
-          uiState: {
-            ...initialUIState,
-            mode: Mode.LIST,
-            focus: FocusTarget.DETAILS_LINKS
-          }
-        }
-      )
-    ).toEqual([
-      { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.TASK_LIST }
-    ]);
-    expect(
-      run(
-        { name: "escape" },
-        {
-          uiState: {
-            ...initialUIState,
-            mode: Mode.LIST,
-            focus: FocusTarget.DETAILS_CHECKLIST
-          }
-        }
-      )
-    ).toEqual([
-      { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.TASK_LIST }
-    ]);
-    expect(
-      run(
-        { name: "escape" },
-        {
-          uiState: {
-            ...initialUIState,
-            mode: Mode.LIST,
-            focus: FocusTarget.TASK_LIST
+              type: "emptyNux" as const,
+            },
           },
-          bulkActive: true
-        }
-      )
+        },
+      ),
+    ).toEqual([{ scope: "ui", type: "DISMISS_EMPTY_NUX" }]);
+    expect(run({ name: "escape" }, { hasPendingGPrefix: true })).toEqual([
+      { scope: "ui", type: "SET_G_PREFIX", active: false },
+    ]);
+    expect(run({ name: "escape" }, { viewsOverlayOpen: true })).toEqual([
+      { scope: "ui", type: "CLOSE_VIEWS_OVERLAY" },
+    ]);
+    expect(run({ name: "escape" }, { saveViewPromptOpen: true })).toEqual([
+      { scope: "ui", type: "CANCEL_SAVE_VIEW_PROMPT" },
+    ]);
+    expect(
+      run(
+        { name: "escape" },
+        {
+          uiState: {
+            ...initialUIState,
+            mode: Mode.LIST,
+            focus: FocusTarget.DETAILS_LINKS,
+          },
+        },
+      ),
+    ).toEqual([
+      { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.TASK_LIST },
+    ]);
+    expect(
+      run(
+        { name: "escape" },
+        {
+          uiState: {
+            ...initialUIState,
+            mode: Mode.LIST,
+            focus: FocusTarget.DETAILS_CHECKLIST,
+          },
+        },
+      ),
+    ).toEqual([
+      { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.TASK_LIST },
+    ]);
+    expect(
+      run(
+        { name: "escape" },
+        {
+          uiState: {
+            ...initialUIState,
+            mode: Mode.LIST,
+            focus: FocusTarget.TASK_LIST,
+          },
+          bulkActive: true,
+        },
+      ),
     ).toEqual([{ scope: "ui", type: "CLEAR_BULK_MARKS" }]);
     expect(
       run(
@@ -129,11 +120,11 @@ describe("handleKey", () => {
           uiState: {
             ...initialUIState,
             mode: Mode.BACKUP_CENTER,
-            focus: FocusTarget.BACKUP_CENTER
+            focus: FocusTarget.BACKUP_CENTER,
           },
-          backupScreen: "menu"
-        }
-      )
+          backupScreen: "menu",
+        },
+      ),
     ).toEqual([{ scope: "ui", type: "BACKUP_BACK" }]);
   });
 
@@ -141,10 +132,10 @@ describe("handleKey", () => {
     const dashboardState = {
       ...initialUIState,
       mode: Mode.DASHBOARD,
-      focus: FocusTarget.DASHBOARD
+      focus: FocusTarget.DASHBOARD,
     };
     expect(run({ name: "escape" }, { uiState: dashboardState })).toEqual([
-      { scope: "ui", type: "UNWIND" }
+      { scope: "ui", type: "UNWIND" },
     ]);
 
     const result = unwind(dashboardState);
@@ -164,23 +155,24 @@ describe("handleKey", () => {
         taskId: "task-1",
         taskTitle: "Task",
         previousMode: Mode.LIST,
-        previousFocus: FocusTarget.TASK_LIST
-      }
+        previousFocus: FocusTarget.TASK_LIST,
+      },
     };
-    expect(run({ name: "j", sequence: "j" }, { uiState: modalState })).toEqual([]);
+    expect(run({ name: "j", sequence: "j" }, { uiState: modalState })).toEqual(
+      [],
+    );
     expect(run({ name: "space" }, { uiState: modalState })).toEqual([]);
-    expect(
-      run(
-        { name: "p", sequence: "p" },
-        { uiState: modalState }
-      )
-    ).toEqual([]);
+    expect(run({ name: "p", sequence: "p" }, { uiState: modalState })).toEqual(
+      [],
+    );
     expect(run({ name: "y", sequence: "y" }, { uiState: modalState })).toEqual([
-      { scope: "domain", type: "MODAL_CONFIRM_DELETE" }
+      { scope: "domain", type: "MODAL_CONFIRM_DELETE" },
     ]);
-    expect(run({ name: "f", sequence: "f" }, { uiState: modalState })).toEqual([]);
+    expect(run({ name: "f", sequence: "f" }, { uiState: modalState })).toEqual(
+      [],
+    );
     expect(run({ name: "n", sequence: "n" }, { uiState: modalState })).toEqual([
-      { scope: "ui", type: "UNWIND" }
+      { scope: "ui", type: "UNWIND" },
     ]);
   });
 
@@ -194,18 +186,18 @@ describe("handleKey", () => {
         notePath: "TADOI Guides/Guide - Using TADOI.md",
         noteTitle: "Guide - Using TADOI",
         previousMode: Mode.NOTES_LIST,
-        previousFocus: FocusTarget.NOTES_LIST
-      }
+        previousFocus: FocusTarget.NOTES_LIST,
+      },
     };
     expect(run({ name: "y", sequence: "y" }, { uiState: modalState })).toEqual([
       { scope: "ui", type: "NOTES_CONFIRM_DELETE" },
-      { scope: "ui", type: "NOTES_BACK_TO_LIST" }
+      { scope: "ui", type: "NOTES_BACK_TO_LIST" },
     ]);
     expect(run({ name: "n", sequence: "n" }, { uiState: modalState })).toEqual([
-      { scope: "ui", type: "UNWIND" }
+      { scope: "ui", type: "UNWIND" },
     ]);
     expect(run({ name: "escape" }, { uiState: modalState })).toEqual([
-      { scope: "ui", type: "UNWIND" }
+      { scope: "ui", type: "UNWIND" },
     ]);
   });
 
@@ -220,14 +212,15 @@ describe("handleKey", () => {
         seriesTaskId: "series-task-1",
         seriesId: "series:task-1",
         occurrenceIso: "2026-02-10T09:00:00",
-        selectedRowId: "series_occurrence:series%3Atask-1:2026-02-10T09%3A00%3A00",
+        selectedRowId:
+          "series_occurrence:series%3Atask-1:2026-02-10T09%3A00%3A00",
         taskTitle: "Task",
         previousMode: Mode.LIST,
-        previousFocus: FocusTarget.TASK_LIST
-      }
+        previousFocus: FocusTarget.TASK_LIST,
+      },
     };
     expect(run({ name: "y", sequence: "y" }, { uiState: modalState })).toEqual([
-      { scope: "domain", type: "MODAL_CONFIRM_DELETE" }
+      { scope: "domain", type: "MODAL_CONFIRM_DELETE" },
     ]);
     expect(run({ name: "f", sequence: "f" }, { uiState: modalState })).toEqual([
       {
@@ -237,12 +230,12 @@ describe("handleKey", () => {
           type: "recurring_delete_future_checkpoint",
           deleteModal: modalState.modal,
           previousMode: Mode.LIST,
-          previousFocus: FocusTarget.TASK_LIST
-        }
-      }
+          previousFocus: FocusTarget.TASK_LIST,
+        },
+      },
     ]);
     expect(run({ name: "n", sequence: "n" }, { uiState: modalState })).toEqual([
-      { scope: "ui", type: "UNWIND" }
+      { scope: "ui", type: "UNWIND" },
     ]);
   });
 
@@ -253,10 +246,11 @@ describe("handleKey", () => {
       seriesTaskId: "series-task-1",
       seriesId: "series:task-1",
       occurrenceIso: "2026-02-10T09:00:00",
-      selectedRowId: "series_occurrence:series%3Atask-1:2026-02-10T09%3A00%3A00",
+      selectedRowId:
+        "series_occurrence:series%3Atask-1:2026-02-10T09%3A00%3A00",
       taskTitle: "Task",
       previousMode: Mode.LIST,
-      previousFocus: FocusTarget.TASK_LIST
+      previousFocus: FocusTarget.TASK_LIST,
     };
     const modalState = {
       ...initialUIState,
@@ -266,17 +260,20 @@ describe("handleKey", () => {
         type: "recurring_delete_future_checkpoint" as const,
         deleteModal: recurringDeleteModal,
         previousMode: Mode.LIST,
-        previousFocus: FocusTarget.TASK_LIST
-      }
+        previousFocus: FocusTarget.TASK_LIST,
+      },
     };
     expect(run({ name: "y", sequence: "y" }, { uiState: modalState })).toEqual([
-      { scope: "domain", type: "MODAL_CONFIRM_RECURRING_DELETE_FUTURE_CHECKPOINT" }
+      {
+        scope: "domain",
+        type: "MODAL_CONFIRM_RECURRING_DELETE_FUTURE_CHECKPOINT",
+      },
     ]);
     expect(run({ name: "n", sequence: "n" }, { uiState: modalState })).toEqual([
-      { scope: "ui", type: "MODAL_CANCEL_RECURRING_DELETE_FUTURE_CHECKPOINT" }
+      { scope: "ui", type: "MODAL_CANCEL_RECURRING_DELETE_FUTURE_CHECKPOINT" },
     ]);
     expect(run({ name: "escape" }, { uiState: modalState })).toEqual([
-      { scope: "ui", type: "MODAL_CANCEL_RECURRING_DELETE_FUTURE_CHECKPOINT" }
+      { scope: "ui", type: "MODAL_CANCEL_RECURRING_DELETE_FUTURE_CHECKPOINT" },
     ]);
   });
 
@@ -291,17 +288,17 @@ describe("handleKey", () => {
         summary: "Rename work -> project",
         detailLines: ["Tasks affected: 3"],
         previousMode: Mode.LIST,
-        previousFocus: FocusTarget.TASK_LIST
-      }
+        previousFocus: FocusTarget.TASK_LIST,
+      },
     };
     expect(run({ name: "y", sequence: "y" }, { uiState: modalState })).toEqual([
-      { scope: "domain", type: "MODAL_CONFIRM_TAG_LIFECYCLE" }
+      { scope: "domain", type: "MODAL_CONFIRM_TAG_LIFECYCLE" },
     ]);
     expect(run({ name: "n", sequence: "n" }, { uiState: modalState })).toEqual([
-      { scope: "ui", type: "UNWIND" }
+      { scope: "ui", type: "UNWIND" },
     ]);
     expect(run({ name: "escape" }, { uiState: modalState })).toEqual([
-      { scope: "ui", type: "UNWIND" }
+      { scope: "ui", type: "UNWIND" },
     ]);
   });
 
@@ -317,20 +314,20 @@ describe("handleKey", () => {
           taskId: "task-1",
           title: "Task",
           dueAt: "2026-02-10T09:00:00.000Z",
-          firedAt: "2026-02-10T09:01:00.000Z"
+          firedAt: "2026-02-10T09:01:00.000Z",
         },
         previousMode: Mode.LIST,
-        previousFocus: FocusTarget.TASK_LIST
-      }
+        previousFocus: FocusTarget.TASK_LIST,
+      },
     };
     expect(run({ name: "s", sequence: "s" }, { uiState: modalState })).toEqual([
-      { scope: "domain", type: "MODAL_OVERDUE_SNOOZE" }
+      { scope: "domain", type: "MODAL_OVERDUE_SNOOZE" },
     ]);
     expect(run({ name: "D", sequence: "D" }, { uiState: modalState })).toEqual([
-      { scope: "domain", type: "MODAL_OVERDUE_DONE" }
+      { scope: "domain", type: "MODAL_OVERDUE_DONE" },
     ]);
     expect(run({ name: "g", sequence: "g" }, { uiState: modalState })).toEqual([
-      { scope: "domain", type: "MODAL_OVERDUE_GO_TO_TASK" }
+      { scope: "domain", type: "MODAL_OVERDUE_GO_TO_TASK" },
     ]);
   });
 
@@ -347,29 +344,29 @@ describe("handleKey", () => {
           title: "Task",
           effectiveReminderAt: Date.parse("2026-02-10T08:00:00.000Z"),
           dueAt: "2026-02-10T09:00:00.000Z",
-          firedAt: "2026-02-10T08:00:00.000Z"
+          firedAt: "2026-02-10T08:00:00.000Z",
         },
         previousMode: Mode.LIST,
-        previousFocus: FocusTarget.TASK_LIST
-      }
+        previousFocus: FocusTarget.TASK_LIST,
+      },
     };
     expect(run({ name: "enter" }, { uiState: modalState })).toEqual([
-      { scope: "domain", type: "MODAL_REMINDER_DISMISS" }
+      { scope: "domain", type: "MODAL_REMINDER_DISMISS" },
     ]);
     expect(run({ name: "escape" }, { uiState: modalState })).toEqual([
-      { scope: "domain", type: "MODAL_REMINDER_DISMISS" }
+      { scope: "domain", type: "MODAL_REMINDER_DISMISS" },
     ]);
     expect(run({ name: "1", sequence: "1" }, { uiState: modalState })).toEqual([
-      { scope: "domain", type: "MODAL_REMINDER_SNOOZE", deltaMs: 600000 }
+      { scope: "domain", type: "MODAL_REMINDER_SNOOZE", deltaMs: 600000 },
     ]);
     expect(run({ name: "2", sequence: "2" }, { uiState: modalState })).toEqual([
-      { scope: "domain", type: "MODAL_REMINDER_SNOOZE", deltaMs: 3600000 }
+      { scope: "domain", type: "MODAL_REMINDER_SNOOZE", deltaMs: 3600000 },
     ]);
     expect(run({ name: "3", sequence: "3" }, { uiState: modalState })).toEqual([
-      { scope: "domain", type: "MODAL_REMINDER_SNOOZE", deltaMs: 86400000 }
+      { scope: "domain", type: "MODAL_REMINDER_SNOOZE", deltaMs: 86400000 },
     ]);
     expect(run({ name: "g", sequence: "g" }, { uiState: modalState })).toEqual([
-      { scope: "domain", type: "MODAL_REMINDER_GO_TO_TASK" }
+      { scope: "domain", type: "MODAL_REMINDER_GO_TO_TASK" },
     ]);
   });
 
@@ -384,17 +381,17 @@ describe("handleKey", () => {
         toTaskId: "task-b",
         toTaskTitle: "Task B",
         previousMode: Mode.EDIT,
-        previousFocus: FocusTarget.EDITOR_TITLE
-      }
+        previousFocus: FocusTarget.EDITOR_TITLE,
+      },
     };
     expect(run({ name: "s", sequence: "s" }, { uiState: modalState })).toEqual([
-      { scope: "domain", type: "MODAL_EDIT_SWITCH_SAVE" }
+      { scope: "domain", type: "MODAL_EDIT_SWITCH_SAVE" },
     ]);
     expect(run({ name: "d", sequence: "d" }, { uiState: modalState })).toEqual([
-      { scope: "domain", type: "MODAL_EDIT_SWITCH_DISCARD_SWITCH" }
+      { scope: "domain", type: "MODAL_EDIT_SWITCH_DISCARD_SWITCH" },
     ]);
     expect(run({ name: "c", sequence: "c" }, { uiState: modalState })).toEqual([
-      { scope: "domain", type: "MODAL_EDIT_SWITCH_DISCARD_CLOSE" }
+      { scope: "domain", type: "MODAL_EDIT_SWITCH_DISCARD_CLOSE" },
     ]);
     expect(run({ name: "enter" }, { uiState: modalState })).toEqual([]);
   });
@@ -409,20 +406,20 @@ describe("handleKey", () => {
         source: "task_editor" as const,
         continuation: "open_dashboard" as const,
         previousMode: Mode.EDIT,
-        previousFocus: FocusTarget.EDITOR_TITLE
-      }
+        previousFocus: FocusTarget.EDITOR_TITLE,
+      },
     };
     expect(run({ name: "s", sequence: "s" }, { uiState: modalState })).toEqual([
-      { scope: "domain", type: "MODAL_CONFIRM_UNSAVED_SAVE_CONTINUE" }
+      { scope: "domain", type: "MODAL_CONFIRM_UNSAVED_SAVE_CONTINUE" },
     ]);
     expect(run({ name: "d", sequence: "d" }, { uiState: modalState })).toEqual([
-      { scope: "domain", type: "MODAL_CONFIRM_UNSAVED_DISCARD_CONTINUE" }
+      { scope: "domain", type: "MODAL_CONFIRM_UNSAVED_DISCARD_CONTINUE" },
     ]);
     expect(run({ name: "c", sequence: "c" }, { uiState: modalState })).toEqual([
-      { scope: "ui", type: "MODAL_CANCEL_UNSAVED_CONTINUE" }
+      { scope: "ui", type: "MODAL_CANCEL_UNSAVED_CONTINUE" },
     ]);
     expect(run({ name: "escape" }, { uiState: modalState })).toEqual([
-      { scope: "ui", type: "MODAL_CANCEL_UNSAVED_CONTINUE" }
+      { scope: "ui", type: "MODAL_CANCEL_UNSAVED_CONTINUE" },
     ]);
   });
 
@@ -436,17 +433,17 @@ describe("handleKey", () => {
         checkpoint: "calendar_import" as const,
         sourceScreen: "calendar_import_confirm" as const,
         previousMode: Mode.BACKUP_CENTER,
-        previousFocus: FocusTarget.BACKUP_CENTER
-      }
+        previousFocus: FocusTarget.BACKUP_CENTER,
+      },
     };
     expect(run({ name: "y", sequence: "y" }, { uiState: modalState })).toEqual([
-      { scope: "domain", type: "MODAL_CONFIRM_BACKUP_FINAL_CHECKPOINT" }
+      { scope: "domain", type: "MODAL_CONFIRM_BACKUP_FINAL_CHECKPOINT" },
     ]);
     expect(run({ name: "n", sequence: "n" }, { uiState: modalState })).toEqual([
-      { scope: "ui", type: "MODAL_CANCEL_BACKUP_FINAL_CHECKPOINT" }
+      { scope: "ui", type: "MODAL_CANCEL_BACKUP_FINAL_CHECKPOINT" },
     ]);
     expect(run({ name: "escape" }, { uiState: modalState })).toEqual([
-      { scope: "ui", type: "MODAL_CANCEL_BACKUP_FINAL_CHECKPOINT" }
+      { scope: "ui", type: "MODAL_CANCEL_BACKUP_FINAL_CHECKPOINT" },
     ]);
   });
 
@@ -461,15 +458,15 @@ describe("handleKey", () => {
         linkId: "link-1",
         target: "https://example.com",
         previousMode: Mode.LIST,
-        previousFocus: FocusTarget.DETAILS_LINKS
-      }
+        previousFocus: FocusTarget.DETAILS_LINKS,
+      },
     };
-    expect(run({ name: "y", sequence: "y" }, { uiState: deleteModalState })).toEqual([
-      { scope: "domain", type: "MODAL_CONFIRM_TASK_LINK_DELETE" }
-    ]);
-    expect(run({ name: "n", sequence: "n" }, { uiState: deleteModalState })).toEqual([
-      { scope: "ui", type: "UNWIND" }
-    ]);
+    expect(
+      run({ name: "y", sequence: "y" }, { uiState: deleteModalState }),
+    ).toEqual([{ scope: "domain", type: "MODAL_CONFIRM_TASK_LINK_DELETE" }]);
+    expect(
+      run({ name: "n", sequence: "n" }, { uiState: deleteModalState }),
+    ).toEqual([{ scope: "ui", type: "UNWIND" }]);
 
     const externalModalState = {
       ...initialUIState,
@@ -482,11 +479,13 @@ describe("handleKey", () => {
         target: "vscode://repo/file",
         scheme: "vscode",
         previousMode: Mode.LIST,
-        previousFocus: FocusTarget.DETAILS_LINKS
-      }
+        previousFocus: FocusTarget.DETAILS_LINKS,
+      },
     };
-    expect(run({ name: "y", sequence: "y" }, { uiState: externalModalState })).toEqual([
-      { scope: "domain", type: "MODAL_CONFIRM_TASK_LINK_OPEN_EXTERNAL" }
+    expect(
+      run({ name: "y", sequence: "y" }, { uiState: externalModalState }),
+    ).toEqual([
+      { scope: "domain", type: "MODAL_CONFIRM_TASK_LINK_OPEN_EXTERNAL" },
     ]);
   });
 
@@ -504,17 +503,17 @@ describe("handleKey", () => {
         kindValue: "auto" as const,
         activeField: "type" as const,
         previousMode: Mode.LIST,
-        previousFocus: FocusTarget.DETAILS_LINKS
-      }
+        previousFocus: FocusTarget.DETAILS_LINKS,
+      },
     };
     expect(run({ name: "tab" }, { uiState: formModalState })).toEqual([
-      { scope: "ui", type: "MODAL_MOVE_TASK_LINK_FORM_FOCUS", direction: 1 }
+      { scope: "ui", type: "MODAL_MOVE_TASK_LINK_FORM_FOCUS", direction: 1 },
     ]);
     expect(run({ name: "left" }, { uiState: formModalState })).toEqual([
-      { scope: "ui", type: "MODAL_CYCLE_TASK_LINK_FORM_TYPE", direction: -1 }
+      { scope: "ui", type: "MODAL_CYCLE_TASK_LINK_FORM_TYPE", direction: -1 },
     ]);
     expect(run({ name: "right" }, { uiState: formModalState })).toEqual([
-      { scope: "ui", type: "MODAL_CYCLE_TASK_LINK_FORM_TYPE", direction: 1 }
+      { scope: "ui", type: "MODAL_CYCLE_TASK_LINK_FORM_TYPE", direction: 1 },
     ]);
   });
 
@@ -524,8 +523,8 @@ describe("handleKey", () => {
       mode: Mode.MODAL_CONFIRM,
       focus: FocusTarget.MODAL,
       modal: {
-        type: "emptyNux" as const
-      }
+        type: "emptyNux" as const,
+      },
     };
 
     const createFromWelcome = [
@@ -533,106 +532,116 @@ describe("handleKey", () => {
         scope: "ui",
         type: "OPEN_EMPTY_NUX" as const,
         step: "adding" as const,
-        startedFromNux: true
+        startedFromNux: true,
       },
       { scope: "ui", type: "SET_MODAL" as const, modal: null },
-      { scope: "domain", type: "OPEN_ADD" }
+      { scope: "domain", type: "OPEN_ADD" },
     ] as const;
 
-    expect(run({ name: "a", sequence: "a" }, { uiState: welcomeModalState })).toEqual(
-      createFromWelcome
-    );
+    expect(
+      run({ name: "a", sequence: "a" }, { uiState: welcomeModalState }),
+    ).toEqual(createFromWelcome);
     expect(run({ name: "enter" }, { uiState: welcomeModalState })).toEqual(
-      createFromWelcome
+      createFromWelcome,
     );
-    expect(run({ name: "h", sequence: "h" }, { uiState: welcomeModalState })).toEqual([
-      { scope: "ui", type: "OPEN_EMPTY_NUX", step: "shortcuts" }
-    ]);
+    expect(
+      run({ name: "h", sequence: "h" }, { uiState: welcomeModalState }),
+    ).toEqual([{ scope: "ui", type: "OPEN_EMPTY_NUX", step: "shortcuts" }]);
     expect(
       run(
         { name: "i", sequence: "i" },
-        { uiState: welcomeModalState, allowEmptyNuxRecoveryImport: false }
-      )
+        { uiState: welcomeModalState, allowEmptyNuxRecoveryImport: false },
+      ),
     ).toEqual([]);
     expect(
       run(
         { name: "i", sequence: "i" },
-        { uiState: welcomeModalState, allowEmptyNuxRecoveryImport: true }
-      )
+        { uiState: welcomeModalState, allowEmptyNuxRecoveryImport: true },
+      ),
     ).toEqual([{ scope: "ui", type: "OPEN_BACKUP_CENTER_IMPORT" }]);
-    expect(run({ name: "s", sequence: "s" }, { uiState: welcomeModalState })).toEqual([
-      { scope: "ui", type: "DISMISS_EMPTY_NUX" }
-    ]);
+    expect(
+      run({ name: "s", sequence: "s" }, { uiState: welcomeModalState }),
+    ).toEqual([{ scope: "ui", type: "DISMISS_EMPTY_NUX" }]);
     expect(run({ name: "escape" }, { uiState: welcomeModalState })).toEqual([
-      { scope: "ui", type: "DISMISS_EMPTY_NUX" }
+      { scope: "ui", type: "DISMISS_EMPTY_NUX" },
     ]);
 
     const shortcutsModalState = {
       ...welcomeModalState,
-      emptyNux: { step: "shortcuts" as const }
+      emptyNux: { step: "shortcuts" as const },
     };
     expect(run({ name: "escape" }, { uiState: shortcutsModalState })).toEqual([
-      { scope: "ui", type: "OPEN_EMPTY_NUX", step: "welcome" }
+      { scope: "ui", type: "OPEN_EMPTY_NUX", step: "welcome" },
     ]);
-    expect(run({ name: "a", sequence: "a" }, { uiState: shortcutsModalState })).toEqual(
-      createFromWelcome
-    );
+    expect(
+      run({ name: "a", sequence: "a" }, { uiState: shortcutsModalState }),
+    ).toEqual(createFromWelcome);
     expect(
       run(
         { name: "i", sequence: "i" },
-        { uiState: shortcutsModalState, allowEmptyNuxRecoveryImport: true }
-      )
+        { uiState: shortcutsModalState, allowEmptyNuxRecoveryImport: true },
+      ),
     ).toEqual([]);
 
     const celebrateModalState = {
       ...welcomeModalState,
-      emptyNux: { step: "celebrate" as const, startedFromNux: true, createdTaskId: "task-1" }
+      emptyNux: {
+        step: "celebrate" as const,
+        startedFromNux: true,
+        createdTaskId: "task-1",
+      },
     };
     expect(run({ name: "enter" }, { uiState: celebrateModalState })).toEqual([
-      { scope: "ui", type: "OPEN_EMPTY_NUX", step: "what_next" }
+      { scope: "ui", type: "OPEN_EMPTY_NUX", step: "what_next" },
     ]);
-    expect(run({ name: "a", sequence: "a" }, { uiState: celebrateModalState })).toEqual(
-      createFromWelcome
-    );
-    expect(run({ name: "h", sequence: "h" }, { uiState: celebrateModalState })).toEqual([
-      { scope: "ui", type: "OPEN_EMPTY_NUX", step: "shortcuts" }
-    ]);
+    expect(
+      run({ name: "a", sequence: "a" }, { uiState: celebrateModalState }),
+    ).toEqual(createFromWelcome);
+    expect(
+      run({ name: "h", sequence: "h" }, { uiState: celebrateModalState }),
+    ).toEqual([{ scope: "ui", type: "OPEN_EMPTY_NUX", step: "shortcuts" }]);
     expect(
       run(
         { name: "i", sequence: "i" },
-        { uiState: celebrateModalState, allowEmptyNuxRecoveryImport: true }
-      )
+        { uiState: celebrateModalState, allowEmptyNuxRecoveryImport: true },
+      ),
     ).toEqual([]);
     expect(run({ name: "escape" }, { uiState: celebrateModalState })).toEqual([
-      { scope: "ui", type: "CLEAR_EMPTY_NUX" }
+      { scope: "ui", type: "CLEAR_EMPTY_NUX" },
     ]);
 
     const whatNextModalState = {
       ...welcomeModalState,
-      emptyNux: { step: "what_next" as const, startedFromNux: true, createdTaskId: "task-1" }
+      emptyNux: {
+        step: "what_next" as const,
+        startedFromNux: true,
+        createdTaskId: "task-1",
+      },
     };
     expect(run({ name: "enter" }, { uiState: whatNextModalState })).toEqual([
       { scope: "ui", type: "CLEAR_EMPTY_NUX" },
-      { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.TASK_LIST }
+      { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.TASK_LIST },
     ]);
-    expect(run({ name: "l", sequence: "l" }, { uiState: whatNextModalState })).toEqual([
+    expect(
+      run({ name: "l", sequence: "l" }, { uiState: whatNextModalState }),
+    ).toEqual([
       { scope: "ui", type: "CLEAR_EMPTY_NUX" },
-      { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.TASK_LIST }
+      { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.TASK_LIST },
     ]);
-    expect(run({ name: "t", sequence: "t" }, { uiState: whatNextModalState })).toEqual([
-      { scope: "ui", type: "OPEN_EMPTY_NUX_TOME_CREATE" }
-    ]);
-    expect(run({ name: "c", sequence: "c" }, { uiState: whatNextModalState })).toEqual([
-      { scope: "ui", type: "OPEN_EMPTY_NUX_CHECKLIST_ADD" }
-    ]);
-    expect(run({ name: "a", sequence: "a" }, { uiState: whatNextModalState })).toEqual(
-      createFromWelcome
-    );
-    expect(run({ name: "h", sequence: "h" }, { uiState: whatNextModalState })).toEqual([
-      { scope: "ui", type: "OPEN_EMPTY_NUX", step: "shortcuts" }
-    ]);
+    expect(
+      run({ name: "t", sequence: "t" }, { uiState: whatNextModalState }),
+    ).toEqual([{ scope: "ui", type: "OPEN_EMPTY_NUX_TOME_CREATE" }]);
+    expect(
+      run({ name: "c", sequence: "c" }, { uiState: whatNextModalState }),
+    ).toEqual([{ scope: "ui", type: "OPEN_EMPTY_NUX_CHECKLIST_ADD" }]);
+    expect(
+      run({ name: "a", sequence: "a" }, { uiState: whatNextModalState }),
+    ).toEqual(createFromWelcome);
+    expect(
+      run({ name: "h", sequence: "h" }, { uiState: whatNextModalState }),
+    ).toEqual([{ scope: "ui", type: "OPEN_EMPTY_NUX", step: "shortcuts" }]);
     expect(run({ name: "escape" }, { uiState: whatNextModalState })).toEqual([
-      { scope: "ui", type: "CLEAR_EMPTY_NUX" }
+      { scope: "ui", type: "CLEAR_EMPTY_NUX" },
     ]);
   });
 
@@ -640,26 +649,30 @@ describe("handleKey", () => {
     expect(
       run({
         name: "j",
-        sequence: "j"
-      })
+        sequence: "j",
+      }),
     ).toEqual([{ scope: "domain", type: "MOVE_SELECTION", delta: 1 }]);
 
     expect(
       run(
         {
           name: "j",
-          sequence: "j"
+          sequence: "j",
         },
         {
-          uiState: { ...initialUIState, mode: Mode.LIST, focus: FocusTarget.SEARCH_INPUT }
-        }
-      )
+          uiState: {
+            ...initialUIState,
+            mode: Mode.LIST,
+            focus: FocusTarget.SEARCH_INPUT,
+          },
+        },
+      ),
     ).toEqual([]);
   });
 
   it("toggles list/details focus with tab", () => {
     expect(run({ name: "tab" })).toEqual([
-      { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.DETAILS_LINKS }
+      { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.DETAILS_LINKS },
     ]);
     expect(
       run(
@@ -668,104 +681,114 @@ describe("handleKey", () => {
           uiState: {
             ...initialUIState,
             mode: Mode.LIST,
-            focus: FocusTarget.DETAILS_LINKS
-          }
-        }
-      )
-    ).toEqual([{ scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.TASK_LIST }]);
+            focus: FocusTarget.DETAILS_LINKS,
+          },
+        },
+      ),
+    ).toEqual([
+      { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.TASK_LIST },
+    ]);
   });
 
   it("switches details subpane focus with left/right arrows", () => {
     const linksState = {
       ...initialUIState,
       mode: Mode.LIST,
-      focus: FocusTarget.DETAILS_LINKS
+      focus: FocusTarget.DETAILS_LINKS,
     };
     const notesState = {
       ...initialUIState,
       mode: Mode.LIST,
-      focus: FocusTarget.DETAILS_NOTES
+      focus: FocusTarget.DETAILS_NOTES,
     };
     const checklistState = {
       ...initialUIState,
       mode: Mode.LIST,
-      focus: FocusTarget.DETAILS_CHECKLIST
+      focus: FocusTarget.DETAILS_CHECKLIST,
     };
     expect(run({ name: "right" }, { uiState: linksState })).toEqual([
-      { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.DETAILS_NOTES }
+      { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.DETAILS_NOTES },
     ]);
     expect(run({ name: "right" }, { uiState: notesState })).toEqual([
-      { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.DETAILS_CHECKLIST }
+      {
+        scope: "ui",
+        type: "SET_LIST_FOCUS",
+        focus: FocusTarget.DETAILS_CHECKLIST,
+      },
     ]);
     expect(run({ name: "left" }, { uiState: notesState })).toEqual([
-      { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.DETAILS_LINKS }
+      { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.DETAILS_LINKS },
     ]);
     expect(run({ name: "left" }, { uiState: checklistState })).toEqual([
-      { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.DETAILS_NOTES }
+      { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.DETAILS_NOTES },
     ]);
   });
 
   it("routes task-list right arrow to checklist quick edit only when checklist exists", () => {
     expect(run({ name: "right" })).toEqual([]);
-    expect(run({ name: "right" }, { selectedTaskHasChecklistItems: true })).toEqual([
-      { scope: "domain", type: "OPEN_EDIT_CHECKLIST_QUICK" }
-    ]);
+    expect(
+      run({ name: "right" }, { selectedTaskHasChecklistItems: true }),
+    ).toEqual([{ scope: "domain", type: "OPEN_EDIT_CHECKLIST_QUICK" }]);
   });
 
   it("routes details-links actions when details focus is active", () => {
     const detailsState = {
       ...initialUIState,
       mode: Mode.LIST,
-      focus: FocusTarget.DETAILS_LINKS
+      focus: FocusTarget.DETAILS_LINKS,
     };
 
     expect(run({ name: "down" }, { uiState: detailsState })).toEqual([
-      { scope: "domain", type: "MOVE_LINK_SELECTION", delta: 1 }
+      { scope: "domain", type: "MOVE_LINK_SELECTION", delta: 1 },
     ]);
     expect(run({ name: "up" }, { uiState: detailsState })).toEqual([
-      { scope: "domain", type: "MOVE_LINK_SELECTION", delta: -1 }
+      { scope: "domain", type: "MOVE_LINK_SELECTION", delta: -1 },
     ]);
     expect(run({ name: "enter" }, { uiState: detailsState })).toEqual([
-      { scope: "domain", type: "OPEN_SELECTED_LINK" }
+      { scope: "domain", type: "OPEN_SELECTED_LINK" },
     ]);
-    expect(run({ name: "c", sequence: "c" }, { uiState: detailsState })).toEqual([
-      { scope: "domain", type: "COPY_SELECTED_LINK" }
-    ]);
-    expect(run({ name: "l", sequence: "l" }, { uiState: detailsState })).toEqual([
-      { scope: "domain", type: "OPEN_ADD_TASK_LINK_MODAL" }
-    ]);
-    expect(run({ name: "e", sequence: "e" }, { uiState: detailsState })).toEqual([
-      { scope: "domain", type: "OPEN_EDIT_TASK_LINK_MODAL" }
-    ]);
-    expect(run({ name: "d", sequence: "d" }, { uiState: detailsState })).toEqual([
-      { scope: "domain", type: "OPEN_DELETE_TASK_LINK_MODAL" }
-    ]);
+    expect(
+      run({ name: "c", sequence: "c" }, { uiState: detailsState }),
+    ).toEqual([{ scope: "domain", type: "COPY_SELECTED_LINK" }]);
+    expect(
+      run({ name: "l", sequence: "l" }, { uiState: detailsState }),
+    ).toEqual([{ scope: "domain", type: "OPEN_ADD_TASK_LINK_MODAL" }]);
+    expect(
+      run({ name: "e", sequence: "e" }, { uiState: detailsState }),
+    ).toEqual([{ scope: "domain", type: "OPEN_EDIT_TASK_LINK_MODAL" }]);
+    expect(
+      run({ name: "d", sequence: "d" }, { uiState: detailsState }),
+    ).toEqual([{ scope: "domain", type: "OPEN_DELETE_TASK_LINK_MODAL" }]);
   });
 
   it("routes details-checklist actions without leaking list movement", () => {
     const checklistState = {
       ...initialUIState,
       mode: Mode.LIST,
-      focus: FocusTarget.DETAILS_CHECKLIST
+      focus: FocusTarget.DETAILS_CHECKLIST,
     };
-    expect(run({ name: "j", sequence: "j" }, { uiState: checklistState })).toEqual([
-      { scope: "domain", type: "MOVE_CHECKLIST_SELECTION", delta: 1 }
+    expect(
+      run({ name: "j", sequence: "j" }, { uiState: checklistState }),
+    ).toEqual([
+      { scope: "domain", type: "MOVE_CHECKLIST_SELECTION", delta: 1 },
     ]);
-    expect(run({ name: "k", sequence: "k" }, { uiState: checklistState })).toEqual([
-      { scope: "domain", type: "MOVE_CHECKLIST_SELECTION", delta: -1 }
+    expect(
+      run({ name: "k", sequence: "k" }, { uiState: checklistState }),
+    ).toEqual([
+      { scope: "domain", type: "MOVE_CHECKLIST_SELECTION", delta: -1 },
     ]);
     expect(run({ name: "space" }, { uiState: checklistState })).toEqual([
-      { scope: "domain", type: "TOGGLE_SELECTED_CHECKLIST_ITEM" }
+      { scope: "domain", type: "TOGGLE_SELECTED_CHECKLIST_ITEM" },
     ]);
-    expect(run({ name: "a", sequence: "a" }, { uiState: checklistState })).toEqual([
-      { scope: "domain", type: "OPEN_ADD_CHECKLIST_ITEM_MODAL" }
-    ]);
-    expect(run({ name: "e", sequence: "e" }, { uiState: checklistState })).toEqual([
-      { scope: "domain", type: "OPEN_EDIT_CHECKLIST_ITEM_MODAL" }
-    ]);
-    expect(run({ name: "d", sequence: "d" }, { uiState: checklistState })).toEqual([
-      { scope: "domain", type: "OPEN_DELETE_CHECKLIST_ITEM_MODAL" }
-    ]);
+    expect(
+      run({ name: "a", sequence: "a" }, { uiState: checklistState }),
+    ).toEqual([{ scope: "domain", type: "OPEN_ADD_CHECKLIST_ITEM_MODAL" }]);
+    expect(
+      run({ name: "e", sequence: "e" }, { uiState: checklistState }),
+    ).toEqual([{ scope: "domain", type: "OPEN_EDIT_CHECKLIST_ITEM_MODAL" }]);
+    expect(
+      run({ name: "d", sequence: "d" }, { uiState: checklistState }),
+    ).toEqual([{ scope: "domain", type: "OPEN_DELETE_CHECKLIST_ITEM_MODAL" }]);
     expect(run({ name: "enter" }, { uiState: checklistState })).toEqual([]);
   });
 
@@ -773,25 +796,25 @@ describe("handleKey", () => {
     const notesState = {
       ...initialUIState,
       mode: Mode.LIST,
-      focus: FocusTarget.DETAILS_NOTES
+      focus: FocusTarget.DETAILS_NOTES,
     };
     expect(run({ name: "j", sequence: "j" }, { uiState: notesState })).toEqual([
-      { scope: "ui", type: "DETAILS_NOTES_MOVE_SELECTION", delta: 1 }
+      { scope: "ui", type: "DETAILS_NOTES_MOVE_SELECTION", delta: 1 },
     ]);
     expect(run({ name: "k", sequence: "k" }, { uiState: notesState })).toEqual([
-      { scope: "ui", type: "DETAILS_NOTES_MOVE_SELECTION", delta: -1 }
+      { scope: "ui", type: "DETAILS_NOTES_MOVE_SELECTION", delta: -1 },
     ]);
     expect(run({ name: "enter" }, { uiState: notesState })).toEqual([
-      { scope: "ui", type: "DETAILS_NOTES_OPEN_SELECTED" }
+      { scope: "ui", type: "DETAILS_NOTES_OPEN_SELECTED" },
     ]);
     expect(run({ name: "c", sequence: "c" }, { uiState: notesState })).toEqual([
-      { scope: "ui", type: "DETAILS_NOTES_CREATE_LINKED" }
+      { scope: "ui", type: "DETAILS_NOTES_CREATE_LINKED" },
     ]);
     expect(run({ name: "l", sequence: "l" }, { uiState: notesState })).toEqual([
-      { scope: "ui", type: "DETAILS_NOTES_OPEN_LINK_PICKER" }
+      { scope: "ui", type: "DETAILS_NOTES_OPEN_LINK_PICKER" },
     ]);
     expect(run({ name: "u", sequence: "u" }, { uiState: notesState })).toEqual([
-      { scope: "ui", type: "DETAILS_NOTES_UNLINK" }
+      { scope: "ui", type: "DETAILS_NOTES_UNLINK" },
     ]);
 
     expect(
@@ -799,111 +822,120 @@ describe("handleKey", () => {
         { name: "enter" },
         {
           uiState: notesState,
-          detailsNotesLinkPickerOpen: true
-        }
-      )
+          detailsNotesLinkPickerOpen: true,
+        },
+      ),
     ).toEqual([{ scope: "ui", type: "DETAILS_NOTES_CONFIRM_LINK_PICKER" }]);
   });
 
   it("routes jump and paging keys in list mode", () => {
     expect(run({ name: "m", sequence: "m" })).toEqual([
-      { scope: "domain", type: "TOGGLE_BULK_MARK" }
+      { scope: "domain", type: "TOGGLE_BULK_MARK" },
     ]);
     expect(run({ ctrl: true, name: "g", sequence: "g" })).toEqual([
-      { scope: "ui", type: "SET_G_PREFIX", active: true }
+      { scope: "ui", type: "SET_G_PREFIX", active: true },
     ]);
     expect(run({ ctrl: true, name: "p", sequence: "p" })).toEqual([
-      { scope: "ui", type: "SET_G_PREFIX", active: true }
+      { scope: "ui", type: "SET_G_PREFIX", active: true },
     ]);
     expect(run({ ctrl: true, name: "y", sequence: "y" })).toEqual([
-      { scope: "ui", type: "SET_G_PREFIX", active: true }
+      { scope: "ui", type: "SET_G_PREFIX", active: true },
     ]);
     expect(
-      run(
-        { name: "g", sequence: "g" },
-        { hasPendingGPrefix: true }
-      )
+      run({ name: "g", sequence: "g" }, { hasPendingGPrefix: true }),
     ).toEqual([
       { scope: "ui", type: "SET_G_PREFIX", active: false },
-      { scope: "domain", type: "JUMP_TOP" }
+      { scope: "domain", type: "JUMP_TOP" },
     ]);
     expect(run({ name: "G", sequence: "G" })).toEqual([
-      { scope: "domain", type: "JUMP_BOTTOM" }
+      { scope: "domain", type: "JUMP_BOTTOM" },
     ]);
     expect(run({ ctrl: true, name: "u" })).toEqual([
-      { scope: "domain", type: "MOVE_SELECTION_PAGE", direction: -1 }
+      { scope: "domain", type: "MOVE_SELECTION_PAGE", direction: -1 },
     ]);
     expect(run({ ctrl: true, name: "d" })).toEqual([
-      { scope: "domain", type: "MOVE_SELECTION_PAGE", direction: 1 }
+      { scope: "domain", type: "MOVE_SELECTION_PAGE", direction: 1 },
     ]);
     expect(run({ name: "v", sequence: "v" })).toEqual([
-      { scope: "ui", type: "TOGGLE_VIEWS_OVERLAY" }
+      { scope: "ui", type: "TOGGLE_VIEWS_OVERLAY" },
     ]);
     expect(run({ ctrl: true, name: "s" })).toEqual([
-      { scope: "ui", type: "OPEN_SAVE_VIEW_PROMPT" }
+      { scope: "ui", type: "OPEN_SAVE_VIEW_PROMPT" },
     ]);
     expect(run({ name: "s", sequence: "s" })).toEqual([
-      { scope: "domain", type: "CYCLE_SORT" }
+      { scope: "domain", type: "CYCLE_SORT" },
     ]);
     expect(run({ name: "g", sequence: "g" })).toEqual([
-      { scope: "domain", type: "CYCLE_DUE" }
+      { scope: "domain", type: "CYCLE_DUE" },
     ]);
     expect(run({ name: "r", sequence: "r" })).toEqual([
-      { scope: "domain", type: "CYCLE_PRIORITY" }
+      { scope: "domain", type: "CYCLE_PRIORITY" },
     ]);
     expect(run({ name: "u", sequence: "u" })).toEqual([
-      { scope: "ui", type: "OPEN_BACKUP_CENTER" }
+      { scope: "ui", type: "OPEN_BACKUP_CENTER" },
     ]);
     expect(run({ name: "t", sequence: "t" })).toEqual([
-      { scope: "domain", type: "TOGGLE_TAG_FILTER" }
+      { scope: "domain", type: "TOGGLE_TAG_FILTER" },
     ]);
     expect(run({ name: "l", sequence: "l" })).toEqual([
-      { scope: "domain", type: "OPEN_ADD_TASK_LINK_MODAL" }
+      { scope: "domain", type: "OPEN_ADD_TASK_LINK_MODAL" },
     ]);
     expect(run({ name: "p", sequence: "p" })).toEqual([
-      { scope: "ui", type: "OPEN_TAG_FILTER_PANEL" }
+      { scope: "ui", type: "OPEN_TAG_FILTER_PANEL" },
     ]);
     const shiftedTagKey = "T";
-    expect(run({ name: shiftedTagKey, sequence: shiftedTagKey, shift: true })).toEqual([]);
+    expect(
+      run({ name: shiftedTagKey, sequence: shiftedTagKey, shift: true }),
+    ).toEqual([]);
     expect(run({ name: "x", sequence: "x" })).toEqual([
-      { scope: "domain", type: "SKIP_SELECTED_OCCURRENCE" }
+      { scope: "domain", type: "SKIP_SELECTED_OCCURRENCE" },
     ]);
     expect(run({ name: "z", sequence: "z" })).toEqual([
-      { scope: "domain", type: "SNOOZE_SELECTED_OCCURRENCE" }
+      { scope: "domain", type: "SNOOZE_SELECTED_OCCURRENCE" },
     ]);
     expect(run({ name: "E", sequence: "E" })).toEqual([
-      { scope: "domain", type: "OPEN_EDIT_SERIES" }
+      { scope: "domain", type: "OPEN_EDIT_SERIES" },
     ]);
     expect(run({ sequence: "3", name: "3" })).toEqual([
-      { scope: "domain", type: "APPLY_VIEW_SLOT", slot: 2 }
+      { scope: "domain", type: "APPLY_VIEW_SLOT", slot: 2 },
     ]);
     expect(run({ sequence: "5", name: "5" })).toEqual([
-      { scope: "domain", type: "APPLY_VIEW_SLOT", slot: 4 }
+      { scope: "domain", type: "APPLY_VIEW_SLOT", slot: 4 },
     ]);
     expect(run({ sequence: "6", name: "6" })).toEqual([
-      { scope: "domain", type: "APPLY_VIEW_SLOT", slot: 5 }
+      { scope: "domain", type: "APPLY_VIEW_SLOT", slot: 5 },
     ]);
     expect(run({ sequence: "7", name: "7" })).toEqual([
-      { scope: "domain", type: "APPLY_VIEW_SLOT", slot: 6 }
+      { scope: "domain", type: "APPLY_VIEW_SLOT", slot: 6 },
     ]);
     expect(run({ sequence: "8", name: "8" })).toEqual([
-      { scope: "domain", type: "APPLY_VIEW_SLOT", slot: 7 }
+      { scope: "domain", type: "APPLY_VIEW_SLOT", slot: 7 },
     ]);
     expect(run({ sequence: "0", name: "0" })).toEqual([]);
     expect(run({ sequence: "]", name: "]" })).toEqual([
-      { scope: "domain", type: "JUMP_TO_ATTENTION", kind: "overdue", direction: 1 }
+      {
+        scope: "domain",
+        type: "JUMP_TO_ATTENTION",
+        kind: "overdue",
+        direction: 1,
+      },
     ]);
     expect(run({ sequence: "{", name: "{" })).toEqual([
-      { scope: "domain", type: "JUMP_TO_ATTENTION", kind: "today", direction: -1 }
+      {
+        scope: "domain",
+        type: "JUMP_TO_ATTENTION",
+        kind: "today",
+        direction: -1,
+      },
     ]);
   });
 
   it("routes b/B to dashboard toggle outside text-entry contexts", () => {
     expect(run({ name: "b", sequence: "b" })).toEqual([
-      { scope: "ui", type: "TOGGLE_DASHBOARD" }
+      { scope: "ui", type: "TOGGLE_DASHBOARD" },
     ]);
     expect(run({ name: "B", sequence: "B" })).toEqual([
-      { scope: "ui", type: "TOGGLE_DASHBOARD" }
+      { scope: "ui", type: "TOGGLE_DASHBOARD" },
     ]);
     expect(
       run(
@@ -912,10 +944,10 @@ describe("handleKey", () => {
           uiState: {
             ...initialUIState,
             mode: Mode.SEARCH,
-            focus: FocusTarget.SEARCH_INPUT
-          }
-        }
-      )
+            focus: FocusTarget.SEARCH_INPUT,
+          },
+        },
+      ),
     ).toEqual([]);
     expect(
       run(
@@ -924,30 +956,27 @@ describe("handleKey", () => {
           uiState: {
             ...initialUIState,
             mode: Mode.ADD,
-            focus: FocusTarget.EDITOR_TITLE
-          }
-        }
-      )
+            focus: FocusTarget.EDITOR_TITLE,
+          },
+        },
+      ),
     ).toEqual([]);
     expect(
       run(
         { name: "B", sequence: "B" },
         {
-          saveViewPromptOpen: true
-        }
-      )
+          saveViewPromptOpen: true,
+        },
+      ),
     ).toEqual([]);
   });
 
   it("clears pending g prefix and routes only the continuation key when next key is not g/G", () => {
     expect(
-      run(
-        { name: "j", sequence: "j" },
-        { hasPendingGPrefix: true }
-      )
+      run({ name: "j", sequence: "j" }, { hasPendingGPrefix: true }),
     ).toEqual([
       { scope: "ui", type: "SET_G_PREFIX", active: false },
-      { scope: "domain", type: "MOVE_SELECTION", delta: 1 }
+      { scope: "domain", type: "MOVE_SELECTION", delta: 1 },
     ]);
   });
 
@@ -956,69 +985,51 @@ describe("handleKey", () => {
       normalizeKeymapAliases({
         list: {
           list_open_search: ["Ctrl+F"],
-          list_open_add: ["n"]
-        }
-      })
+          list_open_add: ["n"],
+        },
+      }),
     );
     expect(
       run(
         { ctrl: true, name: "f", sequence: "f" },
-        { resolvedKeymapAliases: resolvedAliases }
-      )
+        { resolvedKeymapAliases: resolvedAliases },
+      ),
     ).toEqual([{ scope: "ui", type: "OPEN_SEARCH" }]);
     expect(
       run(
         { name: "n", sequence: "n" },
-        { resolvedKeymapAliases: resolvedAliases }
-      )
+        { resolvedKeymapAliases: resolvedAliases },
+      ),
     ).toEqual([{ scope: "domain", type: "OPEN_ADD" }]);
     expect(
       run(
         { name: "a", sequence: "a" },
-        { resolvedKeymapAliases: resolvedAliases }
-      )
+        { resolvedKeymapAliases: resolvedAliases },
+      ),
     ).toEqual([{ scope: "domain", type: "OPEN_ADD" }]);
   });
 
   it("routes view overlay keys without leaking list movement", () => {
     expect(
-      run(
-        { name: "j", sequence: "j" },
-        { viewsOverlayOpen: true }
-      )
+      run({ name: "j", sequence: "j" }, { viewsOverlayOpen: true }),
     ).toEqual([{ scope: "ui", type: "MOVE_VIEW_SELECTION", delta: 1 }]);
     expect(
-      run(
-        { name: "d", sequence: "d" },
-        { viewsOverlayOpen: true }
-      )
+      run({ name: "d", sequence: "d" }, { viewsOverlayOpen: true }),
     ).toEqual([{ scope: "domain", type: "DELETE_SELECTED_VIEW" }]);
-    expect(
-      run(
-        { name: "enter" },
-        { viewsOverlayOpen: true }
-      )
-    ).toEqual([{ scope: "domain", type: "APPLY_SELECTED_VIEW" }]);
+    expect(run({ name: "enter" }, { viewsOverlayOpen: true })).toEqual([
+      { scope: "domain", type: "APPLY_SELECTED_VIEW" },
+    ]);
   });
 
   it("routes save-view prompt keys only to prompt actions", () => {
+    expect(run({ name: "enter" }, { saveViewPromptOpen: true })).toEqual([
+      { scope: "ui", type: "CONFIRM_SAVE_VIEW_PROMPT" },
+    ]);
+    expect(run({ name: "escape" }, { saveViewPromptOpen: true })).toEqual([
+      { scope: "ui", type: "CANCEL_SAVE_VIEW_PROMPT" },
+    ]);
     expect(
-      run(
-        { name: "enter" },
-        { saveViewPromptOpen: true }
-      )
-    ).toEqual([{ scope: "ui", type: "CONFIRM_SAVE_VIEW_PROMPT" }]);
-    expect(
-      run(
-        { name: "escape" },
-        { saveViewPromptOpen: true }
-      )
-    ).toEqual([{ scope: "ui", type: "CANCEL_SAVE_VIEW_PROMPT" }]);
-    expect(
-      run(
-        { name: "j", sequence: "j" },
-        { saveViewPromptOpen: true }
-      )
+      run({ name: "j", sequence: "j" }, { saveViewPromptOpen: true }),
     ).toEqual([]);
   });
 
@@ -1026,23 +1037,19 @@ describe("handleKey", () => {
     const searchState = {
       ...initialUIState,
       mode: Mode.SEARCH,
-      focus: FocusTarget.SEARCH_INPUT
+      focus: FocusTarget.SEARCH_INPUT,
     };
-    expect(run({ name: "j", sequence: "j" }, { uiState: searchState })).toEqual([]);
-    expect(
-      run(
-        { name: "p", sequence: "p" },
-        { uiState: searchState }
-      )
-    ).toEqual([]);
-    expect(
-      run(
-        { name: "r", sequence: "r" },
-        { uiState: searchState }
-      )
-    ).toEqual([]);
+    expect(run({ name: "j", sequence: "j" }, { uiState: searchState })).toEqual(
+      [],
+    );
+    expect(run({ name: "p", sequence: "p" }, { uiState: searchState })).toEqual(
+      [],
+    );
+    expect(run({ name: "r", sequence: "r" }, { uiState: searchState })).toEqual(
+      [],
+    );
     expect(run({ name: "enter" }, { uiState: searchState })).toEqual([
-      { scope: "ui", type: "CLOSE_SEARCH" }
+      { scope: "ui", type: "CLOSE_SEARCH" },
     ]);
   });
 
@@ -1050,7 +1057,7 @@ describe("handleKey", () => {
     const searchState = {
       ...initialUIState,
       mode: Mode.SEARCH,
-      focus: FocusTarget.SEARCH_INPUT
+      focus: FocusTarget.SEARCH_INPUT,
     };
     expect(
       run(
@@ -1058,29 +1065,33 @@ describe("handleKey", () => {
         {
           uiState: searchState,
           searchHasUnifiedResults: true,
-          searchResultsFocused: false
-        }
-      )
-    ).toEqual([{ scope: "ui", type: "SEARCH_SET_RESULTS_FOCUS", focused: true }]);
+          searchResultsFocused: false,
+        },
+      ),
+    ).toEqual([
+      { scope: "ui", type: "SEARCH_SET_RESULTS_FOCUS", focused: true },
+    ]);
     expect(
       run(
         { name: "j", sequence: "j" },
         {
           uiState: searchState,
           searchHasUnifiedResults: true,
-          searchResultsFocused: true
-        }
-      )
-    ).toEqual([{ scope: "ui", type: "SEARCH_MOVE_RESULT_SELECTION", delta: 1 }]);
+          searchResultsFocused: true,
+        },
+      ),
+    ).toEqual([
+      { scope: "ui", type: "SEARCH_MOVE_RESULT_SELECTION", delta: 1 },
+    ]);
     expect(
       run(
         { name: "enter" },
         {
           uiState: searchState,
           searchHasUnifiedResults: true,
-          searchResultsFocused: true
-        }
-      )
+          searchResultsFocused: true,
+        },
+      ),
     ).toEqual([{ scope: "ui", type: "SEARCH_OPEN_SELECTED_RESULT" }]);
   });
 
@@ -1088,61 +1099,60 @@ describe("handleKey", () => {
     const dashboardState = {
       ...initialUIState,
       mode: Mode.DASHBOARD,
-      focus: FocusTarget.DASHBOARD
+      focus: FocusTarget.DASHBOARD,
     };
 
-    expect(run({ name: "j", sequence: "j" }, { uiState: dashboardState })).toEqual([]);
+    expect(
+      run({ name: "j", sequence: "j" }, { uiState: dashboardState }),
+    ).toEqual([]);
     expect(run({ name: "up" }, { uiState: dashboardState })).toEqual([
-      { scope: "ui", type: "DASHBOARD_MOVE_ACTIVE_SELECTION", delta: -1 }
+      { scope: "ui", type: "DASHBOARD_MOVE_ACTIVE_SELECTION", delta: -1 },
     ]);
     expect(run({ name: "down" }, { uiState: dashboardState })).toEqual([
-      { scope: "ui", type: "DASHBOARD_MOVE_ACTIVE_SELECTION", delta: 1 }
+      { scope: "ui", type: "DASHBOARD_MOVE_ACTIVE_SELECTION", delta: 1 },
     ]);
     expect(run({ name: "enter" }, { uiState: dashboardState })).toEqual([
-      { scope: "domain", type: "APPLY_DASHBOARD_ACTIVE_SELECTION" }
-    ]);
-    expect(run({ name: "f", sequence: "f" }, { uiState: dashboardState })).toEqual([
-      { scope: "domain", type: "CYCLE_STATUS" }
-    ]);
-    expect(run({ name: "g", sequence: "g" }, { uiState: dashboardState })).toEqual([
-      { scope: "domain", type: "CYCLE_DUE" }
-    ]);
-    expect(run({ name: "w", sequence: "w" }, { uiState: dashboardState })).toEqual([
-      { scope: "domain", type: "CYCLE_ANALYTICS_WINDOW" }
-    ]);
-    expect(run({ name: "r", sequence: "r" }, { uiState: dashboardState })).toEqual([
-      { scope: "domain", type: "CYCLE_PRIORITY" }
-    ]);
-    expect(run({ name: "tab" }, { uiState: dashboardState })).toEqual([
-      { scope: "ui", type: "DASHBOARD_NEXT_FOCUS_GROUP" }
-    ]);
-    expect(run({ name: "tab", shift: true }, { uiState: dashboardState })).toEqual([
-      { scope: "ui", type: "DASHBOARD_PREV_FOCUS_GROUP" }
-    ]);
-    expect(run({ name: "t", sequence: "t" }, { uiState: dashboardState })).toEqual([
-      { scope: "domain", type: "TOGGLE_TAG_FILTER" }
+      { scope: "domain", type: "APPLY_DASHBOARD_ACTIVE_SELECTION" },
     ]);
     expect(
-      run(
-        { name: "p", sequence: "p" },
-        { uiState: dashboardState }
-      )
+      run({ name: "f", sequence: "f" }, { uiState: dashboardState }),
+    ).toEqual([{ scope: "domain", type: "CYCLE_STATUS" }]);
+    expect(
+      run({ name: "g", sequence: "g" }, { uiState: dashboardState }),
+    ).toEqual([{ scope: "domain", type: "CYCLE_DUE" }]);
+    expect(
+      run({ name: "w", sequence: "w" }, { uiState: dashboardState }),
+    ).toEqual([{ scope: "domain", type: "CYCLE_ANALYTICS_WINDOW" }]);
+    expect(
+      run({ name: "r", sequence: "r" }, { uiState: dashboardState }),
+    ).toEqual([{ scope: "domain", type: "CYCLE_PRIORITY" }]);
+    expect(run({ name: "tab" }, { uiState: dashboardState })).toEqual([
+      { scope: "ui", type: "DASHBOARD_NEXT_FOCUS_GROUP" },
+    ]);
+    expect(
+      run({ name: "tab", shift: true }, { uiState: dashboardState }),
+    ).toEqual([{ scope: "ui", type: "DASHBOARD_PREV_FOCUS_GROUP" }]);
+    expect(
+      run({ name: "t", sequence: "t" }, { uiState: dashboardState }),
+    ).toEqual([{ scope: "domain", type: "TOGGLE_TAG_FILTER" }]);
+    expect(
+      run({ name: "p", sequence: "p" }, { uiState: dashboardState }),
     ).toEqual([{ scope: "ui", type: "OPEN_TAG_FILTER_PANEL" }]);
     const shiftedTagKey = "T";
     expect(
       run(
         { name: shiftedTagKey, sequence: shiftedTagKey, shift: true },
-        { uiState: dashboardState }
-      )
+        { uiState: dashboardState },
+      ),
     ).toEqual([]);
-    expect(run({ name: "q", sequence: "q" }, { uiState: dashboardState })).toEqual([
-      { scope: "domain", type: "EXIT_APP" }
-    ]);
-    expect(run({ name: "u", sequence: "u" }, { uiState: dashboardState })).toEqual([
-      { scope: "ui", type: "OPEN_BACKUP_CENTER" }
-    ]);
+    expect(
+      run({ name: "q", sequence: "q" }, { uiState: dashboardState }),
+    ).toEqual([{ scope: "domain", type: "EXIT_APP" }]);
+    expect(
+      run({ name: "u", sequence: "u" }, { uiState: dashboardState }),
+    ).toEqual([{ scope: "ui", type: "OPEN_BACKUP_CENTER" }]);
     expect(run({ sequence: "?" }, { uiState: dashboardState })).toEqual([
-      { scope: "ui", type: "OPEN_HELP" }
+      { scope: "ui", type: "OPEN_HELP" },
     ]);
   });
 
@@ -1150,28 +1160,28 @@ describe("handleKey", () => {
     const dashboardState = {
       ...initialUIState,
       mode: Mode.DASHBOARD,
-      focus: FocusTarget.DASHBOARD
+      focus: FocusTarget.DASHBOARD,
     };
     const resolvedAliases = resolveKeymapAliases(
       normalizeKeymapAliases({
         dashboard: {
           dashboard_cycle_status: ["x"],
-          dashboard_apply_selection: ["Space"]
-        }
-      })
+          dashboard_apply_selection: ["Space"],
+        },
+      }),
     );
 
     expect(
       run(
         { name: "x", sequence: "x" },
-        { uiState: dashboardState, resolvedKeymapAliases: resolvedAliases }
-      )
+        { uiState: dashboardState, resolvedKeymapAliases: resolvedAliases },
+      ),
     ).toEqual([{ scope: "domain", type: "CYCLE_STATUS" }]);
     expect(
       run(
         { name: "space" },
-        { uiState: dashboardState, resolvedKeymapAliases: resolvedAliases }
-      )
+        { uiState: dashboardState, resolvedKeymapAliases: resolvedAliases },
+      ),
     ).toEqual([{ scope: "domain", type: "APPLY_DASHBOARD_ACTIVE_SELECTION" }]);
   });
 
@@ -1179,49 +1189,75 @@ describe("handleKey", () => {
     const helpState = {
       ...initialUIState,
       mode: Mode.HELP,
-      focus: FocusTarget.TASK_LIST
+      focus: FocusTarget.TASK_LIST,
     };
-    expect(run({ name: "j", sequence: "j" }, { uiState: helpState })).toEqual([]);
+    expect(run({ name: "j", sequence: "j" }, { uiState: helpState })).toEqual(
+      [],
+    );
     expect(run({ name: "up" }, { uiState: helpState })).toEqual([
-      { scope: "ui", type: "HELP_MOVE_SECTION_FOCUS", delta: -1 }
+      { scope: "ui", type: "HELP_MOVE_SECTION_FOCUS", delta: -1 },
     ]);
     expect(run({ name: "down" }, { uiState: helpState })).toEqual([
-      { scope: "ui", type: "HELP_MOVE_SECTION_FOCUS", delta: 1 }
+      { scope: "ui", type: "HELP_MOVE_SECTION_FOCUS", delta: 1 },
     ]);
     expect(run({ ctrl: true, name: "u" }, { uiState: helpState })).toEqual([
-      { scope: "ui", type: "HELP_SCROLL_PAGE", direction: -1 }
+      { scope: "ui", type: "HELP_SCROLL_PAGE", direction: -1 },
     ]);
     expect(run({ ctrl: true, name: "d" }, { uiState: helpState })).toEqual([
-      { scope: "ui", type: "HELP_SCROLL_PAGE", direction: 1 }
+      { scope: "ui", type: "HELP_SCROLL_PAGE", direction: 1 },
     ]);
     expect(run({ name: "left" }, { uiState: helpState })).toEqual([
-      { scope: "ui", type: "HELP_SET_FOCUSED_SECTION_EXPANDED", expanded: false }
+      {
+        scope: "ui",
+        type: "HELP_SET_FOCUSED_SECTION_EXPANDED",
+        expanded: false,
+      },
     ]);
     expect(run({ name: "right" }, { uiState: helpState })).toEqual([
-      { scope: "ui", type: "HELP_SET_FOCUSED_SECTION_EXPANDED", expanded: true }
+      {
+        scope: "ui",
+        type: "HELP_SET_FOCUSED_SECTION_EXPANDED",
+        expanded: true,
+      },
     ]);
     expect(run({ name: "space" }, { uiState: helpState })).toEqual([
-      { scope: "ui", type: "HELP_TOGGLE_FOCUSED_SECTION" }
+      { scope: "ui", type: "HELP_TOGGLE_FOCUSED_SECTION" },
     ]);
     expect(run({ name: "enter" }, { uiState: helpState })).toEqual([
-      { scope: "ui", type: "HELP_TOGGLE_FOCUSED_SECTION" }
+      { scope: "ui", type: "HELP_TOGGLE_FOCUSED_SECTION" },
     ]);
-    expect(run({ name: "h", sequence: "h" }, { uiState: helpState })).toEqual([]);
-    expect(run({ name: "m", sequence: "m" }, { uiState: helpState })).toEqual([]);
-    expect(run({ name: "n", sequence: "n" }, { uiState: helpState })).toEqual([]);
-    expect(run({ name: "o", sequence: "o" }, { uiState: helpState })).toEqual([]);
-    expect(run({ name: "l", sequence: "l" }, { uiState: helpState })).toEqual([]);
+    expect(run({ name: "h", sequence: "h" }, { uiState: helpState })).toEqual(
+      [],
+    );
+    expect(run({ name: "m", sequence: "m" }, { uiState: helpState })).toEqual(
+      [],
+    );
+    expect(run({ name: "n", sequence: "n" }, { uiState: helpState })).toEqual(
+      [],
+    );
+    expect(run({ name: "o", sequence: "o" }, { uiState: helpState })).toEqual(
+      [],
+    );
+    expect(run({ name: "l", sequence: "l" }, { uiState: helpState })).toEqual(
+      [],
+    );
     expect(
-      run({ name: "h", sequence: "h" }, { uiState: helpState, helpPage: "settings" })
+      run(
+        { name: "h", sequence: "h" },
+        { uiState: helpState, helpPage: "settings" },
+      ),
     ).toEqual([]);
     expect(
-      run({ name: "m", sequence: "m" }, { uiState: helpState, helpPage: "theme" })
+      run(
+        { name: "m", sequence: "m" },
+        { uiState: helpState, helpPage: "theme" },
+      ),
     ).toEqual([]);
     expect(run({ name: "1", sequence: "1" }, { uiState: helpState })).toEqual([
-      { scope: "ui", type: "OPEN_BACKUP_CENTER" }
+      { scope: "ui", type: "OPEN_BACKUP_CENTER" },
     ]);
     expect(run({ name: "escape" }, { uiState: helpState })).toEqual([
-      { scope: "ui", type: "UNWIND" }
+      { scope: "ui", type: "UNWIND" },
     ]);
   });
 
@@ -1229,34 +1265,38 @@ describe("handleKey", () => {
     const helpState = {
       ...initialUIState,
       mode: Mode.HELP,
-      focus: FocusTarget.TASK_LIST
+      focus: FocusTarget.TASK_LIST,
     };
     const resolvedAliases = resolveKeymapAliases(
       normalizeKeymapAliases({
         help: {
           help_open_backup_center: ["1"],
-          help_close: ["q"]
-        }
-      })
+          help_close: ["q"],
+        },
+      }),
     );
 
     expect(
       run(
         { name: "1", sequence: "1" },
-        { uiState: helpState, resolvedKeymapAliases: resolvedAliases }
-      )
+        { uiState: helpState, resolvedKeymapAliases: resolvedAliases },
+      ),
     ).toEqual([{ scope: "ui", type: "OPEN_BACKUP_CENTER" }]);
     expect(
       run(
         { name: "q", sequence: "q" },
-        { uiState: helpState, resolvedKeymapAliases: resolvedAliases }
-      )
+        { uiState: helpState, resolvedKeymapAliases: resolvedAliases },
+      ),
     ).toEqual([{ scope: "ui", type: "CLOSE_HELP" }]);
     expect(
       run(
         { name: "q", sequence: "q" },
-        { uiState: helpState, helpPage: "custom1Edit", resolvedKeymapAliases: resolvedAliases }
-      )
+        {
+          uiState: helpState,
+          helpPage: "custom1Edit",
+          resolvedKeymapAliases: resolvedAliases,
+        },
+      ),
     ).toEqual([]);
   });
 
@@ -1264,29 +1304,32 @@ describe("handleKey", () => {
     const helpState = {
       ...initialUIState,
       mode: Mode.HELP,
-      focus: FocusTarget.TASK_LIST
+      focus: FocusTarget.TASK_LIST,
     };
 
     expect(
-      run({ name: "enter" }, { uiState: helpState, helpPage: "settings" })
+      run({ name: "enter" }, { uiState: helpState, helpPage: "settings" }),
     ).toEqual([{ scope: "ui", type: "HELP_NAV_FORWARD" }]);
     expect(
-      run({ name: "right" }, { uiState: helpState, helpPage: "theme" })
+      run({ name: "right" }, { uiState: helpState, helpPage: "theme" }),
     ).toEqual([{ scope: "ui", type: "HELP_NAV_FORWARD" }]);
     expect(
-      run({ name: "backspace" }, { uiState: helpState, helpPage: "theme" })
+      run({ name: "backspace" }, { uiState: helpState, helpPage: "theme" }),
     ).toEqual([{ scope: "ui", type: "HELP_NAV_BACK" }]);
     expect(
-      run({ name: "left" }, { uiState: helpState, helpPage: "custom1" })
+      run({ name: "left" }, { uiState: helpState, helpPage: "custom1" }),
     ).toEqual([{ scope: "ui", type: "HELP_NAV_BACK" }]);
     expect(
-      run({ name: "escape" }, { uiState: helpState, helpPage: "custom1" })
+      run({ name: "escape" }, { uiState: helpState, helpPage: "custom1" }),
     ).toEqual([{ scope: "ui", type: "HELP_NAV_BACK" }]);
     expect(
-      run({ name: "right" }, { uiState: helpState, helpPage: "textTuning" })
+      run({ name: "right" }, { uiState: helpState, helpPage: "textTuning" }),
     ).toEqual([{ scope: "ui", type: "HELP_NAV_FORWARD" }]);
     expect(
-      run({ name: "left" }, { uiState: helpState, helpPage: "textTuningTheme" })
+      run(
+        { name: "left" },
+        { uiState: helpState, helpPage: "textTuningTheme" },
+      ),
     ).toEqual([{ scope: "ui", type: "HELP_NAV_BACK" }]);
   });
 
@@ -1294,7 +1337,7 @@ describe("handleKey", () => {
     const helpState = {
       ...initialUIState,
       mode: Mode.HELP,
-      focus: FocusTarget.TASK_LIST
+      focus: FocusTarget.TASK_LIST,
     };
     const settingsSubpages = [
       "settingsAppearance",
@@ -1302,25 +1345,25 @@ describe("handleKey", () => {
       "settingsNotifications",
       "settingsSecurity",
       "settingsNotes",
-      "settingsCloud"
+      "settingsCloud",
     ] as const;
 
     for (const page of settingsSubpages) {
-      expect(run({ name: "enter" }, { uiState: helpState, helpPage: page })).toEqual([
-        { scope: "ui", type: "HELP_NAV_FORWARD" }
-      ]);
-      expect(run({ name: "right" }, { uiState: helpState, helpPage: page })).toEqual([
-        { scope: "ui", type: "HELP_NAV_FORWARD" }
-      ]);
-      expect(run({ name: "left" }, { uiState: helpState, helpPage: page })).toEqual([
-        { scope: "ui", type: "HELP_NAV_BACK" }
-      ]);
-      expect(run({ name: "backspace" }, { uiState: helpState, helpPage: page })).toEqual([
-        { scope: "ui", type: "HELP_NAV_BACK" }
-      ]);
-      expect(run({ name: "escape" }, { uiState: helpState, helpPage: page })).toEqual([
-        { scope: "ui", type: "HELP_NAV_BACK" }
-      ]);
+      expect(
+        run({ name: "enter" }, { uiState: helpState, helpPage: page }),
+      ).toEqual([{ scope: "ui", type: "HELP_NAV_FORWARD" }]);
+      expect(
+        run({ name: "right" }, { uiState: helpState, helpPage: page }),
+      ).toEqual([{ scope: "ui", type: "HELP_NAV_FORWARD" }]);
+      expect(
+        run({ name: "left" }, { uiState: helpState, helpPage: page }),
+      ).toEqual([{ scope: "ui", type: "HELP_NAV_BACK" }]);
+      expect(
+        run({ name: "backspace" }, { uiState: helpState, helpPage: page }),
+      ).toEqual([{ scope: "ui", type: "HELP_NAV_BACK" }]);
+      expect(
+        run({ name: "escape" }, { uiState: helpState, helpPage: page }),
+      ).toEqual([{ scope: "ui", type: "HELP_NAV_BACK" }]);
     }
   });
 
@@ -1328,23 +1371,32 @@ describe("handleKey", () => {
     const helpState = {
       ...initialUIState,
       mode: Mode.HELP,
-      focus: FocusTarget.TASK_LIST
+      focus: FocusTarget.TASK_LIST,
     };
 
     expect(
-      run({ name: "backspace" }, { uiState: helpState, helpPage: "settingsInput" })
+      run(
+        { name: "backspace" },
+        { uiState: helpState, helpPage: "settingsInput" },
+      ),
     ).toEqual([]);
     expect(
-      run({ name: "left" }, { uiState: helpState, helpPage: "settingsInput" })
+      run({ name: "left" }, { uiState: helpState, helpPage: "settingsInput" }),
     ).toEqual([]);
     expect(
-      run({ name: "a", sequence: "a" }, { uiState: helpState, helpPage: "settingsInput" })
+      run(
+        { name: "a", sequence: "a" },
+        { uiState: helpState, helpPage: "settingsInput" },
+      ),
     ).toEqual([]);
     expect(
-      run({ name: "enter" }, { uiState: helpState, helpPage: "settingsInput" })
+      run({ name: "enter" }, { uiState: helpState, helpPage: "settingsInput" }),
     ).toEqual([]);
     expect(
-      run({ name: "escape" }, { uiState: helpState, helpPage: "settingsInput" })
+      run(
+        { name: "escape" },
+        { uiState: helpState, helpPage: "settingsInput" },
+      ),
     ).toEqual([{ scope: "ui", type: "HELP_NAV_BACK" }]);
   });
 
@@ -1352,34 +1404,43 @@ describe("handleKey", () => {
     const helpState = {
       ...initialUIState,
       mode: Mode.HELP,
-      focus: FocusTarget.TASK_LIST
+      focus: FocusTarget.TASK_LIST,
     };
     expect(
-      run({ name: "up" }, { uiState: helpState, helpPage: "custom1Edit" })
+      run({ name: "up" }, { uiState: helpState, helpPage: "custom1Edit" }),
     ).toEqual([]);
     expect(
-      run({ name: "down" }, { uiState: helpState, helpPage: "custom1Edit" })
+      run({ name: "down" }, { uiState: helpState, helpPage: "custom1Edit" }),
     ).toEqual([]);
     expect(
-      run({ name: "left" }, { uiState: helpState, helpPage: "custom1Edit" })
+      run({ name: "left" }, { uiState: helpState, helpPage: "custom1Edit" }),
     ).toEqual([]);
     expect(
-      run({ name: "right" }, { uiState: helpState, helpPage: "custom1Edit" })
+      run({ name: "right" }, { uiState: helpState, helpPage: "custom1Edit" }),
     ).toEqual([]);
     expect(
-      run({ name: "enter" }, { uiState: helpState, helpPage: "custom1Edit" })
+      run({ name: "enter" }, { uiState: helpState, helpPage: "custom1Edit" }),
     ).toEqual([]);
     expect(
-      run({ name: "backspace" }, { uiState: helpState, helpPage: "custom1Edit" })
+      run(
+        { name: "backspace" },
+        { uiState: helpState, helpPage: "custom1Edit" },
+      ),
     ).toEqual([]);
     expect(
-      run({ name: "up" }, { uiState: helpState, helpPage: "textTuningEdit" })
+      run({ name: "up" }, { uiState: helpState, helpPage: "textTuningEdit" }),
     ).toEqual([]);
     expect(
-      run({ name: "right" }, { uiState: helpState, helpPage: "textTuningEdit" })
+      run(
+        { name: "right" },
+        { uiState: helpState, helpPage: "textTuningEdit" },
+      ),
     ).toEqual([]);
     expect(
-      run({ name: "enter" }, { uiState: helpState, helpPage: "textTuningEdit" })
+      run(
+        { name: "enter" },
+        { uiState: helpState, helpPage: "textTuningEdit" },
+      ),
     ).toEqual([]);
   });
 
@@ -1387,20 +1448,26 @@ describe("handleKey", () => {
     const panelState = {
       ...initialUIState,
       mode: Mode.TAG_FILTER,
-      focus: FocusTarget.TAG_FILTER_INPUT
+      focus: FocusTarget.TAG_FILTER_INPUT,
     };
-    expect(run({ name: "j", sequence: "j" }, { uiState: panelState })).toEqual([]);
-    expect(run({ name: "t", sequence: "t" }, { uiState: panelState })).toEqual([]);
+    expect(run({ name: "j", sequence: "j" }, { uiState: panelState })).toEqual(
+      [],
+    );
+    expect(run({ name: "t", sequence: "t" }, { uiState: panelState })).toEqual(
+      [],
+    );
     const shiftedTagKey = "T";
     expect(
       run(
         { name: shiftedTagKey, sequence: shiftedTagKey, shift: true },
-        { uiState: panelState }
-      )
+        { uiState: panelState },
+      ),
     ).toEqual([]);
-    expect(run({ name: "r", sequence: "r" }, { uiState: panelState })).toEqual([]);
+    expect(run({ name: "r", sequence: "r" }, { uiState: panelState })).toEqual(
+      [],
+    );
     expect(run({ name: "escape" }, { uiState: panelState })).toEqual([
-      { scope: "ui", type: "UNWIND" }
+      { scope: "ui", type: "UNWIND" },
     ]);
   });
 
@@ -1408,125 +1475,136 @@ describe("handleKey", () => {
     const backupState = {
       ...initialUIState,
       mode: Mode.BACKUP_CENTER,
-      focus: FocusTarget.BACKUP_CENTER
+      focus: FocusTarget.BACKUP_CENTER,
     };
 
     expect(
       run(
         { name: "1", sequence: "1" },
-        { uiState: backupState, backupScreen: "menu" }
-      )
+        { uiState: backupState, backupScreen: "menu" },
+      ),
     ).toEqual([{ scope: "ui", type: "BACKUP_SELECT_MENU_OPTION", index: 0 }]);
     expect(
       run(
         { name: "4", sequence: "4" },
-        { uiState: backupState, backupScreen: "menu" }
-      )
+        { uiState: backupState, backupScreen: "menu" },
+      ),
     ).toEqual([{ scope: "ui", type: "BACKUP_SELECT_MENU_OPTION", index: 3 }]);
     expect(
-      run(
-        { name: "down" },
-        { uiState: backupState, backupScreen: "menu" }
-      )
+      run({ name: "down" }, { uiState: backupState, backupScreen: "menu" }),
     ).toEqual([{ scope: "ui", type: "BACKUP_MOVE_MENU_SELECTION", delta: 1 }]);
     expect(
       run(
         { name: "2", sequence: "2" },
-        { uiState: backupState, backupScreen: "import_mode" }
-      )
-    ).toEqual([{ scope: "ui", type: "BACKUP_SET_IMPORT_MODE", mode: "replace" }]);
+        { uiState: backupState, backupScreen: "import_mode" },
+      ),
+    ).toEqual([
+      { scope: "ui", type: "BACKUP_SET_IMPORT_MODE", mode: "replace" },
+    ]);
     expect(
       run(
         { name: "enter" },
-        { uiState: backupState, backupScreen: "import_dryrun" }
-      )
+        { uiState: backupState, backupScreen: "import_dryrun" },
+      ),
     ).toEqual([{ scope: "ui", type: "BACKUP_PRIMARY" }]);
     expect(
       run(
         { name: "pagedown" },
-        { uiState: backupState, backupScreen: "import_dryrun" }
-      )
+        { uiState: backupState, backupScreen: "import_dryrun" },
+      ),
     ).toEqual([{ scope: "ui", type: "BACKUP_SCROLL_BODY", delta: 8 }]);
     expect(
       run(
         { ctrl: true, name: "u" },
-        { uiState: backupState, backupScreen: "calendar_import_dryrun" }
-      )
+        { uiState: backupState, backupScreen: "calendar_import_dryrun" },
+      ),
     ).toEqual([{ scope: "ui", type: "BACKUP_SCROLL_BODY", delta: -8 }]);
     expect(
       run(
         { name: "3", sequence: "3" },
-        { uiState: backupState, backupScreen: "import_path" }
-      )
+        { uiState: backupState, backupScreen: "import_path" },
+      ),
     ).toEqual([{ scope: "ui", type: "BACKUP_SELECT_DIGIT", digit: 3 }]);
     expect(
       run(
         { name: "down" },
-        { uiState: backupState, backupScreen: "import_path" }
-      )
+        { uiState: backupState, backupScreen: "import_path" },
+      ),
     ).toEqual([]);
     expect(
       run(
         { name: "2", sequence: "2" },
-        { uiState: backupState, backupScreen: "calendar_import_mode" }
-      )
+        { uiState: backupState, backupScreen: "calendar_import_mode" },
+      ),
     ).toEqual([{ scope: "ui", type: "BACKUP_SELECT_DIGIT", digit: 2 }]);
     expect(
       run(
         { name: "up" },
-        { uiState: backupState, backupScreen: "import_picker" }
-      )
-    ).toEqual([{ scope: "ui", type: "BACKUP_PICKER_MOVE_SELECTION", delta: -1 }]);
+        { uiState: backupState, backupScreen: "import_picker" },
+      ),
+    ).toEqual([
+      { scope: "ui", type: "BACKUP_PICKER_MOVE_SELECTION", delta: -1 },
+    ]);
     expect(
       run(
         { name: "down" },
-        { uiState: backupState, backupScreen: "import_picker" }
-      )
-    ).toEqual([{ scope: "ui", type: "BACKUP_PICKER_MOVE_SELECTION", delta: 1 }]);
+        { uiState: backupState, backupScreen: "import_picker" },
+      ),
+    ).toEqual([
+      { scope: "ui", type: "BACKUP_PICKER_MOVE_SELECTION", delta: 1 },
+    ]);
     expect(
       run(
         { name: "pageup" },
-        { uiState: backupState, backupScreen: "import_picker" }
-      )
-    ).toEqual([{ scope: "ui", type: "BACKUP_PICKER_PAGE_SELECTION", delta: -1 }]);
+        { uiState: backupState, backupScreen: "import_picker" },
+      ),
+    ).toEqual([
+      { scope: "ui", type: "BACKUP_PICKER_PAGE_SELECTION", delta: -1 },
+    ]);
     expect(
       run(
         { name: "pagedown" },
-        { uiState: backupState, backupScreen: "import_picker" }
-      )
-    ).toEqual([{ scope: "ui", type: "BACKUP_PICKER_PAGE_SELECTION", delta: 1 }]);
+        { uiState: backupState, backupScreen: "import_picker" },
+      ),
+    ).toEqual([
+      { scope: "ui", type: "BACKUP_PICKER_PAGE_SELECTION", delta: 1 },
+    ]);
     const backupPickerHomeKey = "home";
     const backupPickerEndKey = "end";
 
     expect(
       run(
         { name: backupPickerHomeKey },
-        { uiState: backupState, backupScreen: "import_picker" }
-      )
-    ).toEqual([{ scope: "ui", type: "BACKUP_PICKER_JUMP_SELECTION", target: "start" }]);
+        { uiState: backupState, backupScreen: "import_picker" },
+      ),
+    ).toEqual([
+      { scope: "ui", type: "BACKUP_PICKER_JUMP_SELECTION", target: "start" },
+    ]);
     expect(
       run(
         { name: backupPickerEndKey },
-        { uiState: backupState, backupScreen: "import_picker" }
-      )
-    ).toEqual([{ scope: "ui", type: "BACKUP_PICKER_JUMP_SELECTION", target: "end" }]);
+        { uiState: backupState, backupScreen: "import_picker" },
+      ),
+    ).toEqual([
+      { scope: "ui", type: "BACKUP_PICKER_JUMP_SELECTION", target: "end" },
+    ]);
     expect(
       run(
         { name: "enter" },
-        { uiState: backupState, backupScreen: "import_picker" }
-      )
+        { uiState: backupState, backupScreen: "import_picker" },
+      ),
     ).toEqual([{ scope: "ui", type: "BACKUP_PICKER_CONFIRM_SELECTION" }]);
     expect(
       run(
         { name: "m", sequence: "m" },
-        { uiState: backupState, backupScreen: "import_picker" }
-      )
+        { uiState: backupState, backupScreen: "import_picker" },
+      ),
     ).toEqual([{ scope: "ui", type: "BACKUP_PICKER_OPEN_MANUAL_PATH" }]);
     expect(
       run(
         { name: "3", sequence: "3" },
-        { uiState: backupState, backupScreen: "import_picker" }
-      )
+        { uiState: backupState, backupScreen: "import_picker" },
+      ),
     ).toEqual([]);
   });
 
@@ -1534,23 +1612,27 @@ describe("handleKey", () => {
     const backupState = {
       ...initialUIState,
       mode: Mode.BACKUP_CENTER,
-      focus: FocusTarget.BACKUP_CENTER
+      focus: FocusTarget.BACKUP_CENTER,
     };
     const resolvedAliases = resolveKeymapAliases(
       normalizeKeymapAliases({
         backup: {
           backup_primary: ["Space"],
           backup_jump_start: ["h"],
-          backup_menu_option_4: ["4"]
-        }
-      })
+          backup_menu_option_4: ["4"],
+        },
+      }),
     );
 
     expect(
       run(
         { name: "space" },
-        { uiState: backupState, backupScreen: "menu", resolvedKeymapAliases: resolvedAliases }
-      )
+        {
+          uiState: backupState,
+          backupScreen: "menu",
+          resolvedKeymapAliases: resolvedAliases,
+        },
+      ),
     ).toEqual([{ scope: "ui", type: "BACKUP_PRIMARY" }]);
     expect(
       run(
@@ -1558,21 +1640,31 @@ describe("handleKey", () => {
         {
           uiState: backupState,
           backupScreen: "import_picker",
-          resolvedKeymapAliases: resolvedAliases
-        }
-      )
-    ).toEqual([{ scope: "ui", type: "BACKUP_PICKER_JUMP_SELECTION", target: "start" }]);
+          resolvedKeymapAliases: resolvedAliases,
+        },
+      ),
+    ).toEqual([
+      { scope: "ui", type: "BACKUP_PICKER_JUMP_SELECTION", target: "start" },
+    ]);
     expect(
       run(
         { name: "h", sequence: "h" },
-        { uiState: backupState, backupScreen: "menu", resolvedKeymapAliases: resolvedAliases }
-      )
+        {
+          uiState: backupState,
+          backupScreen: "menu",
+          resolvedKeymapAliases: resolvedAliases,
+        },
+      ),
     ).toEqual([]);
     expect(
       run(
         { name: "4", sequence: "4" },
-        { uiState: backupState, backupScreen: "menu", resolvedKeymapAliases: resolvedAliases }
-      )
+        {
+          uiState: backupState,
+          backupScreen: "menu",
+          resolvedKeymapAliases: resolvedAliases,
+        },
+      ),
     ).toEqual([{ scope: "ui", type: "BACKUP_SELECT_MENU_OPTION", index: 3 }]);
   });
 
@@ -1580,49 +1672,59 @@ describe("handleKey", () => {
     const addState = {
       ...initialUIState,
       mode: Mode.ADD,
-      focus: FocusTarget.EDITOR_TITLE
+      focus: FocusTarget.EDITOR_TITLE,
     };
-    expect(run({ name: "j", sequence: "j" }, { uiState: addState })).toEqual([]);
+    expect(run({ name: "j", sequence: "j" }, { uiState: addState })).toEqual(
+      [],
+    );
     expect(run({ name: "down" }, { uiState: addState })).toEqual([]);
     const shiftedTagKey = "T";
     expect(
       run(
         { name: shiftedTagKey, sequence: shiftedTagKey, shift: true },
-        { uiState: addState }
-      )
+        { uiState: addState },
+      ),
     ).toEqual([]);
     expect(run({ ctrl: true, name: "s" }, { uiState: addState })).toEqual([
-      { scope: "domain", type: "SAVE_EDITOR" }
+      { scope: "domain", type: "SAVE_EDITOR" },
     ]);
     expect(run({ ctrl: true, name: "l" }, { uiState: addState })).toEqual([
-      { scope: "domain", type: "OPEN_ADD_TASK_LINK_MODAL" }
+      { scope: "domain", type: "OPEN_ADD_TASK_LINK_MODAL" },
     ]);
     expect(run({ name: "pageup" }, { uiState: addState })).toEqual([
-      { scope: "ui", type: "SCROLL_EDITOR_PAGE", direction: -1 }
+      { scope: "ui", type: "SCROLL_EDITOR_PAGE", direction: -1 },
     ]);
     expect(run({ name: "pagedown" }, { uiState: addState })).toEqual([
-      { scope: "ui", type: "SCROLL_EDITOR_PAGE", direction: 1 }
+      { scope: "ui", type: "SCROLL_EDITOR_PAGE", direction: 1 },
     ]);
     expect(run({ ctrl: true, name: "u" }, { uiState: addState })).toEqual([
-      { scope: "ui", type: "SCROLL_EDITOR_PAGE", direction: -1 }
+      { scope: "ui", type: "SCROLL_EDITOR_PAGE", direction: -1 },
     ]);
     expect(run({ ctrl: true, name: "d" }, { uiState: addState })).toEqual([
-      { scope: "ui", type: "SCROLL_EDITOR_PAGE", direction: 1 }
+      { scope: "ui", type: "SCROLL_EDITOR_PAGE", direction: 1 },
     ]);
 
     const notesState = {
       ...initialUIState,
       mode: Mode.EDIT,
-      focus: FocusTarget.EDITOR_NOTES
+      focus: FocusTarget.EDITOR_NOTES,
     };
-    expect(run({ name: "j", sequence: "j" }, { uiState: notesState })).toEqual([]);
+    expect(run({ name: "j", sequence: "j" }, { uiState: notesState })).toEqual(
+      [],
+    );
     expect(run({ name: "down" }, { uiState: notesState })).toEqual([]);
-    expect(run({ name: "b", sequence: "b" }, { uiState: notesState })).toEqual([]);
-    expect(run({ name: "/", sequence: "/" }, { uiState: notesState })).toEqual([]);
-    expect(run({ name: "t", sequence: "t" }, { uiState: notesState })).toEqual([]);
+    expect(run({ name: "b", sequence: "b" }, { uiState: notesState })).toEqual(
+      [],
+    );
+    expect(run({ name: "/", sequence: "/" }, { uiState: notesState })).toEqual(
+      [],
+    );
+    expect(run({ name: "t", sequence: "t" }, { uiState: notesState })).toEqual(
+      [],
+    );
     expect(run({ name: "enter" }, { uiState: notesState })).toEqual([]);
     expect(run({ name: "escape" }, { uiState: notesState })).toEqual([
-      { scope: "ui", type: "UNWIND" }
+      { scope: "ui", type: "UNWIND" },
     ]);
   });
 
@@ -1630,61 +1732,61 @@ describe("handleKey", () => {
     const titleState = {
       ...initialUIState,
       mode: Mode.EDIT,
-      focus: FocusTarget.EDITOR_TITLE
+      focus: FocusTarget.EDITOR_TITLE,
     };
     expect(
       run(
         { name: "tab" },
-        { uiState: titleState, hasTitleInlineSuggestion: true }
-      )
+        { uiState: titleState, hasTitleInlineSuggestion: true },
+      ),
     ).toEqual([
       { scope: "domain", type: "ACCEPT_TITLE_INLINE" },
-      { scope: "ui", type: "MOVE_EDITOR_FOCUS", direction: 1 }
+      { scope: "ui", type: "MOVE_EDITOR_FOCUS", direction: 1 },
     ]);
     expect(
       run(
         { name: "right" },
-        { uiState: titleState, hasTitleInlineSuggestion: true }
-      )
+        { uiState: titleState, hasTitleInlineSuggestion: true },
+      ),
     ).toEqual([{ scope: "domain", type: "ACCEPT_TITLE_INLINE" }]);
 
     const tagsState = {
       ...initialUIState,
       mode: Mode.EDIT,
-      focus: FocusTarget.EDITOR_TAGS
+      focus: FocusTarget.EDITOR_TAGS,
     };
     expect(
       run(
         { name: "tab" },
-        { uiState: tagsState, hasTagInlineSuggestion: true }
-      )
+        { uiState: tagsState, hasTagInlineSuggestion: true },
+      ),
     ).toEqual([
       { scope: "domain", type: "ACCEPT_TAG_INLINE" },
-      { scope: "ui", type: "MOVE_EDITOR_FOCUS", direction: 1 }
+      { scope: "ui", type: "MOVE_EDITOR_FOCUS", direction: 1 },
     ]);
     expect(
       run(
         { name: "right" },
-        { uiState: tagsState, hasTagInlineSuggestion: true }
-      )
+        { uiState: tagsState, hasTagInlineSuggestion: true },
+      ),
     ).toEqual([{ scope: "domain", type: "ACCEPT_TAG_INLINE" }]);
     expect(
       run(
         { name: "enter" },
-        { uiState: tagsState, hasTagInlineSuggestion: true }
-      )
+        { uiState: tagsState, hasTagInlineSuggestion: true },
+      ),
     ).toEqual([{ scope: "domain", type: "ACCEPT_TAG_INLINE" }]);
 
     const timeEditState = {
       ...initialUIState,
       mode: Mode.EDIT,
-      focus: FocusTarget.EDITOR_DUE_TIME
+      focus: FocusTarget.EDITOR_DUE_TIME,
     };
     expect(
       run(
         { name: "right" },
-        { uiState: timeEditState, timeAutocompleteStep: "hour" }
-      )
+        { uiState: timeEditState, timeAutocompleteStep: "hour" },
+      ),
     ).toEqual([{ scope: "domain", type: "APPLY_TIME_AUTOCOMPLETE" }]);
   });
 
@@ -1692,48 +1794,56 @@ describe("handleKey", () => {
     const checklistEditorState = {
       ...initialUIState,
       mode: Mode.EDIT,
-      focus: FocusTarget.EDITOR_CHECKLIST
+      focus: FocusTarget.EDITOR_CHECKLIST,
     };
 
-    expect(run({ name: "j", sequence: "j" }, { uiState: checklistEditorState })).toEqual([
-      { scope: "domain", type: "MOVE_CHECKLIST_SELECTION", delta: 1 }
+    expect(
+      run({ name: "j", sequence: "j" }, { uiState: checklistEditorState }),
+    ).toEqual([
+      { scope: "domain", type: "MOVE_CHECKLIST_SELECTION", delta: 1 },
     ]);
-    expect(run({ name: "k", sequence: "k" }, { uiState: checklistEditorState })).toEqual([
-      { scope: "domain", type: "MOVE_CHECKLIST_SELECTION", delta: -1 }
+    expect(
+      run({ name: "k", sequence: "k" }, { uiState: checklistEditorState }),
+    ).toEqual([
+      { scope: "domain", type: "MOVE_CHECKLIST_SELECTION", delta: -1 },
     ]);
     expect(run({ name: "down" }, { uiState: checklistEditorState })).toEqual([
-      { scope: "domain", type: "MOVE_CHECKLIST_SELECTION", delta: 1 }
+      { scope: "domain", type: "MOVE_CHECKLIST_SELECTION", delta: 1 },
     ]);
     expect(run({ name: "space" }, { uiState: checklistEditorState })).toEqual([
-      { scope: "domain", type: "TOGGLE_SELECTED_CHECKLIST_ITEM" }
+      { scope: "domain", type: "TOGGLE_SELECTED_CHECKLIST_ITEM" },
     ]);
-    expect(run({ name: "a", sequence: "a" }, { uiState: checklistEditorState })).toEqual([
-      { scope: "domain", type: "OPEN_ADD_CHECKLIST_ITEM_MODAL" }
-    ]);
-    expect(run({ name: "e", sequence: "e" }, { uiState: checklistEditorState })).toEqual([
-      { scope: "domain", type: "OPEN_EDIT_CHECKLIST_ITEM_MODAL" }
-    ]);
-    expect(run({ name: "d", sequence: "d" }, { uiState: checklistEditorState })).toEqual([
-      { scope: "domain", type: "OPEN_DELETE_CHECKLIST_ITEM_MODAL" }
-    ]);
+    expect(
+      run({ name: "a", sequence: "a" }, { uiState: checklistEditorState }),
+    ).toEqual([{ scope: "domain", type: "OPEN_ADD_CHECKLIST_ITEM_MODAL" }]);
+    expect(
+      run({ name: "e", sequence: "e" }, { uiState: checklistEditorState }),
+    ).toEqual([{ scope: "domain", type: "OPEN_EDIT_CHECKLIST_ITEM_MODAL" }]);
+    expect(
+      run({ name: "d", sequence: "d" }, { uiState: checklistEditorState }),
+    ).toEqual([{ scope: "domain", type: "OPEN_DELETE_CHECKLIST_ITEM_MODAL" }]);
     expect(run({ name: "left" }, { uiState: checklistEditorState })).toEqual([
-      { scope: "domain", type: "SAVE_EDITOR" }
+      { scope: "domain", type: "SAVE_EDITOR" },
     ]);
-    expect(run({ name: "enter" }, { uiState: checklistEditorState })).toEqual([]);
-    expect(run({ name: "b", sequence: "b" }, { uiState: checklistEditorState })).toEqual([]);
+    expect(run({ name: "enter" }, { uiState: checklistEditorState })).toEqual(
+      [],
+    );
+    expect(
+      run({ name: "b", sequence: "b" }, { uiState: checklistEditorState }),
+    ).toEqual([]);
   });
 
   it("keeps link hotkeys scoped to list/details focus and blocks leakage elsewhere", () => {
     const detailsState = {
       ...initialUIState,
       mode: Mode.LIST,
-      focus: FocusTarget.DETAILS_LINKS
+      focus: FocusTarget.DETAILS_LINKS,
     };
-    expect(run({ name: "o", sequence: "o" }, { uiState: detailsState })).toEqual([
-      { scope: "domain", type: "OPEN_SELECTED_LINK" }
-    ]);
+    expect(
+      run({ name: "o", sequence: "o" }, { uiState: detailsState }),
+    ).toEqual([{ scope: "domain", type: "OPEN_SELECTED_LINK" }]);
     expect(run({ name: "backspace" }, { uiState: detailsState })).toEqual([
-      { scope: "domain", type: "OPEN_DELETE_TASK_LINK_MODAL" }
+      { scope: "domain", type: "OPEN_DELETE_TASK_LINK_MODAL" },
     ]);
 
     const blockedStates = [
@@ -1742,7 +1852,7 @@ describe("handleKey", () => {
       { mode: Mode.SEARCH, focus: FocusTarget.SEARCH_INPUT },
       { mode: Mode.ADD, focus: FocusTarget.EDITOR_TITLE },
       { mode: Mode.EDIT, focus: FocusTarget.EDITOR_TITLE },
-      { mode: Mode.TAG_FILTER, focus: FocusTarget.TAG_FILTER_INPUT }
+      { mode: Mode.TAG_FILTER, focus: FocusTarget.TAG_FILTER_INPUT },
     ];
     const linkHotkeys: Array<Partial<KeyInput>> = [
       { name: "enter" },
@@ -1751,14 +1861,14 @@ describe("handleKey", () => {
       { name: "l", sequence: "l" },
       { name: "e", sequence: "e" },
       { name: "d", sequence: "d" },
-      { name: "backspace" }
+      { name: "backspace" },
     ];
     const linkActionTypes = new Set([
       "OPEN_SELECTED_LINK",
       "COPY_SELECTED_LINK",
       "OPEN_ADD_TASK_LINK_MODAL",
       "OPEN_EDIT_TASK_LINK_MODAL",
-      "OPEN_DELETE_TASK_LINK_MODAL"
+      "OPEN_DELETE_TASK_LINK_MODAL",
     ]);
 
     for (const blockedState of blockedStates) {
@@ -1767,10 +1877,12 @@ describe("handleKey", () => {
           uiState: {
             ...initialUIState,
             mode: blockedState.mode,
-            focus: blockedState.focus
-          }
+            focus: blockedState.focus,
+          },
         });
-        expect(actions.some((action) => linkActionTypes.has(action.type))).toBe(false);
+        expect(actions.some((action) => linkActionTypes.has(action.type))).toBe(
+          false,
+        );
       }
     }
   });
@@ -1779,157 +1891,171 @@ describe("handleKey", () => {
     expect(
       run({
         name: "n",
-        sequence: "n"
-      })
+        sequence: "n",
+      }),
     ).toEqual([{ scope: "ui", type: "OPEN_NOTES" }]);
 
     expect(
       run(
         {
           name: "n",
-          sequence: "n"
+          sequence: "n",
         },
         {
           uiState: {
             ...initialUIState,
             mode: Mode.DASHBOARD,
-            focus: FocusTarget.DASHBOARD
-          }
-        }
-      )
+            focus: FocusTarget.DASHBOARD,
+          },
+        },
+      ),
     ).toEqual([{ scope: "ui", type: "OPEN_NOTES" }]);
 
     const notesListState = {
       ...initialUIState,
       mode: Mode.NOTES_LIST,
-      focus: FocusTarget.NOTES_LIST
+      focus: FocusTarget.NOTES_LIST,
     };
-    expect(run({ name: "j", sequence: "j" }, { uiState: notesListState })).toEqual([
-      { scope: "ui", type: "NOTES_MOVE_SELECTION", delta: 1 }
-    ]);
+    expect(
+      run({ name: "j", sequence: "j" }, { uiState: notesListState }),
+    ).toEqual([{ scope: "ui", type: "NOTES_MOVE_SELECTION", delta: 1 }]);
     expect(run({ name: "return" }, { uiState: notesListState })).toEqual([
-      { scope: "ui", type: "NOTES_OPEN_SELECTED" }
-    ]);
-    expect(run({ name: "a", sequence: "a" }, { uiState: notesListState })).toEqual([
-      { scope: "ui", type: "NOTES_OPEN_CREATE" }
-    ]);
-    expect(run({ name: "d", sequence: "d" }, { uiState: notesListState })).toEqual([
-      { scope: "ui", type: "NOTES_OPEN_DELETE" }
-    ]);
-    expect(run({ name: "r", sequence: "r" }, { uiState: notesListState })).toEqual([
-      { scope: "ui", type: "NOTES_OPEN_RENAME" }
+      { scope: "ui", type: "NOTES_OPEN_SELECTED" },
     ]);
     expect(
-      run({ name: "R", sequence: "R", shift: true }, { uiState: notesListState })
+      run({ name: "a", sequence: "a" }, { uiState: notesListState }),
+    ).toEqual([{ scope: "ui", type: "NOTES_OPEN_CREATE" }]);
+    expect(
+      run({ name: "d", sequence: "d" }, { uiState: notesListState }),
+    ).toEqual([{ scope: "ui", type: "NOTES_OPEN_DELETE" }]);
+    expect(
+      run({ name: "r", sequence: "r" }, { uiState: notesListState }),
     ).toEqual([{ scope: "ui", type: "NOTES_OPEN_RENAME" }]);
-    expect(run({ name: "i", sequence: "i" }, { uiState: notesListState })).toEqual([
-      { scope: "ui", type: "NOTES_REINDEX" }
-    ]);
     expect(
-      run({ name: "I", sequence: "I", shift: true }, { uiState: notesListState })
+      run(
+        { name: "R", sequence: "R", shift: true },
+        { uiState: notesListState },
+      ),
+    ).toEqual([{ scope: "ui", type: "NOTES_OPEN_RENAME" }]);
+    expect(
+      run({ name: "i", sequence: "i" }, { uiState: notesListState }),
     ).toEqual([{ scope: "ui", type: "NOTES_REINDEX" }]);
-    expect(run({ name: "/", sequence: "/" }, { uiState: notesListState })).toEqual([
-      { scope: "ui", type: "OPEN_NOTES_SEARCH" }
-    ]);
+    expect(
+      run(
+        { name: "I", sequence: "I", shift: true },
+        { uiState: notesListState },
+      ),
+    ).toEqual([{ scope: "ui", type: "NOTES_REINDEX" }]);
+    expect(
+      run({ name: "/", sequence: "/" }, { uiState: notesListState }),
+    ).toEqual([{ scope: "ui", type: "OPEN_NOTES_SEARCH" }]);
     expect(run({ name: "escape" }, { uiState: notesListState })).toEqual([
-      { scope: "ui", type: "NOTES_EXIT_TO_LIST" }
+      { scope: "ui", type: "NOTES_EXIT_TO_LIST" },
     ]);
     expect(
       run(
         { name: "escape" },
         {
           uiState: notesListState,
-          notesCreatePromptOpen: true
-        }
-      )
+          notesCreatePromptOpen: true,
+        },
+      ),
     ).toEqual([{ scope: "ui", type: "NOTES_CLOSE_CREATE" }]);
     expect(
       run(
         { name: "return" },
         {
           uiState: notesListState,
-          notesCreatePromptOpen: true
-        }
-      )
+          notesCreatePromptOpen: true,
+        },
+      ),
     ).toEqual([{ scope: "ui", type: "NOTES_CONFIRM_CREATE" }]);
     expect(
       run(
         { name: "escape" },
         {
           uiState: notesListState,
-          notesRenamePromptOpen: true
-        }
-      )
+          notesRenamePromptOpen: true,
+        },
+      ),
     ).toEqual([{ scope: "ui", type: "NOTES_CLOSE_RENAME" }]);
     expect(
       run(
         { name: "return" },
         {
           uiState: notesListState,
-          notesRenamePromptOpen: true
-        }
-      )
+          notesRenamePromptOpen: true,
+        },
+      ),
     ).toEqual([{ scope: "ui", type: "NOTES_CONFIRM_RENAME" }]);
     expect(
       run(
         { name: "escape" },
         {
           uiState: notesListState,
-          notesDeletePromptOpen: true
-        }
-      )
+          notesDeletePromptOpen: true,
+        },
+      ),
     ).toEqual([{ scope: "ui", type: "NOTES_CLOSE_DELETE" }]);
     expect(
       run(
         { name: "return" },
         {
           uiState: notesListState,
-          notesDeletePromptOpen: true
-        }
-      )
+          notesDeletePromptOpen: true,
+        },
+      ),
     ).toEqual([{ scope: "ui", type: "NOTES_CONFIRM_DELETE" }]);
 
     const notesViewState = {
       ...initialUIState,
       mode: Mode.NOTES_VIEW,
-      focus: FocusTarget.NOTES_VIEW
+      focus: FocusTarget.NOTES_VIEW,
     };
     expect(run({ name: "escape" }, { uiState: notesViewState })).toEqual([
-      { scope: "ui", type: "NOTES_BACK_TO_LIST" }
+      { scope: "ui", type: "NOTES_BACK_TO_LIST" },
     ]);
-    expect(run({ name: "d", sequence: "d" }, { uiState: notesViewState })).toEqual([
-      { scope: "ui", type: "NOTES_OPEN_DELETE" }
-    ]);
-    expect(run({ name: "i", sequence: "i" }, { uiState: notesViewState })).toEqual([
-      { scope: "ui", type: "NOTES_REINDEX" }
-    ]);
-    expect(run({ name: "b", sequence: "b" }, { uiState: notesViewState })).toEqual([]);
+    expect(
+      run({ name: "d", sequence: "d" }, { uiState: notesViewState }),
+    ).toEqual([{ scope: "ui", type: "NOTES_OPEN_DELETE" }]);
+    expect(
+      run({ name: "i", sequence: "i" }, { uiState: notesViewState }),
+    ).toEqual([{ scope: "ui", type: "NOTES_REINDEX" }]);
+    expect(
+      run({ name: "b", sequence: "b" }, { uiState: notesViewState }),
+    ).toEqual([]);
 
     const notesEditState = {
       ...initialUIState,
       mode: Mode.NOTES_EDIT,
-      focus: FocusTarget.NOTES_EDIT
+      focus: FocusTarget.NOTES_EDIT,
     };
-    expect(run({ name: "d", sequence: "d" }, { uiState: notesEditState })).toEqual([]);
+    expect(
+      run({ name: "d", sequence: "d" }, { uiState: notesEditState }),
+    ).toEqual([]);
 
     const notesSearchState = {
       ...initialUIState,
       mode: Mode.NOTES_SEARCH,
-      focus: FocusTarget.NOTES_SEARCH_INPUT
+      focus: FocusTarget.NOTES_SEARCH_INPUT,
     };
-    expect(run({ name: "d", sequence: "d" }, { uiState: notesSearchState })).toEqual([]);
+    expect(
+      run({ name: "d", sequence: "d" }, { uiState: notesSearchState }),
+    ).toEqual([]);
 
     const notesTagFilterState = {
       ...initialUIState,
       mode: Mode.NOTES_TAG_FILTER,
-      focus: FocusTarget.NOTES_TAG_FILTER_INPUT
+      focus: FocusTarget.NOTES_TAG_FILTER_INPUT,
     };
-    expect(run({ name: "d", sequence: "d" }, { uiState: notesTagFilterState })).toEqual([]);
+    expect(
+      run({ name: "d", sequence: "d" }, { uiState: notesTagFilterState }),
+    ).toEqual([]);
   });
 
   it("routes Ctrl+N to quick capture in list/dashboard/search/editor modes", () => {
     expect(run({ name: "n", sequence: "n", ctrl: true })).toEqual([
-      { scope: "ui", type: "OPEN_QUICK_CAPTURE" }
+      { scope: "ui", type: "OPEN_QUICK_CAPTURE" },
     ]);
     expect(
       run(
@@ -1938,10 +2064,10 @@ describe("handleKey", () => {
           uiState: {
             ...initialUIState,
             mode: Mode.DASHBOARD,
-            focus: FocusTarget.DASHBOARD
-          }
-        }
-      )
+            focus: FocusTarget.DASHBOARD,
+          },
+        },
+      ),
     ).toEqual([{ scope: "ui", type: "OPEN_QUICK_CAPTURE" }]);
     expect(
       run(
@@ -1950,10 +2076,10 @@ describe("handleKey", () => {
           uiState: {
             ...initialUIState,
             mode: Mode.SEARCH,
-            focus: FocusTarget.SEARCH_INPUT
-          }
-        }
-      )
+            focus: FocusTarget.SEARCH_INPUT,
+          },
+        },
+      ),
     ).toEqual([{ scope: "ui", type: "OPEN_QUICK_CAPTURE" }]);
     expect(
       run(
@@ -1962,10 +2088,10 @@ describe("handleKey", () => {
           uiState: {
             ...initialUIState,
             mode: Mode.EDIT,
-            focus: FocusTarget.EDITOR_TITLE
-          }
-        }
-      )
+            focus: FocusTarget.EDITOR_TITLE,
+          },
+        },
+      ),
     ).toEqual([{ scope: "ui", type: "OPEN_QUICK_CAPTURE" }]);
     expect(
       run(
@@ -1981,11 +2107,11 @@ describe("handleKey", () => {
               taskId: "task-1",
               taskTitle: "Task",
               previousMode: Mode.LIST,
-              previousFocus: FocusTarget.TASK_LIST
-            }
-          }
-        }
-      )
+              previousFocus: FocusTarget.TASK_LIST,
+            },
+          },
+        },
+      ),
     ).toEqual([{ scope: "ui", type: "UNWIND" }]);
   });
 });

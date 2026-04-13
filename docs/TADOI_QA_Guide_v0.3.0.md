@@ -51,12 +51,12 @@ References:
 
 ## 3) Platform Matrix
 
-| Area | macOS | Windows | Linux |
-|---|---|---|---|
-| Terminal baseline | Terminal.app / iTerm2 | Windows Terminal | GNOME Terminal |
-| Data path default | `~/Library/Application Support/tadoi/tadoi_data.json` | `%APPDATA%\\tadoi\\tadoi_data.json` (fallback `%USERPROFILE%\\AppData\\Roaming\\tadoi\\tadoi_data.json`) | `$XDG_DATA_HOME/tadoi/tadoi_data.json` (fallback `~/.local/share/tadoi/tadoi_data.json`) |
-| Settings path | `~/.config/tadoi/settings.json` (fallback `~/.tadoi/settings.json`) | same runtime behavior (Node path handling) | same runtime behavior |
-| CI coverage | yes | yes | yes |
+| Area              | macOS                                                               | Windows                                                                                                  | Linux                                                                                    |
+| ----------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Terminal baseline | Terminal.app / iTerm2                                               | Windows Terminal                                                                                         | GNOME Terminal                                                                           |
+| Data path default | `~/Library/Application Support/tadoi/tadoi_data.json`               | `%APPDATA%\\tadoi\\tadoi_data.json` (fallback `%USERPROFILE%\\AppData\\Roaming\\tadoi\\tadoi_data.json`) | `$XDG_DATA_HOME/tadoi/tadoi_data.json` (fallback `~/.local/share/tadoi/tadoi_data.json`) |
+| Settings path     | `~/.config/tadoi/settings.json` (fallback `~/.tadoi/settings.json`) | same runtime behavior (Node path handling)                                                               | same runtime behavior                                                                    |
+| CI coverage       | yes                                                                 | yes                                                                                                      | yes                                                                                      |
 
 ## 4) Test Environment Setup
 
@@ -86,11 +86,11 @@ Run these suites on all three platforms.
 ### A. Launch, Layout, and Resize
 
 1. Launch app in terminal at or above `104x24`.
-Expected: three-pane shell renders, no crash.
+   Expected: three-pane shell renders, no crash.
 2. Resize below `104x24`.
-Expected: blocking warning screen: `Terminal too small (min 104x24)`.
+   Expected: blocking warning screen: `Terminal too small (min 104x24)`.
 3. Resize back above minimum.
-Expected: normal interaction restored without restart.
+   Expected: normal interaction restored without restart.
 
 ### B. Core Task Lifecycle
 
@@ -99,7 +99,7 @@ Expected: normal interaction restored without restart.
 3. Toggle complete/open (`Space`).
 4. Duplicate (`c`) and confirm draft behavior.
 5. Delete (`d` then `y`); verify cancel path (`n`/`Esc`).
-Expected: selection remains valid; no mode leakage.
+   Expected: selection remains valid; no mode leakage.
 
 ### C. Filters, Sort, Search, Saved Views
 
@@ -112,14 +112,14 @@ Expected: selection remains valid; no mode leakage.
    - save prompt (`Ctrl+S`)
    - apply slots (`1..9`)
    - delete in overlay (`d`)
-Expected: filters apply consistently and selection stability is preserved by task id when possible.
+     Expected: filters apply consistently and selection stability is preserved by task id when possible.
 
 ### D. Keyboard Navigation and Routing Contracts
 
 1. List movement: `j/k`, arrows, `gg`, `G`, `Ctrl+U`, `Ctrl+D`, `[` `]` `{` `}`.
 2. Ensure list keys do not affect text-entry contexts (SEARCH/ADD/EDIT/save-view prompt).
 3. Dashboard toggle (`b`/`B`) works only in allowed contexts.
-Expected: no cross-mode key leakage.
+   Expected: no cross-mode key leakage.
 
 ### E. Dashboard Mode
 
@@ -141,13 +141,13 @@ Expected: no cross-mode key leakage.
    - snooze +1 day (`z`)
    - edit occurrence (`e`) vs series (`E`)
 4. Validate recurrence appears correctly in list and dashboard counts.
-Expected: occurrence actions do not close parent series; materialized rows suppress matching virtual rows.
+   Expected: occurrence actions do not close parent series; materialized rows suppress matching virtual rows.
 
 ### G. Backup Center / Portability
 
 1. Open help (`?`) -> `1` to Backup Center.
 2. Export backup.
-Expected: timestamped file created, collision suffix handling (`.1`, `.2`).
+   Expected: timestamped file created, collision suffix handling (`.1`, `.2`).
 3. Import merge mode:
    - path input
    - dry-run summary shown
@@ -157,7 +157,7 @@ Expected: timestamped file created, collision suffix handling (`.1`, `.2`).
    - dry-run required before commit
    - pre-import backup created by default
 5. Show data path option.
-Expected: displays current resolved runtime path.
+   Expected: displays current resolved runtime path.
 
 ### H. Theme, Flash, and Notification Settings
 
@@ -168,7 +168,7 @@ Expected: displays current resolved runtime path.
    - overdue popup (`o`)
    - terminal bell (`l`)
 4. Restart app.
-Expected: settings persist and load.
+   Expected: settings persist and load.
 
 ### I. Overdue Notification Modal Actions
 
@@ -181,7 +181,7 @@ Expected: settings persist and load.
    - `G`: go to task
    - `Esc`: dismiss current modal
 5. If terminal bell is enabled, verify bell respects cooldown.
-Expected: modal actions are deterministic and recurring rows resolve correctly.
+   Expected: modal actions are deterministic and recurring rows resolve correctly.
 
 ### J. Mouse Interactions
 
@@ -190,13 +190,13 @@ Expected: modal actions are deterministic and recurring rows resolve correctly.
 3. Click editor `SAVE`/`CANCEL`.
 4. Click bottom info bar quick-filter buckets/tags.
 5. Trigger overdue popup and click action buttons.
-Expected: mouse actions map to documented commands and preserve mode safety.
+   Expected: mouse actions map to documented commands and preserve mode safety.
 
 ### K. Data Safety and Recovery
 
 1. Validate save error banner by forcing unwritable data path.
 2. Create malformed JSON in data file and relaunch.
-Expected: app recovers to empty state, creates `.corrupt.<timestamp>` backup, shows banner.
+   Expected: app recovers to empty state, creates `.corrupt.<timestamp>` backup, shows banner.
 3. Validate startup archive aging of done tasks older than 7 days.
 
 ## 6) Platform-Specific Checks

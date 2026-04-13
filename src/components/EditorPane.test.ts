@@ -1,5 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { runPrimaryMouseDownAction, shouldHandlePrimaryMouseDown } from "./EditorPane";
+import {
+  runPrimaryMouseDownAction,
+  shouldHandlePrimaryMouseDown,
+} from "./EditorPane";
 
 describe("editor pane mouse guards", () => {
   it("treats only button=0 as actionable", () => {

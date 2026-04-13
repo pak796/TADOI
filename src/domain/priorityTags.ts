@@ -50,14 +50,18 @@ export function resolveTaskPriorityTag(tags: string[]): string | undefined {
   return priority;
 }
 
-export function normalizePriorityFilterValue(raw: string | undefined): string | undefined {
+export function normalizePriorityFilterValue(
+  raw: string | undefined,
+): string | undefined {
   if (!raw) return undefined;
   const match = isPriorityToken(raw);
   if (!match) return undefined;
   return canonicalPriorityTag(match.digits);
 }
 
-export function formatPriorityForDisplay(raw: string | undefined): string | undefined {
+export function formatPriorityForDisplay(
+  raw: string | undefined,
+): string | undefined {
   const normalized = normalizePriorityFilterValue(raw);
   if (!normalized) return undefined;
   const digits = isPriorityToken(normalized)?.digits;

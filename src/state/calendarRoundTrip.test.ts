@@ -15,17 +15,21 @@ type PersistedStateFixture = {
 };
 
 async function loadFixtureRaw(name: string): Promise<string> {
-  const fixturePath = fileURLToPath(new URL(`./__fixtures__/${name}`, import.meta.url).href);
+  const fixturePath = fileURLToPath(
+    new URL(`./__fixtures__/${name}`, import.meta.url).href,
+  );
   return fs.readFile(fixturePath, "utf8");
 }
 
 async function withRoundTripEnv<T>(
-  run: (context: { tempDir: string; dataPath: string }) => Promise<T>
+  run: (context: { tempDir: string; dataPath: string }) => Promise<T>,
 ): Promise<T> {
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-calendar-roundtrip-"));
+  const tempDir = await fs.mkdtemp(
+    path.join(os.tmpdir(), "tadoi-calendar-roundtrip-"),
+  );
   const dataPath = path.join(tempDir, "tadoi_data.json");
   const fixture = JSON.parse(
-    await loadFixtureRaw("calendar-roundtrip.source.json")
+    await loadFixtureRaw("calendar-roundtrip.source.json"),
   ) as PersistedStateFixture;
   await fs.writeFile(dataPath, JSON.stringify(fixture, null, 2), "utf8");
 
@@ -61,14 +65,22 @@ describe("calendar export/import round-trip", () => {
         range: "all",
         privacy: "full",
         timeZone: "UTC",
-        now: new Date(Date.UTC(2026, 1, 12, 12, 30, 0))
+        now: new Date(Date.UTC(2026, 1, 12, 12, 30, 0)),
       });
       expect(exported.eventsWritten).toBeGreaterThan(0);
 
       let modified = await fs.readFile(exported.outputPath, "utf8");
-      modified = modified.replace("SUMMARY:Timed source", "SUMMARY:Timed source (updated)");
-      const overrideSnippet = await loadFixtureRaw("calendar-roundtrip.override.vevent.ics");
-      modified = modified.replace("END:VCALENDAR", `${overrideSnippet}\nEND:VCALENDAR`);
+      modified = modified.replace(
+        "SUMMARY:Timed source",
+        "SUMMARY:Timed source (updated)",
+      );
+      const overrideSnippet = await loadFixtureRaw(
+        "calendar-roundtrip.override.vevent.ics",
+      );
+      modified = modified.replace(
+        "END:VCALENDAR",
+        `${overrideSnippet}\nEND:VCALENDAR`,
+      );
       await fs.writeFile(modifiedPath, modified, "utf8");
 
       const firstImport = await importCalendarIcs({
@@ -76,20 +88,24 @@ describe("calendar export/import round-trip", () => {
         range: "all",
         mode: "merge",
         dryRun: false,
-        reportPath
+        reportPath,
       });
       expect(firstImport.hasErrors).toBe(false);
       expect(firstImport.summary.errors).toBe(0);
 
-      const firstState = JSON.parse(await fs.readFile(dataPath, "utf8")) as unknown;
+      const firstState = JSON.parse(
+        await fs.readFile(dataPath, "utf8"),
+      ) as unknown;
       const firstValidation = validatePersistedState(firstState, "strict");
       expect(firstValidation.ok).toBe(true);
       if (!firstValidation.ok) return;
 
-      const timedTask = firstValidation.data.tasks.find((task) => task.id === "timed-1");
+      const timedTask = firstValidation.data.tasks.find(
+        (task) => task.id === "timed-1",
+      );
       expect(timedTask?.title).toBe("Timed source (updated)");
       const firstOverrides = firstValidation.data.tasks.filter(
-        (task) => task.instance_of?.series_id === "series:root"
+        (task) => task.instance_of?.series_id === "series:root",
       );
       expect(firstOverrides).toHaveLength(1);
       const firstOccurrence = firstOverrides[0]?.instance_of?.occurrence;
@@ -98,18 +114,20 @@ describe("calendar export/import round-trip", () => {
         inputPath: modifiedPath,
         range: "all",
         mode: "merge",
-        dryRun: false
+        dryRun: false,
       });
       expect(secondImport.hasErrors).toBe(false);
       expect(secondImport.summary.errors).toBe(0);
 
-      const secondState = JSON.parse(await fs.readFile(dataPath, "utf8")) as unknown;
+      const secondState = JSON.parse(
+        await fs.readFile(dataPath, "utf8"),
+      ) as unknown;
       const secondValidation = validatePersistedState(secondState, "strict");
       expect(secondValidation.ok).toBe(true);
       if (!secondValidation.ok) return;
 
       const secondOverrides = secondValidation.data.tasks.filter(
-        (task) => task.instance_of?.series_id === "series:root"
+        (task) => task.instance_of?.series_id === "series:root",
       );
       expect(secondOverrides).toHaveLength(1);
       expect(secondOverrides[0]?.instance_of?.occurrence).toBe(firstOccurrence);
@@ -120,36 +138,49 @@ describe("calendar export/import round-trip", () => {
     await withRoundTripEnv(async ({ tempDir, dataPath }) => {
       const exportPath = path.join(tempDir, "identity-export.ics");
       const xTaskImportPath = path.join(tempDir, "identity-x-task.ics");
-      const uidPriorityImportPath = path.join(tempDir, "identity-uid-priority.ics");
+      const uidPriorityImportPath = path.join(
+        tempDir,
+        "identity-uid-priority.ics",
+      );
 
       const exported = await exportCalendarIcs({
         outputPath: exportPath,
         range: "all",
         privacy: "full",
         timeZone: "UTC",
-        now: new Date(Date.UTC(2026, 1, 12, 12, 30, 0))
+        now: new Date(Date.UTC(2026, 1, 12, 12, 30, 0)),
       });
       let exportedRaw = await fs.readFile(exported.outputPath, "utf8");
       exportedRaw = exportedRaw.replace(
         "UID:tadoi-timed-1@local",
-        "UID:foreign-calendar-uid-1"
+        "UID:foreign-calendar-uid-1",
       );
-      exportedRaw = exportedRaw.replace("SUMMARY:Timed source", "SUMMARY:Timed source (x-task-id)");
+      exportedRaw = exportedRaw.replace(
+        "SUMMARY:Timed source",
+        "SUMMARY:Timed source (x-task-id)",
+      );
       await fs.writeFile(xTaskImportPath, exportedRaw, "utf8");
 
       const importByTaskId = await importCalendarIcs({
         inputPath: xTaskImportPath,
         range: "all",
         mode: "merge",
-        dryRun: false
+        dryRun: false,
       });
       expect(importByTaskId.hasErrors).toBe(false);
 
-      const afterTaskId = JSON.parse(await fs.readFile(dataPath, "utf8")) as unknown;
-      const afterTaskIdValidation = validatePersistedState(afterTaskId, "strict");
+      const afterTaskId = JSON.parse(
+        await fs.readFile(dataPath, "utf8"),
+      ) as unknown;
+      const afterTaskIdValidation = validatePersistedState(
+        afterTaskId,
+        "strict",
+      );
       expect(afterTaskIdValidation.ok).toBe(true);
       if (!afterTaskIdValidation.ok) return;
-      const timedAfterTaskId = afterTaskIdValidation.data.tasks.find((task) => task.id === "timed-1");
+      const timedAfterTaskId = afterTaskIdValidation.data.tasks.find(
+        (task) => task.id === "timed-1",
+      );
       expect(timedAfterTaskId?.title).toBe("Timed source (x-task-id)");
 
       // Force an external UID collision and verify TADOI UID parsing still wins.
@@ -164,12 +195,14 @@ describe("calendar export/import round-trip", () => {
                   calendar: {
                     ...(task.external?.calendar ?? {}),
                     uid: "tadoi-all-day-1@local",
-                    lastImportedAt: task.external?.calendar?.lastImportedAt ?? new Date().toISOString()
-                  }
-                }
+                    lastImportedAt:
+                      task.external?.calendar?.lastImportedAt ??
+                      new Date().toISOString(),
+                  },
+                },
               }
-            : task
-        )
+            : task,
+        ),
       };
       await fs.writeFile(dataPath, JSON.stringify(mutated, null, 2), "utf8");
 
@@ -183,7 +216,7 @@ describe("calendar export/import round-trip", () => {
         "DTSTART;VALUE=DATE:20260215",
         "DTEND;VALUE=DATE:20260216",
         "END:VEVENT",
-        "END:VCALENDAR"
+        "END:VCALENDAR",
       ].join("\n");
       await fs.writeFile(uidPriorityImportPath, uidPriorityIcs, "utf8");
 
@@ -191,17 +224,23 @@ describe("calendar export/import round-trip", () => {
         inputPath: uidPriorityImportPath,
         range: "all",
         mode: "merge",
-        dryRun: false
+        dryRun: false,
       });
       expect(importByUid.hasErrors).toBe(false);
 
-      const afterUid = JSON.parse(await fs.readFile(dataPath, "utf8")) as unknown;
+      const afterUid = JSON.parse(
+        await fs.readFile(dataPath, "utf8"),
+      ) as unknown;
       const afterUidValidation = validatePersistedState(afterUid, "strict");
       expect(afterUidValidation.ok).toBe(true);
       if (!afterUidValidation.ok) return;
 
-      const allDay = afterUidValidation.data.tasks.find((task) => task.id === "all-day-1");
-      const timed = afterUidValidation.data.tasks.find((task) => task.id === "timed-1");
+      const allDay = afterUidValidation.data.tasks.find(
+        (task) => task.id === "all-day-1",
+      );
+      const timed = afterUidValidation.data.tasks.find(
+        (task) => task.id === "timed-1",
+      );
       expect(allDay?.title).toBe("All day source (uid-priority)");
       expect(timed?.title).toBe("Timed source (x-task-id)");
     });

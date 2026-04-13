@@ -23,12 +23,12 @@ function sortedCandidates(paths: Iterable<NotePath>): NotePath[] {
 
 export function resolveTaskNoteRef(
   noteRef: Task["noteRef"] | undefined,
-  snapshot: NoteGraphIndex
+  snapshot: NoteGraphIndex,
 ): TaskNoteRefResolution {
   if (!noteRef) {
     return {
       status: "missing",
-      message: "No note linked"
+      message: "No note linked",
     };
   }
 
@@ -37,20 +37,20 @@ export function resolveTaskNoteRef(
     if (!notePath) {
       return {
         status: "missing",
-        message: `Linked note id not found: ${noteRef.value}`
+        message: `Linked note id not found: ${noteRef.value}`,
       };
     }
     const note = snapshot.notesByPath.get(notePath);
     if (!note) {
       return {
         status: "missing",
-        message: `Linked note path not found: ${notePath}`
+        message: `Linked note path not found: ${notePath}`,
       };
     }
     return {
       status: "resolved",
       notePath,
-      note
+      note,
     };
   }
 
@@ -58,27 +58,27 @@ export function resolveTaskNoteRef(
   if (!filename) {
     return {
       status: "missing",
-      message: "Linked note filename is empty"
+      message: "Linked note filename is empty",
     };
   }
 
   const candidates = sortedCandidates(
     Array.from(snapshot.notesByPath.entries())
       .filter(([, note]) => note.filename === filename)
-      .map(([pathValue]) => pathValue)
+      .map(([pathValue]) => pathValue),
   );
 
   if (candidates.length === 0) {
     return {
       status: "missing",
-      message: `Linked note filename not found: ${filename}`
+      message: `Linked note filename not found: ${filename}`,
     };
   }
   if (candidates.length > 1) {
     return {
       status: "ambiguous",
       message: `Linked note filename is ambiguous: ${filename}`,
-      candidates
+      candidates,
     };
   }
 
@@ -87,25 +87,27 @@ export function resolveTaskNoteRef(
   if (!note) {
     return {
       status: "missing",
-      message: `Linked note path not found: ${notePath}`
+      message: `Linked note path not found: ${notePath}`,
     };
   }
   return {
     status: "resolved",
     notePath,
-    note
+    note,
   };
 }
 
-export function createTaskNoteRefFromNote(note: Pick<Note, "id" | "filename">): TaskNoteRef {
+export function createTaskNoteRefFromNote(
+  note: Pick<Note, "id" | "filename">,
+): TaskNoteRef {
   if (note.id) {
     return {
       type: "id",
-      value: note.id
+      value: note.id,
     };
   }
   return {
     type: "filename",
-    value: note.filename
+    value: note.filename,
   };
 }

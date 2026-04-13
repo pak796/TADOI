@@ -8,7 +8,7 @@ function normalizeOccurrenceIso(value: string | undefined): string | undefined {
 
 export function isRepeatOccurrenceAfterSeriesStart(
   seriesDtstartIso: string | undefined,
-  occurrenceIso: string
+  occurrenceIso: string,
 ): boolean {
   const normalizedStartIso = normalizeOccurrenceIso(seriesDtstartIso);
   const normalizedOccurrenceIso = normalizeOccurrenceIso(occurrenceIso);

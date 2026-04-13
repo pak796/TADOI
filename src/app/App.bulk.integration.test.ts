@@ -25,7 +25,7 @@ function makeTask(id: string, title: string, nowMs: number): Task {
     workflowStage: "todo",
     createdAt: nowMs,
     updatedAt: nowMs,
-    tags: []
+    tags: [],
   };
 }
 
@@ -36,7 +36,7 @@ function makeInitialData(tasks: Task[]): LoadedData {
     tasks,
     tagIndex: {},
     savedViews: [],
-    engagement: createDefaultEngagementState()
+    engagement: createDefaultEngagementState(),
   };
 }
 
@@ -51,16 +51,18 @@ function toLocalFloatingIso(date: Date): string {
 }
 
 async function createSession(initialData: LoadedData): Promise<AppSession> {
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-app-bulk-flow-"));
+  const tempDir = await fs.mkdtemp(
+    path.join(os.tmpdir(), "tadoi-app-bulk-flow-"),
+  );
   const settingsPath = path.join(tempDir, "settings.json");
   const harness = await testRender(
     React.createElement(App, {
       initialData,
       skipInitialSave: true,
       showLogo: false,
-      settingsPath
+      settingsPath,
     }),
-    { width: 150, height: 44 }
+    { width: 150, height: 44 },
   );
   await harness.renderOnce();
   return { harness, tempDir };
@@ -74,7 +76,7 @@ async function cleanupSession(session: AppSession): Promise<void> {
 async function waitForFrame(
   harness: RenderHarness,
   predicate: (frame: string) => boolean,
-  timeoutMs = 4000
+  timeoutMs = 4000,
 ): Promise<string> {
   const deadline = Date.now() + timeoutMs;
   let lastFrame = "";
@@ -86,13 +88,15 @@ async function waitForFrame(
     }
     await Bun.sleep(20);
   }
-  throw new Error(`Timed out waiting for frame condition.\nLast frame:\n${lastFrame}`);
+  throw new Error(
+    `Timed out waiting for frame condition.\nLast frame:\n${lastFrame}`,
+  );
 }
 
 async function waitForText(
   harness: RenderHarness,
   text: string,
-  timeoutMs = 4000
+  timeoutMs = 4000,
 ): Promise<string> {
   return waitForFrame(harness, (frame) => frame.includes(text), timeoutMs);
 }
@@ -100,7 +104,7 @@ async function waitForText(
 async function pressKeyAndRender(
   mockInput: MockInput,
   harness: RenderHarness,
-  key: string
+  key: string,
 ): Promise<void> {
   await mockInput.pressKeys([key]);
   await Bun.sleep(10);
@@ -109,7 +113,7 @@ async function pressKeyAndRender(
 
 async function pressEnterAndRender(
   mockInput: MockInput,
-  harness: RenderHarness
+  harness: RenderHarness,
 ): Promise<void> {
   mockInput.pressEnter();
   await Bun.sleep(10);
@@ -118,7 +122,7 @@ async function pressEnterAndRender(
 
 async function pressEscapeAndRender(
   mockInput: MockInput,
-  harness: RenderHarness
+  harness: RenderHarness,
 ): Promise<void> {
   mockInput.pressEscape();
   await Bun.sleep(10);
@@ -128,14 +132,17 @@ async function pressEscapeAndRender(
 async function typeTextAndRender(
   mockInput: MockInput,
   harness: RenderHarness,
-  text: string
+  text: string,
 ): Promise<void> {
   await mockInput.typeText(text);
   await Bun.sleep(20);
   await harness.renderOnce();
 }
 
-async function runTitsCommand(harness: RenderHarness, command: string): Promise<string> {
+async function runTitsCommand(
+  harness: RenderHarness,
+  command: string,
+): Promise<string> {
   const { mockInput } = harness;
   await pressKeyAndRender(mockInput, harness, "`");
   await waitForText(harness, "TITS");
@@ -170,8 +177,8 @@ describe("App bulk integration", () => {
     const session = await createSession(
       makeInitialData([
         makeTask("task-alpha", "Alpha Task", now),
-        makeTask("task-beta", "Beta Task", now)
-      ])
+        makeTask("task-beta", "Beta Task", now),
+      ]),
     );
     const { harness } = session;
     const { mockInput } = harness;
@@ -180,11 +187,17 @@ describe("App bulk integration", () => {
       await waitForText(harness, "ALPHA TASK");
 
       await pressKeyAndRender(mockInput, harness, "m");
-      let frame = await waitForText(harness, "BULK MARKED: 1 · ` bulk ... · Esc clear");
+      let frame = await waitForText(
+        harness,
+        "BULK MARKED: 1 · ` bulk ... · Esc clear",
+      );
       expect(frame).toContain("[*]");
 
       await pressKeyAndRender(mockInput, harness, "m");
-      frame = await waitForFrame(harness, (next) => !next.includes("BULK MARKED:"));
+      frame = await waitForFrame(
+        harness,
+        (next) => !next.includes("BULK MARKED:"),
+      );
       expect(frame).not.toContain("[*]");
     } finally {
       await cleanupSession(session);
@@ -204,10 +217,10 @@ describe("App bulk integration", () => {
           recurrence: {
             dtstart: toLocalFloatingIso(start),
             rrule: "FREQ=DAILY;INTERVAL=1",
-            series_id: "series:1"
-          }
-        }
-      ])
+            series_id: "series:1",
+          },
+        },
+      ]),
     );
     const { harness } = session;
 
@@ -216,7 +229,7 @@ describe("App bulk integration", () => {
       await pressKeyAndRender(harness.mockInput, harness, "m");
       const frame = await waitForText(
         harness,
-        "Bulk selection does not support virtual occurrences (yet)."
+        "Bulk selection does not support virtual occurrences (yet).",
       );
       expect(frame).not.toContain("BULK MARKED:");
     } finally {
@@ -229,8 +242,8 @@ describe("App bulk integration", () => {
     const session = await createSession(
       makeInitialData([
         makeTask("task-alpha", "Alpha Task", now),
-        makeTask("task-beta", "Beta Task", now)
-      ])
+        makeTask("task-beta", "Beta Task", now),
+      ]),
     );
     const { harness } = session;
     const { mockInput } = harness;
@@ -243,7 +256,7 @@ describe("App bulk integration", () => {
       await pressEscapeAndRender(mockInput, harness);
       const frame = await waitForFrame(
         harness,
-        (next) => next.includes("ALPHA TASK") && !next.includes("BULK MARKED:")
+        (next) => next.includes("ALPHA TASK") && !next.includes("BULK MARKED:"),
       );
       expect(frame).toContain("FOCUS: LIST");
     } finally {
@@ -256,8 +269,8 @@ describe("App bulk integration", () => {
     const session = await createSession(
       makeInitialData([
         makeTask("task-alpha", "Alpha Task", now),
-        makeTask("task-beta", "Beta Task", now)
-      ])
+        makeTask("task-beta", "Beta Task", now),
+      ]),
     );
     const { harness } = session;
     const { mockInput } = harness;
@@ -276,8 +289,13 @@ describe("App bulk integration", () => {
       expect(frame).not.toContain("BULK MARKED:");
 
       await runTitsCommand(harness, "bulk done");
-      frame = await waitForText(harness, "No tasks marked. Press 'm' to mark tasks first.");
-      expect(frame).toContain("No tasks marked. Press 'm' to mark tasks first.");
+      frame = await waitForText(
+        harness,
+        "No tasks marked. Press 'm' to mark tasks first.",
+      );
+      expect(frame).toContain(
+        "No tasks marked. Press 'm' to mark tasks first.",
+      );
     } finally {
       await cleanupSession(session);
     }
@@ -288,8 +306,8 @@ describe("App bulk integration", () => {
     const session = await createSession(
       makeInitialData([
         makeTask("task-a", "Delete Target A", now),
-        makeTask("task-b", "Delete Target B", now)
-      ])
+        makeTask("task-b", "Delete Target B", now),
+      ]),
     );
     const { harness } = session;
 
@@ -303,7 +321,10 @@ describe("App bulk integration", () => {
       expect(frame).toContain("No recurring series in selection");
 
       await pressKeyAndRender(harness.mockInput, harness, "n");
-      frame = await waitForFrame(harness, (next) => !next.includes("DELETE 1 TASKS? [Y/N/ESC]"));
+      frame = await waitForFrame(
+        harness,
+        (next) => !next.includes("DELETE 1 TASKS? [Y/N/ESC]"),
+      );
       expect(frame).toContain("DELETE TARGET A");
     } finally {
       await cleanupSession(session);
@@ -315,8 +336,8 @@ describe("App bulk integration", () => {
     const session = await createSession(
       makeInitialData([
         makeTask("task-a", "Delete Target A", now),
-        makeTask("task-b", "Delete Target B", now)
-      ])
+        makeTask("task-b", "Delete Target B", now),
+      ]),
     );
     const { harness } = session;
 
@@ -328,7 +349,10 @@ describe("App bulk integration", () => {
       expect(frame).toContain("No recurring series in selection");
 
       await pressKeyAndRender(harness.mockInput, harness, "n");
-      frame = await waitForFrame(harness, (next) => !next.includes("DELETE 2 TASKS? [Y/N/ESC]"));
+      frame = await waitForFrame(
+        harness,
+        (next) => !next.includes("DELETE 2 TASKS? [Y/N/ESC]"),
+      );
       expect(frame).toContain("DELETE TARGET A");
     } finally {
       await cleanupSession(session);
@@ -343,10 +367,10 @@ describe("App bulk integration", () => {
           ...makeTask("instance-1", "Materialized Occurrence", now),
           instance_of: {
             series_id: "series:bulk",
-            occurrence: "2026-02-26T09:00:00"
-          }
-        }
-      ])
+            occurrence: "2026-02-26T09:00:00",
+          },
+        },
+      ]),
     );
     const { harness } = session;
 
@@ -358,7 +382,7 @@ describe("App bulk integration", () => {
       await runTitsCommand(harness, "bulk delete");
       const frame = await waitForText(
         harness,
-        "Bulk delete cannot delete recurring occurrences. Unmark occurrences or delete individually (d)."
+        "Bulk delete cannot delete recurring occurrences. Unmark occurrences or delete individually (d).",
       );
       expect(frame).not.toContain("DELETE 1 TASKS? [Y/N/ESC]");
     } finally {

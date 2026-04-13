@@ -11,7 +11,7 @@ export type DueBuckets8 = [
   number,
   number,
   number,
-  number
+  number,
 ];
 
 export type BacklogTrend7 = [
@@ -21,7 +21,7 @@ export type BacklogTrend7 = [
   number,
   number,
   number,
-  number
+  number,
 ];
 
 export type TopTagCount = {
@@ -57,7 +57,7 @@ const OVERDUE_AGING_BUCKET_LABELS = [
   "4-7d",
   "8-14d",
   "15-30d",
-  "30d+"
+  "30d+",
 ] as const;
 const PRIORITY_BUCKET_ORDER = ["P1", "P2", "P3", "P4", "P5"] as const;
 
@@ -71,7 +71,7 @@ export type TaskDueTimingClassification = {
 export function classifyTaskDueTiming(
   task: Pick<Task, "dueAt" | "hasExplicitTime">,
   nowMs: number,
-  startOfTodayMs = startOfLocalDayMs(nowMs)
+  startOfTodayMs = startOfLocalDayMs(nowMs),
 ): TaskDueTimingClassification | undefined {
   if (task.dueAt === undefined) return undefined;
 
@@ -86,9 +86,9 @@ export function classifyTaskDueTiming(
     isOverdue,
     ...(isOverdue
       ? {
-          overdueAgeDays: dayDiff < 0 ? Math.abs(dayDiff) : 0
+          overdueAgeDays: dayDiff < 0 ? Math.abs(dayDiff) : 0,
         }
-      : {})
+      : {}),
   };
 }
 
@@ -102,7 +102,10 @@ function emptyBacklogTrend7(): BacklogTrend7 {
 
 function buildTrailingDayOffsets(windowDays: number): number[] {
   const safeWindowDays = Math.max(1, Math.floor(windowDays));
-  return Array.from({ length: safeWindowDays }, (_, index) => index - (safeWindowDays - 1));
+  return Array.from(
+    { length: safeWindowDays },
+    (_, index) => index - (safeWindowDays - 1),
+  );
 }
 
 export function computeDueBuckets8(tasks: Task[], now: number): DueBuckets8 {
@@ -136,7 +139,10 @@ function resolveClosedAt(task: Task): number | undefined {
   return undefined;
 }
 
-export function computeBacklogTrend7(tasks: Task[], now: number): BacklogTrend7 {
+export function computeBacklogTrend7(
+  tasks: Task[],
+  now: number,
+): BacklogTrend7 {
   const trend = computeBacklogTrendWindow(tasks, now, 7);
   const tuple = emptyBacklogTrend7();
   for (let index = 0; index < tuple.length; index += 1) {
@@ -148,7 +154,7 @@ export function computeBacklogTrend7(tasks: Task[], now: number): BacklogTrend7 
 export function computeBacklogTrendWindow(
   tasks: Task[],
   now: number,
-  windowDays: number
+  windowDays: number,
 ): number[] {
   const startOfToday = startOfLocalDayMs(now);
   const offsets = buildTrailingDayOffsets(windowDays);
@@ -175,7 +181,7 @@ export function computeBacklogTrendWindow(
 export function computeTopTagsOpen(
   tasks: Task[],
   limit: number,
-  aliases: TagAliases = {}
+  aliases: TagAliases = {},
 ): TopTagCount[] {
   if (limit <= 0) return [];
 
@@ -206,7 +212,9 @@ export function computeTopTagsOpen(
     .slice(0, limit);
 }
 
-export function computePriorityBucketBreakdown(tasks: Task[]): PriorityBucketCount[] {
+export function computePriorityBucketBreakdown(
+  tasks: Task[],
+): PriorityBucketCount[] {
   const counts = new Map<(typeof PRIORITY_BUCKET_ORDER)[number], number>();
 
   for (const task of tasks) {
@@ -218,17 +226,17 @@ export function computePriorityBucketBreakdown(tasks: Task[]): PriorityBucketCou
     counts.set(bucket, (counts.get(bucket) ?? 0) + 1);
   }
 
-  return PRIORITY_BUCKET_ORDER.filter((priority) => (counts.get(priority) ?? 0) > 0).map(
-    (priority) => ({
-      priority,
-      count: counts.get(priority) ?? 0
-    })
-  );
+  return PRIORITY_BUCKET_ORDER.filter(
+    (priority) => (counts.get(priority) ?? 0) > 0,
+  ).map((priority) => ({
+    priority,
+    count: counts.get(priority) ?? 0,
+  }));
 }
 
 export function computeOverdueAgingBuckets(
   tasks: Task[],
-  now: Date
+  now: Date,
 ): OverdueAgingBucket[] {
   const nowMs = now.getTime();
   const startOfToday = startOfLocalDayMs(nowMs);
@@ -269,18 +277,21 @@ export function computeOverdueAgingBuckets(
 
   return OVERDUE_AGING_BUCKET_LABELS.map((label, index) => ({
     label,
-    count: counts[index]
+    count: counts[index],
   }));
 }
 
-export function computeCreatedCompleted7d(tasks: Task[], now: Date): CreatedCompleted7d {
+export function computeCreatedCompleted7d(
+  tasks: Task[],
+  now: Date,
+): CreatedCompleted7d {
   return computeCreatedCompletedWindow(tasks, now, 7);
 }
 
 export function computeCreatedCompletedWindow(
   tasks: Task[],
   now: Date,
-  windowDays: number
+  windowDays: number,
 ): CreatedCompleted7d {
   const startOfToday = startOfLocalDayMs(now.getTime());
   const offsets = buildTrailingDayOffsets(windowDays);
@@ -312,7 +323,7 @@ export function computeCreatedCompletedWindow(
     totals: {
       created: createdTotal,
       completed: completedTotal,
-      net: createdTotal - completedTotal
-    }
+      net: createdTotal - completedTotal,
+    },
   };
 }

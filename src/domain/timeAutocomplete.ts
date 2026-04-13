@@ -12,7 +12,7 @@ export function getSuggestedTime(now: Date): SuggestedTime {
 
 export function getAutocompleteStep(
   value: string,
-  suggested: SuggestedTime
+  suggested: SuggestedTime,
 ): "hour" | "minute" | "none" | "invalid" {
   const trimmed = value.trim();
   if (!trimmed) return "hour";
@@ -63,7 +63,7 @@ export function getAutocompleteStep(
 export function applyAutocomplete(
   value: string,
   suggested: SuggestedTime,
-  step: "hour" | "minute"
+  step: "hour" | "minute",
 ): string {
   const trimmed = value.trim();
   if (step === "hour") {

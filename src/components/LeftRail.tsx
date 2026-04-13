@@ -3,7 +3,10 @@ import { Filters, FocusTarget, Mode, SortMode } from "../domain/models";
 import { formatDate } from "../state/store";
 import { colorForTag, theme, styles } from "../app/theme";
 import { formatTagFilterBooleanSummary } from "../domain/tagFilter";
-import { formatPriorityForDisplay, formatTagForReadOnlyDisplay } from "../domain/priorityTags";
+import {
+  formatPriorityForDisplay,
+  formatTagForReadOnlyDisplay,
+} from "../domain/priorityTags";
 import { APP_VERSION } from "../app/version";
 import { getSortModeLabel } from "../domain/query";
 import {
@@ -12,7 +15,7 @@ import {
   LOGO_MAX_WIDTH,
   LOGO_VARIANTS,
   ROTATING_LOGO_ORDER,
-  PRODUCT_NAME_TM
+  PRODUCT_NAME_TM,
 } from "../brand/brand";
 import type { FlashMode, LogoMode } from "../settings/settings";
 import { formatThemeDisplayName, type ThemeId } from "../theme/themes";
@@ -50,14 +53,14 @@ type LeftRailProps = {
 const HINT_LINE_WIDTH = 18;
 const LOGO_ROTATE_INTERVAL_MS = 30_000;
 const LOGO_RENDER_HEIGHT = Math.max(
-  ...Object.values(LOGO_VARIANTS).map((lines) => lines.length)
+  ...Object.values(LOGO_VARIANTS).map((lines) => lines.length),
 );
 const DEFAULT_HINT_LINES = [
   "j/k: MOVE",
   "p: TAG PANEL",
   "r: PRIORITY",
   "c: COPY",
-  "SPACE: TOGGLE"
+  "SPACE: TOGGLE",
 ] as const;
 
 const LOGO_WIDTH_WARNINGS = Object.entries(LOGO_VARIANTS).flatMap(
@@ -65,8 +68,8 @@ const LOGO_WIDTH_WARNINGS = Object.entries(LOGO_VARIANTS).flatMap(
     lines.flatMap((line, lineIndex) =>
       line.length > LOGO_MAX_WIDTH
         ? [`${variantId}[${lineIndex + 1}] => ${line.length}`]
-        : []
-    )
+        : [],
+    ),
 );
 
 if (
@@ -75,7 +78,7 @@ if (
   LOGO_WIDTH_WARNINGS.length > 0
 ) {
   console.warn(
-    `[LeftRail] Logo lines exceed ${LOGO_MAX_WIDTH} columns: ${LOGO_WIDTH_WARNINGS.join(", ")}`
+    `[LeftRail] Logo lines exceed ${LOGO_MAX_WIDTH} columns: ${LOGO_WIDTH_WARNINGS.join(", ")}`,
   );
 }
 
@@ -207,7 +210,10 @@ function wrapWords(text: string, maxWidth: number): string[] {
   return lines;
 }
 
-export function fitLeftRailHintLine(line: string, width = HINT_LINE_WIDTH): string {
+export function fitLeftRailHintLine(
+  line: string,
+  width = HINT_LINE_WIDTH,
+): string {
   const safeWidth = Math.max(4, width);
   const truncated = truncateToWidth(line.trim(), safeWidth);
   return truncated.padEnd(safeWidth, " ");
@@ -264,7 +270,7 @@ export function LeftRail({
   hintLines,
   showHints = true,
   showLogo = true,
-  activeThemeId
+  activeThemeId,
 }: LeftRailProps) {
   const [rotatingLogoIndex, setRotatingLogoIndex] = useState(0);
 
@@ -286,14 +292,14 @@ export function LeftRail({
       logoMode === "rotate"
         ? ROTATING_LOGO_ORDER[rotatingLogoIndex % ROTATING_LOGO_ORDER.length]
         : logoMode,
-    [logoMode, rotatingLogoIndex]
+    [logoMode, rotatingLogoIndex],
   );
   const version = APP_VERSION;
   const logoDivider = "--------------------------------";
   const now = new Date();
   const todayLabel = formatDate(now.getTime());
   const timeLabel = `${String(now.getHours()).padStart(2, "0")}:${String(
-    now.getMinutes()
+    now.getMinutes(),
   ).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
   const modeLabel = getModeLabel(mode);
   const focusLabel = getFocusLabel(focus);
@@ -309,9 +315,10 @@ export function LeftRail({
     "SEARCH",
     "TAG_PANEL",
     "DELETE",
-    "HELP"
+    "HELP",
   ];
-  const statusLabel = filters.status === "all" ? "ACTIVE" : filters.status.toUpperCase();
+  const statusLabel =
+    filters.status === "all" ? "ACTIVE" : filters.status.toUpperCase();
   const statusBg =
     filters.status === "done"
       ? theme.ok
@@ -344,36 +351,64 @@ export function LeftRail({
     ? centerLogoInBox(rawLogoLines, LOGO_MAX_WIDTH, LOGO_RENDER_HEIGHT)
     : [];
   const taglineLines = showLogo ? wrapWords(APP_TAGLINE, LOGO_MAX_WIDTH) : [];
-  const activeThemeLabel = activeThemeId ? formatThemeDisplayName(activeThemeId) : null;
+  const activeThemeLabel = activeThemeId
+    ? formatThemeDisplayName(activeThemeId)
+    : null;
   const activeRotatingLogoLabel =
     logoMode === "rotate" ? formatLogoModeLabel(effectiveLogoId) : null;
   const blocksLogoNeedsDarkInk =
-    effectiveLogoId === "alternate_blocks32" && isLightHexColor(theme.accentPurple);
+    effectiveLogoId === "alternate_blocks32" &&
+    isLightHexColor(theme.accentPurple);
   const logoPrimaryColor = blocksLogoNeedsDarkInk ? "#000000" : theme.text;
-  const renderedHintLines = hintLines && hintLines.length > 0 ? hintLines : DEFAULT_HINT_LINES;
+  const renderedHintLines =
+    hintLines && hintLines.length > 0 ? hintLines : DEFAULT_HINT_LINES;
 
   return (
     <box style={{ flexDirection: "column", gap: 0, height: "100%" }}>
       <box style={{ flexDirection: "column", flexGrow: 1 }}>
         {showLogo ? (
-          <box style={{ flexDirection: "column", width: "100%", alignItems: "center" }}>
+          <box
+            style={{
+              flexDirection: "column",
+              width: "100%",
+              alignItems: "center",
+            }}
+          >
             <box style={{ flexDirection: "column", width: LOGO_MAX_WIDTH }}>
               {logoLines.map((line, index) => (
-                <text key={`logo-${effectiveLogoId}-${index}`} style={{ color: logoPrimaryColor }}>
+                <text
+                  key={`logo-${effectiveLogoId}-${index}`}
+                  style={{ color: logoPrimaryColor }}
+                >
                   {line}
                 </text>
               ))}
               {logoLines.length > 0 ? (
-                <box style={{ flexDirection: "row", justifyContent: "center", width: "100%" }}>
+                <box
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "center",
+                    width: "100%",
+                  }}
+                >
                   <text style={{ color: logoPrimaryColor, fontWeight: "bold" }}>
                     {PRODUCT_NAME_TM}
                   </text>
                 </box>
               ) : null}
               {taglineLines.length > 0 ? (
-                <box style={{ flexDirection: "column", width: "100%", alignItems: "center" }}>
+                <box
+                  style={{
+                    flexDirection: "column",
+                    width: "100%",
+                    alignItems: "center",
+                  }}
+                >
                   {taglineLines.map((line, index) => (
-                    <text key={`tagline-${index}`} style={{ color: theme.muted }}>
+                    <text
+                      key={`tagline-${index}`}
+                      style={{ color: theme.muted }}
+                    >
                       {line}
                     </text>
                   ))}
@@ -383,121 +418,146 @@ export function LeftRail({
           </box>
         ) : null}
         {showLogo && logoLines.length > 0 ? (
-          <box style={{ flexDirection: "column", width: "100%", alignItems: "center" }}>
+          <box
+            style={{
+              flexDirection: "column",
+              width: "100%",
+              alignItems: "center",
+            }}
+          >
             <box style={{ flexDirection: "column", width: LOGO_MAX_WIDTH }}>
               <text style={{ color: theme.outline }}>{logoDivider}</text>
             </box>
           </box>
         ) : null}
         <text style={{ color: theme.muted }}>{version}</text>
-        <text style={{ color: theme.muted, marginTop: 1 }}>DATE: {todayLabel}</text>
+        <text style={{ color: theme.muted, marginTop: 1 }}>
+          DATE: {todayLabel}
+        </text>
         <text style={{ color: theme.muted }}>TIME: {timeLabel}</text>
 
-      <box style={{ marginTop: 1, flexDirection: "column", gap: 0 }}>
-        <box style={{ flexDirection: "row", alignItems: "center", gap: 1 }}>
-          <text style={styles.muted}>MODE:</text>
-          <box style={{ backgroundColor: theme.accentPurple, paddingLeft: 1, paddingRight: 1 }}>
-            <text style={{ color: theme.bg }}>{modeLabel}</text>
-          </box>
-        </box>
-        <text style={styles.muted}>FOCUS: {focusLabel}</text>
-      </box>
-
-      <box style={{ marginTop: 1, flexDirection: "column", gap: 0 }}>
-        <text style={styles.muted}>MENU</text>
-        {menuItems.map((item) => {
-          const active =
-            item === modeLabel ||
-            (item === "TAG_PANEL" && mode === Mode.TAG_FILTER) ||
-            (item === "NOTES" && isNotesMode(mode));
-          return (
-            <box
-              key={item}
-              style={{
-                backgroundColor: active ? theme.accentBlue : "transparent",
-                color: active ? theme.bg : theme.text,
-                paddingLeft: 1,
-                paddingRight: 1
-              }}
-              onMouseDown={(event) => {
-                if (event.button !== 0 || !onMenuSelect) return;
-                onMenuSelect(item);
-              }}
-            >
-              <text>{formatMenuItemLabel(item)}</text>
-            </box>
-          );
-        })}
-      </box>
-
-      <box style={{ marginTop: 1, flexDirection: "column", gap: 0 }}>
-        <text style={styles.muted}>FILTERS</text>
-        <box style={{ flexDirection: "row", alignItems: "center", gap: 1 }}>
-          <text style={{ color: theme.text }}>STATUS (F):</text>
-          <box
-            style={{
-              backgroundColor: statusBg,
-              paddingLeft: 1,
-              paddingRight: 1
-            }}
-          >
-            <text style={{ color: statusText }}>{statusLabel}</text>
-          </box>
-        </box>
-        <box style={{ flexDirection: "row", alignItems: "center", gap: 1 }}>
-          <text style={{ color: theme.text }}>DUE (G):</text>
-          <box
-            style={{
-              backgroundColor: dueBg,
-              paddingLeft: 1,
-              paddingRight: 1
-            }}
-          >
-            <text style={{ color: dueText }}>{dueLabel}</text>
-          </box>
-        </box>
-        <text style={{ color: theme.text }}>PRIORITY (R): {priorityLabel}</text>
-        {booleanTagSummary ? (
-          <text style={{ color: theme.text }}>TAGS (T): {booleanTagSummary}</text>
-        ) : filters.tag ? (
-          <box style={{ flexDirection: "row", alignItems: "center", gap: 1 }}>
-            <text style={{ color: theme.text }}>TAG (T):</text>
-            <box
-              style={{
-                backgroundColor: colorForTag(filters.tag),
-                paddingLeft: 1,
-                paddingRight: 1
-              }}
-            >
-              <text style={{ color: theme.bg }}>{formatTagForReadOnlyDisplay(filters.tag)}</text>
-            </box>
-          </box>
-        ) : (
-          <text style={{ color: theme.text }}>TAG (T): (none)</text>
-        )}
-        <text style={{ color: theme.text }}>
-          SEARCH (/): {filters.searchText?.trim() ? filters.searchText : "(none)"}
-        </text>
-        <text style={{ color: theme.text }}>SORT (S): {sortLabel}</text>
-      </box>
-
-      {showHints ? (
         <box style={{ marginTop: 1, flexDirection: "column", gap: 0 }}>
-          <text style={styles.muted}>HINTS</text>
-          {renderedHintLines.map((line) => (
-            <box key={line} style={{ flexDirection: "row" }}>
-              <text style={{ color: theme.text }}>{formatHintLine(line)}</text>
+          <box style={{ flexDirection: "row", alignItems: "center", gap: 1 }}>
+            <text style={styles.muted}>MODE:</text>
+            <box
+              style={{
+                backgroundColor: theme.accentPurple,
+                paddingLeft: 1,
+                paddingRight: 1,
+              }}
+            >
+              <text style={{ color: theme.bg }}>{modeLabel}</text>
             </box>
-          ))}
+          </box>
+          <text style={styles.muted}>FOCUS: {focusLabel}</text>
         </box>
-      ) : null}
+
+        <box style={{ marginTop: 1, flexDirection: "column", gap: 0 }}>
+          <text style={styles.muted}>MENU</text>
+          {menuItems.map((item) => {
+            const active =
+              item === modeLabel ||
+              (item === "TAG_PANEL" && mode === Mode.TAG_FILTER) ||
+              (item === "NOTES" && isNotesMode(mode));
+            return (
+              <box
+                key={item}
+                style={{
+                  backgroundColor: active ? theme.accentBlue : "transparent",
+                  color: active ? theme.bg : theme.text,
+                  paddingLeft: 1,
+                  paddingRight: 1,
+                }}
+                onMouseDown={(event) => {
+                  if (event.button !== 0 || !onMenuSelect) return;
+                  onMenuSelect(item);
+                }}
+              >
+                <text>{formatMenuItemLabel(item)}</text>
+              </box>
+            );
+          })}
+        </box>
+
+        <box style={{ marginTop: 1, flexDirection: "column", gap: 0 }}>
+          <text style={styles.muted}>FILTERS</text>
+          <box style={{ flexDirection: "row", alignItems: "center", gap: 1 }}>
+            <text style={{ color: theme.text }}>STATUS (F):</text>
+            <box
+              style={{
+                backgroundColor: statusBg,
+                paddingLeft: 1,
+                paddingRight: 1,
+              }}
+            >
+              <text style={{ color: statusText }}>{statusLabel}</text>
+            </box>
+          </box>
+          <box style={{ flexDirection: "row", alignItems: "center", gap: 1 }}>
+            <text style={{ color: theme.text }}>DUE (G):</text>
+            <box
+              style={{
+                backgroundColor: dueBg,
+                paddingLeft: 1,
+                paddingRight: 1,
+              }}
+            >
+              <text style={{ color: dueText }}>{dueLabel}</text>
+            </box>
+          </box>
+          <text style={{ color: theme.text }}>
+            PRIORITY (R): {priorityLabel}
+          </text>
+          {booleanTagSummary ? (
+            <text style={{ color: theme.text }}>
+              TAGS (T): {booleanTagSummary}
+            </text>
+          ) : filters.tag ? (
+            <box style={{ flexDirection: "row", alignItems: "center", gap: 1 }}>
+              <text style={{ color: theme.text }}>TAG (T):</text>
+              <box
+                style={{
+                  backgroundColor: colorForTag(filters.tag),
+                  paddingLeft: 1,
+                  paddingRight: 1,
+                }}
+              >
+                <text style={{ color: theme.bg }}>
+                  {formatTagForReadOnlyDisplay(filters.tag)}
+                </text>
+              </box>
+            </box>
+          ) : (
+            <text style={{ color: theme.text }}>TAG (T): (none)</text>
+          )}
+          <text style={{ color: theme.text }}>
+            SEARCH (/):{" "}
+            {filters.searchText?.trim() ? filters.searchText : "(none)"}
+          </text>
+          <text style={{ color: theme.text }}>SORT (S): {sortLabel}</text>
+        </box>
+
+        {showHints ? (
+          <box style={{ marginTop: 1, flexDirection: "column", gap: 0 }}>
+            <text style={styles.muted}>HINTS</text>
+            {renderedHintLines.map((line) => (
+              <box key={line} style={{ flexDirection: "row" }}>
+                <text style={{ color: theme.text }}>
+                  {formatHintLine(line)}
+                </text>
+              </box>
+            ))}
+          </box>
+        ) : null}
       </box>
 
       {activeThemeLabel ? (
         <text style={{ color: theme.muted }}>THEME: {activeThemeLabel}</text>
       ) : null}
       {activeRotatingLogoLabel ? (
-        <text style={{ color: theme.muted }}>LOGO: {activeRotatingLogoLabel}</text>
+        <text style={{ color: theme.muted }}>
+          LOGO: {activeRotatingLogoLabel}
+        </text>
       ) : null}
     </box>
   );

@@ -5,9 +5,9 @@
 
 ## Atomic changes
 
-| ID | Goal | Allowed files | Validation | Risk | Rollback |
-| --- | --- | --- | --- | --- | --- |
-| T1 | Fill in the first atomic change. | `path/**` | `command` | Low | Revert this patch |
+| ID  | Goal                             | Allowed files | Validation | Risk | Rollback          |
+| --- | -------------------------------- | ------------- | ---------- | ---- | ----------------- |
+| T1  | Fill in the first atomic change. | `path/**`     | `command`  | Low  | Revert this patch |
 
 ## Dependencies
 

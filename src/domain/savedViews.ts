@@ -4,20 +4,22 @@ import { DEFAULT_ANALYTICS_WINDOW } from "./query";
 import {
   normalizeTagFilter,
   normalizeTagToken,
-  stripPriorityTokensFromTagFilter
+  stripPriorityTokensFromTagFilter,
 } from "./tagFilter";
 
 export const MAX_SAVED_VIEWS = 9;
 export const DEFAULT_VIEW_FILTERS: Pick<Filters, "status" | "due"> = {
   status: "all",
-  due: "any"
+  due: "any",
 };
 
 function normalizeViewName(name: string): string {
   return name.trim();
 }
 
-function normalizeSearchText(searchText: string | undefined): string | undefined {
+function normalizeSearchText(
+  searchText: string | undefined,
+): string | undefined {
   if (!searchText) return undefined;
   const trimmed = searchText.trim();
   return trimmed.length > 0 ? trimmed : undefined;
@@ -29,11 +31,15 @@ function normalizeOptionalText(value: string | undefined): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
-function normalizeAnalyticsWindow(value: Filters["analyticsWindow"]): "7d" | "14d" | "30d" {
+function normalizeAnalyticsWindow(
+  value: Filters["analyticsWindow"],
+): "7d" | "14d" | "30d" {
   return value === "14d" || value === "30d" ? value : DEFAULT_ANALYTICS_WINDOW;
 }
 
-function normalizeDueDayOffset(value: Filters["dueDayOffset"]): Filters["dueDayOffset"] {
+function normalizeDueDayOffset(
+  value: Filters["dueDayOffset"],
+): Filters["dueDayOffset"] {
   if (
     value === 1 ||
     value === 2 ||
@@ -47,7 +53,10 @@ function normalizeDueDayOffset(value: Filters["dueDayOffset"]): Filters["dueDayO
   return undefined;
 }
 
-function areStringArraysEqual(left: string[] | undefined, right: string[] | undefined): boolean {
+function areStringArraysEqual(
+  left: string[] | undefined,
+  right: string[] | undefined,
+): boolean {
   const leftSafe = left ?? [];
   const rightSafe = right ?? [];
   if (leftSafe.length !== rightSafe.length) return false;
@@ -57,7 +66,10 @@ function areStringArraysEqual(left: string[] | undefined, right: string[] | unde
   return true;
 }
 
-function areTagFiltersEqual(left: Filters["tagFilter"], right: Filters["tagFilter"]): boolean {
+function areTagFiltersEqual(
+  left: Filters["tagFilter"],
+  right: Filters["tagFilter"],
+): boolean {
   const normalizedLeft = normalizeTagFilter(left);
   const normalizedRight = normalizeTagFilter(right);
   return (
@@ -68,12 +80,18 @@ function areTagFiltersEqual(left: Filters["tagFilter"], right: Filters["tagFilte
 }
 
 export function snapshotFilters(filters: Filters): Filters {
-  const normalizedTagFilter = stripPriorityTokensFromTagFilter(filters.tagFilter);
+  const normalizedTagFilter = stripPriorityTokensFromTagFilter(
+    filters.tagFilter,
+  );
   const normalizedPriority =
     normalizePriorityFilterValue(filters.priority) ??
     normalizePriorityFilterValue(filters.tag);
-  const normalizedTag = filters.tag ? normalizeTagToken(filters.tag) : undefined;
-  const normalizedAnalyticsWindow = normalizeAnalyticsWindow(filters.analyticsWindow);
+  const normalizedTag = filters.tag
+    ? normalizeTagToken(filters.tag)
+    : undefined;
+  const normalizedAnalyticsWindow = normalizeAnalyticsWindow(
+    filters.analyticsWindow,
+  );
   const normalizedDueDayOffset = normalizeDueDayOffset(filters.dueDayOffset);
   const normalizedAssignee = normalizeOptionalText(filters.assignee);
   const normalizedProject = normalizeOptionalText(filters.project);
@@ -84,13 +102,17 @@ export function snapshotFilters(filters: Filters): Filters {
       status: filters.status,
       due: filters.due,
       analyticsWindow: normalizedAnalyticsWindow,
-      ...(normalizedDueDayOffset ? { dueDayOffset: normalizedDueDayOffset } : {}),
+      ...(normalizedDueDayOffset
+        ? { dueDayOffset: normalizedDueDayOffset }
+        : {}),
       ...(normalizedPriority ? { priority: normalizedPriority } : {}),
       tagFilter: normalizedTagFilter,
       searchText: normalizeSearchText(filters.searchText),
       ...(normalizedAssignee ? { assignee: normalizedAssignee } : {}),
       ...(normalizedProject ? { project: normalizedProject } : {}),
-      ...(normalizedWorkflowStage ? { workflowStage: normalizedWorkflowStage } : {})
+      ...(normalizedWorkflowStage
+        ? { workflowStage: normalizedWorkflowStage }
+        : {}),
     };
   }
 
@@ -104,7 +126,9 @@ export function snapshotFilters(filters: Filters): Filters {
     searchText: normalizeSearchText(filters.searchText),
     ...(normalizedAssignee ? { assignee: normalizedAssignee } : {}),
     ...(normalizedProject ? { project: normalizedProject } : {}),
-    ...(normalizedWorkflowStage ? { workflowStage: normalizedWorkflowStage } : {})
+    ...(normalizedWorkflowStage
+      ? { workflowStage: normalizedWorkflowStage }
+      : {}),
   };
 }
 
@@ -112,7 +136,10 @@ export function applySavedView(view: SavedView): Filters {
   return snapshotFilters(view.filters);
 }
 
-export function isSavedViewActive(currentFilters: Filters, view: SavedView): boolean {
+export function isSavedViewActive(
+  currentFilters: Filters,
+  view: SavedView,
+): boolean {
   const current = snapshotFilters(currentFilters);
   const target = applySavedView(view);
   return (
@@ -141,7 +168,7 @@ export function saveViewByName(
   name: string,
   filters: Filters,
   now: number,
-  maxViews = MAX_SAVED_VIEWS
+  maxViews = MAX_SAVED_VIEWS,
 ): SaveViewResult {
   const normalizedName = normalizeViewName(name);
   if (normalizedName.length === 0) {
@@ -149,7 +176,7 @@ export function saveViewByName(
   }
 
   const existingIndex = savedViews.findIndex(
-    (view) => view.name.toLowerCase() === normalizedName.toLowerCase()
+    (view) => view.name.toLowerCase() === normalizedName.toLowerCase(),
   );
   if (existingIndex >= 0) {
     const existing = savedViews[existingIndex];
@@ -157,7 +184,7 @@ export function saveViewByName(
       ...existing,
       name: normalizedName,
       filters: snapshotFilters(filters),
-      updatedAt: now
+      updatedAt: now,
     };
     const next = [...savedViews];
     next[existingIndex] = updated;
@@ -173,12 +200,19 @@ export function saveViewByName(
     name: normalizedName,
     filters: snapshotFilters(filters),
     createdAt: now,
-    updatedAt: now
+    updatedAt: now,
   };
-  return { kind: "created", savedViews: [...savedViews, created], view: created };
+  return {
+    kind: "created",
+    savedViews: [...savedViews, created],
+    view: created,
+  };
 }
 
-export function deleteViewAtIndex(savedViews: SavedView[], index: number): SavedView[] {
+export function deleteViewAtIndex(
+  savedViews: SavedView[],
+  index: number,
+): SavedView[] {
   if (index < 0 || index >= savedViews.length) return savedViews;
   return savedViews.filter((_, i) => i !== index);
 }

@@ -32,9 +32,9 @@ describe("icsWriter", () => {
           url: "https://example.com/path\nATTENDEE:mailto:evil@example.com",
           dtstart: { kind: "date", value: "20260221" },
           dtend: { kind: "date", value: "20260222" },
-          sortKey: "20260221T000000"
-        }
-      ]
+          sortKey: "20260221T000000",
+        },
+      ],
     });
 
     expect(rendered).not.toContain("URL:https://example.com/path");

@@ -8,6 +8,7 @@
 ## 1) Current State (repo reality)
 
 ### Runtime and entrypoints
+
 - **Runtime:** Bun (not pure Node CLI). `package.json` declares `engines.bun >= 1.3.9`.
 - **CLI entrypoint:** `src/cli.ts` routes headless commands and version/smoke flags.
 - **TUI runner:** `src/tui/runTui.tsx` starts OpenTUI runtime for interactive mode.
@@ -15,6 +16,7 @@
 - **Shim:** `bin/tadoi.js` launches the project runtime command path.
 
 ### Native/prebuilt components
+
 - No local `node-gyp` / `binding.gyp` build flow in this repo.
 - However, `@opentui/core` resolves **platform-specific optional packages**:
   - `@opentui/core-darwin-*`
@@ -27,13 +29,15 @@
 ## 2) Distribution Goals
 
 ### User-facing artifacts
-| Platform | Primary artifact | Secondary artifacts (optional) |
-|---|---|---|
-| Windows | `TADOI-Setup-x64-<ver>.exe` | portable zip |
-| macOS | `TADOI-macOS-<ver>.dmg` **(preferred)** | `.pkg` inside DMG, portable tarball |
-| Linux | `tadoi-<ver>.AppImage` + `tadoi_<ver>_amd64.deb` | `.rpm`, snap, flatpak |
+
+| Platform | Primary artifact                                 | Secondary artifacts (optional)      |
+| -------- | ------------------------------------------------ | ----------------------------------- |
+| Windows  | `TADOI-Setup-x64-<ver>.exe`                      | portable zip                        |
+| macOS    | `TADOI-macOS-<ver>.dmg` **(preferred)**          | `.pkg` inside DMG, portable tarball |
+| Linux    | `tadoi-<ver>.AppImage` + `tadoi_<ver>_amd64.deb` | `.rpm`, snap, flatpak               |
 
 ### UX outcomes
+
 - After install, user can run:
   - `tadoi` (interactive TUI)
   - `tadoi export …` / `tadoi import …` (headless CLI subcommands)
@@ -44,15 +48,19 @@
 ## 3) Build Strategy
 
 ### 3.1 Primary approach: Bun-compiled executables
+
 Build a per-platform executable using Bun’s compile/executable output feature (exact CLI flags may evolve; treat as implementation detail).
 
 **Key rule:** Build on the **native OS** for correctness of OpenTUI optional platform packages:
+
 - Windows builds run on Windows runners
 - macOS builds run on macOS runners
 - Linux builds run on Linux runners
 
 ### 3.2 Entrypoint contract
+
 The compiled binary must behave as:
+
 - `tadoi` → launches TUI
 - `tadoi --version` → prints version, **no TUI initialization**
 - `tadoi export --help` → works headless, **no TUI initialization**
@@ -64,7 +72,9 @@ Current layout already separates CLI routing from TUI startup, which prevents ac
 ## 4) macOS Packaging (DMG preferred)
 
 ### 4.1 DMG structure (recommended)
+
 Ship a DMG as the primary download containing:
+
 - `TADOI.pkg` (signed + notarized + stapled)
 - `README.txt` (install/uninstall instructions)
 - `Uninstall.command` (optional convenience script)
@@ -73,21 +83,27 @@ Ship a DMG as the primary download containing:
 **Rationale:** DMG is the user-facing container; the `.pkg` inside provides the most reliable privileged install flow for a CLI tool.
 
 ### 4.2 Install location & PATH
+
 **Default install path:** `/usr/local/bin/tadoi`  
 This supports both Intel and Apple Silicon Macs without depending on Homebrew layout.
 
 Optional enhancement:
+
 - If `/opt/homebrew/bin` exists, create a symlink there as well (only if non-invasive and well-tested).
 
 ### 4.3 Signing, notarization, and Gatekeeper
+
 Requirements:
+
 - Sign `TADOI.pkg` with **Developer ID Installer**
 - Notarize with Apple notary service
 - Staple the notarization ticket to the `.pkg`
 - Optionally notarize and staple the `.dmg` container too
 
 ### 4.4 Uninstall behavior
+
 Documented uninstall must remove:
+
 - `/usr/local/bin/tadoi` (and any symlinks)
 - User data/config/logs (see §9), **only on explicit user request**
 
@@ -96,15 +112,18 @@ Documented uninstall must remove:
 ## 5) Windows Packaging (EXE installer)
 
 ### 5.1 Installer format
+
 **MVP:** Inno Setup or NSIS producing `TADOI-Setup-x64.exe`
 
 ### 5.2 Install behavior
+
 - Install directory: `C:\Program Files\TADOI\`
 - Binary: `tadoi.exe`
 - Add to PATH (prefer **user PATH** by default; allow system PATH as an advanced option)
 - Add uninstall entry to Apps & Features
 
 ### 5.3 Signing
+
 - Authenticode-sign the installer (and optionally the primary EXE)
 - Timestamp signatures for longevity
 
@@ -113,16 +132,20 @@ Documented uninstall must remove:
 ## 6) Linux Packaging
 
 ### 6.1 AppImage (portable)
+
 - Produces `tadoi-<ver>.AppImage`
 - Must run without root on common distros (Ubuntu LTS target)
 
 ### 6.2 DEB (first-class install)
+
 - Produces `tadoi_<ver>_amd64.deb`
 - Installs `tadoi` into `/usr/bin/tadoi`
 - Adds bash/zsh completions later (optional)
 
 ### 6.3 Optional: RPM / Snap / Flatpak
+
 Only if you want broader distro/store support.
+
 - RPM: Fedora/RHEL ecosystems
 - Snap/Flatpak: store distribution and sandboxing (less common for CLI-first tools)
 
@@ -131,11 +154,13 @@ Only if you want broader distro/store support.
 ## 7) CI/CD (Release Engineering)
 
 ### 7.1 Build matrix (GitHub Actions recommended)
+
 - `windows-latest` (x64)
 - `macos-latest` (arm64; optionally add x64 strategy if you ship Intel binaries)
 - `ubuntu-latest` (x64)
 
 ### 7.2 Pipeline stages
+
 1. **Install deps** (deterministic)
    - `bun install` (plus lockfile review in CI policy)
 2. **Validate OpenTUI platform resolution**
@@ -160,7 +185,9 @@ Only if you want broader distro/store support.
 ## 8) Repo Integration (current implementation)
 
 ### 8.1 `scripts/build-binary.ts`
+
 **Current behavior:**
+
 - Flags:
   - `--target` must be `macos|windows|linux`
   - `--format` must be `raw|installer`
@@ -181,6 +208,7 @@ Only if you want broader distro/store support.
   - Linux installer mode hard-fails if `dpkg-deb` or `appimagetool` are missing.
 
 ### 8.2 `packaging/release-targets.json`
+
 - `version: 1` (`:2`)
 - Targets:
   - `tarball` → `status: active`, `outputDir: dist/tarball` (`:5-9`)
@@ -196,6 +224,7 @@ Only if you want broader distro/store support.
 Define stable paths now to avoid later migration pain.
 
 ### Recommended defaults
+
 - **Windows**
   - Config/data: `%APPDATA%\TADOI\`
   - Logs: `%LOCALAPPDATA%\TADOI\logs\`
@@ -207,6 +236,7 @@ Define stable paths now to avoid later migration pain.
   - Logs: `$XDG_STATE_HOME/tadoi/logs` (fallback `~/.local/state/tadoi/logs/`)
 
 ### Requirements
+
 - Never require admin privileges for normal runtime
 - Provide env var overrides (optional): `TADOI_HOME`, `TADOI_CONFIG_DIR`, etc.
 
@@ -215,10 +245,12 @@ Define stable paths now to avoid later migration pain.
 ## 10) Acceptance Criteria
 
 ### Build correctness
+
 - CI produces artifacts for each target platform reliably.
 - Platform-specific OpenTUI dependencies resolve correctly on that platform.
 
 ### Runtime behavior
+
 - `tadoi --version` prints quickly and exits 0.
 - `tadoi export/import` works in a headless environment.
 - `tadoi` launches a stable TUI in:
@@ -227,6 +259,7 @@ Define stable paths now to avoid later migration pain.
   - Ubuntu default terminal
 
 ### Install behavior
+
 - Windows EXE installer:
   - Adds `tadoi` to PATH
   - Clean uninstall
@@ -239,6 +272,7 @@ Define stable paths now to avoid later migration pain.
   - `.deb` installs and places `tadoi` on PATH
 
 ### Release hygiene
+
 - Release includes `SHA256SUMS.txt`
 - Release notes include install/uninstall steps per OS
 
@@ -254,6 +288,7 @@ Define stable paths now to avoid later migration pain.
 ---
 
 ## 12) Open Questions (should be decided early)
+
 - Do you ship **Intel macOS** builds or Apple Silicon only?
 - Do you want “system install” (`/usr/local/bin`) only, or also “user install” (`~/.local/bin`)?
 - Do you want auto-update (`tadoi update`) or rely on package managers later (winget/homebrew/apt)?

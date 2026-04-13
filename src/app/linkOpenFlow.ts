@@ -4,7 +4,7 @@ import {
   resolveTaskLinkKind,
   resolveTaskLinkOpenPolicy,
   type NonHttpLinkPolicy,
-  type TaskLinkOpenPolicy
+  type TaskLinkOpenPolicy,
 } from "../domain/taskLinks";
 
 export type LinkOpenDecision = {
@@ -15,7 +15,7 @@ export type LinkOpenDecision = {
 
 export function decideTaskLinkOpen(
   link: Pick<TaskLink, "target" | "kind" | "source">,
-  options: { nonHttpLinkPolicy?: NonHttpLinkPolicy } = {}
+  options: { nonHttpLinkPolicy?: NonHttpLinkPolicy } = {},
 ): LinkOpenDecision {
   const policy = resolveTaskLinkOpenPolicy(link, options);
   const scheme =
@@ -26,6 +26,6 @@ export function decideTaskLinkOpen(
   return {
     policy,
     scheme,
-    target: link.target
+    target: link.target,
   };
 }

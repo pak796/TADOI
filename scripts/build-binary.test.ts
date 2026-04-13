@@ -4,19 +4,22 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
-  writeFileSync
+  writeFileSync,
 } from "node:fs";
 import { spawnSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
-import { createInstallerManifest, writeInstallerManifest } from "./build-binary";
+import {
+  createInstallerManifest,
+  writeInstallerManifest,
+} from "./build-binary";
 
 const SCRIPT_PATH = path.resolve("scripts/build-binary.ts");
 
 function runBuildBinary(
   args: string[],
   cwd?: string,
-  envOverrides?: Record<string, string | undefined>
+  envOverrides?: Record<string, string | undefined>,
 ) {
   const env = { ...process.env, ...envOverrides };
   for (const [key, value] of Object.entries(env)) {
@@ -27,7 +30,7 @@ function runBuildBinary(
   return spawnSync("bun", [SCRIPT_PATH, ...args], {
     cwd,
     encoding: "utf8",
-    env
+    env,
   });
 }
 
@@ -41,7 +44,9 @@ function nonHostTarget(): "macos" | "windows" | "linux" {
   return "windows";
 }
 
-function strictSigningVarsForTarget(target: "macos" | "windows" | "linux"): string[] {
+function strictSigningVarsForTarget(
+  target: "macos" | "windows" | "linux",
+): string[] {
   if (target === "macos") {
     return ["TADOI_MAC_SIGN_IDENTITY_INSTALLER", "TADOI_MAC_NOTARY_PROFILE"];
   }
@@ -56,7 +61,7 @@ describe("build-binary script argument and mode behavior", () => {
     const result = runBuildBinary(["--target", "bogus", "--format", "raw"]);
     expect(result.status).toBe(1);
     expect(result.stderr).toContain(
-      "[build-binary] invalid --target. expected macos|windows|linux, got: bogus"
+      "[build-binary] invalid --target. expected macos|windows|linux, got: bogus",
     );
   });
 
@@ -64,7 +69,7 @@ describe("build-binary script argument and mode behavior", () => {
     const result = runBuildBinary(["--target", "macos", "--format", "bogus"]);
     expect(result.status).toBe(1);
     expect(result.stderr).toContain(
-      "[build-binary] invalid --format. expected raw|installer, got: bogus"
+      "[build-binary] invalid --format. expected raw|installer, got: bogus",
     );
   });
 
@@ -75,21 +80,30 @@ describe("build-binary script argument and mode behavior", () => {
       "--format",
       "raw",
       "--mode",
-      "bogus"
+      "bogus",
     ]);
     expect(result.status).toBe(1);
     expect(result.stderr).toContain(
-      "[build-binary] invalid --mode. expected plan|build, got: bogus"
+      "[build-binary] invalid --mode. expected plan|build, got: bogus",
     );
   });
 
   it("defaults to plan mode and writes raw plan output", () => {
     const tempDir = createTempDir("tadoi-build-binary-plan-raw-");
     try {
-      const result = runBuildBinary(["--target", "linux", "--format", "raw"], tempDir);
+      const result = runBuildBinary(
+        ["--target", "linux", "--format", "raw"],
+        tempDir,
+      );
       expect(result.status).toBe(0);
 
-      const planPath = path.join(tempDir, "dist", "bin", "linux", "BUILD_PLAN.txt");
+      const planPath = path.join(
+        tempDir,
+        "dist",
+        "bin",
+        "linux",
+        "BUILD_PLAN.txt",
+      );
       const plan = readFileSync(planPath, "utf8");
       expect(plan).toContain("TADOI binary build plan");
       expect(plan).toContain("Target: linux");
@@ -104,7 +118,7 @@ describe("build-binary script argument and mode behavior", () => {
     try {
       const result = runBuildBinary(
         ["--target", "windows", "--format", "installer"],
-        tempDir
+        tempDir,
       );
       expect(result.status).toBe(0);
 
@@ -112,7 +126,7 @@ describe("build-binary script argument and mode behavior", () => {
         tempDir,
         "dist",
         "installers",
-        "WINDOWS_INSTALLER_PLAN.txt"
+        "WINDOWS_INSTALLER_PLAN.txt",
       );
       const plan = readFileSync(planPath, "utf8");
       expect(plan).toContain("TADOI installer build plan");
@@ -129,16 +143,16 @@ describe("build-binary script argument and mode behavior", () => {
       writeFileSync(
         path.join(tempDir, "package.json"),
         JSON.stringify({ version: "0.0.0" }, null, 2),
-        "utf8"
+        "utf8",
       );
       const target = nonHostTarget();
       const result = runBuildBinary(
         ["--target", target, "--format", "raw", "--mode", "build"],
-        tempDir
+        tempDir,
       );
       expect(result.status).toBe(1);
       expect(result.stderr).toContain(
-        `[build-binary] --mode build requires native host. target=${target}`
+        `[build-binary] --mode build requires native host. target=${target}`,
       );
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
@@ -151,12 +165,12 @@ describe("build-binary script argument and mode behavior", () => {
       writeFileSync(
         path.join(tempDir, "package.json"),
         JSON.stringify({ version: "0.0.0" }, null, 2),
-        "utf8"
+        "utf8",
       );
       const target = nonHostTarget();
       const vars = strictSigningVarsForTarget(target);
       const envOverrides: Record<string, string | undefined> = {
-        TADOI_REQUIRE_SIGNING: "1"
+        TADOI_REQUIRE_SIGNING: "1",
       };
       for (const variableName of vars) {
         envOverrides[variableName] = "";
@@ -165,11 +179,11 @@ describe("build-binary script argument and mode behavior", () => {
       const result = runBuildBinary(
         ["--target", target, "--format", "installer", "--mode", "build"],
         tempDir,
-        envOverrides
+        envOverrides,
       );
       expect(result.status).toBe(1);
       expect(result.stderr).toContain(
-        "[build-binary] strict signing enabled (TADOI_REQUIRE_SIGNING=1); missing required env vars"
+        "[build-binary] strict signing enabled (TADOI_REQUIRE_SIGNING=1); missing required env vars",
       );
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
@@ -183,7 +197,7 @@ describe("build-binary script argument and mode behavior", () => {
       const result = runBuildBinary(
         ["--target", target, "--format", "installer", "--mode", "plan"],
         tempDir,
-        { TADOI_REQUIRE_SIGNING: "1" }
+        { TADOI_REQUIRE_SIGNING: "1" },
       );
       expect(result.status).toBe(0);
     } finally {
@@ -203,7 +217,10 @@ describe("build-binary installer manifest helpers", () => {
 
       const binaryPath = path.join(rawDir, "tadoi");
       const debPath = path.join(installerDir, "tadoi_1.2.3_amd64.deb");
-      const appImagePath = path.join(installerDir, "tadoi-1.2.3-x86_64.AppImage");
+      const appImagePath = path.join(
+        installerDir,
+        "tadoi-1.2.3-x86_64.AppImage",
+      );
       writeFileSync(binaryPath, "binary-bytes", "utf8");
       writeFileSync(debPath, "deb-bytes", "utf8");
       writeFileSync(appImagePath, "appimage-bytes", "utf8");
@@ -213,7 +230,7 @@ describe("build-binary installer manifest helpers", () => {
         "1.2.3",
         binaryPath,
         installerDir,
-        tempDir
+        tempDir,
       );
 
       expect(manifest.schemaVersion).toBe(1);
@@ -222,7 +239,7 @@ describe("build-binary installer manifest helpers", () => {
       expect(manifest.outputs.map((entry) => entry.kind).sort()).toEqual([
         "appimage",
         "binary",
-        "deb"
+        "deb",
       ]);
       for (const output of manifest.outputs) {
         expect(output.path.startsWith("dist/")).toBe(true);
@@ -252,10 +269,10 @@ describe("build-binary installer manifest helpers", () => {
         "2.0.0",
         binaryPath,
         installerDir,
-        tempDir
+        tempDir,
       );
       expect(manifestPath).toBe(
-        path.join(installerDir, "TADOI-windows-2.0.0-manifest.json")
+        path.join(installerDir, "TADOI-windows-2.0.0-manifest.json"),
       );
 
       const parsed = JSON.parse(readFileSync(manifestPath, "utf8")) as {

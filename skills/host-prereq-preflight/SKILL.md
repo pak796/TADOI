@@ -10,6 +10,7 @@ Run this before expensive workflows to fail fast on host blockers.
 ## When to Use
 
 Use this skill when:
+
 - a gate/check command fails unexpectedly on the host
 - a workflow depends on local toolchains (Bun, Git, packaging tools)
 - environment variables are required for a task
@@ -38,6 +39,7 @@ bun skills/host-prereq-preflight/scripts/host_preflight.ts --profile release
 - `release`: `bun`, `git`, plus platform packaging commands
 
 Platform commands for `release`:
+
 - macOS: `xcodebuild`, `pkgbuild`, `productbuild`, `hdiutil`
 - Linux: `dpkg-deb`, `appimagetool`
 - Windows: `iscc`
@@ -45,12 +47,14 @@ Platform commands for `release`:
 ## Output Contract
 
 The checker always emits:
+
 - line-by-line `PASS` / `FAIL` / `BLOCKED` records
 - summary line with counts and overall result
 - optional JSON report when `--json-out` is provided
 - optional Markdown report when `--md-out` is provided
 
 Exit codes:
+
 - `0`: all checks passed
 - `2`: one or more `FAIL`, no `BLOCKED`
 - `3`: one or more `BLOCKED`, no `FAIL`

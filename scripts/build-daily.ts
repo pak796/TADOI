@@ -1,4 +1,11 @@
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync, copyFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+  copyFileSync,
+} from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -34,7 +41,7 @@ function formatLocalDate(date: Date): string {
   const formatter = new Intl.DateTimeFormat("en-CA", {
     year: "numeric",
     month: "2-digit",
-    day: "2-digit"
+    day: "2-digit",
   });
   return formatter.format(date);
 }
@@ -42,11 +49,14 @@ function formatLocalDate(date: Date): string {
 type RunResult = { ok: boolean; error?: string };
 
 function runSafe(command: string, args: string[]): RunResult {
-  const result = spawnSync(command, args, { stdio: "inherit", env: process.env });
+  const result = spawnSync(command, args, {
+    stdio: "inherit",
+    env: process.env,
+  });
   if (result.status !== 0) {
     return {
       ok: false,
-      error: `[build-daily] command failed (${result.status ?? "unknown"}): ${command} ${args.join(" ")}`
+      error: `[build-daily] command failed (${result.status ?? "unknown"}): ${command} ${args.join(" ")}`,
     };
   }
   return { ok: true };
@@ -74,15 +84,20 @@ function copyIfExists(source: string, destDir: string): ArtifactRecord | null {
     target: hostTarget(),
     path: dest,
     sizeBytes: stats.size,
-    sha256: sha256(dest)
+    sha256: sha256(dest),
   };
 }
 
-function gatherHostArtifacts(version: string, target: Target, artifactDir: string): ArtifactRecord[] {
+function gatherHostArtifacts(
+  version: string,
+  target: Target,
+  artifactDir: string,
+): ArtifactRecord[] {
   const artifacts: ArtifactRecord[] = [];
-  const rawBinary = target === "windows"
-    ? path.resolve("dist", "bin", "windows", "tadoi.exe")
-    : path.resolve("dist", "bin", target, "tadoi");
+  const rawBinary =
+    target === "windows"
+      ? path.resolve("dist", "bin", "windows", "tadoi.exe")
+      : path.resolve("dist", "bin", target, "tadoi");
 
   const rawRecord = copyIfExists(rawBinary, artifactDir);
   if (rawRecord) {
@@ -93,12 +108,20 @@ function gatherHostArtifacts(version: string, target: Target, artifactDir: strin
   const installers: string[] = [];
   if (target === "macos") {
     installers.push(path.resolve("dist", "installers", `TADOI-${version}.pkg`));
-    installers.push(path.resolve("dist", "installers", `TADOI-macOS-${version}.dmg`));
+    installers.push(
+      path.resolve("dist", "installers", `TADOI-macOS-${version}.dmg`),
+    );
   } else if (target === "windows") {
-    installers.push(path.resolve("dist", "installers", `TADOI-Setup-x64-${version}.exe`));
+    installers.push(
+      path.resolve("dist", "installers", `TADOI-Setup-x64-${version}.exe`),
+    );
   } else {
-    installers.push(path.resolve("dist", "installers", `tadoi_${version}_amd64.deb`));
-    installers.push(path.resolve("dist", "installers", `tadoi-${version}-x86_64.AppImage`));
+    installers.push(
+      path.resolve("dist", "installers", `tadoi_${version}_amd64.deb`),
+    );
+    installers.push(
+      path.resolve("dist", "installers", `tadoi-${version}-x86_64.AppImage`),
+    );
   }
 
   for (const file of installers) {
@@ -112,11 +135,18 @@ function gatherHostArtifacts(version: string, target: Target, artifactDir: strin
   return artifacts;
 }
 
-function gatherPlanArtifacts(target: Target, artifactDir: string): ArtifactRecord[] {
+function gatherPlanArtifacts(
+  target: Target,
+  artifactDir: string,
+): ArtifactRecord[] {
   const artifacts: ArtifactRecord[] = [];
   const planFiles = [
     path.resolve("dist", "bin", target, "BUILD_PLAN.txt"),
-    path.resolve("dist", "installers", `${target.toUpperCase()}_INSTALLER_PLAN.txt`)
+    path.resolve(
+      "dist",
+      "installers",
+      `${target.toUpperCase()}_INSTALLER_PLAN.txt`,
+    ),
   ];
   for (const file of planFiles) {
     if (!existsSync(file)) continue;
@@ -128,14 +158,16 @@ function gatherPlanArtifacts(target: Target, artifactDir: string): ArtifactRecor
       target,
       path: dest,
       sizeBytes: stats.size,
-      sha256: sha256(dest)
+      sha256: sha256(dest),
     });
   }
   return artifacts;
 }
 
 function readGitSha(): string {
-  const result = spawnSync("git", ["rev-parse", "--short", "HEAD"], { encoding: "utf8" });
+  const result = spawnSync("git", ["rev-parse", "--short", "HEAD"], {
+    encoding: "utf8",
+  });
   if (result.status !== 0) return "unknown";
   return (result.stdout || "").trim() || "unknown";
 }
@@ -147,7 +179,7 @@ function writeReport(
   dateStamp: string,
   host: Target,
   artifacts: ArtifactRecord[],
-  notes: BuildNote[]
+  notes: BuildNote[],
 ): void {
   const lines: string[] = [];
   lines.push("# TADOI Daily Build Report");
@@ -196,33 +228,83 @@ function main(): void {
 
   for (const target of targets) {
     if (target === host) {
-      const rawResult = runSafe("bun", ["scripts/build-binary.ts", "--target", target, "--format", "raw", "--mode", "build"]);
+      const rawResult = runSafe("bun", [
+        "scripts/build-binary.ts",
+        "--target",
+        target,
+        "--format",
+        "raw",
+        "--mode",
+        "build",
+      ]);
       if (!rawResult.ok) {
         failed = true;
-        notes.push({ target, mode: "build", note: rawResult.error ?? "raw build failed" });
+        notes.push({
+          target,
+          mode: "build",
+          note: rawResult.error ?? "raw build failed",
+        });
         continue;
       }
 
-      const installerResult = runSafe("bun", ["scripts/build-binary.ts", "--target", target, "--format", "installer", "--mode", "build"]);
+      const installerResult = runSafe("bun", [
+        "scripts/build-binary.ts",
+        "--target",
+        target,
+        "--format",
+        "installer",
+        "--mode",
+        "build",
+      ]);
       if (!installerResult.ok) {
         failed = true;
-        notes.push({ target, mode: "build", note: installerResult.error ?? "installer build failed" });
+        notes.push({
+          target,
+          mode: "build",
+          note: installerResult.error ?? "installer build failed",
+        });
       } else {
         notes.push({ target, mode: "build", note: "native build completed" });
       }
 
       const targetDir = path.join(artifactRoot, target);
-      artifacts = artifacts.concat(gatherHostArtifacts(version, target, targetDir));
+      artifacts = artifacts.concat(
+        gatherHostArtifacts(version, target, targetDir),
+      );
       continue;
     }
 
-    const planRaw = runSafe("bun", ["scripts/build-binary.ts", "--target", target, "--format", "raw", "--mode", "plan"]);
-    const planInstaller = runSafe("bun", ["scripts/build-binary.ts", "--target", target, "--format", "installer", "--mode", "plan"]);
+    const planRaw = runSafe("bun", [
+      "scripts/build-binary.ts",
+      "--target",
+      target,
+      "--format",
+      "raw",
+      "--mode",
+      "plan",
+    ]);
+    const planInstaller = runSafe("bun", [
+      "scripts/build-binary.ts",
+      "--target",
+      target,
+      "--format",
+      "installer",
+      "--mode",
+      "plan",
+    ]);
     if (!planRaw.ok || !planInstaller.ok) {
       failed = true;
-      notes.push({ target, mode: "plan", note: (planRaw.error || planInstaller.error || "plan build failed") });
+      notes.push({
+        target,
+        mode: "plan",
+        note: planRaw.error || planInstaller.error || "plan build failed",
+      });
     } else {
-      notes.push({ target, mode: "plan", note: "cross-build skipped (native host required)" });
+      notes.push({
+        target,
+        mode: "plan",
+        note: "cross-build skipped (native host required)",
+      });
     }
     const targetDir = path.join(artifactRoot, target);
     artifacts = artifacts.concat(gatherPlanArtifacts(target, targetDir));

@@ -5,7 +5,10 @@ export type ScrollState = {
   itemCount: number;
 };
 
-export function clampSelectedIndex(selectedIndex: number, itemCount: number): number {
+export function clampSelectedIndex(
+  selectedIndex: number,
+  itemCount: number,
+): number {
   if (itemCount <= 0) return 0;
   return Math.max(0, Math.min(selectedIndex, itemCount - 1));
 }
@@ -13,7 +16,7 @@ export function clampSelectedIndex(selectedIndex: number, itemCount: number): nu
 export function clampScrollOffset(
   scrollOffset: number,
   visibleRows: number,
-  itemCount: number
+  itemCount: number,
 ): number {
   if (itemCount <= 0) return 0;
   const safeVisible = Math.max(1, visibleRows);
@@ -25,7 +28,7 @@ export function ensureSelectedVisible({
   selectedIndex,
   scrollOffset,
   visibleRows,
-  itemCount
+  itemCount,
 }: ScrollState): number {
   if (itemCount <= 0) return 0;
   const safeVisible = Math.max(1, visibleRows);

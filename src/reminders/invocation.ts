@@ -12,7 +12,12 @@ function basenameLower(value: string): string {
 function isInterpreterExecutable(value: string | undefined): boolean {
   if (!value) return false;
   const base = basenameLower(value);
-  return base === "node" || base === "node.exe" || base === "bun" || base === "bun.exe";
+  return (
+    base === "node" ||
+    base === "node.exe" ||
+    base === "bun" ||
+    base === "bun.exe"
+  );
 }
 
 function isLikelyScriptPath(value: string | undefined): value is string {
@@ -29,7 +34,7 @@ function isLikelyScriptPath(value: string | undefined): value is string {
 
 export function resolveCurrentTadoiInvocation(
   argv = process.argv,
-  execPath = process.execPath
+  execPath = process.execPath,
 ): TadoiInvocation {
   const command = execPath || argv[0] || "tadoi";
   const scriptArg = argv[1];
@@ -37,27 +42,27 @@ export function resolveCurrentTadoiInvocation(
   if (isLikelyScriptPath(scriptArg)) {
     return {
       command,
-      baseArgs: [scriptArg]
+      baseArgs: [scriptArg],
     };
   }
 
   if (argv[0] && argv[0] !== process.execPath) {
     return {
       command: argv[0],
-      baseArgs: []
+      baseArgs: [],
     };
   }
 
   if (!isInterpreterExecutable(command)) {
     return {
       command,
-      baseArgs: []
+      baseArgs: [],
     };
   }
 
   return {
     command: "tadoi",
-    baseArgs: []
+    baseArgs: [],
   };
 }
 
@@ -96,7 +101,7 @@ function quoteForWindowsArg(value: string): string {
 
 export function buildShellCommandLine(
   parts: string[],
-  platform: NodeJS.Platform
+  platform: NodeJS.Platform,
 ): string {
   if (platform === "win32") {
     return parts.map(quoteForWindowsArg).join(" ");

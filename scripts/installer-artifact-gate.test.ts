@@ -6,7 +6,7 @@ import path from "node:path";
 import {
   parseTargetArg,
   resolveManifestPath,
-  validateInstallerManifest
+  validateInstallerManifest,
 } from "./installer-artifact-gate";
 
 function createTempDir(prefix: string): string {
@@ -25,7 +25,7 @@ describe("installer-artifact-gate target parsing", () => {
 
   it("rejects invalid targets", () => {
     expect(() => parseTargetArg(["--target", "bogus"])).toThrow(
-      "invalid --target"
+      "invalid --target",
     );
   });
 });
@@ -37,7 +37,7 @@ describe("installer-artifact-gate validation", () => {
       writeFileSync(
         path.join(tempDir, "package.json"),
         JSON.stringify({ version: "1.2.3" }, null, 2),
-        "utf8"
+        "utf8",
       );
 
       const binaryPath = path.join("dist", "bin", "linux", "tadoi");
@@ -45,9 +45,11 @@ describe("installer-artifact-gate validation", () => {
       const appImagePath = path.join(
         "dist",
         "installers",
-        "tadoi-1.2.3-x86_64.AppImage"
+        "tadoi-1.2.3-x86_64.AppImage",
       );
-      mkdirSync(path.join(tempDir, "dist", "bin", "linux"), { recursive: true });
+      mkdirSync(path.join(tempDir, "dist", "bin", "linux"), {
+        recursive: true,
+      });
       mkdirSync(path.join(tempDir, "dist", "installers"), { recursive: true });
       writeFileSync(path.join(tempDir, binaryPath), "binary", "utf8");
       writeFileSync(path.join(tempDir, debPath), "deb", "utf8");
@@ -67,26 +69,26 @@ describe("installer-artifact-gate validation", () => {
                 kind: "binary",
                 path: binaryPath,
                 sizeBytes: Buffer.byteLength("binary"),
-                sha256: sha256("binary")
+                sha256: sha256("binary"),
               },
               {
                 kind: "deb",
                 path: debPath,
                 sizeBytes: Buffer.byteLength("deb"),
-                sha256: sha256("deb")
+                sha256: sha256("deb"),
               },
               {
                 kind: "appimage",
                 path: appImagePath,
                 sizeBytes: Buffer.byteLength("appimage"),
-                sha256: sha256("appimage")
-              }
-            ]
+                sha256: sha256("appimage"),
+              },
+            ],
           },
           null,
-          2
+          2,
         ),
-        "utf8"
+        "utf8",
       );
 
       expect(() => validateInstallerManifest(tempDir, "linux")).not.toThrow();
@@ -101,12 +103,18 @@ describe("installer-artifact-gate validation", () => {
       writeFileSync(
         path.join(tempDir, "package.json"),
         JSON.stringify({ version: "2.0.0" }, null, 2),
-        "utf8"
+        "utf8",
       );
 
       const binaryPath = path.join("dist", "bin", "windows", "tadoi.exe");
-      const exePath = path.join("dist", "installers", "TADOI-Setup-x64-2.0.0.exe");
-      mkdirSync(path.join(tempDir, "dist", "bin", "windows"), { recursive: true });
+      const exePath = path.join(
+        "dist",
+        "installers",
+        "TADOI-Setup-x64-2.0.0.exe",
+      );
+      mkdirSync(path.join(tempDir, "dist", "bin", "windows"), {
+        recursive: true,
+      });
       mkdirSync(path.join(tempDir, "dist", "installers"), { recursive: true });
       writeFileSync(path.join(tempDir, binaryPath), "binary", "utf8");
       writeFileSync(path.join(tempDir, exePath), "exe", "utf8");
@@ -125,24 +133,24 @@ describe("installer-artifact-gate validation", () => {
                 kind: "binary",
                 path: binaryPath,
                 sizeBytes: Buffer.byteLength("binary"),
-                sha256: sha256("binary")
+                sha256: sha256("binary"),
               },
               {
                 kind: "exe",
                 path: exePath,
                 sizeBytes: Buffer.byteLength("exe"),
-                sha256: sha256("not-the-right-file")
-              }
-            ]
+                sha256: sha256("not-the-right-file"),
+              },
+            ],
           },
           null,
-          2
+          2,
         ),
-        "utf8"
+        "utf8",
       );
 
       expect(() => validateInstallerManifest(tempDir, "windows")).toThrow(
-        "sha256 mismatch"
+        "sha256 mismatch",
       );
     } finally {
       rmSync(tempDir, { recursive: true, force: true });

@@ -6,7 +6,7 @@ import {
   applyReminderSnooze,
   isReminderPendingForEffectiveAt,
   nextPendingReminderAt,
-  resolveEffectiveReminderAt
+  resolveEffectiveReminderAt,
 } from "./reminders";
 
 function makeTask(overrides: Partial<Task> = {}): Task {
@@ -17,7 +17,7 @@ function makeTask(overrides: Partial<Task> = {}): Task {
     createdAt: overrides.createdAt ?? 1,
     updatedAt: overrides.updatedAt ?? 1,
     tags: overrides.tags ?? [],
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -31,8 +31,8 @@ describe("reminders", () => {
       dueAt,
       reminder: {
         kind: "absolute",
-        at: absoluteAt
-      }
+        at: absoluteAt,
+      },
     });
     expect(resolveEffectiveReminderAt(absoluteTask)).toBe(absoluteAt);
 
@@ -41,8 +41,8 @@ describe("reminders", () => {
       reminder: {
         kind: "absolute",
         at: absoluteAt,
-        snoozedUntilAt
-      }
+        snoozedUntilAt,
+      },
     });
     expect(resolveEffectiveReminderAt(snoozedTask)).toBe(snoozedUntilAt);
 
@@ -50,8 +50,8 @@ describe("reminders", () => {
       dueAt,
       reminder: {
         kind: "before_due",
-        offsetMs: 30 * 60_000
-      }
+        offsetMs: 30 * 60_000,
+      },
     });
     expect(resolveEffectiveReminderAt(beforeDueTask)).toBe(dueAt - 30 * 60_000);
   });
@@ -62,10 +62,10 @@ describe("reminders", () => {
       isReminderPendingForEffectiveAt(
         {
           kind: "absolute",
-          at: effectiveReminderAt
+          at: effectiveReminderAt,
         },
-        effectiveReminderAt
-      )
+        effectiveReminderAt,
+      ),
     ).toBe(true);
 
     expect(
@@ -73,10 +73,10 @@ describe("reminders", () => {
         {
           kind: "absolute",
           at: effectiveReminderAt,
-          lastFiredAt: effectiveReminderAt
+          lastFiredAt: effectiveReminderAt,
         },
-        effectiveReminderAt
-      )
+        effectiveReminderAt,
+      ),
     ).toBe(false);
   });
 
@@ -92,18 +92,18 @@ describe("reminders", () => {
           status: "done",
           reminder: {
             kind: "absolute",
-            at: doneTaskReminderAt
-          }
+            at: doneTaskReminderAt,
+          },
         }),
         makeTask({
           id: "open-1",
           reminder: {
             kind: "absolute",
-            at: openTaskReminderAt
-          }
-        })
+            at: openTaskReminderAt,
+          },
+        }),
       ],
-      nowMs
+      nowMs,
     );
 
     expect(nextAt).toBe(openTaskReminderAt);
@@ -117,9 +117,9 @@ describe("reminders", () => {
       makeTask({
         reminder: {
           kind: "absolute",
-          at: nowMs - 10 * 60_000
-        }
-      })
+          at: nowMs - 10 * 60_000,
+        },
+      }),
     ];
     const fired = applyReminderFired(base, "task-1", effectiveReminderAt);
     expect(fired[0]?.reminder?.lastFiredAt).toBe(effectiveReminderAt);
@@ -128,7 +128,12 @@ describe("reminders", () => {
     const snoozed = applyReminderSnooze(fired, "task-1", 10 * 60_000, nowMs);
     expect(snoozed[0]?.reminder?.snoozedUntilAt).toBe(nowMs + 10 * 60_000);
 
-    const dismissed = applyReminderDismiss(snoozed, "task-1", nowMs + 10 * 60_000, nowMs);
+    const dismissed = applyReminderDismiss(
+      snoozed,
+      "task-1",
+      nowMs + 10 * 60_000,
+      nowMs,
+    );
     expect(dismissed[0]?.reminder?.lastFiredAt).toBe(nowMs + 10 * 60_000);
     expect(dismissed[0]?.reminder?.snoozedUntilAt).toBeUndefined();
   });

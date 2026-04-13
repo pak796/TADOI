@@ -12,12 +12,12 @@ describe("renderCanonicalKeybindDoc", () => {
         evidence: {
           code: {
             a: ["/repo/src/app/keyRouter.ts:10"],
-            "Ctrl+S": ["/repo/src/app/keyRouter.ts:20"]
+            "Ctrl+S": ["/repo/src/app/keyRouter.ts:20"],
           },
-          docs: {}
-        }
+          docs: {},
+        },
       },
-      "/repo"
+      "/repo",
     );
 
     expect(markdown).toContain("# Canonical Keybindings");

@@ -1,24 +1,34 @@
-import React, { useEffect, useLayoutEffect, useReducer, useRef, useState } from "react";
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 import path from "path";
 import type { KeyEvent } from "@opentui/core";
-import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/react";
+import {
+  useKeyboard,
+  useRenderer,
+  useTerminalDimensions,
+} from "@opentui/react";
 import {
   applyThemeWithSettings,
   colorForTag,
   theme,
   themeForObject,
-  layout
+  layout,
 } from "./theme";
 import {
   getNextSelectedIdAfterDelete,
   nextEditorFocusTarget,
   resolveEditorFocusAfterDraftChange,
-  toEditorFocus
+  toEditorFocus,
 } from "./uiState";
 import { handleKey, type KeyRouterAction } from "./keyRouter";
 import {
   resolveTaskListWheelSelectionIndex,
-  TaskList
+  TaskList,
 } from "../components/TaskList";
 import { DetailsPane } from "../components/DetailsPane";
 import { EditorPane } from "../components/EditorPane";
@@ -27,62 +37,54 @@ import { DashboardPane } from "../components/DashboardPane";
 import { TagFilterPanel } from "../components/TagFilterPanel";
 import { BackupCenterScreen } from "../components/BackupCenterScreen";
 import { AppModalLayer } from "../components/AppModalLayer";
-import { resolveCrtFxColor, resolveRetroSweepBorderColor } from "../components/CrtFxLite";
+import {
+  resolveCrtFxColor,
+  resolveRetroSweepBorderColor,
+} from "../components/CrtFxLite";
 import { WhichKeyHintBar } from "../components/WhichKeyHintBar";
 import { WhichKeyPopup } from "../components/WhichKeyPopup";
 import {
   Custom1ThemeEditor,
-  type Custom1ThemeEditorHandle
+  type Custom1ThemeEditorHandle,
 } from "../components/Custom1ThemeEditor";
 import {
   BuiltInThemeTextEditor,
-  type BuiltInThemeTextEditorHandle
+  type BuiltInThemeTextEditorHandle,
 } from "../components/BuiltInThemeTextEditor";
 import { diffLocalDays, startOfLocalDayMs } from "../domain/dates";
 import {
   computePriorityBucketBreakdown,
-  computeTopTagsOpen
+  computeTopTagsOpen,
 } from "../domain/dashboard";
-import {
-  buildRecurrencePreviewFromDraft
-} from "../domain/recurrence/draft";
+import { buildRecurrencePreviewFromDraft } from "../domain/recurrence/draft";
 import { getEditorViewportHeights } from "../domain/editorPaneLayout";
 import {
   formatDateToLocalIso,
-  parseLocalIsoToDate
+  parseLocalIsoToDate,
 } from "../domain/recurrence/rruleAdapter";
-import {
-  applyReminderFired,
-  isReminderPendingForEffectiveAt,
-  nextPendingReminderAt,
-  resolveEffectiveReminderAt
-} from "../domain/reminders";
 import { isRepeatOccurrenceAfterSeriesStart } from "../domain/recurrence/repeatOccurrence";
 import {
   deleteRecurringOccurrence,
-  deleteRecurringOccurrenceAndFuture
+  deleteRecurringOccurrenceAndFuture,
 } from "../domain/recurrence/delete";
 import {
   completeRecurringOccurrenceInTasks,
   removeMaterializedOccurrenceInstance as removeMaterializedOccurrenceInstanceInTasks,
   skipRecurringOccurrenceInTasks,
   snoozeRecurringOccurrenceInTasks,
-  withSeriesOccurrenceExcluded as withSeriesOccurrenceExcludedInTasks
+  withSeriesOccurrenceExcluded as withSeriesOccurrenceExcludedInTasks,
 } from "../domain/recurrence/occurrenceMutations";
 import { materializeChecklistOccurrenceOverride } from "../domain/recurrence/checklistOccurrence";
-import { loadReminderIndexForDataFile } from "../reminders/indexer";
-import { resolveCurrentTadoiInvocation } from "../reminders/invocation";
-import {
-  getReminderInstallCommandsForPlatform,
-  getReminderSchedulerStatus
-} from "../reminders/scheduler";
 import {
   findNextMatchingIndex,
   isTaskDueToday,
-  isTaskOverdue
+  isTaskOverdue,
 } from "../domain/navigation";
 import { clampScrollOffset, ensureSelectedVisible } from "../domain/scroll";
-import { computeOpenPriorityStats, computeTopTagStats } from "../domain/tagStats";
+import {
+  computeOpenPriorityStats,
+  computeTopTagStats,
+} from "../domain/tagStats";
 import { completeTaskWithRecurrence } from "../domain/recurrence";
 import {
   addChecklistItem,
@@ -91,13 +93,13 @@ import {
   deleteChecklistItem,
   editChecklistItem,
   sortChecklistItems,
-  toggleChecklistItem
+  toggleChecklistItem,
 } from "../domain/checklist";
 import {
   addTaskLink,
   deleteTaskLink,
   extractUrlScheme,
-  updateTaskLink
+  updateTaskLink,
 } from "../domain/taskLinks";
 import { decideTaskLinkOpen } from "./linkOpenFlow";
 import { executeCommand } from "../commands/execute";
@@ -108,18 +110,18 @@ import {
   addTagToTagFilterDraftBucket,
   resolveTagFilterDraftForApplyFromInput,
   resolveTagFilterInputCandidateValue,
-  resolveTagFilterPanelHotkeyAction
+  resolveTagFilterPanelHotkeyAction,
 } from "./tagFilterPanelInput";
 import {
   applyAutocomplete,
   getAutocompleteStep,
   getSuggestedTime,
-  type SuggestedTime
+  type SuggestedTime,
 } from "../domain/timeAutocomplete";
 import {
   getTitleCompletion,
   getTitleQuery,
-  rankTaskTitles
+  rankTaskTitles,
 } from "../domain/titleAutocomplete";
 import {
   applyArchiveAging,
@@ -130,7 +132,7 @@ import {
   getDueInLabel,
   getVisibleTasks,
   initialState,
-  reducer
+  reducer,
 } from "../state/store";
 import {
   createDataBackup,
@@ -140,7 +142,7 @@ import {
   saveStateAtomic,
   saveStateDebounced,
   type LoadedData,
-  type SaveStateResult
+  type SaveStateResult,
 } from "../state/persistence";
 import { retrySaveAfterConflictReload } from "./saveConflictRetry";
 import {
@@ -149,7 +151,7 @@ import {
   normalizeTagFilter,
   normalizeTagToken,
   resolveEffectiveTagFilter,
-  type TagFilterBucket
+  type TagFilterBucket,
 } from "../domain/tagFilter";
 import { computeTagStats } from "../domain/tagAliases";
 import {
@@ -157,7 +159,7 @@ import {
   planTagMerge,
   planTagRename,
   reportTagHygiene,
-  type TagOperationPreview
+  type TagOperationPreview,
 } from "../domain/tagLifecycle";
 import {
   formatTagForDisplay,
@@ -165,7 +167,7 @@ import {
   mergeTagIndexWithTaskHistory,
   normalizeTagPrefix,
   rankTags,
-  updateTagIndex
+  updateTagIndex,
 } from "../domain/tagIndex";
 import {
   formatPriorityForDisplay,
@@ -173,19 +175,19 @@ import {
   isPriorityToken,
   normalizePriorityFilterValue,
   normalizePriorityFromTokens,
-  resolveTaskPriorityTag
+  resolveTaskPriorityTag,
 } from "../domain/priorityTags";
 import { computeVisibleTagPills } from "../domain/tagPills";
 import {
   getSortModeLabel,
   resolveAnalyticsWindowDays,
-  SORT_MODE_ORDER
+  SORT_MODE_ORDER,
 } from "../domain/query";
 import { reconcileSelectionById } from "../domain/selection";
 import { buildVisibleTaskRows, type VisibleTaskRow } from "../domain/taskRows";
 import {
   cloneEditorDraft,
-  isEditorDraftDirty
+  isEditorDraftDirty,
 } from "../domain/editorDraftDirty";
 import {
   AppState,
@@ -195,7 +197,7 @@ import {
   SavedView,
   TagFilter,
   Task,
-  TaskLink
+  TaskLink,
 } from "../domain/models";
 import {
   formatThemeDisplayName,
@@ -203,12 +205,12 @@ import {
   THEMES,
   type RotatingThemeId,
   type ThemeId,
-  type ThemeTokens
+  type ThemeTokens,
 } from "../theme/themes";
 import {
   formatContrastIssueForBanner,
   validateBuiltInTextContrast,
-  validateCustomThemeContrast
+  validateCustomThemeContrast,
 } from "../theme/contrastValidation";
 import {
   applySavedView,
@@ -216,7 +218,7 @@ import {
   isSavedViewActive,
   MAX_SAVED_VIEWS,
   saveViewByName,
-  deleteViewAtIndex
+  deleteViewAtIndex,
 } from "../domain/savedViews";
 import {
   cycleCrtFxLiteProfile,
@@ -248,7 +250,7 @@ import {
   type SecuritySettings,
   type NotificationSettings,
   type ThemeObjectId,
-  type ThemeTextTokenOverrides
+  type ThemeTextTokenOverrides,
 } from "../settings/settings";
 import { settingsReducer } from "../state/settingsStore";
 import { isEditorMode } from "../ui/modeFocus";
@@ -256,12 +258,12 @@ import {
   buildTaskSeededNoteContent,
   createNotesService,
   deriveDefaultNoteTitleFromTaskTitle,
-  isPathWithin
+  isPathWithin,
 } from "../notes/service";
 import {
   executeNoteCommand,
   parseNoteSearchQuery,
-  type ExecuteNoteCommandResult
+  type ExecuteNoteCommandResult,
 } from "../notes/commands";
 import { parseFrontmatter, upsertFrontmatterTags } from "../notes/frontmatter";
 import { renderMarkdownToTerminalLines } from "../notes/markdown";
@@ -269,10 +271,13 @@ import { noteTagMatchesFilter, parseNoteTags } from "../notes/tags";
 import { resolveNotesRootPath } from "../notes/storage";
 import type { NoteMention } from "../notes/mentions";
 import type { NotePath, NoteRef, NoteWarning } from "../notes/types";
-import { createTaskNoteRefFromNote, resolveTaskNoteRef } from "../notes/taskNoteRef";
+import {
+  createTaskNoteRefFromNote,
+  resolveTaskNoteRef,
+} from "../notes/taskNoteRef";
 import {
   runUnifiedSearch,
-  type UnifiedSearchScope
+  type UnifiedSearchScope,
 } from "../search/unifiedSearch";
 import {
   clearEmptyNux,
@@ -292,7 +297,7 @@ import {
   type EmptyNuxStep,
   type UITaskLinkFormField,
   type UITaskLinkFormModal,
-  type UITaskLinkModalKind
+  type UITaskLinkModalKind,
 } from "../ui/state";
 import {
   BACKUP_IMPORT_PICKER_MAX_VISIBLE_ROWS,
@@ -302,7 +307,7 @@ import {
   hasMatchingDryRun,
   initialBackupCenterState,
   isReplaceConfirmationValid,
-  type BackupCenterScreen as BackupCenterFlowScreen
+  type BackupCenterScreen as BackupCenterFlowScreen,
 } from "../state/backupCenterFlow";
 import {
   BackupImportPartialError,
@@ -312,20 +317,19 @@ import {
   getDefaultBackupDir,
   getResolvedDataPath,
   importBackup,
-  listBackupFiles
+  listBackupFiles,
 } from "../state/backupService";
 import { recomputeTagIndex } from "../state/portability";
-import { NotificationManager } from "../notifications/notificationManager";
-import { InAppModalNotifier } from "../notifications/notifiers/inAppModalNotifier";
-import { OSNotifier } from "../notifications/notifiers/osNotifier";
-import { TerminalBellNotifier } from "../notifications/notifiers/terminalBellNotifier";
-import type { TaskOverdueEvent, TaskReminderEvent } from "../notifications/types";
+import type {
+  TaskOverdueEvent,
+  TaskReminderEvent,
+} from "../notifications/types";
 import { APP_VERSION } from "./version";
 import {
   getTerminalSizeWarning,
   isTerminalSizeSupported,
   MIN_TERMINAL_HEIGHT,
-  MIN_TERMINAL_WIDTH
+  MIN_TERMINAL_WIDTH,
 } from "./layoutGuard";
 import {
   APP_NAME,
@@ -333,7 +337,7 @@ import {
   ENV_VARS,
   PRODUCT_NAME_TM,
   TRADEMARK_NOTICE_LINES,
-  formatLogoModeLabel
+  formatLogoModeLabel,
 } from "../brand/brand";
 import { copyToClipboard } from "./copyToClipboard";
 import { openTarget } from "./openTarget";
@@ -342,6 +346,18 @@ import { redactedLogger } from "../logging/redactedLogger";
 import { useEditorFlow } from "./editorFlow";
 import { useModalOrchestration } from "./modalOrchestration";
 import { useCalendarFlow } from "./calendarFlow";
+import {
+  buildDetailsNotesSelectablePaths,
+  clampIndex,
+  computeNotesPaneLayout,
+  filterNotesList,
+  resolveActiveNoteTitle,
+  resolveSelectedNoteTags,
+  windowLines,
+} from "./appSelectors";
+import { useHelpSettingsRuntime } from "./helpSettingsRuntime";
+import { useNotesRuntime } from "./notesRuntime";
+import { useReminderNotificationRuntime } from "./reminderNotificationRuntime";
 import {
   buildRestoreImportPayload,
   buildSnapshotArtifacts,
@@ -355,44 +371,37 @@ import {
   listSnapshots,
   pushSnapshot,
   shouldSkipSnapshotPush,
-  type SnapshotRef
+  type SnapshotRef,
 } from "../backup/githubCli";
 import { shouldTriggerSaveConflictRetryFromMouse } from "./saveConflictBannerAction";
 import {
   resolveKeymapAliases,
   type KeymapAliasConfig,
-  type KeymapAliases
+  type KeymapAliases,
 } from "./keymapAliases";
 import {
   buildLeftRailHintLines,
   buildWhichKeyHintItems,
   buildWhichKeyPrefixPopup,
-  resolveWhichKeyContext
+  resolveWhichKeyContext,
 } from "./whichKeyHints";
-import {
-  shouldRequireBackupReplaceConfirmation
-} from "./backupCalendarOrchestration";
+import { shouldRequireBackupReplaceConfirmation } from "./backupCalendarOrchestration";
 import {
   buildPriorityTickerSegments,
   buildTagTickerSegments,
   fitLineToWidth,
   pickHelpCloseButtonLabel,
-  truncateToWidth
+  truncateToWidth,
 } from "./renderingComposition";
-import { describeTaskEditorContinuation, resolveTaskEditorContinuationForLeftRail } from "./routingContinuations";
 import {
-  getTerminalBellCooldownMs,
-  isInAppOverdueEnabled,
-  isTerminalBellOverdueEnabled
-} from "./notificationRuntime";
+  describeTaskEditorContinuation,
+  resolveTaskEditorContinuationForLeftRail,
+} from "./routingContinuations";
 
 const TICKER_INTERVAL_MS = 6000;
 const BOTTOM_INFO_VIEW_ORDER = ["summary", "tags", "priorities"] as const;
 const SLOW_PULSE_INTERVAL_MS = 2000;
 const FAST_PULSE_INTERVAL_MS = 700;
-const NOTIFICATION_EVALUATION_INTERVAL_MS = 10000;
-const REMINDER_TIMEOUT_MAX_DELAY_MS = 12 * 60 * 60 * 1000;
-const REMINDER_TIMEOUT_FALLBACK_MS = 30_000;
 const ENGAGEMENT_TOAST_TICK_INTERVAL_MS = 350;
 const FIRST_RECURRING_TASK_TOAST_MS = 10_000;
 const FIRST_RECURRING_REPEAT_DONE_TOAST_MS = 10_000;
@@ -421,19 +430,24 @@ const HELP_PANEL_BORDER_COLS = 2;
 const HELP_HEADER_ROWS = 2;
 const HELP_DIVIDER_ROWS = 1;
 const HELP_FOOTER_ROWS = 2;
-const HELP_PANEL_CHROME_ROWS = HELP_HEADER_ROWS + HELP_DIVIDER_ROWS + HELP_FOOTER_ROWS;
+const HELP_PANEL_CHROME_ROWS =
+  HELP_HEADER_ROWS + HELP_DIVIDER_ROWS + HELP_FOOTER_ROWS;
 const HELP_SECTION_SCROLL_PADDING = 1;
 const HELP_NAV_ITEM_ROW_COUNT = 2;
 const EDITOR_CHECKLIST_MODAL_ROW_ID = "__editor_checklist__";
 const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings =
   getDefaultSettings().notifications;
-const DEFAULT_SECURITY_SETTINGS: SecuritySettings = getDefaultSettings().security;
+const DEFAULT_SECURITY_SETTINGS: SecuritySettings =
+  getDefaultSettings().security;
 const DEFAULT_LOGO_MODE: LogoMode = getDefaultSettings().logoMode;
-const DEFAULT_CUSTOM_THEMES: CustomThemes | undefined = getDefaultSettings().customThemes;
+const DEFAULT_CUSTOM_THEMES: CustomThemes | undefined =
+  getDefaultSettings().customThemes;
 const DEFAULT_KEYMAP_ALIASES = getDefaultSettings().keymapAliases;
 const DEFAULT_GITHUB_BACKUP = getDefaultSettings().githubBackup;
-const DEFAULT_NOTES_SETTINGS: NotesSettings =
-  getDefaultSettings().notes ?? { enabled: true, rootPath: null };
+const DEFAULT_NOTES_SETTINGS: NotesSettings = getDefaultSettings().notes ?? {
+  enabled: true,
+  rootPath: null,
+};
 const DEFAULT_HINT_DISPLAY_MODE: HintDisplayMode =
   getDefaultSettings().hintDisplayMode ?? "bottom";
 const DEFAULT_SHOW_PREFIX_HINT_POPUP =
@@ -448,21 +462,36 @@ const DEFAULT_RETRO_FX =
 const CRT_FX_TICK_INTERVAL_BY_PRESET: Record<CrtFxLitePreset, number> = {
   subtle: 220,
   normal: 160,
-  strong: 120
+  strong: 120,
 };
-const RETRO_FX_TICK_INTERVAL_BY_MODE: Record<Exclude<RetroFxMode, "off">, number> = {
+const RETRO_FX_TICK_INTERVAL_BY_MODE: Record<
+  Exclude<RetroFxMode, "off">,
+  number
+> = {
   classic: 220,
-  broadcast: 120
+  broadcast: 120,
 };
 const TASK_LINK_FORM_FIELD_ORDER: UITaskLinkFormField[] = [
   "label",
   "target",
   "type",
   "save",
-  "cancel"
+  "cancel",
 ];
-const TASK_LINK_FORM_KIND_ORDER: UITaskLinkModalKind[] = ["auto", "url", "path"];
+const TASK_LINK_FORM_KIND_ORDER: UITaskLinkModalKind[] = [
+  "auto",
+  "url",
+  "path",
+];
 const MODAL_STANDARD_WIDTH = 64;
+const HELP_SETTINGS_FOOTER_HINT_SEGMENTS = [
+  "1 Backup Center",
+  "Enter/Right on Settings opens Settings pages",
+  "Up/Down focus",
+  "Enter/Space expand",
+  "Left collapse",
+  "Esc close",
+] as const;
 
 type HelpMenuItem = {
   title: string;
@@ -549,197 +578,201 @@ type HelpSettingsInputField =
 const HELP_SETTINGS_NAV_ITEMS: HelpNavItem[] = [
   {
     title: "Appearance",
-    description: "Theme, logo, flash, CRT FX, and retro visual settings."
+    description: "Theme, logo, flash, CRT FX, and retro visual settings.",
   },
   {
     title: "Navigation & Keymaps",
-    description: "Hints surface, prefix popup, and keymap alias presets."
+    description: "Hints surface, prefix popup, and keymap alias presets.",
   },
   {
     title: "Notifications",
-    description: "Overdue notifications plus duration/cooldown controls."
+    description: "Overdue notifications plus duration/cooldown controls.",
   },
   {
     title: "Security",
-    description: "Link-open policy controls for non-http/https targets."
+    description: "Link-open policy controls for non-http/https targets.",
   },
   {
     title: "TOME Notes",
-    description: "Enable/disable notes, root path migration, and guide restore."
+    description:
+      "Enable/disable notes, root path migration, and guide restore.",
   },
   {
     title: "Cloud Backup",
-    description: "GitHub backup config; operations are linked in Backup Center."
-  }
+    description:
+      "GitHub backup config; operations are linked in Backup Center.",
+  },
 ];
 
 const HELP_SETTINGS_APPEARANCE_NAV_ITEMS: HelpNavItem[] = [
   {
     title: "Theme",
-    description: "Theme mode and custom palette settings."
+    description: "Theme mode and custom palette settings.",
   },
   {
     title: "Logo",
-    description: "Left/Right previews mode. Enter commits. Esc backs out."
+    description: "Left/Right previews mode. Enter commits. Esc backs out.",
   },
   {
     title: "Flash Mode",
-    description: "Switch between static and pulse urgency cues."
+    description: "Switch between static and pulse urgency cues.",
   },
   {
     title: "CRT FX Lite",
-    description: "Enable or disable CRT visual treatment."
+    description: "Enable or disable CRT visual treatment.",
   },
   {
     title: "CRT FX Profile",
-    description: "Cycle Green/Amber with Subtle/Regular/Strong intensity."
+    description: "Cycle Green/Amber with Subtle/Regular/Strong intensity.",
   },
   {
     title: "Retro FX Mode",
-    description: "Set vibe pack mode: Off, Classic, or Broadcast."
-  }
+    description: "Set vibe pack mode: Off, Classic, or Broadcast.",
+  },
 ];
 
 const HELP_SETTINGS_NAVIGATION_NAV_ITEMS: HelpNavItem[] = [
   {
     title: "Keymap Aliases",
-    description: "Configure alias presets for list, dashboard, backup, and help actions."
+    description:
+      "Configure alias presets for list, dashboard, backup, and help actions.",
   },
   {
     title: "Navigation Hints",
-    description: "Set hints surface: bottom only, left rail only, both, or none."
+    description:
+      "Set hints surface: bottom only, left rail only, both, or none.",
   },
   {
     title: "Prefix Popup",
-    description: "Toggle the transient Ctrl+g / Ctrl+p / Ctrl+y prefix popup."
-  }
+    description: "Toggle the transient Ctrl+g / Ctrl+p / Ctrl+y prefix popup.",
+  },
 ];
 
 const HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS: HelpNavItem[] = [
   {
     title: "Notifications",
-    description: "Enable or disable overdue notifications."
+    description: "Enable or disable overdue notifications.",
   },
   {
     title: "Overdue Popup",
-    description: "Enable or disable in-app overdue popup."
+    description: "Enable or disable in-app overdue popup.",
   },
   {
     title: "Terminal Bell",
-    description: "Enable or disable terminal bell on overdue."
+    description: "Enable or disable terminal bell on overdue.",
   },
   {
     title: "Out-of-App Reminders",
-    description: "Enable optional reminder helper when TADOI is closed."
+    description: "Enable optional reminder helper when TADOI is closed.",
   },
   {
     title: "Reminder Helper Install",
-    description: "Copy-first install command for out-of-app reminders."
+    description: "Copy-first install command for out-of-app reminders.",
   },
   {
     title: "Reminder Helper Status",
-    description: "Copy-first helper status command."
+    description: "Copy-first helper status command.",
   },
   {
     title: "Reminder Helper Test",
-    description: "Copy-first test reminder command (+1 minute)."
+    description: "Copy-first test reminder command (+1 minute).",
   },
   {
     title: "Reminder Helper Uninstall",
-    description: "Copy-first uninstall command."
+    description: "Copy-first uninstall command.",
   },
   {
     title: "Reminder Helper Installed",
-    description: "Best-effort local scheduler install detection."
+    description: "Best-effort local scheduler install detection.",
   },
   {
     title: "Reminder Helper Next Event",
-    description: "Next indexed out-of-app reminder event."
+    description: "Next indexed out-of-app reminder event.",
   },
   {
     title: "Banner Duration",
-    description: "Notification banner visibility duration in milliseconds."
+    description: "Notification banner visibility duration in milliseconds.",
   },
   {
     title: "Bell Cooldown",
-    description: "Minimum milliseconds between overdue terminal bell alerts."
-  }
+    description: "Minimum milliseconds between overdue terminal bell alerts.",
+  },
 ];
 
 const HELP_SETTINGS_SECURITY_NAV_ITEMS: HelpNavItem[] = [
   {
     title: "Non-HTTP Link Policy",
-    description: "Choose prompt vs block behavior for non-http/https links."
-  }
+    description: "Choose prompt vs block behavior for non-http/https links.",
+  },
 ];
 
 const HELP_SETTINGS_NOTES_NAV_ITEMS: HelpNavItem[] = [
   {
     title: "TOME Enabled",
-    description: "Enable or disable notes runtime and note commands."
+    description: "Enable or disable notes runtime and note commands.",
   },
   {
     title: "TOME Root Path",
-    description: "Set notes root with copy-first migration safety."
+    description: "Set notes root with copy-first migration safety.",
   },
   {
     title: "Restore TOME Guides",
     description:
-      "Recover deleted default guide notes. Existing notes are never overwritten."
-  }
+      "Recover deleted default guide notes. Existing notes are never overwritten.",
+  },
 ];
 
 const HELP_SETTINGS_CLOUD_NAV_ITEMS: HelpNavItem[] = [
   {
     title: "Cloud Backup Enabled",
-    description: "Enable or disable GitHub cloud backup configuration."
+    description: "Enable or disable GitHub cloud backup configuration.",
   },
   {
     title: "Owner/Repo",
-    description: "Set configured repository (owner/repo) for cloud snapshots."
+    description: "Set configured repository (owner/repo) for cloud snapshots.",
   },
   {
     title: "Branch",
-    description: "Set target branch for cloud snapshots."
+    description: "Set target branch for cloud snapshots.",
   },
   {
     title: "Auto Push Policy",
-    description: "Cycle cloud auto-push policy."
+    description: "Cycle cloud auto-push policy.",
   },
   {
     title: "Device ID",
-    description: "Set device identity used in snapshot path metadata."
+    description: "Set device identity used in snapshot path metadata.",
   },
   {
     title: "Path Prefix",
-    description: "Set remote path prefix where snapshots are written."
+    description: "Set remote path prefix where snapshots are written.",
   },
   {
     title: "Open Cloud Operations",
-    description: "Open Backup Center directly to Cloud/GitHub operations."
-  }
+    description: "Open Backup Center directly to Cloud/GitHub operations.",
+  },
 ];
 
 const HELP_THEME_NAV_ITEMS: HelpNavItem[] = [
   {
     title: "Current Theme",
-    description: "Press Enter/Right to cycle theme mode."
+    description: "Press Enter/Right to cycle theme mode.",
   },
   {
     title: "Custom1",
-    description: "Global palette plus per-object overrides."
+    description: "Global palette plus per-object overrides.",
   },
   {
     title: "Text Tuning",
-    description: "Tune text colors for built-in themes one-by-one."
-  }
+    description: "Tune text colors for built-in themes one-by-one.",
+  },
 ];
 
 const HELP_CUSTOM1_NAV_ITEMS: HelpNavItem[] = [
   {
     title: "Edit Colors",
-    description: "Open editor (live preview, save/cancel/reset)."
-  }
+    description: "Open editor (live preview, save/cancel/reset).",
+  },
 ];
 
 function formatThemeIdLabel(themeId: RotatingThemeId): string {
@@ -747,73 +780,81 @@ function formatThemeIdLabel(themeId: RotatingThemeId): string {
 }
 
 const HELP_TEXT_TUNING_THEMES: RotatingThemeId[] = [...ROTATING_THEME_ORDER];
-const HELP_TEXT_TUNING_NAV_ITEMS: HelpNavItem[] = HELP_TEXT_TUNING_THEMES.map((themeId) => ({
-  title: formatThemeIdLabel(themeId),
-  description: "Per-theme + per-object text color overrides."
-}));
+const HELP_TEXT_TUNING_NAV_ITEMS: HelpNavItem[] = HELP_TEXT_TUNING_THEMES.map(
+  (themeId) => ({
+    title: formatThemeIdLabel(themeId),
+    description: "Per-theme + per-object text color overrides.",
+  }),
+);
 const HELP_TEXT_TUNING_THEME_NAV_ITEMS: HelpNavItem[] = [
   {
     title: "Edit Text Colors",
-    description: "Open editor (live preview, save/cancel/reset)."
-  }
+    description: "Open editor (live preview, save/cancel/reset).",
+  },
 ];
 
 type KeymapAliasPresetContext = "list" | "dashboard" | "backup" | "help";
 type KeymapAliasPresetState = "off" | "preset" | "custom";
-type QuickNoteCommand = Extract<NoteCommand, { type: "note"; operation: "quick" }>;
+type QuickNoteCommand = Extract<
+  NoteCommand,
+  { type: "note"; operation: "quick" }
+>;
 
 const HELP_KEYMAP_ALIAS_NAV_ITEMS: HelpNavItem[] = [
   {
     title: "List aliases",
-    description: "Preset: Ctrl+F search and n add."
+    description: "Preset: Ctrl+F search and n add.",
   },
   {
     title: "Dashboard aliases",
-    description: "Preset: j/k move selection and h open help."
+    description: "Preset: j/k move selection and h open help.",
   },
   {
     title: "Backup aliases",
-    description: "Preset: q back and j/k movement."
+    description: "Preset: q back and j/k movement.",
   },
   {
     title: "Help aliases",
-    description: "Preset: j/k move, h/l nav, q close."
+    description: "Preset: j/k move, h/l nav, q close.",
   },
   {
     title: "Reset all aliases",
-    description: "Clear all keymap alias overrides."
-  }
+    description: "Clear all keymap alias overrides.",
+  },
 ];
 
 const KEYMAP_ALIAS_PRESET_CONTEXT_ORDER: KeymapAliasPresetContext[] = [
   "list",
   "dashboard",
   "backup",
-  "help"
+  "help",
 ];
 
-const KEYMAP_ALIAS_PRESETS_BY_CONTEXT: Record<KeymapAliasPresetContext, KeymapAliasConfig> = {
+const KEYMAP_ALIAS_PRESETS_BY_CONTEXT: Record<
+  KeymapAliasPresetContext,
+  KeymapAliasConfig
+> = {
   list: {
     list_open_search: ["Ctrl+F"],
-    list_open_add: ["n"]
+    list_open_add: ["n"],
   },
   dashboard: {
     dashboard_move_up: ["k"],
     dashboard_move_down: ["j"],
-    dashboard_open_help: ["h"]
+    dashboard_open_help: ["h"],
   },
   backup: {
     backup_back: ["q"],
     backup_move_up: ["k"],
-    backup_move_down: ["j"]
+    backup_move_down: ["j"],
   },
   help: {
     help_move_up: ["k"],
     help_move_down: ["j"],
     help_nav_back: ["h"],
     help_nav_forward: ["l"],
-    help_close: ["q"]
-  }
+    help_close: ["q"],
+  },
 };
 
 function formatHintDisplayModeLabel(mode: HintDisplayMode): string {
@@ -833,7 +874,7 @@ function formatHintDisplayModeStatusLabel(mode: HintDisplayMode): string {
 const GITHUB_AUTO_PUSH_POLICY_ORDER = [
   "off",
   "onExit",
-  "interval15m"
+  "interval15m",
 ] as const satisfies readonly GitHubAutoPushPolicy[];
 
 function formatGitHubAutoPushPolicyLabel(policy: GitHubAutoPushPolicy): string {
@@ -842,7 +883,9 @@ function formatGitHubAutoPushPolicyLabel(policy: GitHubAutoPushPolicy): string {
   return "Off";
 }
 
-function cycleGitHubAutoPushPolicy(policy: GitHubAutoPushPolicy): GitHubAutoPushPolicy {
+function cycleGitHubAutoPushPolicy(
+  policy: GitHubAutoPushPolicy,
+): GitHubAutoPushPolicy {
   const index = GITHUB_AUTO_PUSH_POLICY_ORDER.indexOf(policy);
   const safeIndex = index >= 0 ? index : 0;
   const nextIndex = (safeIndex + 1) % GITHUB_AUTO_PUSH_POLICY_ORDER.length;
@@ -864,40 +907,40 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
     items: [
       {
         title: "Open Help with ?",
-        description: "Press ? from list/dashboard to open or close this menu."
+        description: "Press ? from list/dashboard to open or close this menu.",
       },
       {
         title: "Move around with arrows",
         description:
-          "Use Up/Down to focus sections; Enter/Space toggles sections, and Settings opens pages."
+          "Use Up/Down to focus sections; Enter/Space toggles sections, and Settings opens pages.",
       },
       {
         title: "Close with Esc",
-        description: "Esc returns to the previous mode/focus."
-      }
-    ]
+        description: "Esc returns to the previous mode/focus.",
+      },
+    ],
   },
   {
     title: "Navigation & Keybindings",
     items: [
       {
         title: "List navigation: j/k, arrows, Ctrl+g/Ctrl+p/Ctrl+y then g/G",
-        description: "Jump and browse tasks quickly."
+        description: "Jump and browse tasks quickly.",
       },
       {
         title: "Page movement: Ctrl+U / Ctrl+D",
-        description: "Page up/down through long task lists."
+        description: "Page up/down through long task lists.",
       },
       {
         title: "Attention jumps: [ ] and { }",
-        description: "Cycle overdue and due-today tasks."
+        description: "Cycle overdue and due-today tasks.",
       },
       {
         title: "Search: / open, Enter/Esc close input, Tab focuses results",
         description:
-          "Unified search supports tasks + TOME notes; Enter opens only when results are focused."
-      }
-    ]
+          "Unified search supports tasks + TOME notes; Enter opens only when results are focused.",
+      },
+    ],
   },
   {
     title: "Tasks (create/edit/complete)",
@@ -908,58 +951,64 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
       { title: "Notes focus: Enter/o open, c create+link, l/r link, u unlink" },
       {
         title: "Recurring controls: x skip, z snooze",
-        description: "Skip or push the selected recurring occurrence by one day."
+        description:
+          "Skip or push the selected recurring occurrence by one day.",
       },
       {
         title: "Bulk ops: m mark, ` bulk ...`, Esc clear",
-        description: "Mark tasks in LIST, run bulk commands from TITS, and clear marks with Esc."
-      }
-    ]
+        description:
+          "Mark tasks in LIST, run bulk commands from TITS, and clear marks with Esc.",
+      },
+    ],
   },
   {
     title: "Tags & Filters",
     items: [
       {
         title: "f status, s sort, g due, r priority, t single tag",
-        description: "Use r for priority cycle and t for quick single-tag cycle."
+        description:
+          "Use r for priority cycle and t for quick single-tag cycle.",
       },
       {
         title: "PRIORITY (r)",
-        description: "Cycle priority filter based on open-task priority tags."
+        description: "Cycle priority filter based on open-task priority tags.",
       },
       {
         title: "TAG PANEL (p)",
-        description: "Open boolean tag filter panel (ALL/ANY/NONE)."
+        description: "Open boolean tag filter panel (ALL/ANY/NONE).",
       },
       {
         title: "TITS tag lifecycle commands",
-        description: "Use `tag rename`, `tag merge`, `tag hygiene`, and `tag cleanup` in command bar."
+        description:
+          "Use `tag rename`, `tag merge`, `tag hygiene`, and `tag cleanup` in command bar.",
       },
       {
         title: "Bottom quick filters are clickable",
-        description: "Click buckets/tags to apply; click again to clear."
+        description: "Click buckets/tags to apply; click again to clear.",
       },
       {
         title: "Saved views: v overlay, Ctrl+S save, 1..9 apply",
-        description: "Pressing an active slot hotkey again resets to default view."
-      }
-    ]
+        description:
+          "Pressing an active slot hotkey again resets to default view.",
+      },
+    ],
   },
   {
     title: "Data (Import/Export/Backup)",
     items: [
       {
         title: "Press 1 in Help to open Backup Center",
-        description: "Guided DATA, CALENDAR, and GITHUB CLOUD flows with dry-run safety gates."
+        description:
+          "Guided DATA, CALENDAR, and GITHUB CLOUD flows with dry-run safety gates.",
       },
       {
         title: "CLI export/import commands available",
-        description: "Use backup exports for portability and recovery."
+        description: "Use backup exports for portability and recovery.",
       },
       {
         title: "Save conflict recovery",
         description:
-          "If a save conflict banner appears, press R or click the banner to reload and retry."
+          "If a save conflict banner appears, press R or click the banner to reload and retry.",
       },
       {
         title: "Calendar (ICS) in Backup Center",
@@ -968,8 +1017,8 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
           "Export: range/view/privacy + timestamped .ics path with deterministic output.",
           "Import: merge/update/create + horizon cap + mandatory dry-run before commit.",
           "Round-trip identity: X-TADOI-TASK-ID first, then TADOI UID conventions, then external UID.",
-          "Boundary: one-way actions per run (not live calendar sync)."
-        ]
+          "Boundary: one-way actions per run (not live calendar sync).",
+        ],
       },
       {
         title: "GitHub cloud backups (shipped)",
@@ -977,10 +1026,10 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
           "Open Backup Center -> Cloud Backups -> GitHub (CLI).",
           "Connect flow checks gh install/login, verifies owner/repo, and warns on public repos.",
           "Use Push snapshot now to write timestamped backups to GitHub.",
-          "Use Restore from GitHub to pull a snapshot into the existing dry-run -> commit import safety flow."
-        ]
-      }
-    ]
+          "Use Restore from GitHub to pull a snapshot into the existing dry-run -> commit import safety flow.",
+        ],
+      },
+    ],
   },
   {
     title: "Settings & Themes",
@@ -989,142 +1038,186 @@ const HELP_MENU_SECTIONS: HelpMenuSection[] = [
         title: "Settings",
         description: [
           "Opens Settings pages (this section does not expand/collapse).",
-          "Use Enter/Right or mouse click to open."
-        ]
+          "Use Enter/Right or mouse click to open.",
+        ],
       },
       {
         title: "TOME guide recovery",
         description:
-          "Use Settings > Restore TOME Guides (or `note restore-defaults`) to recover missing defaults safely."
-      }
-    ]
+          "Use Settings > Restore TOME Guides (or `note restore-defaults`) to recover missing defaults safely.",
+      },
+    ],
   },
   {
     title: "Troubleshooting / Support",
     items: [
       {
         title: "Resize terminal if layout feels cramped",
-        description: `Minimum supported terminal is ${MIN_TERMINAL_WIDTH}x${MIN_TERMINAL_HEIGHT}.`
+        description: `Minimum supported terminal is ${MIN_TERMINAL_WIDTH}x${MIN_TERMINAL_HEIGHT}.`,
       },
       {
         title: "Check app version and data path",
-        description: "Useful when reporting issues or validating environment."
+        description: "Useful when reporting issues or validating environment.",
       },
       {
         title: "Legal / Trademarks",
-        description: [...TRADEMARK_NOTICE_LINES]
+        description: [...TRADEMARK_NOTICE_LINES],
       },
       {
         title: "License & usage",
-        description: "See LICENSE for PolyForm Noncommercial terms."
-      }
-    ]
-  }
+        description: "See LICENSE for PolyForm Noncommercial terms.",
+      },
+    ],
+  },
 ];
 const HELP_SETTINGS_NAV_SECTION_INDEX = HELP_MENU_SECTIONS.findIndex(
-  (section) => section.title === "Settings & Themes"
+  (section) => section.title === "Settings & Themes",
 );
 const HELP_SETTINGS_APPEARANCE_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
-  (item) => item.title === "Appearance"
+  (item) => item.title === "Appearance",
 );
 const HELP_SETTINGS_NAVIGATION_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
-  (item) => item.title === "Navigation & Keymaps"
+  (item) => item.title === "Navigation & Keymaps",
 );
 const HELP_SETTINGS_NOTIFICATIONS_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
-  (item) => item.title === "Notifications"
+  (item) => item.title === "Notifications",
 );
 const HELP_SETTINGS_SECURITY_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
-  (item) => item.title === "Security"
+  (item) => item.title === "Security",
 );
 const HELP_SETTINGS_NOTES_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
-  (item) => item.title === "TOME Notes"
+  (item) => item.title === "TOME Notes",
 );
 const HELP_SETTINGS_CLOUD_NAV_INDEX = HELP_SETTINGS_NAV_ITEMS.findIndex(
-  (item) => item.title === "Cloud Backup"
+  (item) => item.title === "Cloud Backup",
 );
 const HELP_SETTINGS_APPEARANCE_THEME_NAV_INDEX =
-  HELP_SETTINGS_APPEARANCE_NAV_ITEMS.findIndex((item) => item.title === "Theme");
+  HELP_SETTINGS_APPEARANCE_NAV_ITEMS.findIndex(
+    (item) => item.title === "Theme",
+  );
 const HELP_SETTINGS_APPEARANCE_LOGO_NAV_INDEX =
   HELP_SETTINGS_APPEARANCE_NAV_ITEMS.findIndex((item) => item.title === "Logo");
 const HELP_SETTINGS_APPEARANCE_FLASH_NAV_INDEX =
-  HELP_SETTINGS_APPEARANCE_NAV_ITEMS.findIndex((item) => item.title === "Flash Mode");
+  HELP_SETTINGS_APPEARANCE_NAV_ITEMS.findIndex(
+    (item) => item.title === "Flash Mode",
+  );
 const HELP_SETTINGS_APPEARANCE_CRT_FX_NAV_INDEX =
-  HELP_SETTINGS_APPEARANCE_NAV_ITEMS.findIndex((item) => item.title === "CRT FX Lite");
+  HELP_SETTINGS_APPEARANCE_NAV_ITEMS.findIndex(
+    (item) => item.title === "CRT FX Lite",
+  );
 const HELP_SETTINGS_APPEARANCE_CRT_FX_PROFILE_NAV_INDEX =
-  HELP_SETTINGS_APPEARANCE_NAV_ITEMS.findIndex((item) => item.title === "CRT FX Profile");
+  HELP_SETTINGS_APPEARANCE_NAV_ITEMS.findIndex(
+    (item) => item.title === "CRT FX Profile",
+  );
 const HELP_SETTINGS_APPEARANCE_RETRO_FX_MODE_NAV_INDEX =
-  HELP_SETTINGS_APPEARANCE_NAV_ITEMS.findIndex((item) => item.title === "Retro FX Mode");
+  HELP_SETTINGS_APPEARANCE_NAV_ITEMS.findIndex(
+    (item) => item.title === "Retro FX Mode",
+  );
 const HELP_SETTINGS_NAVIGATION_KEYMAP_ALIASES_NAV_INDEX =
-  HELP_SETTINGS_NAVIGATION_NAV_ITEMS.findIndex((item) => item.title === "Keymap Aliases");
+  HELP_SETTINGS_NAVIGATION_NAV_ITEMS.findIndex(
+    (item) => item.title === "Keymap Aliases",
+  );
 const HELP_SETTINGS_NAVIGATION_HINTS_NAV_INDEX =
-  HELP_SETTINGS_NAVIGATION_NAV_ITEMS.findIndex((item) => item.title === "Navigation Hints");
+  HELP_SETTINGS_NAVIGATION_NAV_ITEMS.findIndex(
+    (item) => item.title === "Navigation Hints",
+  );
 const HELP_SETTINGS_NAVIGATION_PREFIX_POPUP_NAV_INDEX =
-  HELP_SETTINGS_NAVIGATION_NAV_ITEMS.findIndex((item) => item.title === "Prefix Popup");
+  HELP_SETTINGS_NAVIGATION_NAV_ITEMS.findIndex(
+    (item) => item.title === "Prefix Popup",
+  );
 const HELP_SETTINGS_NOTIFICATIONS_ENABLED_NAV_INDEX =
-  HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex((item) => item.title === "Notifications");
+  HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex(
+    (item) => item.title === "Notifications",
+  );
 const HELP_SETTINGS_NOTIFICATIONS_OVERDUE_POPUP_NAV_INDEX =
-  HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex((item) => item.title === "Overdue Popup");
+  HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex(
+    (item) => item.title === "Overdue Popup",
+  );
 const HELP_SETTINGS_NOTIFICATIONS_TERMINAL_BELL_NAV_INDEX =
-  HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex((item) => item.title === "Terminal Bell");
+  HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex(
+    (item) => item.title === "Terminal Bell",
+  );
 const HELP_SETTINGS_NOTIFICATIONS_OUT_OF_APP_REMINDERS_NAV_INDEX =
   HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex(
-    (item) => item.title === "Out-of-App Reminders"
+    (item) => item.title === "Out-of-App Reminders",
   );
 const HELP_SETTINGS_NOTIFICATIONS_HELPER_INSTALL_NAV_INDEX =
   HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex(
-    (item) => item.title === "Reminder Helper Install"
+    (item) => item.title === "Reminder Helper Install",
   );
 const HELP_SETTINGS_NOTIFICATIONS_HELPER_STATUS_NAV_INDEX =
   HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex(
-    (item) => item.title === "Reminder Helper Status"
+    (item) => item.title === "Reminder Helper Status",
   );
 const HELP_SETTINGS_NOTIFICATIONS_HELPER_TEST_NAV_INDEX =
   HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex(
-    (item) => item.title === "Reminder Helper Test"
+    (item) => item.title === "Reminder Helper Test",
   );
 const HELP_SETTINGS_NOTIFICATIONS_HELPER_UNINSTALL_NAV_INDEX =
   HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex(
-    (item) => item.title === "Reminder Helper Uninstall"
+    (item) => item.title === "Reminder Helper Uninstall",
   );
 const HELP_SETTINGS_NOTIFICATIONS_HELPER_INSTALLED_NAV_INDEX =
   HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex(
-    (item) => item.title === "Reminder Helper Installed"
+    (item) => item.title === "Reminder Helper Installed",
   );
 const HELP_SETTINGS_NOTIFICATIONS_HELPER_NEXT_EVENT_NAV_INDEX =
   HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex(
-    (item) => item.title === "Reminder Helper Next Event"
+    (item) => item.title === "Reminder Helper Next Event",
   );
 const HELP_SETTINGS_NOTIFICATIONS_BANNER_DURATION_NAV_INDEX =
-  HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex((item) => item.title === "Banner Duration");
+  HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex(
+    (item) => item.title === "Banner Duration",
+  );
 const HELP_SETTINGS_NOTIFICATIONS_BELL_COOLDOWN_NAV_INDEX =
-  HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex((item) => item.title === "Bell Cooldown");
+  HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.findIndex(
+    (item) => item.title === "Bell Cooldown",
+  );
 const HELP_SETTINGS_SECURITY_NON_HTTP_POLICY_NAV_INDEX =
-  HELP_SETTINGS_SECURITY_NAV_ITEMS.findIndex((item) => item.title === "Non-HTTP Link Policy");
+  HELP_SETTINGS_SECURITY_NAV_ITEMS.findIndex(
+    (item) => item.title === "Non-HTTP Link Policy",
+  );
 const HELP_SETTINGS_NOTES_ENABLED_NAV_INDEX =
-  HELP_SETTINGS_NOTES_NAV_ITEMS.findIndex((item) => item.title === "TOME Enabled");
+  HELP_SETTINGS_NOTES_NAV_ITEMS.findIndex(
+    (item) => item.title === "TOME Enabled",
+  );
 const HELP_SETTINGS_NOTES_ROOT_NAV_INDEX =
-  HELP_SETTINGS_NOTES_NAV_ITEMS.findIndex((item) => item.title === "TOME Root Path");
+  HELP_SETTINGS_NOTES_NAV_ITEMS.findIndex(
+    (item) => item.title === "TOME Root Path",
+  );
 const HELP_SETTINGS_NOTES_RESTORE_GUIDES_NAV_INDEX =
-  HELP_SETTINGS_NOTES_NAV_ITEMS.findIndex((item) => item.title === "Restore TOME Guides");
+  HELP_SETTINGS_NOTES_NAV_ITEMS.findIndex(
+    (item) => item.title === "Restore TOME Guides",
+  );
 const HELP_SETTINGS_CLOUD_ENABLED_NAV_INDEX =
-  HELP_SETTINGS_CLOUD_NAV_ITEMS.findIndex((item) => item.title === "Cloud Backup Enabled");
+  HELP_SETTINGS_CLOUD_NAV_ITEMS.findIndex(
+    (item) => item.title === "Cloud Backup Enabled",
+  );
 const HELP_SETTINGS_CLOUD_OWNER_REPO_NAV_INDEX =
-  HELP_SETTINGS_CLOUD_NAV_ITEMS.findIndex((item) => item.title === "Owner/Repo");
+  HELP_SETTINGS_CLOUD_NAV_ITEMS.findIndex(
+    (item) => item.title === "Owner/Repo",
+  );
 const HELP_SETTINGS_CLOUD_BRANCH_NAV_INDEX =
   HELP_SETTINGS_CLOUD_NAV_ITEMS.findIndex((item) => item.title === "Branch");
 const HELP_SETTINGS_CLOUD_AUTO_PUSH_POLICY_NAV_INDEX =
-  HELP_SETTINGS_CLOUD_NAV_ITEMS.findIndex((item) => item.title === "Auto Push Policy");
+  HELP_SETTINGS_CLOUD_NAV_ITEMS.findIndex(
+    (item) => item.title === "Auto Push Policy",
+  );
 const HELP_SETTINGS_CLOUD_DEVICE_ID_NAV_INDEX =
   HELP_SETTINGS_CLOUD_NAV_ITEMS.findIndex((item) => item.title === "Device ID");
 const HELP_SETTINGS_CLOUD_PATH_PREFIX_NAV_INDEX =
-  HELP_SETTINGS_CLOUD_NAV_ITEMS.findIndex((item) => item.title === "Path Prefix");
+  HELP_SETTINGS_CLOUD_NAV_ITEMS.findIndex(
+    (item) => item.title === "Path Prefix",
+  );
 const HELP_SETTINGS_CLOUD_OPEN_OPERATIONS_NAV_INDEX =
-  HELP_SETTINGS_CLOUD_NAV_ITEMS.findIndex((item) => item.title === "Open Cloud Operations");
+  HELP_SETTINGS_CLOUD_NAV_ITEMS.findIndex(
+    (item) => item.title === "Open Cloud Operations",
+  );
 const HELP_THEME_NAV_THEME_MODE_INDEX = HELP_THEME_NAV_ITEMS.findIndex(
-  (item) => item.title === "Current Theme"
+  (item) => item.title === "Current Theme",
 );
 const HELP_KEYMAP_ALIAS_RESET_NAV_INDEX = HELP_KEYMAP_ALIAS_NAV_ITEMS.findIndex(
-  (item) => item.title === "Reset all aliases"
+  (item) => item.title === "Reset all aliases",
 );
 
 function createDefaultHelpExpandedState(): boolean[] {
@@ -1138,7 +1231,7 @@ function clampToBounds(value: number, min: number, max: number): number {
 
 function normalizeHelpReturnContext(
   mode: Mode,
-  focus: FocusTarget
+  focus: FocusTarget,
 ): { mode: Mode; focus: FocusTarget } {
   const normalizedMode =
     mode === Mode.HELP || mode === Mode.BACKUP_CENTER ? Mode.LIST : mode;
@@ -1201,7 +1294,7 @@ function buildHelpRows(expandedBySection: boolean[]): {
             kind: "item_description",
             sectionIndex,
             itemIndex,
-            descriptionLineIndex
+            descriptionLineIndex,
           });
         });
       });
@@ -1213,7 +1306,7 @@ function buildHelpRows(expandedBySection: boolean[]): {
       title: section.title,
       startRow,
       headerRow,
-      endRow: Math.max(startRow, rows.length - 1)
+      endRow: Math.max(startRow, rows.length - 1),
     });
   });
 
@@ -1222,7 +1315,7 @@ function buildHelpRows(expandedBySection: boolean[]): {
 
 function findHelpSectionIndexForViewportTop(
   sections: HelpSectionLayout[],
-  viewportTopRow: number
+  viewportTopRow: number,
 ): number {
   if (sections.length === 0) return 0;
   for (const section of sections) {
@@ -1243,11 +1336,15 @@ function ensureHelpSectionVisible(params: {
   const { section, scrollOffset, visibleRows, itemCount, paddingRows } = params;
   if (!section || itemCount <= 0) return 0;
   const safeVisibleRows = Math.max(1, visibleRows);
-  const clampedOffset = clampScrollOffset(scrollOffset, safeVisibleRows, itemCount);
+  const clampedOffset = clampScrollOffset(
+    scrollOffset,
+    safeVisibleRows,
+    itemCount,
+  );
   const maxVisibleRow = clampedOffset + safeVisibleRows - 1;
   const safePadding = Math.max(
     0,
-    Math.min(paddingRows, Math.floor((safeVisibleRows - 1) / 2))
+    Math.min(paddingRows, Math.floor((safeVisibleRows - 1) / 2)),
   );
   const paddedTop = clampedOffset + safePadding;
   const paddedBottom = maxVisibleRow - safePadding;
@@ -1265,13 +1362,22 @@ function ensureHelpSectionVisible(params: {
   return clampScrollOffset(nextOffset, safeVisibleRows, itemCount);
 }
 
-function getHelpNavLineCount(statusRowCount: number, navItemCount: number): number {
+function getHelpNavLineCount(
+  statusRowCount: number,
+  navItemCount: number,
+): number {
   const clampedCount = Math.max(0, navItemCount);
   return Math.max(0, statusRowCount) + clampedCount * HELP_NAV_ITEM_ROW_COUNT;
 }
 
-function getHelpNavSelectionAnchorRow(statusRowCount: number, selectionIndex: number): number {
-  return Math.max(0, statusRowCount) + Math.max(0, selectionIndex) * HELP_NAV_ITEM_ROW_COUNT;
+function getHelpNavSelectionAnchorRow(
+  statusRowCount: number,
+  selectionIndex: number,
+): number {
+  return (
+    Math.max(0, statusRowCount) +
+    Math.max(0, selectionIndex) * HELP_NAV_ITEM_ROW_COUNT
+  );
 }
 
 function computeHelpScrollbarThumb(params: {
@@ -1285,13 +1391,19 @@ function computeHelpScrollbarThumb(params: {
   const maxOffset = Math.max(1, itemCount - safeVisibleRows);
   const thumbSize = Math.max(
     1,
-    Math.min(safeVisibleRows, Math.round((safeVisibleRows / itemCount) * safeVisibleRows))
+    Math.min(
+      safeVisibleRows,
+      Math.round((safeVisibleRows / itemCount) * safeVisibleRows),
+    ),
   );
   const maxThumbTop = Math.max(0, safeVisibleRows - thumbSize);
-  const thumbTop = Math.round((clampScrollOffset(scrollOffset, safeVisibleRows, itemCount) / maxOffset) * maxThumbTop);
+  const thumbTop = Math.round(
+    (clampScrollOffset(scrollOffset, safeVisibleRows, itemCount) / maxOffset) *
+      maxThumbTop,
+  );
   return {
     startRow: thumbTop,
-    endRow: thumbTop + thumbSize - 1
+    endRow: thumbTop + thumbSize - 1,
   };
 }
 
@@ -1300,7 +1412,7 @@ function cloneThemeTokens(tokens: ThemeTokens): ThemeTokens {
 }
 
 function cloneThemeObjectOverrides(
-  objects: Partial<Record<ThemeObjectId, Partial<ThemeTokens>>> | undefined
+  objects: Partial<Record<ThemeObjectId, Partial<ThemeTokens>>> | undefined,
 ): Partial<Record<ThemeObjectId, Partial<ThemeTokens>>> {
   if (!objects) return {};
   const next: Partial<Record<ThemeObjectId, Partial<ThemeTokens>>> = {};
@@ -1312,7 +1424,9 @@ function cloneThemeObjectOverrides(
   return next;
 }
 
-function resolveCustom1Config(customThemes: CustomThemes | undefined): CustomThemeConfig {
+function resolveCustom1Config(
+  customThemes: CustomThemes | undefined,
+): CustomThemeConfig {
   const fallback = getDefaultSettings().customThemes?.custom1?.global;
   if (!fallback) {
     throw new Error("Default custom1 theme is unavailable.");
@@ -1320,19 +1434,19 @@ function resolveCustom1Config(customThemes: CustomThemes | undefined): CustomThe
   const global = customThemes?.custom1?.global ?? fallback;
   return {
     global: cloneThemeTokens(global),
-    objects: cloneThemeObjectOverrides(customThemes?.custom1?.objects)
+    objects: cloneThemeObjectOverrides(customThemes?.custom1?.objects),
   };
 }
 
 function cloneThemeTextTokenOverrides(
-  overrides: ThemeTextTokenOverrides | undefined
+  overrides: ThemeTextTokenOverrides | undefined,
 ): ThemeTextTokenOverrides {
   if (!overrides) return {};
   return { ...overrides };
 }
 
 function cloneThemeTextObjectOverrides(
-  objects: Partial<Record<ThemeObjectId, ThemeTextTokenOverrides>> | undefined
+  objects: Partial<Record<ThemeObjectId, ThemeTextTokenOverrides>> | undefined,
 ): Partial<Record<ThemeObjectId, ThemeTextTokenOverrides>> {
   if (!objects) return {};
   const next: Partial<Record<ThemeObjectId, ThemeTextTokenOverrides>> = {};
@@ -1345,7 +1459,7 @@ function cloneThemeTextObjectOverrides(
 }
 
 function sanitizeThemeTextTokenOverrides(
-  overrides: ThemeTextTokenOverrides
+  overrides: ThemeTextTokenOverrides,
 ): ThemeTextTokenOverrides | undefined {
   const next: ThemeTextTokenOverrides = {};
   if (overrides.text) next.text = overrides.text;
@@ -1355,7 +1469,7 @@ function sanitizeThemeTextTokenOverrides(
 }
 
 function sanitizeThemeTextObjectOverrides(
-  objects: Partial<Record<ThemeObjectId, ThemeTextTokenOverrides>>
+  objects: Partial<Record<ThemeObjectId, ThemeTextTokenOverrides>>,
 ): Partial<Record<ThemeObjectId, ThemeTextTokenOverrides>> | undefined {
   const next: Partial<Record<ThemeObjectId, ThemeTextTokenOverrides>> = {};
   for (const [objectId, overrides] of Object.entries(objects) as Array<
@@ -1371,14 +1485,14 @@ function sanitizeThemeTextObjectOverrides(
 
 function resolveBuiltInThemeTextConfig(
   customThemes: CustomThemes | undefined,
-  themeId: RotatingThemeId
+  themeId: RotatingThemeId,
 ): BuiltInThemeTextOverrideConfig {
   const source = customThemes?.textByTheme?.[themeId];
   const global = cloneThemeTextTokenOverrides(source?.global);
   const objects = cloneThemeTextObjectOverrides(source?.objects);
   return {
     global,
-    objects
+    objects,
   };
 }
 
@@ -1401,13 +1515,13 @@ const WORKFLOW_STAGE_ORDER: Array<NonNullable<Task["workflowStage"]>> = [
   "in_progress",
   "blocked",
   "review",
-  "done"
+  "done",
 ];
 
 function computeTopSliceCounts(
   tasks: Task[],
   selector: (task: Task) => string | undefined,
-  limit: number
+  limit: number,
 ): DashboardSliceCount[] {
   if (limit <= 0) return [];
   const counts = new Map<string, number>();
@@ -1433,9 +1547,11 @@ function computeWorkflowStageSliceCounts(tasks: Task[]): DashboardSliceCount[] {
     counts.set(stage, (counts.get(stage) ?? 0) + 1);
   }
 
-  return WORKFLOW_STAGE_ORDER.filter((stage) => (counts.get(stage) ?? 0) > 0).map((stage) => ({
+  return WORKFLOW_STAGE_ORDER.filter(
+    (stage) => (counts.get(stage) ?? 0) > 0,
+  ).map((stage) => ({
     value: stage,
-    count: counts.get(stage) ?? 0
+    count: counts.get(stage) ?? 0,
   }));
 }
 
@@ -1504,7 +1620,11 @@ function normalizeErrorDetail(error: unknown): string {
   return detail.replace(/\s+/g, " ").trim();
 }
 
-function replaceLastTagToken(tagsText: string, tag: string, appendSpace = false): string {
+function replaceLastTagToken(
+  tagsText: string,
+  tag: string,
+  appendSpace = false,
+): string {
   const tokens = tagsText.split(/[\s,]+/).filter(Boolean);
   if (tokens.length === 0) {
     return `${formatTagForDisplay(tag)}${appendSpace ? " " : ""}`;
@@ -1549,7 +1669,7 @@ const DASHBOARD_FOCUS_GROUP_ORDER: DashboardFocusGroup[] = [
   "priority",
   "assignee",
   "project",
-  "workflow_stage"
+  "workflow_stage",
 ];
 
 function summarizeViewFilters(filters: SavedView["filters"]): string {
@@ -1569,8 +1689,115 @@ function summarizeViewFilters(filters: SavedView["filters"]): string {
       : "";
   const assigneeLabel = filters.assignee ? ` assignee=${filters.assignee}` : "";
   const projectLabel = filters.project ? ` project=${filters.project}` : "";
-  const stageLabel = filters.workflowStage ? ` stage=${filters.workflowStage}` : "";
-  return `status=${filters.status} due=${filters.due}${dueOffsetLabel}${analyticsLabel}${priorityLabel}${tagLabel}${assigneeLabel}${projectLabel}${stageLabel}${searchLabel}`;
+  const stageLabel = filters.workflowStage
+    ? ` stage=${filters.workflowStage}`
+    : "";
+  return [
+    `status=${filters.status}`,
+    ` due=${filters.due}`,
+    dueOffsetLabel,
+    analyticsLabel,
+    priorityLabel,
+    tagLabel,
+    assigneeLabel,
+    projectLabel,
+    stageLabel,
+    searchLabel,
+  ].join("");
+}
+
+function buildHelpSettingsFooterHints(hasOverflow: boolean): string {
+  const segments = [...HELP_SETTINGS_FOOTER_HINT_SEGMENTS];
+  if (hasOverflow) {
+    segments.push("Scroll");
+  }
+  return segments.join(" | ");
+}
+
+function buildLastSaveText(
+  lastSavedAt: number | null | undefined,
+  formatTimestamp: (epochMs: number) => string,
+): string {
+  return lastSavedAt
+    ? ` | Last successful save: ${formatTimestamp(lastSavedAt)}`
+    : "";
+}
+
+function buildSaveConflictBanner(params: {
+  expected: string;
+  actual: string;
+  filePath: string;
+  lastSaveText: string;
+}): string {
+  return [
+    `Save blocked by concurrent update (expected revision ${params.expected}, found ${params.actual}).`,
+    "Press R or click to reload and retry.",
+    `Path: ${params.filePath}${params.lastSaveText}`,
+  ].join(" | ");
+}
+
+function buildSaveFailureBanner(params: {
+  prefix: "Save failed" | "Save retry failed";
+  detail: string;
+  filePath: string;
+  lastSaveText: string;
+}): string {
+  return [
+    `${params.prefix}: ${params.detail}`,
+    `Path: ${params.filePath}${params.lastSaveText}`,
+  ].join(" | ");
+}
+
+function buildPerfLogMessage(params: {
+  durationMs: number;
+  terminalWidth: number;
+  terminalHeight: number;
+  visibleRows: number;
+  visibleTaskRows: number;
+}): string {
+  return [
+    `[${APP_NAME}][perf] render=${params.durationMs}ms`,
+    `terminal=${params.terminalWidth}x${params.terminalHeight}`,
+    `visibleRows=${params.visibleRows}`,
+    `visibleTaskRows=${params.visibleTaskRows}`,
+  ].join(" ");
+}
+
+function buildTagLifecycleDeltaLine(
+  delta: TagOperationPreview["deltas"][number],
+): string {
+  return [
+    `${formatTagForReadOnlyDisplay(delta.from)} -> ${formatTagForReadOnlyDisplay(delta.to)}:`,
+    `${String(delta.beforeCount)} -> ${String(delta.afterCount)}`,
+  ].join(" ");
+}
+
+function buildUnifiedSearchResultsSummary(params: {
+  resultCount: number;
+  taskCount: number;
+  noteCount: number;
+}): string {
+  return `Results: ${String(params.resultCount)} (${String(params.taskCount)} tasks, ${String(params.noteCount)} notes)`;
+}
+
+function buildSelectedTaskNoteSummary(
+  notePath: string | null | undefined,
+): string {
+  return `Selected task note: ${notePath ?? "(none)"} · Ctrl+N capture targets this task`;
+}
+
+function buildTextTuningThemePath(
+  themeId: ThemeId,
+  editTextColors = false,
+): string {
+  const segments = [
+    "Help / Settings / Theme / Text Tuning",
+    formatThemeIdLabel(themeId),
+  ];
+  if (editTextColors) {
+    segments.push("Edit Text Colors");
+  }
+  return segments.join(" / ");
 }
 
 function comparePriorityDigits(left: string, right: string): number {
@@ -1615,7 +1842,7 @@ function getSortedOpenTaskPriorities(tasks: Task[]): string[] {
 
 function cycleTaskLinkFormField(
   current: UITaskLinkFormField,
-  direction: 1 | -1
+  direction: 1 | -1,
 ): UITaskLinkFormField {
   const index = TASK_LINK_FORM_FIELD_ORDER.indexOf(current);
   const safeIndex = index === -1 ? 0 : index;
@@ -1627,7 +1854,7 @@ function cycleTaskLinkFormField(
 
 function cycleTaskLinkFormKind(
   current: UITaskLinkModalKind,
-  direction: 1 | -1
+  direction: 1 | -1,
 ): UITaskLinkModalKind {
   const index = TASK_LINK_FORM_KIND_ORDER.indexOf(current);
   const safeIndex = index === -1 ? 0 : index;
@@ -1649,9 +1876,9 @@ function stableSerialize(value: unknown): string {
       return input.map((item) => normalize(item));
     }
     if (input && typeof input === "object") {
-      const sortedEntries = Object.entries(input as Record<string, unknown>).sort(([a], [b]) =>
-        a.localeCompare(b)
-      );
+      const sortedEntries = Object.entries(
+        input as Record<string, unknown>,
+      ).sort(([a], [b]) => a.localeCompare(b));
       const next: Record<string, unknown> = {};
       for (const [key, entryValue] of sortedEntries) {
         next[key] = normalize(entryValue);
@@ -1671,7 +1898,9 @@ function cloneKeymapAliasConfig(config: KeymapAliasConfig): KeymapAliasConfig {
   return next;
 }
 
-function cloneKeymapAliases(aliases: KeymapAliases | undefined): KeymapAliases | undefined {
+function cloneKeymapAliases(
+  aliases: KeymapAliases | undefined,
+): KeymapAliases | undefined {
   if (!aliases) return undefined;
   const next: KeymapAliases = {};
   for (const context of KEYMAP_ALIAS_PRESET_CONTEXT_ORDER) {
@@ -1684,7 +1913,7 @@ function cloneKeymapAliases(aliases: KeymapAliases | undefined): KeymapAliases |
 
 function areKeymapAliasConfigsEqual(
   left: KeymapAliasConfig | undefined,
-  right: KeymapAliasConfig
+  right: KeymapAliasConfig,
 ): boolean {
   const leftKeys = Object.keys(left ?? {}).sort();
   const rightKeys = Object.keys(right).sort();
@@ -1704,11 +1933,14 @@ function areKeymapAliasConfigsEqual(
 
 function resolveKeymapAliasPresetState(
   context: KeymapAliasPresetContext,
-  aliases: KeymapAliases | undefined
+  aliases: KeymapAliases | undefined,
 ): KeymapAliasPresetState {
   const config = aliases?.[context];
   if (!config) return "off";
-  return areKeymapAliasConfigsEqual(config, KEYMAP_ALIAS_PRESETS_BY_CONTEXT[context])
+  return areKeymapAliasConfigsEqual(
+    config,
+    KEYMAP_ALIAS_PRESETS_BY_CONTEXT[context],
+  )
     ? "preset"
     : "custom";
 }
@@ -1719,7 +1951,9 @@ function formatKeymapAliasPresetState(state: KeymapAliasPresetState): string {
   return "off";
 }
 
-function describeUnsavedSource(source: UIUnsavedChangesModal["source"]): string {
+function describeUnsavedSource(
+  source: UIUnsavedChangesModal["source"],
+): string {
   switch (source) {
     case "task_editor":
       return "Task editor changes are unsaved.";
@@ -1790,7 +2024,7 @@ function initState(data?: LoadedData): AppState {
     savedViews: data?.savedViews ?? [],
     engagement: data?.engagement ?? initialState.engagement,
     engagementToastQueue: [],
-    engagementToastActive: null
+    engagementToastActive: null,
   };
 }
 
@@ -1813,7 +2047,7 @@ export function App({
   initialGithubBackup = DEFAULT_GITHUB_BACKUP,
   initialNotesSettings = DEFAULT_NOTES_SETTINGS,
   settingsPath,
-  showLogo = true
+  showLogo = true,
 }: AppProps) {
   const renderer = useRenderer();
   const [state, dispatch] = useReducer(reducer, initialData, initState);
@@ -1829,48 +2063,59 @@ export function App({
     retroFxMode: initialRetroFxMode,
     notifications: {
       ...DEFAULT_NOTIFICATION_SETTINGS,
-      ...initialNotificationSettings
+      ...initialNotificationSettings,
     },
     security: initialSecuritySettings,
     customThemes: initialCustomThemes,
     keymapAliases: DEFAULT_KEYMAP_ALIASES,
     githubBackup: initialGithubBackup,
-    notes: initialNotesSettings
+    notes: initialNotesSettings,
   });
   const [uiState, uiDispatch] = useReducer(uiReducer, initialUIState);
   const [backupState, backupDispatch] = useReducer(
     backupCenterReducer,
-    initialBackupCenterState
+    initialBackupCenterState,
   );
   const [backupBodyScrollRequest, setBackupBodyScrollRequest] =
     useState<BackupBodyScrollRequest>({
       token: 0,
-      delta: 0
+      delta: 0,
     });
-  const calendarImportPathInputRef = useRef(backupState.calendarImportPathInput);
+  const calendarImportPathInputRef = useRef(
+    backupState.calendarImportPathInput,
+  );
   calendarImportPathInputRef.current = backupState.calendarImportPathInput;
   const calendarImportRangeRef = useRef(backupState.calendarImportRange);
   calendarImportRangeRef.current = backupState.calendarImportRange;
   const calendarImportModeRef = useRef(backupState.calendarImportMode);
   calendarImportModeRef.current = backupState.calendarImportMode;
-  const calendarImportConfirmInputRef = useRef(backupState.calendarImportConfirmInput);
-  calendarImportConfirmInputRef.current = backupState.calendarImportConfirmInput;
+  const calendarImportConfirmInputRef = useRef(
+    backupState.calendarImportConfirmInput,
+  );
+  calendarImportConfirmInputRef.current =
+    backupState.calendarImportConfirmInput;
   const githubSnapshotRefsRef = useRef<SnapshotRef[]>([]);
   const [crtFxTick, setCrtFxTick] = useState(0);
   const [retroFxTick, setRetroFxTick] = useState(0);
   const [pulseOn, setPulseOn] = useState(false);
   const [fastPulseOn, setFastPulseOn] = useState(false);
-  const [bottomInfoView, setBottomInfoView] = useState<BottomInfoView>("summary");
+  const [bottomInfoView, setBottomInfoView] =
+    useState<BottomInfoView>("summary");
   const [rotatingThemeIndex, setRotatingThemeIndex] = useState(0);
-  const [timeSuggestion, setTimeSuggestion] = useState<SuggestedTime | null>(null);
-  const [saveFailureBanner, setSaveFailureBanner] = useState<string | null>(null);
+  const [timeSuggestion, setTimeSuggestion] = useState<SuggestedTime | null>(
+    null,
+  );
+  const [saveFailureBanner, setSaveFailureBanner] = useState<string | null>(
+    null,
+  );
   const [saveConflictBannerState, setSaveConflictBannerState] =
     useState<SaveConflictBannerState | null>(null);
-  const [saveConflictRetryPending, setSaveConflictRetryPending] = useState(false);
+  const [saveConflictRetryPending, setSaveConflictRetryPending] =
+    useState(false);
   const [navigationBanner, setNavigationBanner] = useState<string | null>(null);
-  const [startupBannerMessage, setStartupBannerMessage] = useState<string | null>(
-    startupBanner ?? null
-  );
+  const [startupBannerMessage, setStartupBannerMessage] = useState<
+    string | null
+  >(startupBanner ?? null);
   const [pendingGPrefix, setPendingGPrefix] = useState(false);
   const [viewsOverlayOpen, setViewsOverlayOpen] = useState(false);
   const [selectedViewIndex, setSelectedViewIndex] = useState(0);
@@ -1880,28 +2125,42 @@ export function App({
   const [commandText, setCommandText] = useState("");
   const commandTextRef = useRef("");
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
-  const [commandHistoryIndex, setCommandHistoryIndex] = useState<number | null>(null);
-  const [commandOutput, setCommandOutput] = useState<CommandOutput | null>(null);
-  const pendingTagLifecyclePreviewRef = useRef<TagOperationPreview | null>(null);
+  const [commandHistoryIndex, setCommandHistoryIndex] = useState<number | null>(
+    null,
+  );
+  const [commandOutput, setCommandOutput] = useState<CommandOutput | null>(
+    null,
+  );
+  const pendingTagLifecyclePreviewRef = useRef<TagOperationPreview | null>(
+    null,
+  );
   const [dashboardTagSelection, setDashboardTagSelection] = useState(0);
-  const [dashboardDueBucketSelection, setDashboardDueBucketSelection] = useState(0);
-  const [dashboardPrioritySelection, setDashboardPrioritySelection] = useState(0);
-  const [dashboardAssigneeSelection, setDashboardAssigneeSelection] = useState(0);
+  const [dashboardDueBucketSelection, setDashboardDueBucketSelection] =
+    useState(0);
+  const [dashboardPrioritySelection, setDashboardPrioritySelection] =
+    useState(0);
+  const [dashboardAssigneeSelection, setDashboardAssigneeSelection] =
+    useState(0);
   const [dashboardProjectSelection, setDashboardProjectSelection] = useState(0);
-  const [dashboardWorkflowStageSelection, setDashboardWorkflowStageSelection] = useState(0);
+  const [dashboardWorkflowStageSelection, setDashboardWorkflowStageSelection] =
+    useState(0);
   const [dashboardFocusGroup, setDashboardFocusGroup] =
     useState<DashboardFocusGroup>("top_tags");
-  const [selectedLinkId, setSelectedLinkId] = useState<string | undefined>(undefined);
+  const [selectedLinkId, setSelectedLinkId] = useState<string | undefined>(
+    undefined,
+  );
   const [selectedChecklistItemId, setSelectedChecklistItemId] = useState<
     string | undefined
   >(undefined);
-  const [selectedEditorChecklistItemId, setSelectedEditorChecklistItemId] = useState<
-    string | undefined
-  >(undefined);
+  const [selectedEditorChecklistItemId, setSelectedEditorChecklistItemId] =
+    useState<string | undefined>(undefined);
   const [checklistScrollOffset, setChecklistScrollOffset] = useState(0);
-  const [detailsNotesSelectionIndex, setDetailsNotesSelectionIndex] = useState(0);
-  const [detailsNotesLinkPickerOpen, setDetailsNotesLinkPickerOpen] = useState(false);
-  const [detailsNotesLinkPickerIndex, setDetailsNotesLinkPickerIndex] = useState(0);
+  const [detailsNotesSelectionIndex, setDetailsNotesSelectionIndex] =
+    useState(0);
+  const [detailsNotesLinkPickerOpen, setDetailsNotesLinkPickerOpen] =
+    useState(false);
+  const [detailsNotesLinkPickerIndex, setDetailsNotesLinkPickerIndex] =
+    useState(0);
   const [detailsNotesUnlinkArmed, setDetailsNotesUnlinkArmed] = useState(false);
   const [detailsNotesPreviewOffset, setDetailsNotesPreviewOffset] = useState(0);
   const [searchScope, setSearchScope] = useState<UnifiedSearchScope>("all");
@@ -1909,109 +2168,132 @@ export function App({
   const [searchSelectedResultIndex, setSearchSelectedResultIndex] = useState(0);
   const searchQueryRef = useRef("");
   const [bulkMarkedTaskIds, setBulkMarkedTaskIds] = useState<string[]>([]);
-  const [tagFilterDraft, setTagFilterDraft] = useState<TagFilter | undefined>(undefined);
+  const [tagFilterDraft, setTagFilterDraft] = useState<TagFilter | undefined>(
+    undefined,
+  );
   const [tagFilterInput, setTagFilterInput] = useState("");
   const tagFilterInputRef = useRef("");
   const [activeTagFilterBucket, setActiveTagFilterBucket] =
     useState<TagFilterBucket>("all");
-  const notesServiceRef = useRef<ReturnType<typeof createNotesService> | null>(null);
-  const [notesRuntime, setNotesRuntime] = useState<NotesRuntimeState>({
-    ready: false,
-    enabled: initialNotesSettings.enabled,
-    notesRoot: resolveNotesRootPath(getDataFilePath(), initialNotesSettings.rootPath)
+  const {
+    notesServiceRef,
+    notesRuntime,
+    setNotesRuntime,
+    notesList,
+    setNotesList,
+    filteredNotes,
+    clampedNotesSelectedIndex,
+    selectedNotesListItem,
+    activeNoteTitle,
+    selectedNoteTags,
+    notesSelectedIndex,
+    setNotesSelectedIndex,
+    notesSearchQuery,
+    setNotesSearchQuery,
+    notesTagFilterQuery,
+    setNotesTagFilterQuery,
+    notesOpenPath,
+    setNotesOpenPath,
+    notesViewReturnToCapturedContext,
+    setNotesViewReturnToCapturedContext,
+    notesViewContent,
+    setNotesViewContent,
+    notesViewLines,
+    setNotesViewLines,
+    notesOutgoingRefs,
+    setNotesOutgoingRefs,
+    notesWarnings,
+    setNotesWarnings,
+    notesBacklinks,
+    setNotesBacklinks,
+    notesUnlinkedMentions,
+    setNotesUnlinkedMentions,
+    notesLinkedTasks,
+    setNotesLinkedTasks,
+    notesSelectedLinkIndex,
+    setNotesSelectedLinkIndex,
+    notesEditValue,
+    setNotesEditValue,
+    notesEditFrontmatterTags,
+    setNotesEditFrontmatterTags,
+    notesEditFrontmatterTagsRef,
+    notesEditTagDraft,
+    notesEditEffectiveTags,
+    notesEditDirty,
+    setNotesEditDirty,
+    notesEditEscGuardArmed,
+    setNotesEditEscGuardArmed,
+    notesEditActiveField,
+    setNotesEditActiveField,
+    notesEditTextareaRef,
+    notesRootSettingsOpen,
+    setNotesRootSettingsOpen,
+    notesRootInput,
+    setNotesRootInput,
+    notesRootApplying,
+    setNotesRootApplying,
+    notesCreatePromptOpen,
+    setNotesCreatePromptOpen,
+    notesCreateTitle,
+    setNotesCreateTitle,
+    notesCreateApplying,
+    setNotesCreateApplying,
+    notesRenamePromptOpen,
+    setNotesRenamePromptOpen,
+    notesRenameTitle,
+    setNotesRenameTitle,
+    notesRenameApplying,
+    setNotesRenameApplying,
+    notesDeletePromptOpen,
+    setNotesDeletePromptOpen,
+    notesDeleteApplying,
+    setNotesDeleteApplying,
+    notesInlinePromptOpen,
+    clampNotesSelectionToAvailable,
+    syncNotesSelectionToPath,
+    resolveNotesService,
+    applyNotesEditFrontmatterTags,
+    hydrateOpenNote,
+    openNotesMode,
+    openNotesSearchMode,
+    closeNotesSearchMode,
+    openNotesTagFilterMode,
+    closeNotesTagFilterMode,
+    moveNotesSelection,
+    openSelectedNoteFromList,
+    openNotesCreatePrompt,
+    closeNotesCreatePrompt,
+    confirmNotesCreatePrompt,
+    openNotesRenamePrompt,
+    closeNotesRenamePrompt,
+    confirmNotesRenamePrompt,
+    openNotesDeletePrompt,
+    closeNotesDeletePrompt,
+    confirmNotesDeletePrompt,
+    openCurrentNoteForEdit,
+    saveCurrentNoteEdit,
+    cancelCurrentNoteEdit,
+    backToNotesList,
+    exitNotesToTaskList,
+    moveNotesLinkSelection,
+    followSelectedNoteLink,
+    reindexNotes,
+    openNotesRootSettings,
+    closeNotesRootSettings,
+    confirmNotesRootSettings,
+  } = useNotesRuntime({
+    uiState,
+    uiDispatch,
+    settingsState,
+    settingsDispatch,
+    openListMode,
+    clearPendingGPrefix,
+    closeViewsOverlay,
+    showShortNavigationBanner,
+    showShortNavigationBannerIfIdle,
+    triggerFirstTomeCreated,
+    normalizeErrorDetail,
   });
-  const [notesList, setNotesList] = useState<
-    Array<{ path: NotePath; title: string; mtimeMs: number; tags: string[] }>
-  >([]);
-  const [notesSelectedIndex, setNotesSelectedIndex] = useState(0);
-  const [notesSearchQuery, setNotesSearchQuery] = useState("");
-  const [notesTagFilterQuery, setNotesTagFilterQuery] = useState("");
-  const [notesOpenPath, setNotesOpenPath] = useState<NotePath | null>(null);
-  const notesOpenPathRef = useRef<NotePath | null>(null);
-  const [notesViewReturnToCapturedContext, setNotesViewReturnToCapturedContext] =
-    useState(false);
-  const [notesViewContent, setNotesViewContent] = useState("");
-  const [notesViewLines, setNotesViewLines] = useState<string[]>([]);
-  const [notesOutgoingRefs, setNotesOutgoingRefs] = useState<NoteRef[]>([]);
-  const [notesWarnings, setNotesWarnings] = useState<NoteWarning[]>([]);
-  const [notesBacklinks, setNotesBacklinks] = useState<NotePath[]>([]);
-  const [notesUnlinkedMentions, setNotesUnlinkedMentions] = useState<NoteMention[]>([]);
-  const [notesLinkedTasks, setNotesLinkedTasks] = useState<string[]>([]);
-  const [notesSelectedLinkIndex, setNotesSelectedLinkIndex] = useState(0);
-  const [notesEditValue, setNotesEditValue] = useState("");
-  const [notesEditFrontmatterTags, setNotesEditFrontmatterTags] = useState("");
-  const notesEditFrontmatterTagsRef = useRef("");
-  const [notesEditDirty, setNotesEditDirty] = useState(false);
-  const [notesEditEscGuardArmed, setNotesEditEscGuardArmed] = useState(false);
-  const [notesEditActiveField, setNotesEditActiveField] = useState<"tags" | "body">("body");
-  const notesEditTextareaRef = useRef<{ plainText: string; setText?: (value: string) => void } | null>(
-    null
-  );
-  const [notesRootSettingsOpen, setNotesRootSettingsOpen] = useState(false);
-  const [notesRootInput, setNotesRootInput] = useState("");
-  const [notesRootApplying, setNotesRootApplying] = useState(false);
-  const [notesCreatePromptOpen, setNotesCreatePromptOpen] = useState(false);
-  const [notesCreateTitle, setNotesCreateTitle] = useState("");
-  const [notesCreateApplying, setNotesCreateApplying] = useState(false);
-  const [notesRenamePromptOpen, setNotesRenamePromptOpen] = useState(false);
-  const [notesRenameTitle, setNotesRenameTitle] = useState("");
-  const [notesRenameApplying, setNotesRenameApplying] = useState(false);
-  const [notesDeletePromptOpen, setNotesDeletePromptOpen] = useState(false);
-  const [notesDeleteApplying, setNotesDeleteApplying] = useState(false);
-  const notesDeleteTargetRef = useRef<{ path: NotePath; title: string } | null>(null);
-  const [helpExpandedBySection, setHelpExpandedBySection] = useState<boolean[]>(
-    createDefaultHelpExpandedState
-  );
-  const [helpFocusedSectionIndex, setHelpFocusedSectionIndex] = useState(0);
-  const [helpScrollOffset, setHelpScrollOffset] = useState(0);
-  const [helpNavScrollOffset, setHelpNavScrollOffset] = useState(0);
-  const [helpNavStack, setHelpNavStack] = useState<HelpPage[]>(["help"]);
-  const [helpNavSelection, setHelpNavSelection] = useState<HelpNavSelectionByPage>({
-    settings: 0,
-    settingsAppearance: 0,
-    settingsNavigation: 0,
-    settingsNotifications: 0,
-    settingsSecurity: 0,
-    settingsNotes: 0,
-    settingsCloud: 0,
-    keymapAliases: 0,
-    theme: 0,
-    custom1: 0,
-    textTuning: 0,
-    textTuningTheme: 0
-  });
-  const [helpSettingsInputField, setHelpSettingsInputField] =
-    useState<HelpSettingsInputField | null>(null);
-  const [helpSettingsInputValue, setHelpSettingsInputValue] = useState("");
-  const [helpSettingsInputApplying, setHelpSettingsInputApplying] = useState(false);
-  const [helpSettingsInputError, setHelpSettingsInputError] = useState<string | null>(null);
-  const [helpPreviewThemeMode, setHelpPreviewThemeMode] = useState<ThemeId | null>(null);
-  const [helpDraftLogoMode, setHelpDraftLogoMode] = useState<LogoMode | null>(null);
-  const [helpTextTuningThemeId, setHelpTextTuningThemeId] = useState<RotatingThemeId>(
-    HELP_TEXT_TUNING_THEMES[0] ?? "default"
-  );
-  const [reminderSchedulerTick, setReminderSchedulerTick] = useState(0);
-  const [outOfAppReminderHelperInstalled, setOutOfAppReminderHelperInstalled] = useState<
-    boolean | null
-  >(null);
-  const [outOfAppReminderNextEventLabel, setOutOfAppReminderNextEventLabel] =
-    useState<string>("none");
-  const reminderHelperCommands = React.useMemo(
-    () => getReminderInstallCommandsForPlatform({ platform: process.platform }),
-    []
-  );
-  const [custom1DraftGlobal, setCustom1DraftGlobal] = useState<ThemeTokens>(() =>
-    resolveCustom1Config(initialCustomThemes).global
-  );
-  const [custom1DraftObjects, setCustom1DraftObjects] = useState<
-    Partial<Record<ThemeObjectId, Partial<ThemeTokens>>>
-  >(() => resolveCustom1Config(initialCustomThemes).objects ?? {});
-  const [builtInTextDraftGlobal, setBuiltInTextDraftGlobal] = useState<ThemeTextTokenOverrides>(
-    {}
-  );
-  const [builtInTextDraftObjects, setBuiltInTextDraftObjects] = useState<
-    Partial<Record<ThemeObjectId, ThemeTextTokenOverrides>>
-  >({});
   const selectedRowIdRef = useRef<string | undefined>(state.selectedId);
   const lastSelectedTaskIdRef = useRef<string | undefined>(state.selectedId);
   const pendingNoteCaptureMergeRef = useRef<{
@@ -2030,148 +2312,131 @@ export function App({
       Number.isInteger(initialData.stateRevision) &&
       initialData.stateRevision >= 0
       ? initialData.stateRevision
-      : 0
+      : 0,
   );
   const gPrefixTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navBannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigationBannerRef = useRef<string | null>(navigationBanner);
-  const reminderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previousTaskCountRef = useRef(state.tasks.length);
   const pendingCelebrateTaskIdRef = useRef<string | undefined>(undefined);
   const helpScrollTopRef = useRef(0);
   const helpFocusedSectionRef = useRef(0);
-  const helpReturnContextRef = useRef({
-    mode: Mode.LIST,
-    focus: FocusTarget.TASK_LIST
-  });
-  const helpPreviewRestoreThemeRef = useRef<ThemeId | null>(null);
   const custom1EditorRef = useRef<Custom1ThemeEditorHandle | null>(null);
-  const builtInTextEditorRef = useRef<BuiltInThemeTextEditorHandle | null>(null);
-  const { height: terminalHeight, width: terminalWidth } = useTerminalDimensions();
-  const terminalIsSupported = isTerminalSizeSupported(terminalWidth, terminalHeight);
-  const terminalSizeWarning = getTerminalSizeWarning(terminalWidth, terminalHeight);
+  const builtInTextEditorRef = useRef<BuiltInThemeTextEditorHandle | null>(
+    null,
+  );
+  const {
+    helpExpandedBySection,
+    setHelpExpandedBySection,
+    helpFocusedSectionIndex,
+    setHelpFocusedSectionIndex,
+    helpScrollOffset,
+    setHelpScrollOffset,
+    helpNavScrollOffset,
+    setHelpNavScrollOffset,
+    helpNavStack,
+    setHelpNavStack,
+    helpNavSelection,
+    setHelpNavSelection,
+    helpSettingsInputField,
+    setHelpSettingsInputField,
+    helpSettingsInputValue,
+    setHelpSettingsInputValue,
+    helpSettingsInputApplying,
+    setHelpSettingsInputApplying,
+    helpSettingsInputError,
+    setHelpSettingsInputError,
+    helpPreviewThemeMode,
+    setHelpPreviewThemeMode,
+    helpDraftLogoMode,
+    setHelpDraftLogoMode,
+    helpTextTuningThemeId,
+    setHelpTextTuningThemeId,
+    custom1DraftGlobal,
+    setCustom1DraftGlobal,
+    custom1DraftObjects,
+    setCustom1DraftObjects,
+    builtInTextDraftGlobal,
+    setBuiltInTextDraftGlobal,
+    builtInTextDraftObjects,
+    setBuiltInTextDraftObjects,
+    activeHelpPage,
+    persistedCustom1,
+    persistedBuiltInTextConfig,
+    builtInTextBaseTokens,
+    custom1Draft,
+    builtInTextDraft,
+    helpCloudSettings,
+    helpSettingsInputTitle,
+    helpSettingsInputPlaceholder,
+    helpKeymapAliasPresetStates,
+    requestHelpThemeEditorUnsavedGuard,
+    openHelp,
+    pushHelpPage,
+    popHelpPage,
+    openCustom1Editor,
+    closeCustom1EditorCancel,
+    saveCustom1Editor,
+    openBuiltInTextEditor,
+    closeBuiltInTextEditorCancel,
+    saveBuiltInTextEditor,
+    cycleLogoModeSetting,
+    commitLogoModeSetting,
+    cancelLogoModeSetting,
+    openHelpSettingsInput,
+    closeHelpSettingsInput,
+    submitHelpSettingsInput,
+    restoreTomeGuidesFromHelpSettings,
+    clearAllKeymapAliases,
+    closeHelp,
+    setHelpNavSelectionForActivePage,
+    handleHelpNavForward,
+    handleHelpNavBack,
+    resolveNavLengthForPage,
+  } = useHelpSettingsRuntime({
+    uiState,
+    uiDispatch,
+    settingsState,
+    settingsDispatch,
+    clearPendingGPrefix,
+    closeViewsOverlay,
+    showShortNavigationBanner,
+    normalizeErrorDetail,
+    requestTaskEditorUnsavedGuard,
+    openUnsavedChangesModal,
+    openBackupCenter,
+    openGitHubCloudStatus,
+    resolveNotesService,
+    notesRuntime,
+    notesOpenPath,
+    hydrateOpenNote,
+    setNotesList,
+    setNotesRuntime,
+    clampNotesSelectionToAvailable,
+    getReminderHelperCommands: () => reminderHelperCommands,
+    createDefaultHelpExpandedState,
+    helpFocusedSectionRef,
+    helpScrollTopRef,
+    normalizeHelpReturnContext,
+  });
+  const { height: terminalHeight, width: terminalWidth } =
+    useTerminalDimensions();
+  const terminalIsSupported = isTerminalSizeSupported(
+    terminalWidth,
+    terminalHeight,
+  );
+  const terminalSizeWarning = getTerminalSizeWarning(
+    terminalWidth,
+    terminalHeight,
+  );
   const backupImportPickerVisibleRows = Math.max(
     4,
-    Math.min(BACKUP_IMPORT_PICKER_MAX_VISIBLE_ROWS, terminalHeight - 16)
+    Math.min(BACKUP_IMPORT_PICKER_MAX_VISIBLE_ROWS, terminalHeight - 16),
   );
-  const settingsRef = useRef(settingsState);
   const tasksRef = useRef(state.tasks);
-  const notificationManagerRef = useRef<NotificationManager | null>(null);
-  const modalBellNotifierRef = useRef<TerminalBellNotifier | null>(null);
-  const evaluateNotificationsRef = useRef<(nowMs: number) => void>(() => {});
-
-  settingsRef.current = settingsState;
   tasksRef.current = state.tasks;
   navigationBannerRef.current = navigationBanner;
   helpFocusedSectionRef.current = helpFocusedSectionIndex;
-
-  if (!notificationManagerRef.current) {
-    const inAppModalNotifier = new InAppModalNotifier({
-      enqueueEvent: (event: TaskOverdueEvent) => {
-        uiDispatch({ type: "enqueueNotificationModal", event });
-      },
-      isEnabled: () => isInAppOverdueEnabled(settingsRef.current.notifications)
-    });
-    modalBellNotifierRef.current = new TerminalBellNotifier({
-      isEnabled: () => isTerminalBellOverdueEnabled(settingsRef.current.notifications),
-      getCooldownMs: () => getTerminalBellCooldownMs(settingsRef.current.notifications)
-    });
-    const osNotifier = new OSNotifier();
-    notificationManagerRef.current = new NotificationManager([
-      inAppModalNotifier,
-      osNotifier
-    ]);
-  }
-
-  evaluateNotificationsRef.current = (nowMs: number) => {
-    notificationManagerRef.current?.evaluate(tasksRef.current, nowMs);
-  };
-
-  useEffect(() => {
-    const notesService = createNotesService({
-      dataFilePath: getDataFilePath(),
-      rootPath: settingsState.notes.rootPath,
-      enabled: settingsState.notes.enabled
-    });
-    notesServiceRef.current = notesService;
-    let cancelled = false;
-
-    void (async () => {
-      try {
-        await notesService.initialize();
-        await notesService.seedDefaultGuideDocsIfEmpty();
-        if (cancelled) return;
-        const status = notesService.getStatus();
-        setNotesRuntime({
-          ready: true,
-          enabled: status.enabled,
-          notesRoot: status.notesRoot
-        });
-        setNotesRootInput(status.notesRoot);
-        setNotesList(notesService.listNotes());
-      } catch (error: unknown) {
-        if (cancelled) return;
-        const detail = normalizeErrorDetail(error);
-        setNotesRuntime({
-          ready: true,
-          enabled: false,
-          notesRoot: resolveNotesRootPath(getDataFilePath(), settingsState.notes.rootPath),
-          error: detail
-        });
-        showShortNavigationBannerIfIdle(`TOME disabled: ${detail}`);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      notesService.stopAutoRefresh();
-      if (notesServiceRef.current === notesService) {
-        notesServiceRef.current = null;
-      }
-    };
-  }, [settingsState.notes.enabled, settingsState.notes.rootPath]);
-
-  useEffect(() => {
-    notesOpenPathRef.current = notesOpenPath;
-  }, [notesOpenPath]);
-
-  useEffect(() => {
-    if (!notesRuntime.ready || !notesRuntime.enabled) return;
-    const service = notesServiceRef.current;
-    if (!service) return;
-
-    let cancelled = false;
-    const hydrateFromService = async () => {
-      if (cancelled) return;
-      setNotesList(service.listNotes());
-      const openPath = notesOpenPathRef.current;
-      if (!openPath) return;
-
-      const current = await service.getNoteContent(openPath);
-      if (!current || cancelled) return;
-      setNotesViewContent(current.content);
-      setNotesViewLines(renderMarkdownToTerminalLines(current.content));
-      setNotesOutgoingRefs(service.getResolvedOutgoingRefs(openPath));
-      setNotesBacklinks(service.getBacklinks(openPath));
-      setNotesWarnings(service.getWarnings(openPath));
-      setNotesUnlinkedMentions(service.getUnlinkedMentions(openPath));
-      setNotesLinkedTasks(service.getLinkedTasksForNote(openPath));
-    };
-
-    void service
-      .startAutoRefresh({
-        pollingFallbackIntervalMs: NOTES_POLL_FALLBACK_INTERVAL_MS,
-        onRefreshed: hydrateFromService
-      })
-      .catch(() => {
-        // Best effort refresh runtime; errors surface through manual notes actions.
-      });
-
-    return () => {
-      cancelled = true;
-      service.stopAutoRefresh();
-    };
-  }, [notesRuntime.enabled, notesRuntime.ready, notesRuntime.notesRoot]);
 
   // Force a frame request on mode/size transitions so borders are repainted
   // after layout shape changes (list/details <-> dashboard).
@@ -2189,14 +2454,6 @@ export function App({
     selectedRowIdRef.current = state.selectedId;
   }, [state.selectedId]);
 
-  useEffect(() => {
-    const textarea = notesEditTextareaRef.current;
-    if (!textarea || typeof textarea.setText !== "function") return;
-    if (textarea.plainText !== notesEditValue) {
-      textarea.setText(notesEditValue);
-    }
-  }, [notesEditValue, uiState.mode]);
-
   const now = Date.now();
   const dayKey = startOfLocalDayMs(now);
   const analyticsWindow = state.filters.analyticsWindow ?? "7d";
@@ -2206,155 +2463,131 @@ export function App({
     state.filters,
     state.sortMode,
     now,
-    state.tagAliases
+    state.tagAliases,
   );
   const selectedTask =
-    visibleTaskRows.find((task) => task.id === state.selectedId) ?? visibleTaskRows[0];
+    visibleTaskRows.find((task) => task.id === state.selectedId) ??
+    visibleTaskRows[0];
   const bulkActive = bulkMarkedTaskIds.length > 0;
   const bulkMarkedTaskIdSet = React.useMemo(
     () => new Set(bulkMarkedTaskIds),
-    [bulkMarkedTaskIds]
+    [bulkMarkedTaskIds],
   );
-  const activeHelpPage = helpNavStack[helpNavStack.length - 1] ?? "help";
+  const {
+    reminderHelperCommands,
+    outOfAppReminderHelperInstalled,
+    outOfAppReminderNextEventLabel,
+  } = useReminderNotificationRuntime({
+    tasks: state.tasks,
+    settingsState,
+    uiState,
+    activeHelpPage,
+    dispatch,
+    uiDispatch,
+  });
   const resolvedKeymapAliases = React.useMemo(
     () => resolveKeymapAliases(settingsState.keymapAliases),
-    [settingsState.keymapAliases]
+    [settingsState.keymapAliases],
   );
   const whichKeyContext = resolveWhichKeyContext({
     mode: uiState.mode,
     focus: uiState.focus,
-    backupScreen: uiState.mode === Mode.BACKUP_CENTER ? backupState.screen : null
+    backupScreen:
+      uiState.mode === Mode.BACKUP_CENTER ? backupState.screen : null,
   });
   const whichKeyHintItems = React.useMemo(
     () =>
       buildWhichKeyHintItems({
         context: whichKeyContext,
-        resolvedAliases: resolvedKeymapAliases
+        resolvedAliases: resolvedKeymapAliases,
       }),
-    [whichKeyContext, resolvedKeymapAliases]
+    [whichKeyContext, resolvedKeymapAliases],
   );
   const leftRailHintLines = React.useMemo(
     () =>
       buildLeftRailHintLines({
         context: whichKeyContext,
-        resolvedAliases: resolvedKeymapAliases
+        resolvedAliases: resolvedKeymapAliases,
       }),
-    [whichKeyContext, resolvedKeymapAliases]
+    [whichKeyContext, resolvedKeymapAliases],
   );
   const whichKeyPrefixPopup = React.useMemo(
     () =>
       buildWhichKeyPrefixPopup({
         pendingGPrefix,
-        resolvedAliases: resolvedKeymapAliases
+        resolvedAliases: resolvedKeymapAliases,
       }),
-    [pendingGPrefix, resolvedKeymapAliases]
+    [pendingGPrefix, resolvedKeymapAliases],
   );
-  const persistedCustom1 = React.useMemo(
-    () => resolveCustom1Config(settingsState.customThemes),
-    [settingsState.customThemes]
-  );
-  const persistedBuiltInTextConfig = React.useMemo(
-    () => resolveBuiltInThemeTextConfig(settingsState.customThemes, helpTextTuningThemeId),
-    [helpTextTuningThemeId, settingsState.customThemes]
-  );
-  const builtInTextBaseTokens = React.useMemo(
-    () => ({
-      text: THEMES[helpTextTuningThemeId].text,
-      mutedText: THEMES[helpTextTuningThemeId].mutedText,
-      selectionText: THEMES[helpTextTuningThemeId].selectionText
-    }),
-    [helpTextTuningThemeId]
-  );
-  const custom1Draft: CustomThemeConfig = React.useMemo(
-    () => ({
-      global: custom1DraftGlobal,
-      objects: Object.keys(custom1DraftObjects).length > 0 ? custom1DraftObjects : undefined
-    }),
-    [custom1DraftGlobal, custom1DraftObjects]
-  );
-  const builtInTextDraft: BuiltInThemeTextOverrides = React.useMemo(() => {
-    const global = sanitizeThemeTextTokenOverrides(builtInTextDraftGlobal);
-    const objects = sanitizeThemeTextObjectOverrides(builtInTextDraftObjects);
-    if (!global && !objects) {
-      return {};
-    }
-    const config: BuiltInThemeTextOverrideConfig = {};
-    if (global) {
-      config.global = global;
-    }
-    if (objects) {
-      config.objects = objects;
-    }
-    return {
-      [helpTextTuningThemeId]: config
-    };
-  }, [builtInTextDraftGlobal, builtInTextDraftObjects, helpTextTuningThemeId]);
   const clampedHelpFocusedSectionIndex = Math.max(
     0,
-    Math.min(helpFocusedSectionIndex, HELP_MENU_SECTIONS.length - 1)
+    Math.min(helpFocusedSectionIndex, HELP_MENU_SECTIONS.length - 1),
   );
   const { rows: helpRows, sections: helpSections } = React.useMemo(
     () => buildHelpRows(helpExpandedBySection),
-    [helpExpandedBySection]
+    [helpExpandedBySection],
   );
   const helpNavItems =
     activeHelpPage === "settings"
       ? HELP_SETTINGS_NAV_ITEMS
       : activeHelpPage === "settingsAppearance"
         ? HELP_SETTINGS_APPEARANCE_NAV_ITEMS
-      : activeHelpPage === "settingsNavigation"
-        ? HELP_SETTINGS_NAVIGATION_NAV_ITEMS
-      : activeHelpPage === "settingsNotifications"
-        ? HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS
-      : activeHelpPage === "settingsSecurity"
-        ? HELP_SETTINGS_SECURITY_NAV_ITEMS
-      : activeHelpPage === "settingsNotes"
-        ? HELP_SETTINGS_NOTES_NAV_ITEMS
-      : activeHelpPage === "settingsCloud"
-        ? HELP_SETTINGS_CLOUD_NAV_ITEMS
-      : activeHelpPage === "keymapAliases"
-        ? HELP_KEYMAP_ALIAS_NAV_ITEMS
-      : activeHelpPage === "theme"
-        ? HELP_THEME_NAV_ITEMS
-      : activeHelpPage === "custom1"
-        ? HELP_CUSTOM1_NAV_ITEMS
-      : activeHelpPage === "textTuning"
-        ? HELP_TEXT_TUNING_NAV_ITEMS
-        : activeHelpPage === "textTuningTheme"
-          ? HELP_TEXT_TUNING_THEME_NAV_ITEMS
-          : [];
+        : activeHelpPage === "settingsNavigation"
+          ? HELP_SETTINGS_NAVIGATION_NAV_ITEMS
+          : activeHelpPage === "settingsNotifications"
+            ? HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS
+            : activeHelpPage === "settingsSecurity"
+              ? HELP_SETTINGS_SECURITY_NAV_ITEMS
+              : activeHelpPage === "settingsNotes"
+                ? HELP_SETTINGS_NOTES_NAV_ITEMS
+                : activeHelpPage === "settingsCloud"
+                  ? HELP_SETTINGS_CLOUD_NAV_ITEMS
+                  : activeHelpPage === "keymapAliases"
+                    ? HELP_KEYMAP_ALIAS_NAV_ITEMS
+                    : activeHelpPage === "theme"
+                      ? HELP_THEME_NAV_ITEMS
+                      : activeHelpPage === "custom1"
+                        ? HELP_CUSTOM1_NAV_ITEMS
+                        : activeHelpPage === "textTuning"
+                          ? HELP_TEXT_TUNING_NAV_ITEMS
+                          : activeHelpPage === "textTuningTheme"
+                            ? HELP_TEXT_TUNING_THEME_NAV_ITEMS
+                            : [];
   const helpNavSelectionIndex =
     activeHelpPage === "settings"
       ? helpNavSelection.settings
       : activeHelpPage === "settingsAppearance"
         ? helpNavSelection.settingsAppearance
-      : activeHelpPage === "settingsNavigation"
-        ? helpNavSelection.settingsNavigation
-      : activeHelpPage === "settingsNotifications"
-        ? helpNavSelection.settingsNotifications
-      : activeHelpPage === "settingsSecurity"
-        ? helpNavSelection.settingsSecurity
-      : activeHelpPage === "settingsNotes"
-        ? helpNavSelection.settingsNotes
-      : activeHelpPage === "settingsCloud"
-        ? helpNavSelection.settingsCloud
-      : activeHelpPage === "keymapAliases"
-        ? helpNavSelection.keymapAliases
-      : activeHelpPage === "theme"
-        ? helpNavSelection.theme
-      : activeHelpPage === "custom1"
-        ? helpNavSelection.custom1
-        : activeHelpPage === "textTuning"
-          ? helpNavSelection.textTuning
-          : activeHelpPage === "textTuningTheme"
-            ? helpNavSelection.textTuningTheme
-          : 0;
+        : activeHelpPage === "settingsNavigation"
+          ? helpNavSelection.settingsNavigation
+          : activeHelpPage === "settingsNotifications"
+            ? helpNavSelection.settingsNotifications
+            : activeHelpPage === "settingsSecurity"
+              ? helpNavSelection.settingsSecurity
+              : activeHelpPage === "settingsNotes"
+                ? helpNavSelection.settingsNotes
+                : activeHelpPage === "settingsCloud"
+                  ? helpNavSelection.settingsCloud
+                  : activeHelpPage === "keymapAliases"
+                    ? helpNavSelection.keymapAliases
+                    : activeHelpPage === "theme"
+                      ? helpNavSelection.theme
+                      : activeHelpPage === "custom1"
+                        ? helpNavSelection.custom1
+                        : activeHelpPage === "textTuning"
+                          ? helpNavSelection.textTuning
+                          : activeHelpPage === "textTuningTheme"
+                            ? helpNavSelection.textTuningTheme
+                            : 0;
   const clampedHelpNavSelectionIndex =
     helpNavItems.length === 0
       ? 0
       : Math.max(0, Math.min(helpNavSelectionIndex, helpNavItems.length - 1));
   const helpNavStatusLineCount = 0;
-  const helpNavLineCount = getHelpNavLineCount(helpNavStatusLineCount, helpNavItems.length);
+  const helpNavLineCount = getHelpNavLineCount(
+    helpNavStatusLineCount,
+    helpNavItems.length,
+  );
   const helpBodyLineCount =
     activeHelpPage === "help"
       ? helpRows.length
@@ -2363,52 +2596,74 @@ export function App({
           activeHelpPage === "settingsInput"
         ? 22
         : Math.max(4, helpNavLineCount);
-  const helpPanelMaxWidth = Math.max(20, terminalWidth - HELP_PANEL_HORIZONTAL_MARGIN * 2);
+  const helpPanelMaxWidth = Math.max(
+    20,
+    terminalWidth - HELP_PANEL_HORIZONTAL_MARGIN * 2,
+  );
   const helpPanelWidthMin = Math.min(HELP_PANEL_MIN_WIDTH, helpPanelMaxWidth);
   const helpPanelWidthMax = Math.min(HELP_PANEL_MAX_WIDTH, helpPanelMaxWidth);
   const helpPanelWidth = clampToBounds(
     Math.floor(terminalWidth * 0.9),
     helpPanelWidthMin,
-    helpPanelWidthMax
+    helpPanelWidthMax,
   );
-  const helpPanelMaxHeight = Math.max(8, terminalHeight - HELP_PANEL_VERTICAL_MARGIN * 2);
+  const helpPanelMaxHeight = Math.max(
+    8,
+    terminalHeight - HELP_PANEL_VERTICAL_MARGIN * 2,
+  );
   const helpPanelDesiredHeight =
     helpBodyLineCount + HELP_PANEL_CHROME_ROWS + HELP_PANEL_BORDER_ROWS;
   const helpPanelHeight = clampToBounds(
     helpPanelDesiredHeight,
     Math.min(HELP_PANEL_MIN_HEIGHT, helpPanelMaxHeight),
-    helpPanelMaxHeight
+    helpPanelMaxHeight,
   );
-  const helpPanelInnerWidth = Math.max(1, helpPanelWidth - HELP_PANEL_BORDER_COLS);
-  const helpPanelInnerHeight = Math.max(1, helpPanelHeight - HELP_PANEL_BORDER_ROWS);
-  const helpContentVisibleRows = Math.max(1, helpPanelInnerHeight - HELP_PANEL_CHROME_ROWS);
+  const helpPanelInnerWidth = Math.max(
+    1,
+    helpPanelWidth - HELP_PANEL_BORDER_COLS,
+  );
+  const helpPanelInnerHeight = Math.max(
+    1,
+    helpPanelHeight - HELP_PANEL_BORDER_ROWS,
+  );
+  const helpContentVisibleRows = Math.max(
+    1,
+    helpPanelInnerHeight - HELP_PANEL_CHROME_ROWS,
+  );
   const helpHasOverflow = helpBodyLineCount > helpContentVisibleRows;
   const helpFooterWidth = Math.max(1, helpPanelInnerWidth - 2);
-  const helpCloseButtonLabel = pickHelpCloseButtonLabel(Math.max(0, helpFooterWidth - 1));
-  const helpCloseButtonWidth = helpCloseButtonLabel ? helpCloseButtonLabel.length + 2 : 0;
+  const helpCloseButtonLabel = pickHelpCloseButtonLabel(
+    Math.max(0, helpFooterWidth - 1),
+  );
+  const helpCloseButtonWidth = helpCloseButtonLabel
+    ? helpCloseButtonLabel.length + 2
+    : 0;
   const helpFooterHintLineWidth = Math.max(
     1,
-    helpFooterWidth - helpCloseButtonWidth - (helpCloseButtonWidth > 0 ? 1 : 0)
+    helpFooterWidth - helpCloseButtonWidth - (helpCloseButtonWidth > 0 ? 1 : 0),
   );
   // Reserve one column when Help content overflows so wrapped lines do not add
   // phantom rows and desync focus scroll math.
-  const helpContentLineWidth = Math.max(1, helpFooterWidth - (helpHasOverflow ? 1 : 0));
+  const helpContentLineWidth = Math.max(
+    1,
+    helpFooterWidth - (helpHasOverflow ? 1 : 0),
+  );
   const helpPageStep = Math.max(1, helpContentVisibleRows - 1);
   const clampedHelpScrollOffset = clampScrollOffset(
     helpScrollOffset,
     helpContentVisibleRows,
-    helpRows.length
+    helpRows.length,
   );
   const clampedHelpNavScrollOffset = clampScrollOffset(
     helpNavScrollOffset,
     helpContentVisibleRows,
-    helpNavLineCount
+    helpNavLineCount,
   );
   const helpVisibleRows =
     activeHelpPage === "help"
       ? helpRows.slice(
           clampedHelpScrollOffset,
-          clampedHelpScrollOffset + helpContentVisibleRows
+          clampedHelpScrollOffset + helpContentVisibleRows,
         )
       : helpRows;
   const helpScrollbarThumb =
@@ -2416,7 +2671,7 @@ export function App({
       ? computeHelpScrollbarThumb({
           scrollOffset: clampedHelpScrollOffset,
           visibleRows: helpContentVisibleRows,
-          itemCount: helpRows.length
+          itemCount: helpRows.length,
         })
       : null;
   const helpNavVisibleRowCount =
@@ -2427,7 +2682,10 @@ export function App({
       ? 0
       : Math.max(
           0,
-          Math.min(helpContentVisibleRows, helpNavLineCount - clampedHelpNavScrollOffset)
+          Math.min(
+            helpContentVisibleRows,
+            helpNavLineCount - clampedHelpNavScrollOffset,
+          ),
         );
   const helpNavScrollbarThumb =
     activeHelpPage !== "help" &&
@@ -2437,62 +2695,66 @@ export function App({
       ? computeHelpScrollbarThumb({
           scrollOffset: clampedHelpNavScrollOffset,
           visibleRows: helpContentVisibleRows,
-          itemCount: helpNavLineCount
+          itemCount: helpNavLineCount,
         })
       : null;
   const helpFooterHintsRaw =
     activeHelpPage === "help"
-      ? helpHasOverflow
-        ? "1 Backup Center | Enter/Right on Settings opens Settings pages | Up/Down focus | Enter/Space expand | Left collapse | Esc close | Scroll"
-        : "1 Backup Center | Enter/Right on Settings opens Settings pages | Up/Down focus | Enter/Space expand | Left collapse | Esc close"
+      ? buildHelpSettingsFooterHints(helpHasOverflow)
       : activeHelpPage === "custom1Edit" || activeHelpPage === "textTuningEdit"
         ? "S save | C/Esc cancel | R reset token | Tab next focus | Arrows adjust/jump | Enter commit"
         : activeHelpPage === "settingsInput"
           ? "Type value | Enter apply | Esc back"
-        : activeHelpPage === "settingsAppearance" &&
-            clampedHelpNavSelectionIndex === HELP_SETTINGS_APPEARANCE_LOGO_NAV_INDEX
-          ? "Left/Right preview logo | Enter commit | Esc/Backspace back"
-        : "Up/Down move | Enter/Right select | Left/Backspace/Esc back";
+          : activeHelpPage === "settingsAppearance" &&
+              clampedHelpNavSelectionIndex ===
+                HELP_SETTINGS_APPEARANCE_LOGO_NAV_INDEX
+            ? "Left/Right preview logo | Enter commit | Esc/Backspace back"
+            : "Up/Down move | Enter/Right select | Left/Backspace/Esc back";
   const helpFooterHintsLine = fitLineToWidth(
     helpFooterHintsRaw,
-    helpFooterHintLineWidth
+    helpFooterHintLineWidth,
   );
   const helpFooterDataPathLine = fitLineToWidth(
     `Data path: ${redactPathForDisplay(getDataFilePath())}`,
-    helpFooterWidth
+    helpFooterWidth,
   );
   const helpHeaderTitle =
     activeHelpPage === "help"
       ? "Help"
       : activeHelpPage === "settings"
         ? "Help / Settings"
-      : activeHelpPage === "settingsAppearance"
-        ? "Help / Settings / Appearance"
-      : activeHelpPage === "settingsNavigation"
-        ? "Help / Settings / Navigation & Keymaps"
-      : activeHelpPage === "settingsNotifications"
-        ? "Help / Settings / Notifications"
-      : activeHelpPage === "settingsSecurity"
-        ? "Help / Settings / Security"
-      : activeHelpPage === "settingsNotes"
-        ? "Help / Settings / TOME Notes"
-      : activeHelpPage === "settingsCloud"
-        ? "Help / Settings / Cloud Backup"
-      : activeHelpPage === "settingsInput"
-        ? "Help / Settings / Edit Value"
-        : activeHelpPage === "keymapAliases"
-          ? "Help / Settings / Keymap Aliases"
-        : activeHelpPage === "theme"
-          ? "Help / Settings / Theme"
-          : activeHelpPage === "custom1"
-            ? "Help / Settings / Theme / Custom1"
-            : activeHelpPage === "custom1Edit"
-              ? "Help / Settings / Theme / Custom1 / Edit Colors"
-              : activeHelpPage === "textTuning"
-                ? "Help / Settings / Theme / Text Tuning"
-                : activeHelpPage === "textTuningTheme"
-                  ? `Help / Settings / Theme / Text Tuning / ${formatThemeIdLabel(helpTextTuningThemeId)}`
-                  : `Help / Settings / Theme / Text Tuning / ${formatThemeIdLabel(helpTextTuningThemeId)} / Edit Text Colors`;
+        : activeHelpPage === "settingsAppearance"
+          ? "Help / Settings / Appearance"
+          : activeHelpPage === "settingsNavigation"
+            ? "Help / Settings / Navigation & Keymaps"
+            : activeHelpPage === "settingsNotifications"
+              ? "Help / Settings / Notifications"
+              : activeHelpPage === "settingsSecurity"
+                ? "Help / Settings / Security"
+                : activeHelpPage === "settingsNotes"
+                  ? "Help / Settings / TOME Notes"
+                  : activeHelpPage === "settingsCloud"
+                    ? "Help / Settings / Cloud Backup"
+                    : activeHelpPage === "settingsInput"
+                      ? "Help / Settings / Edit Value"
+                      : activeHelpPage === "keymapAliases"
+                        ? "Help / Settings / Keymap Aliases"
+                        : activeHelpPage === "theme"
+                          ? "Help / Settings / Theme"
+                          : activeHelpPage === "custom1"
+                            ? "Help / Settings / Theme / Custom1"
+                            : activeHelpPage === "custom1Edit"
+                              ? "Help / Settings / Theme / Custom1 / Edit Colors"
+                              : activeHelpPage === "textTuning"
+                                ? "Help / Settings / Theme / Text Tuning"
+                                : activeHelpPage === "textTuningTheme"
+                                  ? buildTextTuningThemePath(
+                                      helpTextTuningThemeId,
+                                    )
+                                  : buildTextTuningThemePath(
+                                      helpTextTuningThemeId,
+                                      true,
+                                    );
   const helpTheme = themeForObject("help");
   const modalTheme = themeForObject("modal");
   const inputTheme = themeForObject("inputs");
@@ -2509,69 +2771,34 @@ export function App({
     return findTaskById(event.taskId);
   }
 
-  function findTaskForReminderEvent(event: TaskReminderEvent): Task | undefined {
+  function findTaskForReminderEvent(
+    event: TaskReminderEvent,
+  ): Task | undefined {
     return findTaskById(event.taskId);
   }
 
-  function evaluateReminderTriggers(
-    tasks: Task[],
-    nowMs: number
-  ): { tasks: Task[]; events: TaskReminderEvent[] } {
-    let nextTasks = tasks;
-    const events: TaskReminderEvent[] = [];
-
-    for (const task of tasks) {
-      if (task.status !== "open") {
-        continue;
-      }
-      const effectiveReminderAt = resolveEffectiveReminderAt(task);
-      if (!isReminderPendingForEffectiveAt(task.reminder, effectiveReminderAt)) {
-        continue;
-      }
-      if (effectiveReminderAt === undefined || effectiveReminderAt > nowMs) {
-        continue;
-      }
-
-      const updatedTasks = applyReminderFired(nextTasks, task.id, effectiveReminderAt);
-      if (updatedTasks === nextTasks) {
-        continue;
-      }
-
-      nextTasks = updatedTasks;
-      events.push({
-        type: "TASK_REMINDER",
-        taskId: task.id,
-        title: task.title,
-        effectiveReminderAt,
-        dueAt:
-          typeof task.dueAt === "number" && Number.isFinite(task.dueAt)
-            ? new Date(task.dueAt).toISOString()
-            : undefined,
-        firedAt: new Date(nowMs).toISOString()
-      });
-    }
-
-    return { tasks: nextTasks, events };
-  }
-
-  function findSeriesTaskBySeriesId(seriesId: string | undefined): Task | undefined {
+  function findSeriesTaskBySeriesId(
+    seriesId: string | undefined,
+  ): Task | undefined {
     if (!seriesId) return undefined;
     return state.tasks.find((task) => task.recurrence?.series_id === seriesId);
   }
 
   function findMaterializedInstance(
     seriesId: string | undefined,
-    occurrenceIso: string | undefined
+    occurrenceIso: string | undefined,
   ): Task | undefined {
     if (!seriesId || !occurrenceIso) return undefined;
     return state.tasks.find(
       (task) =>
         task.instance_of?.series_id === seriesId &&
-        task.instance_of?.occurrence === occurrenceIso
+        task.instance_of?.occurrence === occurrenceIso,
     );
   }
 
-  function resolvePersistedTaskForRow(row: VisibleTaskRow | undefined): Task | undefined {
+  function resolvePersistedTaskForRow(
+    row: VisibleTaskRow | undefined,
+  ): Task | undefined {
     if (!row) return undefined;
     if (row.rowKind === "series_occurrence_virtual") {
       return findTaskById(row.sourceTaskId);
@@ -2588,69 +2815,39 @@ export function App({
 
   const selectedPersistedTask = resolvePersistedTaskForRow(selectedTask);
   const selectedTaskLinks = selectedPersistedTask?.links ?? [];
-  const selectedTaskLinkIdsKey = selectedTaskLinks.map((link) => link.id).join("|");
-  const selectedTaskLink = selectedTaskLinks.find((link) => link.id === selectedLinkId);
+  const selectedTaskLinkIdsKey = selectedTaskLinks
+    .map((link) => link.id)
+    .join("|");
+  const selectedTaskLink = selectedTaskLinks.find(
+    (link) => link.id === selectedLinkId,
+  );
   const selectedChecklistTask =
     selectedTask?.rowKind === "series_occurrence_virtual"
       ? selectedTask
       : selectedPersistedTask;
-  const selectedChecklistItems = sortChecklistItems(selectedChecklistTask?.checklist ?? []);
+  const selectedChecklistItems = sortChecklistItems(
+    selectedChecklistTask?.checklist ?? [],
+  );
   const selectedChecklistItemIdsKey = selectedChecklistItems
     .map((item) => item.id)
     .join("|");
   const selectedChecklistItem =
-    selectedChecklistItems.find((item) => item.id === selectedChecklistItemId) ??
-    selectedChecklistItems[0];
-  const editorChecklistItems = sortChecklistItems(state.editor?.checklist ?? []);
-  const editorChecklistItemIdsKey = editorChecklistItems.map((item) => item.id).join("|");
-  const selectedEditorChecklistItem =
-    editorChecklistItems.find((item) => item.id === selectedEditorChecklistItemId) ??
-    editorChecklistItems[0];
-  const notesSearchTerm = notesSearchQuery.trim().toLowerCase();
-  const notesTagFilterTerm = notesTagFilterQuery.trim();
-  const filteredNotes = React.useMemo(() => {
-    return notesList.filter((note) => {
-      const matchesSearch =
-        notesSearchTerm.length === 0 ||
-        note.title.toLowerCase().includes(notesSearchTerm) ||
-        note.path.toLowerCase().includes(notesSearchTerm);
-      const matchesTag =
-        notesTagFilterTerm.length === 0 ||
-        note.tags.some((tag) => noteTagMatchesFilter(tag, notesTagFilterTerm));
-      return matchesSearch && matchesTag;
-    });
-  }, [notesList, notesSearchTerm, notesTagFilterTerm]);
-  const clampedNotesSelectedIndex =
-    filteredNotes.length === 0
-      ? 0
-      : Math.max(0, Math.min(notesSelectedIndex, filteredNotes.length - 1));
-  const selectedNotesListItem = filteredNotes[clampedNotesSelectedIndex];
-  const activeNoteTitle =
-    (notesOpenPath
-      ? notesList.find((note) => note.path === notesOpenPath)?.title
-      : selectedNotesListItem?.title) ?? "TOME";
-  const selectedNoteTags =
-    notesList.find((note) => note.path === notesOpenPath)?.tags ??
-    selectedNotesListItem?.tags ??
-    [];
-  const notesEditTagDraft = React.useMemo(
-    () =>
-      parseNoteTags({
-        markdown: "",
-        frontmatterTags: parseFrontmatterTagInput(notesEditFrontmatterTags)
-      }),
-    [notesEditFrontmatterTags]
+    selectedChecklistItems.find(
+      (item) => item.id === selectedChecklistItemId,
+    ) ?? selectedChecklistItems[0];
+  const editorChecklistItems = sortChecklistItems(
+    state.editor?.checklist ?? [],
   );
-  const notesEditEffectiveTags = React.useMemo(() => {
-    const parsed = parseFrontmatter(notesEditValue);
-    return parseNoteTags({
-      markdown: parsed.body,
-      frontmatterTags: notesEditTagDraft.tags
-    });
-  }, [notesEditTagDraft.tags, notesEditValue]);
-  const notesInlinePromptOpen =
-    notesCreatePromptOpen || notesRenamePromptOpen || notesRootSettingsOpen;
-  const canOperateOnSelectedTome = Boolean(selectedNotesListItem ?? notesOpenPath);
+  const editorChecklistItemIdsKey = editorChecklistItems
+    .map((item) => item.id)
+    .join("|");
+  const selectedEditorChecklistItem =
+    editorChecklistItems.find(
+      (item) => item.id === selectedEditorChecklistItemId,
+    ) ?? editorChecklistItems[0];
+  const canOperateOnSelectedTome = Boolean(
+    selectedNotesListItem ?? notesOpenPath,
+  );
 
   useEffect(() => {
     if (filteredNotes.length === 0) {
@@ -2666,7 +2863,7 @@ export function App({
 
   const notesIndexSnapshot = React.useMemo(
     () => notesServiceRef.current?.getIndexSnapshot() ?? null,
-    [notesList, notesRuntime.ready]
+    [notesList, notesRuntime.ready],
   );
   const selectedTaskLinkedNotes = React.useMemo(() => {
     const taskId = selectedPersistedTask?.id;
@@ -2677,7 +2874,10 @@ export function App({
     if (!selectedPersistedTask?.noteRef || !notesIndexSnapshot) {
       return null;
     }
-    return resolveTaskNoteRef(selectedPersistedTask.noteRef, notesIndexSnapshot);
+    return resolveTaskNoteRef(
+      selectedPersistedTask.noteRef,
+      notesIndexSnapshot,
+    );
   }, [notesIndexSnapshot, selectedPersistedTask?.noteRef]);
   const selectedTaskLinkedNotePath =
     selectedTaskNoteResolution?.status === "resolved"
@@ -2689,61 +2889,62 @@ export function App({
       : undefined;
   const selectedTaskLinkedNotePreviewLines = React.useMemo(() => {
     if (!selectedTaskLinkedNotePath) return [] as string[];
-    const parsed = notesServiceRef.current?.getParsedNote(selectedTaskLinkedNotePath);
+    const parsed = notesServiceRef.current?.getParsedNote(
+      selectedTaskLinkedNotePath,
+    );
     if (!parsed) return [] as string[];
     return renderMarkdownToTerminalLines(parsed.content);
   }, [notesList, notesRuntime.ready, selectedTaskLinkedNotePath]);
   const selectedTaskLinkedNoteReferencedTaskCount = React.useMemo(() => {
     if (!selectedTaskLinkedNotePath) return 0;
-    return notesServiceRef.current?.getLinkedTasksForNote(selectedTaskLinkedNotePath).length ?? 0;
+    return (
+      notesServiceRef.current?.getLinkedTasksForNote(selectedTaskLinkedNotePath)
+        .length ?? 0
+    );
   }, [notesList, notesRuntime.ready, selectedTaskLinkedNotePath]);
   const selectedTaskNoteContextWarning = React.useMemo(() => {
-    if (!selectedPersistedTask?.noteRef || !selectedTaskNoteResolution) return undefined;
+    if (!selectedPersistedTask?.noteRef || !selectedTaskNoteResolution)
+      return undefined;
     if (selectedTaskNoteResolution.status === "resolved") return undefined;
     if (selectedTaskNoteResolution.status === "ambiguous") {
       return `${selectedTaskNoteResolution.message}. Fix link with l/r.`;
     }
     return `${selectedTaskNoteResolution.message}. Fix link with l/r.`;
   }, [selectedPersistedTask?.noteRef, selectedTaskNoteResolution]);
-  const detailsNotesSelectablePaths = React.useMemo(() => {
-    const next: NotePath[] = [];
-    if (selectedTaskLinkedNotePath) {
-      next.push(selectedTaskLinkedNotePath);
-    }
-    for (const notePath of selectedTaskLinkedNotes) {
-      if (!next.includes(notePath)) {
-        next.push(notePath);
-      }
-    }
-    return next;
-  }, [selectedTaskLinkedNotePath, selectedTaskLinkedNotes]);
-  const clampedDetailsNotesSelectionIndex =
-    detailsNotesSelectablePaths.length === 0
-      ? 0
-      : Math.max(0, Math.min(detailsNotesSelectionIndex, detailsNotesSelectablePaths.length - 1));
+  const detailsNotesSelectablePaths = React.useMemo(
+    () =>
+      buildDetailsNotesSelectablePaths(
+        selectedTaskLinkedNotePath,
+        selectedTaskLinkedNotes,
+      ),
+    [selectedTaskLinkedNotePath, selectedTaskLinkedNotes],
+  );
+  const clampedDetailsNotesSelectionIndex = clampIndex(
+    detailsNotesSelectionIndex,
+    detailsNotesSelectablePaths.length,
+  );
   const selectedDetailsNotesPath =
-    detailsNotesSelectablePaths[clampedDetailsNotesSelectionIndex] ?? selectedTaskLinkedNotePath;
+    detailsNotesSelectablePaths[clampedDetailsNotesSelectionIndex] ??
+    selectedTaskLinkedNotePath;
   const notesLinkPickerEntries = React.useMemo(
     () =>
       notesList.map((note) => ({
         path: note.path,
         title: note.title,
-        id: notesServiceRef.current?.getParsedNote(note.path)?.note.id
+        id: notesServiceRef.current?.getParsedNote(note.path)?.note.id,
       })),
-    [notesList, notesRuntime.ready]
+    [notesList, notesRuntime.ready],
   );
-  const clampedDetailsNotesLinkPickerIndex =
-    notesLinkPickerEntries.length === 0
-      ? 0
-      : Math.max(0, Math.min(detailsNotesLinkPickerIndex, notesLinkPickerEntries.length - 1));
+  const clampedDetailsNotesLinkPickerIndex = clampIndex(
+    detailsNotesLinkPickerIndex,
+    notesLinkPickerEntries.length,
+  );
   const selectedTaskLinkedNotePreviewWindow = React.useMemo(() => {
-    const lines = selectedTaskLinkedNotePreviewLines;
-    if (lines.length <= DETAILS_NOTE_PREVIEW_ROWS) {
-      return lines;
-    }
-    const maxStart = Math.max(0, lines.length - DETAILS_NOTE_PREVIEW_ROWS);
-    const start = Math.max(0, Math.min(detailsNotesPreviewOffset, maxStart));
-    return lines.slice(start, start + DETAILS_NOTE_PREVIEW_ROWS);
+    return windowLines(
+      selectedTaskLinkedNotePreviewLines,
+      DETAILS_NOTE_PREVIEW_ROWS,
+      detailsNotesPreviewOffset,
+    );
   }, [detailsNotesPreviewOffset, selectedTaskLinkedNotePreviewLines]);
   useEffect(() => {
     if (selectedPersistedTask?.id) {
@@ -2770,11 +2971,16 @@ export function App({
 
   const listHeaderHeight = 2;
   const topBarHeight = 4;
-  const activeBanners = [startupBannerMessage, saveFailureBanner, navigationBanner].filter(
-    (value): value is string => Boolean(value)
-  );
+  const activeBanners = [
+    startupBannerMessage,
+    saveFailureBanner,
+    navigationBanner,
+  ].filter((value): value is string => Boolean(value));
   const reservedNotificationBarRows = 1;
-  const bannerHeight = Math.max(reservedNotificationBarRows, activeBanners.length);
+  const bannerHeight = Math.max(
+    reservedNotificationBarRows,
+    activeBanners.length,
+  );
   const listPanelBorder = 2;
   const listPanelPadding = 2;
   const searchHeight = uiState.mode === Mode.SEARCH ? 3 : 0;
@@ -2800,9 +3006,10 @@ export function App({
         path: note.path,
         title: note.title,
         tags: note.tags,
-        content: notesServiceRef.current?.getParsedNote(note.path)?.content ?? ""
+        content:
+          notesServiceRef.current?.getParsedNote(note.path)?.content ?? "",
       })),
-    [notesList, notesRuntime.ready]
+    [notesList, notesRuntime.ready],
   );
   const unifiedSearchResults = React.useMemo(
     () =>
@@ -2810,51 +3017,50 @@ export function App({
         query: searchQuery,
         scope: searchScope,
         tasks: state.tasks,
-        notes: searchableNotes
+        notes: searchableNotes,
       }).slice(0, SEARCH_RESULT_LIMIT),
-    [searchQuery, searchScope, state.tasks, searchableNotes]
+    [searchQuery, searchScope, state.tasks, searchableNotes],
   );
   const clampedSearchSelectedResultIndex =
     unifiedSearchResults.length === 0
       ? 0
-      : Math.max(0, Math.min(searchSelectedResultIndex, unifiedSearchResults.length - 1));
+      : Math.max(
+          0,
+          Math.min(searchSelectedResultIndex, unifiedSearchResults.length - 1),
+        );
   const selectedUnifiedSearchResult =
     unifiedSearchResults[clampedSearchSelectedResultIndex];
   const visibleUnifiedSearchResults = unifiedSearchResults.slice(
     0,
-    Math.max(1, visibleRows - 4)
+    Math.max(1, visibleRows - 4),
   );
-  const unifiedSearchTaskCount = unifiedSearchResults.filter((result) => result.kind === "task")
-    .length;
-  const unifiedSearchNoteCount = unifiedSearchResults.filter((result) => result.kind === "note")
-    .length;
+  const unifiedSearchTaskCount = unifiedSearchResults.filter(
+    (result) => result.kind === "task",
+  ).length;
+  const unifiedSearchNoteCount = unifiedSearchResults.filter(
+    (result) => result.kind === "note",
+  ).length;
   const tomeActionRowGap = 1;
-  const notesPaneAvailableWidth = Math.max(0, terminalWidth - layout.railWidth - 4);
-  const notesListPaneMinWidth = Math.max(
-    28,
-    Math.min(36, Math.floor(notesPaneAvailableWidth * 0.4))
-  );
-  const notesContextPaneMinWidth = Math.max(
-    34,
-    Math.min(52, notesPaneAvailableWidth - notesListPaneMinWidth)
-  );
-  const notesEstimatedListPaneWidth = Math.max(
+  const {
+    notesPaneAvailableWidth,
     notesListPaneMinWidth,
-    Math.floor(notesPaneAvailableWidth * 0.4)
-  );
-  const notesEstimatedContextPaneWidth = Math.max(
     notesContextPaneMinWidth,
-    notesPaneAvailableWidth - notesEstimatedListPaneWidth
-  );
-  const notesListTagPillMaxWidth = Math.max(10, notesEstimatedListPaneWidth - 6);
-  const notesContextTagPillMaxWidth = Math.max(12, notesEstimatedContextPaneWidth - 8);
+    notesEstimatedListPaneWidth,
+    notesEstimatedContextPaneWidth,
+    notesListTagPillMaxWidth,
+    notesContextTagPillMaxWidth,
+  } = computeNotesPaneLayout(terminalWidth);
   const notesEditTagPillLayout = React.useMemo(
-    () => computeVisibleTagPills(notesEditEffectiveTags.tags, notesContextTagPillMaxWidth),
-    [notesContextTagPillMaxWidth, notesEditEffectiveTags.tags]
+    () =>
+      computeVisibleTagPills(
+        notesEditEffectiveTags.tags,
+        notesContextTagPillMaxWidth,
+      ),
+    [notesContextTagPillMaxWidth, notesEditEffectiveTags.tags],
   );
   const notesViewTagPillLayout = React.useMemo(
     () => computeVisibleTagPills(selectedNoteTags, notesContextTagPillMaxWidth),
-    [notesContextTagPillMaxWidth, selectedNoteTags]
+    [notesContextTagPillMaxWidth, selectedNoteTags],
   );
   const editorPaneHeightLines = Math.max(
     1,
@@ -2865,23 +3071,36 @@ export function App({
       bannerHeight -
       listHeaderHeight -
       listPanelBorder -
-      listPanelPadding
+      listPanelPadding,
   );
-  const { contentHeight: editorContentVisibleLines } =
-    getEditorViewportHeights(editorPaneHeightLines);
+  const { contentHeight: editorContentVisibleLines } = getEditorViewportHeights(
+    editorPaneHeightLines,
+  );
   const editorPageStep = Math.max(1, editorContentVisibleLines - 1);
-  const checklistViewportRows = Math.max(3, Math.min(8, editorPaneHeightLines - 18));
+  const checklistViewportRows = Math.max(
+    3,
+    Math.min(8, editorPaneHeightLines - 18),
+  );
   const selectedChecklistIndex = selectedChecklistItem
-    ? selectedChecklistItems.findIndex((item) => item.id === selectedChecklistItem.id)
+    ? selectedChecklistItems.findIndex(
+        (item) => item.id === selectedChecklistItem.id,
+      )
     : -1;
   const dashboardPaneWidth = Math.max(20, terminalWidth - layout.railWidth - 4);
   const dashboardPaneHeight = Math.max(
     8,
-    terminalHeight - topBarHeight - bottomBarHeight - bottomHintSurfaceReservedRows - bannerHeight - 4
+    terminalHeight -
+      topBarHeight -
+      bottomBarHeight -
+      bottomHintSurfaceReservedRows -
+      bannerHeight -
+      4,
   );
   const startOfToday = dayKey;
   const selectedDayDiff =
-    selectedTask && selectedTask.status === "open" && selectedTask.dueAt !== undefined
+    selectedTask &&
+    selectedTask.status === "open" &&
+    selectedTask.dueAt !== undefined
       ? diffLocalDays(selectedTask.dueAt, startOfToday)
       : null;
   const selectedHasTime = selectedTask?.hasExplicitTime === true;
@@ -2902,7 +3121,8 @@ export function App({
   const visibleBaseMode =
     uiState.mode === Mode.TAG_FILTER
       ? uiState.previousMode
-      : uiState.mode === Mode.NOTES_SEARCH || uiState.mode === Mode.NOTES_TAG_FILTER
+      : uiState.mode === Mode.NOTES_SEARCH ||
+          uiState.mode === Mode.NOTES_TAG_FILTER
         ? Mode.NOTES_LIST
         : uiState.mode;
   const isNotesMode =
@@ -2915,21 +3135,21 @@ export function App({
     ? theme.accentBlue
     : isNotesMode
       ? theme.accentBlue
-    : selectedOverdue
-      ? isStaticFlashMode
-        ? theme.warn
-        : fastPulseOn
+      : selectedOverdue
+        ? isStaticFlashMode
           ? theme.warn
-          : theme.dueSoon
-      : selectedDueToday
-        ? theme.dueSoon
-        : selectedDueSoon
+          : fastPulseOn
+            ? theme.warn
+            : theme.dueSoon
+        : selectedDueToday
           ? theme.dueSoon
-          : selectedDueLater
-            ? theme.dueLater
-            : selectedTask?.status === "done"
-              ? theme.ok
-              : theme.accentOrange;
+          : selectedDueSoon
+            ? theme.dueSoon
+            : selectedDueLater
+              ? theme.dueLater
+              : selectedTask?.status === "done"
+                ? theme.ok
+                : theme.accentOrange;
 
   const summaryOverdueRows = React.useMemo(
     () =>
@@ -2938,9 +3158,9 @@ export function App({
         { status: "open", due: "overdue" },
         state.sortMode,
         now,
-        state.tagAliases
+        state.tagAliases,
       ),
-    [state.tasks, state.sortMode, now, state.tagAliases]
+    [state.tasks, state.sortMode, now, state.tagAliases],
   );
   const summaryTodayRows = React.useMemo(
     () =>
@@ -2949,9 +3169,9 @@ export function App({
         { status: "open", due: "today" },
         state.sortMode,
         now,
-        state.tagAliases
+        state.tagAliases,
       ),
-    [state.tasks, state.sortMode, now, state.tagAliases]
+    [state.tasks, state.sortMode, now, state.tagAliases],
   );
   const summaryNext7Rows = React.useMemo(
     () =>
@@ -2960,9 +3180,9 @@ export function App({
         { status: "open", due: "next7" },
         state.sortMode,
         now,
-        state.tagAliases
+        state.tagAliases,
       ),
-    [state.tasks, state.sortMode, now, state.tagAliases]
+    [state.tasks, state.sortMode, now, state.tagAliases],
   );
   const summaryDoneRows = React.useMemo(
     () =>
@@ -2971,9 +3191,9 @@ export function App({
         { status: "done", due: "any" },
         state.sortMode,
         now,
-        state.tagAliases
+        state.tagAliases,
       ),
-    [state.tasks, state.sortMode, now, state.tagAliases]
+    [state.tasks, state.sortMode, now, state.tagAliases],
   );
   const summary = summaryDoneRows.reduce(
     (acc, task) => {
@@ -2988,8 +3208,8 @@ export function App({
       overdue: summaryOverdueRows.length,
       today: summaryTodayRows.length,
       next7: summaryNext7Rows.length,
-      completed7: 0
-    }
+      completed7: 0,
+    },
   );
 
   const summaryTagRows = React.useMemo(
@@ -2999,82 +3219,111 @@ export function App({
         { status: "all", due: "any" },
         state.sortMode,
         now,
-        state.tagAliases
+        state.tagAliases,
       ),
-    [state.tasks, state.sortMode, now, state.tagAliases]
+    [state.tasks, state.sortMode, now, state.tagAliases],
   );
 
   const tagStats = React.useMemo(
     () => computeTopTagStats(summaryTagRows, dayKey, 5, state.tagAliases),
-    [summaryTagRows, dayKey, state.tagAliases]
+    [summaryTagRows, dayKey, state.tagAliases],
   );
   const openPriorityStats = React.useMemo(
     () => computeOpenPriorityStats(state.tasks),
-    [state.tasks]
+    [state.tasks],
   );
 
   const bottomBarWidth = Math.max(0, terminalWidth - layout.railWidth);
   const bottomBarContentWidth = Math.max(0, bottomBarWidth - 2);
   const tagTickerSegments = React.useMemo(
     () => buildTagTickerSegments(tagStats, bottomBarContentWidth),
-    [tagStats, bottomBarContentWidth]
+    [tagStats, bottomBarContentWidth],
   );
   const priorityTickerSegments = React.useMemo(
     () => buildPriorityTickerSegments(openPriorityStats, bottomBarContentWidth),
-    [openPriorityStats, bottomBarContentWidth]
+    [openPriorityStats, bottomBarContentWidth],
   );
   const priorityTickerNeedsWiderLayout =
     openPriorityStats.length > 0 && priorityTickerSegments.length === 0;
   const dashboardTopTagLimit = React.useMemo(
     () => resolveDashboardTopTagLimit(dashboardPaneHeight),
-    [dashboardPaneHeight]
+    [dashboardPaneHeight],
   );
   const dashboardTopTags = React.useMemo(
-    () => computeTopTagsOpen(visibleTaskRows, dashboardTopTagLimit, state.tagAliases),
-    [visibleTaskRows, dashboardTopTagLimit, state.tagAliases]
+    () =>
+      computeTopTagsOpen(
+        visibleTaskRows,
+        dashboardTopTagLimit,
+        state.tagAliases,
+      ),
+    [visibleTaskRows, dashboardTopTagLimit, state.tagAliases],
   );
   const clampedDashboardTagSelection =
     dashboardTopTags.length === 0
       ? 0
-      : Math.max(0, Math.min(dashboardTagSelection, dashboardTopTags.length - 1));
+      : Math.max(
+          0,
+          Math.min(dashboardTagSelection, dashboardTopTags.length - 1),
+        );
   const clampedDashboardDueBucketSelection = Math.max(
     0,
-    Math.min(dashboardDueBucketSelection, 7)
+    Math.min(dashboardDueBucketSelection, 7),
   );
   const dashboardPriorityBuckets = React.useMemo(
     () => computePriorityBucketBreakdown(visibleTaskRows),
-    [visibleTaskRows]
+    [visibleTaskRows],
   );
   const clampedDashboardPrioritySelection =
     dashboardPriorityBuckets.length === 0
       ? 0
-      : Math.max(0, Math.min(dashboardPrioritySelection, dashboardPriorityBuckets.length - 1));
+      : Math.max(
+          0,
+          Math.min(
+            dashboardPrioritySelection,
+            dashboardPriorityBuckets.length - 1,
+          ),
+        );
   const dashboardAssigneeSlices = React.useMemo(
     () => computeTopSliceCounts(visibleTaskRows, (task) => task.assignee, 5),
-    [visibleTaskRows]
+    [visibleTaskRows],
   );
   const dashboardProjectSlices = React.useMemo(
     () => computeTopSliceCounts(visibleTaskRows, (task) => task.project, 5),
-    [visibleTaskRows]
+    [visibleTaskRows],
   );
   const dashboardWorkflowStageSlices = React.useMemo(
     () => computeWorkflowStageSliceCounts(visibleTaskRows),
-    [visibleTaskRows]
+    [visibleTaskRows],
   );
   const clampedDashboardAssigneeSelection =
     dashboardAssigneeSlices.length === 0
       ? 0
-      : Math.max(0, Math.min(dashboardAssigneeSelection, dashboardAssigneeSlices.length - 1));
+      : Math.max(
+          0,
+          Math.min(
+            dashboardAssigneeSelection,
+            dashboardAssigneeSlices.length - 1,
+          ),
+        );
   const clampedDashboardProjectSelection =
     dashboardProjectSlices.length === 0
       ? 0
-      : Math.max(0, Math.min(dashboardProjectSelection, dashboardProjectSlices.length - 1));
+      : Math.max(
+          0,
+          Math.min(
+            dashboardProjectSelection,
+            dashboardProjectSlices.length - 1,
+          ),
+        );
   const clampedDashboardWorkflowStageSelection =
     dashboardWorkflowStageSlices.length === 0
       ? 0
       : Math.max(
           0,
-          Math.min(dashboardWorkflowStageSelection, dashboardWorkflowStageSlices.length - 1)
+          Math.min(
+            dashboardWorkflowStageSelection,
+            dashboardWorkflowStageSlices.length - 1,
+          ),
         );
   const overdueQuickFilterActive =
     state.filters.status === "open" &&
@@ -3094,37 +3343,46 @@ export function App({
     state.filters.dueDayOffset === undefined;
 
   const titleQuery = state.editor ? getTitleQuery(state.editor.title) : null;
-  const titleSuggestions = titleQuery ? rankTaskTitles(state.tasks, titleQuery) : [];
+  const titleSuggestions = titleQuery
+    ? rankTaskTitles(state.tasks, titleQuery)
+    : [];
   const titleInlineSuggestion = titleQuery
     ? getTitleCompletion(titleQuery, titleSuggestions)
     : null;
   const predictiveTagIndex = React.useMemo(
-    () => mergeTagIndexWithTaskHistory(state.tagIndex, state.tasks, state.tagAliases),
-    [state.tagIndex, state.tasks, state.tagAliases]
+    () =>
+      mergeTagIndexWithTaskHistory(
+        state.tagIndex,
+        state.tasks,
+        state.tagAliases,
+      ),
+    [state.tagIndex, state.tasks, state.tagAliases],
   );
   const tagQuery = state.editor ? getTagQuery(state.editor.tagsText) : null;
   const tagSuggestions = tagQuery ? rankTags(predictiveTagIndex, tagQuery) : [];
   const tagInlineSuggestion = tagQuery
     ? getTagCompletion(tagQuery, tagSuggestions)
     : null;
-  const tagFilterQuery = uiState.mode === Mode.TAG_FILTER
-    ? normalizeTagPrefix(tagFilterInput)
-    : "";
+  const tagFilterQuery =
+    uiState.mode === Mode.TAG_FILTER ? normalizeTagPrefix(tagFilterInput) : "";
   const tagFilterSuggestions = tagFilterQuery
-    ? rankTags(predictiveTagIndex, tagFilterQuery).filter((tag) => !isPriorityToken(tag))
+    ? rankTags(predictiveTagIndex, tagFilterQuery).filter(
+        (tag) => !isPriorityToken(tag),
+      )
     : [];
   const tagFilterInlineSuggestion = tagFilterQuery
     ? getTagCompletion(tagFilterQuery, tagFilterSuggestions)
     : null;
   const tagFilterInputCandidateValue = resolveTagFilterInputCandidateValue(
     tagFilterInput,
-    tagFilterInlineSuggestion
+    tagFilterInlineSuggestion,
   );
   const tagFilterInputCandidateCanonical = normalizeTagToken(
     tagFilterInputCandidateValue,
-    state.tagAliases
+    state.tagAliases,
   );
-  const tagFilterActiveBucketTags = tagFilterDraft?.[activeTagFilterBucket] ?? [];
+  const tagFilterActiveBucketTags =
+    tagFilterDraft?.[activeTagFilterBucket] ?? [];
   const tagFilterFallbackTag =
     tagFilterActiveBucketTags.length > 0
       ? tagFilterActiveBucketTags[tagFilterActiveBucketTags.length - 1]
@@ -3133,8 +3391,9 @@ export function App({
     ? tagFilterInputCandidateValue
     : tagFilterFallbackTag;
   const tagFilterInsights = React.useMemo(
-    () => computeTagStats(state.tasks, state.tagAliases, tagFilterInsightSourceTag),
-    [state.tasks, state.tagAliases, tagFilterInsightSourceTag]
+    () =>
+      computeTagStats(state.tasks, state.tagAliases, tagFilterInsightSourceTag),
+    [state.tasks, state.tagAliases, tagFilterInsightSourceTag],
   );
   const selectedThemeMode = helpPreviewThemeMode ?? settingsState.themeId;
   const activeThemeId =
@@ -3150,7 +3409,7 @@ export function App({
     preset: crtFxPreset,
     color: settingsState.crtFxColor,
     tick: crtFxTick,
-    role: "accent"
+    role: "accent",
   });
   const headerBorderColor = resolveRetroSweepBorderColor({
     baseColor: resolveCrtFxColor({
@@ -3159,11 +3418,11 @@ export function App({
       preset: crtFxPreset,
       color: settingsState.crtFxColor,
       tick: crtFxTick,
-      role: "border"
+      role: "border",
     }),
     mode: retroFxMode,
     tick: retroFxTick,
-    phase: 2
+    phase: 2,
   });
   const railPanelBackgroundColor = theme.accentPurple;
   const railPanelBorderColor = theme.outline;
@@ -3173,7 +3432,7 @@ export function App({
     preset: crtFxPreset,
     color: settingsState.crtFxColor,
     tick: crtFxTick,
-    role: "panel"
+    role: "panel",
   });
   const taskListPanelBorderColor = resolveRetroSweepBorderColor({
     baseColor: resolveCrtFxColor({
@@ -3182,11 +3441,11 @@ export function App({
       preset: crtFxPreset,
       color: settingsState.crtFxColor,
       tick: crtFxTick,
-      role: "border"
+      role: "border",
     }),
     mode: retroFxMode,
     tick: retroFxTick,
-    phase: 4
+    phase: 4,
   });
   const detailsPanelBackgroundColor = resolveCrtFxColor({
     baseColor: theme.panel,
@@ -3194,7 +3453,7 @@ export function App({
     preset: crtFxPreset,
     color: settingsState.crtFxColor,
     tick: crtFxTick,
-    role: "panel"
+    role: "panel",
   });
   const detailsPanelBorderColor = resolveRetroSweepBorderColor({
     baseColor: resolveCrtFxColor({
@@ -3203,11 +3462,11 @@ export function App({
       preset: crtFxPreset,
       color: settingsState.crtFxColor,
       tick: crtFxTick,
-      role: "border"
+      role: "border",
     }),
     mode: retroFxMode,
     tick: retroFxTick,
-    phase: 6
+    phase: 6,
   });
   const dashboardPanelBackgroundColor = resolveCrtFxColor({
     baseColor: dashboardTheme.panel,
@@ -3215,7 +3474,7 @@ export function App({
     preset: crtFxPreset,
     color: settingsState.crtFxColor,
     tick: crtFxTick,
-    role: "panel"
+    role: "panel",
   });
   const dashboardPanelBorderColor = resolveRetroSweepBorderColor({
     baseColor: resolveCrtFxColor({
@@ -3224,11 +3483,11 @@ export function App({
       preset: crtFxPreset,
       color: settingsState.crtFxColor,
       tick: crtFxTick,
-      role: "border"
+      role: "border",
     }),
     mode: retroFxMode,
     tick: retroFxTick,
-    phase: 8
+    phase: 8,
   });
   const bottomBarBackgroundColor = resolveCrtFxColor({
     baseColor: theme.panel,
@@ -3236,7 +3495,7 @@ export function App({
     preset: crtFxPreset,
     color: settingsState.crtFxColor,
     tick: crtFxTick,
-    role: "panel"
+    role: "panel",
   });
   const bottomBarBorderColor = resolveRetroSweepBorderColor({
     baseColor: resolveCrtFxColor({
@@ -3245,11 +3504,11 @@ export function App({
       preset: crtFxPreset,
       color: settingsState.crtFxColor,
       tick: crtFxTick,
-      role: "border"
+      role: "border",
     }),
     mode: retroFxMode,
     tick: retroFxTick,
-    phase: 10
+    phase: 10,
   });
   const helpThemeStatusLineRaw = helpPreviewThemeMode
     ? `Theme mode: ${formatThemeDisplayName(settingsState.themeId)} (preview: ${formatThemeDisplayName(helpPreviewThemeMode)})`
@@ -3261,40 +3520,48 @@ export function App({
     helpDraftLogoMode && helpDraftLogoMode !== settingsState.logoMode
       ? `Logo: ${formatLogoModeLabel(settingsState.logoMode)} (preview: ${formatLogoModeLabel(helpDraftLogoMode)})`
       : `Logo: ${formatLogoModeLabel(settingsState.logoMode)}`;
-  const helpCloudSettings = resolveGitHubSettings() ?? DEFAULT_GITHUB_BACKUP;
-  const helpSettingsInputTitle = helpSettingsInputField
-    ? resolveHelpSettingsInputTitle(helpSettingsInputField)
-    : "Settings Value";
-  const helpSettingsInputPlaceholder = helpSettingsInputField
-    ? resolveHelpSettingsInputPlaceholder(helpSettingsInputField)
-    : "Type value";
   const helpSettingsStatusLines: string[] = [];
-  const helpKeymapAliasPresetStates = {
-    list: resolveKeymapAliasPresetState("list", settingsState.keymapAliases),
-    dashboard: resolveKeymapAliasPresetState("dashboard", settingsState.keymapAliases),
-    backup: resolveKeymapAliasPresetState("backup", settingsState.keymapAliases),
-    help: resolveKeymapAliasPresetState("help", settingsState.keymapAliases)
-  } as const;
   function resolveHelpNavItemTitle(item: HelpNavItem, index: number): string {
-    if (activeHelpPage === "theme" && index === HELP_THEME_NAV_THEME_MODE_INDEX) {
+    if (
+      activeHelpPage === "theme" &&
+      index === HELP_THEME_NAV_THEME_MODE_INDEX
+    ) {
       return helpThemeStatusLineRaw;
     }
-    if (activeHelpPage === "settings" && index === HELP_SETTINGS_APPEARANCE_NAV_INDEX) {
+    if (
+      activeHelpPage === "settings" &&
+      index === HELP_SETTINGS_APPEARANCE_NAV_INDEX
+    ) {
       return `Appearance (${formatThemeDisplayName(settingsState.themeId)})`;
     }
-    if (activeHelpPage === "settings" && index === HELP_SETTINGS_NAVIGATION_NAV_INDEX) {
+    if (
+      activeHelpPage === "settings" &&
+      index === HELP_SETTINGS_NAVIGATION_NAV_INDEX
+    ) {
       return `Navigation & Keymaps (${formatHintDisplayModeLabel(settingsState.hintDisplayMode)})`;
     }
-    if (activeHelpPage === "settings" && index === HELP_SETTINGS_NOTIFICATIONS_NAV_INDEX) {
+    if (
+      activeHelpPage === "settings" &&
+      index === HELP_SETTINGS_NOTIFICATIONS_NAV_INDEX
+    ) {
       return `Notifications (${settingsState.notifications.enabled ? "on" : "off"})`;
     }
-    if (activeHelpPage === "settings" && index === HELP_SETTINGS_SECURITY_NAV_INDEX) {
+    if (
+      activeHelpPage === "settings" &&
+      index === HELP_SETTINGS_SECURITY_NAV_INDEX
+    ) {
       return `Security (${formatNonHttpLinkPolicyLabel(settingsState.security.nonHttpLinkPolicy)})`;
     }
-    if (activeHelpPage === "settings" && index === HELP_SETTINGS_NOTES_NAV_INDEX) {
+    if (
+      activeHelpPage === "settings" &&
+      index === HELP_SETTINGS_NOTES_NAV_INDEX
+    ) {
       return `TOME Notes (${settingsState.notes.enabled ? "enabled" : "disabled"})`;
     }
-    if (activeHelpPage === "settings" && index === HELP_SETTINGS_CLOUD_NAV_INDEX) {
+    if (
+      activeHelpPage === "settings" &&
+      index === HELP_SETTINGS_CLOUD_NAV_INDEX
+    ) {
       const repoLabel = helpCloudSettings?.ownerRepo ?? "unconfigured";
       return `Cloud Backup (${repoLabel})`;
     }
@@ -3387,7 +3654,7 @@ export function App({
       index === HELP_SETTINGS_SECURITY_NON_HTTP_POLICY_NAV_INDEX
     ) {
       return `Non-HTTP Link Policy: ${formatNonHttpLinkPolicyLabel(
-        settingsState.security.nonHttpLinkPolicy
+        settingsState.security.nonHttpLinkPolicy,
       )}`;
     }
     if (
@@ -3396,7 +3663,10 @@ export function App({
     ) {
       return `TOME Enabled: ${settingsState.notes.enabled ? "on" : "off"}`;
     }
-    if (activeHelpPage === "settingsNotes" && index === HELP_SETTINGS_NOTES_ROOT_NAV_INDEX) {
+    if (
+      activeHelpPage === "settingsNotes" &&
+      index === HELP_SETTINGS_NOTES_ROOT_NAV_INDEX
+    ) {
       const rootPath = settingsState.notes.rootPath ?? notesRuntime.notesRoot;
       return `TOME Root Path: ${redactPathForDisplay(rootPath)}`;
     }
@@ -3420,7 +3690,10 @@ export function App({
     ) {
       return `Owner/Repo: ${helpCloudSettings?.ownerRepo ?? "(not configured)"}`;
     }
-    if (activeHelpPage === "settingsCloud" && index === HELP_SETTINGS_CLOUD_BRANCH_NAV_INDEX) {
+    if (
+      activeHelpPage === "settingsCloud" &&
+      index === HELP_SETTINGS_CLOUD_BRANCH_NAV_INDEX
+    ) {
       return `Branch: ${helpCloudSettings?.branch ?? DEFAULT_GITHUB_BACKUP_BRANCH}`;
     }
     if (
@@ -3428,10 +3701,13 @@ export function App({
       index === HELP_SETTINGS_CLOUD_AUTO_PUSH_POLICY_NAV_INDEX
     ) {
       return `Auto Push Policy: ${formatGitHubAutoPushPolicyLabel(
-        helpCloudSettings?.autoPushPolicy ?? DEFAULT_GITHUB_AUTO_PUSH_POLICY
+        helpCloudSettings?.autoPushPolicy ?? DEFAULT_GITHUB_AUTO_PUSH_POLICY,
       )}`;
     }
-    if (activeHelpPage === "settingsCloud" && index === HELP_SETTINGS_CLOUD_DEVICE_ID_NAV_INDEX) {
+    if (
+      activeHelpPage === "settingsCloud" &&
+      index === HELP_SETTINGS_CLOUD_DEVICE_ID_NAV_INDEX
+    ) {
       return `Device ID: ${helpCloudSettings?.deviceId ?? "(none)"}`;
     }
     if (
@@ -3460,7 +3736,9 @@ export function App({
     uiState.focus === FocusTarget.EDITOR_DUE_DATE && state.editor
       ? getDueSuggestion(state.editor.dueText, now)
       : null;
-  const dueSuggestionHint = dueSuggestion ? `→ ${dueSuggestion} (press →)` : null;
+  const dueSuggestionHint = dueSuggestion
+    ? `→ ${dueSuggestion} (press →)`
+    : null;
 
   const timeAutocompleteStep =
     isEditorMode(uiState.mode) &&
@@ -3478,7 +3756,7 @@ export function App({
   const editorDueTime = state.editor
     ? combineDueDateTime(state.editor.dueText, state.editor.timeText, {
         now,
-        tz: MINI_DEFAULT_TIMEZONE
+        tz: MINI_DEFAULT_TIMEZONE,
       })
     : { dueAt: undefined, hasExplicitTime: false };
   const recurrencePreview = state.editor
@@ -3487,7 +3765,7 @@ export function App({
         editorDueTime.dueAt,
         editorDueTime.hasExplicitTime,
         now,
-        3
+        3,
       )
     : [];
   const activeOverdueModal =
@@ -3513,15 +3791,17 @@ export function App({
     const firstTask = state.tasks.length > 0;
     const firstTome = Boolean(state.engagement.achievements.FIRST_TOME_CREATED);
     const firstChecklistComplete = Boolean(
-      state.engagement.achievements.FIRST_CHECKLIST_FULLY_COMPLETED
+      state.engagement.achievements.FIRST_CHECKLIST_FULLY_COMPLETED,
     );
-    const completed = [firstTask, firstTome, firstChecklistComplete].filter(Boolean).length;
+    const completed = [firstTask, firstTome, firstChecklistComplete].filter(
+      Boolean,
+    ).length;
     return {
       firstTask,
       firstTome,
       firstChecklistComplete,
       completed,
-      total: 3 as const
+      total: 3 as const,
     };
   })();
   const blockingOverlayOpen = isBlockingOverlayOpen(uiState);
@@ -3533,7 +3813,10 @@ export function App({
     settingsState.hintDisplayMode === "left_rail" ||
     settingsState.hintDisplayMode === "both";
   const suppressWhichKeyHints =
-    commandActive || viewsOverlayOpen || saveViewPromptOpen || activeEngagementToast !== null;
+    commandActive ||
+    viewsOverlayOpen ||
+    saveViewPromptOpen ||
+    activeEngagementToast !== null;
   const showWhichKeyHintBar =
     showBottomHintSurface &&
     !suppressWhichKeyHints &&
@@ -3546,32 +3829,40 @@ export function App({
     uiState.focus === FocusTarget.TASK_LIST;
   const whichKeyHintBarBottom =
     bottomBarHeight + bannerHeight + whichKeyHintBarPaddingBottomRows;
-  const whichKeyPopupBottom = whichKeyHintBarBottom + (
-    showWhichKeyHintBar ? whichKeyHintBarHeightRows : whichKeyHintBarPaddingBottomRows
+  const whichKeyPopupBottom =
+    whichKeyHintBarBottom +
+    (showWhichKeyHintBar
+      ? whichKeyHintBarHeightRows
+      : whichKeyHintBarPaddingBottomRows);
+  const whichKeyPopupLineWidth = Math.max(
+    18,
+    Math.min(40, bottomBarWidth - 12),
   );
-  const whichKeyPopupLineWidth = Math.max(18, Math.min(40, bottomBarWidth - 12));
   const engagementToastLine = activeEngagementToast
     ? fitLineToWidth(
         activeEngagementToast.message,
-        Math.max(1, bottomBarWidth - 4)
+        Math.max(1, bottomBarWidth - 4),
       )
     : "";
   const commandOutputLine = commandOutput
-    ? truncateToWidth(commandOutput.text.replace(/\s+/g, " ").trim(), Math.max(1, bottomBarWidth - 8))
+    ? truncateToWidth(
+        commandOutput.text.replace(/\s+/g, " ").trim(),
+        Math.max(1, bottomBarWidth - 8),
+      )
     : "";
   const commandOverlayInnerWidth = Math.max(1, bottomBarContentWidth - 4);
   const commandHeaderLine = fitLineToWidth(
     "TITS — Terminal in Terminal System  ·  Esc Close  Enter Run  ↑/↓ History",
-    commandOverlayInnerWidth
+    commandOverlayInnerWidth,
   );
   const commandIdleHintLine = fitLineToWidth(
     'Try: add "Plan sprint" due:2026-03-02 at:09:30 #work #planning  •  help',
-    commandOverlayInnerWidth
+    commandOverlayInnerWidth,
   );
   const commandStatusLine = commandOutput
     ? fitLineToWidth(
         `${commandOutput.kind === "error" ? "ERR:" : "OK:"} ${commandOutputLine}`,
-        commandOverlayInnerWidth
+        commandOverlayInnerWidth,
       )
     : commandIdleHintLine;
   const renderStartMs = Date.now();
@@ -3597,54 +3888,70 @@ export function App({
       return;
     }
 
-    const lastSavedAt = result.lastSuccessfulSaveAt ?? lastSuccessfulSaveAtRef.current;
+    const lastSavedAt =
+      result.lastSuccessfulSaveAt ?? lastSuccessfulSaveAtRef.current;
     const summary = result.error.message || "Unknown persistence error";
     if (result.isRevisionConflict) {
       const expected = String(result.expectedStateRevision ?? "unknown");
       const actual = String(result.actualStateRevision ?? "unknown");
-      const lastSaveText = lastSavedAt
-        ? ` | Last successful save: ${formatSaveTimestamp(lastSavedAt)}`
-        : "";
+      const lastSaveText = buildLastSaveText(lastSavedAt, formatSaveTimestamp);
       setSaveConflictBannerState({
         filePath: result.filePath,
         expectedStateRevision: result.expectedStateRevision,
-        actualStateRevision: result.actualStateRevision
+        actualStateRevision: result.actualStateRevision,
       });
       setSaveFailureBanner(
-        `Save blocked by concurrent update (expected revision ${expected}, found ${actual}). Press R or click to reload and retry. | Path: ${result.filePath}${lastSaveText}`
+        buildSaveConflictBanner({
+          expected,
+          actual,
+          filePath: result.filePath,
+          lastSaveText,
+        }),
       );
       return;
     }
     setSaveConflictBannerState(null);
-    const lastSaveText = lastSavedAt
-      ? ` | Last successful save: ${formatSaveTimestamp(lastSavedAt)}`
-      : "";
+    const lastSaveText = buildLastSaveText(lastSavedAt, formatSaveTimestamp);
     setSaveFailureBanner(
-      `Save failed: ${summary} | Path: ${result.filePath}${lastSaveText}`
+      buildSaveFailureBanner({
+        prefix: "Save failed",
+        detail: summary,
+        filePath: result.filePath,
+        lastSaveText,
+      }),
     );
   }
 
   useEffect(() => {
-    const id = setInterval(() => {
-      const { data, changed } = applyArchiveAging(
-        {
-          schemaVersion: CURRENT_SCHEMA_VERSION,
-          tasks: state.tasks,
-          tagIndex: state.tagIndex,
-          ...(state.tagAliases && Object.keys(state.tagAliases).length > 0
-            ? { tagAliases: state.tagAliases }
-            : {}),
-          savedViews: state.savedViews,
-          engagement: state.engagement
-        },
-        Date.now()
-      );
-      if (changed) {
-        dispatch({ type: "setTasks", tasks: data.tasks });
-      }
-    }, 60 * 60 * 1000);
+    const id = setInterval(
+      () => {
+        const { data, changed } = applyArchiveAging(
+          {
+            schemaVersion: CURRENT_SCHEMA_VERSION,
+            tasks: state.tasks,
+            tagIndex: state.tagIndex,
+            ...(state.tagAliases && Object.keys(state.tagAliases).length > 0
+              ? { tagAliases: state.tagAliases }
+              : {}),
+            savedViews: state.savedViews,
+            engagement: state.engagement,
+          },
+          Date.now(),
+        );
+        if (changed) {
+          dispatch({ type: "setTasks", tasks: data.tasks });
+        }
+      },
+      60 * 60 * 1000,
+    );
     return () => clearInterval(id);
-  }, [state.tasks, state.tagIndex, state.tagAliases, state.engagement, state.savedViews]);
+  }, [
+    state.tasks,
+    state.tagIndex,
+    state.tagAliases,
+    state.engagement,
+    state.savedViews,
+  ]);
 
   useEffect(() => {
     if (isStaticFlashMode) {
@@ -3718,112 +4025,14 @@ export function App({
 
   useEffect(() => {
     const id = setInterval(() => {
-      evaluateNotificationsRef.current(Date.now());
-    }, NOTIFICATION_EVALUATION_INTERVAL_MS);
-    return () => clearInterval(id);
-  }, []);
-
-  useEffect(() => {
-    const id = setInterval(() => {
       dispatch({
         type: "tickEngagementToast",
         now: Date.now(),
-        overlayBlocked: blockingOverlayOpen
+        overlayBlocked: blockingOverlayOpen,
       });
     }, ENGAGEMENT_TOAST_TICK_INTERVAL_MS);
     return () => clearInterval(id);
   }, [blockingOverlayOpen]);
-
-  useEffect(() => {
-    evaluateNotificationsRef.current(Date.now());
-  }, [state.tasks]);
-
-  useEffect(() => {
-    if (reminderTimerRef.current) {
-      clearTimeout(reminderTimerRef.current);
-      reminderTimerRef.current = null;
-    }
-
-    const nowMs = Date.now();
-    const reminderEvaluation = evaluateReminderTriggers(state.tasks, nowMs);
-    if (reminderEvaluation.tasks !== state.tasks) {
-      dispatch({ type: "setTasks", tasks: reminderEvaluation.tasks });
-    }
-    for (const event of reminderEvaluation.events) {
-      uiDispatch({ type: "enqueueNotificationModal", event });
-    }
-
-    const nextReminderAt = nextPendingReminderAt(reminderEvaluation.tasks, nowMs);
-    if (nextReminderAt === undefined) {
-      return;
-    }
-
-    const waitMs = Math.max(0, nextReminderAt - nowMs);
-    const nextDelay =
-      waitMs > REMINDER_TIMEOUT_MAX_DELAY_MS ? REMINDER_TIMEOUT_FALLBACK_MS : waitMs;
-    reminderTimerRef.current = setTimeout(() => {
-      setReminderSchedulerTick((previous) => previous + 1);
-    }, Math.max(250, nextDelay));
-
-    return () => {
-      if (reminderTimerRef.current) {
-        clearTimeout(reminderTimerRef.current);
-        reminderTimerRef.current = null;
-      }
-    };
-  }, [state.tasks, reminderSchedulerTick]);
-
-  useEffect(() => {
-    if (activeHelpPage !== "settingsNotifications") {
-      return;
-    }
-
-    let cancelled = false;
-    const dataFilePath = getDataFilePath();
-    const invocation = resolveCurrentTadoiInvocation();
-
-    void (async () => {
-      try {
-        const schedulerStatus = await getReminderSchedulerStatus({ invocation });
-        if (!cancelled) {
-          setOutOfAppReminderHelperInstalled(schedulerStatus.installed);
-        }
-      } catch {
-        if (!cancelled) {
-          setOutOfAppReminderHelperInstalled(null);
-        }
-      }
-
-      try {
-        const index = await loadReminderIndexForDataFile({ dataFilePath });
-        const nowMs = Date.now();
-        const nextEvent =
-          index.events.find((event) => Date.parse(event.remindAt) >= nowMs) ?? index.events[0];
-        if (!cancelled) {
-          if (nextEvent) {
-            setOutOfAppReminderNextEventLabel(
-              `${nextEvent.title} @ ${nextEvent.remindAt}`
-            );
-          } else {
-            setOutOfAppReminderNextEventLabel("none");
-          }
-        }
-      } catch {
-        if (!cancelled) {
-          setOutOfAppReminderNextEventLabel("unavailable");
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    activeHelpPage,
-    reminderSchedulerTick,
-    state.tasks.length,
-    settingsState.notifications.outOfAppRemindersEnabled
-  ]);
 
   useEffect(() => {
     if (state.tasks.length !== 0) return;
@@ -3832,11 +4041,7 @@ export function App({
     }
     if (!isNuxIdle) return;
     openEmptyNuxModal({ step: "welcome" });
-  }, [
-    state.tasks.length,
-    uiState.emptyNuxDismissed,
-    isNuxIdle
-  ]);
+  }, [state.tasks.length, uiState.emptyNuxDismissed, isNuxIdle]);
 
   useEffect(() => {
     if (uiState.emptyNux?.step !== "adding") return;
@@ -3846,14 +4051,14 @@ export function App({
     openEmptyNuxModal({
       step: "welcome",
       startedFromNux: true,
-      createdTaskId: uiState.emptyNux.createdTaskId
+      createdTaskId: uiState.emptyNux.createdTaskId,
     });
   }, [
     state.tasks.length,
     uiState.emptyNux?.step,
     uiState.emptyNux?.createdTaskId,
     uiState.emptyNuxDismissed,
-    isNuxIdle
+    isNuxIdle,
   ]);
 
   useEffect(() => {
@@ -3866,7 +4071,8 @@ export function App({
     ) {
       setStartupBannerMessage(null);
     }
-    const transitionedFromEmptyToNonEmpty = previousTaskCount === 0 && nextTaskCount > 0;
+    const transitionedFromEmptyToNonEmpty =
+      previousTaskCount === 0 && nextTaskCount > 0;
 
     if (
       transitionedFromEmptyToNonEmpty &&
@@ -3878,7 +4084,7 @@ export function App({
         openEmptyNuxModal({
           step: "celebrate",
           startedFromNux: true,
-          createdTaskId
+          createdTaskId,
         });
       } else {
         pendingCelebrateTaskIdRef.current = createdTaskId;
@@ -3894,7 +4100,7 @@ export function App({
     uiState.emptyNux?.startedFromNux,
     isNuxIdle,
     showCorruptionRecoveryImportCta,
-    startupBannerMessage
+    startupBannerMessage,
   ]);
 
   useEffect(() => {
@@ -3905,7 +4111,7 @@ export function App({
     openEmptyNuxModal({
       step: "celebrate",
       startedFromNux: true,
-      createdTaskId: pendingCelebrateTaskIdRef.current
+      createdTaskId: pendingCelebrateTaskIdRef.current,
     });
     pendingCelebrateTaskIdRef.current = undefined;
   }, [uiState.emptyNuxCelebratePending, isNuxIdle]);
@@ -3918,66 +4124,17 @@ export function App({
   }, [state.tasks.length, uiState.modal, uiState.emptyNux?.startedFromNux]);
 
   useEffect(() => {
-    if (uiState.modal) return;
-    if (uiState.notificationModalQueue.length === 0) return;
-
-    const nextEvent = uiState.notificationModalQueue[0];
-    if (
-      nextEvent?.type === "TASK_OVERDUE" &&
-      (!settingsState.notifications.enabled ||
-        !settingsState.notifications.inAppOverdueBanner)
-    ) {
-      uiDispatch({ type: "dequeueNotificationModal" });
-      return;
-    }
-    const previousMode = uiState.mode === Mode.MODAL_CONFIRM ? Mode.LIST : uiState.mode;
-    const previousFocus =
-      uiState.mode === Mode.MODAL_CONFIRM ? FocusTarget.TASK_LIST : uiState.focus;
-
-    uiDispatch({ type: "dequeueNotificationModal" });
-    if (nextEvent?.type === "TASK_OVERDUE") {
-      uiDispatch({
-        type: "setModal",
-        modal: {
-          type: "overdue",
-          event: nextEvent,
-          previousMode,
-          previousFocus
-        }
-      });
-      modalBellNotifierRef.current?.notify(nextEvent);
-    } else if (nextEvent?.type === "TASK_REMINDER") {
-      uiDispatch({
-        type: "setModal",
-        modal: {
-          type: "reminder",
-          event: nextEvent,
-          previousMode,
-          previousFocus
-        }
-      });
-    } else {
-      return;
-    }
-    uiDispatch({ type: "setMode", mode: Mode.MODAL_CONFIRM });
-    uiDispatch({ type: "setFocus", focus: FocusTarget.MODAL });
-  }, [
-    settingsState.notifications.enabled,
-    settingsState.notifications.inAppOverdueBanner,
-    uiState.modal,
-    uiState.mode,
-    uiState.focus,
-    uiState.notificationModalQueue
-  ]);
-
-  useEffect(() => {
     if (
       settingsState.notifications.enabled &&
       settingsState.notifications.inAppOverdueBanner
     ) {
       return;
     }
-    if (uiState.notificationModalQueue.some((event) => event.type === "TASK_OVERDUE")) {
+    if (
+      uiState.notificationModalQueue.some(
+        (event) => event.type === "TASK_OVERDUE",
+      )
+    ) {
       uiDispatch({ type: "clearOverdueNotificationModals" });
     }
     if (uiState.modal?.type === "overdue") {
@@ -3987,7 +4144,7 @@ export function App({
     settingsState.notifications.enabled,
     settingsState.notifications.inAppOverdueBanner,
     uiState.modal,
-    uiState.notificationModalQueue
+    uiState.notificationModalQueue,
   ]);
 
   useEffect(() => {
@@ -3997,9 +4154,6 @@ export function App({
       }
       if (navBannerTimerRef.current) {
         clearTimeout(navBannerTimerRef.current);
-      }
-      if (reminderTimerRef.current) {
-        clearTimeout(reminderTimerRef.current);
       }
     };
   }, []);
@@ -4079,7 +4233,7 @@ export function App({
       builtInTextDraft:
         uiState.mode === Mode.HELP && activeHelpPage === "textTuningEdit"
           ? builtInTextDraft
-          : undefined
+          : undefined,
     });
   }, [
     activeHelpPage,
@@ -4087,7 +4241,7 @@ export function App({
     builtInTextDraft,
     custom1Draft,
     settingsState,
-    uiState.mode
+    uiState.mode,
   ]);
 
   useEffect(() => {
@@ -4118,10 +4272,10 @@ export function App({
         customThemes: settingsState.customThemes,
         keymapAliases: settingsState.keymapAliases,
         githubBackup: settingsState.githubBackup,
-        notes: settingsState.notes
+        notes: settingsState.notes,
       },
       150,
-      settingsPath ? { filePath: settingsPath } : {}
+      settingsPath ? { filePath: settingsPath } : {},
     );
   }, [
     settingsPath,
@@ -4139,7 +4293,7 @@ export function App({
     settingsState.notifications,
     settingsState.security,
     settingsState.showPrefixHintPopup,
-    settingsState.themeId
+    settingsState.themeId,
   ]);
 
   useEffect(() => {
@@ -4156,21 +4310,33 @@ export function App({
           ? { tagAliases: state.tagAliases }
           : {}),
         savedViews: state.savedViews,
-        engagement: state.engagement
+        engagement: state.engagement,
       },
       350,
       undefined,
       undefined,
       handleSaveResult,
-      { expectedStateRevision: expectedStateRevisionRef.current }
+      { expectedStateRevision: expectedStateRevisionRef.current },
     );
-  }, [state.tasks, state.tagIndex, state.tagAliases, state.savedViews, state.engagement]);
+  }, [
+    state.tasks,
+    state.tagIndex,
+    state.tagAliases,
+    state.savedViews,
+    state.engagement,
+  ]);
 
   useEffect(() => {
     if (!PERF_DEBUG_ENABLED) return;
     const durationMs = Date.now() - renderStartMs;
     redactedLogger.log(
-      `[${APP_NAME}][perf] render=${durationMs}ms terminal=${terminalWidth}x${terminalHeight} visibleRows=${visibleRows} visibleTaskRows=${visibleTaskRows.length}`
+      buildPerfLogMessage({
+        durationMs,
+        terminalWidth,
+        terminalHeight,
+        visibleRows,
+        visibleTaskRows: visibleTaskRows.length,
+      }),
     );
   });
 
@@ -4178,36 +4344,49 @@ export function App({
     const reconciled = reconcileSelectionById(
       visibleTaskRows,
       state.selectedId,
-      uiState.selectedIndex
+      uiState.selectedIndex,
     );
 
     if (reconciled.selectedId !== state.selectedId) {
       dispatch({ type: "setSelected", id: reconciled.selectedId });
     }
     if (reconciled.selectedIndex !== uiState.selectedIndex) {
-      uiDispatch({ type: "setSelectedIndex", selectedIndex: reconciled.selectedIndex });
+      uiDispatch({
+        type: "setSelectedIndex",
+        selectedIndex: reconciled.selectedIndex,
+      });
     }
     if (visibleTaskRows.length === 0 && uiState.scrollOffset !== 0) {
       uiDispatch({ type: "setScrollOffset", scrollOffset: 0 });
     }
-  }, [visibleTaskRows, state.selectedId, uiState.selectedIndex, uiState.scrollOffset]);
+  }, [
+    visibleTaskRows,
+    state.selectedId,
+    uiState.selectedIndex,
+    uiState.scrollOffset,
+  ]);
 
   useEffect(() => {
     const clamped = clampScrollOffset(
       uiState.scrollOffset,
       visibleRows,
-      visibleTaskRows.length
+      visibleTaskRows.length,
     );
     const nextOffset = ensureSelectedVisible({
       selectedIndex: uiState.selectedIndex,
       scrollOffset: clamped,
       visibleRows,
-      itemCount: visibleTaskRows.length
+      itemCount: visibleTaskRows.length,
     });
     if (nextOffset !== uiState.scrollOffset) {
       uiDispatch({ type: "setScrollOffset", scrollOffset: nextOffset });
     }
-  }, [uiState.scrollOffset, uiState.selectedIndex, visibleRows, visibleTaskRows.length]);
+  }, [
+    uiState.scrollOffset,
+    uiState.selectedIndex,
+    visibleRows,
+    visibleTaskRows.length,
+  ]);
 
   useEffect(() => {
     if (selectedTaskLinks.length === 0) {
@@ -4217,7 +4396,10 @@ export function App({
       return;
     }
 
-    if (selectedLinkId && selectedTaskLinks.some((link) => link.id === selectedLinkId)) {
+    if (
+      selectedLinkId &&
+      selectedTaskLinks.some((link) => link.id === selectedLinkId)
+    ) {
       return;
     }
 
@@ -4243,7 +4425,7 @@ export function App({
   }, [
     selectedChecklistItemId,
     selectedChecklistItemIdsKey,
-    selectedChecklistTask?.id
+    selectedChecklistTask?.id,
   ]);
 
   useEffect(() => {
@@ -4263,7 +4445,9 @@ export function App({
 
     if (
       selectedEditorChecklistItemId &&
-      editorChecklistItems.some((item) => item.id === selectedEditorChecklistItemId)
+      editorChecklistItems.some(
+        (item) => item.id === selectedEditorChecklistItemId,
+      )
     ) {
       return;
     }
@@ -4273,7 +4457,7 @@ export function App({
     editorChecklistItemIdsKey,
     selectedEditorChecklistItemId,
     state.editor,
-    uiState.mode
+    uiState.mode,
   ]);
 
   useEffect(() => {
@@ -4287,13 +4471,13 @@ export function App({
     const clampedOffset = clampScrollOffset(
       checklistScrollOffset,
       checklistViewportRows,
-      selectedChecklistItems.length
+      selectedChecklistItems.length,
     );
     const nextOffset = ensureSelectedVisible({
       selectedIndex: safeSelectedIndex,
       scrollOffset: clampedOffset,
       visibleRows: checklistViewportRows,
-      itemCount: selectedChecklistItems.length
+      itemCount: selectedChecklistItems.length,
     });
     if (nextOffset !== checklistScrollOffset) {
       setChecklistScrollOffset(nextOffset);
@@ -4302,7 +4486,7 @@ export function App({
     checklistScrollOffset,
     checklistViewportRows,
     selectedChecklistIndex,
-    selectedChecklistItems.length
+    selectedChecklistItems.length,
   ]);
 
   useEffect(() => {
@@ -4350,7 +4534,11 @@ export function App({
     if (searchSelectedResultIndex > unifiedSearchResults.length - 1) {
       setSearchSelectedResultIndex(unifiedSearchResults.length - 1);
     }
-  }, [searchResultsFocused, searchSelectedResultIndex, unifiedSearchResults.length]);
+  }, [
+    searchResultsFocused,
+    searchSelectedResultIndex,
+    unifiedSearchResults.length,
+  ]);
 
   useEffect(() => {
     if (!bulkActive) return;
@@ -4378,7 +4566,10 @@ export function App({
       if (dashboardPrioritySelection !== 0) {
         setDashboardPrioritySelection(0);
       }
-    } else if (dashboardPrioritySelection > dashboardPriorityBuckets.length - 1) {
+    } else if (
+      dashboardPrioritySelection >
+      dashboardPriorityBuckets.length - 1
+    ) {
       setDashboardPrioritySelection(dashboardPriorityBuckets.length - 1);
     }
 
@@ -4386,7 +4577,10 @@ export function App({
       if (dashboardAssigneeSelection !== 0) {
         setDashboardAssigneeSelection(0);
       }
-    } else if (dashboardAssigneeSelection > dashboardAssigneeSlices.length - 1) {
+    } else if (
+      dashboardAssigneeSelection >
+      dashboardAssigneeSlices.length - 1
+    ) {
       setDashboardAssigneeSelection(dashboardAssigneeSlices.length - 1);
     }
 
@@ -4402,14 +4596,19 @@ export function App({
       if (dashboardWorkflowStageSelection !== 0) {
         setDashboardWorkflowStageSelection(0);
       }
-    } else if (dashboardWorkflowStageSelection > dashboardWorkflowStageSlices.length - 1) {
-      setDashboardWorkflowStageSelection(dashboardWorkflowStageSlices.length - 1);
+    } else if (
+      dashboardWorkflowStageSelection >
+      dashboardWorkflowStageSlices.length - 1
+    ) {
+      setDashboardWorkflowStageSelection(
+        dashboardWorkflowStageSlices.length - 1,
+      );
     }
 
     if (getDashboardFocusGroupItemCount(dashboardFocusGroup) > 0) return;
     const fallback =
       DASHBOARD_FOCUS_GROUP_ORDER.find(
-        (group) => getDashboardFocusGroupItemCount(group) > 0
+        (group) => getDashboardFocusGroupItemCount(group) > 0,
       ) ?? "due_buckets";
     setDashboardFocusGroup(fallback);
   }, [
@@ -4423,7 +4622,7 @@ export function App({
     dashboardWorkflowStageSelection,
     dashboardWorkflowStageSlices.length,
     dashboardTopTags.length,
-    state.filters.status
+    state.filters.status,
   ]);
 
   function getCurrentHelpScrollTop(): number {
@@ -4434,7 +4633,11 @@ export function App({
   }
 
   function scrollHelpTo(offset: number): number {
-    const clamped = clampScrollOffset(offset, helpContentVisibleRows, helpRows.length);
+    const clamped = clampScrollOffset(
+      offset,
+      helpContentVisibleRows,
+      helpRows.length,
+    );
     helpScrollTopRef.current = clamped;
     setHelpScrollOffset((prev) => (prev === clamped ? prev : clamped));
     return clamped;
@@ -4444,12 +4647,16 @@ export function App({
     return clampScrollOffset(
       helpNavScrollOffset,
       helpContentVisibleRows,
-      helpNavLineCount
+      helpNavLineCount,
     );
   }
 
   function scrollHelpNavTo(offset: number): number {
-    const clamped = clampScrollOffset(offset, helpContentVisibleRows, helpNavLineCount);
+    const clamped = clampScrollOffset(
+      offset,
+      helpContentVisibleRows,
+      helpNavLineCount,
+    );
     setHelpNavScrollOffset((prev) => (prev === clamped ? prev : clamped));
     return clamped;
   }
@@ -4457,7 +4664,7 @@ export function App({
   function ensureHelpSectionVisibleNow(sectionIndex: number): number {
     const clampedSectionIndex = Math.max(
       0,
-      Math.min(sectionIndex, HELP_MENU_SECTIONS.length - 1)
+      Math.min(sectionIndex, HELP_MENU_SECTIONS.length - 1),
     );
     const section = helpSections[clampedSectionIndex] ?? helpSections[0];
     const nextOffset = ensureHelpSectionVisible({
@@ -4465,7 +4672,7 @@ export function App({
       scrollOffset: getCurrentHelpScrollTop(),
       visibleRows: helpContentVisibleRows,
       itemCount: helpRows.length,
-      paddingRows: HELP_SECTION_SCROLL_PADDING
+      paddingRows: HELP_SECTION_SCROLL_PADDING,
     });
     return scrollHelpTo(nextOffset);
   }
@@ -4474,7 +4681,7 @@ export function App({
     if (uiState.mode !== Mode.HELP || activeHelpPage !== "help") return;
     const clampedIndex = Math.max(
       0,
-      Math.min(helpFocusedSectionIndex, HELP_MENU_SECTIONS.length - 1)
+      Math.min(helpFocusedSectionIndex, HELP_MENU_SECTIONS.length - 1),
     );
     if (clampedIndex !== helpFocusedSectionIndex) {
       helpFocusedSectionRef.current = clampedIndex;
@@ -4492,7 +4699,7 @@ export function App({
     helpPanelWidth,
     helpPanelHeight,
     helpPanelInnerWidth,
-    helpPanelInnerHeight
+    helpPanelInnerHeight,
   ]);
 
   useLayoutEffect(() => {
@@ -4511,10 +4718,13 @@ export function App({
     const currentOffset = getCurrentHelpNavScrollTop();
 
     const nextOffset = ensureSelectedVisible({
-      selectedIndex: getHelpNavSelectionAnchorRow(helpNavStatusLineCount, clampedHelpNavSelectionIndex),
+      selectedIndex: getHelpNavSelectionAnchorRow(
+        helpNavStatusLineCount,
+        clampedHelpNavSelectionIndex,
+      ),
       scrollOffset: currentOffset,
       visibleRows: helpContentVisibleRows,
-      itemCount: helpNavLineCount
+      itemCount: helpNavLineCount,
     });
 
     if (nextOffset !== currentOffset) {
@@ -4530,7 +4740,7 @@ export function App({
     helpPanelWidth,
     helpPanelHeight,
     helpPanelInnerWidth,
-    helpPanelInnerHeight
+    helpPanelInnerHeight,
   ]);
 
   useEffect(() => {
@@ -4553,10 +4763,12 @@ export function App({
     helpFooterDataPathLine,
     custom1Draft,
     builtInTextDraft,
-    helpTextTuningThemeId
+    helpTextTuningThemeId,
   ]);
 
-  function applyEscUnwind(options: { bypassUnsavedGuard?: boolean } = {}): boolean {
+  function applyEscUnwind(
+    options: { bypassUnsavedGuard?: boolean } = {},
+  ): boolean {
     return modalFlow.applyEscUnwind(options);
   }
 
@@ -4570,31 +4782,14 @@ export function App({
         isEditorDraftDirty(draft, editorBaselineDraftRef.current)
       );
     }
-    return editorDirtyIntentRef.current || isEditorDraftDirty(draft, createEmptyDraft());
-  }
-
-  function isCustom1EditorDirty(): boolean {
-    const persistedObjects = sanitizeDraftObjects(persistedCustom1.objects ?? {}) ?? {};
-    const draftObjects = sanitizeDraftObjects(custom1DraftObjects) ?? {};
     return (
-      stableSerialize(persistedCustom1.global) !== stableSerialize(custom1DraftGlobal) ||
-      stableSerialize(persistedObjects) !== stableSerialize(draftObjects)
-    );
-  }
-
-  function isBuiltInTextEditorDirty(): boolean {
-    const persistedGlobal = sanitizeThemeTextTokenOverrides(persistedBuiltInTextConfig.global);
-    const persistedObjects = sanitizeThemeTextObjectOverrides(persistedBuiltInTextConfig.objects);
-    const draftGlobal = sanitizeThemeTextTokenOverrides(builtInTextDraftGlobal);
-    const draftObjects = sanitizeThemeTextObjectOverrides(builtInTextDraftObjects);
-    return (
-      stableSerialize(persistedGlobal ?? {}) !== stableSerialize(draftGlobal ?? {}) ||
-      stableSerialize(persistedObjects ?? {}) !== stableSerialize(draftObjects ?? {})
+      editorDirtyIntentRef.current ||
+      isEditorDraftDirty(draft, createEmptyDraft())
     );
   }
 
   function requestTaskEditorUnsavedGuard(
-    continuation: UITaskEditorUnsavedContinuation
+    continuation: UITaskEditorUnsavedContinuation,
   ): boolean {
     if (!isEditorMode(uiState.mode) || !isTaskEditorDirty()) {
       return false;
@@ -4607,39 +4802,15 @@ export function App({
         source: "task_editor",
         continuation,
         previousMode: uiState.mode,
-        previousFocus: uiState.focus
-      }
+        previousFocus: uiState.focus,
+      },
     });
     return true;
   }
 
-  function requestHelpThemeEditorUnsavedGuard(
-    source: HelpThemeEditorSource,
-    continuation: UIHelpThemeUnsavedContinuation
-  ): boolean {
-    if (uiState.mode !== Mode.HELP) return false;
-    const matchesSource =
-      (source === "help_custom1_editor" && activeHelpPage === "custom1Edit") ||
-      (source === "help_text_tuning_editor" && activeHelpPage === "textTuningEdit");
-    if (!matchesSource) return false;
-    const dirty =
-      source === "help_custom1_editor" ? isCustom1EditorDirty() : isBuiltInTextEditorDirty();
-    if (!dirty) return false;
-    runRoutedAction({
-      scope: "ui",
-      type: "OPEN_UNSAVED_CHANGES_MODAL",
-      modal: {
-        type: "unsaved_changes",
-        source,
-        continuation,
-        previousMode: Mode.HELP,
-        previousFocus: uiState.focus
-      }
-    });
-    return true;
-  }
-
-  function runTaskEditorContinuation(continuation: UITaskEditorUnsavedContinuation): void {
+  function runTaskEditorContinuation(
+    continuation: UITaskEditorUnsavedContinuation,
+  ): void {
     switch (continuation) {
       case "close_editor":
       case "open_list":
@@ -4682,7 +4853,7 @@ export function App({
 
   function runHelpThemeEditorContinuation(
     source: HelpThemeEditorSource,
-    continuation: UIHelpThemeUnsavedContinuation
+    continuation: UIHelpThemeUnsavedContinuation,
   ): void {
     if (continuation === "close_help") {
       closeHelp({ bypassUnsavedGuard: true });
@@ -4699,19 +4870,21 @@ export function App({
     modalFlow.openUnsavedChangesModal(modal);
   }
 
-  function openBackupFinalCheckpointModal(modal: UIBackupFinalCheckpointModal): void {
+  function openBackupFinalCheckpointModal(
+    modal: UIBackupFinalCheckpointModal,
+  ): void {
     modalFlow.openBackupFinalCheckpointModal(modal);
   }
 
   function openRecurringDeleteFutureCheckpointModal(
-    modal: UIRecurringDeleteFutureCheckpointModal
+    modal: UIRecurringDeleteFutureCheckpointModal,
   ): void {
     modalFlow.openRecurringDeleteFutureCheckpointModal(modal);
   }
 
   function openBackupFinalCheckpoint(
     checkpoint: UIBackupFinalCheckpointModal["checkpoint"],
-    sourceScreen: BackupCenterFlowScreen
+    sourceScreen: BackupCenterFlowScreen,
   ): void {
     modalFlow.openBackupFinalCheckpoint(checkpoint, sourceScreen);
   }
@@ -4751,13 +4924,13 @@ export function App({
   function openBackupError(
     message: string,
     error?: unknown,
-    returnScreen?: BackupCenterFlowScreen
+    returnScreen?: BackupCenterFlowScreen,
   ) {
     backupDispatch({
       type: "setError",
       message,
       detail: error ? normalizeErrorDetail(error) : undefined,
-      returnScreen
+      returnScreen,
     });
   }
 
@@ -4772,64 +4945,68 @@ export function App({
         : 0;
     dispatch({ type: "load", data: stateResult.data });
     const settingsResult = await loadSettings();
-    settingsDispatch({ type: "setTheme", themeId: settingsResult.settings.themeId });
+    settingsDispatch({
+      type: "setTheme",
+      themeId: settingsResult.settings.themeId,
+    });
     settingsDispatch({
       type: "setLogoMode",
-      logoMode: settingsResult.settings.logoMode
+      logoMode: settingsResult.settings.logoMode,
     });
     settingsDispatch({
       type: "setFlashMode",
-      flashMode: settingsResult.settings.flashMode
+      flashMode: settingsResult.settings.flashMode,
     });
     settingsDispatch({
       type: "setHintDisplayMode",
       hintDisplayMode:
-        settingsResult.settings.hintDisplayMode ?? DEFAULT_HINT_DISPLAY_MODE
+        settingsResult.settings.hintDisplayMode ?? DEFAULT_HINT_DISPLAY_MODE,
     });
     settingsDispatch({
       type: "setShowPrefixHintPopup",
       showPrefixHintPopup:
-        settingsResult.settings.showPrefixHintPopup ?? DEFAULT_SHOW_PREFIX_HINT_POPUP
+        settingsResult.settings.showPrefixHintPopup ??
+        DEFAULT_SHOW_PREFIX_HINT_POPUP,
     });
     settingsDispatch({
       type: "setCrtFxLite",
-      crtFxLite: settingsResult.settings.crtFxLite === true
+      crtFxLite: settingsResult.settings.crtFxLite === true,
     });
     settingsDispatch({
       type: "setCrtFxColor",
-      crtFxColor: settingsResult.settings.crtFxColor ?? DEFAULT_CRT_FX_COLOR
+      crtFxColor: settingsResult.settings.crtFxColor ?? DEFAULT_CRT_FX_COLOR,
     });
     settingsDispatch({
       type: "setCrtFxPreset",
-      crtFxPreset: settingsResult.settings.crtFxPreset ?? DEFAULT_CRT_FX_PRESET
+      crtFxPreset: settingsResult.settings.crtFxPreset ?? DEFAULT_CRT_FX_PRESET,
     });
     settingsDispatch({
       type: "setRetroFxMode",
-      retroFxMode: settingsResult.settings.retroFxMode ?? DEFAULT_RETRO_FX
+      retroFxMode: settingsResult.settings.retroFxMode ?? DEFAULT_RETRO_FX,
     });
     settingsDispatch({
       type: "setNotifications",
-      notifications: settingsResult.settings.notifications
+      notifications: settingsResult.settings.notifications,
     });
     settingsDispatch({
       type: "setSecurity",
-      security: settingsResult.settings.security
+      security: settingsResult.settings.security,
     });
     settingsDispatch({
       type: "setCustomThemes",
-      customThemes: settingsResult.settings.customThemes
+      customThemes: settingsResult.settings.customThemes,
     });
     settingsDispatch({
       type: "setKeymapAliases",
-      keymapAliases: settingsResult.settings.keymapAliases
+      keymapAliases: settingsResult.settings.keymapAliases,
     });
     settingsDispatch({
       type: "setGitHubBackup",
-      githubBackup: settingsResult.settings.githubBackup
+      githubBackup: settingsResult.settings.githubBackup,
     });
     settingsDispatch({
       type: "setNotes",
-      notes: settingsResult.settings.notes ?? DEFAULT_NOTES_SETTINGS
+      notes: settingsResult.settings.notes ?? DEFAULT_NOTES_SETTINGS,
     });
   }
 
@@ -4845,7 +5022,7 @@ export function App({
         ? { tagAliases: state.tagAliases }
         : {}),
       savedViews: state.savedViews,
-      engagement: state.engagement
+      engagement: state.engagement,
     };
     const dataPath = getResolvedDataPath();
     const lastSavedAt = lastSuccessfulSaveAtRef.current;
@@ -4860,8 +5037,8 @@ export function App({
             return { stateRevision: latest.data.stateRevision };
           },
           saveAtomic: async (data, filePath, options) =>
-            saveStateAtomic(data, filePath, undefined, options)
-        }
+            saveStateAtomic(data, filePath, undefined, options),
+        },
       });
 
       if (result.ok) {
@@ -4875,22 +5052,34 @@ export function App({
         setSaveConflictBannerState({
           filePath: dataPath,
           expectedStateRevision: result.expectedStateRevision,
-          actualStateRevision: result.actualStateRevision
+          actualStateRevision: result.actualStateRevision,
         });
-        const lastSaveText = lastSavedAt
-          ? ` | Last successful save: ${formatSaveTimestamp(lastSavedAt)}`
-          : "";
+        const lastSaveText = buildLastSaveText(
+          lastSavedAt,
+          formatSaveTimestamp,
+        );
         setSaveFailureBanner(
-          `Save blocked by concurrent update (expected revision ${String(result.expectedStateRevision)}, found ${String(result.actualStateRevision)}). Press R or click to reload and retry. | Path: ${dataPath}${lastSaveText}`
+          buildSaveConflictBanner({
+            expected: String(result.expectedStateRevision),
+            actual: String(result.actualStateRevision),
+            filePath: dataPath,
+            lastSaveText,
+          }),
         );
       } else {
         setSaveConflictBannerState(null);
         const detail = normalizeErrorDetail(result.error);
-        const lastSaveText = lastSavedAt
-          ? ` | Last successful save: ${formatSaveTimestamp(lastSavedAt)}`
-          : "";
+        const lastSaveText = buildLastSaveText(
+          lastSavedAt,
+          formatSaveTimestamp,
+        );
         setSaveFailureBanner(
-          `Save retry failed: ${detail} | Path: ${dataPath}${lastSaveText}`
+          buildSaveFailureBanner({
+            prefix: "Save retry failed",
+            detail,
+            filePath: dataPath,
+            lastSaveText,
+          }),
         );
       }
     } finally {
@@ -4908,9 +5097,12 @@ export function App({
         const outputPath = await buildTimestampedBackupPath({ dataPath });
         const result = await exportBackup({
           outputPath,
-          pretty: true
+          pretty: true,
         });
-        backupDispatch({ type: "exportSucceeded", outputPath: result.outputPath });
+        backupDispatch({
+          type: "exportSucceeded",
+          outputPath: result.outputPath,
+        });
       } catch (error: unknown) {
         openBackupError("Export failed", error, "menu");
       }
@@ -4929,26 +5121,29 @@ export function App({
         backupDispatch({
           type: "loadImportPickerFilesSuccess",
           directoryPath,
-          files
+          files,
         });
       } catch (error: unknown) {
         backupDispatch({
           type: "loadImportPickerFilesFailure",
           directoryPath,
-          error: normalizeErrorDetail(error)
+          error: normalizeErrorDetail(error),
         });
       }
     })();
   }
 
-  function runBackupDryRunFlow(options: {
-    inputPath?: string;
-    mode?: "merge" | "replace";
-    replaceConfirmed?: boolean;
-  } = {}) {
+  function runBackupDryRunFlow(
+    options: {
+      inputPath?: string;
+      mode?: "merge" | "replace";
+      replaceConfirmed?: boolean;
+    } = {},
+  ) {
     const inputPath = (options.inputPath ?? backupState.importPathInput).trim();
     const mode = options.mode ?? backupState.importMode;
-    const replaceConfirmed = options.replaceConfirmed ?? backupState.replaceConfirmed;
+    const replaceConfirmed =
+      options.replaceConfirmed ?? backupState.replaceConfirmed;
 
     if (!inputPath) {
       openBackupError("Import path is required.");
@@ -4959,7 +5154,7 @@ export function App({
       shouldRequireBackupReplaceConfirmation({
         ...backupState,
         importMode: mode,
-        replaceConfirmed
+        replaceConfirmed,
       })
     ) {
       backupDispatch({ type: "openImportConfirm" });
@@ -4971,7 +5166,7 @@ export function App({
         const summary = await importBackup({
           inputPath,
           mode,
-          dryRun: true
+          dryRun: true,
         });
         backupDispatch({ type: "dryRunSucceeded", summary, inputPath });
       } catch (error: unknown) {
@@ -4997,7 +5192,7 @@ export function App({
           inputPath: backupState.importPathInput.trim(),
           mode: backupState.importMode,
           dryRun: false,
-          backup: true
+          backup: true,
         });
         backupDispatch({ type: "importSucceeded", summary });
         if (showCorruptionRecoveryImportCta && startupBannerMessage) {
@@ -5032,14 +5227,16 @@ export function App({
     return trimmed.length > 0 ? trimmed : undefined;
   }
 
-  function toGitHubSnapshotListItem(snapshot: SnapshotRef): GitHubSnapshotListItem {
+  function toGitHubSnapshotListItem(
+    snapshot: SnapshotRef,
+  ): GitHubSnapshotListItem {
     return {
       id: snapshot.id,
       timestamp: snapshot.timestamp,
       tasksOpen: snapshot.tasksOpen,
       tasksTotal: snapshot.tasksTotal,
       appVersion: snapshot.appVersion,
-      schemaVersion: snapshot.schemaVersion
+      schemaVersion: snapshot.schemaVersion,
     };
   }
 
@@ -5052,7 +5249,7 @@ export function App({
     if (ghDetected) {
       const authStatus = await getAuthStatus().catch(() => ({
         loggedIn: false,
-        raw: ""
+        raw: "",
       }));
       loggedIn = authStatus.loggedIn;
       username = authStatus.username;
@@ -5060,7 +5257,7 @@ export function App({
       if (loggedIn && ownerRepo) {
         const privateCheck = await ensureRepoPrivate(ownerRepo).catch(() => ({
           ok: false as const,
-          error: "Unable to resolve repository visibility."
+          error: "Unable to resolve repository visibility.",
         }));
         if (privateCheck.ok) {
           repoIsPublic = false;
@@ -5080,7 +5277,7 @@ export function App({
       snapshotEncryptionActive: Boolean(resolveGitHubSnapshotPassphrase()),
       autoPushPolicy: githubSettings?.autoPushPolicy ?? "off",
       lastPushedAt: githubSettings?.lastPushed?.timestamp,
-      lastRestorePulledAt: backupState.githubLastRestorePulledAt
+      lastRestorePulledAt: backupState.githubLastRestorePulledAt,
     });
   }
 
@@ -5100,17 +5297,23 @@ export function App({
   }> {
     const ghReady = await detectGh();
     if (!ghReady) {
-      throw new Error("GitHub CLI (gh) is not installed. Install gh and retry.");
+      throw new Error(
+        "GitHub CLI (gh) is not installed. Install gh and retry.",
+      );
     }
     const authStatus = await getAuthStatus();
     if (!authStatus.loggedIn || !authStatus.username) {
-      throw new Error("GitHub CLI is not logged in. Run `gh auth login` and retry.");
+      throw new Error(
+        "GitHub CLI is not logged in. Run `gh auth login` and retry.",
+      );
     }
 
     const githubSettings = resolveGitHubSettings();
     const ownerRepo = githubSettings?.ownerRepo?.trim() ?? "";
     if (options.requireConfiguredRepo && ownerRepo.length === 0) {
-      throw new Error("GitHub backup repo is not configured. Use Connect first.");
+      throw new Error(
+        "GitHub backup repo is not configured. Use Connect first.",
+      );
     }
     const ownership = ensurePersonalOwner(ownerRepo, authStatus.username);
     if (options.requireConfiguredRepo && !ownership.ok) {
@@ -5124,7 +5327,7 @@ export function App({
       pathPrefix:
         githubSettings?.pathPrefix ??
         `tadoi/devices/${githubSettings?.deviceId ?? "dev_local"}`,
-      deviceId: githubSettings?.deviceId ?? "dev_local"
+      deviceId: githubSettings?.deviceId ?? "dev_local",
     };
   }
 
@@ -5135,8 +5338,9 @@ export function App({
       throw new Error("Default GitHub backup settings are unavailable.");
     }
     const deviceId = current.deviceId?.trim() || defaults.deviceId;
-    const nextPathPrefix =
-      current.pathPrefix?.trim().length ? current.pathPrefix.trim() : `tadoi/devices/${deviceId}`;
+    const nextPathPrefix = current.pathPrefix?.trim().length
+      ? current.pathPrefix.trim()
+      : `tadoi/devices/${deviceId}`;
 
     settingsDispatch({
       type: "setGitHubBackup",
@@ -5147,8 +5351,8 @@ export function App({
         deviceId,
         pathPrefix: nextPathPrefix,
         autoPushPolicy: current.autoPushPolicy ?? "off",
-        ...(current.lastPushed ? { lastPushed: current.lastPushed } : {})
-      }
+        ...(current.lastPushed ? { lastPushed: current.lastPushed } : {}),
+      },
     });
   }
 
@@ -5158,15 +5362,20 @@ export function App({
       try {
         const ghReady = await detectGh();
         if (!ghReady) {
-          throw new Error("GitHub CLI (gh) is not installed. Install gh and retry.");
+          throw new Error(
+            "GitHub CLI (gh) is not installed. Install gh and retry.",
+          );
         }
         const authStatus = await getAuthStatus();
         if (!authStatus.loggedIn || !authStatus.username) {
-          throw new Error("GitHub CLI is not logged in. Run `gh auth login` and retry.");
+          throw new Error(
+            "GitHub CLI is not logged in. Run `gh auth login` and retry.",
+          );
         }
-        const repoName = backupState.githubRepoNameInput.trim() || "tadoi-backups";
+        const repoName =
+          backupState.githubRepoNameInput.trim() || "tadoi-backups";
         const ownerRepo = await createPrivateRepo(repoName, {
-          owner: authStatus.username
+          owner: authStatus.username,
         });
         persistGitHubConfig(ownerRepo);
         backupDispatch({ type: "githubConnectSucceeded", ownerRepo });
@@ -5180,7 +5389,11 @@ export function App({
   function runGitHubConnectExistingFlow(options: { allowPublic: boolean }) {
     const ownerRepoRaw = backupState.githubOwnerRepoInput.trim();
     if (!ownerRepoRaw) {
-      openBackupError("owner/repo is required.", undefined, "github_connect_repo_input");
+      openBackupError(
+        "owner/repo is required.",
+        undefined,
+        "github_connect_repo_input",
+      );
       return;
     }
 
@@ -5189,19 +5402,29 @@ export function App({
       try {
         const ghReady = await detectGh();
         if (!ghReady) {
-          throw new Error("GitHub CLI (gh) is not installed. Install gh and retry.");
+          throw new Error(
+            "GitHub CLI (gh) is not installed. Install gh and retry.",
+          );
         }
         const authStatus = await getAuthStatus();
         if (!authStatus.loggedIn || !authStatus.username) {
-          throw new Error("GitHub CLI is not logged in. Run `gh auth login` and retry.");
+          throw new Error(
+            "GitHub CLI is not logged in. Run `gh auth login` and retry.",
+          );
         }
-        const ownership = ensurePersonalOwner(ownerRepoRaw, authStatus.username);
+        const ownership = ensurePersonalOwner(
+          ownerRepoRaw,
+          authStatus.username,
+        );
         if (!ownership.ok) {
           throw new Error(ownership.error);
         }
         const privateCheck = await ensureRepoPrivate(ownership.ownerRepo);
         if (!privateCheck.ok && privateCheck.isPublic && !options.allowPublic) {
-          backupDispatch({ type: "setScreen", screen: "github_connect_public_confirm" });
+          backupDispatch({
+            type: "setScreen",
+            screen: "github_connect_public_confirm",
+          });
           return;
         }
         if (!privateCheck.ok && !privateCheck.isPublic) {
@@ -5209,10 +5432,13 @@ export function App({
         }
 
         persistGitHubConfig(ownership.ownerRepo);
-        backupDispatch({ type: "githubConnectSucceeded", ownerRepo: ownership.ownerRepo });
+        backupDispatch({
+          type: "githubConnectSucceeded",
+          ownerRepo: ownership.ownerRepo,
+        });
         if (!privateCheck.ok && privateCheck.isPublic) {
           showShortNavigationBanner(
-            "Warning: connected repository is public; cloud backups are publicly accessible."
+            "Warning: connected repository is public; cloud backups are publicly accessible.",
           );
         }
         await refreshGitHubBackupStatus();
@@ -5227,24 +5453,28 @@ export function App({
     backupDispatch({ type: "startGitHubPush" });
     void (async () => {
       try {
-        const auth = await requireGitHubAuthAndConfig({ requireConfiguredRepo: true });
+        const auth = await requireGitHubAuthAndConfig({
+          requireConfiguredRepo: true,
+        });
         const privateCheck = await ensureRepoPrivate(auth.ownerRepo);
         if (!privateCheck.ok) {
           if (privateCheck.isPublic) {
             showShortNavigationBanner(
-              "Warning: repository is public; pushed snapshots are publicly accessible."
+              "Warning: repository is public; pushed snapshots are publicly accessible.",
             );
           } else {
-          throw new Error(privateCheck.error);
+            throw new Error(privateCheck.error);
           }
         }
 
         const dataPath = getResolvedDataPath();
         const [stateResult, settingsResult] = await Promise.all([
           loadStateStrict({ filePath: dataPath }),
-          loadSettings()
+          loadSettings(),
         ]);
-        const settingsHash = computeSettingsHashForBackup(settingsResult.settings);
+        const settingsHash = computeSettingsHashForBackup(
+          settingsResult.settings,
+        );
         const stateRevision =
           typeof stateResult.data.stateRevision === "number" &&
           Number.isFinite(stateResult.data.stateRevision) &&
@@ -5256,7 +5486,7 @@ export function App({
           shouldSkipSnapshotPush({
             stateRevision,
             settingsHash,
-            lastPushed: settingsResult.settings.githubBackup?.lastPushed
+            lastPushed: settingsResult.settings.githubBackup?.lastPushed,
           })
         ) {
           backupDispatch({ type: "setScreen", screen: "github_status" });
@@ -5271,18 +5501,18 @@ export function App({
           repoConfig: {
             ownerRepo: auth.ownerRepo,
             branch: auth.branch,
-            pathPrefix: auth.pathPrefix
+            pathPrefix: auth.pathPrefix,
           },
           deviceId: auth.deviceId,
-          encryptionPassphrase: resolveGitHubSnapshotPassphrase()
+          encryptionPassphrase: resolveGitHubSnapshotPassphrase(),
         });
         const result = await pushSnapshot(
           {
             ownerRepo: auth.ownerRepo,
             branch: auth.branch,
-            pathPrefix: auth.pathPrefix
+            pathPrefix: auth.pathPrefix,
           },
-          artifacts
+          artifacts,
         );
 
         const pushedAt = new Date().toISOString();
@@ -5303,14 +5533,16 @@ export function App({
               stateRevision: artifacts.stateRevision,
               settingsHash,
               timestamp: pushedAt,
-              ...(result.commitSha ? { remoteCommitSha: result.commitSha } : {})
-            }
-          }
+              ...(result.commitSha
+                ? { remoteCommitSha: result.commitSha }
+                : {}),
+            },
+          },
         });
         backupDispatch({
           type: "githubPushSucceeded",
           timestamp: pushedAt,
-          commitSha: result.commitSha
+          commitSha: result.commitSha,
         });
         await refreshGitHubBackupStatus();
       } catch (error: unknown) {
@@ -5323,67 +5555,83 @@ export function App({
     backupDispatch({ type: "startGitHubRestoreLoad" });
     void (async () => {
       try {
-        const auth = await requireGitHubAuthAndConfig({ requireConfiguredRepo: true });
+        const auth = await requireGitHubAuthAndConfig({
+          requireConfiguredRepo: true,
+        });
         const snapshots = await listSnapshots({
           ownerRepo: auth.ownerRepo,
           branch: auth.branch,
-          pathPrefix: auth.pathPrefix
+          pathPrefix: auth.pathPrefix,
         });
         githubSnapshotRefsRef.current = snapshots;
         backupDispatch({
           type: "githubRestoreLoadSucceeded",
-          snapshots: snapshots.map(toGitHubSnapshotListItem)
+          snapshots: snapshots.map(toGitHubSnapshotListItem),
         });
       } catch (error: unknown) {
         backupDispatch({
           type: "githubRestoreLoadFailed",
-          error: normalizeErrorDetail(error)
+          error: normalizeErrorDetail(error),
         });
       }
     })();
   }
 
   function runGitHubRestoreSelectedFlow() {
-    const selected = githubSnapshotRefsRef.current[backupState.githubSnapshotSelectedIndex];
+    const selected =
+      githubSnapshotRefsRef.current[backupState.githubSnapshotSelectedIndex];
     if (!selected) {
-      openBackupError("Select a snapshot before restore.", undefined, "github_restore_picker");
+      openBackupError(
+        "Select a snapshot before restore.",
+        undefined,
+        "github_restore_picker",
+      );
       return;
     }
     backupDispatch({ type: "startGitHubRestoreDownload" });
     void (async () => {
       try {
-        const auth = await requireGitHubAuthAndConfig({ requireConfiguredRepo: true });
+        const auth = await requireGitHubAuthAndConfig({
+          requireConfiguredRepo: true,
+        });
         const downloaded = await downloadSnapshot(
           {
             ownerRepo: auth.ownerRepo,
             branch: auth.branch,
-            pathPrefix: auth.pathPrefix
+            pathPrefix: auth.pathPrefix,
           },
           selected,
           {
-            passphrase: resolveGitHubSnapshotPassphrase()
-          }
+            passphrase: resolveGitHubSnapshotPassphrase(),
+          },
         );
         const importPayloadPath = await buildRestoreImportPayload({
           statePath: downloaded.statePath,
           settingsPath: downloaded.settingsPath,
-          timestampId: selected.timestamp
+          timestampId: selected.timestamp,
         });
         const pulledAt = new Date().toISOString();
-        backupDispatch({ type: "setGitHubLastRestorePulledAt", value: pulledAt });
+        backupDispatch({
+          type: "setGitHubLastRestorePulledAt",
+          value: pulledAt,
+        });
         backupDispatch({
           type: "githubRestoreDownloadSucceeded",
-          timestamp: pulledAt
+          timestamp: pulledAt,
         });
         backupDispatch({ type: "setImportMode", mode: "merge" });
         backupDispatch({ type: "setImportPath", value: importPayloadPath });
         runBackupDryRunFlow({
           inputPath: importPayloadPath,
           mode: "merge",
-          replaceConfirmed: true
+          replaceConfirmed: true,
         });
       } catch (error: unknown) {
-        openBackupError("GitHub restore failed", error, "github_restore_picker");
+        openBackupError(
+          "GitHub restore failed",
+          error,
+          "github_restore_picker",
+        );
       }
     })();
   }
@@ -5399,7 +5647,7 @@ export function App({
     openBackupError,
     openBackupFinalCheckpoint,
     refreshRuntimeStateFromDisk,
-    openGitHubCloudStatus
+    openGitHubCloudStatus,
   });
 
   function runCalendarExportFromBackupCenter() {
@@ -5471,16 +5719,14 @@ export function App({
     if (!Number.isFinite(delta) || delta === 0) return;
     setBackupBodyScrollRequest((prev) => ({
       token: prev.token + 1,
-      delta
+      delta,
     }));
   }
 
   function handleBackupBackAction() {
     if (backupState.screen === "menu") {
-      const { mode: returnMode, focus: returnFocus } = normalizeHelpReturnContext(
-        uiState.previousMode,
-        uiState.previousFocus
-      );
+      const { mode: returnMode, focus: returnFocus } =
+        normalizeHelpReturnContext(uiState.previousMode, uiState.previousFocus);
       backupDispatch({ type: "reset" });
       uiDispatch({ type: "setMode", mode: returnMode });
       uiDispatch({ type: "setFocus", focus: returnFocus });
@@ -5513,7 +5759,10 @@ export function App({
         if (backupState.githubConnectMode === "create") {
           runGitHubConnectCreateFlow();
         } else {
-          backupDispatch({ type: "setScreen", screen: "github_connect_repo_input" });
+          backupDispatch({
+            type: "setScreen",
+            screen: "github_connect_repo_input",
+          });
         }
         return;
       case "github_connect_repo_input":
@@ -5524,7 +5773,7 @@ export function App({
           openBackupError(
             "Type PUBLIC to confirm a public repo.",
             undefined,
-            "github_connect_public_confirm"
+            "github_connect_public_confirm",
           );
           return;
         }
@@ -5556,7 +5805,7 @@ export function App({
         }
         backupDispatch({ type: "replaceConfirmAccepted" });
         runBackupDryRunFlow({
-          replaceConfirmed: true
+          replaceConfirmed: true,
         });
         return;
       case "import_dryrun":
@@ -5564,7 +5813,10 @@ export function App({
           openBackupError("Dry-run summary is required before commit.");
           return;
         }
-        if (backupState.importMode === "replace" && !backupState.replaceConfirmed) {
+        if (
+          backupState.importMode === "replace" &&
+          !backupState.replaceConfirmed
+        ) {
           backupDispatch({ type: "openImportConfirm" });
           return;
         }
@@ -5589,14 +5841,14 @@ export function App({
       "OPEN_SELECTED_LINK",
       "COPY_SELECTED_LINK",
       "OPEN_EDIT_TASK_LINK_MODAL",
-      "OPEN_DELETE_TASK_LINK_MODAL"
+      "OPEN_DELETE_TASK_LINK_MODAL",
     ]);
     const detailsChecklistFocusOnly = new Set<KeyRouterAction["type"]>([
       "MOVE_CHECKLIST_SELECTION",
       "TOGGLE_SELECTED_CHECKLIST_ITEM",
       "OPEN_ADD_CHECKLIST_ITEM_MODAL",
       "OPEN_EDIT_CHECKLIST_ITEM_MODAL",
-      "OPEN_DELETE_CHECKLIST_ITEM_MODAL"
+      "OPEN_DELETE_CHECKLIST_ITEM_MODAL",
     ]);
     const detailsNotesFocusOnly = new Set<KeyRouterAction["type"]>([
       "DETAILS_NOTES_MOVE_SELECTION",
@@ -5605,7 +5857,7 @@ export function App({
       "DETAILS_NOTES_OPEN_LINK_PICKER",
       "DETAILS_NOTES_CONFIRM_LINK_PICKER",
       "DETAILS_NOTES_CLOSE_LINK_PICKER",
-      "DETAILS_NOTES_UNLINK"
+      "DETAILS_NOTES_UNLINK",
     ]);
     const modalOnly = new Set<KeyRouterAction["type"]>([
       "MODAL_CONFIRM_TASK_LINK_DELETE",
@@ -5618,38 +5870,42 @@ export function App({
       "MODAL_CONFIRM_BULK_DELETE",
       "MODAL_CONFIRM_TAG_LIFECYCLE",
       "MODAL_NOTE_CAPTURE_APPEND",
-      "MODAL_NOTE_CAPTURE_NEW"
+      "MODAL_NOTE_CAPTURE_NEW",
     ]);
 
     if (
       detailsFocusOnly.has(action.type) &&
-      (uiState.mode !== Mode.LIST || uiState.focus !== FocusTarget.DETAILS_LINKS)
+      (uiState.mode !== Mode.LIST ||
+        uiState.focus !== FocusTarget.DETAILS_LINKS)
     ) {
       throw new Error(
-        `Link action ${action.type} requires LIST + DETAILS_LINKS (got ${uiState.mode}/${uiState.focus})`
+        `Link action ${action.type} requires LIST + DETAILS_LINKS (got ${uiState.mode}/${uiState.focus})`,
       );
     }
 
     const inListChecklistFocus =
-      uiState.mode === Mode.LIST && uiState.focus === FocusTarget.DETAILS_CHECKLIST;
+      uiState.mode === Mode.LIST &&
+      uiState.focus === FocusTarget.DETAILS_CHECKLIST;
     const inEditorChecklistFocus =
-      isEditorMode(uiState.mode) && uiState.focus === FocusTarget.EDITOR_CHECKLIST;
+      isEditorMode(uiState.mode) &&
+      uiState.focus === FocusTarget.EDITOR_CHECKLIST;
     if (
       detailsChecklistFocusOnly.has(action.type) &&
       !inListChecklistFocus &&
       !inEditorChecklistFocus
     ) {
       throw new Error(
-        `Checklist action ${action.type} requires LIST+DETAILS_CHECKLIST or EDITOR_CHECKLIST (got ${uiState.mode}/${uiState.focus})`
+        `Checklist action ${action.type} requires LIST+DETAILS_CHECKLIST or EDITOR_CHECKLIST (got ${uiState.mode}/${uiState.focus})`,
       );
     }
 
     if (
       detailsNotesFocusOnly.has(action.type) &&
-      (uiState.mode !== Mode.LIST || uiState.focus !== FocusTarget.DETAILS_NOTES)
+      (uiState.mode !== Mode.LIST ||
+        uiState.focus !== FocusTarget.DETAILS_NOTES)
     ) {
       throw new Error(
-        `Notes action ${action.type} requires LIST + DETAILS_NOTES (got ${uiState.mode}/${uiState.focus})`
+        `Notes action ${action.type} requires LIST + DETAILS_NOTES (got ${uiState.mode}/${uiState.focus})`,
       );
     }
 
@@ -5659,7 +5915,7 @@ export function App({
       uiState.mode !== Mode.ADD
     ) {
       throw new Error(
-        `Link action ${action.type} requires LIST or ADD mode (got ${uiState.mode})`
+        `Link action ${action.type} requires LIST or ADD mode (got ${uiState.mode})`,
       );
     }
 
@@ -5668,13 +5924,13 @@ export function App({
       (uiState.mode !== Mode.LIST || uiState.focus !== FocusTarget.TASK_LIST)
     ) {
       throw new Error(
-        `Bulk action ${action.type} requires LIST + TASK_LIST (got ${uiState.mode}/${uiState.focus})`
+        `Bulk action ${action.type} requires LIST + TASK_LIST (got ${uiState.mode}/${uiState.focus})`,
       );
     }
 
     if (modalOnly.has(action.type) && uiState.mode !== Mode.MODAL_CONFIRM) {
       throw new Error(
-        `Modal action ${action.type} requires MODAL_CONFIRM mode (got ${uiState.mode})`
+        `Modal action ${action.type} requires MODAL_CONFIRM mode (got ${uiState.mode})`,
       );
     }
   }
@@ -5770,7 +6026,7 @@ export function App({
         openEmptyNuxModal({
           step: action.step,
           startedFromNux: action.startedFromNux,
-          createdTaskId: action.createdTaskId
+          createdTaskId: action.createdTaskId,
         });
         return;
       case "DISMISS_EMPTY_NUX":
@@ -5848,13 +6104,13 @@ export function App({
           backupDispatch({
             type: "moveGitHubSnapshotSelection",
             delta: action.delta,
-            visibleRows: backupImportPickerVisibleRows
+            visibleRows: backupImportPickerVisibleRows,
           });
         } else {
           backupDispatch({
             type: "moveImportPickerSelection",
             delta: action.delta,
-            visibleRows: backupImportPickerVisibleRows
+            visibleRows: backupImportPickerVisibleRows,
           });
         }
         return;
@@ -5863,13 +6119,13 @@ export function App({
           backupDispatch({
             type: "pageGitHubSnapshotSelection",
             delta: action.delta,
-            visibleRows: backupImportPickerVisibleRows
+            visibleRows: backupImportPickerVisibleRows,
           });
         } else {
           backupDispatch({
             type: "pageImportPickerSelection",
             delta: action.delta,
-            visibleRows: backupImportPickerVisibleRows
+            visibleRows: backupImportPickerVisibleRows,
           });
         }
         return;
@@ -5878,13 +6134,13 @@ export function App({
           backupDispatch({
             type: "jumpGitHubSnapshotSelection",
             target: action.target,
-            visibleRows: backupImportPickerVisibleRows
+            visibleRows: backupImportPickerVisibleRows,
           });
         } else {
           backupDispatch({
             type: "jumpImportPickerSelection",
             target: action.target,
-            visibleRows: backupImportPickerVisibleRows
+            visibleRows: backupImportPickerVisibleRows,
           });
         }
         return;
@@ -5924,7 +6180,11 @@ export function App({
       case "MOVE_EDITOR_FOCUS":
         uiDispatch({
           type: "setFocus",
-          focus: nextEditorFocusTarget(uiState.focus, action.direction, state.editor)
+          focus: nextEditorFocusTarget(
+            uiState.focus,
+            action.direction,
+            state.editor,
+          ),
         });
         return;
       case "SET_LIST_FOCUS":
@@ -5991,7 +6251,7 @@ export function App({
       case "SCROLL_EDITOR_PAGE": {
         const nextOffset = Math.max(
           0,
-          uiState.editorScrollOffset + action.direction * editorPageStep
+          uiState.editorScrollOffset + action.direction * editorPageStep,
         );
         uiDispatch({ type: "setEditorScrollOffset", scrollOffset: nextOffset });
         return;
@@ -6237,7 +6497,7 @@ export function App({
         if (titleInlineSuggestion) {
           dispatch({
             type: "updateEditor",
-            patch: { title: titleInlineSuggestion.full }
+            patch: { title: titleInlineSuggestion.full },
           });
         }
         return;
@@ -6248,12 +6508,15 @@ export function App({
           state.editor &&
           timeSuggestion
         ) {
-          const step = getAutocompleteStep(state.editor.timeText, timeSuggestion);
+          const step = getAutocompleteStep(
+            state.editor.timeText,
+            timeSuggestion,
+          );
           if (step === "hour" || step === "minute") {
             const nextValue = applyAutocomplete(
               state.editor.timeText,
               timeSuggestion,
-              step
+              step,
             );
             dispatch({ type: "updateEditor", patch: { timeText: nextValue } });
           }
@@ -6316,19 +6579,21 @@ export function App({
     );
   }
 
-  function buildTagLifecycleDetailLines(preview: TagOperationPreview): string[] {
+  function buildTagLifecycleDetailLines(
+    preview: TagOperationPreview,
+  ): string[] {
     const detailLines: string[] = [
       `Tasks affected: ${String(preview.tasksAffected)}`,
-      `Aliases add: ${String(preview.aliasesAdded.length)} | remove: ${String(preview.aliasesRemoved.length)}`
+      `Aliases add: ${String(preview.aliasesAdded.length)} | remove: ${String(preview.aliasesRemoved.length)}`,
     ];
     if (preview.deltas.length > 0) {
       for (const delta of preview.deltas.slice(0, 5)) {
-        detailLines.push(
-          `${formatTagForReadOnlyDisplay(delta.from)} -> ${formatTagForReadOnlyDisplay(delta.to)}: ${String(delta.beforeCount)} -> ${String(delta.afterCount)}`
-        );
+        detailLines.push(buildTagLifecycleDeltaLine(delta));
       }
       if (preview.deltas.length > 5) {
-        detailLines.push(`... +${String(preview.deltas.length - 5)} more deltas`);
+        detailLines.push(
+          `... +${String(preview.deltas.length - 5)} more deltas`,
+        );
       }
     }
     if (preview.warnings.length > 0) {
@@ -6339,7 +6604,7 @@ export function App({
 
   function formatTagLifecyclePreviewOutput(
     preview: TagOperationPreview,
-    dryRun: boolean
+    dryRun: boolean,
   ): CommandOutput {
     const detail = buildTagLifecycleDetailLines(preview).join(" | ");
     const text = `${dryRun ? "Dry run: " : ""}${preview.summary}${detail.length > 0 ? ` | ${detail}` : ""}`;
@@ -6352,7 +6617,7 @@ export function App({
   function formatTagHygieneOutput(): CommandOutput {
     const report = reportTagHygiene({
       tasks: state.tasks,
-      aliases: state.tagAliases
+      aliases: state.tagAliases,
     });
     const collisions = report.normalizationCollisions.length;
     const chains = report.aliasChains.length;
@@ -6363,7 +6628,7 @@ export function App({
     const extra: string[] = [];
     if (collisionExample) {
       extra.push(
-        `collision ${formatTagForReadOnlyDisplay(collisionExample.canonical)} <= ${collisionExample.raws.slice(0, 3).join(",")}`
+        `collision ${formatTagForReadOnlyDisplay(collisionExample.canonical)} <= ${collisionExample.raws.slice(0, 3).join(",")}`,
       );
     }
     if (chainExample) {
@@ -6377,7 +6642,7 @@ export function App({
     }
     return {
       kind: "ok",
-      text: `${report.summary}${extra.length > 0 ? ` | ${extra.join(" | ")}` : ""}`
+      text: `${report.summary}${extra.length > 0 ? ` | ${extra.join(" | ")}` : ""}`,
     };
   }
 
@@ -6388,7 +6653,7 @@ export function App({
     if (!preview || preview.operation !== modal.operation) {
       setCommandOutput({
         kind: "error",
-        text: `Error: tag ${modal.operation} confirmation context expired; rerun command`
+        text: `Error: tag ${modal.operation} confirmation context expired; rerun command`,
       });
       showShortNavigationBanner(`Tag ${modal.operation} confirmation expired`);
       closeModalWithPreviousContext(modal);
@@ -6401,26 +6666,34 @@ export function App({
       const detail = normalizeErrorDetail(error);
       setCommandOutput({
         kind: "error",
-        text: `Error: backup failed before tag ${modal.operation} (${detail})`
+        text: `Error: backup failed before tag ${modal.operation} (${detail})`,
       });
-      showShortNavigationBanner(`Tag ${modal.operation} blocked: backup failed`);
+      showShortNavigationBanner(
+        `Tag ${modal.operation} blocked: backup failed`,
+      );
       return;
     }
 
     dispatch({ type: "setTasks", tasks: preview.nextTasks });
     dispatch({ type: "setTagAliases", tagAliases: preview.nextAliases });
-    dispatch({ type: "setTagIndex", tagIndex: recomputeTagIndex(preview.nextTasks, Date.now()) });
+    dispatch({
+      type: "setTagIndex",
+      tagIndex: recomputeTagIndex(preview.nextTasks, Date.now()),
+    });
     pendingTagLifecyclePreviewRef.current = null;
     closeModalWithPreviousContext(modal);
     setCommandOutput({
       kind: "ok",
-      text: `${preview.summary} applied`
+      text: `${preview.summary} applied`,
     });
     showShortNavigationBanner(`${preview.summary} applied`);
   }
 
   function resolveQuickCaptureTargetTaskId(): string | undefined {
-    if (uiState.mode === Mode.SEARCH && selectedUnifiedSearchResult?.kind === "task") {
+    if (
+      uiState.mode === Mode.SEARCH &&
+      selectedUnifiedSearchResult?.kind === "task"
+    ) {
       return selectedUnifiedSearchResult.taskId;
     }
     if (selectedPersistedTask?.id) {
@@ -6430,7 +6703,7 @@ export function App({
   }
 
   function resolveTaskCaptureContext(
-    taskId: string
+    taskId: string,
   ): { primaryNotePath?: NotePath; inlineNotes?: string } | null {
     const task = findTaskById(taskId);
     if (!task) return null;
@@ -6445,25 +6718,32 @@ export function App({
     const inlineNotes = task.notes?.trim();
     return {
       ...(primaryNotePath ? { primaryNotePath } : {}),
-      ...(inlineNotes ? { inlineNotes } : {})
+      ...(inlineNotes ? { inlineNotes } : {}),
     };
   }
 
-  function resolveQuickCaptureCommandTarget(command: QuickNoteCommand): QuickNoteCommand {
-    const explicitTargetId = command.target?.type === "id" ? command.target.id : undefined;
-    const resolvedTargetId = explicitTargetId ?? resolveQuickCaptureTargetTaskId();
+  function resolveQuickCaptureCommandTarget(
+    command: QuickNoteCommand,
+  ): QuickNoteCommand {
+    const explicitTargetId =
+      command.target?.type === "id" ? command.target.id : undefined;
+    const resolvedTargetId =
+      explicitTargetId ?? resolveQuickCaptureTargetTaskId();
     if (!resolvedTargetId) {
       return command;
     }
-    if (command.target?.type === "id" && command.target.id === resolvedTargetId) {
+    if (
+      command.target?.type === "id" &&
+      command.target.id === resolvedTargetId
+    ) {
       return command;
     }
     return {
       ...command,
       target: {
         type: "id",
-        id: resolvedTargetId
-      }
+        id: resolvedTargetId,
+      },
     };
   }
 
@@ -6479,10 +6759,12 @@ export function App({
           ? { type: "id" as const, value: result.noteId }
           : {
               type: "filename" as const,
-              value: path.posix.basename(sideEffect.primaryNotePath)
+              value: path.posix.basename(sideEffect.primaryNotePath),
             }
         : task.noteRef;
-    const nextInlineNotes = sideEffect.clearInlineNotes ? undefined : task.notes;
+    const nextInlineNotes = sideEffect.clearInlineNotes
+      ? undefined
+      : task.notes;
     if (nextNoteRef === task.noteRef && nextInlineNotes === task.notes) {
       return;
     }
@@ -6494,16 +6776,16 @@ export function App({
               ...candidate,
               noteRef: nextNoteRef,
               notes: nextInlineNotes,
-              updatedAt: Date.now()
+              updatedAt: Date.now(),
             }
-          : candidate
-      )
+          : candidate,
+      ),
     });
   }
 
   async function executeInAppNoteCommand(
     command: NoteCommand,
-    rawInput: string
+    rawInput: string,
   ): Promise<"handled" | "deferred"> {
     const service = resolveNotesService();
     if (!service) return "handled";
@@ -6512,11 +6794,10 @@ export function App({
     if (command.operation === "quick") {
       const quickCommand = resolveQuickCaptureCommandTarget(command);
       const targetTaskId =
-        quickCommand.target?.type === "id"
-          ? quickCommand.target.id
-          : undefined;
-      const taskContext =
-        targetTaskId ? resolveTaskCaptureContext(targetTaskId) : null;
+        quickCommand.target?.type === "id" ? quickCommand.target.id : undefined;
+      const taskContext = targetTaskId
+        ? resolveTaskCaptureContext(targetTaskId)
+        : null;
       if (
         targetTaskId &&
         (!quickCommand.captureMode || quickCommand.captureMode === "prompt") &&
@@ -6525,7 +6806,7 @@ export function App({
         const captureTask = findTaskById(targetTaskId);
         pendingNoteCaptureMergeRef.current = {
           rawInput,
-          command: quickCommand
+          command: quickCommand,
         };
         openModalWithContext({
           type: "note_capture_merge",
@@ -6533,7 +6814,7 @@ export function App({
           taskTitle: captureTask?.title ?? targetTaskId,
           primaryNotePath: taskContext.primaryNotePath,
           previousMode: uiState.mode,
-          previousFocus: uiState.focus
+          previousFocus: uiState.focus,
         });
         return "deferred";
       }
@@ -6544,13 +6825,14 @@ export function App({
       service,
       dataFilePath: getDataFilePath(),
       notesSettings: settingsState.notes,
-      selectedTaskId: resolveQuickCaptureTargetTaskId() ?? selectedPersistedTask?.id,
+      selectedTaskId:
+        resolveQuickCaptureTargetTaskId() ?? selectedPersistedTask?.id,
       captureSource: "tits",
       resolveTaskContext: resolveTaskCaptureContext,
       createBackup: createDataBackup,
       persistNotesSettings: async (nextNotes) => {
         settingsDispatch({ type: "setNotes", notes: nextNotes });
-      }
+      },
     });
 
     setCommandOutput(result.output);
@@ -6569,7 +6851,7 @@ export function App({
       setNotesRuntime({
         ready: true,
         enabled: true,
-        notesRoot: result.notesRoot
+        notesRoot: result.notesRoot,
       });
       setNotesRootInput(result.notesRoot);
     }
@@ -6582,14 +6864,17 @@ export function App({
       triggerFirstTomeCreated(Date.now(), result.notePath);
     }
 
-    if (commandToExecute.operation === "search" || commandToExecute.operation === "query") {
+    if (
+      commandToExecute.operation === "search" ||
+      commandToExecute.operation === "query"
+    ) {
       const parsedQuery = parseNoteSearchQuery(commandToExecute.query);
       setNotesSearchQuery(parsedQuery.textTerms.join(" "));
       setNotesTagFilterQuery(parsedQuery.tagFilters[0] ?? "");
       uiDispatch({
         type: "captureReturnContext",
         mode: uiState.mode,
-        focus: uiState.focus
+        focus: uiState.focus,
       });
       uiDispatch({ type: "setMode", mode: Mode.NOTES_LIST });
       uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_LIST });
@@ -6617,7 +6902,7 @@ export function App({
       uiDispatch({
         type: "captureReturnContext",
         mode: uiState.mode,
-        focus: uiState.focus
+        focus: uiState.focus,
       });
       uiDispatch({ type: "setMode", mode: Mode.NOTES_VIEW });
       uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_VIEW });
@@ -6627,7 +6912,7 @@ export function App({
   }
 
   async function confirmNoteCaptureModeFromModal(
-    captureMode: "append" | "new"
+    captureMode: "append" | "new",
   ): Promise<void> {
     const modal = uiState.modal;
     if (!modal || modal.type !== "note_capture_merge") return;
@@ -6638,9 +6923,9 @@ export function App({
     await executeInAppNoteCommand(
       {
         ...pendingCapture.command,
-        captureMode
+        captureMode,
       },
-      `${pendingCapture.rawInput} --capture-mode ${captureMode}`
+      `${pendingCapture.rawInput} --capture-mode ${captureMode}`,
     );
   }
 
@@ -6655,7 +6940,7 @@ export function App({
 
     const parsed = parseCommand(trimmed, {
       now: nowMs,
-      tz: MINI_DEFAULT_TIMEZONE
+      tz: MINI_DEFAULT_TIMEZONE,
     });
     if (!parsed.ok) {
       setCommandOutput({ kind: "error", text: parsed.error });
@@ -6679,7 +6964,7 @@ export function App({
               aliases: state.tagAliases,
               oldTag: parsed.command.oldTag,
               newTag: parsed.command.newTag,
-              now: nowMs
+              now: nowMs,
             })
           : parsed.command.operation === "merge"
             ? planTagMerge({
@@ -6687,16 +6972,16 @@ export function App({
                 aliases: state.tagAliases,
                 sources: parsed.command.sources,
                 target: parsed.command.target,
-                now: nowMs
+                now: nowMs,
               })
             : planTagCleanup({
                 tasks: state.tasks,
-                aliases: state.tagAliases
+                aliases: state.tagAliases,
               });
 
       const previewOutput = formatTagLifecyclePreviewOutput(
         preview,
-        parsed.command.dryRun
+        parsed.command.dryRun,
       );
       const requiresConfirm =
         !parsed.command.dryRun &&
@@ -6713,11 +6998,11 @@ export function App({
           summary: preview.summary,
           detailLines: buildTagLifecycleDetailLines(preview),
           previousMode: Mode.LIST,
-          previousFocus: uiState.focus
+          previousFocus: uiState.focus,
         });
         setCommandOutput({
           kind: "ok",
-          text: `${preview.summary} pending confirmation`
+          text: `${preview.summary} pending confirmation`,
         });
       }
 
@@ -6733,7 +7018,7 @@ export function App({
       } catch (error: unknown) {
         setCommandOutput({
           kind: "error",
-          text: `Error: ${normalizeErrorDetail(error)}`
+          text: `Error: ${normalizeErrorDetail(error)}`,
         });
       }
       return;
@@ -6750,40 +7035,49 @@ export function App({
     ) {
       const nowIso = new Date(nowMs).toISOString();
       let outcome:
-        | { ok: true; checklist: NonNullable<Task["checklist"]>; selectedTaskId: string }
+        | {
+            ok: true;
+            checklist: NonNullable<Task["checklist"]>;
+            selectedTaskId: string;
+          }
         | { ok: false; error: string };
       let outputText = "";
 
       if (parsed.command.operation === "add") {
         outcome = mutateChecklistForRow(selectedTask.id, (checklist) =>
-          addChecklistItem(checklist, parsed.command.text, nowIso)
+          addChecklistItem(checklist, parsed.command.text, nowIso),
         );
         outputText = `Checklist added: ${selectedTask.title}`;
       } else if (parsed.command.operation === "clear") {
-        outcome = mutateChecklistForRow(selectedTask.id, () => clearChecklist());
+        outcome = mutateChecklistForRow(selectedTask.id, () =>
+          clearChecklist(),
+        );
         outputText = `Checklist cleared: ${selectedTask.title}`;
       } else {
         const item = checklistItemAtDisplayIndex(
           selectedChecklistTask?.checklist,
-          parsed.command.index
+          parsed.command.index,
         );
         if (!item) {
-          setCommandOutput({ kind: "error", text: "Error: checklist item not found" });
+          setCommandOutput({
+            kind: "error",
+            text: "Error: checklist item not found",
+          });
           return;
         }
         if (parsed.command.operation === "toggle") {
           outcome = mutateChecklistForRow(selectedTask.id, (checklist) =>
-            toggleChecklistItem(checklist, item.id, nowIso)
+            toggleChecklistItem(checklist, item.id, nowIso),
           );
           outputText = `Checklist toggled: ${selectedTask.title} (#${String(parsed.command.index)})`;
         } else if (parsed.command.operation === "edit") {
           outcome = mutateChecklistForRow(selectedTask.id, (checklist) =>
-            editChecklistItem(checklist, item.id, parsed.command.text, nowIso)
+            editChecklistItem(checklist, item.id, parsed.command.text, nowIso),
           );
           outputText = `Checklist edited: ${selectedTask.title} (#${String(parsed.command.index)})`;
         } else {
           outcome = mutateChecklistForRow(selectedTask.id, (checklist) =>
-            deleteChecklistItem(checklist, item.id)
+            deleteChecklistItem(checklist, item.id),
           );
           outputText = `Checklist deleted: ${selectedTask.title} (#${String(parsed.command.index)})`;
         }
@@ -6805,7 +7099,7 @@ export function App({
       } else {
         const item = checklistItemAtDisplayIndex(
           selectedChecklistTask?.checklist,
-          parsed.command.index
+          parsed.command.index,
         );
         setSelectedChecklistItemId(item?.id);
       }
@@ -6817,16 +7111,22 @@ export function App({
       return;
     }
 
-    if (parsed.command.type === "bulk" && parsed.command.operation === "delete") {
+    if (
+      parsed.command.type === "bulk" &&
+      parsed.command.operation === "delete"
+    ) {
       const targetIds =
         parsed.command.target.type === "marked"
           ? bulkMarkedTaskIds
           : parsed.command.target.ids;
-      const resolvedTargetIds = Array.from(new Set(targetIds)).sort((left, right) =>
-        left.localeCompare(right)
+      const resolvedTargetIds = Array.from(new Set(targetIds)).sort(
+        (left, right) => left.localeCompare(right),
       );
       if (resolvedTargetIds.length === 0) {
-        setCommandOutput({ kind: "error", text: "No tasks marked. Press 'm' to mark tasks first." });
+        setCommandOutput({
+          kind: "error",
+          text: "No tasks marked. Press 'm' to mark tasks first.",
+        });
         return;
       }
       const byId = new Map(state.tasks.map((task) => [task.id, task]));
@@ -6834,7 +7134,10 @@ export function App({
       for (const id of resolvedTargetIds) {
         const task = byId.get(id);
         if (!task) {
-          setCommandOutput({ kind: "error", text: `Error: bulk target id not found (${id})` });
+          setCommandOutput({
+            kind: "error",
+            text: `Error: bulk target id not found (${id})`,
+          });
           return;
         }
         targetTasks.push(task);
@@ -6842,21 +7145,22 @@ export function App({
       if (targetTasks.some((task) => task.instance_of)) {
         setCommandOutput({
           kind: "error",
-          text:
-            "Bulk delete cannot delete recurring occurrences. Unmark occurrences or delete individually (d)."
+          text: "Bulk delete cannot delete recurring occurrences. Unmark occurrences or delete individually (d).",
         });
         return;
       }
       openModalWithContext({
         type: "bulk_delete",
         taskIds: resolvedTargetIds,
-        recurringSeriesCount: targetTasks.filter((task) => Boolean(task.recurrence)).length,
+        recurringSeriesCount: targetTasks.filter((task) =>
+          Boolean(task.recurrence),
+        ).length,
         previousMode: Mode.LIST,
-        previousFocus: uiState.focus
+        previousFocus: uiState.focus,
       });
       setCommandOutput({
         kind: "ok",
-        text: `Bulk delete pending confirmation (${String(resolvedTargetIds.length)} tasks)`
+        text: `Bulk delete pending confirmation (${String(resolvedTargetIds.length)} tasks)`,
       });
       setCommandHistory((previous) => [...previous, raw]);
       setCommandHistoryIndex(null);
@@ -6869,18 +7173,32 @@ export function App({
       state,
       visibleTasks,
       selectedTaskId: state.selectedId ?? visibleTasks[0]?.id,
-      bulkMarkedTaskIds
+      bulkMarkedTaskIds,
     });
     if (parsed.command.type === "check") {
       const targetTaskId =
         parsed.command.target.type === "id"
           ? parsed.command.target.id
-          : state.selectedId ?? visibleTasks[0]?.id;
-      const setTasksAction = result.actions.find((action) => action.type === "setTasks");
-      if (targetTaskId && setTasksAction && setTasksAction.type === "setTasks") {
-        const previousTask = state.tasks.find((task) => task.id === targetTaskId);
-        const nextTask = setTasksAction.tasks.find((task) => task.id === targetTaskId);
-        triggerChecklistMilestonesForTaskTransition(previousTask, nextTask, nowMs);
+          : (state.selectedId ?? visibleTasks[0]?.id);
+      const setTasksAction = result.actions.find(
+        (action) => action.type === "setTasks",
+      );
+      if (
+        targetTaskId &&
+        setTasksAction &&
+        setTasksAction.type === "setTasks"
+      ) {
+        const previousTask = state.tasks.find(
+          (task) => task.id === targetTaskId,
+        );
+        const nextTask = setTasksAction.tasks.find(
+          (task) => task.id === targetTaskId,
+        );
+        triggerChecklistMilestonesForTaskTransition(
+          previousTask,
+          nextTask,
+          nowMs,
+        );
       }
     }
     for (const action of result.actions) {
@@ -6892,971 +7210,316 @@ export function App({
     setCommandTextValue("");
   }
 
-  useKeyboard((key) => {
-    if (!terminalIsSupported) {
-      if ((key.name ?? "") === "q" && key.eventType !== "release") {
-        void renderer.destroy();
-      }
-      return;
-    }
-
-    const keyName = key.name ?? "";
-    const keySequence = key.sequence ?? "";
-    const isCtrlPrefixStartKey =
-      key.ctrl &&
-      !key.meta &&
-      !key.option &&
-      !key.shift &&
-      (
-        keyName === "g" ||
-        keySequence === "g" ||
-        keyName === "p" ||
-        keySequence === "p" ||
-        keyName === "y" ||
-        keySequence === "y"
-      );
-
-    if (key.eventType === "release") {
-      if (isCtrlPrefixStartKey && pendingGPrefix) {
-        armPendingGPrefixResolveTimeout();
-      }
-      return;
-    }
-
-    if (
-      isCtrlPrefixStartKey &&
-      pendingGPrefix &&
-      (key.eventType === "repeat" || key.repeated === true)
-    ) {
-      // Keep prefix popup open while Ctrl+g/Ctrl+p/Ctrl+y is held by extending timeout on repeats.
-      armPendingGPrefixResolveTimeout();
-      return;
-    }
-
-    if (
-      uiState.mode === Mode.EDIT &&
-      uiState.focus !== FocusTarget.EDITOR_SAVE &&
-      uiState.focus !== FocusTarget.EDITOR_CANCEL
-    ) {
-      const isUnmodifiedInput = !key.ctrl && !key.meta && !key.option;
-      const isPrintableInput =
-        keySequence.length === 1 && keySequence >= " " && keyName !== "escape";
-      const isDeletionInput = keyName === "backspace" || keyName === "delete";
-      if (isUnmodifiedInput && (isPrintableInput || isDeletionInput)) {
-        editorDirtyIntentRef.current = true;
-      }
-    }
-    if (commandActive) {
-      if (keyName === "escape") {
-        closeCommandBar();
-        return;
-      }
-      if (keyName === "up") {
-        moveCommandHistory(-1);
-        return;
-      }
-      if (keyName === "down") {
-        moveCommandHistory(1);
-        return;
-      }
-      if (keyName === "return" || keyName === "enter") {
-        void executeCommandBar();
-        return;
-      }
-      return;
-    }
-
-    if (notesCreatePromptOpen || notesRenamePromptOpen) {
-      const isPlainInput = !key.ctrl && !key.meta && !key.option;
-      if (keyName === "escape") {
-        if (notesCreatePromptOpen) {
-          closeNotesCreatePrompt();
-        } else {
-          closeNotesRenamePrompt();
+  useKeyboard(
+    (key) => {
+      if (!terminalIsSupported) {
+        if ((key.name ?? "") === "q" && key.eventType !== "release") {
+          void renderer.destroy();
         }
         return;
       }
-      if (keyName === "return" || keyName === "enter") {
-        if (notesCreatePromptOpen) {
-          void confirmNotesCreatePrompt();
-        } else {
-          void confirmNotesRenamePrompt();
+
+      const keyName = key.name ?? "";
+      const keySequence = key.sequence ?? "";
+      const isCtrlPrefixStartKey =
+        key.ctrl &&
+        !key.meta &&
+        !key.option &&
+        !key.shift &&
+        (keyName === "g" ||
+          keySequence === "g" ||
+          keyName === "p" ||
+          keySequence === "p" ||
+          keyName === "y" ||
+          keySequence === "y");
+
+      if (key.eventType === "release") {
+        if (isCtrlPrefixStartKey && pendingGPrefix) {
+          armPendingGPrefixResolveTimeout();
         }
         return;
       }
-      if (isPlainInput && (keyName === "backspace" || keyName === "delete")) {
-        if (notesCreatePromptOpen) {
-          setNotesCreateTitle((current) => current.slice(0, Math.max(0, current.length - 1)));
-        } else {
-          setNotesRenameTitle((current) => current.slice(0, Math.max(0, current.length - 1)));
-        }
-        return;
-      }
-      const isPrintable = isPlainInput && keySequence.length === 1 && keySequence >= " ";
-      if (isPrintable) {
-        if (notesCreatePromptOpen) {
-          setNotesCreateTitle((current) => `${current}${keySequence}`);
-        } else {
-          setNotesRenameTitle((current) => `${current}${keySequence}`);
-        }
-      }
-      return;
-    }
 
-    if (
-      uiState.mode === Mode.NOTES_EDIT &&
-      !key.ctrl &&
-      !key.meta &&
-      !key.option &&
-      keyName === "tab"
-    ) {
-      setNotesEditActiveField((current) => (current === "body" ? "tags" : "body"));
-      return;
-    }
-
-    if (
-      uiState.mode === Mode.NOTES_EDIT &&
-      notesEditActiveField === "tags" &&
-      !key.ctrl &&
-      !key.meta &&
-      !key.option
-    ) {
-      if (keyName === "return" || keyName === "enter") {
-        setNotesEditActiveField("body");
-        return;
-      }
-      if (keyName === "backspace" || keyName === "delete") {
-        applyNotesEditFrontmatterTags(
-          notesEditFrontmatterTagsRef.current.slice(
-            0,
-            Math.max(0, notesEditFrontmatterTagsRef.current.length - 1)
-          )
-        );
-        return;
-      }
-      const isPrintable = keySequence.length === 1 && keySequence >= " ";
-      if (isPrintable) {
-        applyNotesEditFrontmatterTags(`${notesEditFrontmatterTagsRef.current}${keySequence}`);
-        return;
-      }
-    }
-
-    if (
-      uiState.mode === Mode.SEARCH &&
-      uiState.focus === FocusTarget.SEARCH_INPUT &&
-      !searchResultsFocused &&
-      !key.ctrl &&
-      !key.meta &&
-      !key.option
-    ) {
-      const typedChar =
-        keySequence.length === 1 && keySequence >= " "
-          ? keySequence
-          : keyName.length === 1 && keyName >= " "
-            ? keyName
-            : "";
-      if (keyName === "backspace" || keyName === "delete") {
-        const current = searchQueryRef.current;
-        updateSearch(current.slice(0, Math.max(0, current.length - 1)));
-        return;
-      }
       if (
-        typedChar.length === 1 &&
-        keyName !== "return" &&
-        keyName !== "enter" &&
-        keyName !== "escape" &&
-        keyName !== "tab"
+        isCtrlPrefixStartKey &&
+        pendingGPrefix &&
+        (key.eventType === "repeat" || key.repeated === true)
       ) {
-        updateSearch(`${searchQueryRef.current}${typedChar}`);
-        return;
-      }
-    }
-
-    if (
-      saveConflictBannerState &&
-      !saveConflictRetryPending &&
-      !key.ctrl &&
-      !key.meta &&
-      !key.option &&
-      keyName === "r"
-    ) {
-      void handleRetrySaveAfterConflictReload();
-      return;
-    }
-
-    if (
-      (uiState.mode === Mode.LIST ||
-        uiState.mode === Mode.DASHBOARD ||
-        uiState.mode === Mode.SEARCH ||
-        uiState.mode === Mode.ADD ||
-        uiState.mode === Mode.EDIT) &&
-      !viewsOverlayOpen &&
-      !saveViewPromptOpen &&
-      (
-        keySequence === "`" ||
-        keyName === "`" ||
-        keyName === "backtick" ||
-        keyName === "grave"
-      )
-    ) {
-      setCommandActive(true);
-      setCommandTextValue("");
-      setCommandHistoryIndex(null);
-      return;
-    }
-
-    if (uiState.mode === Mode.HELP && activeHelpPage === "custom1Edit") {
-      const handled = custom1EditorRef.current?.handleKey(key) ?? false;
-      if (handled) {
-        return;
-      }
-    }
-    if (uiState.mode === Mode.HELP && activeHelpPage === "textTuningEdit") {
-      const handled = builtInTextEditorRef.current?.handleKey(key) ?? false;
-      if (handled) {
-        return;
-      }
-    }
-
-    if (
-      uiState.mode === Mode.HELP &&
-      activeHelpPage === "settingsAppearance" &&
-      clampedHelpNavSelectionIndex === HELP_SETTINGS_APPEARANCE_LOGO_NAV_INDEX
-    ) {
-      if (keyName === "left") {
-        cycleLogoModeSetting(-1, false);
-        return;
-      }
-      if (keyName === "right") {
-        cycleLogoModeSetting(1, false);
-        return;
-      }
-      if (keyName === "return" || keyName === "enter") {
-        commitLogoModeSetting();
-        return;
-      }
-      if (keyName === "escape" || keyName === "backspace") {
-        cancelLogoModeSetting();
-        handleHelpNavBack();
-        return;
-      }
-    }
-
-    const actions = handleKey(
-      {
-        name: keyName,
-        sequence: keySequence,
-        ctrl: key.ctrl === true,
-        shift: key.shift === true
-      },
-      {
-        uiState,
-        hasTitleInlineSuggestion: Boolean(titleInlineSuggestion),
-        hasTagInlineSuggestion: Boolean(tagInlineSuggestion),
-        hasDueSuggestion: Boolean(dueSuggestion),
-        timeAutocompleteStep,
-        hasPendingGPrefix: pendingGPrefix,
-        bulkActive,
-        viewsOverlayOpen,
-        saveViewPromptOpen,
-        allowEmptyNuxRecoveryImport: showCorruptionRecoveryImportCta,
-        backupScreen: uiState.mode === Mode.BACKUP_CENTER ? backupState.screen : null,
-        selectedTaskHasChecklistItems: (selectedTask?.checklist?.length ?? 0) > 0,
-        notesRootSettingsOpen,
-        notesCreatePromptOpen,
-        notesRenamePromptOpen,
-        notesDeletePromptOpen,
-        detailsNotesLinkPickerOpen,
-        searchHasUnifiedResults: unifiedSearchResults.length > 0,
-        searchResultsFocused,
-        resolvedKeymapAliases,
-        helpPage: activeHelpPage
-      }
-    );
-
-    for (const action of actions) {
-      try {
-        runRoutedAction(action);
-      } catch (error) {
-        const detail = normalizeErrorDetail(error);
-        showShortNavigationBanner(`Action failed: ${detail}`);
-        redactedLogger.error("[TADOI] routed action failed", action, error);
-      }
-    }
-  }, { release: true });
-
-  function openHelp(options: { bypassUnsavedGuard?: boolean } = {}) {
-    if (!options.bypassUnsavedGuard && requestTaskEditorUnsavedGuard("open_help")) {
-      return;
-    }
-    clearPendingGPrefix();
-    setHelpExpandedBySection(createDefaultHelpExpandedState());
-    helpFocusedSectionRef.current = 0;
-    setHelpFocusedSectionIndex(0);
-    helpScrollTopRef.current = 0;
-    setHelpScrollOffset(0);
-    setHelpNavScrollOffset(0);
-    setHelpNavStack(["help"]);
-    setHelpNavSelection({
-      settings: 0,
-      settingsAppearance: 0,
-      settingsNavigation: 0,
-      settingsNotifications: 0,
-      settingsSecurity: 0,
-      settingsNotes: 0,
-      settingsCloud: 0,
-      keymapAliases: 0,
-      theme: 0,
-      custom1: 0,
-      textTuning: 0,
-      textTuningTheme: 0
-    });
-    setHelpTextTuningThemeId(HELP_TEXT_TUNING_THEMES[0] ?? "default");
-    setHelpPreviewThemeMode(null);
-    setHelpDraftLogoMode(null);
-    setHelpSettingsInputField(null);
-    setHelpSettingsInputValue("");
-    setHelpSettingsInputApplying(false);
-    setHelpSettingsInputError(null);
-    setBuiltInTextDraftGlobal({});
-    setBuiltInTextDraftObjects({});
-    helpPreviewRestoreThemeRef.current = null;
-    helpReturnContextRef.current = {
-      mode: uiState.mode,
-      focus: uiState.focus
-    };
-    uiDispatch({
-      type: "captureReturnContext",
-      mode: uiState.mode,
-      focus: uiState.focus
-    });
-    uiDispatch({ type: "setMode", mode: Mode.HELP });
-  }
-
-  function pushHelpPage(page: HelpPage) {
-    setHelpNavStack((prev) => {
-      if (prev[prev.length - 1] === page) return prev;
-      return [...prev, page];
-    });
-    helpScrollTopRef.current = 0;
-    setHelpScrollOffset(0);
-    setHelpNavScrollOffset(0);
-  }
-
-  function popHelpPage() {
-    setHelpNavStack((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
-    helpScrollTopRef.current = 0;
-    setHelpScrollOffset(0);
-    setHelpNavScrollOffset(0);
-  }
-
-  function sanitizeDraftObjects(
-    objects: Partial<Record<ThemeObjectId, Partial<ThemeTokens>>>
-  ): Partial<Record<ThemeObjectId, Partial<ThemeTokens>>> | undefined {
-    const next: Partial<Record<ThemeObjectId, Partial<ThemeTokens>>> = {};
-    for (const [objectId, tokens] of Object.entries(objects) as Array<
-      [ThemeObjectId, Partial<ThemeTokens>]
-    >) {
-      if (Object.keys(tokens).length > 0) {
-        next[objectId] = { ...tokens };
-      }
-    }
-    return Object.keys(next).length > 0 ? next : undefined;
-  }
-
-  function openCustom1Editor() {
-    const persisted = resolveCustom1Config(settingsState.customThemes);
-    setCustom1DraftGlobal(cloneThemeTokens(persisted.global));
-    setCustom1DraftObjects(cloneThemeObjectOverrides(persisted.objects));
-    helpPreviewRestoreThemeRef.current = settingsState.themeId;
-    setHelpPreviewThemeMode("custom1");
-    pushHelpPage("custom1Edit");
-  }
-
-  function closeCustom1EditorCancel() {
-    const persisted = resolveCustom1Config(settingsState.customThemes);
-    const restoreTheme = helpPreviewRestoreThemeRef.current;
-    setCustom1DraftGlobal(cloneThemeTokens(persisted.global));
-    setCustom1DraftObjects(cloneThemeObjectOverrides(persisted.objects));
-    setHelpPreviewThemeMode(null);
-    if (restoreTheme && settingsState.themeId !== restoreTheme) {
-      settingsDispatch({ type: "setTheme", themeId: restoreTheme });
-    }
-    helpPreviewRestoreThemeRef.current = null;
-    setHelpNavStack((prev) =>
-      prev[prev.length - 1] === "custom1Edit" ? prev.slice(0, -1) : prev
-    );
-  }
-
-  function saveCustom1Editor(): boolean {
-    const objects = sanitizeDraftObjects(custom1DraftObjects);
-    const contrastResult = validateCustomThemeContrast({
-      global: custom1DraftGlobal,
-      objects,
-      baselineGlobal: persistedCustom1.global,
-      baselineObjects: persistedCustom1.objects
-    });
-    if (!contrastResult.ok) {
-      const firstIssue = contrastResult.issues[0];
-      if (firstIssue) {
-        showShortNavigationBanner(
-          `Theme save blocked: ${formatContrastIssueForBanner(firstIssue)}`
-        );
-      } else {
-        showShortNavigationBanner("Theme save blocked by contrast gate");
-      }
-      return false;
-    }
-
-    settingsDispatch({
-      type: "setCustomThemes",
-      customThemes: {
-        ...(settingsState.customThemes ?? {}),
-        custom1: objects
-          ? { global: cloneThemeTokens(custom1DraftGlobal), objects }
-          : { global: cloneThemeTokens(custom1DraftGlobal) }
-      }
-    });
-    settingsDispatch({ type: "setTheme", themeId: "custom1" });
-    setHelpPreviewThemeMode(null);
-    helpPreviewRestoreThemeRef.current = null;
-    setHelpNavStack((prev) =>
-      prev[prev.length - 1] === "custom1Edit" ? prev.slice(0, -1) : prev
-    );
-    showShortNavigationBanner("Custom1 theme saved");
-    return true;
-  }
-
-  function openBuiltInTextEditor() {
-    setBuiltInTextDraftGlobal(cloneThemeTextTokenOverrides(persistedBuiltInTextConfig.global));
-    setBuiltInTextDraftObjects(cloneThemeTextObjectOverrides(persistedBuiltInTextConfig.objects));
-    helpPreviewRestoreThemeRef.current = settingsState.themeId;
-    setHelpPreviewThemeMode(helpTextTuningThemeId);
-    pushHelpPage("textTuningEdit");
-  }
-
-  function closeBuiltInTextEditorCancel() {
-    const restoreTheme = helpPreviewRestoreThemeRef.current;
-    setBuiltInTextDraftGlobal(cloneThemeTextTokenOverrides(persistedBuiltInTextConfig.global));
-    setBuiltInTextDraftObjects(cloneThemeTextObjectOverrides(persistedBuiltInTextConfig.objects));
-    setHelpPreviewThemeMode(null);
-    if (restoreTheme && settingsState.themeId !== restoreTheme) {
-      settingsDispatch({ type: "setTheme", themeId: restoreTheme });
-    }
-    helpPreviewRestoreThemeRef.current = null;
-    setHelpNavStack((prev) =>
-      prev[prev.length - 1] === "textTuningEdit" ? prev.slice(0, -1) : prev
-    );
-  }
-
-  function saveBuiltInTextEditor(): boolean {
-    const sanitizedGlobal = sanitizeThemeTextTokenOverrides(builtInTextDraftGlobal);
-    const sanitizedObjects = sanitizeThemeTextObjectOverrides(builtInTextDraftObjects);
-    const contrastResult = validateBuiltInTextContrast({
-      themeId: helpTextTuningThemeId,
-      global: sanitizedGlobal,
-      objects: sanitizedObjects,
-      baselineGlobal: persistedBuiltInTextConfig.global,
-      baselineObjects: persistedBuiltInTextConfig.objects
-    });
-    if (!contrastResult.ok) {
-      const firstIssue = contrastResult.issues[0];
-      if (firstIssue) {
-        showShortNavigationBanner(
-          `Text tuning blocked: ${formatContrastIssueForBanner(firstIssue)}`
-        );
-      } else {
-        showShortNavigationBanner("Text tuning blocked by contrast gate");
-      }
-      return false;
-    }
-
-    const existingTextByTheme = {
-      ...(settingsState.customThemes?.textByTheme ?? {})
-    };
-
-    if (!sanitizedGlobal && !sanitizedObjects) {
-      delete existingTextByTheme[helpTextTuningThemeId];
-    } else {
-      const nextConfig: BuiltInThemeTextOverrideConfig = {};
-      if (sanitizedGlobal) {
-        nextConfig.global = sanitizedGlobal;
-      }
-      if (sanitizedObjects) {
-        nextConfig.objects = sanitizedObjects;
-      }
-      existingTextByTheme[helpTextTuningThemeId] = nextConfig;
-    }
-
-    const nextCustomThemes: CustomThemes = {
-      ...(settingsState.customThemes ?? {})
-    };
-    if (Object.keys(existingTextByTheme).length > 0) {
-      nextCustomThemes.textByTheme = existingTextByTheme;
-    } else {
-      delete nextCustomThemes.textByTheme;
-    }
-
-    settingsDispatch({
-      type: "setCustomThemes",
-      customThemes: nextCustomThemes
-    });
-
-    const restoreTheme = helpPreviewRestoreThemeRef.current;
-    setHelpPreviewThemeMode(null);
-    if (restoreTheme && settingsState.themeId !== restoreTheme) {
-      settingsDispatch({ type: "setTheme", themeId: restoreTheme });
-    }
-    helpPreviewRestoreThemeRef.current = null;
-    setHelpNavStack((prev) =>
-      prev[prev.length - 1] === "textTuningEdit" ? prev.slice(0, -1) : prev
-    );
-    showShortNavigationBanner(`${formatThemeIdLabel(helpTextTuningThemeId)} text colors saved`);
-    return true;
-  }
-
-  function cycleLogoModeSetting(direction: 1 | -1, commit: boolean) {
-    const baseMode = helpDraftLogoMode ?? settingsState.logoMode;
-    const nextMode = cycleLogoMode(baseMode, direction);
-    if (!commit) {
-      setHelpDraftLogoMode(nextMode);
-      return;
-    }
-    setHelpDraftLogoMode(null);
-    if (nextMode === settingsState.logoMode) {
-      return;
-    }
-    settingsDispatch({ type: "setLogoMode", logoMode: nextMode });
-    showShortNavigationBanner(`Logo: ${formatLogoModeLabel(nextMode)}`);
-  }
-
-  function commitLogoModeSetting() {
-    const nextMode = helpDraftLogoMode ?? settingsState.logoMode;
-    setHelpDraftLogoMode(null);
-    if (nextMode === settingsState.logoMode) {
-      return;
-    }
-    settingsDispatch({ type: "setLogoMode", logoMode: nextMode });
-    showShortNavigationBanner(`Logo: ${formatLogoModeLabel(nextMode)}`);
-  }
-
-  function cancelLogoModeSetting() {
-    setHelpDraftLogoMode(null);
-  }
-
-  function cycleThemeModeSetting() {
-    settingsDispatch({ type: "cycleTheme" });
-  }
-
-  function cycleHintDisplayModeSetting() {
-    const nextMode: HintDisplayMode =
-      settingsState.hintDisplayMode === "bottom"
-        ? "left_rail"
-        : settingsState.hintDisplayMode === "left_rail"
-          ? "both"
-          : settingsState.hintDisplayMode === "both"
-            ? "none"
-            : "bottom";
-    settingsDispatch({ type: "setHintDisplayMode", hintDisplayMode: nextMode });
-    showShortNavigationBanner(
-      `Navigation hints: ${formatHintDisplayModeStatusLabel(nextMode)}`
-    );
-  }
-
-  function switchPrefixPopupSetting() {
-    const nextEnabled = !settingsState.showPrefixHintPopup;
-    settingsDispatch({
-      type: "setShowPrefixHintPopup",
-      showPrefixHintPopup: nextEnabled
-    });
-    showShortNavigationBanner(`Prefix popup: ${nextEnabled ? "on" : "off"}`);
-  }
-
-  function switchFlashModeSetting() {
-    const nextMode: FlashMode = settingsState.flashMode === "slow" ? "static" : "slow";
-    settingsDispatch({ type: "toggleFlashMode" });
-    showShortNavigationBanner(
-      nextMode === "static" ? "Flash mode: static (overdue = red)" : "Flash mode: slow"
-    );
-  }
-
-  function switchCrtFxLiteSetting() {
-    const nextEnabled = !settingsState.crtFxLite;
-    settingsDispatch({ type: "toggleCrtFxLite" });
-    showShortNavigationBanner(`CRT FX Lite: ${nextEnabled ? "on" : "off"}`);
-  }
-
-  function cycleCrtFxProfileSetting() {
-    const nextProfile = cycleCrtFxLiteProfile({
-      color: settingsState.crtFxColor,
-      preset: settingsState.crtFxPreset
-    });
-    settingsDispatch({ type: "setCrtFxColor", crtFxColor: nextProfile.color });
-    settingsDispatch({ type: "setCrtFxPreset", crtFxPreset: nextProfile.preset });
-    showShortNavigationBanner(
-      `CRT FX Profile: ${formatCrtFxLiteProfileLabel(nextProfile.color, nextProfile.preset)}`
-    );
-  }
-
-  function cycleRetroFxModeSetting() {
-    const nextMode = cycleRetroFxMode(settingsState.retroFxMode);
-    settingsDispatch({ type: "setRetroFxMode", retroFxMode: nextMode });
-    showShortNavigationBanner(`Retro FX Mode: ${formatRetroFxModeLabel(nextMode)}`);
-  }
-
-  function switchNotificationsEnabledSetting() {
-    const nextEnabled = !settingsState.notifications.enabled;
-    settingsDispatch({ type: "toggleNotificationsEnabled" });
-    showShortNavigationBanner(`Notifications: ${nextEnabled ? "on" : "off"}`);
-  }
-
-  function switchInAppOverduePopupSetting() {
-    const nextEnabled = !settingsState.notifications.inAppOverdueBanner;
-    settingsDispatch({ type: "toggleInAppOverdueBanner" });
-    showShortNavigationBanner(`Overdue popup: ${nextEnabled ? "on" : "off"}`);
-  }
-
-  function switchTerminalBellSetting() {
-    const nextEnabled = !settingsState.notifications.terminalBellOnOverdue;
-    settingsDispatch({ type: "toggleTerminalBellOnOverdue" });
-    showShortNavigationBanner(`Terminal bell: ${nextEnabled ? "on" : "off"}`);
-  }
-
-  function switchOutOfAppRemindersSetting() {
-    const nextEnabled = !settingsState.notifications.outOfAppRemindersEnabled;
-    settingsDispatch({ type: "toggleOutOfAppRemindersEnabled" });
-    showShortNavigationBanner(`Out-of-app reminders: ${nextEnabled ? "on" : "off"}`);
-  }
-
-  function showReminderHelperCommand(command: string) {
-    showShortNavigationBanner(command);
-  }
-
-  function cycleSecurityNonHttpLinkPolicySetting() {
-    const nextPolicy = settingsState.security.nonHttpLinkPolicy === "prompt" ? "block" : "prompt";
-    settingsDispatch({
-      type: "setSecurity",
-      security: {
-        ...settingsState.security,
-        nonHttpLinkPolicy: nextPolicy
-      }
-    });
-    showShortNavigationBanner(
-      `Non-http links: ${nextPolicy === "block" ? "block" : "prompt"}`
-    );
-  }
-
-  function switchNotesEnabledSetting() {
-    const nextEnabled = !settingsState.notes.enabled;
-    settingsDispatch({
-      type: "setNotes",
-      notes: {
-        ...settingsState.notes,
-        enabled: nextEnabled
-      }
-    });
-    showShortNavigationBanner(`TOME: ${nextEnabled ? "enabled" : "disabled"}`);
-  }
-
-  function resolveHelpSettingsInputSeedValue(field: HelpSettingsInputField): string {
-    const github = resolveGitHubSettings();
-    if (field === "notificationsBannerDurationMs") {
-      return String(settingsState.notifications.bannerDurationMs);
-    }
-    if (field === "notificationsBellCooldownMs") {
-      return String(settingsState.notifications.bellCooldownMs);
-    }
-    if (field === "notesRootPath") {
-      return settingsState.notes.rootPath ?? notesRuntime.notesRoot;
-    }
-    if (field === "cloudOwnerRepo") {
-      return github?.ownerRepo ?? "";
-    }
-    if (field === "cloudBranch") {
-      return github?.branch ?? DEFAULT_GITHUB_BACKUP_BRANCH;
-    }
-    if (field === "cloudDeviceId") {
-      return github?.deviceId ?? DEFAULT_GITHUB_BACKUP?.deviceId ?? "";
-    }
-    return github?.pathPrefix ?? "";
-  }
-
-  function resolveHelpSettingsInputTitle(field: HelpSettingsInputField): string {
-    if (field === "notificationsBannerDurationMs") return "Notification Banner Duration (ms)";
-    if (field === "notificationsBellCooldownMs") return "Terminal Bell Cooldown (ms)";
-    if (field === "notesRootPath") return "TOME Root Path";
-    if (field === "cloudOwnerRepo") return "Cloud Owner/Repo";
-    if (field === "cloudBranch") return "Cloud Branch";
-    if (field === "cloudDeviceId") return "Cloud Device ID";
-    return "Cloud Path Prefix";
-  }
-
-  function resolveHelpSettingsInputPlaceholder(field: HelpSettingsInputField): string {
-    if (field === "notificationsBannerDurationMs") return "e.g. 5000";
-    if (field === "notificationsBellCooldownMs") return "e.g. 2000";
-    if (field === "notesRootPath") return "Absolute path (blank = default under data root)";
-    if (field === "cloudOwnerRepo") return "owner/repo";
-    if (field === "cloudBranch") return "main";
-    if (field === "cloudDeviceId") return "dev_local";
-    return "tadoi/devices/<device-id>";
-  }
-
-  function openHelpSettingsInput(field: HelpSettingsInputField) {
-    setHelpSettingsInputField(field);
-    setHelpSettingsInputValue(resolveHelpSettingsInputSeedValue(field));
-    setHelpSettingsInputApplying(false);
-    setHelpSettingsInputError(null);
-    pushHelpPage("settingsInput");
-  }
-
-  function closeHelpSettingsInput() {
-    if (helpSettingsInputApplying) {
-      return;
-    }
-    setHelpSettingsInputField(null);
-    setHelpSettingsInputValue("");
-    setHelpSettingsInputError(null);
-    popHelpPage();
-  }
-
-  function updateGitHubBackupSettings(patch: Partial<GitHubBackupSettings>) {
-    const defaults = getDefaultSettings().githubBackup ?? DEFAULT_GITHUB_BACKUP;
-    const current = resolveGitHubSettings() ?? defaults;
-    if (!current || !defaults) return;
-
-    const deviceId = (patch.deviceId ?? current.deviceId ?? defaults.deviceId).trim();
-    const safeDeviceId = deviceId.length > 0 ? deviceId : defaults.deviceId;
-    const inferredPathPrefix = `tadoi/devices/${safeDeviceId}`;
-    const nextPathPrefixCandidate = patch.pathPrefix ?? current.pathPrefix ?? inferredPathPrefix;
-    const nextPathPrefix =
-      nextPathPrefixCandidate.trim().length > 0
-        ? nextPathPrefixCandidate.trim()
-        : inferredPathPrefix;
-    const hasOwnerRepoPatch = Object.prototype.hasOwnProperty.call(patch, "ownerRepo");
-    const nextOwnerRepoRaw = hasOwnerRepoPatch ? patch.ownerRepo : current.ownerRepo;
-    const nextOwnerRepo =
-      typeof nextOwnerRepoRaw === "string" && nextOwnerRepoRaw.trim().length > 0
-        ? nextOwnerRepoRaw.trim()
-        : null;
-    const nextBranchRaw = patch.branch ?? current.branch ?? DEFAULT_GITHUB_BACKUP_BRANCH;
-    const nextBranch =
-      typeof nextBranchRaw === "string" && nextBranchRaw.trim().length > 0
-        ? nextBranchRaw.trim()
-        : DEFAULT_GITHUB_BACKUP_BRANCH;
-
-    settingsDispatch({
-      type: "setGitHubBackup",
-      githubBackup: {
-        ...current,
-        enabled: patch.enabled ?? current.enabled,
-        ownerRepo: nextOwnerRepo,
-        branch: nextBranch,
-        deviceId: safeDeviceId,
-        pathPrefix: nextPathPrefix,
-        autoPushPolicy:
-          patch.autoPushPolicy ??
-          current.autoPushPolicy ??
-          DEFAULT_GITHUB_AUTO_PUSH_POLICY
-      }
-    });
-  }
-
-  function switchCloudBackupEnabledSetting() {
-    const current = resolveGitHubSettings() ?? DEFAULT_GITHUB_BACKUP;
-    const nextEnabled = !(current?.enabled === true);
-    updateGitHubBackupSettings({ enabled: nextEnabled });
-    showShortNavigationBanner(`Cloud backup: ${nextEnabled ? "on" : "off"}`);
-  }
-
-  function cycleCloudAutoPushPolicySetting() {
-    const currentPolicy =
-      resolveGitHubSettings()?.autoPushPolicy ?? DEFAULT_GITHUB_AUTO_PUSH_POLICY;
-    const nextPolicy = cycleGitHubAutoPushPolicy(currentPolicy);
-    updateGitHubBackupSettings({ autoPushPolicy: nextPolicy });
-    showShortNavigationBanner(
-      `Cloud auto-push: ${formatGitHubAutoPushPolicyLabel(nextPolicy)}`
-    );
-  }
-
-  function openCloudBackupOperationsFromSettings() {
-    openBackupCenter();
-    openGitHubCloudStatus();
-  }
-
-  async function submitHelpSettingsInput(submittedValue?: string): Promise<void> {
-    const field = helpSettingsInputField;
-    if (!field || helpSettingsInputApplying) return;
-    const rawValue = (submittedValue ?? helpSettingsInputValue).trim();
-    setHelpSettingsInputError(null);
-
-    if (field === "notificationsBannerDurationMs" || field === "notificationsBellCooldownMs") {
-      const parsed = Number.parseInt(rawValue, 10);
-      if (!Number.isFinite(parsed) || parsed <= 0) {
-        setHelpSettingsInputError("Value must be a positive integer (milliseconds).");
-        return;
-      }
-      if (field === "notificationsBannerDurationMs") {
-        settingsDispatch({
-          type: "setNotifications",
-          notifications: {
-            ...settingsState.notifications,
-            bannerDurationMs: Math.floor(parsed)
-          }
-        });
-        showShortNavigationBanner(`Banner duration: ${String(Math.floor(parsed))}ms`);
-      } else {
-        settingsDispatch({
-          type: "setNotifications",
-          notifications: {
-            ...settingsState.notifications,
-            bellCooldownMs: Math.floor(parsed)
-          }
-        });
-        showShortNavigationBanner(`Bell cooldown: ${String(Math.floor(parsed))}ms`);
-      }
-      setHelpSettingsInputField(null);
-      setHelpSettingsInputError(null);
-      setHelpSettingsInputValue("");
-      popHelpPage();
-      return;
-    }
-
-    if (field === "notesRootPath") {
-      const service = resolveNotesService();
-      if (!service) {
-        setHelpSettingsInputError("Notes service unavailable.");
-        return;
-      }
-      const nextRoot =
-        rawValue.length > 0
-          ? path.resolve(rawValue)
-          : resolveNotesRootPath(getDataFilePath(), null);
-      if (!isPathWithin(path.dirname(nextRoot), nextRoot)) {
-        setHelpSettingsInputError("Invalid absolute root path.");
+        // Keep prefix popup open while Ctrl+g/Ctrl+p/Ctrl+y is held by extending timeout on repeats.
+        armPendingGPrefixResolveTimeout();
         return;
       }
 
-      setHelpSettingsInputApplying(true);
-      try {
-        await createDataBackup(getDataFilePath());
-        await service.migrateNotesRootCopyFirst(nextRoot);
-        settingsDispatch({
-          type: "setNotes",
-          notes: {
-            enabled: true,
-            rootPath: nextRoot
-          }
-        });
-        setNotesList(service.listNotes());
-        setNotesRuntime({
-          ready: true,
-          enabled: true,
-          notesRoot: nextRoot
-        });
-        if (notesOpenPath) {
-          await hydrateOpenNote(notesOpenPath);
+      if (
+        uiState.mode === Mode.EDIT &&
+        uiState.focus !== FocusTarget.EDITOR_SAVE &&
+        uiState.focus !== FocusTarget.EDITOR_CANCEL
+      ) {
+        const isUnmodifiedInput = !key.ctrl && !key.meta && !key.option;
+        const isPrintableInput =
+          keySequence.length === 1 &&
+          keySequence >= " " &&
+          keyName !== "escape";
+        const isDeletionInput = keyName === "backspace" || keyName === "delete";
+        if (isUnmodifiedInput && (isPrintableInput || isDeletionInput)) {
+          editorDirtyIntentRef.current = true;
         }
-        showShortNavigationBanner(`TOME root migrated to ${redactPathForDisplay(nextRoot)}`);
-        setHelpSettingsInputField(null);
-        setHelpSettingsInputValue("");
-        setHelpSettingsInputError(null);
-        popHelpPage();
-      } catch (error: unknown) {
-        setHelpSettingsInputError(normalizeErrorDetail(error));
-      } finally {
-        setHelpSettingsInputApplying(false);
       }
-      return;
-    }
+      if (commandActive) {
+        if (keyName === "escape") {
+          closeCommandBar();
+          return;
+        }
+        if (keyName === "up") {
+          moveCommandHistory(-1);
+          return;
+        }
+        if (keyName === "down") {
+          moveCommandHistory(1);
+          return;
+        }
+        if (keyName === "return" || keyName === "enter") {
+          void executeCommandBar();
+          return;
+        }
+        return;
+      }
 
-    if (field === "cloudOwnerRepo") {
-      updateGitHubBackupSettings({ ownerRepo: rawValue.length > 0 ? rawValue : null });
-      showShortNavigationBanner(
-        rawValue.length > 0 ? `Cloud repo: ${rawValue}` : "Cloud repo cleared"
+      if (notesCreatePromptOpen || notesRenamePromptOpen) {
+        const isPlainInput = !key.ctrl && !key.meta && !key.option;
+        if (keyName === "escape") {
+          if (notesCreatePromptOpen) {
+            closeNotesCreatePrompt();
+          } else {
+            closeNotesRenamePrompt();
+          }
+          return;
+        }
+        if (keyName === "return" || keyName === "enter") {
+          if (notesCreatePromptOpen) {
+            void confirmNotesCreatePrompt();
+          } else {
+            void confirmNotesRenamePrompt();
+          }
+          return;
+        }
+        if (isPlainInput && (keyName === "backspace" || keyName === "delete")) {
+          if (notesCreatePromptOpen) {
+            setNotesCreateTitle((current) =>
+              current.slice(0, Math.max(0, current.length - 1)),
+            );
+          } else {
+            setNotesRenameTitle((current) =>
+              current.slice(0, Math.max(0, current.length - 1)),
+            );
+          }
+          return;
+        }
+        const isPrintable =
+          isPlainInput && keySequence.length === 1 && keySequence >= " ";
+        if (isPrintable) {
+          if (notesCreatePromptOpen) {
+            setNotesCreateTitle((current) => `${current}${keySequence}`);
+          } else {
+            setNotesRenameTitle((current) => `${current}${keySequence}`);
+          }
+        }
+        return;
+      }
+
+      if (
+        uiState.mode === Mode.NOTES_EDIT &&
+        !key.ctrl &&
+        !key.meta &&
+        !key.option &&
+        keyName === "tab"
+      ) {
+        setNotesEditActiveField((current) =>
+          current === "body" ? "tags" : "body",
+        );
+        return;
+      }
+
+      if (
+        uiState.mode === Mode.NOTES_EDIT &&
+        notesEditActiveField === "tags" &&
+        !key.ctrl &&
+        !key.meta &&
+        !key.option
+      ) {
+        if (keyName === "return" || keyName === "enter") {
+          setNotesEditActiveField("body");
+          return;
+        }
+        if (keyName === "backspace" || keyName === "delete") {
+          applyNotesEditFrontmatterTags(
+            notesEditFrontmatterTagsRef.current.slice(
+              0,
+              Math.max(0, notesEditFrontmatterTagsRef.current.length - 1),
+            ),
+          );
+          return;
+        }
+        const isPrintable = keySequence.length === 1 && keySequence >= " ";
+        if (isPrintable) {
+          applyNotesEditFrontmatterTags(
+            `${notesEditFrontmatterTagsRef.current}${keySequence}`,
+          );
+          return;
+        }
+      }
+
+      if (
+        uiState.mode === Mode.SEARCH &&
+        uiState.focus === FocusTarget.SEARCH_INPUT &&
+        !searchResultsFocused &&
+        !key.ctrl &&
+        !key.meta &&
+        !key.option
+      ) {
+        const typedChar =
+          keySequence.length === 1 && keySequence >= " "
+            ? keySequence
+            : keyName.length === 1 && keyName >= " "
+              ? keyName
+              : "";
+        if (keyName === "backspace" || keyName === "delete") {
+          const current = searchQueryRef.current;
+          updateSearch(current.slice(0, Math.max(0, current.length - 1)));
+          return;
+        }
+        if (
+          typedChar.length === 1 &&
+          keyName !== "return" &&
+          keyName !== "enter" &&
+          keyName !== "escape" &&
+          keyName !== "tab"
+        ) {
+          updateSearch(`${searchQueryRef.current}${typedChar}`);
+          return;
+        }
+      }
+
+      if (
+        saveConflictBannerState &&
+        !saveConflictRetryPending &&
+        !key.ctrl &&
+        !key.meta &&
+        !key.option &&
+        keyName === "r"
+      ) {
+        void handleRetrySaveAfterConflictReload();
+        return;
+      }
+
+      if (
+        (uiState.mode === Mode.LIST ||
+          uiState.mode === Mode.DASHBOARD ||
+          uiState.mode === Mode.SEARCH ||
+          uiState.mode === Mode.ADD ||
+          uiState.mode === Mode.EDIT) &&
+        !viewsOverlayOpen &&
+        !saveViewPromptOpen &&
+        (keySequence === "`" ||
+          keyName === "`" ||
+          keyName === "backtick" ||
+          keyName === "grave")
+      ) {
+        setCommandActive(true);
+        setCommandTextValue("");
+        setCommandHistoryIndex(null);
+        return;
+      }
+
+      if (uiState.mode === Mode.HELP && activeHelpPage === "custom1Edit") {
+        const handled = custom1EditorRef.current?.handleKey(key) ?? false;
+        if (handled) {
+          return;
+        }
+      }
+      if (uiState.mode === Mode.HELP && activeHelpPage === "textTuningEdit") {
+        const handled = builtInTextEditorRef.current?.handleKey(key) ?? false;
+        if (handled) {
+          return;
+        }
+      }
+
+      if (
+        uiState.mode === Mode.HELP &&
+        activeHelpPage === "settingsAppearance" &&
+        clampedHelpNavSelectionIndex === HELP_SETTINGS_APPEARANCE_LOGO_NAV_INDEX
+      ) {
+        if (keyName === "left") {
+          cycleLogoModeSetting(-1, false);
+          return;
+        }
+        if (keyName === "right") {
+          cycleLogoModeSetting(1, false);
+          return;
+        }
+        if (keyName === "return" || keyName === "enter") {
+          commitLogoModeSetting();
+          return;
+        }
+        if (keyName === "escape" || keyName === "backspace") {
+          cancelLogoModeSetting();
+          handleHelpNavBack();
+          return;
+        }
+      }
+
+      const actions = handleKey(
+        {
+          name: keyName,
+          sequence: keySequence,
+          ctrl: key.ctrl === true,
+          shift: key.shift === true,
+        },
+        {
+          uiState,
+          hasTitleInlineSuggestion: Boolean(titleInlineSuggestion),
+          hasTagInlineSuggestion: Boolean(tagInlineSuggestion),
+          hasDueSuggestion: Boolean(dueSuggestion),
+          timeAutocompleteStep,
+          hasPendingGPrefix: pendingGPrefix,
+          bulkActive,
+          viewsOverlayOpen,
+          saveViewPromptOpen,
+          allowEmptyNuxRecoveryImport: showCorruptionRecoveryImportCta,
+          backupScreen:
+            uiState.mode === Mode.BACKUP_CENTER ? backupState.screen : null,
+          selectedTaskHasChecklistItems:
+            (selectedTask?.checklist?.length ?? 0) > 0,
+          notesRootSettingsOpen,
+          notesCreatePromptOpen,
+          notesRenamePromptOpen,
+          notesDeletePromptOpen,
+          detailsNotesLinkPickerOpen,
+          searchHasUnifiedResults: unifiedSearchResults.length > 0,
+          searchResultsFocused,
+          resolvedKeymapAliases,
+          helpPage: activeHelpPage,
+        },
       );
-    } else if (field === "cloudBranch") {
-      const nextBranch = rawValue.length > 0 ? rawValue : DEFAULT_GITHUB_BACKUP_BRANCH;
-      updateGitHubBackupSettings({ branch: nextBranch });
-      showShortNavigationBanner(`Cloud branch: ${nextBranch}`);
-    } else if (field === "cloudDeviceId") {
-      if (rawValue.length === 0) {
-        setHelpSettingsInputError("Device ID cannot be blank.");
-        return;
+
+      for (const action of actions) {
+        try {
+          runRoutedAction(action);
+        } catch (error) {
+          const detail = normalizeErrorDetail(error);
+          showShortNavigationBanner(`Action failed: ${detail}`);
+          redactedLogger.error("[TADOI] routed action failed", action, error);
+        }
       }
-      updateGitHubBackupSettings({ deviceId: rawValue });
-      showShortNavigationBanner(`Cloud device ID: ${rawValue}`);
-    } else if (field === "cloudPathPrefix") {
-      if (rawValue.length === 0) {
-        setHelpSettingsInputError("Path prefix cannot be blank.");
-        return;
-      }
-      updateGitHubBackupSettings({ pathPrefix: rawValue });
-      showShortNavigationBanner(`Cloud path prefix: ${rawValue}`);
-    }
-
-    setHelpSettingsInputField(null);
-    setHelpSettingsInputValue("");
-    setHelpSettingsInputError(null);
-    popHelpPage();
-  }
-
-  async function restoreTomeGuidesFromHelpSettings(): Promise<void> {
-    const service = resolveNotesService();
-    if (!service) return;
-    try {
-      const restored = await service.restoreDefaultGuideDocs("restore_missing");
-      if (restored.skippedReason === "disabled") {
-        showShortNavigationBanner("TOME is disabled in settings.");
-        return;
-      }
-      setNotesList(service.listNotes());
-      clampNotesSelectionToAvailable();
-      if (restored.createdPaths.length === 0) {
-        showShortNavigationBanner("All default guide notes are already present.");
-        return;
-      }
-      const count = restored.createdPaths.length;
-      showShortNavigationBanner(
-        count === 1
-          ? "Recovered 1 default guide note (existing notes unchanged)."
-          : `Recovered ${String(count)} default guide notes (existing notes unchanged).`
-      );
-    } catch (error: unknown) {
-      showShortNavigationBanner(
-        `Failed to restore TOME guides: ${normalizeErrorDetail(error)}`
-      );
-    }
-  }
-
-  function setContextKeymapAliasPreset(context: KeymapAliasPresetContext, enabled: boolean) {
-    const nextAliases = cloneKeymapAliases(settingsState.keymapAliases) ?? {};
-    if (enabled) {
-      nextAliases[context] = cloneKeymapAliasConfig(KEYMAP_ALIAS_PRESETS_BY_CONTEXT[context]);
-    } else {
-      delete nextAliases[context];
-    }
-    settingsDispatch({
-      type: "setKeymapAliases",
-      keymapAliases: Object.keys(nextAliases).length > 0 ? nextAliases : undefined
-    });
-  }
-
-  function toggleContextKeymapAliasPreset(context: KeymapAliasPresetContext) {
-    const currentState = resolveKeymapAliasPresetState(context, settingsState.keymapAliases);
-    const nextEnabled = currentState !== "preset";
-    setContextKeymapAliasPreset(context, nextEnabled);
-    showShortNavigationBanner(
-      `${context} aliases: ${nextEnabled ? "on (preset)" : "off"}`
-    );
-  }
-
-  function clearAllKeymapAliases() {
-    settingsDispatch({ type: "setKeymapAliases", keymapAliases: undefined });
-    showShortNavigationBanner("Keymap aliases reset to defaults");
-  }
+    },
+    { release: true },
+  );
 
   function openBackupCenter(options: { bypassUnsavedGuard?: boolean } = {}) {
-    if (!options.bypassUnsavedGuard && requestTaskEditorUnsavedGuard("open_backup_center")) {
+    if (
+      !options.bypassUnsavedGuard &&
+      requestTaskEditorUnsavedGuard("open_backup_center")
+    ) {
       return;
     }
     clearPendingGPrefix();
@@ -7873,7 +7536,7 @@ export function App({
     uiDispatch({
       type: "captureReturnContext",
       mode: uiState.mode,
-      focus: uiState.focus
+      focus: uiState.focus,
     });
     uiDispatch({ type: "setMode", mode: Mode.BACKUP_CENTER });
     uiDispatch({ type: "setFocus", focus: FocusTarget.BACKUP_CENTER });
@@ -7887,7 +7550,7 @@ export function App({
     uiDispatch({
       type: "captureReturnContext",
       mode: Mode.LIST,
-      focus: FocusTarget.TASK_LIST
+      focus: FocusTarget.TASK_LIST,
     });
     uiDispatch({ type: "setMode", mode: Mode.BACKUP_CENTER });
     uiDispatch({ type: "setFocus", focus: FocusTarget.BACKUP_CENTER });
@@ -7921,40 +7584,6 @@ export function App({
     uiDispatch({ type: "setFocus", focus: FocusTarget.DASHBOARD });
   }
 
-  function closeHelp(options: { bypassUnsavedGuard?: boolean } = {}) {
-    if (
-      !options.bypassUnsavedGuard &&
-      helpNavStack[helpNavStack.length - 1] === "custom1Edit" &&
-      requestHelpThemeEditorUnsavedGuard("help_custom1_editor", "close_help")
-    ) {
-      return;
-    }
-    if (
-      !options.bypassUnsavedGuard &&
-      helpNavStack[helpNavStack.length - 1] === "textTuningEdit" &&
-      requestHelpThemeEditorUnsavedGuard("help_text_tuning_editor", "close_help")
-    ) {
-      return;
-    }
-    if (helpNavStack[helpNavStack.length - 1] === "custom1Edit") {
-      closeCustom1EditorCancel();
-    }
-    if (helpNavStack[helpNavStack.length - 1] === "textTuningEdit") {
-      closeBuiltInTextEditorCancel();
-    }
-    setHelpSettingsInputField(null);
-    setHelpSettingsInputValue("");
-    setHelpSettingsInputApplying(false);
-    setHelpSettingsInputError(null);
-    cancelLogoModeSetting();
-    const { mode: returnMode, focus: returnFocus } = normalizeHelpReturnContext(
-      helpReturnContextRef.current.mode,
-      helpReturnContextRef.current.focus
-    );
-    uiDispatch({ type: "setMode", mode: returnMode });
-    uiDispatch({ type: "setFocus", focus: returnFocus });
-  }
-
   function moveHelpSectionFocus(delta: 1 | -1) {
     if (activeHelpPage !== "help") {
       if (activeHelpPage === "settingsInput") {
@@ -7965,24 +7594,30 @@ export function App({
           ...prev,
           settings: Math.max(
             0,
-            Math.min(prev.settings + delta, HELP_SETTINGS_NAV_ITEMS.length - 1)
-          )
+            Math.min(prev.settings + delta, HELP_SETTINGS_NAV_ITEMS.length - 1),
+          ),
         }));
       } else if (activeHelpPage === "settingsAppearance") {
         setHelpNavSelection((prev) => ({
           ...prev,
           settingsAppearance: Math.max(
             0,
-            Math.min(prev.settingsAppearance + delta, HELP_SETTINGS_APPEARANCE_NAV_ITEMS.length - 1)
-          )
+            Math.min(
+              prev.settingsAppearance + delta,
+              HELP_SETTINGS_APPEARANCE_NAV_ITEMS.length - 1,
+            ),
+          ),
         }));
       } else if (activeHelpPage === "settingsNavigation") {
         setHelpNavSelection((prev) => ({
           ...prev,
           settingsNavigation: Math.max(
             0,
-            Math.min(prev.settingsNavigation + delta, HELP_SETTINGS_NAVIGATION_NAV_ITEMS.length - 1)
-          )
+            Math.min(
+              prev.settingsNavigation + delta,
+              HELP_SETTINGS_NAVIGATION_NAV_ITEMS.length - 1,
+            ),
+          ),
         }));
       } else if (activeHelpPage === "settingsNotifications") {
         setHelpNavSelection((prev) => ({
@@ -7991,80 +7626,101 @@ export function App({
             0,
             Math.min(
               prev.settingsNotifications + delta,
-              HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.length - 1
-            )
-          )
+              HELP_SETTINGS_NOTIFICATIONS_NAV_ITEMS.length - 1,
+            ),
+          ),
         }));
       } else if (activeHelpPage === "settingsSecurity") {
         setHelpNavSelection((prev) => ({
           ...prev,
           settingsSecurity: Math.max(
             0,
-            Math.min(prev.settingsSecurity + delta, HELP_SETTINGS_SECURITY_NAV_ITEMS.length - 1)
-          )
+            Math.min(
+              prev.settingsSecurity + delta,
+              HELP_SETTINGS_SECURITY_NAV_ITEMS.length - 1,
+            ),
+          ),
         }));
       } else if (activeHelpPage === "settingsNotes") {
         setHelpNavSelection((prev) => ({
           ...prev,
           settingsNotes: Math.max(
             0,
-            Math.min(prev.settingsNotes + delta, HELP_SETTINGS_NOTES_NAV_ITEMS.length - 1)
-          )
+            Math.min(
+              prev.settingsNotes + delta,
+              HELP_SETTINGS_NOTES_NAV_ITEMS.length - 1,
+            ),
+          ),
         }));
       } else if (activeHelpPage === "settingsCloud") {
         setHelpNavSelection((prev) => ({
           ...prev,
           settingsCloud: Math.max(
             0,
-            Math.min(prev.settingsCloud + delta, HELP_SETTINGS_CLOUD_NAV_ITEMS.length - 1)
-          )
+            Math.min(
+              prev.settingsCloud + delta,
+              HELP_SETTINGS_CLOUD_NAV_ITEMS.length - 1,
+            ),
+          ),
         }));
       } else if (activeHelpPage === "keymapAliases") {
         setHelpNavSelection((prev) => ({
           ...prev,
           keymapAliases: Math.max(
             0,
-            Math.min(prev.keymapAliases + delta, HELP_KEYMAP_ALIAS_NAV_ITEMS.length - 1)
-          )
+            Math.min(
+              prev.keymapAliases + delta,
+              HELP_KEYMAP_ALIAS_NAV_ITEMS.length - 1,
+            ),
+          ),
         }));
       } else if (activeHelpPage === "theme") {
         setHelpNavSelection((prev) => ({
           ...prev,
           theme: Math.max(
             0,
-            Math.min(prev.theme + delta, HELP_THEME_NAV_ITEMS.length - 1)
-          )
+            Math.min(prev.theme + delta, HELP_THEME_NAV_ITEMS.length - 1),
+          ),
         }));
       } else if (activeHelpPage === "custom1") {
         setHelpNavSelection((prev) => ({
           ...prev,
           custom1: Math.max(
             0,
-            Math.min(prev.custom1 + delta, HELP_CUSTOM1_NAV_ITEMS.length - 1)
-          )
+            Math.min(prev.custom1 + delta, HELP_CUSTOM1_NAV_ITEMS.length - 1),
+          ),
         }));
       } else if (activeHelpPage === "textTuning") {
         setHelpNavSelection((prev) => ({
           ...prev,
           textTuning: Math.max(
             0,
-            Math.min(prev.textTuning + delta, HELP_TEXT_TUNING_NAV_ITEMS.length - 1)
-          )
+            Math.min(
+              prev.textTuning + delta,
+              HELP_TEXT_TUNING_NAV_ITEMS.length - 1,
+            ),
+          ),
         }));
       } else if (activeHelpPage === "textTuningTheme") {
         setHelpNavSelection((prev) => ({
           ...prev,
           textTuningTheme: Math.max(
             0,
-            Math.min(prev.textTuningTheme + delta, HELP_TEXT_TUNING_THEME_NAV_ITEMS.length - 1)
-          )
+            Math.min(
+              prev.textTuningTheme + delta,
+              HELP_TEXT_TUNING_THEME_NAV_ITEMS.length - 1,
+            ),
+          ),
         }));
       }
       return;
     }
     const nextIndex = Math.max(
       0,
-      Math.min(helpFocusedSectionRef.current + delta, HELP_MENU_SECTIONS.length - 1)
+      Math.min(
+        helpFocusedSectionRef.current + delta,
+        HELP_MENU_SECTIONS.length - 1,
+      ),
     );
     helpFocusedSectionRef.current = nextIndex;
     setHelpFocusedSectionIndex(nextIndex);
@@ -8077,13 +7733,13 @@ export function App({
     const nextOffset = clampScrollOffset(
       currentOffset + direction * helpPageStep,
       helpContentVisibleRows,
-      helpRows.length
+      helpRows.length,
     );
     const appliedOffset = scrollHelpTo(nextOffset);
     // Page-scrolling in Help moves focus to the section nearest the top of the viewport.
     const nextFocusedSectionIndex = findHelpSectionIndexForViewportTop(
       helpSections,
-      appliedOffset
+      appliedOffset,
     );
     helpFocusedSectionRef.current = nextFocusedSectionIndex;
     setHelpFocusedSectionIndex(nextFocusedSectionIndex);
@@ -8135,263 +7791,28 @@ export function App({
 
   function handleHelpSectionHeaderClick(sectionIndex: number) {
     if (activeHelpPage !== "help") return;
-    const nextIndex = Math.max(0, Math.min(sectionIndex, HELP_MENU_SECTIONS.length - 1));
+    const nextIndex = Math.max(
+      0,
+      Math.min(sectionIndex, HELP_MENU_SECTIONS.length - 1),
+    );
     helpFocusedSectionRef.current = nextIndex;
     setHelpFocusedSectionIndex(nextIndex);
     ensureHelpSectionVisibleNow(nextIndex);
-    if (HELP_SETTINGS_NAV_SECTION_INDEX >= 0 && sectionIndex === HELP_SETTINGS_NAV_SECTION_INDEX) {
+    if (
+      HELP_SETTINGS_NAV_SECTION_INDEX >= 0 &&
+      sectionIndex === HELP_SETTINGS_NAV_SECTION_INDEX
+    ) {
       pushHelpPage("settings");
       return;
     }
     toggleHelpSection(sectionIndex);
   }
 
-  function setHelpNavSelectionForActivePage(index: number) {
-    if (activeHelpPage === "settings") {
-      setHelpNavSelection((prev) => ({ ...prev, settings: index }));
-      return;
-    }
-    if (activeHelpPage === "settingsAppearance") {
-      setHelpNavSelection((prev) => ({ ...prev, settingsAppearance: index }));
-      return;
-    }
-    if (activeHelpPage === "settingsNavigation") {
-      setHelpNavSelection((prev) => ({ ...prev, settingsNavigation: index }));
-      return;
-    }
-    if (activeHelpPage === "settingsNotifications") {
-      setHelpNavSelection((prev) => ({ ...prev, settingsNotifications: index }));
-      return;
-    }
-    if (activeHelpPage === "settingsSecurity") {
-      setHelpNavSelection((prev) => ({ ...prev, settingsSecurity: index }));
-      return;
-    }
-    if (activeHelpPage === "settingsNotes") {
-      setHelpNavSelection((prev) => ({ ...prev, settingsNotes: index }));
-      return;
-    }
-    if (activeHelpPage === "settingsCloud") {
-      setHelpNavSelection((prev) => ({ ...prev, settingsCloud: index }));
-      return;
-    }
-    if (activeHelpPage === "keymapAliases") {
-      setHelpNavSelection((prev) => ({ ...prev, keymapAliases: index }));
-      return;
-    }
-    if (activeHelpPage === "theme") {
-      setHelpNavSelection((prev) => ({ ...prev, theme: index }));
-      return;
-    }
-    if (activeHelpPage === "custom1") {
-      setHelpNavSelection((prev) => ({ ...prev, custom1: index }));
-      return;
-    }
-    if (activeHelpPage === "textTuning") {
-      setHelpNavSelection((prev) => ({ ...prev, textTuning: index }));
-      return;
-    }
-    if (activeHelpPage === "textTuningTheme") {
-      setHelpNavSelection((prev) => ({ ...prev, textTuningTheme: index }));
-    }
-  }
-
-  function handleHelpNavForward(targetIndex = clampedHelpNavSelectionIndex) {
-    if (activeHelpPage === "settings") {
-      if (targetIndex === HELP_SETTINGS_APPEARANCE_NAV_INDEX) {
-        cancelLogoModeSetting();
-        pushHelpPage("settingsAppearance");
-      }
-      if (targetIndex === HELP_SETTINGS_NAVIGATION_NAV_INDEX) {
-        pushHelpPage("settingsNavigation");
-      }
-      if (targetIndex === HELP_SETTINGS_NOTIFICATIONS_NAV_INDEX) {
-        pushHelpPage("settingsNotifications");
-      }
-      if (targetIndex === HELP_SETTINGS_SECURITY_NAV_INDEX) {
-        pushHelpPage("settingsSecurity");
-      }
-      if (targetIndex === HELP_SETTINGS_NOTES_NAV_INDEX) {
-        pushHelpPage("settingsNotes");
-      }
-      if (targetIndex === HELP_SETTINGS_CLOUD_NAV_INDEX) {
-        pushHelpPage("settingsCloud");
-      }
-      return;
-    }
-    if (activeHelpPage === "settingsAppearance") {
-      if (targetIndex === HELP_SETTINGS_APPEARANCE_THEME_NAV_INDEX) {
-        cancelLogoModeSetting();
-        pushHelpPage("theme");
-      }
-      if (targetIndex === HELP_SETTINGS_APPEARANCE_LOGO_NAV_INDEX) {
-        cycleLogoModeSetting(1, true);
-      }
-      if (targetIndex === HELP_SETTINGS_APPEARANCE_FLASH_NAV_INDEX) switchFlashModeSetting();
-      if (targetIndex === HELP_SETTINGS_APPEARANCE_CRT_FX_NAV_INDEX) switchCrtFxLiteSetting();
-      if (targetIndex === HELP_SETTINGS_APPEARANCE_CRT_FX_PROFILE_NAV_INDEX) {
-        cycleCrtFxProfileSetting();
-      }
-      if (targetIndex === HELP_SETTINGS_APPEARANCE_RETRO_FX_MODE_NAV_INDEX) {
-        cycleRetroFxModeSetting();
-      }
-      return;
-    }
-    if (activeHelpPage === "settingsNavigation") {
-      if (targetIndex === HELP_SETTINGS_NAVIGATION_KEYMAP_ALIASES_NAV_INDEX) {
-        pushHelpPage("keymapAliases");
-      }
-      if (targetIndex === HELP_SETTINGS_NAVIGATION_HINTS_NAV_INDEX) {
-        cycleHintDisplayModeSetting();
-      }
-      if (targetIndex === HELP_SETTINGS_NAVIGATION_PREFIX_POPUP_NAV_INDEX) {
-        switchPrefixPopupSetting();
-      }
-      return;
-    }
-    if (activeHelpPage === "settingsNotifications") {
-      if (targetIndex === HELP_SETTINGS_NOTIFICATIONS_ENABLED_NAV_INDEX) {
-        switchNotificationsEnabledSetting();
-      }
-      if (targetIndex === HELP_SETTINGS_NOTIFICATIONS_OVERDUE_POPUP_NAV_INDEX) {
-        switchInAppOverduePopupSetting();
-      }
-      if (targetIndex === HELP_SETTINGS_NOTIFICATIONS_TERMINAL_BELL_NAV_INDEX) {
-        switchTerminalBellSetting();
-      }
-      if (targetIndex === HELP_SETTINGS_NOTIFICATIONS_OUT_OF_APP_REMINDERS_NAV_INDEX) {
-        switchOutOfAppRemindersSetting();
-      }
-      if (targetIndex === HELP_SETTINGS_NOTIFICATIONS_HELPER_INSTALL_NAV_INDEX) {
-        showReminderHelperCommand(reminderHelperCommands[0] ?? "tadoi reminders install");
-      }
-      if (targetIndex === HELP_SETTINGS_NOTIFICATIONS_HELPER_STATUS_NAV_INDEX) {
-        showReminderHelperCommand(reminderHelperCommands[1] ?? "tadoi reminders status");
-      }
-      if (targetIndex === HELP_SETTINGS_NOTIFICATIONS_HELPER_TEST_NAV_INDEX) {
-        showReminderHelperCommand("tadoi reminders test");
-      }
-      if (targetIndex === HELP_SETTINGS_NOTIFICATIONS_HELPER_UNINSTALL_NAV_INDEX) {
-        showReminderHelperCommand("tadoi reminders uninstall");
-      }
-      if (targetIndex === HELP_SETTINGS_NOTIFICATIONS_BANNER_DURATION_NAV_INDEX) {
-        openHelpSettingsInput("notificationsBannerDurationMs");
-      }
-      if (targetIndex === HELP_SETTINGS_NOTIFICATIONS_BELL_COOLDOWN_NAV_INDEX) {
-        openHelpSettingsInput("notificationsBellCooldownMs");
-      }
-      return;
-    }
-    if (activeHelpPage === "settingsSecurity") {
-      if (targetIndex === HELP_SETTINGS_SECURITY_NON_HTTP_POLICY_NAV_INDEX) {
-        cycleSecurityNonHttpLinkPolicySetting();
-      }
-      return;
-    }
-    if (activeHelpPage === "settingsNotes") {
-      if (targetIndex === HELP_SETTINGS_NOTES_ENABLED_NAV_INDEX) {
-        switchNotesEnabledSetting();
-      }
-      if (targetIndex === HELP_SETTINGS_NOTES_ROOT_NAV_INDEX) {
-        openHelpSettingsInput("notesRootPath");
-      }
-      if (targetIndex === HELP_SETTINGS_NOTES_RESTORE_GUIDES_NAV_INDEX) {
-        void restoreTomeGuidesFromHelpSettings();
-      }
-      return;
-    }
-    if (activeHelpPage === "settingsCloud") {
-      if (targetIndex === HELP_SETTINGS_CLOUD_ENABLED_NAV_INDEX) {
-        switchCloudBackupEnabledSetting();
-      }
-      if (targetIndex === HELP_SETTINGS_CLOUD_OWNER_REPO_NAV_INDEX) {
-        openHelpSettingsInput("cloudOwnerRepo");
-      }
-      if (targetIndex === HELP_SETTINGS_CLOUD_BRANCH_NAV_INDEX) {
-        openHelpSettingsInput("cloudBranch");
-      }
-      if (targetIndex === HELP_SETTINGS_CLOUD_AUTO_PUSH_POLICY_NAV_INDEX) {
-        cycleCloudAutoPushPolicySetting();
-      }
-      if (targetIndex === HELP_SETTINGS_CLOUD_DEVICE_ID_NAV_INDEX) {
-        openHelpSettingsInput("cloudDeviceId");
-      }
-      if (targetIndex === HELP_SETTINGS_CLOUD_PATH_PREFIX_NAV_INDEX) {
-        openHelpSettingsInput("cloudPathPrefix");
-      }
-      if (targetIndex === HELP_SETTINGS_CLOUD_OPEN_OPERATIONS_NAV_INDEX) {
-        openCloudBackupOperationsFromSettings();
-      }
-      return;
-    }
-    if (activeHelpPage === "settingsInput") {
-      void submitHelpSettingsInput();
-      return;
-    }
-    if (activeHelpPage === "keymapAliases") {
-      if (targetIndex === HELP_KEYMAP_ALIAS_RESET_NAV_INDEX) {
-        clearAllKeymapAliases();
-        return;
-      }
-      const context = KEYMAP_ALIAS_PRESET_CONTEXT_ORDER[targetIndex];
-      if (!context) return;
-      toggleContextKeymapAliasPreset(context);
-      return;
-    }
-    if (activeHelpPage === "theme") {
-      if (targetIndex === 0) cycleThemeModeSetting();
-      if (targetIndex === 1) pushHelpPage("custom1");
-      if (targetIndex === 2) pushHelpPage("textTuning");
-      return;
-    }
-    if (activeHelpPage === "custom1") {
-      if (targetIndex === 0) {
-        openCustom1Editor();
-      }
-      return;
-    }
-    if (activeHelpPage === "textTuning") {
-      const targetThemeId = HELP_TEXT_TUNING_THEMES[targetIndex];
-      if (!targetThemeId) return;
-      setHelpTextTuningThemeId(targetThemeId);
-      setHelpNavSelection((prev) => ({ ...prev, textTuningTheme: 0 }));
-      pushHelpPage("textTuningTheme");
-      return;
-    }
-    if (activeHelpPage === "textTuningTheme") {
-      if (targetIndex === 0) {
-        openBuiltInTextEditor();
-      }
-    }
-  }
-
-  function handleHelpNavBack() {
-    if (activeHelpPage === "settingsInput") {
-      closeHelpSettingsInput();
-      return;
-    }
-    if (activeHelpPage === "custom1Edit") {
-      if (requestHelpThemeEditorUnsavedGuard("help_custom1_editor", "close_editor")) {
-        return;
-      }
-      closeCustom1EditorCancel();
-      return;
-    }
-    if (activeHelpPage === "textTuningEdit") {
-      if (requestHelpThemeEditorUnsavedGuard("help_text_tuning_editor", "close_editor")) {
-        return;
-      }
-      closeBuiltInTextEditorCancel();
-      return;
-    }
-    if (activeHelpPage === "settingsAppearance") {
-      cancelLogoModeSetting();
-    }
-    popHelpPage();
-  }
-
   function openListMode(options: { bypassUnsavedGuard?: boolean } = {}) {
-    if (!options.bypassUnsavedGuard && requestTaskEditorUnsavedGuard("open_list")) {
+    if (
+      !options.bypassUnsavedGuard &&
+      requestTaskEditorUnsavedGuard("open_list")
+    ) {
       return;
     }
     clearPendingGPrefix();
@@ -8410,7 +7831,10 @@ export function App({
 
   function openDashboardMode(options: { bypassUnsavedGuard?: boolean } = {}) {
     if (uiState.mode === Mode.DASHBOARD) return;
-    if (!options.bypassUnsavedGuard && requestTaskEditorUnsavedGuard("open_dashboard")) {
+    if (
+      !options.bypassUnsavedGuard &&
+      requestTaskEditorUnsavedGuard("open_dashboard")
+    ) {
       return;
     }
     clearPendingGPrefix();
@@ -8435,7 +7859,10 @@ export function App({
   }
 
   function openSearchMode(options: { bypassUnsavedGuard?: boolean } = {}) {
-    if (!options.bypassUnsavedGuard && requestTaskEditorUnsavedGuard("open_search")) {
+    if (
+      !options.bypassUnsavedGuard &&
+      requestTaskEditorUnsavedGuard("open_search")
+    ) {
       return;
     }
     clearPendingGPrefix();
@@ -8454,570 +7881,32 @@ export function App({
     uiDispatch({ type: "setFocus", focus: FocusTarget.SEARCH_INPUT });
   }
 
-  function resolveNotesService(): ReturnType<typeof createNotesService> | null {
-    const service = notesServiceRef.current;
-    if (!service) {
-      showShortNavigationBanner("TOME service unavailable");
-      return null;
-    }
-    return service;
-  }
-
-  function applyNotesEditFrontmatterTags(nextValue: string): void {
-    notesEditFrontmatterTagsRef.current = nextValue;
-    setNotesEditFrontmatterTags(nextValue);
-    const nextTagDraft = parseNoteTags({
-      markdown: "",
-      frontmatterTags: parseFrontmatterTagInput(nextValue)
-    });
-    const nextContent = upsertFrontmatterTags(notesEditValue, nextTagDraft.tags);
-    setNotesEditDirty(nextContent !== notesViewContent);
-    setNotesEditEscGuardArmed(false);
-  }
-
-  function clampNotesSelectionToAvailable() {
-    if (filteredNotes.length === 0) {
-      setNotesSelectedIndex(0);
-      return;
-    }
-    setNotesSelectedIndex((current) =>
-      Math.max(0, Math.min(current, filteredNotes.length - 1))
-    );
-  }
-
-  function syncNotesSelectionToPath(pathValue: NotePath | null): void {
-    if (!pathValue) {
-      clampNotesSelectionToAvailable();
-      return;
-    }
-    const index = filteredNotes.findIndex((note) => note.path === pathValue);
-    if (index >= 0) {
-      setNotesSelectedIndex(index);
-      return;
-    }
-    clampNotesSelectionToAvailable();
-  }
-
-  async function hydrateOpenNote(pathValue: NotePath): Promise<void> {
-    const service = resolveNotesService();
-    if (!service) return;
-    const document = await service.getNoteContent(pathValue);
-    if (!document) {
-      showShortNavigationBanner(`Note not found: ${pathValue}`);
-      return;
-    }
-    setNotesOpenPath(pathValue);
-    setNotesViewContent(document.content);
-    setNotesViewLines(renderMarkdownToTerminalLines(document.content));
-    setNotesOutgoingRefs(service.getResolvedOutgoingRefs(pathValue));
-    setNotesBacklinks(service.getBacklinks(pathValue));
-    setNotesWarnings(service.getWarnings(pathValue));
-    setNotesUnlinkedMentions(service.getUnlinkedMentions(pathValue));
-    setNotesLinkedTasks(service.getLinkedTasksForNote(pathValue));
-    setNotesSelectedLinkIndex(0);
-  }
-
-  function openNotesMode() {
-    if (!settingsState.notes.enabled || !notesRuntime.enabled) {
-      showShortNavigationBanner(notesRuntime.error ?? "TOME is disabled in settings.");
-      return;
-    }
-    clearPendingGPrefix();
-    closeViewsOverlay();
-    uiDispatch({
-      type: "captureReturnContext",
-      mode: uiState.mode,
-      focus: uiState.focus
-    });
-    setNotesRootSettingsOpen(false);
-    setNotesCreatePromptOpen(false);
-    setNotesCreateApplying(false);
-    setNotesRenamePromptOpen(false);
-    setNotesRenameTitle("");
-    setNotesRenameApplying(false);
-    setNotesDeletePromptOpen(false);
-    setNotesDeleteApplying(false);
-    setNotesViewReturnToCapturedContext(false);
-    uiDispatch({ type: "setMode", mode: Mode.NOTES_LIST });
-    uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_LIST });
-    clampNotesSelectionToAvailable();
-  }
-
-  function openNotesSearchMode() {
-    setNotesRootSettingsOpen(false);
-    setNotesCreatePromptOpen(false);
-    setNotesCreateApplying(false);
-    setNotesRenamePromptOpen(false);
-    setNotesRenameTitle("");
-    setNotesRenameApplying(false);
-    setNotesDeletePromptOpen(false);
-    setNotesDeleteApplying(false);
-    uiDispatch({
-      type: "captureReturnContext",
-      mode: Mode.NOTES_LIST,
-      focus: FocusTarget.NOTES_LIST
-    });
-    uiDispatch({ type: "setMode", mode: Mode.NOTES_SEARCH });
-    uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_SEARCH_INPUT });
-  }
-
-  function closeNotesSearchMode() {
-    uiDispatch({ type: "setMode", mode: Mode.NOTES_LIST });
-    uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_LIST });
-    clampNotesSelectionToAvailable();
-  }
-
-  function openNotesTagFilterMode() {
-    setNotesRootSettingsOpen(false);
-    setNotesCreatePromptOpen(false);
-    setNotesCreateApplying(false);
-    setNotesRenamePromptOpen(false);
-    setNotesRenameTitle("");
-    setNotesRenameApplying(false);
-    setNotesDeletePromptOpen(false);
-    setNotesDeleteApplying(false);
-    uiDispatch({
-      type: "captureReturnContext",
-      mode: Mode.NOTES_LIST,
-      focus: FocusTarget.NOTES_LIST
-    });
-    uiDispatch({ type: "setMode", mode: Mode.NOTES_TAG_FILTER });
-    uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_TAG_FILTER_INPUT });
-  }
-
-  function closeNotesTagFilterMode() {
-    uiDispatch({ type: "setMode", mode: Mode.NOTES_LIST });
-    uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_LIST });
-    clampNotesSelectionToAvailable();
-  }
-
-  function moveNotesSelection(delta: 1 | -1) {
-    if (filteredNotes.length === 0) {
-      setNotesSelectedIndex(0);
-      return;
-    }
-    setNotesSelectedIndex((current) => {
-      const safe = Math.max(0, Math.min(current, filteredNotes.length - 1));
-      return (safe + delta + filteredNotes.length) % filteredNotes.length;
-    });
-  }
-
-  async function openSelectedNoteFromList(): Promise<void> {
-    const selected = selectedNotesListItem;
-    if (!selected) {
-      showShortNavigationBanner("No TOME notes available");
-      return;
-    }
-    setNotesCreatePromptOpen(false);
-    setNotesCreateApplying(false);
-    setNotesRenamePromptOpen(false);
-    setNotesRenameTitle("");
-    setNotesRenameApplying(false);
-    setNotesDeletePromptOpen(false);
-    setNotesDeleteApplying(false);
-    setNotesViewReturnToCapturedContext(false);
-    await hydrateOpenNote(selected.path);
-    uiDispatch({
-      type: "captureReturnContext",
-      mode: Mode.NOTES_LIST,
-      focus: FocusTarget.NOTES_LIST
-    });
-    uiDispatch({ type: "setMode", mode: Mode.NOTES_VIEW });
-    uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_VIEW });
-  }
-
-  function openNotesCreatePrompt(): void {
-    setNotesRootSettingsOpen(false);
-    setNotesRenamePromptOpen(false);
-    setNotesRenameTitle("");
-    setNotesRenameApplying(false);
-    setNotesDeletePromptOpen(false);
-    setNotesDeleteApplying(false);
-    setNotesCreatePromptOpen(true);
-    setNotesCreateTitle("");
-    setNotesCreateApplying(false);
-  }
-
-  function closeNotesCreatePrompt(): void {
-    setNotesCreatePromptOpen(false);
-    setNotesCreateApplying(false);
-    setNotesCreateTitle("");
-  }
-
-  async function confirmNotesCreatePrompt(): Promise<void> {
-    if (notesCreateApplying) return;
-    const title = notesCreateTitle.trim();
-    if (title.length === 0) {
-      showShortNavigationBanner("Enter a title to create a TOME note");
-      return;
-    }
-    const service = resolveNotesService();
-    if (!service) return;
-    setNotesCreateApplying(true);
-    try {
-      const nowMs = Date.now();
-      const created = await service.createNote(title, `# ${title}\n\n`);
-      triggerFirstTomeCreated(nowMs, created.path);
-      setNotesList(service.listNotes());
-      setNotesOpenPath(created.path);
-      setNotesEditValue(created.content);
-      setNotesEditFrontmatterTags("");
-      notesEditFrontmatterTagsRef.current = "";
-      setNotesEditDirty(false);
-      setNotesEditEscGuardArmed(false);
-      setNotesEditActiveField("body");
-      setNotesCreatePromptOpen(false);
-      setNotesCreateTitle("");
-      setNotesRenamePromptOpen(false);
-      setNotesRenameTitle("");
-      setNotesRenameApplying(false);
-      setNotesDeletePromptOpen(false);
-      setNotesDeleteApplying(false);
-      syncNotesSelectionToPath(created.path);
-      await hydrateOpenNote(created.path);
-      uiDispatch({
-        type: "captureReturnContext",
-        mode: Mode.NOTES_VIEW,
-        focus: FocusTarget.NOTES_VIEW
-      });
-      uiDispatch({ type: "setMode", mode: Mode.NOTES_EDIT });
-      uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_EDIT });
-    } catch (error: unknown) {
-      showShortNavigationBanner(`Failed to create note: ${normalizeErrorDetail(error)}`);
-    } finally {
-      setNotesCreateApplying(false);
-    }
-  }
-
-  function openNotesRenamePrompt(): void {
-    const selected = selectedNotesListItem;
-    if (!selected) {
-      showShortNavigationBanner("No TOME note selected");
-      return;
-    }
-    setNotesRootSettingsOpen(false);
-    setNotesCreatePromptOpen(false);
-    setNotesCreateTitle("");
-    setNotesCreateApplying(false);
-    setNotesDeletePromptOpen(false);
-    setNotesDeleteApplying(false);
-    setNotesRenamePromptOpen(true);
-    setNotesRenameTitle("");
-    setNotesRenameApplying(false);
-  }
-
-  function closeNotesRenamePrompt(): void {
-    setNotesRenamePromptOpen(false);
-    setNotesRenameApplying(false);
-    setNotesRenameTitle("");
-  }
-
-  async function confirmNotesRenamePrompt(): Promise<void> {
-    if (notesRenameApplying) return;
-    const selected = selectedNotesListItem;
-    if (!selected) {
-      showShortNavigationBanner("No TOME note selected");
-      return;
-    }
-    const title = notesRenameTitle.trim();
-    if (title.length === 0) {
-      showShortNavigationBanner("Enter a title to rename this TOME note");
-      return;
-    }
-    const service = resolveNotesService();
-    if (!service) return;
-    setNotesRenameApplying(true);
-    try {
-      const renamed = await service.renameNote(selected.path, title);
-      if (!renamed) {
-        showShortNavigationBanner("TOME service unavailable");
-        return;
-      }
-      setNotesList(service.listNotes());
-      setNotesRenamePromptOpen(false);
-      setNotesRenameTitle("");
-      syncNotesSelectionToPath(renamed.path);
-      if (notesOpenPath === selected.path) {
-        await hydrateOpenNote(renamed.path);
-      }
-      showShortNavigationBanner(`Renamed TOME note to ${renamed.path}`);
-    } catch (error: unknown) {
-      showShortNavigationBanner(`Failed to rename note: ${normalizeErrorDetail(error)}`);
-    } finally {
-      setNotesRenameApplying(false);
-    }
-  }
-
-  function openNotesDeletePrompt(): void {
-    const selectedFromList = selectedNotesListItem;
-    const selectedPathFromView = notesOpenPath;
-    const selected =
-      uiState.mode === Mode.NOTES_VIEW && selectedPathFromView
-        ? {
-            path: selectedPathFromView,
-            title:
-              notesList.find((note) => note.path === selectedPathFromView)?.title ??
-              path.posix.basename(selectedPathFromView, ".md")
-          }
-        : selectedFromList;
-    if (!selected?.path) {
-      showShortNavigationBanner("No TOME note selected");
-      return;
-    }
-    notesDeleteTargetRef.current = {
-      path: selected.path,
-      title: selected.title
-    };
-    setNotesRootSettingsOpen(false);
-    setNotesCreatePromptOpen(false);
-    setNotesCreateTitle("");
-    setNotesCreateApplying(false);
-    setNotesRenamePromptOpen(false);
-    setNotesRenameTitle("");
-    setNotesRenameApplying(false);
-    setNotesDeletePromptOpen(false);
-    setNotesDeleteApplying(false);
-    closeViewsOverlay();
-    uiDispatch({
-      type: "setModal",
-      modal: {
-        type: "note_delete",
-        notePath: selected.path,
-        noteTitle: selected.title,
-        previousMode: Mode.NOTES_LIST,
-        previousFocus: FocusTarget.NOTES_LIST
-      }
-    });
-    uiDispatch({ type: "setMode", mode: Mode.MODAL_CONFIRM });
-    uiDispatch({ type: "setFocus", focus: FocusTarget.MODAL });
-  }
-
-  function closeNotesDeletePrompt(): void {
-    notesDeleteTargetRef.current = null;
-    const modal = uiState.modal;
-    if (modal?.type === "note_delete") {
-      uiDispatch({ type: "setModal", modal: null });
-      uiDispatch({ type: "setMode", mode: modal.previousMode });
-      uiDispatch({ type: "setFocus", focus: modal.previousFocus });
-    }
-    setNotesDeletePromptOpen(false);
-    setNotesDeleteApplying(false);
-  }
-
-  async function confirmNotesDeletePrompt(): Promise<void> {
-    if (notesDeleteApplying) return;
-    const selected = notesDeleteTargetRef.current;
-    if (!selected) {
-      showShortNavigationBanner("No TOME note selected");
-      return;
-    }
-    const service = resolveNotesService();
-    if (!service) return;
-    setNotesDeleteApplying(true);
-    try {
-      const deleted = await service.deleteNote(selected.path);
-      if (!deleted) {
-        showShortNavigationBanner("TOME note already removed");
-      } else {
-        showShortNavigationBanner(`Deleted TOME note: ${selected.title}`);
-      }
-      setNotesList(service.listNotes());
-      setNotesDeletePromptOpen(false);
-      notesDeleteTargetRef.current = null;
-      setNotesOpenPath(null);
-      setNotesViewContent("");
-      setNotesViewLines([]);
-      setNotesOutgoingRefs([]);
-      setNotesWarnings([]);
-      setNotesBacklinks([]);
-      setNotesUnlinkedMentions([]);
-      setNotesLinkedTasks([]);
-      uiDispatch({ type: "setModal", modal: null });
-      uiDispatch({ type: "setMode", mode: Mode.NOTES_LIST });
-      uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_LIST });
-      clampNotesSelectionToAvailable();
-    } catch (error: unknown) {
-      showShortNavigationBanner(`Failed to delete note: ${normalizeErrorDetail(error)}`);
-    } finally {
-      setNotesDeleteApplying(false);
-    }
-  }
-
-  async function openCurrentNoteForEdit(): Promise<void> {
-    let targetPath = notesOpenPath;
-    if (!targetPath) {
-      targetPath = selectedNotesListItem?.path ?? null;
-    }
-    if (!targetPath) {
-      showShortNavigationBanner("No note selected");
-      return;
-    }
-    await hydrateOpenNote(targetPath);
-    const service = resolveNotesService();
-    if (!service) return;
-    const document = await service.getNoteContent(targetPath);
-    if (!document) {
-      showShortNavigationBanner(`Note not found: ${targetPath}`);
-      return;
-    }
-    const parsed = parseFrontmatter(document.content);
-    setNotesEditValue(document.content);
-    const nextFrontmatterTags = (parsed.frontmatter.tags ?? [])
-      .map((tag) => formatTagForDisplay(tag))
-      .join(" ");
-    setNotesEditFrontmatterTags(nextFrontmatterTags);
-    notesEditFrontmatterTagsRef.current = nextFrontmatterTags;
-    setNotesEditDirty(false);
-    setNotesEditEscGuardArmed(false);
-    setNotesEditActiveField("body");
-    uiDispatch({
-      type: "captureReturnContext",
-      mode: Mode.NOTES_VIEW,
-      focus: FocusTarget.NOTES_VIEW
-    });
-    uiDispatch({ type: "setMode", mode: Mode.NOTES_EDIT });
-    uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_EDIT });
-  }
-
-  async function saveCurrentNoteEdit(): Promise<void> {
-    if (!notesOpenPath) {
-      showShortNavigationBanner("No note selected");
-      return;
-    }
-    const service = resolveNotesService();
-    if (!service) return;
-    try {
-      const nextContent = upsertFrontmatterTags(notesEditValue, notesEditTagDraft.tags);
-      await service.saveNote(notesOpenPath, nextContent);
-      setNotesEditValue(nextContent);
-      const savedFrontmatterTags = notesEditTagDraft.tags
-        .map((tag) => formatTagForDisplay(tag))
-        .join(" ");
-      setNotesEditFrontmatterTags(savedFrontmatterTags);
-      notesEditFrontmatterTagsRef.current = savedFrontmatterTags;
-      setNotesList(service.listNotes());
-      await hydrateOpenNote(notesOpenPath);
-      setNotesEditDirty(false);
-      setNotesEditEscGuardArmed(false);
-      setNotesEditActiveField("body");
-      uiDispatch({ type: "setMode", mode: Mode.NOTES_VIEW });
-      uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_VIEW });
-      showShortNavigationBanner(
-        notesEditTagDraft.warnings.length > 0
-          ? "Note saved (some tags normalized)"
-          : "Note saved"
-      );
-    } catch (error: unknown) {
-      showShortNavigationBanner(`Failed to save note: ${normalizeErrorDetail(error)}`);
-    }
-  }
-
-  function cancelCurrentNoteEdit(): void {
-    if (notesEditDirty && !notesEditEscGuardArmed) {
-      setNotesEditEscGuardArmed(true);
-      showShortNavigationBanner("Unsaved note changes. Press Esc again to discard.");
-      return;
-    }
-    setNotesEditEscGuardArmed(false);
-    setNotesEditDirty(false);
-    setNotesEditActiveField("body");
-    uiDispatch({ type: "setMode", mode: Mode.NOTES_VIEW });
-    uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_VIEW });
-  }
-
-  function backToNotesList(): void {
-    setNotesRootSettingsOpen(false);
-    setNotesCreatePromptOpen(false);
-    setNotesCreateApplying(false);
-    setNotesRenamePromptOpen(false);
-    setNotesRenameTitle("");
-    setNotesRenameApplying(false);
-    setNotesDeletePromptOpen(false);
-    setNotesDeleteApplying(false);
-    setNotesEditEscGuardArmed(false);
-    const returnMode = uiState.previousMode;
-    const returnFocus = uiState.previousFocus;
-    const returnToCapturedContext =
-      notesViewReturnToCapturedContext &&
-      returnMode !== Mode.NOTES_LIST &&
-      returnMode !== Mode.NOTES_VIEW &&
-      returnMode !== Mode.NOTES_EDIT &&
-      returnMode !== Mode.NOTES_SEARCH &&
-      returnMode !== Mode.NOTES_TAG_FILTER;
-    if (returnToCapturedContext) {
-      setNotesViewReturnToCapturedContext(false);
-      uiDispatch({ type: "setMode", mode: returnMode });
-      uiDispatch({ type: "setFocus", focus: returnFocus });
-      return;
-    }
-    setNotesViewReturnToCapturedContext(false);
-    uiDispatch({ type: "setMode", mode: Mode.NOTES_LIST });
-    uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_LIST });
-    syncNotesSelectionToPath(notesOpenPath);
-  }
-
-  function exitNotesToTaskList(): void {
-    setNotesRootSettingsOpen(false);
-    setNotesCreatePromptOpen(false);
-    setNotesCreateApplying(false);
-    setNotesRenamePromptOpen(false);
-    setNotesRenameTitle("");
-    setNotesRenameApplying(false);
-    setNotesDeletePromptOpen(false);
-    setNotesDeleteApplying(false);
-    setNotesEditEscGuardArmed(false);
-    openListMode({ bypassUnsavedGuard: true });
-  }
-
-  function moveNotesLinkSelection(delta: 1 | -1): void {
-    if (notesOutgoingRefs.length === 0) {
-      setNotesSelectedLinkIndex(0);
-      return;
-    }
-    setNotesSelectedLinkIndex((current) => {
-      const safe = Math.max(0, Math.min(current, notesOutgoingRefs.length - 1));
-      return (safe + delta + notesOutgoingRefs.length) % notesOutgoingRefs.length;
-    });
-  }
-
-  async function followSelectedNoteLink(): Promise<void> {
-    const selectedRef = notesOutgoingRefs[notesSelectedLinkIndex];
-    if (!selectedRef) {
-      showShortNavigationBanner("No link selected");
-      return;
-    }
-    if (!selectedRef.toResolved) {
-      showShortNavigationBanner(`Unresolved link: ${selectedRef.toRaw}`);
-      return;
-    }
-    setNotesViewReturnToCapturedContext(false);
-    await hydrateOpenNote(selectedRef.toResolved);
-    uiDispatch({ type: "setMode", mode: Mode.NOTES_VIEW });
-    uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_VIEW });
-  }
-
-  async function openNoteFromTaskLinkedNotes(notePath: NotePath): Promise<void> {
+  async function openNoteFromTaskLinkedNotes(
+    notePath: NotePath,
+  ): Promise<void> {
     const service = resolveNotesService();
     if (!service) return;
     await hydrateOpenNote(notePath);
     uiDispatch({
       type: "captureReturnContext",
       mode: uiState.mode,
-      focus: uiState.focus
+      focus: uiState.focus,
     });
     setNotesViewReturnToCapturedContext(true);
     uiDispatch({ type: "setMode", mode: Mode.NOTES_VIEW });
     uiDispatch({ type: "setFocus", focus: FocusTarget.NOTES_VIEW });
   }
 
-  function updateSelectedTaskNoteRef(noteRef: Task["noteRef"] | undefined): boolean {
+  function updateSelectedTaskNoteRef(
+    noteRef: Task["noteRef"] | undefined,
+  ): boolean {
     if (!selectedPersistedTask) {
       showShortNavigationBanner("No task selected");
       return false;
     }
     const updated = applyTaskLinkMutation(selectedPersistedTask.id, (task) => ({
       ...task,
-      noteRef
+      noteRef,
     }));
     return Boolean(updated);
   }
@@ -9026,10 +7915,12 @@ export function App({
     const service = resolveNotesService();
     if (!service || !selectedPersistedTask) return;
     try {
-      const title = deriveDefaultNoteTitleFromTaskTitle(selectedPersistedTask.title);
+      const title = deriveDefaultNoteTitleFromTaskTitle(
+        selectedPersistedTask.title,
+      );
       const seeded = buildTaskSeededNoteContent(
         selectedPersistedTask.id,
-        selectedPersistedTask.title
+        selectedPersistedTask.title,
       );
       const created = await service.createNote(title, seeded);
       setNotesList(service.listNotes());
@@ -9039,7 +7930,7 @@ export function App({
         ? createTaskNoteRefFromNote(parsedNote)
         : {
             type: "filename" as const,
-            value: path.posix.basename(created.path)
+            value: path.posix.basename(created.path),
           };
       const linked = updateSelectedTaskNoteRef(noteRef);
       if (!linked) return;
@@ -9050,7 +7941,9 @@ export function App({
       setDetailsNotesPreviewOffset(0);
       showShortNavigationBanner(`Created and linked note: ${created.path}`);
     } catch (error: unknown) {
-      showShortNavigationBanner(`Create note failed: ${normalizeErrorDetail(error)}`);
+      showShortNavigationBanner(
+        `Create note failed: ${normalizeErrorDetail(error)}`,
+      );
     }
   }
 
@@ -9060,7 +7953,9 @@ export function App({
       return;
     }
     if (!notesRuntime.enabled) {
-      showShortNavigationBanner(notesRuntime.error ?? "TOME is disabled in settings.");
+      showShortNavigationBanner(
+        notesRuntime.error ?? "TOME is disabled in settings.",
+      );
       return;
     }
     if (notesLinkPickerEntries.length === 0) {
@@ -9068,7 +7963,9 @@ export function App({
       return;
     }
     const linkedIndex = selectedTaskLinkedNotePath
-      ? notesLinkPickerEntries.findIndex((entry) => entry.path === selectedTaskLinkedNotePath)
+      ? notesLinkPickerEntries.findIndex(
+          (entry) => entry.path === selectedTaskLinkedNotePath,
+        )
       : -1;
     setDetailsNotesLinkPickerIndex(linkedIndex >= 0 ? linkedIndex : 0);
     setDetailsNotesLinkPickerOpen(true);
@@ -9080,7 +7977,9 @@ export function App({
   }
 
   function selectDetailsNoteLinkPickerItem(notePath: NotePath): void {
-    const index = notesLinkPickerEntries.findIndex((entry) => entry.path === notePath);
+    const index = notesLinkPickerEntries.findIndex(
+      (entry) => entry.path === notePath,
+    );
     if (index >= 0) {
       setDetailsNotesLinkPickerIndex(index);
     }
@@ -9100,12 +7999,14 @@ export function App({
       showShortNavigationBanner("No note selected");
       return;
     }
-    const parsedNote = notesServiceRef.current?.getParsedNote(selected.path)?.note;
+    const parsedNote = notesServiceRef.current?.getParsedNote(
+      selected.path,
+    )?.note;
     const noteRef = parsedNote
       ? createTaskNoteRefFromNote(parsedNote)
       : {
           type: "filename" as const,
-          value: path.posix.basename(selected.path)
+          value: path.posix.basename(selected.path),
         };
     const linked = updateSelectedTaskNoteRef(noteRef);
     if (!linked) return;
@@ -9141,34 +8042,48 @@ export function App({
         return;
       }
       setDetailsNotesLinkPickerIndex((current) => {
-        const safe = Math.max(0, Math.min(current, notesLinkPickerEntries.length - 1));
-        return (safe + delta + notesLinkPickerEntries.length) % notesLinkPickerEntries.length;
+        const safe = Math.max(
+          0,
+          Math.min(current, notesLinkPickerEntries.length - 1),
+        );
+        return (
+          (safe + delta + notesLinkPickerEntries.length) %
+          notesLinkPickerEntries.length
+        );
       });
       return;
     }
 
     if (detailsNotesSelectablePaths.length > 0) {
       setDetailsNotesSelectionIndex((current) => {
-        const safe = Math.max(0, Math.min(current, detailsNotesSelectablePaths.length - 1));
-        return (safe + delta + detailsNotesSelectablePaths.length) % detailsNotesSelectablePaths.length;
+        const safe = Math.max(
+          0,
+          Math.min(current, detailsNotesSelectablePaths.length - 1),
+        );
+        return (
+          (safe + delta + detailsNotesSelectablePaths.length) %
+          detailsNotesSelectablePaths.length
+        );
       });
       return;
     }
 
     const maxStart = Math.max(
       0,
-      selectedTaskLinkedNotePreviewLines.length - DETAILS_NOTE_PREVIEW_ROWS
+      selectedTaskLinkedNotePreviewLines.length - DETAILS_NOTE_PREVIEW_ROWS,
     );
     if (maxStart > 0) {
       setDetailsNotesPreviewOffset((current) =>
-        Math.max(0, Math.min(maxStart, current + delta))
+        Math.max(0, Math.min(maxStart, current + delta)),
       );
     }
   }
 
   function selectDetailsNotesPath(notePath: NotePath): void {
     setDetailsNotesUnlinkArmed(false);
-    const index = detailsNotesSelectablePaths.findIndex((pathValue) => pathValue === notePath);
+    const index = detailsNotesSelectablePaths.findIndex(
+      (pathValue) => pathValue === notePath,
+    );
     if (index >= 0) {
       setDetailsNotesSelectionIndex(index);
     }
@@ -9200,8 +8115,14 @@ export function App({
       return;
     }
     setSearchSelectedResultIndex((current) => {
-      const safe = Math.max(0, Math.min(current, unifiedSearchResults.length - 1));
-      return (safe + delta + unifiedSearchResults.length) % unifiedSearchResults.length;
+      const safe = Math.max(
+        0,
+        Math.min(current, unifiedSearchResults.length - 1),
+      );
+      return (
+        (safe + delta + unifiedSearchResults.length) %
+        unifiedSearchResults.length
+      );
     });
   }
 
@@ -9216,7 +8137,9 @@ export function App({
       return;
     }
     setSearchResultsFocused(false);
-    await openNoteFromTaskLinkedNotes(selectedUnifiedSearchResult.notePath as NotePath);
+    await openNoteFromTaskLinkedNotes(
+      selectedUnifiedSearchResult.notePath as NotePath,
+    );
   }
 
   function openTaskFromTomeLinkedTask(taskId: string): void {
@@ -9235,8 +8158,8 @@ export function App({
         priority: undefined,
         tag: undefined,
         tagFilter: undefined,
-        searchText: undefined
-      }
+        searchText: undefined,
+      },
     });
 
     const revealRows = buildVisibleTaskRows(
@@ -9247,96 +8170,19 @@ export function App({
         priority: undefined,
         tag: undefined,
         tagFilter: undefined,
-        searchText: undefined
+        searchText: undefined,
       },
       state.sortMode,
       Date.now(),
-      state.tagAliases
+      state.tagAliases,
     );
 
-    const selectedRow = revealRows.find((row) => row.id === task.id) ?? revealRows[0];
+    const selectedRow =
+      revealRows.find((row) => row.id === task.id) ?? revealRows[0];
     if (selectedRow) {
       dispatch({ type: "setSelected", id: selectedRow.id });
     }
     showShortNavigationBanner(`Jumped to task: ${task.title}`);
-  }
-
-  async function reindexNotes(): Promise<void> {
-    const service = resolveNotesService();
-    if (!service) return;
-    try {
-      await service.reindexAll();
-      setNotesList(service.listNotes());
-      if (notesOpenPath) {
-        await hydrateOpenNote(notesOpenPath);
-      }
-      showShortNavigationBanner("TOME reindex complete");
-    } catch (error: unknown) {
-      showShortNavigationBanner(`TOME reindex failed: ${normalizeErrorDetail(error)}`);
-    }
-  }
-
-  function openNotesRootSettings(): void {
-    setNotesCreatePromptOpen(false);
-    setNotesCreateTitle("");
-    setNotesCreateApplying(false);
-    setNotesRenamePromptOpen(false);
-    setNotesRenameTitle("");
-    setNotesRenameApplying(false);
-    setNotesDeletePromptOpen(false);
-    setNotesDeleteApplying(false);
-    setNotesRootInput(notesRuntime.notesRoot);
-    setNotesRootSettingsOpen(true);
-  }
-
-  function closeNotesRootSettings(): void {
-    setNotesRootSettingsOpen(false);
-    setNotesRootApplying(false);
-    setNotesRootInput(notesRuntime.notesRoot);
-  }
-
-  async function confirmNotesRootSettings(): Promise<void> {
-    if (notesRootApplying) return;
-    const service = resolveNotesService();
-    if (!service) return;
-    const rawInput = notesRootInput.trim();
-    const nextRoot =
-      rawInput.length > 0
-        ? path.resolve(rawInput)
-        : resolveNotesRootPath(getDataFilePath(), null);
-    if (!isPathWithin(path.dirname(nextRoot), nextRoot)) {
-      showShortNavigationBanner("Invalid TOME root path");
-      return;
-    }
-
-    setNotesRootApplying(true);
-    try {
-      await createDataBackup(getDataFilePath());
-      await service.migrateNotesRootCopyFirst(nextRoot);
-      settingsDispatch({
-        type: "setNotes",
-        notes: {
-          enabled: true,
-          rootPath: nextRoot
-        }
-      });
-      setNotesRootSettingsOpen(false);
-      setNotesRootInput(nextRoot);
-      setNotesList(service.listNotes());
-      setNotesRuntime({
-        ready: true,
-        enabled: true,
-        notesRoot: nextRoot
-      });
-      if (notesOpenPath) {
-        await hydrateOpenNote(notesOpenPath);
-      }
-      showShortNavigationBanner(`TOME root migrated to ${redactPathForDisplay(nextRoot)}`);
-    } catch (error: unknown) {
-      showShortNavigationBanner(`TOME root change failed: ${normalizeErrorDetail(error)}`);
-    } finally {
-      setNotesRootApplying(false);
-    }
   }
 
   function renderTomeActionButton(options: {
@@ -9381,14 +8227,16 @@ export function App({
           borderColor,
           backgroundColor,
           paddingLeft: paddingX,
-          paddingRight: paddingX
+          paddingRight: paddingX,
         }}
         onMouseDown={(event) => {
           if (event.button !== 0 || disabled) return;
           options.onPress();
         }}
       >
-        <text style={{ color: textColor, fontWeight: "bold" }}>{options.label}</text>
+        <text style={{ color: textColor, fontWeight: "bold" }}>
+          {options.label}
+        </text>
       </box>
     );
   }
@@ -9397,14 +8245,17 @@ export function App({
     if (uiState.mode !== Mode.LIST && uiState.mode !== Mode.DASHBOARD) return;
     clearPendingGPrefix();
     closeViewsOverlay();
-    const seedFilter = resolveEffectiveTagFilter(state.filters, state.tagAliases);
+    const seedFilter = resolveEffectiveTagFilter(
+      state.filters,
+      state.tagAliases,
+    );
     setTagFilterDraft(normalizeTagFilter(seedFilter));
     setTagFilterInputValue("");
     setActiveTagFilterBucket("all");
     uiDispatch({
       type: "captureReturnContext",
       mode: uiState.mode,
-      focus: uiState.focus
+      focus: uiState.focus,
     });
     uiDispatch({ type: "setMode", mode: Mode.TAG_FILTER });
     uiDispatch({ type: "setFocus", focus: FocusTarget.TAG_FILTER_INPUT });
@@ -9437,7 +8288,8 @@ export function App({
       const index = TAG_FILTER_BUCKET_ORDER.indexOf(current);
       const safeIndex = index >= 0 ? index : 0;
       return TAG_FILTER_BUCKET_ORDER[
-        (safeIndex + step + TAG_FILTER_BUCKET_ORDER.length) % TAG_FILTER_BUCKET_ORDER.length
+        (safeIndex + step + TAG_FILTER_BUCKET_ORDER.length) %
+          TAG_FILTER_BUCKET_ORDER.length
       ];
     });
     uiDispatch({ type: "setFocus", focus: FocusTarget.TAG_FILTER_INPUT });
@@ -9451,13 +8303,13 @@ export function App({
         inputValue: tagFilterInputRef.current,
         inlineSuggestion: tagFilterInlineSuggestion,
         bucket: activeTagFilterBucket,
-        aliases: state.tagAliases
-      })
+        aliases: state.tagAliases,
+      }),
     );
     if (nextTagFilter) {
       setTagFilter(nextTagFilter);
       showShortNavigationBanner(
-        `Boolean tags: ${formatTagFilterBooleanSummary(nextTagFilter)}`
+        `Boolean tags: ${formatTagFilterBooleanSummary(nextTagFilter)}`,
       );
     } else {
       clearTagFilters();
@@ -9469,12 +8321,14 @@ export function App({
     applyEscUnwind();
   }
 
-  function addTagFilterDraftCandidateFromInput(candidateOverride?: string): boolean {
+  function addTagFilterDraftCandidateFromInput(
+    candidateOverride?: string,
+  ): boolean {
     const candidate =
       candidateOverride ??
       resolveTagFilterInputCandidateValue(
         tagFilterInputRef.current,
-        tagFilterInlineSuggestion
+        tagFilterInlineSuggestion,
       );
     const normalizedCandidate = normalizeTagToken(candidate, state.tagAliases);
     if (!normalizedCandidate) return false;
@@ -9484,8 +8338,8 @@ export function App({
         current,
         normalizedCandidate,
         activeTagFilterBucket,
-        state.tagAliases
-      )
+        state.tagAliases,
+      ),
     );
     setTagFilterInputValue("");
     return true;
@@ -9495,7 +8349,7 @@ export function App({
     const action = resolveTagFilterPanelHotkeyAction({
       key,
       hasInlineSuggestion: Boolean(tagFilterInlineSuggestion),
-      inputValue: tagFilterInputRef.current
+      inputValue: tagFilterInputRef.current,
     });
     if (!action) return;
 
@@ -9520,12 +8374,14 @@ export function App({
         return;
       case "acceptInlineSuggestion":
         if (tagFilterInlineSuggestion) {
-          setTagFilterInputValue(formatTagForDisplay(tagFilterInlineSuggestion.full));
+          setTagFilterInputValue(
+            formatTagForDisplay(tagFilterInlineSuggestion.full),
+          );
         }
         return;
       case "removeLastDraftTag":
         setTagFilterDraft((current) =>
-          removeLastTagFromTagFilter(current, activeTagFilterBucket)
+          removeLastTagFromTagFilter(current, activeTagFilterBucket),
         );
         return;
       case "addInputCandidate":
@@ -9607,7 +8463,7 @@ export function App({
         selectedRowId: occurrenceContext.row.id,
         taskTitle: occurrenceContext.seriesTask.title,
         previousMode: Mode.LIST,
-        previousFocus: uiState.focus
+        previousFocus: uiState.focus,
       };
     } else {
       const persistedTask = resolvePersistedTaskForRow(selectedTask);
@@ -9618,14 +8474,14 @@ export function App({
         taskId: persistedTask.id,
         taskTitle: persistedTask.title,
         previousMode: Mode.LIST,
-        previousFocus: uiState.focus
+        previousFocus: uiState.focus,
       };
     }
 
     closeViewsOverlay();
     uiDispatch({
       type: "setModal",
-      modal
+      modal,
     });
     uiDispatch({ type: "setMode", mode: Mode.MODAL_CONFIRM });
     uiDispatch({ type: "setFocus", focus: FocusTarget.MODAL });
@@ -9649,7 +8505,7 @@ export function App({
 
   function applyTaskLinkMutation(
     taskId: string,
-    mutate: (task: Task) => Task
+    mutate: (task: Task) => Task,
   ): Task | undefined {
     const nowMs = Date.now();
     let updatedTask: Task | undefined;
@@ -9657,7 +8513,7 @@ export function App({
       if (task.id !== taskId) return task;
       updatedTask = {
         ...mutate(task),
-        updatedAt: nowMs
+        updatedAt: nowMs,
       };
       return updatedTask;
     });
@@ -9668,13 +8524,18 @@ export function App({
 
   function moveLinkSelection(delta: 1 | -1) {
     if (selectedTaskLinks.length === 0) return;
-    const currentIndex = selectedTaskLinks.findIndex((link) => link.id === selectedLinkId);
+    const currentIndex = selectedTaskLinks.findIndex(
+      (link) => link.id === selectedLinkId,
+    );
     const safeIndex = currentIndex === -1 ? 0 : currentIndex;
-    const nextIndex = (safeIndex + delta + selectedTaskLinks.length) % selectedTaskLinks.length;
+    const nextIndex =
+      (safeIndex + delta + selectedTaskLinks.length) % selectedTaskLinks.length;
     setSelectedLinkId(selectedTaskLinks[nextIndex]?.id);
   }
 
-  function findVisibleRowById(rowId: string | undefined): VisibleTaskRow | undefined {
+  function findVisibleRowById(
+    rowId: string | undefined,
+  ): VisibleTaskRow | undefined {
     if (!rowId) return undefined;
     if (selectedTask?.id === rowId) return selectedTask;
     return visibleTaskRows.find((row) => row.id === rowId);
@@ -9682,8 +8543,18 @@ export function App({
 
   function mutateChecklistForRow(
     rowId: string,
-    mutate: (checklist: Task["checklist"]) => { ok: true; checklist: NonNullable<Task["checklist"]> } | { ok: false; error: string }
-  ): { ok: true; checklist: NonNullable<Task["checklist"]>; selectedTaskId: string } | { ok: false; error: string } {
+    mutate: (
+      checklist: Task["checklist"],
+    ) =>
+      | { ok: true; checklist: NonNullable<Task["checklist"]> }
+      | { ok: false; error: string },
+  ):
+    | {
+        ok: true;
+        checklist: NonNullable<Task["checklist"]>;
+        selectedTaskId: string;
+      }
+    | { ok: false; error: string } {
     const row = findVisibleRowById(rowId);
     if (!row) {
       return { ok: false, error: "Checklist target is not visible." };
@@ -9709,10 +8580,10 @@ export function App({
           seriesTask: context.seriesTask,
           seriesId: context.seriesId,
           occurrenceIso: context.occurrenceIso,
-          instanceTask: context.instanceTask
+          instanceTask: context.instanceTask,
         },
         checklist: mutation.checklist,
-        nowMs
+        nowMs,
       });
       if (!materialized.ok) {
         return { ok: false, error: materialized.error };
@@ -9722,12 +8593,12 @@ export function App({
       triggerChecklistMilestonesForTaskTransition(
         source,
         materialized.instance,
-        nowMs
+        nowMs,
       );
       return {
         ok: true,
         checklist: mutation.checklist,
-        selectedTaskId: materialized.instance.id
+        selectedTaskId: materialized.instance.id,
       };
     }
 
@@ -9742,57 +8613,72 @@ export function App({
     const updatedTask: Task = {
       ...persisted,
       checklist: mutation.checklist,
-      updatedAt: nowMs
+      updatedAt: nowMs,
     };
     dispatch({
       type: "setTasks",
-      tasks: state.tasks.map((task) => (task.id === updatedTask.id ? updatedTask : task))
+      tasks: state.tasks.map((task) =>
+        task.id === updatedTask.id ? updatedTask : task,
+      ),
     });
     dispatch({ type: "setSelected", id: updatedTask.id });
     triggerChecklistMilestonesForTaskTransition(persisted, updatedTask, nowMs);
     return {
       ok: true,
       checklist: mutation.checklist,
-      selectedTaskId: updatedTask.id
+      selectedTaskId: updatedTask.id,
     };
   }
 
   function moveChecklistSelection(delta: 1 | -1) {
-    if (isEditorMode(uiState.mode) && uiState.focus === FocusTarget.EDITOR_CHECKLIST) {
+    if (
+      isEditorMode(uiState.mode) &&
+      uiState.focus === FocusTarget.EDITOR_CHECKLIST
+    ) {
       if (editorChecklistItems.length === 0) return;
       const currentIndex = editorChecklistItems.findIndex(
-        (item) => item.id === selectedEditorChecklistItemId
+        (item) => item.id === selectedEditorChecklistItemId,
       );
       const safeIndex = currentIndex === -1 ? 0 : currentIndex;
       const nextIndex =
-        (safeIndex + delta + editorChecklistItems.length) % editorChecklistItems.length;
+        (safeIndex + delta + editorChecklistItems.length) %
+        editorChecklistItems.length;
       setSelectedEditorChecklistItemId(editorChecklistItems[nextIndex]?.id);
       return;
     }
 
     if (selectedChecklistItems.length === 0) return;
     const currentIndex = selectedChecklistItems.findIndex(
-      (item) => item.id === selectedChecklistItemId
+      (item) => item.id === selectedChecklistItemId,
     );
     const safeIndex = currentIndex === -1 ? 0 : currentIndex;
     const nextIndex =
-      (safeIndex + delta + selectedChecklistItems.length) % selectedChecklistItems.length;
+      (safeIndex + delta + selectedChecklistItems.length) %
+      selectedChecklistItems.length;
     setSelectedChecklistItemId(selectedChecklistItems[nextIndex]?.id);
   }
 
   function toggleSelectedChecklistItem() {
-    if (isEditorMode(uiState.mode) && uiState.focus === FocusTarget.EDITOR_CHECKLIST) {
+    if (
+      isEditorMode(uiState.mode) &&
+      uiState.focus === FocusTarget.EDITOR_CHECKLIST
+    ) {
       if (!state.editor) {
         showShortNavigationBanner("Editor draft unavailable");
         return;
       }
-      const checklistItem = selectedEditorChecklistItem ?? editorChecklistItems[0];
+      const checklistItem =
+        selectedEditorChecklistItem ?? editorChecklistItems[0];
       if (!checklistItem) {
         showShortNavigationBanner("No checklist item selected");
         return;
       }
       const nowIso = new Date().toISOString();
-      const outcome = toggleChecklistItem(state.editor.checklist, checklistItem.id, nowIso);
+      const outcome = toggleChecklistItem(
+        state.editor.checklist,
+        checklistItem.id,
+        nowIso,
+      );
       if (!outcome.ok) {
         showShortNavigationBanner(outcome.error);
         return;
@@ -9813,7 +8699,7 @@ export function App({
     }
     const nowIso = new Date().toISOString();
     const outcome = mutateChecklistForRow(selectedTask.id, (checklist) =>
-      toggleChecklistItem(checklist, checklistItem.id, nowIso)
+      toggleChecklistItem(checklist, checklistItem.id, nowIso),
     );
     if (!outcome.ok) {
       showShortNavigationBanner(outcome.error);
@@ -9823,8 +8709,13 @@ export function App({
   }
 
   function openAddChecklistItemModal() {
-    if (isEditorMode(uiState.mode) && uiState.focus === FocusTarget.EDITOR_CHECKLIST) {
-      const taskTitle = state.editor?.title?.trim() || (uiState.mode === Mode.ADD ? "New task" : "Task");
+    if (
+      isEditorMode(uiState.mode) &&
+      uiState.focus === FocusTarget.EDITOR_CHECKLIST
+    ) {
+      const taskTitle =
+        state.editor?.title?.trim() ||
+        (uiState.mode === Mode.ADD ? "New task" : "Task");
       openModalWithContext({
         type: "checklist_input",
         mode: "add",
@@ -9832,7 +8723,7 @@ export function App({
         taskTitle,
         value: "",
         previousMode: uiState.mode,
-        previousFocus: uiState.focus
+        previousFocus: uiState.focus,
       });
       return;
     }
@@ -9848,22 +8739,28 @@ export function App({
       taskTitle: selectedTask.title,
       value: "",
       previousMode: Mode.LIST,
-      previousFocus: uiState.focus
+      previousFocus: uiState.focus,
     });
   }
 
   function openEditChecklistItemModal() {
-    if (isEditorMode(uiState.mode) && uiState.focus === FocusTarget.EDITOR_CHECKLIST) {
+    if (
+      isEditorMode(uiState.mode) &&
+      uiState.focus === FocusTarget.EDITOR_CHECKLIST
+    ) {
       if (!state.editor) {
         showShortNavigationBanner("Editor draft unavailable");
         return;
       }
-      const checklistItem = selectedEditorChecklistItem ?? editorChecklistItems[0];
+      const checklistItem =
+        selectedEditorChecklistItem ?? editorChecklistItems[0];
       if (!checklistItem) {
         showShortNavigationBanner("No checklist item selected");
         return;
       }
-      const taskTitle = state.editor.title.trim() || (uiState.mode === Mode.ADD ? "New task" : "Task");
+      const taskTitle =
+        state.editor.title.trim() ||
+        (uiState.mode === Mode.ADD ? "New task" : "Task");
       openModalWithContext({
         type: "checklist_input",
         mode: "edit",
@@ -9872,7 +8769,7 @@ export function App({
         taskTitle,
         value: checklistItem.text,
         previousMode: uiState.mode,
-        previousFocus: uiState.focus
+        previousFocus: uiState.focus,
       });
       return;
     }
@@ -9894,22 +8791,28 @@ export function App({
       taskTitle: selectedTask.title,
       value: checklistItem.text,
       previousMode: Mode.LIST,
-      previousFocus: uiState.focus
+      previousFocus: uiState.focus,
     });
   }
 
   function openDeleteChecklistItemModal() {
-    if (isEditorMode(uiState.mode) && uiState.focus === FocusTarget.EDITOR_CHECKLIST) {
+    if (
+      isEditorMode(uiState.mode) &&
+      uiState.focus === FocusTarget.EDITOR_CHECKLIST
+    ) {
       if (!state.editor) {
         showShortNavigationBanner("Editor draft unavailable");
         return;
       }
-      const checklistItem = selectedEditorChecklistItem ?? editorChecklistItems[0];
+      const checklistItem =
+        selectedEditorChecklistItem ?? editorChecklistItems[0];
       if (!checklistItem) {
         showShortNavigationBanner("No checklist item selected");
         return;
       }
-      const taskTitle = state.editor.title.trim() || (uiState.mode === Mode.ADD ? "New task" : "Task");
+      const taskTitle =
+        state.editor.title.trim() ||
+        (uiState.mode === Mode.ADD ? "New task" : "Task");
       openModalWithContext({
         type: "checklist_delete",
         rowId: EDITOR_CHECKLIST_MODAL_ROW_ID,
@@ -9917,7 +8820,7 @@ export function App({
         itemText: checklistItem.text,
         taskTitle,
         previousMode: uiState.mode,
-        previousFocus: uiState.focus
+        previousFocus: uiState.focus,
       });
       return;
     }
@@ -9938,7 +8841,7 @@ export function App({
       itemText: checklistItem.text,
       taskTitle: selectedTask.title,
       previousMode: Mode.LIST,
-      previousFocus: uiState.focus
+      previousFocus: uiState.focus,
     });
   }
 
@@ -9953,8 +8856,8 @@ export function App({
       type: "setModal",
       modal: {
         ...modal,
-        ...patch
-      }
+        ...patch,
+      },
     });
   }
 
@@ -9969,7 +8872,11 @@ export function App({
         return;
       }
       if (modal.mode === "add") {
-        const outcome = addChecklistItem(state.editor.checklist, modal.value, nowIso);
+        const outcome = addChecklistItem(
+          state.editor.checklist,
+          modal.value,
+          nowIso,
+        );
         if (!outcome.ok) {
           patchChecklistInputModal({ error: outcome.error });
           return;
@@ -9986,7 +8893,12 @@ export function App({
         return;
       }
 
-      const outcome = editChecklistItem(state.editor.checklist, modal.itemId, modal.value, nowIso);
+      const outcome = editChecklistItem(
+        state.editor.checklist,
+        modal.itemId,
+        modal.value,
+        nowIso,
+      );
       if (!outcome.ok) {
         patchChecklistInputModal({ error: outcome.error });
         return;
@@ -9999,7 +8911,7 @@ export function App({
 
     if (modal.mode === "add") {
       const outcome = mutateChecklistForRow(modal.rowId, (checklist) =>
-        addChecklistItem(checklist, modal.value, nowIso)
+        addChecklistItem(checklist, modal.value, nowIso),
       );
       if (!outcome.ok) {
         patchChecklistInputModal({ error: outcome.error });
@@ -10017,7 +8929,7 @@ export function App({
     }
 
     const outcome = mutateChecklistForRow(modal.rowId, (checklist) =>
-      editChecklistItem(checklist, modal.itemId as string, modal.value, nowIso)
+      editChecklistItem(checklist, modal.itemId as string, modal.value, nowIso),
     );
     if (!outcome.ok) {
       patchChecklistInputModal({ error: outcome.error });
@@ -10051,7 +8963,7 @@ export function App({
     }
 
     const outcome = mutateChecklistForRow(modal.rowId, (checklist) =>
-      deleteChecklistItem(checklist, modal.itemId)
+      deleteChecklistItem(checklist, modal.itemId),
     );
     if (!outcome.ok) {
       showShortNavigationBanner(outcome.error);
@@ -10069,11 +8981,17 @@ export function App({
   }
 
   function toggleBulkMark() {
-    if (uiState.mode !== Mode.LIST || uiState.focus !== FocusTarget.TASK_LIST || !selectedTask) {
+    if (
+      uiState.mode !== Mode.LIST ||
+      uiState.focus !== FocusTarget.TASK_LIST ||
+      !selectedTask
+    ) {
       return;
     }
     if (selectedTask.rowKind === "series_occurrence_virtual") {
-      showShortNavigationBanner("Bulk selection does not support virtual occurrences (yet).");
+      showShortNavigationBanner(
+        "Bulk selection does not support virtual occurrences (yet).",
+      );
       return;
     }
     setBulkMarkedTaskIds((previous) => {
@@ -10096,16 +9014,16 @@ export function App({
         operation: "delete",
         target: {
           type: "ids",
-          ids: modal.taskIds
-        }
+          ids: modal.taskIds,
+        },
       },
       {
         now: nowMs,
         state,
         visibleTasks,
         selectedTaskId: state.selectedId ?? visibleTasks[0]?.id,
-        bulkMarkedTaskIds
-      }
+        bulkMarkedTaskIds,
+      },
     );
 
     if (result.output.kind === "error") {
@@ -10118,7 +9036,7 @@ export function App({
       dispatch(action);
     }
     setBulkMarkedTaskIds((previous) =>
-      previous.filter((id) => !modal.taskIds.includes(id))
+      previous.filter((id) => !modal.taskIds.includes(id)),
     );
     setCommandOutput(result.output);
     closeModalWithPreviousContext(modal);
@@ -10134,14 +9052,14 @@ export function App({
         type: "task_link_form",
         mode: "add",
         source: {
-          scope: "editor_draft"
+          scope: "editor_draft",
         },
         labelValue: "",
         targetValue: "",
         kindValue: "auto",
         activeField: "target",
         previousMode: uiState.mode,
-        previousFocus: uiState.focus
+        previousFocus: uiState.focus,
       });
       return;
     }
@@ -10155,14 +9073,14 @@ export function App({
       mode: "add",
       source: {
         scope: "task",
-        taskId: selectedPersistedTask.id
+        taskId: selectedPersistedTask.id,
       },
       labelValue: "",
       targetValue: "",
       kindValue: "auto",
       activeField: "target",
       previousMode: Mode.LIST,
-      previousFocus: uiState.focus
+      previousFocus: uiState.focus,
     });
   }
 
@@ -10176,7 +9094,7 @@ export function App({
       mode: "edit",
       source: {
         scope: "task",
-        taskId: selectedPersistedTask.id
+        taskId: selectedPersistedTask.id,
       },
       linkId: selectedTaskLink.id,
       labelValue: selectedTaskLink.label ?? "",
@@ -10184,7 +9102,7 @@ export function App({
       kindValue: selectedTaskLink.kind ?? "auto",
       activeField: "target",
       previousMode: Mode.LIST,
-      previousFocus: uiState.focus
+      previousFocus: uiState.focus,
     });
   }
 
@@ -10200,7 +9118,7 @@ export function App({
       label: selectedTaskLink.label,
       target: selectedTaskLink.target,
       previousMode: Mode.LIST,
-      previousFocus: uiState.focus
+      previousFocus: uiState.focus,
     });
   }
 
@@ -10215,10 +9133,10 @@ export function App({
   function openTaskLink(
     link: TaskLink,
     sourceTask: Task,
-    previousFocus: FocusTarget = uiState.focus
+    previousFocus: FocusTarget = uiState.focus,
   ) {
     const openDecision = decideTaskLinkOpen(link, {
-      nonHttpLinkPolicy: settingsState.security.nonHttpLinkPolicy
+      nonHttpLinkPolicy: settingsState.security.nonHttpLinkPolicy,
     });
     if (openDecision.policy === "block") {
       showShortNavigationBanner("Blocked by security policy.");
@@ -10232,7 +9150,7 @@ export function App({
         target: openDecision.target,
         scheme: openDecision.scheme,
         previousMode: Mode.LIST,
-        previousFocus
+        previousFocus,
       });
       return;
     }
@@ -10284,8 +9202,8 @@ export function App({
       type: "setModal",
       modal: {
         ...modal,
-        ...patch
-      }
+        ...patch,
+      },
     });
   }
 
@@ -10293,7 +9211,7 @@ export function App({
     const modal = getTaskLinkFormModal();
     if (!modal) return;
     patchTaskLinkFormModal({
-      activeField: cycleTaskLinkFormField(modal.activeField, direction)
+      activeField: cycleTaskLinkFormField(modal.activeField, direction),
     });
   }
 
@@ -10301,7 +9219,7 @@ export function App({
     const modal = getTaskLinkFormModal();
     if (!modal) return;
     patchTaskLinkFormModal({
-      kindValue: cycleTaskLinkFormKind(modal.kindValue, direction)
+      kindValue: cycleTaskLinkFormKind(modal.kindValue, direction),
     });
   }
 
@@ -10317,7 +9235,9 @@ export function App({
     }
 
     if (modal.kindValue === "url" && !extractUrlScheme(target)) {
-      patchTaskLinkFormModal({ error: "URL type requires a scheme (e.g. https://)." });
+      patchTaskLinkFormModal({
+        error: "URL type requires a scheme (e.g. https://).",
+      });
       return;
     }
 
@@ -10331,15 +9251,17 @@ export function App({
         target,
         ...(label ? { label } : {}),
         ...(kind ? { kind } : {}),
-        source: "manual"
+        source: "manual",
       };
       dispatch({
         type: "updateEditor",
         patch: {
-          links: [...state.editor.links, link]
-        }
+          links: [...state.editor.links, link],
+        },
       });
-      showShortNavigationBanner(`Added link (${state.editor.links.length + 1})`);
+      showShortNavigationBanner(
+        `Added link (${state.editor.links.length + 1})`,
+      );
       closeModalWithPreviousContext(modal);
       return;
     }
@@ -10350,10 +9272,10 @@ export function App({
         target,
         ...(label ? { label } : {}),
         ...(kind ? { kind } : {}),
-        source: "manual"
+        source: "manual",
       };
       const updatedTask = applyTaskLinkMutation(modal.source.taskId, (task) =>
-        addTaskLink(task, link)
+        addTaskLink(task, link),
       );
       if (!updatedTask) return;
       setSelectedLinkId(link.id);
@@ -10366,8 +9288,8 @@ export function App({
       updateTaskLink(task, modal.linkId, {
         target,
         label: label || undefined,
-        kind
-      })
+        kind,
+      }),
     );
     if (!updatedTask) return;
     setSelectedLinkId(modal.linkId);
@@ -10378,7 +9300,7 @@ export function App({
     const modal = uiState.modal;
     if (!modal || modal.type !== "task_link_delete") return;
     const updatedTask = applyTaskLinkMutation(modal.taskId, (task) =>
-      deleteTaskLink(task, modal.linkId)
+      deleteTaskLink(task, modal.linkId),
     );
     if (!updatedTask) return;
     const nextLinks = updatedTask.links ?? [];
@@ -10400,9 +9322,12 @@ export function App({
 
   function moveSelection(delta: number) {
     if (visibleTaskRows.length === 0) return;
-    const currentIndex = visibleTaskRows.findIndex((task) => task.id === state.selectedId);
+    const currentIndex = visibleTaskRows.findIndex(
+      (task) => task.id === state.selectedId,
+    );
     const safeIndex = currentIndex === -1 ? 0 : currentIndex;
-    const nextIndex = (safeIndex + delta + visibleTaskRows.length) % visibleTaskRows.length;
+    const nextIndex =
+      (safeIndex + delta + visibleTaskRows.length) % visibleTaskRows.length;
     dispatch({ type: "setSelected", id: visibleTaskRows[nextIndex].id });
   }
 
@@ -10414,12 +9339,14 @@ export function App({
 
   function moveSelectionClamped(delta: number) {
     if (visibleTaskRows.length === 0 || delta === 0) return;
-    const currentIndex = visibleTaskRows.findIndex((task) => task.id === state.selectedId);
+    const currentIndex = visibleTaskRows.findIndex(
+      (task) => task.id === state.selectedId,
+    );
     const safeIndex = currentIndex === -1 ? 0 : currentIndex;
     const nextIndex = resolveTaskListWheelSelectionIndex({
       currentIndex: safeIndex,
       delta: delta > 0 ? 1 : -1,
-      itemCount: visibleTaskRows.length
+      itemCount: visibleTaskRows.length,
     });
     if (nextIndex === safeIndex) return;
     setSelectedByIndex(nextIndex);
@@ -10470,7 +9397,7 @@ export function App({
     parseTagsInput,
     triggerFirstRecurringTaskCreated,
     triggerChecklistMilestonesForTaskTransition,
-    selectTaskById
+    selectTaskById,
   });
 
   function requestEditTargetSwitch(toTaskId: string) {
@@ -10504,7 +9431,9 @@ export function App({
   function moveSelectionPage(direction: 1 | -1) {
     if (visibleTaskRows.length === 0) return;
     const pageStep = Math.max(1, visibleRows - 1);
-    const currentIndex = visibleTaskRows.findIndex((task) => task.id === state.selectedId);
+    const currentIndex = visibleTaskRows.findIndex(
+      (task) => task.id === state.selectedId,
+    );
     const safeIndex = currentIndex === -1 ? 0 : currentIndex;
     setSelectedByIndex(safeIndex + direction * pageStep);
   }
@@ -10532,12 +9461,14 @@ export function App({
   function jumpToAttention(kind: "overdue" | "today", direction: 1 | -1) {
     if (visibleTaskRows.length === 0) {
       showShortNavigationBanner(
-        kind === "overdue" ? "No overdue tasks" : "No due-today tasks"
+        kind === "overdue" ? "No overdue tasks" : "No due-today tasks",
       );
       return;
     }
 
-    const currentIndex = visibleTaskRows.findIndex((task) => task.id === state.selectedId);
+    const currentIndex = visibleTaskRows.findIndex(
+      (task) => task.id === state.selectedId,
+    );
     const safeIndex = currentIndex === -1 ? 0 : currentIndex;
     const matcher =
       kind === "overdue"
@@ -10548,12 +9479,12 @@ export function App({
       safeIndex,
       direction,
       matcher,
-      true
+      true,
     );
 
     if (nextIndex === null) {
       showShortNavigationBanner(
-        kind === "overdue" ? "No overdue tasks" : "No due-today tasks"
+        kind === "overdue" ? "No overdue tasks" : "No due-today tasks",
       );
       return;
     }
@@ -10601,14 +9532,15 @@ export function App({
     setSelectedViewIndex((prev) =>
       state.savedViews.length === 0
         ? 0
-        : Math.max(0, Math.min(prev, state.savedViews.length - 1))
+        : Math.max(0, Math.min(prev, state.savedViews.length - 1)),
     );
   }
 
   function moveViewSelection(delta: 1 | -1) {
     if (state.savedViews.length === 0) return;
     setSelectedViewIndex((prev) => {
-      const next = (prev + delta + state.savedViews.length) % state.savedViews.length;
+      const next =
+        (prev + delta + state.savedViews.length) % state.savedViews.length;
       return next;
     });
   }
@@ -10628,8 +9560,8 @@ export function App({
         searchText: nextFilters.searchText,
         assignee: nextFilters.assignee,
         project: nextFilters.project,
-        workflowStage: nextFilters.workflowStage
-      }
+        workflowStage: nextFilters.workflowStage,
+      },
     });
     closeViewsOverlay();
     showShortNavigationBanner(`Applied view: ${view.name}`);
@@ -10654,8 +9586,8 @@ export function App({
           searchText: undefined,
           assignee: undefined,
           project: undefined,
-          workflowStage: undefined
-        }
+          workflowStage: undefined,
+        },
       });
       closeViewsOverlay();
       showShortNavigationBanner("Default view");
@@ -10669,7 +9601,10 @@ export function App({
       showShortNavigationBanner("No saved views");
       return;
     }
-    const index = Math.max(0, Math.min(selectedViewIndex, state.savedViews.length - 1));
+    const index = Math.max(
+      0,
+      Math.min(selectedViewIndex, state.savedViews.length - 1),
+    );
     applyView(state.savedViews[index]);
   }
 
@@ -10678,7 +9613,10 @@ export function App({
       showShortNavigationBanner("No saved views to delete");
       return;
     }
-    const index = Math.max(0, Math.min(selectedViewIndex, state.savedViews.length - 1));
+    const index = Math.max(
+      0,
+      Math.min(selectedViewIndex, state.savedViews.length - 1),
+    );
     const target = state.savedViews[index];
     const next = deleteViewAtIndex(state.savedViews, index);
     dispatch({ type: "setSavedViews", savedViews: next });
@@ -10705,7 +9643,7 @@ export function App({
       saveViewName,
       state.filters,
       nowMs,
-      MAX_SAVED_VIEWS
+      MAX_SAVED_VIEWS,
     );
 
     if (result.kind === "invalid_name") {
@@ -10713,23 +9651,29 @@ export function App({
       return;
     }
     if (result.kind === "full") {
-      showShortNavigationBanner(`Saved view limit reached (${MAX_SAVED_VIEWS})`);
+      showShortNavigationBanner(
+        `Saved view limit reached (${MAX_SAVED_VIEWS})`,
+      );
       return;
     }
 
     dispatch({ type: "setSavedViews", savedViews: result.savedViews });
-    const idx = result.savedViews.findIndex((view) => view.id === result.view.id);
+    const idx = result.savedViews.findIndex(
+      (view) => view.id === result.view.id,
+    );
     setSelectedViewIndex(idx >= 0 ? idx : 0);
     setSaveViewPromptOpen(false);
     setSaveViewName("");
     showShortNavigationBanner(
       result.kind === "created"
         ? `Saved view: ${result.view.name}`
-        : `Updated view: ${result.view.name}`
+        : `Updated view: ${result.view.name}`,
     );
   }
 
-  function normalizeOccurrenceIso(value: string | undefined): string | undefined {
+  function normalizeOccurrenceIso(
+    value: string | undefined,
+  ): string | undefined {
     if (!value) return undefined;
     const occurrenceDate = parseLocalIsoToDate(value);
     if (!occurrenceDate) return undefined;
@@ -10740,17 +9684,26 @@ export function App({
     tasks: Task[],
     seriesTaskId: string,
     occurrenceIso: string,
-    nowMs: number
+    nowMs: number,
   ): Task[] {
-    return withSeriesOccurrenceExcludedInTasks(tasks, seriesTaskId, occurrenceIso, nowMs);
+    return withSeriesOccurrenceExcludedInTasks(
+      tasks,
+      seriesTaskId,
+      occurrenceIso,
+      nowMs,
+    );
   }
 
   function removeMaterializedOccurrenceInstance(
     tasks: Task[],
     seriesId: string,
-    occurrenceIso: string
+    occurrenceIso: string,
   ): Task[] {
-    return removeMaterializedOccurrenceInstanceInTasks(tasks, seriesId, occurrenceIso);
+    return removeMaterializedOccurrenceInstanceInTasks(
+      tasks,
+      seriesId,
+      occurrenceIso,
+    );
   }
 
   function resolveOccurrenceContextForRow(row: VisibleTaskRow | undefined): {
@@ -10786,7 +9739,7 @@ export function App({
       seriesTask,
       seriesId,
       occurrenceIso: normalizedIso,
-      instanceTask
+      instanceTask,
     };
   }
 
@@ -10817,8 +9770,8 @@ export function App({
       toast: {
         message: "Created your first recurring task.",
         priority: 3,
-        durationMs: FIRST_RECURRING_TASK_TOAST_MS
-      }
+        durationMs: FIRST_RECURRING_TASK_TOAST_MS,
+      },
     });
   }
 
@@ -10832,12 +9785,16 @@ export function App({
       toast: {
         message: "Created your first TOME note.",
         priority: 3,
-        durationMs: FIRST_TOME_CREATED_TOAST_MS
-      }
+        durationMs: FIRST_TOME_CREATED_TOAST_MS,
+      },
     });
   }
 
-  function triggerFirstChecklistCreated(at: number, taskId: string, total: number) {
+  function triggerFirstChecklistCreated(
+    at: number,
+    taskId: string,
+    total: number,
+  ) {
     dispatch({
       type: "triggerEngagementMilestone",
       achievementKey: "FIRST_CHECKLIST_CREATED",
@@ -10847,12 +9804,16 @@ export function App({
       toast: {
         message: "Created your first checklist.",
         priority: 3,
-        durationMs: FIRST_CHECKLIST_CREATED_TOAST_MS
-      }
+        durationMs: FIRST_CHECKLIST_CREATED_TOAST_MS,
+      },
     });
   }
 
-  function triggerFirstChecklistFullyCompleted(at: number, taskId: string, total: number) {
+  function triggerFirstChecklistFullyCompleted(
+    at: number,
+    taskId: string,
+    total: number,
+  ) {
     dispatch({
       type: "triggerEngagementMilestone",
       achievementKey: "FIRST_CHECKLIST_FULLY_COMPLETED",
@@ -10862,12 +9823,14 @@ export function App({
       toast: {
         message: "Completed your first checklist.",
         priority: 2,
-        durationMs: FIRST_CHECKLIST_FULLY_COMPLETED_TOAST_MS
-      }
+        durationMs: FIRST_CHECKLIST_FULLY_COMPLETED_TOAST_MS,
+      },
     });
   }
 
-  function summarizeChecklistMilestoneState(checklist: Task["checklist"] | undefined): {
+  function summarizeChecklistMilestoneState(
+    checklist: Task["checklist"] | undefined,
+  ): {
     total: number;
     allDone: boolean;
   } {
@@ -10878,17 +9841,19 @@ export function App({
     }
     return {
       total,
-      allDone: items.every((item) => item.isDone)
+      allDone: items.every((item) => item.isDone),
     };
   }
 
   function triggerChecklistMilestonesForTaskTransition(
     previousTask: Task | undefined,
     nextTask: Task | undefined,
-    at: number
+    at: number,
   ) {
     if (!nextTask) return;
-    const previousState = summarizeChecklistMilestoneState(previousTask?.checklist);
+    const previousState = summarizeChecklistMilestoneState(
+      previousTask?.checklist,
+    );
     const nextState = summarizeChecklistMilestoneState(nextTask.checklist);
 
     if (previousState.total === 0 && nextState.total > 0) {
@@ -10899,7 +9864,11 @@ export function App({
     }
   }
 
-  function triggerFirstRecurringRepeatDone(at: number, seriesId: string, occurrenceIso: string) {
+  function triggerFirstRecurringRepeatDone(
+    at: number,
+    seriesId: string,
+    occurrenceIso: string,
+  ) {
     dispatch({
       type: "triggerEngagementMilestone",
       achievementKey: "FIRST_RECURRING_REPEAT_DONE",
@@ -10909,8 +9878,8 @@ export function App({
       toast: {
         message: "Completed your first recurring repeat occurrence.",
         priority: 2,
-        durationMs: FIRST_RECURRING_REPEAT_DONE_TOAST_MS
-      }
+        durationMs: FIRST_RECURRING_REPEAT_DONE_TOAST_MS,
+      },
     });
   }
 
@@ -10932,24 +9901,28 @@ export function App({
       type: "recordCompletion",
       taskId: params.taskId,
       at: params.at,
-      tags: params.tags
+      tags: params.tags,
     });
     dispatch({ type: "evaluateEngagement", at: params.at });
     if (params.recurringRepeat) {
       triggerFirstRecurringRepeatDone(
         params.at,
         params.recurringRepeat.seriesId,
-        params.recurringRepeat.occurrenceIso
+        params.recurringRepeat.occurrenceIso,
       );
     }
   }
 
-  function emitCompletionFromDiff(previousTasks: Task[], nextTasks: Task[], at: number) {
+  function emitCompletionFromDiff(
+    previousTasks: Task[],
+    nextTasks: Task[],
+    at: number,
+  ) {
     const previousById = new Map(previousTasks.map((task) => [task.id, task]));
     const seriesById = new Map(
       nextTasks
         .filter((task) => task.recurrence?.series_id)
-        .map((task) => [task.recurrence!.series_id, task])
+        .map((task) => [task.recurrence!.series_id, task]),
     );
     for (const nextTask of nextTasks) {
       const previousTask = previousById.get(nextTask.id);
@@ -10958,11 +9931,11 @@ export function App({
         instance &&
         isRepeatOccurrenceAfterSeriesStart(
           seriesById.get(instance.series_id)?.recurrence?.dtstart,
-          instance.occurrence
+          instance.occurrence,
         )
           ? {
               seriesId: instance.series_id,
-              occurrenceIso: instance.occurrence
+              occurrenceIso: instance.occurrence,
             }
           : undefined;
       emitCompletionForTransition({
@@ -10971,7 +9944,7 @@ export function App({
         nextStatus: nextTask.status,
         tags: nextTask.tags,
         at,
-        recurringRepeat
+        recurringRepeat,
       });
     }
   }
@@ -10990,25 +9963,26 @@ export function App({
     }
 
     if (context.instanceTask) {
-      const nextStatus = context.instanceTask.status === "done" ? "open" : "done";
+      const nextStatus =
+        context.instanceTask.status === "done" ? "open" : "done";
       const updatedTasks = state.tasks.map((task) => {
         if (task.id !== context.instanceTask?.id) return task;
         return {
           ...task,
           status: nextStatus,
           updatedAt: nowMs,
-          closedAt: nextStatus === "done" ? nowMs : undefined
+          closedAt: nextStatus === "done" ? nowMs : undefined,
         };
       });
       dispatch({ type: "setTasks", tasks: updatedTasks });
       dispatch({ type: "setSelected", id: context.instanceTask.id });
       const recurringRepeat = isRepeatOccurrenceAfterSeriesStart(
         context.seriesTask.recurrence?.dtstart,
-        context.occurrenceIso
+        context.occurrenceIso,
       )
         ? {
             seriesId: context.seriesId,
-            occurrenceIso: context.occurrenceIso
+            occurrenceIso: context.occurrenceIso,
           }
         : undefined;
       emitCompletionForTransition({
@@ -11017,7 +9991,7 @@ export function App({
         nextStatus,
         tags: context.instanceTask.tags,
         at: nowMs,
-        recurringRepeat
+        recurringRepeat,
       });
       return;
     }
@@ -11025,13 +9999,13 @@ export function App({
     const updatedTasks = completeRecurringOccurrenceInTasks(state.tasks, {
       seriesId: context.seriesId,
       occurrenceIso: context.occurrenceIso,
-      nowMs
+      nowMs,
     });
     const doneInstance = updatedTasks.find(
       (task) =>
         task.instance_of?.series_id === context.seriesId &&
         task.instance_of?.occurrence === context.occurrenceIso &&
-        task.status === "done"
+        task.status === "done",
     );
     if (!doneInstance) {
       return;
@@ -11039,16 +10013,16 @@ export function App({
     dispatch({ type: "setTasks", tasks: updatedTasks });
     dispatch({
       type: "setTagIndex",
-      tagIndex: updateTagIndex(state.tagIndex, doneInstance.tags, nowMs)
+      tagIndex: updateTagIndex(state.tagIndex, doneInstance.tags, nowMs),
     });
     dispatch({ type: "setSelected", id: doneInstance.id });
     const recurringRepeat = isRepeatOccurrenceAfterSeriesStart(
       context.seriesTask.recurrence?.dtstart,
-      context.occurrenceIso
+      context.occurrenceIso,
     )
       ? {
           seriesId: context.seriesId,
-          occurrenceIso: context.occurrenceIso
+          occurrenceIso: context.occurrenceIso,
         }
       : undefined;
     emitCompletionForTransition({
@@ -11057,7 +10031,7 @@ export function App({
       nextStatus: "done",
       tags: doneInstance.tags,
       at: nowMs,
-      recurringRepeat
+      recurringRepeat,
     });
   }
 
@@ -11072,7 +10046,7 @@ export function App({
     const updatedTasks = skipRecurringOccurrenceInTasks(state.tasks, {
       seriesId: context.seriesId,
       occurrenceIso: context.occurrenceIso,
-      nowMs
+      nowMs,
     });
     dispatch({ type: "setTasks", tasks: updatedTasks });
     showShortNavigationBanner("Skipped selected occurrence");
@@ -11089,18 +10063,18 @@ export function App({
     const updatedTasks = snoozeRecurringOccurrenceInTasks(state.tasks, {
       seriesId: context.seriesId,
       occurrenceIso: context.occurrenceIso,
-      nowMs
+      nowMs,
     });
     dispatch({ type: "setTasks", tasks: updatedTasks });
     const nextInstance = updatedTasks.find(
       (task) =>
         task.instance_of?.series_id === context.seriesId &&
-        task.instance_of?.occurrence === context.occurrenceIso
+        task.instance_of?.occurrence === context.occurrenceIso,
     );
     if (nextInstance) {
       dispatch({
         type: "setTagIndex",
-        tagIndex: updateTagIndex(state.tagIndex, nextInstance.tags, nowMs)
+        tagIndex: updateTagIndex(state.tagIndex, nextInstance.tags, nowMs),
       });
       dispatch({ type: "setSelected", id: nextInstance.id });
     }
@@ -11124,10 +10098,14 @@ export function App({
     const nextStatus = persisted.status === "done" ? "open" : "done";
 
     if (persisted.status === "open") {
-      const completion = completeTaskWithRecurrence(state.tasks, persisted.id, nowMs);
+      const completion = completeTaskWithRecurrence(
+        state.tasks,
+        persisted.id,
+        nowMs,
+      );
       dispatch({
         type: "setTasks",
-        tasks: completion.tasks
+        tasks: completion.tasks,
       });
       if (completion.spawnedId) {
         dispatch({ type: "setSelected", id: completion.spawnedId });
@@ -11137,7 +10115,7 @@ export function App({
         previousStatus: persisted.status,
         nextStatus,
         tags: persisted.tags,
-        at: nowMs
+        at: nowMs,
       });
       return;
     }
@@ -11146,18 +10124,20 @@ export function App({
       ...persisted,
       status: "open",
       updatedAt: nowMs,
-      closedAt: undefined
+      closedAt: undefined,
     };
     dispatch({
       type: "setTasks",
-      tasks: state.tasks.map((task) => (task.id === updated.id ? updated : task))
+      tasks: state.tasks.map((task) =>
+        task.id === updated.id ? updated : task,
+      ),
     });
     emitCompletionForTransition({
       taskId: updated.id,
       previousStatus: persisted.status,
       nextStatus,
       tags: updated.tags,
-      at: nowMs
+      at: nowMs,
     });
   }
 
@@ -11190,7 +10170,8 @@ export function App({
   }
 
   function openChecklistQuickEditFromList() {
-    if (uiState.mode !== Mode.LIST || uiState.focus !== FocusTarget.TASK_LIST) return;
+    if (uiState.mode !== Mode.LIST || uiState.focus !== FocusTarget.TASK_LIST)
+      return;
     if (!selectedTask || (selectedTask.checklist?.length ?? 0) === 0) return;
     const opened = openEditForRow(selectedTask);
     if (!opened) return;
@@ -11209,10 +10190,12 @@ export function App({
     editorFlow.updateEditorDraft(patch);
   }
 
-  function saveEditor(options: {
-    forceMode?: typeof Mode.ADD | typeof Mode.EDIT;
-    closeAfterSave?: boolean;
-  } = {}): boolean {
+  function saveEditor(
+    options: {
+      forceMode?: typeof Mode.ADD | typeof Mode.EDIT;
+      closeAfterSave?: boolean;
+    } = {},
+  ): boolean {
     return editorFlow.saveEditor(options);
   }
 
@@ -11245,7 +10228,7 @@ export function App({
       taskTitle: createdTask.title,
       value: "",
       previousMode: Mode.EDIT,
-      previousFocus: FocusTarget.EDITOR_CHECKLIST
+      previousFocus: FocusTarget.EDITOR_CHECKLIST,
     });
   }
 
@@ -11278,16 +10261,19 @@ export function App({
     emitCompletionFromDiff,
     openNotesMode,
     openNotesCreatePrompt,
-    openChecklistAddFromEmptyNux
+    openChecklistAddFromEmptyNux,
   });
 
   function finishDeleteModalAction(
     modal: UIDeleteModal,
     deletedRowId: string,
-    nextTasks: Task[]
+    nextTasks: Task[],
   ) {
     const visibleIds = visibleTaskRows.map((task) => task.id);
-    const nextSelectedId = getNextSelectedIdAfterDelete(visibleIds, deletedRowId);
+    const nextSelectedId = getNextSelectedIdAfterDelete(
+      visibleIds,
+      deletedRowId,
+    );
     dispatch({ type: "setTasks", tasks: nextTasks });
     dispatch({ type: "setSelected", id: nextSelectedId });
     uiDispatch({ type: "setModal", modal: null });
@@ -11302,7 +10288,7 @@ export function App({
       finishDeleteModalAction(
         modal,
         modal.taskId,
-        state.tasks.filter((task) => task.id !== modal.taskId)
+        state.tasks.filter((task) => task.id !== modal.taskId),
       );
       return;
     }
@@ -11312,20 +10298,25 @@ export function App({
       seriesTaskId: modal.seriesTaskId,
       seriesId: modal.seriesId,
       occurrenceIso: modal.occurrenceIso,
-      nowMs
+      nowMs,
     });
     finishDeleteModalAction(modal, modal.selectedRowId, nextTasks);
   }
 
   function handleDeleteSelectedAndFuture() {
     const modal = uiState.modal;
-    if (!modal || modal.type !== "delete" || modal.target !== "recurring_occurrence") return;
+    if (
+      !modal ||
+      modal.type !== "delete" ||
+      modal.target !== "recurring_occurrence"
+    )
+      return;
     const nowMs = Date.now();
     const nextTasks = deleteRecurringOccurrenceAndFuture(state.tasks, {
       seriesTaskId: modal.seriesTaskId,
       seriesId: modal.seriesId,
       occurrenceIso: modal.occurrenceIso,
-      nowMs
+      nowMs,
     });
     finishDeleteModalAction(modal, modal.selectedRowId, nextTasks);
   }
@@ -11423,8 +10414,8 @@ export function App({
       type: "setFilters",
       filters: {
         tag: undefined,
-        tagFilter: normalizeTagFilter(next)
-      }
+        tagFilter: normalizeTagFilter(next),
+      },
     });
   }
 
@@ -11433,15 +10424,15 @@ export function App({
       type: "setFilters",
       filters: {
         tag: undefined,
-        tagFilter: undefined
-      }
+        tagFilter: undefined,
+      },
     });
   }
 
   function toggleTagInTagFilter(
     current: TagFilter | undefined,
     rawTag: string,
-    bucket: TagFilterBucket
+    bucket: TagFilterBucket,
   ): TagFilter | undefined {
     const normalizedTag = normalizeTagToken(rawTag, state.tagAliases);
     if (!normalizedTag) return normalizeTagFilter(current);
@@ -11449,7 +10440,7 @@ export function App({
     const next: TagFilter = {
       all: [...(current?.all ?? [])],
       any: [...(current?.any ?? [])],
-      none: [...(current?.none ?? [])]
+      none: [...(current?.none ?? [])],
     };
     const bucketTags = next[bucket] ?? [];
     const alreadyPresent = bucketTags.includes(normalizedTag);
@@ -11462,14 +10453,14 @@ export function App({
 
   function removeLastTagFromTagFilter(
     current: TagFilter | undefined,
-    bucket: TagFilterBucket
+    bucket: TagFilterBucket,
   ): TagFilter | undefined {
     const tags = current?.[bucket] ?? [];
     if (tags.length === 0) return normalizeTagFilter(current);
     const next: TagFilter = {
       all: [...(current?.all ?? [])],
       any: [...(current?.any ?? [])],
-      none: [...(current?.none ?? [])]
+      none: [...(current?.none ?? [])],
     };
     next[bucket] = tags.slice(0, -1);
     return normalizeTagFilter(next);
@@ -11478,14 +10469,14 @@ export function App({
   function removeTagFromTagFilter(
     current: TagFilter | undefined,
     bucket: TagFilterBucket,
-    rawTag: string
+    rawTag: string,
   ): TagFilter | undefined {
     const normalizedTag = normalizeTagToken(rawTag, state.tagAliases);
     if (!normalizedTag) return normalizeTagFilter(current);
     const next: TagFilter = {
       all: [...(current?.all ?? [])],
       any: [...(current?.any ?? [])],
-      none: [...(current?.none ?? [])]
+      none: [...(current?.none ?? [])],
     };
     next[bucket] = (next[bucket] ?? []).filter((tag) => tag !== normalizedTag);
     return normalizeTagFilter(next);
@@ -11493,9 +10484,13 @@ export function App({
 
   function toggleTagInBucket(
     rawTag: string,
-    bucket: TagFilterBucket
+    bucket: TagFilterBucket,
   ): TagFilter | undefined {
-    const nextTagFilter = toggleTagInTagFilter(state.filters.tagFilter, rawTag, bucket);
+    const nextTagFilter = toggleTagInTagFilter(
+      state.filters.tagFilter,
+      rawTag,
+      bucket,
+    );
     setTagFilter(nextTagFilter);
     return nextTagFilter;
   }
@@ -11505,7 +10500,7 @@ export function App({
       "all",
       "open",
       "done",
-      "archived"
+      "archived",
     ];
     const current = order.indexOf(state.filters.status);
     const next = order[(current + 1) % order.length];
@@ -11515,7 +10510,8 @@ export function App({
   function cycleSort() {
     const currentIndex = SORT_MODE_ORDER.indexOf(state.sortMode);
     const safeIndex = currentIndex === -1 ? 0 : currentIndex;
-    const nextSortMode = SORT_MODE_ORDER[(safeIndex + 1) % SORT_MODE_ORDER.length];
+    const nextSortMode =
+      SORT_MODE_ORDER[(safeIndex + 1) % SORT_MODE_ORDER.length];
     dispatch({ type: "setSortMode", sortMode: nextSortMode });
     showShortNavigationBanner(`Sort: ${getSortModeLabel(nextSortMode)}`);
   }
@@ -11525,11 +10521,14 @@ export function App({
       "any",
       "overdue",
       "today",
-      "next7"
+      "next7",
     ];
     const current = order.indexOf(state.filters.due);
     const next = order[(current + 1) % order.length];
-    dispatch({ type: "setFilters", filters: { due: next, dueDayOffset: undefined } });
+    dispatch({
+      type: "setFilters",
+      filters: { due: next, dueDayOffset: undefined },
+    });
   }
 
   function cycleAnalyticsWindow() {
@@ -11562,13 +10561,17 @@ export function App({
       dispatch({ type: "setFilters", filters: { priority: undefined } });
       return;
     }
-    dispatch({ type: "setFilters", filters: { priority: priorities[nextIndex] } });
+    dispatch({
+      type: "setFilters",
+      filters: { priority: priorities[nextIndex] },
+    });
   }
 
   function getDashboardFocusGroupItemCount(group: DashboardFocusGroup): number {
     switch (group) {
       case "top_tags":
-        return state.filters.status === "done" || state.filters.status === "archived"
+        return state.filters.status === "done" ||
+          state.filters.status === "archived"
           ? 0
           : dashboardTopTags.length;
       case "due_buckets":
@@ -11588,7 +10591,8 @@ export function App({
 
   function moveDashboardFocusGroup(direction: 1 | -1) {
     if (uiState.mode !== Mode.DASHBOARD) return;
-    const currentIndex = DASHBOARD_FOCUS_GROUP_ORDER.indexOf(dashboardFocusGroup);
+    const currentIndex =
+      DASHBOARD_FOCUS_GROUP_ORDER.indexOf(dashboardFocusGroup);
     const safeIndex = currentIndex === -1 ? 0 : currentIndex;
     for (let step = 1; step <= DASHBOARD_FOCUS_GROUP_ORDER.length; step += 1) {
       const candidateIndex =
@@ -11612,7 +10616,9 @@ export function App({
         setDashboardTagSelection((prev) => (prev + delta + count) % count);
         return;
       case "due_buckets":
-        setDashboardDueBucketSelection((prev) => (prev + delta + count) % count);
+        setDashboardDueBucketSelection(
+          (prev) => (prev + delta + count) % count,
+        );
         return;
       case "priority":
         setDashboardPrioritySelection((prev) => (prev + delta + count) % count);
@@ -11624,7 +10630,9 @@ export function App({
         setDashboardProjectSelection((prev) => (prev + delta + count) % count);
         return;
       case "workflow_stage":
-        setDashboardWorkflowStageSelection((prev) => (prev + delta + count) % count);
+        setDashboardWorkflowStageSelection(
+          (prev) => (prev + delta + count) % count,
+        );
         return;
       default:
         return;
@@ -11632,7 +10640,10 @@ export function App({
   }
 
   function applyDashboardTagAtIndex(selectionIndex: number) {
-    if (state.filters.status === "done" || state.filters.status === "archived") {
+    if (
+      state.filters.status === "done" ||
+      state.filters.status === "archived"
+    ) {
       showShortNavigationBanner("Top tags available for OPEN tasks only");
       return;
     }
@@ -11641,7 +10652,10 @@ export function App({
       return;
     }
 
-    const clampedIndex = Math.max(0, Math.min(selectionIndex, dashboardTopTags.length - 1));
+    const clampedIndex = Math.max(
+      0,
+      Math.min(selectionIndex, dashboardTopTags.length - 1),
+    );
     const selected = dashboardTopTags[clampedIndex];
     if (!selected) return;
     setDashboardTagSelection(clampedIndex);
@@ -11649,11 +10663,11 @@ export function App({
       type: "setFilters",
       filters: {
         tag: selected.tag,
-        tagFilter: undefined
-      }
+        tagFilter: undefined,
+      },
     });
     showShortNavigationBanner(
-      `Dashboard tag filter: ${formatTagForReadOnlyDisplay(selected.tag)}`
+      `Dashboard tag filter: ${formatTagForReadOnlyDisplay(selected.tag)}`,
     );
   }
 
@@ -11667,8 +10681,8 @@ export function App({
         filters: {
           status: "open",
           due: "overdue",
-          dueDayOffset: undefined
-        }
+          dueDayOffset: undefined,
+        },
       });
       showShortNavigationBanner("Dashboard due filter: OPEN + OVERDUE");
       return;
@@ -11680,8 +10694,8 @@ export function App({
         filters: {
           status: "open",
           due: "today",
-          dueDayOffset: undefined
-        }
+          dueDayOffset: undefined,
+        },
       });
       showShortNavigationBanner("Dashboard due filter: OPEN + TODAY");
       return;
@@ -11693,10 +10707,12 @@ export function App({
       filters: {
         status: "open",
         due: "any",
-        dueDayOffset: dueDayOffset as 1 | 2 | 3 | 4 | 5 | 6
-      }
+        dueDayOffset: dueDayOffset as 1 | 2 | 3 | 4 | 5 | 6,
+      },
     });
-    showShortNavigationBanner(`Dashboard due filter: OPEN + EXACT +${dueDayOffset}`);
+    showShortNavigationBanner(
+      `Dashboard due filter: OPEN + EXACT +${dueDayOffset}`,
+    );
   }
 
   function applyDashboardPriorityAtIndex(selectionIndex: number) {
@@ -11706,7 +10722,7 @@ export function App({
     }
     const clampedIndex = Math.max(
       0,
-      Math.min(selectionIndex, dashboardPriorityBuckets.length - 1)
+      Math.min(selectionIndex, dashboardPriorityBuckets.length - 1),
     );
     const selected = dashboardPriorityBuckets[clampedIndex];
     if (!selected) return;
@@ -11720,10 +10736,11 @@ export function App({
         status: "open",
         due: "any",
         dueDayOffset: undefined,
-        priority: normalizedPriority
-      }
+        priority: normalizedPriority,
+      },
     });
-    const displayPriority = formatPriorityForDisplay(normalizedPriority) ?? normalizedPriority;
+    const displayPriority =
+      formatPriorityForDisplay(normalizedPriority) ?? normalizedPriority;
     showShortNavigationBanner(`Dashboard priority filter: ${displayPriority}`);
   }
 
@@ -11734,7 +10751,7 @@ export function App({
     }
     const clampedIndex = Math.max(
       0,
-      Math.min(selectionIndex, dashboardAssigneeSlices.length - 1)
+      Math.min(selectionIndex, dashboardAssigneeSlices.length - 1),
     );
     const selected = dashboardAssigneeSlices[clampedIndex];
     if (!selected) return;
@@ -11742,8 +10759,8 @@ export function App({
     dispatch({
       type: "setFilters",
       filters: {
-        assignee: selected.value
-      }
+        assignee: selected.value,
+      },
     });
     showShortNavigationBanner(`Dashboard assignee filter: ${selected.value}`);
   }
@@ -11755,7 +10772,7 @@ export function App({
     }
     const clampedIndex = Math.max(
       0,
-      Math.min(selectionIndex, dashboardProjectSlices.length - 1)
+      Math.min(selectionIndex, dashboardProjectSlices.length - 1),
     );
     const selected = dashboardProjectSlices[clampedIndex];
     if (!selected) return;
@@ -11763,8 +10780,8 @@ export function App({
     dispatch({
       type: "setFilters",
       filters: {
-        project: selected.value
-      }
+        project: selected.value,
+      },
     });
     showShortNavigationBanner(`Dashboard project filter: ${selected.value}`);
   }
@@ -11776,7 +10793,7 @@ export function App({
     }
     const clampedIndex = Math.max(
       0,
-      Math.min(selectionIndex, dashboardWorkflowStageSlices.length - 1)
+      Math.min(selectionIndex, dashboardWorkflowStageSlices.length - 1),
     );
     const selected = dashboardWorkflowStageSlices[clampedIndex];
     if (!selected) return;
@@ -11784,8 +10801,8 @@ export function App({
     dispatch({
       type: "setFilters",
       filters: {
-        workflowStage: selected.value as Task["workflowStage"]
-      }
+        workflowStage: selected.value as Task["workflowStage"],
+      },
     });
     showShortNavigationBanner(`Dashboard stage filter: ${selected.value}`);
   }
@@ -11809,7 +10826,9 @@ export function App({
         applyDashboardProjectAtIndex(clampedDashboardProjectSelection);
         return;
       case "workflow_stage":
-        applyDashboardWorkflowStageAtIndex(clampedDashboardWorkflowStageSelection);
+        applyDashboardWorkflowStageAtIndex(
+          clampedDashboardWorkflowStageSelection,
+        );
         return;
       default:
         return;
@@ -11857,7 +10876,9 @@ export function App({
     applyDashboardWorkflowStageAtIndex(index);
   }
 
-  function toggleBottomDueQuickFilter(targetDue: "overdue" | "today" | "next7") {
+  function toggleBottomDueQuickFilter(
+    targetDue: "overdue" | "today" | "next7",
+  ) {
     const alreadyActive =
       state.filters.status === "open" &&
       state.filters.due === targetDue &&
@@ -11865,7 +10886,7 @@ export function App({
     if (alreadyActive) {
       dispatch({
         type: "setFilters",
-        filters: { status: "all", due: "any", dueDayOffset: undefined }
+        filters: { status: "all", due: "any", dueDayOffset: undefined },
       });
       showShortNavigationBanner("Quick filter cleared");
       return;
@@ -11876,10 +10897,12 @@ export function App({
       filters: {
         status: "open",
         due: targetDue,
-        dueDayOffset: undefined
-      }
+        dueDayOffset: undefined,
+      },
     });
-    showShortNavigationBanner(`Quick filter: OPEN + ${targetDue.toUpperCase()}`);
+    showShortNavigationBanner(
+      `Quick filter: OPEN + ${targetDue.toUpperCase()}`,
+    );
   }
 
   function toggleBottomCompletedQuickFilter() {
@@ -11890,7 +10913,7 @@ export function App({
     if (alreadyActive) {
       dispatch({
         type: "setFilters",
-        filters: { status: "all", dueDayOffset: undefined }
+        filters: { status: "all", dueDayOffset: undefined },
       });
       showShortNavigationBanner("Quick filter cleared");
       return;
@@ -11901,8 +10924,8 @@ export function App({
       filters: {
         status: "done",
         due: "any",
-        dueDayOffset: undefined
-      }
+        dueDayOffset: undefined,
+      },
     });
     showShortNavigationBanner("Quick filter: DONE");
   }
@@ -11920,7 +10943,7 @@ export function App({
       showShortNavigationBanner(
         nextTagFilter
           ? `Tag filter (ALL): ${formatTagForReadOnlyDisplay(tag)}`
-          : "Boolean tag filter cleared"
+          : "Boolean tag filter cleared",
       );
       return;
     }
@@ -11930,13 +10953,13 @@ export function App({
       type: "setFilters",
       filters: {
         tag: alreadyActive ? undefined : tag,
-        tagFilter: undefined
-      }
+        tagFilter: undefined,
+      },
     });
     showShortNavigationBanner(
       alreadyActive
         ? "Tag quick filter cleared"
-        : `Tag quick filter: ${formatTagForReadOnlyDisplay(tag)}`
+        : `Tag quick filter: ${formatTagForReadOnlyDisplay(tag)}`,
     );
   }
 
@@ -11947,7 +10970,8 @@ export function App({
       state.filters.status === "open" &&
       state.filters.due === "any" &&
       state.filters.dueDayOffset === undefined &&
-      normalizePriorityFilterValue(state.filters.priority) === normalizedPriority
+      normalizePriorityFilterValue(state.filters.priority) ===
+        normalizedPriority
     );
   }
 
@@ -11963,8 +10987,8 @@ export function App({
           status: "all",
           due: "any",
           dueDayOffset: undefined,
-          priority: undefined
-        }
+          priority: undefined,
+        },
       });
       showShortNavigationBanner("Priority quick filter cleared");
       return;
@@ -11976,8 +11000,8 @@ export function App({
         status: "open",
         due: "any",
         dueDayOffset: undefined,
-        priority: normalizedPriority
-      }
+        priority: normalizedPriority,
+      },
     });
     const displayPriority =
       formatPriorityForDisplay(normalizedPriority) ?? normalizedPriority;
@@ -11990,12 +11014,15 @@ export function App({
         state.tasks
           .filter((task) => task.status === "open")
           .flatMap((task) => task.tags)
-          .filter((tag) => !isPriorityToken(tag))
-      )
+          .filter((tag) => !isPriorityToken(tag)),
+      ),
     ).sort((left, right) => left.localeCompare(right));
 
     if (activeTags.length === 0) {
-      dispatch({ type: "setFilters", filters: { tag: undefined, tagFilter: undefined } });
+      dispatch({
+        type: "setFilters",
+        filters: { tag: undefined, tagFilter: undefined },
+      });
       return;
     }
 
@@ -12008,8 +11035,8 @@ export function App({
         type: "setFilters",
         filters: {
           tag: currentIndex === -1 ? activeTags[0] : undefined,
-          tagFilter: undefined
-        }
+          tagFilter: undefined,
+        },
       });
       return;
     }
@@ -12018,8 +11045,8 @@ export function App({
       type: "setFilters",
       filters: {
         tag: activeTags[nextIndex],
-        tagFilter: undefined
-      }
+        tagFilter: undefined,
+      },
     });
   }
 
@@ -12048,7 +11075,7 @@ export function App({
           justifyContent: "center",
           alignItems: "center",
           backgroundColor: theme.bg,
-          color: theme.text
+          color: theme.text,
         }}
       >
         <box
@@ -12062,11 +11089,15 @@ export function App({
             paddingTop: 1,
             paddingBottom: 1,
             flexDirection: "column",
-            alignItems: "center"
+            alignItems: "center",
           }}
         >
-          <text style={{ color: theme.warn, fontWeight: "bold" }}>{terminalSizeWarning}</text>
-          <text style={{ color: theme.muted }}>Resize terminal to continue.</text>
+          <text style={{ color: theme.warn, fontWeight: "bold" }}>
+            {terminalSizeWarning}
+          </text>
+          <text style={{ color: theme.muted }}>
+            Resize terminal to continue.
+          </text>
           <text style={{ color: theme.muted }}>Press q to quit.</text>
         </box>
       </box>
@@ -12079,7 +11110,7 @@ export function App({
         flexDirection: "row",
         height: "100%",
         backgroundColor: theme.bg,
-        color: theme.text
+        color: theme.text,
       }}
     >
       <box
@@ -12089,7 +11120,7 @@ export function App({
           padding: 1,
           border: true,
           borderStyle: "single",
-          borderColor: railPanelBorderColor
+          borderColor: railPanelBorderColor,
         }}
       >
         <LeftRail
@@ -12105,7 +11136,9 @@ export function App({
           hintLines={leftRailHintLines}
           showHints={showLeftRailHints}
           showLogo={showLogo}
-          activeThemeId={settingsState.themeId === "rotating" ? activeThemeId : undefined}
+          activeThemeId={
+            settingsState.themeId === "rotating" ? activeThemeId : undefined
+          }
         />
       </box>
 
@@ -12119,45 +11152,57 @@ export function App({
             flexDirection: "column",
             border: true,
             borderStyle: "single",
-            borderColor: headerBorderColor
+            borderColor: headerBorderColor,
           }}
         >
-          <box style={{ width: "100%", justifyContent: "center", alignItems: "center" }}>
+          <box
+            style={{
+              width: "100%",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
             <text
               style={{
                 color: theme.bg,
-                fontWeight: "bold"
+                fontWeight: "bold",
               }}
             >
               {isDashboardMode
                 ? "DASHBOARD MODE"
                 : isBackupMode
                   ? "BACKUP CENTER"
-                : isNotesMode
-                  ? "TOME: Terminal Oriented Markdown Environment"
-                : selectedTask
-                  ? selectedTask.title.toUpperCase()
-                  : "NO TASK SELECTED"}
+                  : isNotesMode
+                    ? "TOME: Terminal Oriented Markdown Environment"
+                    : selectedTask
+                      ? selectedTask.title.toUpperCase()
+                      : "NO TASK SELECTED"}
             </text>
           </box>
-          <box style={{ width: "100%", justifyContent: "center", alignItems: "center" }}>
+          <box
+            style={{
+              width: "100%",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
             <text
               style={{
                 color: theme.bg,
-                fontWeight: "bold"
+                fontWeight: "bold",
               }}
             >
               {isDashboardMode
                 ? `FILTERED TASKS: ${visibleTaskRows.length}`
                 : isBackupMode
                   ? "SAFE IMPORT / EXPORT FLOW"
-                : isNotesMode
-                  ? activeNoteTitle.toUpperCase()
-                : bulkActive
-                  ? `BULK MARKED: ${String(bulkMarkedTaskIds.length)} · \` bulk ... · Esc clear`
-                : selectedTask
-                  ? getDueInLabel(selectedTask, now)
-                  : ""}
+                  : isNotesMode
+                    ? activeNoteTitle.toUpperCase()
+                    : bulkActive
+                      ? `BULK MARKED: ${String(bulkMarkedTaskIds.length)} · \` bulk ... · Esc clear`
+                      : selectedTask
+                        ? getDueInLabel(selectedTask, now)
+                        : ""}
             </text>
           </box>
         </box>
@@ -12171,21 +11216,21 @@ export function App({
               style={{
                 backgroundColor: dashboardPanelBackgroundColor,
                 paddingLeft: 3,
-                paddingTop: 1
+                paddingTop: 1,
               }}
             >
               <text style={{ color: dashboardTheme.muted }}>DASHBOARD</text>
             </box>
             <box
-                style={{
-                  flexGrow: 1,
-                  padding: 1,
-                  backgroundColor: dashboardPanelBackgroundColor,
-                  border: true,
-                  borderStyle: "single",
-                  borderColor: dashboardPanelBorderColor
-                }}
-              >
+              style={{
+                flexGrow: 1,
+                padding: 1,
+                backgroundColor: dashboardPanelBackgroundColor,
+                border: true,
+                borderStyle: "single",
+                borderColor: dashboardPanelBorderColor,
+              }}
+            >
               <DashboardPane
                 tasks={visibleTaskRows}
                 filters={state.filters}
@@ -12195,11 +11240,13 @@ export function App({
                 selectedPriorityIndex={clampedDashboardPrioritySelection}
                 selectedAssigneeIndex={clampedDashboardAssigneeSelection}
                 selectedProjectIndex={clampedDashboardProjectSelection}
-                selectedWorkflowStageIndex={clampedDashboardWorkflowStageSelection}
+                selectedWorkflowStageIndex={
+                  clampedDashboardWorkflowStageSelection
+                }
                 analyticsWindowDays={analyticsWindowDays}
                 prioritySlices={dashboardPriorityBuckets.map((bucket) => ({
                   value: bucket.priority,
-                  count: bucket.count
+                  count: bucket.count,
                 }))}
                 assigneeSlices={dashboardAssigneeSlices}
                 projectSlices={dashboardProjectSlices}
@@ -12230,19 +11277,17 @@ export function App({
               style={{
                 flexDirection: "column",
                 flexGrow: 2,
-                minWidth: notesListPaneMinWidth
+                minWidth: notesListPaneMinWidth,
               }}
             >
               <box
                 style={{
                   backgroundColor: taskListTheme.panel,
                   paddingLeft: 3,
-                  paddingTop: 1
+                  paddingTop: 1,
                 }}
               >
-                <text style={{ color: taskListTheme.muted }}>
-                  TOMEs
-                </text>
+                <text style={{ color: taskListTheme.muted }}>TOMEs</text>
               </box>
               <box
                 style={{
@@ -12251,46 +11296,61 @@ export function App({
                   backgroundColor: taskListPanelBackgroundColor,
                   border: true,
                   borderStyle: "single",
-                  borderColor: taskListPanelBorderColor
+                  borderColor: taskListPanelBorderColor,
                 }}
               >
                 {uiState.mode === Mode.NOTES_SEARCH ? (
                   <box style={{ flexDirection: "column", marginBottom: 1 }}>
-                    <text style={{ color: taskListTheme.muted }}>TOME SEARCH</text>
+                    <text style={{ color: taskListTheme.muted }}>
+                      TOME SEARCH
+                    </text>
                     <input
                       value={notesSearchQuery}
                       onChange={setNotesSearchQuery}
                       focused={uiState.focus === FocusTarget.NOTES_SEARCH_INPUT}
                       placeholder="Search TOME notes by title/path"
-                      style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
+                      style={{
+                        backgroundColor: inputTheme.bg,
+                        color: inputTheme.text,
+                      }}
                     />
                   </box>
                 ) : null}
                 {uiState.mode === Mode.NOTES_TAG_FILTER ? (
                   <box style={{ flexDirection: "column", marginBottom: 1 }}>
-                    <text style={{ color: taskListTheme.muted }}>TOME TAG FILTER</text>
+                    <text style={{ color: taskListTheme.muted }}>
+                      TOME TAG FILTER
+                    </text>
                     <input
                       value={notesTagFilterQuery}
                       onChange={setNotesTagFilterQuery}
-                      focused={uiState.focus === FocusTarget.NOTES_TAG_FILTER_INPUT}
+                      focused={
+                        uiState.focus === FocusTarget.NOTES_TAG_FILTER_INPUT
+                      }
                       placeholder="Filter tag (supports nested e.g. inbox)"
-                      style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
+                      style={{
+                        backgroundColor: inputTheme.bg,
+                        color: inputTheme.text,
+                      }}
                     />
                   </box>
                 ) : null}
                 {!notesRuntime.enabled ? (
                   <text style={{ color: theme.warn }}>
-                    {notesRuntime.error ?? "TOME unavailable for current root path."}
+                    {notesRuntime.error ??
+                      "TOME unavailable for current root path."}
                   </text>
                 ) : filteredNotes.length === 0 ? (
-                  <text style={{ color: theme.muted }}>No TOME notes found. Press a to create one.</text>
+                  <text style={{ color: theme.muted }}>
+                    No TOME notes found. Press a to create one.
+                  </text>
                 ) : (
                   <box style={{ flexDirection: "column" }}>
                     {filteredNotes.map((note, index) => {
                       const selected = index === clampedNotesSelectedIndex;
                       const notesListTagLayout = computeVisibleTagPills(
                         note.tags,
-                        notesListTagPillMaxWidth
+                        notesListTagPillMaxWidth,
                       );
                       return (
                         <box
@@ -12299,7 +11359,9 @@ export function App({
                             flexDirection: "column",
                             paddingLeft: 1,
                             paddingRight: 1,
-                            backgroundColor: selected ? theme.accentBlue : "transparent"
+                            backgroundColor: selected
+                              ? theme.accentBlue
+                              : "transparent",
                           }}
                           onMouseDown={(event) => {
                             if (event.button !== 0) return;
@@ -12309,10 +11371,14 @@ export function App({
                             }
                           }}
                         >
-                          <text style={{ color: selected ? theme.bg : theme.text }}>
+                          <text
+                            style={{ color: selected ? theme.bg : theme.text }}
+                          >
                             {note.title}
                           </text>
-                          <text style={{ color: selected ? theme.bg : theme.muted }}>
+                          <text
+                            style={{ color: selected ? theme.bg : theme.muted }}
+                          >
                             {note.path}
                           </text>
                           {note.tags.length > 0 ? (
@@ -12324,10 +11390,12 @@ export function App({
                                     backgroundColor: colorForTag(tag),
                                     color: theme.bg,
                                     paddingLeft: 1,
-                                    paddingRight: 1
+                                    paddingRight: 1,
                                   }}
                                 >
-                                  <text>{formatTagForReadOnlyDisplay(tag)}</text>
+                                  <text>
+                                    {formatTagForReadOnlyDisplay(tag)}
+                                  </text>
                                 </box>
                               ))}
                               {notesListTagLayout.hiddenCount > 0 ? (
@@ -12337,7 +11405,7 @@ export function App({
                                     backgroundColor: theme.outline,
                                     color: theme.bg,
                                     paddingLeft: 1,
-                                    paddingRight: 1
+                                    paddingRight: 1,
                                   }}
                                 >
                                   <text>{`+${String(notesListTagLayout.hiddenCount)}`}</text>
@@ -12351,36 +11419,43 @@ export function App({
                   </box>
                 )}
               </box>
-              {!notesInlinePromptOpen && notesRuntime.enabled && showBottomHintSurface ? (
+              {!notesInlinePromptOpen &&
+              notesRuntime.enabled &&
+              showBottomHintSurface ? (
                 <box
                   style={{
                     marginTop: 1,
                     flexDirection: "column",
                     paddingLeft: 1,
-                    paddingRight: 1
+                    paddingRight: 1,
                   }}
                 >
                   <text style={{ color: theme.muted }}>TOME ACTIONS</text>
                   <box style={{ marginTop: 1, flexDirection: "column" }}>
-                    <box style={{ flexDirection: "row", gap: tomeActionRowGap }}>
+                    <box
+                      style={{ flexDirection: "row", gap: tomeActionRowGap }}
+                    >
                       {renderTomeActionButton({
                         label:
-                          uiState.mode === Mode.NOTES_VIEW || uiState.mode === Mode.NOTES_EDIT
+                          uiState.mode === Mode.NOTES_VIEW ||
+                          uiState.mode === Mode.NOTES_EDIT
                             ? "LIST[Esc]"
                             : "OPEN[Ent]",
                         onPress:
-                          uiState.mode === Mode.NOTES_VIEW || uiState.mode === Mode.NOTES_EDIT
+                          uiState.mode === Mode.NOTES_VIEW ||
+                          uiState.mode === Mode.NOTES_EDIT
                             ? backToNotesList
                             : () => {
                                 void openSelectedNoteFromList();
                               },
                         disabled:
-                          uiState.mode === Mode.NOTES_VIEW || uiState.mode === Mode.NOTES_EDIT
+                          uiState.mode === Mode.NOTES_VIEW ||
+                          uiState.mode === Mode.NOTES_EDIT
                             ? false
                             : !canOperateOnSelectedTome,
                         compact: true,
                         fill: true,
-                        borderless: true
+                        borderless: true,
                       })}
                       {renderTomeActionButton({
                         label: "NEW[a]",
@@ -12388,7 +11463,7 @@ export function App({
                         onPress: openNotesCreatePrompt,
                         compact: true,
                         fill: true,
-                        borderless: true
+                        borderless: true,
                       })}
                       {renderTomeActionButton({
                         label: "EDIT[e]",
@@ -12398,7 +11473,7 @@ export function App({
                         disabled: !canOperateOnSelectedTome,
                         compact: true,
                         fill: true,
-                        borderless: true
+                        borderless: true,
                       })}
                       {renderTomeActionButton({
                         label: "RENAME[R]",
@@ -12406,7 +11481,7 @@ export function App({
                         disabled: !canOperateOnSelectedTome,
                         compact: true,
                         fill: true,
-                        borderless: true
+                        borderless: true,
                       })}
                       {renderTomeActionButton({
                         label: "DEL[d]",
@@ -12415,10 +11490,12 @@ export function App({
                         disabled: !canOperateOnSelectedTome,
                         compact: true,
                         fill: true,
-                        borderless: true
+                        borderless: true,
                       })}
                     </box>
-                    <box style={{ flexDirection: "row", gap: tomeActionRowGap }}>
+                    <box
+                      style={{ flexDirection: "row", gap: tomeActionRowGap }}
+                    >
                       {renderTomeActionButton({
                         label: "REINDEX[i]",
                         onPress: () => {
@@ -12426,28 +11503,28 @@ export function App({
                         },
                         compact: true,
                         fill: true,
-                        borderless: true
+                        borderless: true,
                       })}
                       {renderTomeActionButton({
                         label: "SRCH[/]",
                         onPress: openNotesSearchMode,
                         compact: true,
                         fill: true,
-                        borderless: true
+                        borderless: true,
                       })}
                       {renderTomeActionButton({
                         label: "TAG[p]",
                         onPress: openNotesTagFilterMode,
                         compact: true,
                         fill: true,
-                        borderless: true
+                        borderless: true,
                       })}
                       {renderTomeActionButton({
                         label: "ROOT[o]",
                         onPress: openNotesRootSettings,
                         compact: true,
                         fill: true,
-                        borderless: true
+                        borderless: true,
                       })}
                     </box>
                   </box>
@@ -12464,7 +11541,7 @@ export function App({
                     paddingRight: 1,
                     paddingTop: 1,
                     paddingBottom: 1,
-                    flexDirection: "column"
+                    flexDirection: "column",
                   }}
                 >
                   <text style={{ color: theme.muted }}>NEW TOME NOTE</text>
@@ -12473,7 +11550,10 @@ export function App({
                     onChange={setNotesCreateTitle}
                     focused={false}
                     placeholder="Type TOME title"
-                    style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
+                    style={{
+                      backgroundColor: inputTheme.bg,
+                      color: inputTheme.text,
+                    }}
                   />
                   <text style={{ color: theme.muted }}>
                     Enter: create · Esc: cancel
@@ -12493,7 +11573,7 @@ export function App({
                     paddingRight: 1,
                     paddingTop: 1,
                     paddingBottom: 1,
-                    flexDirection: "column"
+                    flexDirection: "column",
                   }}
                 >
                   <text style={{ color: theme.muted }}>RENAME TOME NOTE</text>
@@ -12502,7 +11582,10 @@ export function App({
                     onChange={setNotesRenameTitle}
                     focused={false}
                     placeholder="Type new TOME title"
-                    style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
+                    style={{
+                      backgroundColor: inputTheme.bg,
+                      color: inputTheme.text,
+                    }}
                   />
                   <text style={{ color: theme.muted }}>
                     Enter: rename · Esc: cancel
@@ -12522,7 +11605,7 @@ export function App({
                     paddingRight: 1,
                     paddingTop: 1,
                     paddingBottom: 1,
-                    flexDirection: "column"
+                    flexDirection: "column",
                   }}
                 >
                   <text style={{ color: theme.muted }}>TOME ROOT SETTINGS</text>
@@ -12534,7 +11617,10 @@ export function App({
                     onSubmit={() => {
                       void confirmNotesRootSettings();
                     }}
-                    style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
+                    style={{
+                      backgroundColor: inputTheme.bg,
+                      color: inputTheme.text,
+                    }}
                   />
                   <text style={{ color: theme.muted }}>
                     Enter: apply (copy-first) · Esc: cancel
@@ -12546,18 +11632,20 @@ export function App({
               style={{
                 flexDirection: "column",
                 flexGrow: 3,
-                minWidth: notesContextPaneMinWidth
+                minWidth: notesContextPaneMinWidth,
               }}
             >
               <box
                 style={{
                   backgroundColor: theme.panel,
                   paddingLeft: 3,
-                  paddingTop: 1
+                  paddingTop: 1,
                 }}
               >
                 <text style={{ color: theme.muted }}>
-                  {uiState.mode === Mode.NOTES_EDIT ? "EDIT TOME NOTE" : "TOME CONTEXT"}
+                  {uiState.mode === Mode.NOTES_EDIT
+                    ? "EDIT TOME NOTE"
+                    : "TOME CONTEXT"}
                 </text>
               </box>
               <box
@@ -12567,11 +11655,17 @@ export function App({
                   backgroundColor: detailsPanelBackgroundColor,
                   border: true,
                   borderStyle: "single",
-                  borderColor: detailsPanelBorderColor
+                  borderColor: detailsPanelBorderColor,
                 }}
               >
                 {uiState.mode === Mode.NOTES_EDIT ? (
-                  <box style={{ flexDirection: "column", width: "100%", height: "100%" }}>
+                  <box
+                    style={{
+                      flexDirection: "column",
+                      width: "100%",
+                      height: "100%",
+                    }}
+                  >
                     <box style={{ width: "100%" }}>
                       <text style={{ color: theme.muted }}>
                         PATH: {notesOpenPath ?? "(none)"}
@@ -12589,7 +11683,7 @@ export function App({
                                 backgroundColor: colorForTag(tag),
                                 color: theme.bg,
                                 paddingLeft: 1,
-                                paddingRight: 1
+                                paddingRight: 1,
                               }}
                             >
                               <text>{formatTagForReadOnlyDisplay(tag)}</text>
@@ -12602,7 +11696,7 @@ export function App({
                                 backgroundColor: theme.outline,
                                 color: theme.bg,
                                 paddingLeft: 1,
-                                paddingRight: 1
+                                paddingRight: 1,
                               }}
                             >
                               <text>{`+${String(notesEditTagPillLayout.hiddenCount)}`}</text>
@@ -12613,11 +11707,19 @@ export function App({
                         <text style={{ color: theme.muted }}>(none)</text>
                       )}
                     </box>
-                    <text style={{ color: notesEditDirty ? theme.warn : theme.muted }}>
-                      {notesEditDirty ? "STATUS: UNSAVED CHANGES" : "STATUS: SAVED"}
+                    <text
+                      style={{
+                        color: notesEditDirty ? theme.warn : theme.muted,
+                      }}
+                    >
+                      {notesEditDirty
+                        ? "STATUS: UNSAVED CHANGES"
+                        : "STATUS: SAVED"}
                     </text>
                     <box style={{ marginTop: 1 }}>
-                      <text style={{ color: theme.muted }}>FRONTMATTER TAGS</text>
+                      <text style={{ color: theme.muted }}>
+                        FRONTMATTER TAGS
+                      </text>
                     </box>
                     <box
                       onMouseDown={(event) => {
@@ -12629,17 +11731,30 @@ export function App({
                         value={notesEditFrontmatterTags}
                         onChange={applyNotesEditFrontmatterTags}
                         focused={
-                          uiState.focus === FocusTarget.NOTES_EDIT && notesEditActiveField === "tags"
+                          uiState.focus === FocusTarget.NOTES_EDIT &&
+                          notesEditActiveField === "tags"
                         }
                         placeholder="Type tags (space/comma separated, supports nested e.g. inbox/to-read)"
                         onSubmit={() => {
                           setNotesEditActiveField("body");
                         }}
-                        style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
+                        style={{
+                          backgroundColor: inputTheme.bg,
+                          color: inputTheme.text,
+                        }}
                       />
                     </box>
-                    <text style={{ color: theme.muted }}>Tab: switch tags/body</text>
-                    <box style={{ marginTop: 1, marginBottom: 1, flexDirection: "row", gap: 1 }}>
+                    <text style={{ color: theme.muted }}>
+                      Tab: switch tags/body
+                    </text>
+                    <box
+                      style={{
+                        marginTop: 1,
+                        marginBottom: 1,
+                        flexDirection: "row",
+                        gap: 1,
+                      }}
+                    >
                       {renderTomeActionButton({
                         label: "SAVE [Ctrl+S]",
                         tone: "primary",
@@ -12649,14 +11764,14 @@ export function App({
                         disabled: !notesOpenPath,
                         compact: true,
                         fill: true,
-                        borderless: true
+                        borderless: true,
                       })}
                       {renderTomeActionButton({
                         label: "CANCEL [Esc]",
                         onPress: cancelCurrentNoteEdit,
                         compact: true,
                         fill: true,
-                        borderless: true
+                        borderless: true,
                       })}
                     </box>
                     <box
@@ -12670,14 +11785,19 @@ export function App({
                         ref={notesEditTextareaRef}
                         initialValue={notesEditValue}
                         focused={
-                          uiState.focus === FocusTarget.NOTES_EDIT && notesEditActiveField === "body"
+                          uiState.focus === FocusTarget.NOTES_EDIT &&
+                          notesEditActiveField === "body"
                         }
                         placeholder="Write TOME markdown note..."
                         wrapMode="word"
                         onContentChange={() => {
-                          const nextValue = notesEditTextareaRef.current?.plainText ?? "";
+                          const nextValue =
+                            notesEditTextareaRef.current?.plainText ?? "";
                           setNotesEditValue(nextValue);
-                          const nextContent = upsertFrontmatterTags(nextValue, notesEditTagDraft.tags);
+                          const nextContent = upsertFrontmatterTags(
+                            nextValue,
+                            notesEditTagDraft.tags,
+                          );
                           setNotesEditDirty(nextContent !== notesViewContent);
                           setNotesEditEscGuardArmed(false);
                         }}
@@ -12686,7 +11806,7 @@ export function App({
                           flexGrow: 1,
                           minHeight: 8,
                           backgroundColor: inputTheme.bg,
-                          color: inputTheme.text
+                          color: inputTheme.text,
                         }}
                       />
                     </box>
@@ -12694,7 +11814,9 @@ export function App({
                 ) : notesOpenPath ? (
                   <box style={{ flexDirection: "column", width: "100%" }}>
                     <box style={{ width: "100%" }}>
-                      <text style={{ color: theme.muted }}>PATH: {notesOpenPath}</text>
+                      <text style={{ color: theme.muted }}>
+                        PATH: {notesOpenPath}
+                      </text>
                     </box>
                     <box style={{ marginTop: 1, flexDirection: "column" }}>
                       <text style={{ color: theme.muted }}>TAGS</text>
@@ -12708,7 +11830,7 @@ export function App({
                                 backgroundColor: colorForTag(tag),
                                 color: theme.bg,
                                 paddingLeft: 1,
-                                paddingRight: 1
+                                paddingRight: 1,
                               }}
                             >
                               <text>{formatTagForReadOnlyDisplay(tag)}</text>
@@ -12721,7 +11843,7 @@ export function App({
                                 backgroundColor: theme.outline,
                                 color: theme.bg,
                                 paddingLeft: 1,
-                                paddingRight: 1
+                                paddingRight: 1,
                               }}
                             >
                               <text>{`+${String(notesViewTagPillLayout.hiddenCount)}`}</text>
@@ -12735,14 +11857,21 @@ export function App({
                     <box style={{ marginTop: 1 }}>
                       <text style={{ color: theme.muted }}>PREVIEW</text>
                     </box>
-                    {notesViewLines.slice(0, notesPreviewLineLimit).map((line, index) => (
-                      <text key={`note-preview-${index}`} style={{ color: theme.text }}>
-                        {line || " "}
-                      </text>
-                    ))}
+                    {notesViewLines
+                      .slice(0, notesPreviewLineLimit)
+                      .map((line, index) => (
+                        <text
+                          key={`note-preview-${index}`}
+                          style={{ color: theme.text }}
+                        >
+                          {line || " "}
+                        </text>
+                      ))}
                     {notesViewLines.length > notesPreviewLineLimit ? (
                       <text style={{ color: theme.muted }}>
-                        ... ({String(notesViewLines.length - notesPreviewLineLimit)} more lines)
+                        ... (
+                        {String(notesViewLines.length - notesPreviewLineLimit)}{" "}
+                        more lines)
                       </text>
                     ) : null}
                     <box style={{ marginTop: 1 }}>
@@ -12755,7 +11884,9 @@ export function App({
                     ) : (
                       notesOutgoingRefs.map((ref, index) => {
                         const selected = index === notesSelectedLinkIndex;
-                        const target = ref.display ? `${ref.display} -> ${ref.toRaw}` : ref.toRaw;
+                        const target = ref.display
+                          ? `${ref.display} -> ${ref.toRaw}`
+                          : ref.toRaw;
                         const status = ref.toResolved
                           ? ` => ${ref.toResolved}`
                           : ref.ambiguous
@@ -12774,7 +11905,11 @@ export function App({
                               }
                             }}
                           >
-                            <text style={{ color: selected ? theme.accentBlue : theme.text }}>
+                            <text
+                              style={{
+                                color: selected ? theme.accentBlue : theme.text,
+                              }}
+                            >
                               {`${selected ? ">" : " "} ${target}${status}`}
                             </text>
                           </box>
@@ -12803,29 +11938,33 @@ export function App({
                     )}
                     <box style={{ marginTop: 1 }}>
                       <text style={{ color: theme.muted }}>
-                        UNLINKED MENTIONS ({String(notesUnlinkedMentions.length)})
+                        UNLINKED MENTIONS (
+                        {String(notesUnlinkedMentions.length)})
                       </text>
                     </box>
                     {notesUnlinkedMentions.length === 0 ? (
                       <text style={{ color: theme.muted }}>(none)</text>
                     ) : (
-                      notesUnlinkedMentions.slice(0, 5).map((mention, index) => (
-                        <box
-                          key={`note-mention-${index}`}
-                          onMouseDown={(event) => {
-                            if (event.button !== 0) return;
-                            void openNoteFromTaskLinkedNotes(mention.from);
-                          }}
-                        >
-                          <text style={{ color: theme.text }}>
-                            {`${mention.from}:${String(mention.line)} ${mention.excerpt}`}
-                          </text>
-                        </box>
-                      ))
+                      notesUnlinkedMentions
+                        .slice(0, 5)
+                        .map((mention, index) => (
+                          <box
+                            key={`note-mention-${index}`}
+                            onMouseDown={(event) => {
+                              if (event.button !== 0) return;
+                              void openNoteFromTaskLinkedNotes(mention.from);
+                            }}
+                          >
+                            <text style={{ color: theme.text }}>
+                              {`${mention.from}:${String(mention.line)} ${mention.excerpt}`}
+                            </text>
+                          </box>
+                        ))
                     )}
                     <box style={{ marginTop: 1 }}>
                       <text style={{ color: theme.muted }}>
-                        TASKS REFERENCED HERE ({String(notesLinkedTasks.length)})
+                        TASKS REFERENCED HERE ({String(notesLinkedTasks.length)}
+                        )
                       </text>
                     </box>
                     {notesLinkedTasks.length === 0 ? (
@@ -12841,8 +11980,14 @@ export function App({
                               openTaskFromTomeLinkedTask(taskId);
                             }}
                           >
-                            <text style={{ color: linkedTask ? theme.text : theme.warn }}>
-                              {linkedTask ? `${linkedTask.title} [${taskId}]` : taskId}
+                            <text
+                              style={{
+                                color: linkedTask ? theme.text : theme.warn,
+                              }}
+                            >
+                              {linkedTask
+                                ? `${linkedTask.title} [${taskId}]`
+                                : taskId}
                             </text>
                           </box>
                         );
@@ -12854,7 +11999,10 @@ export function App({
                           WARNINGS ({String(notesWarnings.length)})
                         </text>
                         {notesWarnings.slice(0, 5).map((warning, index) => (
-                          <text key={`note-warning-${index}`} style={{ color: theme.warn }}>
+                          <text
+                            key={`note-warning-${index}`}
+                            style={{ color: theme.warn }}
+                          >
                             {warning.message}
                           </text>
                         ))}
@@ -12879,7 +12027,7 @@ export function App({
                 style={{
                   backgroundColor: taskListTheme.panel,
                   paddingLeft: 3,
-                  paddingTop: 1
+                  paddingTop: 1,
                 }}
               >
                 <text style={{ color: taskListTheme.muted }}>TASK LIST</text>
@@ -12891,41 +12039,54 @@ export function App({
                   backgroundColor: taskListPanelBackgroundColor,
                   border: true,
                   borderStyle: "single",
-                  borderColor: taskListPanelBorderColor
+                  borderColor: taskListPanelBorderColor,
                 }}
               >
                 <box style={{ flexDirection: "column", flexGrow: 1 }}>
                   {uiState.mode === Mode.SEARCH ? (
                     <box style={{ flexDirection: "column", flexGrow: 1 }}>
-                      <text style={{ color: taskListTheme.muted }}>UNIFIED SEARCH</text>
+                      <text style={{ color: taskListTheme.muted }}>
+                        UNIFIED SEARCH
+                      </text>
                       <input
                         value={searchQuery}
                         onChange={updateSearch}
                         focused={false}
                         placeholder="Type to search tasks + notes; Enter/Esc closes, Tab focuses results"
-                        style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
+                        style={{
+                          backgroundColor: inputTheme.bg,
+                          color: inputTheme.text,
+                        }}
                       />
-                      <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
-                        {([
+                      <box
+                        style={{ flexDirection: "row", gap: 1, marginTop: 1 }}
+                      >
+                        {[
                           { scope: "all" as const, label: "All" },
                           { scope: "tasks" as const, label: "Tasks" },
-                          { scope: "notes" as const, label: "Notes" }
-                        ]).map((chip) => {
+                          { scope: "notes" as const, label: "Notes" },
+                        ].map((chip) => {
                           const selected = searchScope === chip.scope;
                           return (
                             <box
                               key={`search-scope-${chip.scope}`}
                               style={{
-                                backgroundColor: selected ? theme.accentBlue : theme.outline,
+                                backgroundColor: selected
+                                  ? theme.accentBlue
+                                  : theme.outline,
                                 paddingLeft: 1,
-                                paddingRight: 1
+                                paddingRight: 1,
                               }}
                               onMouseDown={(event) => {
                                 if (event.button !== 0) return;
                                 setUnifiedSearchScope(chip.scope);
                               }}
                             >
-                              <text style={{ color: selected ? theme.bg : theme.text }}>
+                              <text
+                                style={{
+                                  color: selected ? theme.bg : theme.text,
+                                }}
+                              >
                                 {chip.label}
                               </text>
                             </box>
@@ -12933,49 +12094,74 @@ export function App({
                         })}
                       </box>
                       <text style={{ color: taskListTheme.muted }}>
-                        {`Results: ${String(unifiedSearchResults.length)} (${String(unifiedSearchTaskCount)} tasks, ${String(unifiedSearchNoteCount)} notes)`}
-                        {searchResultsFocused ? " · results focus" : " · input focus"}
+                        {buildUnifiedSearchResultsSummary({
+                          resultCount: unifiedSearchResults.length,
+                          taskCount: unifiedSearchTaskCount,
+                          noteCount: unifiedSearchNoteCount,
+                        })}
+                        {searchResultsFocused
+                          ? " · results focus"
+                          : " · input focus"}
                       </text>
                       {selectedUnifiedSearchResult?.kind === "task" ? (
                         <text style={{ color: taskListTheme.muted }}>
-                          {`Selected task note: ${resolveTaskCaptureContext(selectedUnifiedSearchResult.taskId)?.primaryNotePath ?? "(none)"} · Ctrl+N capture targets this task`}
+                          {buildSelectedTaskNoteSummary(
+                            resolveTaskCaptureContext(
+                              selectedUnifiedSearchResult.taskId,
+                            )?.primaryNotePath,
+                          )}
                         </text>
                       ) : null}
                       <box style={{ flexDirection: "column", marginTop: 1 }}>
                         {visibleUnifiedSearchResults.length === 0 ? (
-                          <text style={{ color: theme.muted }}>(no matches)</text>
+                          <text style={{ color: theme.muted }}>
+                            (no matches)
+                          </text>
                         ) : (
                           (() => {
                             let taskHeaderShown = false;
                             let noteHeaderShown = false;
                             const rows: React.ReactNode[] = [];
-                            for (let index = 0; index < visibleUnifiedSearchResults.length; index += 1) {
+                            for (
+                              let index = 0;
+                              index < visibleUnifiedSearchResults.length;
+                              index += 1
+                            ) {
                               const result = visibleUnifiedSearchResults[index];
                               if (result.kind === "task" && !taskHeaderShown) {
                                 rows.push(
-                                  <text key="search-header-task" style={{ color: theme.muted }}>
+                                  <text
+                                    key="search-header-task"
+                                    style={{ color: theme.muted }}
+                                  >
                                     TASKS
-                                  </text>
+                                  </text>,
                                 );
                                 taskHeaderShown = true;
                               }
                               if (result.kind === "note" && !noteHeaderShown) {
                                 rows.push(
-                                  <text key="search-header-note" style={{ color: theme.muted }}>
+                                  <text
+                                    key="search-header-note"
+                                    style={{ color: theme.muted }}
+                                  >
                                     NOTES
-                                  </text>
+                                  </text>,
                                 );
                                 noteHeaderShown = true;
                               }
-                              const selected = index === clampedSearchSelectedResultIndex;
+                              const selected =
+                                index === clampedSearchSelectedResultIndex;
                               rows.push(
                                 <box
                                   key={`search-result-${result.kind}-${result.kind === "task" ? result.taskId : result.notePath}`}
                                   style={{
                                     flexDirection: "column",
-                                    backgroundColor: selected ? theme.accentBlue : "transparent",
+                                    backgroundColor: selected
+                                      ? theme.accentBlue
+                                      : "transparent",
                                     paddingLeft: 1,
-                                    paddingRight: 1
+                                    paddingRight: 1,
                                   }}
                                   onMouseDown={(event) => {
                                     if (event.button !== 0) return;
@@ -12985,13 +12171,21 @@ export function App({
                                     }
                                   }}
                                 >
-                                  <text style={{ color: selected ? theme.bg : theme.text }}>
+                                  <text
+                                    style={{
+                                      color: selected ? theme.bg : theme.text,
+                                    }}
+                                  >
                                     {`${result.kind === "task" ? "[TASK]" : "[NOTE]"} ${result.title}`}
                                   </text>
-                                  <text style={{ color: selected ? theme.bg : theme.muted }}>
+                                  <text
+                                    style={{
+                                      color: selected ? theme.bg : theme.muted,
+                                    }}
+                                  >
                                     {result.secondary}
                                   </text>
-                                </box>
+                                </box>,
                               );
                             }
                             return rows;
@@ -13025,7 +12219,7 @@ export function App({
                   style={{
                     backgroundColor: theme.panel,
                     paddingLeft: 3,
-                    paddingTop: 1
+                    paddingTop: 1,
                   }}
                 >
                   <text style={{ color: theme.muted }}>
@@ -13033,15 +12227,15 @@ export function App({
                   </text>
                 </box>
               ) : (
-              <box
-                style={{
-                  backgroundColor: theme.panel,
-                  paddingLeft: 3,
-                  paddingTop: 1
-                }}
-              >
-                <text style={{ color: theme.muted }}>DETAILS</text>
-              </box>
+                <box
+                  style={{
+                    backgroundColor: theme.panel,
+                    paddingLeft: 3,
+                    paddingTop: 1,
+                  }}
+                >
+                  <text style={{ color: theme.muted }}>DETAILS</text>
+                </box>
               )}
               <box
                 style={{
@@ -13050,7 +12244,7 @@ export function App({
                   backgroundColor: detailsPanelBackgroundColor,
                   border: true,
                   borderStyle: "single",
-                  borderColor: detailsPanelBorderColor
+                  borderColor: detailsPanelBorderColor,
                 }}
               >
                 {isEditorMode(uiState.mode) && state.editor ? (
@@ -13061,20 +12255,29 @@ export function App({
                     availableHeightLines={editorPaneHeightLines}
                     scrollOffset={uiState.editorScrollOffset}
                     titleInlineSuggestion={
-                      uiState.focus === FocusTarget.EDITOR_TITLE ? titleInlineSuggestion : null
+                      uiState.focus === FocusTarget.EDITOR_TITLE
+                        ? titleInlineSuggestion
+                        : null
                     }
                     tagInlineSuggestion={
-                      uiState.focus === FocusTarget.EDITOR_TAGS ? tagInlineSuggestion : null
+                      uiState.focus === FocusTarget.EDITOR_TAGS
+                        ? tagInlineSuggestion
+                        : null
                     }
                     dueSuggestionHint={dueSuggestionHint}
                     timeSuggestionHint={timeSuggestionHint}
                     recurrencePreview={recurrencePreview}
                     selectedChecklistItemId={selectedEditorChecklistItem?.id}
-                    checklistFocused={uiState.focus === FocusTarget.EDITOR_CHECKLIST}
+                    checklistFocused={
+                      uiState.focus === FocusTarget.EDITOR_CHECKLIST
+                    }
                     onSelectChecklistItem={setSelectedEditorChecklistItemId}
                     onUpdate={updateEditorDraft}
                     onScrollOffsetChange={(scrollOffset) =>
-                      uiDispatch({ type: "setEditorScrollOffset", scrollOffset })
+                      uiDispatch({
+                        type: "setEditorScrollOffset",
+                        scrollOffset,
+                      })
                     }
                     onSave={saveEditor}
                     onCancel={cancelEditor}
@@ -13090,22 +12293,30 @@ export function App({
                     linksFocused={uiState.focus === FocusTarget.DETAILS_LINKS}
                     selectedChecklistItemId={selectedChecklistItemId}
                     notesFocused={uiState.focus === FocusTarget.DETAILS_NOTES}
-                    checklistFocused={uiState.focus === FocusTarget.DETAILS_CHECKLIST}
+                    checklistFocused={
+                      uiState.focus === FocusTarget.DETAILS_CHECKLIST
+                    }
                     checklistWindowStart={checklistScrollOffset}
                     checklistWindowSize={checklistViewportRows}
                     linkedNotes={selectedTaskLinkedNotes}
                     linkedTaskNotePath={selectedTaskLinkedNotePath}
                     linkedTaskNoteId={selectedTaskLinkedNoteId}
-                    linkedTaskNotePreviewLines={selectedTaskLinkedNotePreviewWindow}
+                    linkedTaskNotePreviewLines={
+                      selectedTaskLinkedNotePreviewWindow
+                    }
                     notesReferencingTask={selectedTaskLinkedNotes}
                     selectedNotesReferencingPath={selectedDetailsNotesPath}
-                    linkedTaskReferencedTaskCount={selectedTaskLinkedNoteReferencedTaskCount}
+                    linkedTaskReferencedTaskCount={
+                      selectedTaskLinkedNoteReferencedTaskCount
+                    }
                     noteContextWarning={selectedTaskNoteContextWarning}
                     noteLinkPickerOpen={detailsNotesLinkPickerOpen}
-                    noteLinkPickerItems={notesLinkPickerEntries.map((entry, index) => ({
-                      ...entry,
-                      selected: index === clampedDetailsNotesLinkPickerIndex
-                    }))}
+                    noteLinkPickerItems={notesLinkPickerEntries.map(
+                      (entry, index) => ({
+                        ...entry,
+                        selected: index === clampedDetailsNotesLinkPickerIndex,
+                      }),
+                    )}
                     onSelectLink={selectDetailsLink}
                     onOpenLink={openDetailsLink}
                     onSelectChecklistItem={setSelectedChecklistItemId}
@@ -13149,7 +12360,7 @@ export function App({
                     ? notificationsTheme.accentBlue
                     : notificationsTheme.warn,
                 paddingLeft: 1,
-                paddingRight: 1
+                paddingRight: 1,
               }}
               onMouseDown={
                 isSaveConflictBanner && !saveConflictRetryPending
@@ -13158,7 +12369,7 @@ export function App({
                         !shouldTriggerSaveConflictRetryFromMouse({
                           isSaveConflictBanner,
                           retryPending: saveConflictRetryPending,
-                          button: event.button
+                          button: event.button,
                         })
                       ) {
                         return;
@@ -13168,28 +12379,32 @@ export function App({
                   : undefined
               }
             >
-              <text style={{ color: notificationsTheme.bg }}>{withActionLabel}</text>
+              <text style={{ color: notificationsTheme.bg }}>
+                {withActionLabel}
+              </text>
             </box>
           );
         })}
         {activeBanners.length === 0
-          ? Array.from({ length: reservedNotificationBarRows }).map((_, index) => (
-              <box
-                key={`notification-placeholder-${String(index)}`}
-                style={{
-                  height: 1,
-                  backgroundColor: theme.bg,
-                  paddingLeft: 1,
-                  paddingRight: 1,
-                  justifyContent: "center",
-                  alignItems: "center"
-                }}
-              >
-                {index === 0 ? (
-                  <text style={{ color: theme.muted }}>No Notifications</text>
-                ) : null}
-              </box>
-            ))
+          ? Array.from({ length: reservedNotificationBarRows }).map(
+              (_, index) => (
+                <box
+                  key={`notification-placeholder-${String(index)}`}
+                  style={{
+                    height: 1,
+                    backgroundColor: theme.bg,
+                    paddingLeft: 1,
+                    paddingRight: 1,
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                >
+                  {index === 0 ? (
+                    <text style={{ color: theme.muted }}>No Notifications</text>
+                  ) : null}
+                </box>
+              ),
+            )
           : null}
 
         <box
@@ -13200,25 +12415,30 @@ export function App({
             borderStyle: "single",
             borderColor: bottomBarBorderColor,
             justifyContent: "center",
-            alignItems: "center"
+            alignItems: "center",
           }}
         >
-          <box style={{ flexDirection: "column", alignItems: "center", gap: 0 }}>
+          <box
+            style={{ flexDirection: "column", alignItems: "center", gap: 0 }}
+          >
             {bottomInfoView === "tags" ? (
               <box style={{ flexDirection: "row", gap: 0 }}>
                 {tagTickerSegments.length === 0 ? (
                   <text style={{ color: theme.muted }}>NO TAGS</text>
                 ) : (
                   tagTickerSegments.map((segment, index) => (
-                    <box key={segment.tag} style={{ flexDirection: "row", gap: 0 }}>
+                    <box
+                      key={segment.tag}
+                      style={{ flexDirection: "row", gap: 0 }}
+                    >
                       {index > 0 ? (
-                        <text style={{ color: theme.muted }}>  </text>
+                        <text style={{ color: theme.muted }}> </text>
                       ) : null}
                       <box
                         style={{
                           backgroundColor: colorForTag(segment.tag),
                           paddingLeft: 1,
-                          paddingRight: 1
+                          paddingRight: 1,
                         }}
                         onMouseDown={(event) => {
                           if (event.button !== 0) return;
@@ -13230,9 +12450,11 @@ export function App({
                             color: isBottomTagQuickFilterActive(segment.tag)
                               ? theme.text
                               : theme.bg,
-                            fontWeight: isBottomTagQuickFilterActive(segment.tag)
+                            fontWeight: isBottomTagQuickFilterActive(
+                              segment.tag,
+                            )
                               ? "bold"
-                              : "normal"
+                              : "normal",
                           }}
                         >
                           {segment.total} {segment.displayTag}
@@ -13252,15 +12474,18 @@ export function App({
                   </text>
                 ) : (
                   priorityTickerSegments.map((segment, index) => (
-                    <box key={segment.priorityTag} style={{ flexDirection: "row", gap: 0 }}>
+                    <box
+                      key={segment.priorityTag}
+                      style={{ flexDirection: "row", gap: 0 }}
+                    >
                       {index > 0 ? (
-                        <text style={{ color: theme.muted }}>  </text>
+                        <text style={{ color: theme.muted }}> </text>
                       ) : null}
                       <box
                         style={{
                           backgroundColor: colorForTag(segment.priorityTag),
                           paddingLeft: 1,
-                          paddingRight: 1
+                          paddingRight: 1,
                         }}
                         onMouseDown={(event) => {
                           if (event.button !== 0) return;
@@ -13269,12 +12494,16 @@ export function App({
                       >
                         <text
                           style={{
-                            color: isBottomPriorityQuickFilterActive(segment.priorityTag)
+                            color: isBottomPriorityQuickFilterActive(
+                              segment.priorityTag,
+                            )
                               ? theme.text
                               : theme.bg,
-                            fontWeight: isBottomPriorityQuickFilterActive(segment.priorityTag)
+                            fontWeight: isBottomPriorityQuickFilterActive(
+                              segment.priorityTag,
+                            )
                               ? "bold"
-                              : "normal"
+                              : "normal",
                           }}
                         >
                           {segment.total} {segment.displayPriority}
@@ -13290,7 +12519,7 @@ export function App({
                   style={{
                     backgroundColor: theme.warn,
                     paddingLeft: 1,
-                    paddingRight: 1
+                    paddingRight: 1,
                   }}
                   onMouseDown={(event) => {
                     if (event.button !== 0) return;
@@ -13300,7 +12529,7 @@ export function App({
                   <text
                     style={{
                       color: overdueQuickFilterActive ? theme.text : theme.bg,
-                      fontWeight: overdueQuickFilterActive ? "bold" : "normal"
+                      fontWeight: overdueQuickFilterActive ? "bold" : "normal",
                     }}
                   >
                     {summary.overdue} OVERDUE
@@ -13310,7 +12539,7 @@ export function App({
                   style={{
                     backgroundColor: theme.dueSoon,
                     paddingLeft: 1,
-                    paddingRight: 1
+                    paddingRight: 1,
                   }}
                   onMouseDown={(event) => {
                     if (event.button !== 0) return;
@@ -13320,7 +12549,7 @@ export function App({
                   <text
                     style={{
                       color: todayQuickFilterActive ? theme.text : theme.bg,
-                      fontWeight: todayQuickFilterActive ? "bold" : "normal"
+                      fontWeight: todayQuickFilterActive ? "bold" : "normal",
                     }}
                   >
                     {summary.today} DUE TODAY
@@ -13330,7 +12559,7 @@ export function App({
                   style={{
                     backgroundColor: theme.dueLater,
                     paddingLeft: 1,
-                    paddingRight: 1
+                    paddingRight: 1,
                   }}
                   onMouseDown={(event) => {
                     if (event.button !== 0) return;
@@ -13340,7 +12569,7 @@ export function App({
                   <text
                     style={{
                       color: next7QuickFilterActive ? theme.text : theme.bg,
-                      fontWeight: next7QuickFilterActive ? "bold" : "normal"
+                      fontWeight: next7QuickFilterActive ? "bold" : "normal",
                     }}
                   >
                     {summary.next7} DUE THIS WEEK
@@ -13350,7 +12579,7 @@ export function App({
                   style={{
                     backgroundColor: theme.ok,
                     paddingLeft: 1,
-                    paddingRight: 1
+                    paddingRight: 1,
                   }}
                   onMouseDown={(event) => {
                     if (event.button !== 0) return;
@@ -13360,7 +12589,7 @@ export function App({
                   <text
                     style={{
                       color: doneQuickFilterActive ? theme.text : theme.bg,
-                      fontWeight: doneQuickFilterActive ? "bold" : "normal"
+                      fontWeight: doneQuickFilterActive ? "bold" : "normal",
                     }}
                   >
                     {summary.completed7} COMPLETED THIS WEEK
@@ -13384,7 +12613,7 @@ export function App({
             backgroundColor: theme.panel,
             border: true,
             borderStyle: "single",
-            borderColor: theme.outline
+            borderColor: theme.outline,
           }}
         >
           <text style={{ color: theme.text }}>{engagementToastLine}</text>
@@ -13406,26 +12635,37 @@ export function App({
             backgroundColor: theme.panel,
             border: true,
             borderStyle: "single",
-            borderColor: commandOutput?.kind === "error" ? theme.warn : theme.outline
+            borderColor:
+              commandOutput?.kind === "error" ? theme.warn : theme.outline,
           }}
         >
           <box
             style={{
               backgroundColor: theme.accentBlue,
               paddingLeft: 1,
-              paddingRight: 1
+              paddingRight: 1,
             }}
           >
-            <text style={{ color: theme.bg, fontWeight: "bold" }}>{commandHeaderLine}</text>
+            <text style={{ color: theme.bg, fontWeight: "bold" }}>
+              {commandHeaderLine}
+            </text>
           </box>
           <box
             style={{
               paddingLeft: 1,
               paddingRight: 1,
-              marginTop: 1
+              marginTop: 1,
             }}
           >
-            <text style={{ color: commandOutput ? (commandOutput.kind === "error" ? theme.warn : theme.ok) : theme.muted }}>
+            <text
+              style={{
+                color: commandOutput
+                  ? commandOutput.kind === "error"
+                    ? theme.warn
+                    : theme.ok
+                  : theme.muted,
+              }}
+            >
               {commandStatusLine}
             </text>
           </box>
@@ -13435,10 +12675,14 @@ export function App({
               backgroundColor: theme.bg,
               paddingLeft: 1,
               paddingRight: 1,
-              marginTop: 1
+              marginTop: 1,
             }}
           >
-            <text style={{ color: theme.muted, marginRight: 1, fontWeight: "bold" }}>:</text>
+            <text
+              style={{ color: theme.muted, marginRight: 1, fontWeight: "bold" }}
+            >
+              :
+            </text>
             <input
               value={commandText}
               onInput={setCommandTextValue}
@@ -13447,7 +12691,7 @@ export function App({
               style={{
                 backgroundColor: theme.bg,
                 color: inputTheme.text,
-                flexGrow: 1
+                flexGrow: 1,
               }}
             />
           </box>
@@ -13473,14 +12717,24 @@ export function App({
         describeTaskEditorContinuation={describeTaskEditorContinuation}
         formatLinkSnippet={formatLinkSnippet}
         confirmDeleteSelectedFromModal={confirmDeleteSelectedFromModal}
-        confirmDeleteSelectedAndFutureFromModal={confirmDeleteSelectedAndFutureFromModal}
+        confirmDeleteSelectedAndFutureFromModal={
+          confirmDeleteSelectedAndFutureFromModal
+        }
         cancelDeleteSelectedFromModal={cancelDeleteSelectedFromModal}
         confirmDeleteNoteFromModal={confirmDeleteNoteFromModal}
         cancelDeleteNoteFromModal={cancelDeleteNoteFromModal}
-        handleRecurringDeleteFutureCheckpointConfirm={handleRecurringDeleteFutureCheckpointConfirm}
-        cancelRecurringDeleteFutureCheckpoint={cancelRecurringDeleteFutureCheckpoint}
-        handleUnsavedChangesSaveAndContinue={handleUnsavedChangesSaveAndContinue}
-        handleUnsavedChangesDiscardAndContinue={handleUnsavedChangesDiscardAndContinue}
+        handleRecurringDeleteFutureCheckpointConfirm={
+          handleRecurringDeleteFutureCheckpointConfirm
+        }
+        cancelRecurringDeleteFutureCheckpoint={
+          cancelRecurringDeleteFutureCheckpoint
+        }
+        handleUnsavedChangesSaveAndContinue={
+          handleUnsavedChangesSaveAndContinue
+        }
+        handleUnsavedChangesDiscardAndContinue={
+          handleUnsavedChangesDiscardAndContinue
+        }
         cancelUnsavedChangesContinue={cancelUnsavedChangesContinue}
         handleBackupFinalCheckpointConfirm={handleBackupFinalCheckpointConfirm}
         cancelBackupFinalCheckpoint={cancelBackupFinalCheckpoint}
@@ -13501,9 +12755,13 @@ export function App({
         submitTaskLinkFormModal={submitTaskLinkFormModal}
         applyEscUnwind={applyEscUnwind}
         handleDeleteTaskLinkFromModal={handleDeleteTaskLinkFromModal}
-        handleOpenExternalTaskLinkFromModal={handleOpenExternalTaskLinkFromModal}
+        handleOpenExternalTaskLinkFromModal={
+          handleOpenExternalTaskLinkFromModal
+        }
         handleModalSaveAndSwitchEditTarget={handleModalSaveAndSwitchEditTarget}
-        handleModalDiscardAndSwitchEditTarget={handleModalDiscardAndSwitchEditTarget}
+        handleModalDiscardAndSwitchEditTarget={
+          handleModalDiscardAndSwitchEditTarget
+        }
         handleModalDiscardAndCloseEditor={handleModalDiscardAndCloseEditor}
         dismissEmptyNuxModal={dismissEmptyNuxModal}
         clearEmptyNuxWalkthrough={clearEmptyNuxWalkthrough}
@@ -13519,9 +12777,15 @@ export function App({
         handleOverdueModalDone={handleOverdueModalDone}
         handleOverdueModalGoToTask={handleOverdueModalGoToTask}
         handleReminderModalDismiss={handleReminderModalDismiss}
-        handleReminderModalSnooze10m={() => handleReminderModalSnooze(10 * 60_000)}
-        handleReminderModalSnooze1h={() => handleReminderModalSnooze(60 * 60_000)}
-        handleReminderModalSnooze1d={() => handleReminderModalSnooze(24 * 60 * 60_000)}
+        handleReminderModalSnooze10m={() =>
+          handleReminderModalSnooze(10 * 60_000)
+        }
+        handleReminderModalSnooze1h={() =>
+          handleReminderModalSnooze(60 * 60_000)
+        }
+        handleReminderModalSnooze1d={() =>
+          handleReminderModalSnooze(24 * 60 * 60_000)
+        }
         handleReminderModalGoToTask={handleReminderModalGoToTask}
       />
 
@@ -13536,7 +12800,7 @@ export function App({
             border: true,
             borderStyle: "single",
             borderColor: theme.outline,
-            minWidth: 58
+            minWidth: 58,
           }}
         >
           <box style={{ flexDirection: "column" }}>
@@ -13544,10 +12808,12 @@ export function App({
               SAVED VIEWS ({state.savedViews.length}/{MAX_SAVED_VIEWS})
             </text>
             <text style={{ color: theme.muted }}>
-              enter: apply  d: delete  ctrl+s: save current  v/esc: close
+              enter: apply d: delete ctrl+s: save current v/esc: close
             </text>
             {state.savedViews.length === 0 ? (
-              <text style={{ color: theme.muted, marginTop: 1 }}>No saved views yet.</text>
+              <text style={{ color: theme.muted, marginTop: 1 }}>
+                No saved views yet.
+              </text>
             ) : (
               <box style={{ flexDirection: "column", marginTop: 1 }}>
                 {state.savedViews.map((view, index) => {
@@ -13559,11 +12825,14 @@ export function App({
                       style={{
                         paddingLeft: 1,
                         paddingRight: 1,
-                        backgroundColor: selected ? theme.accentBlue : "transparent"
+                        backgroundColor: selected
+                          ? theme.accentBlue
+                          : "transparent",
                       }}
                     >
                       <text style={{ color: selected ? theme.bg : theme.text }}>
-                        [{slot}] {view.name} - {summarizeViewFilters(view.filters)}
+                        [{slot}] {view.name} -{" "}
+                        {summarizeViewFilters(view.filters)}
                       </text>
                     </box>
                   );
@@ -13573,16 +12842,22 @@ export function App({
 
             {saveViewPromptOpen ? (
               <box style={{ flexDirection: "column", marginTop: 1 }}>
-                <text style={{ color: theme.text }}>Save current filters as view name:</text>
+                <text style={{ color: theme.text }}>
+                  Save current filters as view name:
+                </text>
                 <input
                   value={saveViewName}
                   onChange={updateSaveViewName}
                   focused
                   placeholder="e.g. TODAY FOCUS"
-                  style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
+                  style={{
+                    backgroundColor: inputTheme.bg,
+                    color: inputTheme.text,
+                  }}
                 />
                 <text style={{ color: theme.muted }}>
-                  Enter: save, Esc: cancel ({saveViewName.length}/{VIEW_NAME_MAX_LENGTH})
+                  Enter: save, Esc: cancel ({saveViewName.length}/
+                  {VIEW_NAME_MAX_LENGTH})
                 </text>
               </box>
             ) : null}
@@ -13599,7 +12874,7 @@ export function App({
             right: 2,
             bottom: 1,
             justifyContent: "center",
-            alignItems: "center"
+            alignItems: "center",
           }}
         >
           <TagFilterPanel
@@ -13612,11 +12887,13 @@ export function App({
             availableWidth={Math.max(64, terminalWidth - 8)}
             onInputChange={setTagFilterInputValue}
             onInputKeyDown={handleTagFilterPanelInputKeyDown}
-            onInputSubmit={(value) => addTagFilterDraftCandidateFromInput(value)}
+            onInputSubmit={(value) =>
+              addTagFilterDraftCandidateFromInput(value)
+            }
             onSetBucket={setTagFilterBucketAndFocusInput}
             onRemoveTag={(bucket, tag) =>
               setTagFilterDraft((current) =>
-                removeTagFromTagFilter(current, bucket, tag)
+                removeTagFromTagFilter(current, bucket, tag),
               )
             }
             onApply={applyTagFilterPanel}
@@ -13635,7 +12912,7 @@ export function App({
             right: 8,
             bottom: 2,
             justifyContent: "center",
-            alignItems: "center"
+            alignItems: "center",
           }}
         >
           <BackupCenterScreen
@@ -13651,15 +12928,17 @@ export function App({
               backupDispatch({
                 type: "setImportPickerSelection",
                 index,
-                visibleRows: backupImportPickerVisibleRows
+                visibleRows: backupImportPickerVisibleRows,
               })
             }
-            onOpenImportPathFallback={() => backupDispatch({ type: "openImportPathManual" })}
+            onOpenImportPathFallback={() =>
+              backupDispatch({ type: "openImportPathManual" })
+            }
             onImportPickerWheelScroll={(delta) =>
               backupDispatch({
                 type: "moveImportPickerSelection",
                 delta,
-                visibleRows: backupImportPickerVisibleRows
+                visibleRows: backupImportPickerVisibleRows,
               })
             }
             onReplaceConfirmChange={(value) =>
@@ -13668,24 +12947,20 @@ export function App({
             onCalendarExportPathChange={(value) =>
               backupDispatch({ type: "setCalendarExportPath", value })
             }
-            onCalendarImportPathChange={(value) =>
-              {
-                calendarImportPathInputRef.current = value;
-                backupDispatch({ type: "setCalendarImportPath", value });
-              }
-            }
+            onCalendarImportPathChange={(value) => {
+              calendarImportPathInputRef.current = value;
+              backupDispatch({ type: "setCalendarImportPath", value });
+            }}
             onCalendarImportHorizonChange={(value) =>
               backupDispatch({ type: "setCalendarImportHorizonInput", value })
             }
             onCalendarImportTagChange={(value) =>
               backupDispatch({ type: "setCalendarImportTagInput", value })
             }
-            onCalendarImportConfirmChange={(value) =>
-              {
-                calendarImportConfirmInputRef.current = value;
-                backupDispatch({ type: "setCalendarImportConfirmInput", value });
-              }
-            }
+            onCalendarImportConfirmChange={(value) => {
+              calendarImportConfirmInputRef.current = value;
+              backupDispatch({ type: "setCalendarImportConfirmInput", value });
+            }}
             onGitHubRepoNameChange={(value) =>
               backupDispatch({ type: "setGitHubRepoNameInput", value })
             }
@@ -13711,21 +12986,17 @@ export function App({
             onCalendarExportPrivacySelect={(privacy) =>
               backupDispatch({ type: "setCalendarExportPrivacy", privacy })
             }
-            onCalendarImportRangeSelect={(range) =>
-              {
-                calendarImportRangeRef.current = range;
-                backupDispatch({ type: "setCalendarImportRange", range });
-              }
-            }
+            onCalendarImportRangeSelect={(range) => {
+              calendarImportRangeRef.current = range;
+              backupDispatch({ type: "setCalendarImportRange", range });
+            }}
             onCalendarImportViewSelect={(viewName) =>
               backupDispatch({ type: "setCalendarImportViewName", viewName })
             }
-            onCalendarImportModeSelect={(mode) =>
-              {
-                calendarImportModeRef.current = mode;
-                backupDispatch({ type: "setCalendarImportMode", mode });
-              }
-            }
+            onCalendarImportModeSelect={(mode) => {
+              calendarImportModeRef.current = mode;
+              backupDispatch({ type: "setCalendarImportMode", mode });
+            }}
             onGitHubConnectModeSelect={(mode) =>
               backupDispatch({ type: "setGitHubConnectMode", mode })
             }
@@ -13735,14 +13006,14 @@ export function App({
               backupDispatch({
                 type: "setGitHubSnapshotSelection",
                 index,
-                visibleRows: backupImportPickerVisibleRows
+                visibleRows: backupImportPickerVisibleRows,
               })
             }
             onGitHubSnapshotWheelScroll={(delta) =>
               backupDispatch({
                 type: "moveGitHubSnapshotSelection",
                 delta,
-                visibleRows: backupImportPickerVisibleRows
+                visibleRows: backupImportPickerVisibleRows,
               })
             }
           />
@@ -13758,7 +13029,7 @@ export function App({
             right: 0,
             bottom: 0,
             justifyContent: "center",
-            alignItems: "center"
+            alignItems: "center",
           }}
         >
           <box
@@ -13771,7 +13042,7 @@ export function App({
               overflow: "hidden",
               border: true,
               borderStyle: "single",
-              borderColor: helpTheme.outline
+              borderColor: helpTheme.outline,
             }}
           >
             <box
@@ -13782,10 +13053,12 @@ export function App({
                 maxHeight: HELP_HEADER_ROWS,
                 paddingLeft: 1,
                 paddingRight: 1,
-                backgroundColor: helpTheme.panel
+                backgroundColor: helpTheme.panel,
               }}
             >
-              <text style={{ color: helpTheme.text, fontWeight: "bold" }}>{helpHeaderTitle}</text>
+              <text style={{ color: helpTheme.text, fontWeight: "bold" }}>
+                {helpHeaderTitle}
+              </text>
               <text style={{ color: helpTheme.muted }}>
                 {PRODUCT_NAME_TM} {APP_VERSION} · {APP_TAGLINE}
               </text>
@@ -13797,7 +13070,7 @@ export function App({
                 maxHeight: HELP_DIVIDER_ROWS,
                 paddingLeft: 1,
                 paddingRight: 1,
-                backgroundColor: helpTheme.panel
+                backgroundColor: helpTheme.panel,
               }}
             >
               <text style={{ color: helpTheme.outline }}>
@@ -13812,7 +13085,7 @@ export function App({
                 paddingLeft: 1,
                 paddingRight: 1,
                 backgroundColor: helpTheme.panel,
-                overflow: "hidden"
+                overflow: "hidden",
               }}
             >
               {activeHelpPage === "custom1Edit" ? (
@@ -13826,7 +13099,10 @@ export function App({
                   onSave={saveCustom1Editor}
                   onCancel={() => {
                     if (
-                      requestHelpThemeEditorUnsavedGuard("help_custom1_editor", "close_editor")
+                      requestHelpThemeEditorUnsavedGuard(
+                        "help_custom1_editor",
+                        "close_editor",
+                      )
                     ) {
                       return;
                     }
@@ -13847,7 +13123,7 @@ export function App({
                     if (
                       requestHelpThemeEditorUnsavedGuard(
                         "help_text_tuning_editor",
-                        "close_editor"
+                        "close_editor",
                       )
                     ) {
                       return;
@@ -13862,7 +13138,7 @@ export function App({
                     minHeight: 0,
                     maxHeight: "100%",
                     flexDirection: "column",
-                    gap: 1
+                    gap: 1,
                   }}
                 >
                   <text style={{ color: helpTheme.text, fontWeight: "bold" }}>
@@ -13882,19 +13158,24 @@ export function App({
                       setHelpSettingsInputValue(value);
                       void submitHelpSettingsInput(value);
                     }}
-                    style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
+                    style={{
+                      backgroundColor: inputTheme.bg,
+                      color: inputTheme.text,
+                    }}
                   />
                   <text style={{ color: helpTheme.muted }}>
                     Enter: apply · Esc: back
                   </text>
                   {helpSettingsInputApplying ? (
-                    <text style={{ color: helpTheme.muted }}>Applying setting...</text>
+                    <text style={{ color: helpTheme.muted }}>
+                      Applying setting...
+                    </text>
                   ) : null}
                   {helpSettingsInputError ? (
                     <text style={{ color: helpTheme.warn }}>
                       {fitLineToWidth(
                         `Error: ${helpSettingsInputError}`,
-                        Math.max(1, helpContentLineWidth)
+                        Math.max(1, helpContentLineWidth),
                       )}
                     </text>
                   ) : null}
@@ -13906,7 +13187,7 @@ export function App({
                     minHeight: 0,
                     maxHeight: "100%",
                     flexDirection: "column",
-                    overflow: "hidden"
+                    overflow: "hidden",
                   }}
                   onMouseScroll={(event) => {
                     const direction = event.scroll?.direction;
@@ -13919,32 +13200,41 @@ export function App({
                 >
                   <box
                     style={{
-                      flexDirection: "column"
+                      flexDirection: "column",
                     }}
                   >
                     {helpVisibleRows.map((row, visibleRowIndex) => {
-                      const rowIndex = clampedHelpScrollOffset + visibleRowIndex;
+                      const rowIndex =
+                        clampedHelpScrollOffset + visibleRowIndex;
                       const scrollbarIsThumb =
                         helpScrollbarThumb !== null &&
                         visibleRowIndex >= helpScrollbarThumb.startRow &&
                         visibleRowIndex <= helpScrollbarThumb.endRow;
                       const scrollbarGlyph =
-                        helpHasOverflow && scrollbarIsThumb ? "█" : helpHasOverflow ? "│" : "";
+                        helpHasOverflow && scrollbarIsThumb
+                          ? "█"
+                          : helpHasOverflow
+                            ? "│"
+                            : "";
                       if (row.kind === "section_header") {
                         const section = HELP_MENU_SECTIONS[row.sectionIndex];
-                        const expanded = helpExpandedBySection[row.sectionIndex] === true;
-                        const focused = row.sectionIndex === clampedHelpFocusedSectionIndex;
+                        const expanded =
+                          helpExpandedBySection[row.sectionIndex] === true;
+                        const focused =
+                          row.sectionIndex === clampedHelpFocusedSectionIndex;
                         const sectionLine = fitLineToWidth(
                           `${expanded ? "▾" : "▸"} ${section.title}`,
-                          helpContentLineWidth
+                          helpContentLineWidth,
                         );
                         return (
                           <box
                             key={`help-row-${rowIndex}`}
                             style={{
                               flexDirection: "row",
-                              backgroundColor: focused ? helpTheme.accentBlue : "transparent",
-                              width: "100%"
+                              backgroundColor: focused
+                                ? helpTheme.accentBlue
+                                : "transparent",
+                              width: "100%",
                             }}
                             onMouseDown={(event) => {
                               if (event.button !== 0) return;
@@ -13954,7 +13244,7 @@ export function App({
                             <text
                               style={{
                                 color: focused ? helpTheme.bg : helpTheme.text,
-                                fontWeight: focused ? "bold" : "normal"
+                                fontWeight: focused ? "bold" : "normal",
                               }}
                             >
                               {sectionLine}
@@ -13968,7 +13258,7 @@ export function App({
                                       : helpTheme.accentBlue
                                     : focused
                                       ? helpTheme.bg
-                                      : helpTheme.outline
+                                      : helpTheme.outline,
                                 }}
                               >
                                 {scrollbarGlyph}
@@ -13987,14 +13277,17 @@ export function App({
                             style={{ flexDirection: "row", width: "100%" }}
                           >
                             <text style={{ color: helpTheme.text }}>
-                              {fitLineToWidth(`  • ${item.title}`, helpContentLineWidth)}
+                              {fitLineToWidth(
+                                `  • ${item.title}`,
+                                helpContentLineWidth,
+                              )}
                             </text>
                             {helpHasOverflow ? (
                               <text
                                 style={{
                                   color: scrollbarIsThumb
                                     ? helpTheme.accentBlue
-                                    : helpTheme.outline
+                                    : helpTheme.outline,
                                 }}
                               >
                                 {scrollbarGlyph}
@@ -14003,23 +13296,26 @@ export function App({
                           </box>
                         );
                       }
-                      const descriptionLines = getHelpItemDescriptionLines(item);
+                      const descriptionLines =
+                        getHelpItemDescriptionLines(item);
                       const descriptionLine = fitLineToWidth(
                         `    ${descriptionLines[row.descriptionLineIndex] ?? ""}`,
-                        helpContentLineWidth
+                        helpContentLineWidth,
                       );
                       return (
                         <box
                           key={`help-row-${rowIndex}`}
                           style={{ flexDirection: "row", width: "100%" }}
                         >
-                          <text style={{ color: helpTheme.muted }}>{descriptionLine}</text>
+                          <text style={{ color: helpTheme.muted }}>
+                            {descriptionLine}
+                          </text>
                           {helpHasOverflow ? (
                             <text
                               style={{
                                 color: scrollbarIsThumb
                                   ? helpTheme.accentBlue
-                                  : helpTheme.outline
+                                  : helpTheme.outline,
                               }}
                             >
                               {scrollbarGlyph}
@@ -14037,7 +13333,7 @@ export function App({
                     minHeight: 0,
                     maxHeight: "100%",
                     flexDirection: "column",
-                    overflow: "hidden"
+                    overflow: "hidden",
                   }}
                   onMouseScroll={(event) => {
                     const direction = event.scroll?.direction;
@@ -14049,85 +13345,132 @@ export function App({
                   }}
                 >
                   <box style={{ flexDirection: "column" }}>
-                    {Array.from({ length: helpNavVisibleRowCount }, (_, visibleRowIndex) => {
-                      const rowIndex = clampedHelpNavScrollOffset + visibleRowIndex;
-                      const scrollbarIsThumb =
-                        helpNavScrollbarThumb !== null &&
-                        visibleRowIndex >= helpNavScrollbarThumb.startRow &&
-                        visibleRowIndex <= helpNavScrollbarThumb.endRow;
-                      const scrollbarGlyph =
-                        helpHasOverflow && scrollbarIsThumb ? "█" : helpHasOverflow ? "│" : "";
+                    {Array.from(
+                      { length: helpNavVisibleRowCount },
+                      (_, visibleRowIndex) => {
+                        const rowIndex =
+                          clampedHelpNavScrollOffset + visibleRowIndex;
+                        const scrollbarIsThumb =
+                          helpNavScrollbarThumb !== null &&
+                          visibleRowIndex >= helpNavScrollbarThumb.startRow &&
+                          visibleRowIndex <= helpNavScrollbarThumb.endRow;
+                        const scrollbarGlyph =
+                          helpHasOverflow && scrollbarIsThumb
+                            ? "█"
+                            : helpHasOverflow
+                              ? "│"
+                              : "";
 
-                      if (rowIndex < helpNavStatusLineCount) {
-                        const statusLine = helpSettingsStatusLines[rowIndex] ?? "";
+                        if (rowIndex < helpNavStatusLineCount) {
+                          const statusLine =
+                            helpSettingsStatusLines[rowIndex] ?? "";
+                          return (
+                            <box
+                              key={`help-nav-status-${rowIndex}`}
+                              style={{ flexDirection: "row", width: "100%" }}
+                            >
+                              <text style={{ color: helpTheme.muted }}>
+                                {fitLineToWidth(
+                                  statusLine,
+                                  helpContentLineWidth,
+                                )}
+                              </text>
+                              {helpHasOverflow ? (
+                                <text
+                                  style={{
+                                    color: scrollbarIsThumb
+                                      ? helpTheme.accentBlue
+                                      : helpTheme.outline,
+                                  }}
+                                >
+                                  {scrollbarGlyph}
+                                </text>
+                              ) : null}
+                            </box>
+                          );
+                        }
+
+                        const navRowIndex = rowIndex - helpNavStatusLineCount;
+                        const itemIndex = Math.floor(
+                          navRowIndex / HELP_NAV_ITEM_ROW_COUNT,
+                        );
+                        const item = helpNavItems[itemIndex];
+                        if (!item) return null;
+
+                        if (navRowIndex % HELP_NAV_ITEM_ROW_COUNT === 0) {
+                          const focused =
+                            itemIndex === clampedHelpNavSelectionIndex;
+                          const itemTitle = resolveHelpNavItemTitle(
+                            item,
+                            itemIndex,
+                          );
+                          return (
+                            <box
+                              key={`help-nav-title-${itemIndex}`}
+                              style={{
+                                flexDirection: "row",
+                                width: "100%",
+                                backgroundColor: focused
+                                  ? helpTheme.accentBlue
+                                  : "transparent",
+                                paddingLeft: 1,
+                                paddingRight: 1,
+                              }}
+                              onMouseDown={(event) => {
+                                if (event.button !== 0) return;
+                                setHelpNavSelectionForActivePage(itemIndex);
+                                handleHelpNavForward(itemIndex);
+                              }}
+                            >
+                              <text
+                                style={{
+                                  color: focused
+                                    ? helpTheme.bg
+                                    : helpTheme.text,
+                                  fontWeight: focused ? "bold" : "normal",
+                                }}
+                              >
+                                {fitLineToWidth(
+                                  `${focused ? "▶" : " "} ${itemTitle}`,
+                                  helpContentLineWidth,
+                                )}
+                              </text>
+                              {helpHasOverflow ? (
+                                <text
+                                  style={{
+                                    color: scrollbarIsThumb
+                                      ? focused
+                                        ? helpTheme.bg
+                                        : helpTheme.accentBlue
+                                      : focused
+                                        ? helpTheme.bg
+                                        : helpTheme.outline,
+                                  }}
+                                >
+                                  {scrollbarGlyph}
+                                </text>
+                              ) : null}
+                            </box>
+                          );
+                        }
+
                         return (
                           <box
-                            key={`help-nav-status-${rowIndex}`}
+                            key={`help-nav-description-${itemIndex}`}
                             style={{ flexDirection: "row", width: "100%" }}
                           >
                             <text style={{ color: helpTheme.muted }}>
-                              {fitLineToWidth(statusLine, helpContentLineWidth)}
-                            </text>
-                            {helpHasOverflow ? (
-                              <text
-                                style={{
-                                  color: scrollbarIsThumb
-                                    ? helpTheme.accentBlue
-                                    : helpTheme.outline
-                                }}
-                              >
-                                {scrollbarGlyph}
-                              </text>
-                            ) : null}
-                          </box>
-                        );
-                      }
-
-                      const navRowIndex = rowIndex - helpNavStatusLineCount;
-                      const itemIndex = Math.floor(navRowIndex / HELP_NAV_ITEM_ROW_COUNT);
-                      const item = helpNavItems[itemIndex];
-                      if (!item) return null;
-
-                      if (navRowIndex % HELP_NAV_ITEM_ROW_COUNT === 0) {
-                        const focused = itemIndex === clampedHelpNavSelectionIndex;
-                        const itemTitle = resolveHelpNavItemTitle(item, itemIndex);
-                        return (
-                          <box
-                            key={`help-nav-title-${itemIndex}`}
-                            style={{
-                              flexDirection: "row",
-                              width: "100%",
-                              backgroundColor: focused ? helpTheme.accentBlue : "transparent",
-                              paddingLeft: 1,
-                              paddingRight: 1
-                            }}
-                            onMouseDown={(event) => {
-                              if (event.button !== 0) return;
-                              setHelpNavSelectionForActivePage(itemIndex);
-                              handleHelpNavForward(itemIndex);
-                            }}
-                          >
-                            <text
-                              style={{
-                                color: focused ? helpTheme.bg : helpTheme.text,
-                                fontWeight: focused ? "bold" : "normal"
-                              }}
-                            >
                               {fitLineToWidth(
-                                `${focused ? "▶" : " "} ${itemTitle}`,
-                                helpContentLineWidth
+                                `    ${item.description}`,
+                                helpContentLineWidth,
                               )}
                             </text>
                             {helpHasOverflow ? (
                               <text
                                 style={{
                                   color: scrollbarIsThumb
-                                    ? focused
-                                      ? helpTheme.bg
-                                      : helpTheme.accentBlue
-                                    : focused
-                                      ? helpTheme.bg
-                                      : helpTheme.outline
+                                    ? helpTheme.accentBlue
+                                    : helpTheme.outline,
                                 }}
                               >
                                 {scrollbarGlyph}
@@ -14135,30 +13478,8 @@ export function App({
                             ) : null}
                           </box>
                         );
-                      }
-
-                      return (
-                        <box
-                          key={`help-nav-description-${itemIndex}`}
-                          style={{ flexDirection: "row", width: "100%" }}
-                        >
-                          <text style={{ color: helpTheme.muted }}>
-                            {fitLineToWidth(`    ${item.description}`, helpContentLineWidth)}
-                          </text>
-                          {helpHasOverflow ? (
-                            <text
-                              style={{
-                                color: scrollbarIsThumb
-                                  ? helpTheme.accentBlue
-                                  : helpTheme.outline
-                              }}
-                            >
-                              {scrollbarGlyph}
-                            </text>
-                          ) : null}
-                        </box>
-                      );
-                    })}
+                      },
+                    )}
                   </box>
                 </box>
               )}
@@ -14175,7 +13496,7 @@ export function App({
                 minHeight: HELP_FOOTER_ROWS,
                 maxHeight: HELP_FOOTER_ROWS,
                 backgroundColor: helpTheme.panel,
-                overflow: "hidden"
+                overflow: "hidden",
               }}
             >
               <box
@@ -14188,17 +13509,19 @@ export function App({
                   alignItems: "center",
                   paddingLeft: 1,
                   paddingRight: 1,
-                  backgroundColor: helpTheme.panel
+                  backgroundColor: helpTheme.panel,
                 }}
               >
-                <text style={{ color: helpTheme.muted }}>{helpFooterHintsLine}</text>
+                <text style={{ color: helpTheme.muted }}>
+                  {helpFooterHintsLine}
+                </text>
                 {helpCloseButtonLabel ? (
                   <box
                     style={{
                       marginLeft: 1,
                       backgroundColor: helpTheme.accentBlue,
                       paddingLeft: 1,
-                      paddingRight: 1
+                      paddingRight: 1,
                     }}
                     onMouseDown={(event) => {
                       if (event.button !== 0) return;
@@ -14219,10 +13542,12 @@ export function App({
                   width: "100%",
                   paddingLeft: 1,
                   paddingRight: 1,
-                  backgroundColor: helpTheme.panel
+                  backgroundColor: helpTheme.panel,
                 }}
               >
-                <text style={{ color: helpTheme.muted }}>{helpFooterDataPathLine}</text>
+                <text style={{ color: helpTheme.muted }}>
+                  {helpFooterDataPathLine}
+                </text>
               </box>
             </box>
           </box>
@@ -14235,10 +13560,13 @@ export function App({
             position: "absolute",
             left: layout.railWidth + 1,
             right: 1,
-            bottom: whichKeyHintBarBottom
+            bottom: whichKeyHintBarBottom,
           }}
         >
-          <WhichKeyHintBar items={whichKeyHintItems} width={Math.max(8, bottomBarWidth - 2)} />
+          <WhichKeyHintBar
+            items={whichKeyHintItems}
+            width={Math.max(8, bottomBarWidth - 2)}
+          />
         </box>
       ) : null}
 
@@ -14247,10 +13575,13 @@ export function App({
           style={{
             position: "absolute",
             right: 2,
-            bottom: whichKeyPopupBottom
+            bottom: whichKeyPopupBottom,
           }}
         >
-          <WhichKeyPopup model={whichKeyPrefixPopup} maxLineWidth={whichKeyPopupLineWidth} />
+          <WhichKeyPopup
+            model={whichKeyPrefixPopup}
+            maxLineWidth={whichKeyPopupLineWidth}
+          />
         </box>
       ) : null}
     </box>

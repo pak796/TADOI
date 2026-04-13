@@ -12,17 +12,19 @@ describe("parseMiniDateTime", () => {
       dateISO: "2026-03-02",
       time24: null,
       precision: "date",
-      source: "mini"
+      source: "mini",
     });
   });
 
   it('parses "tomorrow" as date only', () => {
-    expect(parseMiniDateTime("tomorrow", NOW_2026_03_02_10, CHICAGO_TZ)).toEqual({
+    expect(
+      parseMiniDateTime("tomorrow", NOW_2026_03_02_10, CHICAGO_TZ),
+    ).toEqual({
       ok: true,
       dateISO: "2026-03-03",
       time24: null,
       precision: "date",
-      source: "mini"
+      source: "mini",
     });
   });
 
@@ -32,7 +34,7 @@ describe("parseMiniDateTime", () => {
       dateISO: "2026-03-02",
       time24: null,
       precision: "date",
-      source: "mini"
+      source: "mini",
     });
 
     expect(parseMiniDateTime("tue", NOW_2026_03_02_10, CHICAGO_TZ)).toEqual({
@@ -40,7 +42,7 @@ describe("parseMiniDateTime", () => {
       dateISO: "2026-03-03",
       time24: null,
       precision: "date",
-      source: "mini"
+      source: "mini",
     });
   });
 
@@ -50,7 +52,7 @@ describe("parseMiniDateTime", () => {
       dateISO: "2026-03-05",
       time24: null,
       precision: "date",
-      source: "mini"
+      source: "mini",
     });
   });
 
@@ -60,7 +62,7 @@ describe("parseMiniDateTime", () => {
       dateISO: "2026-03-02",
       time24: "15:00",
       precision: "datetime",
-      source: "mini"
+      source: "mini",
     });
   });
 
@@ -70,26 +72,30 @@ describe("parseMiniDateTime", () => {
       dateISO: "2026-03-03",
       time24: "15:00",
       precision: "datetime",
-      source: "mini"
+      source: "mini",
     });
   });
 
   it('parses "mon 3pm" as today or next week based on now', () => {
-    expect(parseMiniDateTime("mon 3pm", NOW_2026_03_02_10, CHICAGO_TZ)).toEqual({
-      ok: true,
-      dateISO: "2026-03-02",
-      time24: "15:00",
-      precision: "datetime",
-      source: "mini"
-    });
+    expect(parseMiniDateTime("mon 3pm", NOW_2026_03_02_10, CHICAGO_TZ)).toEqual(
+      {
+        ok: true,
+        dateISO: "2026-03-02",
+        time24: "15:00",
+        precision: "datetime",
+        source: "mini",
+      },
+    );
 
-    expect(parseMiniDateTime("mon 3pm", NOW_2026_03_02_16, CHICAGO_TZ)).toEqual({
-      ok: true,
-      dateISO: "2026-03-09",
-      time24: "15:00",
-      precision: "datetime",
-      source: "mini"
-    });
+    expect(parseMiniDateTime("mon 3pm", NOW_2026_03_02_16, CHICAGO_TZ)).toEqual(
+      {
+        ok: true,
+        dateISO: "2026-03-09",
+        time24: "15:00",
+        precision: "datetime",
+        source: "mini",
+      },
+    );
   });
 
   it('parses 24h tokens like "15:30"', () => {
@@ -98,7 +104,7 @@ describe("parseMiniDateTime", () => {
       dateISO: "2026-03-02",
       time24: "15:30",
       precision: "datetime",
-      source: "mini"
+      source: "mini",
     });
   });
 
@@ -106,15 +112,17 @@ describe("parseMiniDateTime", () => {
     expect(parseMiniDateTime("3", NOW_2026_03_02_10, CHICAGO_TZ)).toEqual({
       ok: false,
       code: "AMBIGUOUS_TIME",
-      message: 'Ambiguous time token "3"'
+      message: 'Ambiguous time token "3"',
     });
   });
 
   it('returns UNKNOWN_TOKEN for "next mon"', () => {
-    expect(parseMiniDateTime("next mon", NOW_2026_03_02_10, CHICAGO_TZ)).toEqual({
+    expect(
+      parseMiniDateTime("next mon", NOW_2026_03_02_10, CHICAGO_TZ),
+    ).toEqual({
       ok: false,
       code: "UNKNOWN_TOKEN",
-      message: 'Unknown token "next"'
+      message: 'Unknown token "next"',
     });
   });
 });

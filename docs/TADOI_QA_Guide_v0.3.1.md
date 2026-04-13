@@ -10,6 +10,7 @@ This guide defines a robust manual QA process for TADOI across macOS, Windows, a
 It is intended for full regression validation, not only smoke testing.
 
 In scope:
+
 - Launch/layout guard behavior (`104x24` minimum).
 - Task lifecycle, keyboard routing, and mode safety.
 - Search, legacy tag cycle, boolean tag filtering, and saved views.
@@ -23,6 +24,7 @@ In scope:
 ## 2) Current Automated Validation Snapshot
 
 Local workspace snapshot (captured for transparency):
+
 - `bun run test`: **287 pass / 14 fail / 301 total**.
 - `bun run typecheck`: **pass**.
 
@@ -30,20 +32,22 @@ Manual QA is still required and proceeds with known issues documented in Section
 
 ## 3) Platform Matrix
 
-| Platform | Terminal baseline | Data path baseline |
-|---|---|---|
-| macOS | Terminal.app / iTerm2 | `~/Library/Application Support/tadoi/tadoi_data.json` |
-| Windows | Windows Terminal | `%APPDATA%\\tadoi\\tadoi_data.json` (fallback `%USERPROFILE%\\AppData\\Roaming\\tadoi\\tadoi_data.json`) |
-| Linux | GNOME Terminal | `$XDG_DATA_HOME/tadoi/tadoi_data.json` (fallback `~/.local/share/tadoi/tadoi_data.json`) |
+| Platform | Terminal baseline     | Data path baseline                                                                                       |
+| -------- | --------------------- | -------------------------------------------------------------------------------------------------------- |
+| macOS    | Terminal.app / iTerm2 | `~/Library/Application Support/tadoi/tadoi_data.json`                                                    |
+| Windows  | Windows Terminal      | `%APPDATA%\\tadoi\\tadoi_data.json` (fallback `%USERPROFILE%\\AppData\\Roaming\\tadoi\\tadoi_data.json`) |
+| Linux    | GNOME Terminal        | `$XDG_DATA_HOME/tadoi/tadoi_data.json` (fallback `~/.local/share/tadoi/tadoi_data.json`)                 |
 
 ## 4) Environment and Data Isolation Setup
 
 Prerequisites:
+
 1. Bun `>=1.3.9`
 2. `bun install`
 3. `bun run dev`
 
 Use isolated data files for repeatable QA:
+
 - macOS/Linux: `TADOI_DATA_PATH=/tmp/tadoi_data.qa.json bun run dev`
 - Windows PowerShell: `$env:TADOI_DATA_PATH="$env:TEMP\\tadoi_data.qa.json"; bun run dev`
 
@@ -52,9 +56,11 @@ Clear or rotate the override file between major suites to avoid cross-suite cont
 ## 5) Expedited Smoke Runbook
 
 Run these first for a fast confidence pass:
+
 - `QA-001`, `QA-002`, `QA-005`, `QA-008`, `QA-013`, `QA-019`, `QA-023`, `QA-029`, `QA-032`, `QA-036`, `QA-039`, `QA-042`.
 
 Smoke pass criteria:
+
 1. All smoke cases pass on all three platforms.
 2. No crash, frozen mode, or unhandled modal state.
 3. No P0/P1 defect found in smoke path.
@@ -280,23 +286,24 @@ Smoke pass criteria:
 
 ## 7) Automated Coverage Mapping
 
-| Manual area | Primary automated references |
-|---|---|
-| Layout + size guard | `src/app/layoutGuard.test.ts` |
-| Key routing + modal routing | `src/app/keyRouter.test.ts`, `src/app/uiState.test.ts`, `src/ui/state.test.ts` |
-| Search/filter/tag precedence | `src/domain/query.test.ts`, `src/domain/tagFilter.test.ts`, `src/domain/savedViews.test.ts` |
-| Recurrence engine + draft + delete | `src/domain/recurrence/engine.test.ts`, `src/domain/recurrence/draft.test.ts`, `src/domain/recurrence/delete.test.ts`, `src/domain/taskRows.test.ts` |
-| Dashboard KPIs and tags | `src/domain/dashboard.test.ts`, `src/domain/dashboardKpis.test.ts`, `src/domain/tagStats.test.ts` |
-| Backup/import/export + portability | `src/state/backupCenterFlow.test.ts`, `src/state/backupService.test.ts`, `src/state/portability.test.ts` |
-| Notifications | `src/notifications/notificationManager.test.ts`, `src/notifications/overdueTaskActions.test.ts`, `src/notifications/notifiers/inAppModalNotifier.test.ts`, `src/notifications/notifiers/terminalBellNotifier.test.ts` |
-| Settings/theme/custom1 | `src/settings/settings.test.ts`, `src/theme/themes.test.ts`, `src/theme/resolveThemeTokens.test.ts`, `src/theme/custom1ColorUtils.test.ts` |
-| Persistence and recovery | `src/state/persistence.test.ts`, `src/state/validation.test.ts` |
+| Manual area                        | Primary automated references                                                                                                                                                                                          |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Layout + size guard                | `src/app/layoutGuard.test.ts`                                                                                                                                                                                         |
+| Key routing + modal routing        | `src/app/keyRouter.test.ts`, `src/app/uiState.test.ts`, `src/ui/state.test.ts`                                                                                                                                        |
+| Search/filter/tag precedence       | `src/domain/query.test.ts`, `src/domain/tagFilter.test.ts`, `src/domain/savedViews.test.ts`                                                                                                                           |
+| Recurrence engine + draft + delete | `src/domain/recurrence/engine.test.ts`, `src/domain/recurrence/draft.test.ts`, `src/domain/recurrence/delete.test.ts`, `src/domain/taskRows.test.ts`                                                                  |
+| Dashboard KPIs and tags            | `src/domain/dashboard.test.ts`, `src/domain/dashboardKpis.test.ts`, `src/domain/tagStats.test.ts`                                                                                                                     |
+| Backup/import/export + portability | `src/state/backupCenterFlow.test.ts`, `src/state/backupService.test.ts`, `src/state/portability.test.ts`                                                                                                              |
+| Notifications                      | `src/notifications/notificationManager.test.ts`, `src/notifications/overdueTaskActions.test.ts`, `src/notifications/notifiers/inAppModalNotifier.test.ts`, `src/notifications/notifiers/terminalBellNotifier.test.ts` |
+| Settings/theme/custom1             | `src/settings/settings.test.ts`, `src/theme/themes.test.ts`, `src/theme/resolveThemeTokens.test.ts`, `src/theme/custom1ColorUtils.test.ts`                                                                            |
+| Persistence and recovery           | `src/state/persistence.test.ts`, `src/state/validation.test.ts`                                                                                                                                                       |
 
 ## 8) Known Issues in Current Workspace
 
 The following automated failures are currently present and should be tracked during QA runs:
 
 ### A) Settings load normalization failures (`src/settings/settings.test.ts`)
+
 - `loadSettings > returns defaults when settings files are missing`
 - `loadSettings > reads primary settings file first when valid`
 - `loadSettings > uses fallback file when primary is missing`
@@ -307,6 +314,7 @@ The following automated failures are currently present and should be tracked dur
 - `loadSettings > seeds custom1 global palette from default when rotating is active`
 
 ### B) Settings persistence write-path failures (`src/settings/settings.test.ts`)
+
 - `saveSettingsDebounced > creates parent directories and writes settings`
 - `saveSettingsDebounced > coalesces rapid updates and persists only the latest value`
 - `saveSettingsDebounced > falls back to ~/.tadoi/settings.json when primary write fails`
@@ -314,11 +322,13 @@ The following automated failures are currently present and should be tracked dur
 - `saveSettingsStrict > falls back from primary to fallback path when primary write fails`
 
 ### C) Backup/settings integration failure (`src/state/backupService.test.ts`)
+
 - `backupService import/export > imports nested notification settings and writes them to settings.json`
 
 ## 9) Evidence and Defect Reporting Template
 
 For each platform run, capture:
+
 - Platform + terminal + version.
 - App/package version.
 - Case IDs executed.
@@ -327,6 +337,7 @@ For each platform run, capture:
 - New defect reports.
 
 Defect report format:
+
 1. `ID`
 2. `Severity` (`P0`, `P1`, `P2`)
 3. `Case ID`
@@ -339,6 +350,7 @@ Defect report format:
 ## 10) Exit Criteria
 
 Release candidate is manual-QA ready when:
+
 1. All smoke cases pass on macOS, Windows, Linux.
 2. Full case set (`QA-001` to `QA-046`) is executed at least once per target platform.
 3. No open `P0` or `P1` defects remain.

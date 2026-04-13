@@ -1,6 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import { EventEmitter } from "node:events";
-import { launchReminderTerminal, type TerminalLauncherDeps } from "./terminalLauncher";
+import {
+  launchReminderTerminal,
+  type TerminalLauncherDeps,
+} from "./terminalLauncher";
 import type { TadoiInvocation } from "./invocation";
 
 class MockChildProcess extends EventEmitter {
@@ -15,13 +18,13 @@ type SpawnResult = "ok" | "error";
 
 function makeSpawnWithScript(
   outcomes: SpawnResult[],
-  onSpawn?: (command: string, args: string[], index: number) => void
+  onSpawn?: (command: string, args: string[], index: number) => void,
 ): TerminalLauncherDeps["spawnImpl"] {
   let index = 0;
   return (
     command: string,
     args: string[],
-    _options: Parameters<NonNullable<TerminalLauncherDeps["spawnImpl"]>>[2]
+    _options: Parameters<NonNullable<TerminalLauncherDeps["spawnImpl"]>>[2],
   ) => {
     const child = new MockChildProcess();
     const outcome = outcomes[index] ?? "ok";
@@ -44,7 +47,7 @@ function makeSpawnWithScript(
 function createInvocation(): TadoiInvocation {
   return {
     command: "tadoi",
-    baseArgs: []
+    baseArgs: [],
   };
 }
 
@@ -59,12 +62,15 @@ describe("launchReminderTerminal", () => {
       eventId: "event-fallback",
       invocation: createInvocation(),
       platform: "darwin",
-      spawnImpl
+      spawnImpl,
     });
 
     expect(result.ok).toBe(true);
     expect(result.launcher).toBe("osascript fallback");
-    expect(result.attempted).toEqual(["osascript primary", "osascript fallback"]);
+    expect(result.attempted).toEqual([
+      "osascript primary",
+      "osascript fallback",
+    ]);
     const fallbackScript = calls[1] ?? "";
     expect(fallbackScript).toContain("event-fallback");
   });
@@ -74,12 +80,15 @@ describe("launchReminderTerminal", () => {
       eventId: "event-fail",
       invocation: createInvocation(),
       platform: "darwin",
-      spawnImpl: makeSpawnWithScript(["error", "error"])
+      spawnImpl: makeSpawnWithScript(["error", "error"]),
     });
 
     expect(result.ok).toBe(false);
     expect(result.launcher).toBe("none");
-    expect(result.attempted).toEqual(["osascript primary", "osascript fallback"]);
+    expect(result.attempted).toEqual([
+      "osascript primary",
+      "osascript fallback",
+    ]);
   });
 
   it("falls back to powershell when wt.exe launch fails on windows", async () => {
@@ -92,7 +101,7 @@ describe("launchReminderTerminal", () => {
       eventId: "event-win-fallback",
       invocation: createInvocation(),
       platform: "win32",
-      spawnImpl
+      spawnImpl,
     });
 
     expect(result.ok).toBe(true);
@@ -107,7 +116,7 @@ describe("launchReminderTerminal", () => {
       eventId: "event-win-fail",
       invocation: createInvocation(),
       platform: "win32",
-      spawnImpl: makeSpawnWithScript(["error", "error"])
+      spawnImpl: makeSpawnWithScript(["error", "error"]),
     });
 
     expect(result.ok).toBe(false);
@@ -121,9 +130,9 @@ describe("launchReminderTerminal", () => {
       invocation: createInvocation(),
       platform: "linux",
       env: {
-        TERMINAL: "myterm"
+        TERMINAL: "myterm",
       },
-      spawnImpl: makeSpawnWithScript(["ok"])
+      spawnImpl: makeSpawnWithScript(["ok"]),
     });
 
     expect(result.ok).toBe(true);
@@ -137,7 +146,7 @@ describe("launchReminderTerminal", () => {
       invocation: createInvocation(),
       platform: "linux",
       env: {},
-      spawnImpl: makeSpawnWithScript(["error", "error", "ok"])
+      spawnImpl: makeSpawnWithScript(["error", "error", "ok"]),
     });
 
     expect(result.ok).toBe(true);
@@ -145,7 +154,7 @@ describe("launchReminderTerminal", () => {
     expect(result.attempted).toEqual([
       "x-terminal-emulator",
       "gnome-terminal",
-      "konsole"
+      "konsole",
     ]);
   });
 
@@ -155,7 +164,7 @@ describe("launchReminderTerminal", () => {
       invocation: createInvocation(),
       platform: "linux",
       env: {},
-      spawnImpl: makeSpawnWithScript(new Array(7).fill("error"))
+      spawnImpl: makeSpawnWithScript(new Array(7).fill("error")),
     });
 
     expect(result.ok).toBe(false);
@@ -167,7 +176,7 @@ describe("launchReminderTerminal", () => {
       "xfce4-terminal",
       "alacritty",
       "kitty",
-      "xterm"
+      "xterm",
     ]);
   });
 
@@ -175,7 +184,7 @@ describe("launchReminderTerminal", () => {
     const result = await launchReminderTerminal({
       eventId: "event-unknown",
       invocation: createInvocation(),
-      platform: "aix" as NodeJS.Platform
+      platform: "aix" as NodeJS.Platform,
     });
 
     expect(result.ok).toBe(false);

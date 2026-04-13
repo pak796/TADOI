@@ -14,7 +14,7 @@ export type SchedulerCommandDeps = {
   spawnImpl?: (
     command: string,
     args: string[],
-    options: SpawnOptionsWithoutStdio
+    options: SpawnOptionsWithoutStdio,
   ) => ReturnType<typeof spawn>;
 };
 
@@ -28,7 +28,7 @@ export type SchedulerCommandResult = {
 function runCommand(
   command: string,
   args: string[],
-  options: { spawnImpl?: SchedulerCommandDeps["spawnImpl"] } = {}
+  options: { spawnImpl?: SchedulerCommandDeps["spawnImpl"] } = {},
 ): Promise<SchedulerCommandResult> {
   return runCommandSafe(command, args, options);
 }
@@ -36,7 +36,7 @@ function runCommand(
 function runCommandSafe(
   command: string,
   args: string[],
-  options: { spawnImpl?: SchedulerCommandDeps["spawnImpl"] } = {}
+  options: { spawnImpl?: SchedulerCommandDeps["spawnImpl"] } = {},
 ): Promise<SchedulerCommandResult> {
   const spawnImpl = options.spawnImpl ?? spawn;
   return new Promise((resolve) => {
@@ -44,14 +44,14 @@ function runCommandSafe(
     try {
       child = spawnImpl(command, args, {
         stdio: ["ignore", "pipe", "pipe"],
-        windowsHide: true
+        windowsHide: true,
       });
     } catch (error: unknown) {
       resolve({
         ok: false,
         code: 1,
         stdout: "",
-        stderr: error instanceof Error ? error.message : String(error)
+        stderr: error instanceof Error ? error.message : String(error),
       });
       return;
     }
@@ -71,7 +71,7 @@ function runCommandSafe(
         ok: false,
         code: 1,
         stdout: stdout.trim(),
-        stderr: error instanceof Error ? error.message : String(error)
+        stderr: error instanceof Error ? error.message : String(error),
       });
     });
 
@@ -80,7 +80,7 @@ function runCommandSafe(
         ok: code === 0,
         code: code ?? 1,
         stdout: stdout.trim(),
-        stderr: stderr.trim()
+        stderr: stderr.trim(),
       });
     });
   });
@@ -113,33 +113,46 @@ function linuxSchedulerPaths(homeDir = os.homedir()): LinuxInstallPaths {
   return {
     userDir,
     servicePath: path.join(userDir, LINUX_SERVICE_NAME),
-    timerPath: path.join(userDir, LINUX_TIMER_NAME)
+    timerPath: path.join(userDir, LINUX_TIMER_NAME),
   };
 }
 
 async function rollbackLinuxInstall(
   paths: LinuxInstallPaths,
-  spawnImpl: SchedulerCommandDeps["spawnImpl"]
+  spawnImpl: SchedulerCommandDeps["spawnImpl"],
 ): Promise<void> {
-  await runCommandSafe("systemctl", ["--user", "disable", "--now", LINUX_TIMER_NAME], {
-    spawnImpl
-  });
+  await runCommandSafe(
+    "systemctl",
+    ["--user", "disable", "--now", LINUX_TIMER_NAME],
+    {
+      spawnImpl,
+    },
+  );
   await fs.unlink(paths.servicePath).catch(() => undefined);
   await fs.unlink(paths.timerPath).catch(() => undefined);
   await runCommandSafe("systemctl", ["--user", "daemon-reload"], {
-    spawnImpl
+    spawnImpl,
   });
 }
 
-async function isLinuxSystemdAvailable(spawnImpl: SchedulerCommandDeps["spawnImpl"]): Promise<SchedulerCommandResult> {
+async function isLinuxSystemdAvailable(
+  spawnImpl: SchedulerCommandDeps["spawnImpl"],
+): Promise<SchedulerCommandResult> {
   return runCommandSafe("systemctl", ["--user", "is-system-running"], {
-    spawnImpl
+    spawnImpl,
   });
 }
 
 export function renderMacPlist(invocation: TadoiInvocation): string {
-  const programArgs = [invocation.command, ...invocation.baseArgs, "reminders", "tick"];
-  const argXml = programArgs.map((arg) => `    <string>${escapeXml(arg)}</string>`).join("\n");
+  const programArgs = [
+    invocation.command,
+    ...invocation.baseArgs,
+    "reminders",
+    "tick",
+  ];
+  const argXml = programArgs
+    .map((arg) => `    <string>${escapeXml(arg)}</string>`)
+    .join("\n");
 
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
@@ -157,7 +170,7 @@ export function renderMacPlist(invocation: TadoiInvocation): string {
     "  <key>StandardErrorPath</key><string>/tmp/tadoi-reminders.err.log</string>",
     "</dict>",
     "</plist>",
-    ""
+    "",
   ].join("\n");
 }
 
@@ -173,7 +186,7 @@ function escapeXml(value: string): string {
 export function renderLinuxService(invocation: TadoiInvocation): string {
   const commandLine = buildShellCommandLine(
     [invocation.command, ...invocation.baseArgs, "reminders", "tick"],
-    "linux"
+    "linux",
   );
   return [
     "[Unit]",
@@ -182,7 +195,7 @@ export function renderLinuxService(invocation: TadoiInvocation): string {
     "[Service]",
     "Type=oneshot",
     `ExecStart=/bin/sh -lc ${commandLine}`,
-    ""
+    "",
   ].join("\n");
 }
 
@@ -198,14 +211,14 @@ export function renderLinuxTimer(): string {
     "",
     "[Install]",
     "WantedBy=timers.target",
-    ""
+    "",
   ].join("\n");
 }
 
 export function windowsTaskCommandLine(invocation: TadoiInvocation): string {
   return buildShellCommandLine(
     [invocation.command, ...invocation.baseArgs, "reminders", "tick"],
-    "win32"
+    "win32",
   );
 }
 
@@ -214,12 +227,15 @@ function escapePowerShellLiteral(value: string): string {
 }
 
 function windowsTaskArguments(invocation: TadoiInvocation): string {
-  return buildShellCommandLine([...invocation.baseArgs, "reminders", "tick"], "win32");
+  return buildShellCommandLine(
+    [...invocation.baseArgs, "reminders", "tick"],
+    "win32",
+  );
 }
 
 function parseStatusLine(
   queryOutput: string,
-  prefix: "Status:" | "Scheduled Task State:"
+  prefix: "Status:" | "Scheduled Task State:",
 ): string | undefined {
   const normalizedPrefix = prefix.toLowerCase();
   const lines = queryOutput.split(/\r?\n/);
@@ -238,7 +254,9 @@ function parseStatusLine(
   return undefined;
 }
 
-export function parseWindowsTaskEnabled(queryOutput: string): boolean | undefined {
+export function parseWindowsTaskEnabled(
+  queryOutput: string,
+): boolean | undefined {
   const state =
     parseStatusLine(queryOutput, "Status:") ??
     parseStatusLine(queryOutput, "Scheduled Task State:");
@@ -259,9 +277,13 @@ export function parseWindowsTaskEnabled(queryOutput: string): boolean | undefine
   return undefined;
 }
 
-export function renderWindowsInstallScript(invocation: TadoiInvocation): string {
+export function renderWindowsInstallScript(
+  invocation: TadoiInvocation,
+): string {
   const execute = escapePowerShellLiteral(invocation.command);
-  const argumentsValue = escapePowerShellLiteral(windowsTaskArguments(invocation));
+  const argumentsValue = escapePowerShellLiteral(
+    windowsTaskArguments(invocation),
+  );
   const taskName = escapePowerShellLiteral(WINDOWS_TASK_NAME);
 
   return [
@@ -269,29 +291,28 @@ export function renderWindowsInstallScript(invocation: TadoiInvocation): string 
     "$once = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 1) -RepetitionDuration ([TimeSpan]::MaxValue)",
     "$logon = New-ScheduledTaskTrigger -AtLogOn",
     "$logon.Repetition = $once.Repetition",
-    `Register-ScheduledTask -TaskName '${taskName}' -Action $action -Trigger $logon -Force | Out-Null`
+    `Register-ScheduledTask -TaskName '${taskName}' -Action $action -Trigger $logon -Force | Out-Null`,
   ].join("; ");
 }
 
-export function getReminderInstallCommandsForPlatform(options: {
-  platform?: NodeJS.Platform;
-} = {}): string[] {
+export function getReminderInstallCommandsForPlatform(
+  options: {
+    platform?: NodeJS.Platform;
+  } = {},
+): string[] {
   const platform = options.platform ?? process.platform;
   if (platform === "darwin") {
     return [
       "tadoi reminders install",
-      "launchctl print gui/$UID | grep -i tadoi"
+      "launchctl print gui/$UID | grep -i tadoi",
     ];
   }
   if (platform === "win32") {
-    return [
-      "tadoi reminders install",
-      "schtasks /Query | findstr /I tadoi"
-    ];
+    return ["tadoi reminders install", "schtasks /Query | findstr /I tadoi"];
   }
   return [
     "tadoi reminders install",
-    "systemctl --user status tadoi-reminders.timer"
+    "systemctl --user status tadoi-reminders.timer",
   ];
 }
 
@@ -310,16 +331,24 @@ export async function installReminderScheduler(options: {
     await fs.mkdir(path.dirname(plistPath), { recursive: true, mode: 0o700 });
     await fs.writeFile(plistPath, renderMacPlist(options.invocation), {
       encoding: "utf8",
-      mode: 0o600
+      mode: 0o600,
     });
 
     const uid = process.getuid?.() ?? Number(process.env.UID ?? "0");
-    await runCommand("launchctl", ["bootout", `gui/${String(uid)}`, plistPath], {
-      spawnImpl
-    });
-    const bootstrap = await runCommand("launchctl", ["bootstrap", `gui/${String(uid)}`, plistPath], {
-      spawnImpl
-    });
+    await runCommand(
+      "launchctl",
+      ["bootout", `gui/${String(uid)}`, plistPath],
+      {
+        spawnImpl,
+      },
+    );
+    const bootstrap = await runCommand(
+      "launchctl",
+      ["bootstrap", `gui/${String(uid)}`, plistPath],
+      {
+        spawnImpl,
+      },
+    );
 
     return {
       installed: bootstrap.ok,
@@ -328,8 +357,8 @@ export async function installReminderScheduler(options: {
         `plist: ${plistPath}`,
         bootstrap.ok
           ? "launchctl bootstrap: ok"
-          : `launchctl bootstrap failed: ${formatCommandError(bootstrap)}`
-      ]
+          : `launchctl bootstrap failed: ${formatCommandError(bootstrap)}`,
+      ],
     };
   }
 
@@ -339,9 +368,9 @@ export async function installReminderScheduler(options: {
       [
         "-NoProfile",
         "-Command",
-        renderWindowsInstallScript(options.invocation)
+        renderWindowsInstallScript(options.invocation),
       ],
-      { spawnImpl }
+      { spawnImpl },
     );
 
     return {
@@ -352,8 +381,8 @@ export async function installReminderScheduler(options: {
         `command: ${windowsTaskCommandLine(options.invocation)}`,
         create.ok
           ? "scheduled task create: ok"
-          : `scheduled task create failed: ${create.stderr || create.stdout}`
-      ]
+          : `scheduled task create failed: ${create.stderr || create.stdout}`,
+      ],
     };
   }
 
@@ -366,20 +395,24 @@ export async function installReminderScheduler(options: {
       details: [
         `service: ${paths.servicePath}`,
         `timer: ${paths.timerPath}`,
-        `systemctl unavailable: ${formatCommandError(preflight)}`
-      ]
+        `systemctl unavailable: ${formatCommandError(preflight)}`,
+      ],
     };
   }
 
   try {
     await fs.mkdir(paths.userDir, { recursive: true, mode: 0o700 });
-    await fs.writeFile(paths.servicePath, renderLinuxService(options.invocation), {
-      encoding: "utf8",
-      mode: 0o600
-    });
+    await fs.writeFile(
+      paths.servicePath,
+      renderLinuxService(options.invocation),
+      {
+        encoding: "utf8",
+        mode: 0o600,
+      },
+    );
     await fs.writeFile(paths.timerPath, renderLinuxTimer(), {
       encoding: "utf8",
-      mode: 0o600
+      mode: 0o600,
     });
   } catch (error: unknown) {
     await rollbackLinuxInstall(paths, spawnImpl);
@@ -390,14 +423,18 @@ export async function installReminderScheduler(options: {
         `service: ${paths.servicePath}`,
         `timer: ${paths.timerPath}`,
         `write failed: ${error instanceof Error ? error.message : String(error)}`,
-        "rollback attempted"
-      ]
+        "rollback attempted",
+      ],
     };
   }
 
-  const daemonReload = await runCommand("systemctl", ["--user", "daemon-reload"], {
-    spawnImpl
-  });
+  const daemonReload = await runCommand(
+    "systemctl",
+    ["--user", "daemon-reload"],
+    {
+      spawnImpl,
+    },
+  );
   if (!daemonReload.ok) {
     await rollbackLinuxInstall(paths, spawnImpl);
     return {
@@ -407,15 +444,15 @@ export async function installReminderScheduler(options: {
         `service: ${paths.servicePath}`,
         `timer: ${paths.timerPath}`,
         `daemon-reload failed: ${formatCommandError(daemonReload)}`,
-        "rollback attempted"
-      ]
+        "rollback attempted",
+      ],
     };
   }
 
   const enableNow = await runCommand(
     "systemctl",
     ["--user", "enable", "--now", LINUX_TIMER_NAME],
-    { spawnImpl }
+    { spawnImpl },
   );
   if (!enableNow.ok) {
     await rollbackLinuxInstall(paths, spawnImpl);
@@ -426,8 +463,8 @@ export async function installReminderScheduler(options: {
         `service: ${paths.servicePath}`,
         `timer: ${paths.timerPath}`,
         `timer enable failed: ${formatCommandError(enableNow)}`,
-        "rollback attempted"
-      ]
+        "rollback attempted",
+      ],
     };
   }
 
@@ -438,8 +475,8 @@ export async function installReminderScheduler(options: {
       `service: ${paths.servicePath}`,
       `timer: ${paths.timerPath}`,
       `systemctl --user daemon-reload: ok`,
-      `systemctl --user enable --now: ok`
-    ]
+      `systemctl --user enable --now: ok`,
+    ],
   };
 }
 
@@ -455,9 +492,13 @@ export async function uninstallReminderScheduler(options: {
   if (platform === "darwin") {
     const plistPath = macPlistPath(homeDir);
     const uid = process.getuid?.() ?? Number(process.env.UID ?? "0");
-    const bootoutResult = await runCommand("launchctl", ["bootout", `gui/${String(uid)}`, plistPath], {
-      spawnImpl
-    });
+    const bootoutResult = await runCommand(
+      "launchctl",
+      ["bootout", `gui/${String(uid)}`, plistPath],
+      {
+        spawnImpl,
+      },
+    );
     await fs.unlink(plistPath).catch(() => undefined);
     return {
       installed: false,
@@ -466,15 +507,19 @@ export async function uninstallReminderScheduler(options: {
         `plist removed: ${plistPath}`,
         bootoutResult.ok
           ? "launchctl bootout: ok"
-          : `launchctl bootout failed: ${formatCommandError(bootoutResult)}`
-      ]
+          : `launchctl bootout failed: ${formatCommandError(bootoutResult)}`,
+      ],
     };
   }
 
   if (platform === "win32") {
-    const deleteResult = await runCommand("schtasks", ["/Delete", "/F", "/TN", WINDOWS_TASK_NAME], {
-      spawnImpl
-    });
+    const deleteResult = await runCommand(
+      "schtasks",
+      ["/Delete", "/F", "/TN", WINDOWS_TASK_NAME],
+      {
+        spawnImpl,
+      },
+    );
     return {
       installed: false,
       enabled: false,
@@ -482,20 +527,28 @@ export async function uninstallReminderScheduler(options: {
         `task removed: ${WINDOWS_TASK_NAME}`,
         deleteResult.ok
           ? "schtasks delete: ok"
-          : `schtasks delete failed: ${formatCommandError(deleteResult)}`
-      ]
+          : `schtasks delete failed: ${formatCommandError(deleteResult)}`,
+      ],
     };
   }
 
   const paths = linuxSchedulerPaths(homeDir);
-  const disableResult = await runCommand("systemctl", ["--user", "disable", "--now", LINUX_TIMER_NAME], {
-    spawnImpl
-  });
+  const disableResult = await runCommand(
+    "systemctl",
+    ["--user", "disable", "--now", LINUX_TIMER_NAME],
+    {
+      spawnImpl,
+    },
+  );
   await fs.unlink(paths.servicePath).catch(() => undefined);
   await fs.unlink(paths.timerPath).catch(() => undefined);
-  const daemonReload = await runCommand("systemctl", ["--user", "daemon-reload"], {
-    spawnImpl
-  });
+  const daemonReload = await runCommand(
+    "systemctl",
+    ["--user", "daemon-reload"],
+    {
+      spawnImpl,
+    },
+  );
 
   return {
     installed: false,
@@ -508,8 +561,8 @@ export async function uninstallReminderScheduler(options: {
         : `systemctl disable failed: ${formatCommandError(disableResult)}`,
       daemonReload.ok
         ? "systemctl daemon-reload: ok"
-        : `systemctl daemon-reload failed: ${formatCommandError(daemonReload)}`
-    ]
+        : `systemctl daemon-reload failed: ${formatCommandError(daemonReload)}`,
+    ],
   };
 }
 
@@ -531,9 +584,13 @@ export async function getReminderSchedulerStatus(options: {
       .catch(() => false);
     const uid = process.getuid?.() ?? Number(process.env.UID ?? "0");
     const printResult = plistExists
-      ? await runCommand("launchctl", ["print", `gui/${String(uid)}/${MAC_LABEL}`], {
-          spawnImpl
-        })
+      ? await runCommand(
+          "launchctl",
+          ["print", `gui/${String(uid)}/${MAC_LABEL}`],
+          {
+            spawnImpl,
+          },
+        )
       : { ok: false, code: 1, stdout: "", stderr: "" };
 
     return {
@@ -541,8 +598,8 @@ export async function getReminderSchedulerStatus(options: {
       enabled: plistExists && printResult.ok,
       details: [
         `plist: ${plistPath}`,
-        `command: ${[options.invocation.command, ...options.invocation.baseArgs, "reminders", "tick"].join(" ")}`
-      ]
+        `command: ${[options.invocation.command, ...options.invocation.baseArgs, "reminders", "tick"].join(" ")}`,
+      ],
     };
   }
 
@@ -551,14 +608,15 @@ export async function getReminderSchedulerStatus(options: {
       "schtasks",
       ["/Query", "/TN", WINDOWS_TASK_NAME, "/V", "/FO", "LIST"],
       {
-        spawnImpl
-      }
+        spawnImpl,
+      },
     );
     const queryOutput = `${query.stdout}\n${query.stderr}`.trim();
     const enabled = query.ok
-      ? parseWindowsTaskEnabled(queryOutput) ?? false
+      ? (parseWindowsTaskEnabled(queryOutput) ?? false)
       : false;
-    const state = parseStatusLine(queryOutput, "Status:") ??
+    const state =
+      parseStatusLine(queryOutput, "Status:") ??
       parseStatusLine(queryOutput, "Scheduled Task State:");
 
     return {
@@ -567,17 +625,21 @@ export async function getReminderSchedulerStatus(options: {
       details: [
         `task: ${WINDOWS_TASK_NAME}`,
         `state: ${state ?? "unknown"}`,
-        `command: ${windowsTaskCommandLine(options.invocation)}`
-      ]
+        `command: ${windowsTaskCommandLine(options.invocation)}`,
+      ],
     };
   }
 
   const userDir = linuxUserSystemdDir(homeDir);
   const servicePath = path.join(userDir, LINUX_SERVICE_NAME);
   const timerPath = path.join(userDir, LINUX_TIMER_NAME);
-  const systemdStatus = await runCommand("systemctl", ["--user", "is-system-running"], {
-    spawnImpl
-  });
+  const systemdStatus = await runCommand(
+    "systemctl",
+    ["--user", "is-system-running"],
+    {
+      spawnImpl,
+    },
+  );
   if (!systemdStatus.ok) {
     return {
       installed: false,
@@ -585,8 +647,8 @@ export async function getReminderSchedulerStatus(options: {
       details: [
         `service: ${servicePath}`,
         `timer: ${timerPath}`,
-        `systemctl unavailable: ${formatCommandError(systemdStatus)}`
-      ]
+        `systemctl unavailable: ${formatCommandError(systemdStatus)}`,
+      ],
     };
   }
 
@@ -595,9 +657,13 @@ export async function getReminderSchedulerStatus(options: {
     .then(() => true)
     .catch(() => false);
   const enabled = timerExists
-    ? await runCommand("systemctl", ["--user", "is-enabled", LINUX_TIMER_NAME], {
-        spawnImpl
-      })
+    ? await runCommand(
+        "systemctl",
+        ["--user", "is-enabled", LINUX_TIMER_NAME],
+        {
+          spawnImpl,
+        },
+      )
     : { ok: false, code: 1, stdout: "", stderr: "timer file missing" };
 
   let enabledDetail = "systemd user timer not enabled";
@@ -612,10 +678,6 @@ export async function getReminderSchedulerStatus(options: {
   return {
     installed: timerExists && enabled.ok,
     enabled: enabled.ok,
-    details: [
-      `service: ${servicePath}`,
-      `timer: ${timerPath}`,
-      enabledDetail
-    ]
+    details: [`service: ${servicePath}`, `timer: ${timerPath}`, enabledDetail],
   };
 }

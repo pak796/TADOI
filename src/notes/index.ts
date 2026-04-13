@@ -1,6 +1,10 @@
 import path from "path";
 import { parseFrontmatter } from "./frontmatter";
-import { parseOutgoingNoteRefs, resolveNoteRef, normalizeTitleKey } from "./links";
+import {
+  parseOutgoingNoteRefs,
+  resolveNoteRef,
+  normalizeTitleKey,
+} from "./links";
 import { parseTaskRefs } from "./taskRefs";
 import { expandHierarchicalTagKeys, parseNoteTags } from "./tags";
 import { computeContentHash } from "./storage";
@@ -12,7 +16,7 @@ import type {
   NoteRef,
   NoteWarning,
   ParsedNote,
-  TaskRef
+  TaskRef,
 } from "./types";
 
 type IdentitySnapshot = {
@@ -45,13 +49,16 @@ function hasPrefixMatch(haystack: string, terms: string[]): boolean {
 
 function countSubstringMatches(haystack: string, terms: string[]): number {
   if (terms.length === 0) return 0;
-  return terms.reduce((count, term) => (haystack.includes(term) ? count + 1 : count), 0);
+  return terms.reduce(
+    (count, term) => (haystack.includes(term) ? count + 1 : count),
+    0,
+  );
 }
 
 export function computeNoteSearchRank(
   note: Note,
   bodyContent: string,
-  input: NoteSearchRankingInput
+  input: NoteSearchRankingInput,
 ): number {
   const title = note.title.toLowerCase();
   const aliases = note.aliases.map((alias) => alias.toLowerCase());
@@ -59,41 +66,64 @@ export function computeNoteSearchRank(
   const tags = note.tags.map((tag) => tag.toLowerCase());
   const body = bodyContent.toLowerCase();
 
-  const titleExactBoost = input.titleTerms.some((term) => title === term) ||
+  const titleExactBoost =
+    input.titleTerms.some((term) => title === term) ||
     input.textTerms.some((term) => title === term) ||
-    aliases.some((alias) => input.titleTerms.includes(alias) || input.textTerms.includes(alias))
-    ? 1_000
-    : 0;
+    aliases.some(
+      (alias) =>
+        input.titleTerms.includes(alias) || input.textTerms.includes(alias),
+    )
+      ? 1_000
+      : 0;
 
-  const titlePrefixBoost = hasPrefixMatch(title, [...input.textTerms, ...input.titleTerms]) ||
-    aliases.some((alias) => hasPrefixMatch(alias, [...input.textTerms, ...input.titleTerms]))
-    ? 300
-    : 0;
+  const titlePrefixBoost =
+    hasPrefixMatch(title, [...input.textTerms, ...input.titleTerms]) ||
+    aliases.some((alias) =>
+      hasPrefixMatch(alias, [...input.textTerms, ...input.titleTerms]),
+    )
+      ? 300
+      : 0;
 
   const tagBoost = tags.reduce(
     (score, tag) => score + countSubstringMatches(tag, input.tagTerms) * 120,
-    0
+    0,
   );
-  const titleContainsBoost = countSubstringMatches(title, [...input.textTerms, ...input.titleTerms]) * 80;
+  const titleContainsBoost =
+    countSubstringMatches(title, [...input.textTerms, ...input.titleTerms]) *
+    80;
   const pathBoost = countSubstringMatches(pathValue, input.pathTerms) * 25;
   const bodyBoost = countSubstringMatches(body, input.textTerms) * 20;
-  const recencyBoost = Math.max(0, Math.min(50, Math.round(note.mtimeMs / 86_400_000)));
+  const recencyBoost = Math.max(
+    0,
+    Math.min(50, Math.round(note.mtimeMs / 86_400_000)),
+  );
 
-  return titleExactBoost + titlePrefixBoost + tagBoost + titleContainsBoost + pathBoost + bodyBoost + recencyBoost;
+  return (
+    titleExactBoost +
+    titlePrefixBoost +
+    tagBoost +
+    titleContainsBoost +
+    pathBoost +
+    bodyBoost +
+    recencyBoost
+  );
 }
 
-function mapWarning(notePath: NotePath, warning: {
-  code: NoteWarning["code"];
-  message: string;
-  raw?: string;
-  normalized?: string;
-}): NoteWarning {
+function mapWarning(
+  notePath: NotePath,
+  warning: {
+    code: NoteWarning["code"];
+    message: string;
+    raw?: string;
+    normalized?: string;
+  },
+): NoteWarning {
   return {
     notePath,
     code: warning.code,
     message: warning.message,
     ...(warning.raw ? { raw: warning.raw } : {}),
-    ...(warning.normalized ? { normalized: warning.normalized } : {})
+    ...(warning.normalized ? { normalized: warning.normalized } : {}),
   };
 }
 
@@ -101,7 +131,7 @@ export function parseNoteDocument(doc: NoteDocument): ParsedNote {
   const frontmatter = parseFrontmatter(doc.content);
   const parsedTags = parseNoteTags({
     markdown: frontmatter.body,
-    frontmatterTags: frontmatter.frontmatter.tags
+    frontmatterTags: frontmatter.frontmatter.tags,
   });
 
   const title =
@@ -113,10 +143,10 @@ export function parseNoteDocument(doc: NoteDocument): ParsedNote {
     ...frontmatter.warnings.map((warning) =>
       mapWarning(doc.path, {
         code: "frontmatter_parse",
-        message: warning
-      })
+        message: warning,
+      }),
     ),
-    ...parsedTags.warnings.map((warning) => mapWarning(doc.path, warning))
+    ...parsedTags.warnings.map((warning) => mapWarning(doc.path, warning)),
   ];
 
   const note: Note = {
@@ -128,9 +158,13 @@ export function parseNoteDocument(doc: NoteDocument): ParsedNote {
     aliases: (frontmatter.frontmatter.aliases ?? [])
       .map((alias) => alias.trim())
       .filter((alias) => alias.length > 0),
-    ...(frontmatter.frontmatter.created ? { created: frontmatter.frontmatter.created } : {}),
-    ...(frontmatter.frontmatter.updated ? { updated: frontmatter.frontmatter.updated } : {}),
-    mtimeMs: doc.mtimeMs
+    ...(frontmatter.frontmatter.created
+      ? { created: frontmatter.frontmatter.created }
+      : {}),
+    ...(frontmatter.frontmatter.updated
+      ? { updated: frontmatter.frontmatter.updated }
+      : {}),
+    mtimeMs: doc.mtimeMs,
   };
 
   const outgoingNoteRefs = parseOutgoingNoteRefs(doc.path, frontmatter.body);
@@ -144,7 +178,7 @@ export function parseNoteDocument(doc: NoteDocument): ParsedNote {
     rawTitle: title,
     titleKey: normalizeTitleKey(title),
     hash: computeContentHash(doc.content),
-    warnings
+    warnings,
   };
 }
 
@@ -157,7 +191,7 @@ function createEmptyGraphIndex(): NoteGraphIndex {
     outgoingNoteRefs: new Map(),
     outgoingTaskRefs: new Map(),
     backlinks: new Map(),
-    warningsByPath: new Map()
+    warningsByPath: new Map(),
   };
 }
 
@@ -166,11 +200,14 @@ function noteIdentity(parsed: ParsedNote | undefined): IdentitySnapshot | null {
   return {
     id: parsed.note.id,
     title: parsed.note.title,
-    aliases: [...parsed.note.aliases]
+    aliases: [...parsed.note.aliases],
   };
 }
 
-function identityChanged(previous: IdentitySnapshot | null, next: IdentitySnapshot | null): boolean {
+function identityChanged(
+  previous: IdentitySnapshot | null,
+  next: IdentitySnapshot | null,
+): boolean {
   if (!previous && next) return true;
   if (previous && !next) return true;
   if (!previous || !next) return false;
@@ -235,8 +272,10 @@ export class NoteGraphRuntimeIndex {
       : Array.from(
           new Set<NotePath>([
             doc.path,
-            ...(this.backlinks.get(doc.path) ? Array.from(this.backlinks.get(doc.path) ?? []) : [])
-          ])
+            ...(this.backlinks.get(doc.path)
+              ? Array.from(this.backlinks.get(doc.path) ?? [])
+              : []),
+          ]),
         );
 
     this.resolveRefsForPaths(pathsToResolve);
@@ -280,7 +319,7 @@ export class NoteGraphRuntimeIndex {
       const titleKeys = new Set<string>([
         normalizeTitleKey(parsed.note.title),
         normalizeTitleKey(path.posix.basename(parsed.note.filename, ".md")),
-        ...parsed.note.aliases.map((alias) => normalizeTitleKey(alias))
+        ...parsed.note.aliases.map((alias) => normalizeTitleKey(alias)),
       ]);
       for (const key of titleKeys) {
         if (!key) continue;
@@ -328,7 +367,7 @@ export class NoteGraphRuntimeIndex {
           notePath: pathValue,
           code: "id_duplicate",
           message: `Duplicate note id detected: ${id}`,
-          raw: id
+          raw: id,
         });
         duplicateIdWarnings.set(pathValue, warnings);
       }
@@ -342,7 +381,7 @@ export class NoteGraphRuntimeIndex {
           notePath: pathValue,
           code: "title_duplicate",
           message: `Duplicate note title key detected: ${titleKey}`,
-          raw: titleKey
+          raw: titleKey,
         });
         duplicateTitleWarnings.set(pathValue, warnings);
       }
@@ -352,7 +391,7 @@ export class NoteGraphRuntimeIndex {
       const mergedWarnings = [
         ...parsed.warnings,
         ...(duplicateIdWarnings.get(pathValue) ?? []),
-        ...(duplicateTitleWarnings.get(pathValue) ?? [])
+        ...(duplicateTitleWarnings.get(pathValue) ?? []),
       ];
       this.warningsByPath.set(pathValue, mergedWarnings);
     }
@@ -376,13 +415,13 @@ export class NoteGraphRuntimeIndex {
               {
                 id: note.id,
                 title: note.title,
-                filename: note.filename
-              }
-            ])
+                filename: note.filename,
+              },
+            ]),
           ),
           notesById: this.notesById,
-          notesByTitle: this.notesByTitle
-        })
+          notesByTitle: this.notesByTitle,
+        }),
       );
 
       this.applyResolvedOutgoing(pathValue, resolved);
@@ -393,18 +432,21 @@ export class NoteGraphRuntimeIndex {
     return [...this.lastResolvedPaths];
   }
 
-  private applyResolvedOutgoing(pathValue: NotePath, nextOutgoing: NoteRef[]): void {
+  private applyResolvedOutgoing(
+    pathValue: NotePath,
+    nextOutgoing: NoteRef[],
+  ): void {
     const previousOutgoing = this.outgoingNoteRefs.get(pathValue) ?? [];
 
     const previousTargets = new Set(
       previousOutgoing
         .map((ref) => ref.toResolved)
-        .filter((target): target is NotePath => typeof target === "string")
+        .filter((target): target is NotePath => typeof target === "string"),
     );
     const nextTargets = new Set(
       nextOutgoing
         .map((ref) => ref.toResolved)
-        .filter((target): target is NotePath => typeof target === "string")
+        .filter((target): target is NotePath => typeof target === "string"),
     );
 
     for (const target of previousTargets) {
@@ -428,7 +470,8 @@ export class NoteGraphRuntimeIndex {
     this.outgoingNoteRefs.set(pathValue, nextOutgoing);
 
     const baseWarnings = (this.warningsByPath.get(pathValue) ?? []).filter(
-      (warning) => warning.code !== "link_broken" && warning.code !== "link_ambiguous"
+      (warning) =>
+        warning.code !== "link_broken" && warning.code !== "link_ambiguous",
     );
 
     for (const ref of nextOutgoing) {
@@ -437,7 +480,7 @@ export class NoteGraphRuntimeIndex {
           notePath: pathValue,
           code: "link_ambiguous",
           message: `Ambiguous note link: ${ref.toRaw}`,
-          raw: ref.toRaw
+          raw: ref.toRaw,
         });
       }
       if (ref.broken) {
@@ -445,7 +488,7 @@ export class NoteGraphRuntimeIndex {
           notePath: pathValue,
           code: "link_broken",
           message: `Broken note link: ${ref.toRaw}`,
-          raw: ref.toRaw
+          raw: ref.toRaw,
         });
       }
     }
@@ -455,34 +498,41 @@ export class NoteGraphRuntimeIndex {
 
   snapshot(): NoteGraphIndex {
     const cloneSetMap = <T>(input: Map<string, Set<T>>): Map<string, Set<T>> =>
-      new Map(Array.from(input.entries()).map(([key, set]) => [key, new Set(set)]));
+      new Map(
+        Array.from(input.entries()).map(([key, set]) => [key, new Set(set)]),
+      );
 
     return {
       notesByPath: new Map(this.notesByPath),
       notesById: new Map(this.notesById),
       notesByTitle: new Map(
-        Array.from(this.notesByTitle.entries()).map(([key, paths]) => [key, [...paths]])
+        Array.from(this.notesByTitle.entries()).map(([key, paths]) => [
+          key,
+          [...paths],
+        ]),
       ),
       tagToNotes: cloneSetMap(this.tagToNotes),
       outgoingNoteRefs: new Map(
         Array.from(this.outgoingNoteRefs.entries()).map(([pathValue, refs]) => [
           pathValue,
-          refs.map((ref) => ({ ...ref }))
-        ])
+          refs.map((ref) => ({ ...ref })),
+        ]),
       ),
       outgoingTaskRefs: new Map(
         Array.from(this.outgoingTaskRefs.entries()).map(([pathValue, refs]) => [
           pathValue,
-          refs.map((ref) => ({ ...ref }))
-        ])
+          refs.map((ref) => ({ ...ref })),
+        ]),
       ),
       backlinks: cloneSetMap(this.backlinks),
       warningsByPath: new Map(
-        Array.from(this.warningsByPath.entries()).map(([pathValue, warnings]) => [
-          pathValue,
-          warnings.map((warning) => ({ ...warning }))
-        ])
-      )
+        Array.from(this.warningsByPath.entries()).map(
+          ([pathValue, warnings]) => [
+            pathValue,
+            warnings.map((warning) => ({ ...warning })),
+          ],
+        ),
+      ),
     };
   }
 
@@ -493,8 +543,8 @@ export class NoteGraphRuntimeIndex {
 
   linkedTasksForNote(notePath: NotePath): string[] {
     const refs = this.outgoingTaskRefs.get(notePath) ?? [];
-    return Array.from(new Set(refs.map((ref) => ref.taskId))).sort((left, right) =>
-      left.localeCompare(right)
+    return Array.from(new Set(refs.map((ref) => ref.taskId))).sort(
+      (left, right) => left.localeCompare(right),
     );
   }
 }

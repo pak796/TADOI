@@ -11,16 +11,16 @@ describe("runUninstallCommand", () => {
       homeDir: () => "/home/tester",
       resolveInvocation: () => ({
         command: "/usr/bin/tadoi",
-        baseArgs: []
+        baseArgs: [],
       }),
       uninstallReminderScheduler: async () => ({
         installed: false,
         enabled: false,
-        details: []
+        details: [],
       }),
       removePath: async () => ({ status: "missing" }),
       log: (line) => logs.push(line),
-      error: (line) => errors.push(line)
+      error: (line) => errors.push(line),
     });
 
     expect(code).toBe(CLI_EXIT_CODE.SUCCESS);
@@ -40,12 +40,12 @@ describe("runUninstallCommand", () => {
       homeDir: () => "/home/tester",
       resolveInvocation: () => ({
         command: "/usr/bin/tadoi",
-        baseArgs: []
+        baseArgs: [],
       }),
       uninstallReminderScheduler: async () => ({
         installed: false,
         enabled: false,
-        details: ["systemctl disable: ok", "systemctl daemon-reload: ok"]
+        details: ["systemctl disable: ok", "systemctl daemon-reload: ok"],
       }),
       removePath: async (targetPath) => {
         removedPaths.push(targetPath);
@@ -55,7 +55,7 @@ describe("runUninstallCommand", () => {
         return { status: "removed" };
       },
       log: (line) => logs.push(line),
-      error: (line) => errors.push(line)
+      error: (line) => errors.push(line),
     });
 
     expect(code).toBe(CLI_EXIT_CODE.SUCCESS);
@@ -63,14 +63,18 @@ describe("runUninstallCommand", () => {
     expect(removedPaths).toEqual([
       "/home/tester/.local/share/bash-completion/completions/tadoi",
       "/home/tester/.zsh/completions/_tadoi",
-      "/home/tester/.config/fish/completions/tadoi.fish"
+      "/home/tester/.config/fish/completions/tadoi.fish",
     ]);
     const output = logs.join("\n");
-    expect(output).toContain("cleanup_scope: user shell completions + reminder helper");
+    expect(output).toContain(
+      "cleanup_scope: user shell completions + reminder helper",
+    );
     expect(output).toContain("bash_completion: removed");
     expect(output).toContain("zsh_completion: not present");
     expect(output).toContain("fish_completion: removed");
-    expect(output).toContain("linux_deb: remove the package with your distro package manager");
+    expect(output).toContain(
+      "linux_deb: remove the package with your distro package manager",
+    );
     expect(output).toContain("main_install_step: required");
   });
 
@@ -83,24 +87,26 @@ describe("runUninstallCommand", () => {
       homeDir: () => "/Users/tester",
       resolveInvocation: () => ({
         command: "/usr/local/bin/tadoi",
-        baseArgs: []
+        baseArgs: [],
       }),
       uninstallReminderScheduler: async () => ({
         installed: false,
         enabled: false,
-        details: ["launchctl bootout: ok"]
+        details: ["launchctl bootout: ok"],
       }),
       removePath: async (targetPath) =>
         targetPath.endsWith("/_tadoi")
           ? { status: "failed", error: "permission denied" }
           : { status: "missing" },
       log: (line) => logs.push(line),
-      error: (line) => errors.push(line)
+      error: (line) => errors.push(line),
     });
 
     expect(code).toBe(CLI_EXIT_CODE.IO_ERROR);
     expect(errors.join("\n")).toContain("zsh_completion: failed");
-    expect(logs.join("\n")).toContain("macos_pkg_or_manual: sudo rm -f /usr/local/bin/tadoi");
+    expect(logs.join("\n")).toContain(
+      "macos_pkg_or_manual: sudo rm -f /usr/local/bin/tadoi",
+    );
   });
 
   it("rejects unexpected uninstall args", async () => {
@@ -112,16 +118,16 @@ describe("runUninstallCommand", () => {
       homeDir: () => "C:\\Users\\tester",
       resolveInvocation: () => ({
         command: "C:\\Program Files\\TADOI\\tadoi.exe",
-        baseArgs: []
+        baseArgs: [],
       }),
       uninstallReminderScheduler: async () => ({
         installed: false,
         enabled: false,
-        details: []
+        details: [],
       }),
       removePath: async () => ({ status: "missing" }),
       log: (line) => logs.push(line),
-      error: (line) => errors.push(line)
+      error: (line) => errors.push(line),
     });
 
     expect(code).toBe(CLI_EXIT_CODE.PARSE_OR_VALIDATION);

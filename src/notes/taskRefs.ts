@@ -1,7 +1,8 @@
 import type { NotePath, TaskRef } from "./types";
 
 const TASK_MENTION_REF_PATTERN = /@task:([A-Za-z0-9._:-]+)/g;
-const TASK_WIKILINK_REF_PATTERN = /\[\[\s*task:([A-Za-z0-9._:-]+)\s*(?:\|[^\]]*)?\]\]/gi;
+const TASK_WIKILINK_REF_PATTERN =
+  /\[\[\s*task:([A-Za-z0-9._:-]+)\s*(?:\|[^\]]*)?\]\]/gi;
 const TASK_URL_REF_PATTERN = /tadoi:\/\/task\/([A-Za-z0-9._:-]+)/gi;
 const TRAILING_PUNCTUATION_PATTERN = /[.,;!?)\]}>]+$/;
 
@@ -14,7 +15,7 @@ function collectRefs(
   fromPath: NotePath,
   markdown: string,
   pattern: RegExp,
-  kind: TaskRef["kind"]
+  kind: TaskRef["kind"],
 ): void {
   pattern.lastIndex = 0;
   let match = pattern.exec(markdown);

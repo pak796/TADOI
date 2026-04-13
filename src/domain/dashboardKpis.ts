@@ -14,7 +14,7 @@ export type DashboardKpis = {
 export function computeDashboardKpisWindowed(
   tasks: Task[],
   nowMs: number,
-  analyticsWindow: "7d" | "14d" | "30d" = "7d"
+  analyticsWindow: "7d" | "14d" | "30d" = "7d",
 ): DashboardKpis {
   const startOfToday = startOfLocalDayMs(nowMs);
   const windowDays = resolveAnalyticsWindowDays(analyticsWindow);
@@ -23,7 +23,7 @@ export function computeDashboardKpisWindowed(
     today: 0,
     next7: 0,
     open: 0,
-    done7d: 0
+    done7d: 0,
   };
 
   for (const task of tasks) {
@@ -54,6 +54,9 @@ export function computeDashboardKpisWindowed(
   return result;
 }
 
-export function computeDashboardKpis(tasks: Task[], nowMs: number): DashboardKpis {
+export function computeDashboardKpis(
+  tasks: Task[],
+  nowMs: number,
+): DashboardKpis {
   return computeDashboardKpisWindowed(tasks, nowMs, "7d");
 }

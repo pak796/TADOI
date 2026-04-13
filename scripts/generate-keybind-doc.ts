@@ -22,7 +22,7 @@ function parseArgs(argv: string[]): Options {
   const options: Options = {
     input: "docs/audit/KEYBIND_AUDIT.json",
     output: "docs/KEYBINDS_CANONICAL.md",
-    check: false
+    check: false,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -44,7 +44,7 @@ function parseArgs(argv: string[]): Options {
     }
     if (token === "--help") {
       throw new Error(
-        "Usage: bun scripts/generate-keybind-doc.ts [--input <json>] [--output <md>] [--check]"
+        "Usage: bun scripts/generate-keybind-doc.ts [--input <json>] [--output <md>] [--check]",
       );
     }
     if (token.startsWith("--")) {
@@ -66,7 +66,9 @@ function normalizePathForDoc(value: string, repoRoot: string): string {
 
 function summarizeEvidence(evidence: string[], repoRoot: string): string {
   if (evidence.length === 0) return "-";
-  const normalized = evidence.map((item) => normalizePathForDoc(item, repoRoot));
+  const normalized = evidence.map((item) =>
+    normalizePathForDoc(item, repoRoot),
+  );
   const shown = normalized.slice(0, 3);
   const remainder = normalized.length - shown.length;
   const joined = shown.join("<br>");
@@ -78,7 +80,7 @@ function summarizeEvidence(evidence: string[], repoRoot: string): string {
 
 export function renderCanonicalKeybindDoc(
   payload: KeybindAuditPayload,
-  repoRoot: string
+  repoRoot: string,
 ): string {
   const lines: string[] = [
     "# Canonical Keybindings",
@@ -90,11 +92,14 @@ export function renderCanonicalKeybindDoc(
     `Canonical keybind count: ${String(payload.canonical_keybinds.length)}`,
     "",
     "| Key | Code Evidence |",
-    "|---|---|"
+    "|---|---|",
   ];
 
   for (const key of payload.canonical_keybinds) {
-    const evidence = summarizeEvidence(payload.evidence.code[key] ?? [], repoRoot);
+    const evidence = summarizeEvidence(
+      payload.evidence.code[key] ?? [],
+      repoRoot,
+    );
     lines.push(`| \`${key}\` | ${evidence} |`);
   }
 
@@ -102,7 +107,9 @@ export function renderCanonicalKeybindDoc(
   return lines.join("\n");
 }
 
-async function loadAuditPayload(filePath: string): Promise<KeybindAuditPayload> {
+async function loadAuditPayload(
+  filePath: string,
+): Promise<KeybindAuditPayload> {
   const raw = await fs.readFile(filePath, "utf8");
   return JSON.parse(raw) as KeybindAuditPayload;
 }
@@ -124,7 +131,7 @@ export async function run(options: Options, repoRoot: string): Promise<number> {
     if (current !== next) {
       console.error(
         `[keybind-doc] FAIL: ${options.output} is out of date. ` +
-          "Run: bun run keybind:canonical:update"
+          "Run: bun run keybind:canonical:update",
       );
       return 1;
     }

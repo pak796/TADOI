@@ -6,7 +6,9 @@ import { LoadedData } from "./persistence";
 import { validatePersistedState } from "./validation";
 
 async function loadFixture(name: string): Promise<LoadedData> {
-  const fixturePath = fileURLToPath(new URL(`./__fixtures__/${name}`, import.meta.url).href);
+  const fixturePath = fileURLToPath(
+    new URL(`./__fixtures__/${name}`, import.meta.url).href,
+  );
   const raw = await fs.readFile(fixturePath, "utf8");
   return JSON.parse(raw) as LoadedData;
 }
@@ -17,9 +19,15 @@ describe("migratePersistedStateToCurrent", () => {
 
     const migrated = migratePersistedStateToCurrent(input, 8);
     expect(migrated.schemaVersion).toBe(8);
-    expect(migrated.tasks.find((task) => task.id === "current-1")?.workflowStage).toBe("todo");
-    expect(migrated.tasks.find((task) => task.id === "inst-1")?.workflowStage).toBe("done");
-    expect(migrated.tasks.every((task) => Array.isArray(task.checklist))).toBe(true);
+    expect(
+      migrated.tasks.find((task) => task.id === "current-1")?.workflowStage,
+    ).toBe("todo");
+    expect(
+      migrated.tasks.find((task) => task.id === "inst-1")?.workflowStage,
+    ).toBe("done");
+    expect(migrated.tasks.every((task) => Array.isArray(task.checklist))).toBe(
+      true,
+    );
     const validated = validatePersistedState(migrated, "strict");
     expect(validated.ok).toBe(true);
   });
@@ -42,13 +50,14 @@ describe("migratePersistedStateToCurrent", () => {
 
   it("migrates legacy schema-0 payload to v8 and validates", async () => {
     const fixturePath = fileURLToPath(
-      new URL("./__fixtures__/persisted.legacy.no-schema.json", import.meta.url).href
+      new URL("./__fixtures__/persisted.legacy.no-schema.json", import.meta.url)
+        .href,
     );
     const raw = await fs.readFile(fixturePath, "utf8");
     const parsed = JSON.parse(raw) as Omit<LoadedData, "schemaVersion">;
     const input: LoadedData = {
       ...parsed,
-      schemaVersion: 0
+      schemaVersion: 0,
     };
 
     const migrated = migratePersistedStateToCurrent(input, 8);
@@ -79,19 +88,23 @@ describe("migratePersistedStateToCurrent", () => {
           recurrence: {
             dtstart: "2026-02-09T09:00:00",
             rrule: "FREQ=DAILY;INTERVAL=1",
-            exdates: ["2026-02-10T09:00:00", "2026-02-10T09:00:00"]
-          }
-        }
-      ]
+            exdates: ["2026-02-10T09:00:00", "2026-02-10T09:00:00"],
+          },
+        },
+      ],
     } as LoadedData;
 
     const migrated = migratePersistedStateToCurrent(recurringV3, 8);
-    const migratedSeries = migrated.tasks.find((task) => task.id === "legacy-series");
+    const migratedSeries = migrated.tasks.find(
+      (task) => task.id === "legacy-series",
+    );
     expect(migrated.schemaVersion).toBe(8);
     expect(migrated.stateRevision).toBe(0);
     expect(migratedSeries?.recurrence?.series_id).toBe("series:legacy-series");
     expect(migratedSeries?.recurrence?.dtstart).toBe("2026-02-09T09:00:00");
-    expect(migratedSeries?.recurrence?.exdates).toEqual(["2026-02-10T09:00:00"]);
+    expect(migratedSeries?.recurrence?.exdates).toEqual([
+      "2026-02-10T09:00:00",
+    ]);
     expect(migratedSeries?.checklist).toEqual([]);
     expect(migrated.engagement).toBeDefined();
     const validated = validatePersistedState(migrated, "strict");
@@ -104,10 +117,15 @@ describe("migratePersistedStateToCurrent", () => {
     const migrated = migratePersistedStateToCurrent(input, 8);
     expect(migrated.schemaVersion).toBe(8);
     expect(migrated.stateRevision).toBe(0);
-    expect(migrated.tasks.every((task) => task.workflowStage === "todo" || task.workflowStage === "done")).toBe(
-      true
+    expect(
+      migrated.tasks.every(
+        (task) =>
+          task.workflowStage === "todo" || task.workflowStage === "done",
+      ),
+    ).toBe(true);
+    expect(migrated.tasks.every((task) => Array.isArray(task.checklist))).toBe(
+      true,
     );
-    expect(migrated.tasks.every((task) => Array.isArray(task.checklist))).toBe(true);
     const validated = validatePersistedState(migrated, "strict");
     expect(validated.ok).toBe(true);
   });
@@ -117,11 +135,11 @@ describe("migratePersistedStateToCurrent", () => {
       schemaVersion: 99,
       tasks: [],
       tagIndex: {},
-      savedViews: []
+      savedViews: [],
     };
 
     expect(() => migratePersistedStateToCurrent(input, 8)).toThrow(
-      "Unsupported schemaVersion"
+      "Unsupported schemaVersion",
     );
   });
 });

@@ -31,12 +31,15 @@ description: Perform a comprehensive repository documentation audit and refresh 
 
 1. Do not edit code files or behavior.
 2. Limit edits to docs artifacts such as:
+
 - `.md`, `.txt`, `.rtf`, `.adoc`, `.rst`
 - Documentation JSON configs
 - `docs/`, `packaging/` plans, `.github/` templates
 - Exported Notion content stored in repo
+
 3. Verify all behavior claims with read-only inspection.
 4. When a fix requires code changes:
+
 - Document the discrepancy.
 - Add `Known Issue / TODO (requires code)` entry.
 - Update task tracking docs if present.
@@ -104,11 +107,13 @@ description: Perform a comprehensive repository documentation audit and refresh 
 ### Step 4: Update Documentation (Docs-Only)
 
 - Prioritize:
+
 1. `README.md`
 2. installation guides
 3. QA/release checklist
 4. specs and task lists
 5. help/usage/keyboard workflow docs
+
 - Write concise, scannable sections.
 - Use tables for flags, keybinds, and platform support.
 - Replace vague language with explicit steps and expected outcomes.

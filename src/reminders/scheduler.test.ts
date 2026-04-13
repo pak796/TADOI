@@ -12,7 +12,7 @@ import {
   renderLinuxTimer,
   renderMacPlist,
   renderWindowsInstallScript,
-  windowsTaskCommandLine
+  windowsTaskCommandLine,
 } from "./scheduler";
 import type { SchedulerCommandDeps } from "./scheduler";
 
@@ -31,7 +31,7 @@ class MockChildProcess extends EventEmitter {
 }
 
 function makeSpawnWithPlan(
-  plan: Array<(command: string, args: string[]) => ScriptResult | Error>
+  plan: Array<(command: string, args: string[]) => ScriptResult | Error>,
 ): SchedulerCommandDeps["spawnImpl"] {
   let used = 0;
   return (command, args) => {
@@ -74,14 +74,14 @@ function linuxSchedulerPaths(homeDir: string): {
   const userDir = path.join(homeDir, ".config", "systemd", "user");
   return {
     servicePath: path.join(userDir, "tadoi-reminders.service"),
-    timerPath: path.join(userDir, "tadoi-reminders.timer")
+    timerPath: path.join(userDir, "tadoi-reminders.timer"),
   };
 }
 
 describe("scheduler artifacts", () => {
   const invocation = {
     command: "/usr/local/bin/tadoi",
-    baseArgs: []
+    baseArgs: [],
   };
 
   it("renders mac launch agent plist with 60s interval and tick command", () => {
@@ -106,7 +106,7 @@ describe("scheduler artifacts", () => {
   it("renders windows task command line for reminders tick", () => {
     const commandLine = windowsTaskCommandLine({
       command: "C:\\Tools\\tadoi.exe",
-      baseArgs: []
+      baseArgs: [],
     });
     expect(commandLine.toLowerCase()).toContain("tadoi.exe");
     expect(commandLine.toLowerCase()).toContain("reminders");
@@ -116,7 +116,7 @@ describe("scheduler artifacts", () => {
   it("renders windows install script with logon trigger and 1-minute repetition", () => {
     const script = renderWindowsInstallScript({
       command: "C:\\Tools\\tadoi.exe",
-      baseArgs: []
+      baseArgs: [],
     });
     expect(script).toContain("New-ScheduledTaskTrigger -AtLogOn");
     expect(script).toContain("RepetitionInterval (New-TimeSpan -Minutes 1)");
@@ -125,10 +125,12 @@ describe("scheduler artifacts", () => {
 
   it("parses windows task enabled state from verbose schtasks output", () => {
     expect(
-      parseWindowsTaskEnabled("TaskName: TADOI Reminders\nStatus: Ready")
+      parseWindowsTaskEnabled("TaskName: TADOI Reminders\nStatus: Ready"),
     ).toBe(true);
     expect(
-      parseWindowsTaskEnabled("TaskName: TADOI Reminders\nScheduled Task State: Disabled")
+      parseWindowsTaskEnabled(
+        "TaskName: TADOI Reminders\nScheduled Task State: Disabled",
+      ),
     ).toBe(false);
   });
 
@@ -141,19 +143,21 @@ describe("scheduler artifacts", () => {
       homeDir,
       invocation: {
         command: "/usr/local/bin/tadoi",
-        baseArgs: []
+        baseArgs: [],
       },
       spawnImpl: makeSpawnWithPlan([
         (command, args) =>
           command === "systemctl" &&
           args.join(" ") === "--user is-system-running"
             ? { code: 1, stderr: "systemctl unavailable" }
-            : { code: 0 }
-      ])
+            : { code: 0 },
+      ]),
     });
 
     expect(status.installed).toBe(false);
-    expect(status.details.some((line) => line.includes("systemctl unavailable"))).toBe(true);
+    expect(
+      status.details.some((line) => line.includes("systemctl unavailable")),
+    ).toBe(true);
 
     await expect(fs.access(servicePath)).rejects.toThrow();
     await expect(fs.access(timerPath)).rejects.toThrow();
@@ -165,19 +169,21 @@ describe("scheduler artifacts", () => {
       homeDir: await makeTempHome(),
       invocation: {
         command: "/usr/local/bin/tadoi",
-        baseArgs: []
+        baseArgs: [],
       },
       spawnImpl: makeSpawnWithPlan([
         (command, args) =>
           command === "systemctl" &&
           args.join(" ") === "--user is-system-running"
             ? { code: 1 }
-            : { code: 0 }
-      ])
+            : { code: 0 },
+      ]),
     });
 
     expect(status.installed).toBe(false);
-    expect(status.details).toContain("systemctl unavailable: command failed with exit code 1");
+    expect(status.details).toContain(
+      "systemctl unavailable: command failed with exit code 1",
+    );
   });
 
   it("rolls back linux install files when daemon-reload fails", async () => {
@@ -188,7 +194,7 @@ describe("scheduler artifacts", () => {
       homeDir,
       invocation: {
         command: "/usr/local/bin/tadoi",
-        baseArgs: []
+        baseArgs: [],
       },
       spawnImpl: makeSpawnWithPlan([
         (command, args) =>
@@ -197,11 +203,10 @@ describe("scheduler artifacts", () => {
             ? { code: 0 }
             : { code: 0 },
         (command, args) =>
-          command === "systemctl" &&
-          args.join(" ") === "--user daemon-reload"
+          command === "systemctl" && args.join(" ") === "--user daemon-reload"
             ? { code: 1, stderr: "daemon-reload failed" }
-            : { code: 0 }
-      ])
+            : { code: 0 },
+      ]),
     });
 
     expect(status.installed).toBe(false);
@@ -219,7 +224,7 @@ describe("scheduler artifacts", () => {
       homeDir,
       invocation: {
         command: "/usr/local/bin/tadoi",
-        baseArgs: []
+        baseArgs: [],
       },
       spawnImpl: makeSpawnWithPlan([
         (command, args) =>
@@ -228,12 +233,11 @@ describe("scheduler artifacts", () => {
             ? { code: 0 }
             : { code: 0 },
         (command, args) =>
-          command === "systemctl" &&
-          args.join(" ") === "--user daemon-reload"
+          command === "systemctl" && args.join(" ") === "--user daemon-reload"
             ? { code: 0 }
             : { code: 0 },
-        () => ({ code: 1, stderr: "timer enable failed" })
-      ])
+        () => ({ code: 1, stderr: "timer enable failed" }),
+      ]),
     });
 
     expect(status.installed).toBe(false);
@@ -254,7 +258,7 @@ describe("scheduler artifacts", () => {
       homeDir,
       invocation: {
         command: "/usr/local/bin/tadoi",
-        baseArgs: []
+        baseArgs: [],
       },
       spawnImpl: makeSpawnWithPlan([
         (command, args) =>
@@ -266,8 +270,8 @@ describe("scheduler artifacts", () => {
           command === "systemctl" &&
           args.join(" ") === "--user is-enabled tadoi-reminders.timer"
             ? { code: 0 }
-            : { code: 0 }
-      ])
+            : { code: 0 },
+      ]),
     });
 
     expect(status.installed).toBe(true);
@@ -282,7 +286,7 @@ describe("scheduler artifacts", () => {
       homeDir,
       invocation: {
         command: "/usr/local/bin/tadoi",
-        baseArgs: []
+        baseArgs: [],
       },
       spawnImpl: makeSpawnWithPlan([
         (command, args) =>
@@ -294,8 +298,8 @@ describe("scheduler artifacts", () => {
           command === "systemctl" &&
           args.join(" ") === "--user is-enabled tadoi-reminders.timer"
             ? { code: 0 }
-            : { code: 0 }
-      ])
+            : { code: 0 },
+      ]),
     });
 
     expect(status.installed).toBe(false);
@@ -308,14 +312,16 @@ describe("scheduler artifacts", () => {
       platform: "darwin",
       homeDir,
       spawnImpl: makeSpawnWithPlan([
-        () => ({ code: 1, stderr: "bootout permission denied" })
-      ])
+        () => ({ code: 1, stderr: "bootout permission denied" }),
+      ]),
     });
 
     expect(status.installed).toBe(false);
     expect(status.enabled).toBe(false);
     expect(
-      status.details.some((line) => line.startsWith("launchctl bootout failed:"))
+      status.details.some((line) =>
+        line.startsWith("launchctl bootout failed:"),
+      ),
     ).toBe(true);
   });
 
@@ -323,14 +329,14 @@ describe("scheduler artifacts", () => {
     const status = await uninstallReminderScheduler({
       platform: "win32",
       spawnImpl: makeSpawnWithPlan([
-        () => ({ code: 1, stderr: "task not found" })
-      ])
+        () => ({ code: 1, stderr: "task not found" }),
+      ]),
     });
 
     expect(status.installed).toBe(false);
     expect(status.enabled).toBe(false);
     expect(
-      status.details.some((line) => line.startsWith("schtasks delete failed:"))
+      status.details.some((line) => line.startsWith("schtasks delete failed:")),
     ).toBe(true);
   });
 });

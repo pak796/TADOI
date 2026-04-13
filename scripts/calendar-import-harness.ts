@@ -80,7 +80,13 @@ function parseArgs(argv: string[]): HarnessArgs | null {
     throw new Error("--in is required");
   }
 
-  return { inputPath, range, mode, dryRun, ...(reportPath ? { reportPath } : {}) };
+  return {
+    inputPath,
+    range,
+    mode,
+    dryRun,
+    ...(reportPath ? { reportPath } : {}),
+  };
 }
 
 async function main(): Promise<number> {
@@ -92,7 +98,7 @@ async function main(): Promise<number> {
     }
   } catch (error: unknown) {
     console.error(
-      `[calendar-import-harness] ${error instanceof Error ? error.message : String(error)}`
+      `[calendar-import-harness] ${error instanceof Error ? error.message : String(error)}`,
     );
     usage();
     return 1;
@@ -100,20 +106,26 @@ async function main(): Promise<number> {
 
   try {
     const result = await importCalendarIcs(parsed);
-    console.log(`[calendar-import-harness] parsed: ${result.summary.eventsParsed}`);
+    console.log(
+      `[calendar-import-harness] parsed: ${result.summary.eventsParsed}`,
+    );
     console.log(`[calendar-import-harness] created: ${result.summary.created}`);
     console.log(`[calendar-import-harness] updated: ${result.summary.updated}`);
     console.log(`[calendar-import-harness] merged: ${result.summary.merged}`);
     console.log(`[calendar-import-harness] skipped: ${result.summary.skipped}`);
     console.log(`[calendar-import-harness] errors: ${result.summary.errors}`);
-    console.log(`[calendar-import-harness] persisted: ${String(result.report.persisted)}`);
+    console.log(
+      `[calendar-import-harness] persisted: ${String(result.report.persisted)}`,
+    );
     if (result.outputReportPath) {
-      console.log(`[calendar-import-harness] report: ${result.outputReportPath}`);
+      console.log(
+        `[calendar-import-harness] report: ${result.outputReportPath}`,
+      );
     }
     return result.hasErrors ? 1 : 0;
   } catch (error: unknown) {
     console.error(
-      `[calendar-import-harness] ${error instanceof Error ? error.message : String(error)}`
+      `[calendar-import-harness] ${error instanceof Error ? error.message : String(error)}`,
     );
     return 2;
   }

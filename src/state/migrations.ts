@@ -3,11 +3,11 @@ import { normalizeChecklist } from "../domain/checklist";
 import { normalizeTagAliases } from "../domain/tagAliases";
 import {
   createDefaultEngagementState,
-  normalizeEngagementState
+  normalizeEngagementState,
 } from "../domain/engagement";
 import {
   formatDateToLocalIso,
-  parseLocalIsoToDate
+  parseLocalIsoToDate,
 } from "../domain/recurrence/rruleAdapter";
 import type { WorkflowStage } from "../domain/models";
 import type { LoadedData } from "./persistence";
@@ -22,7 +22,7 @@ const migrations: Record<number, MigrationFn> = {
   4: migrateV4ToV5,
   5: migrateV5ToV6,
   6: migrateV6ToV7,
-  7: migrateV7ToV8
+  7: migrateV7ToV8,
 };
 
 function normalizeStateRevision(value: unknown): number {
@@ -44,7 +44,7 @@ function migrateV0ToV1(state: LoadedData): LoadedData {
     tagIndex: normalizeTagIndex(state.tagIndex ?? {}),
     tagAliases: normalizeTagAliases(state.tagAliases),
     savedViews: [],
-    engagement: createDefaultEngagementState()
+    engagement: createDefaultEngagementState(),
   };
 }
 
@@ -56,8 +56,10 @@ function migrateV1ToV2(state: LoadedData): LoadedData {
     return {
       ...task,
       hasExplicitTime:
-        typeof task.hasExplicitTime === "boolean" ? task.hasExplicitTime : false,
-      tags: normalizeTags(Array.isArray(task.tags) ? task.tags : [])
+        typeof task.hasExplicitTime === "boolean"
+          ? task.hasExplicitTime
+          : false,
+      tags: normalizeTags(Array.isArray(task.tags) ? task.tags : []),
     };
   });
 
@@ -67,7 +69,7 @@ function migrateV1ToV2(state: LoadedData): LoadedData {
     tagIndex: normalizeTagIndex(state.tagIndex ?? {}),
     tagAliases: normalizeTagAliases(state.tagAliases),
     savedViews: [],
-    engagement: createDefaultEngagementState()
+    engagement: createDefaultEngagementState(),
   };
 }
 
@@ -78,7 +80,7 @@ function migrateV2ToV3(state: LoadedData): LoadedData {
     tagIndex: normalizeTagIndex(state.tagIndex ?? {}),
     tagAliases: normalizeTagAliases(state.tagAliases),
     savedViews: [],
-    engagement: createDefaultEngagementState()
+    engagement: createDefaultEngagementState(),
   };
 }
 
@@ -92,7 +94,11 @@ function normalizeLocalIso(value: unknown): string | undefined {
 function normalizeExdates(value: unknown): string[] | undefined {
   if (!Array.isArray(value)) return undefined;
   const normalized = Array.from(
-    new Set(value.map((entry) => normalizeLocalIso(entry)).filter(Boolean) as string[])
+    new Set(
+      value
+        .map((entry) => normalizeLocalIso(entry))
+        .filter(Boolean) as string[],
+    ),
   ).sort((left, right) => left.localeCompare(right));
   return normalized.length > 0 ? normalized : undefined;
 }
@@ -127,7 +133,8 @@ function migrateV3ToV4(state: LoadedData): LoadedData {
         normalizeLocalIso(fallbackDtstart) ??
         formatDateToLocalIso(new Date(task.createdAt));
       const rrule =
-        typeof recurrenceRecord.rrule === "string" && recurrenceRecord.rrule.trim().length > 0
+        typeof recurrenceRecord.rrule === "string" &&
+        recurrenceRecord.rrule.trim().length > 0
           ? recurrenceRecord.rrule.trim()
           : "FREQ=DAILY;INTERVAL=1";
       const seriesId =
@@ -140,11 +147,13 @@ function migrateV3ToV4(state: LoadedData): LoadedData {
         dtstart,
         rrule,
         series_id: seriesId,
-        ...(exdates ? { exdates } : {})
+        ...(exdates ? { exdates } : {}),
       };
     }
 
-    let instanceOf = undefined as { series_id: string; occurrence: string } | undefined;
+    let instanceOf = undefined as
+      | { series_id: string; occurrence: string }
+      | undefined;
     if (
       typeof task.instance_of === "object" &&
       task.instance_of !== null &&
@@ -160,19 +169,24 @@ function migrateV3ToV4(state: LoadedData): LoadedData {
       if (seriesId && occurrence) {
         instanceOf = {
           series_id: seriesId,
-          occurrence
+          occurrence,
         };
       }
     }
 
-    const normalizedRecurrence = recurrence && instanceOf ? undefined : recurrence;
+    const normalizedRecurrence =
+      recurrence && instanceOf ? undefined : recurrence;
 
-    const { recurrence: _legacyRecurrence, instance_of: _legacyInstanceOf, ...baseTask } = task;
+    const {
+      recurrence: _legacyRecurrence,
+      instance_of: _legacyInstanceOf,
+      ...baseTask
+    } = task;
 
     return {
       ...baseTask,
       ...(normalizedRecurrence ? { recurrence: normalizedRecurrence } : {}),
-      ...(instanceOf ? { instance_of: instanceOf } : {})
+      ...(instanceOf ? { instance_of: instanceOf } : {}),
     };
   });
 
@@ -182,7 +196,7 @@ function migrateV3ToV4(state: LoadedData): LoadedData {
     tagIndex: normalizeTagIndex(state.tagIndex ?? {}),
     tagAliases: normalizeTagAliases(state.tagAliases),
     savedViews: Array.isArray(state.savedViews) ? state.savedViews : [],
-    engagement: createDefaultEngagementState()
+    engagement: createDefaultEngagementState(),
   };
 }
 
@@ -194,7 +208,7 @@ function migrateV4ToV5(state: LoadedData): LoadedData {
     tagIndex: normalizeTagIndex(state.tagIndex ?? {}),
     tagAliases: normalizeTagAliases(state.tagAliases),
     savedViews: Array.isArray(state.savedViews) ? state.savedViews : [],
-    engagement: normalizeEngagementState(state.engagement)
+    engagement: normalizeEngagementState(state.engagement),
   };
 }
 
@@ -206,7 +220,7 @@ function migrateV5ToV6(state: LoadedData): LoadedData {
     tagIndex: normalizeTagIndex(state.tagIndex ?? {}),
     tagAliases: normalizeTagAliases(state.tagAliases),
     savedViews: Array.isArray(state.savedViews) ? state.savedViews : [],
-    engagement: normalizeEngagementState(state.engagement)
+    engagement: normalizeEngagementState(state.engagement),
   };
 }
 
@@ -216,14 +230,18 @@ function migrateV6ToV7(state: LoadedData): LoadedData {
       throw new Error("Invalid task entry during migration 6->7");
     }
 
-    if (typeof task.workflowStage === "string" && task.workflowStage.length > 0) {
+    if (
+      typeof task.workflowStage === "string" &&
+      task.workflowStage.length > 0
+    ) {
       return task;
     }
 
-    const workflowStage: WorkflowStage = task.status === "open" ? "todo" : "done";
+    const workflowStage: WorkflowStage =
+      task.status === "open" ? "todo" : "done";
     return {
       ...task,
-      workflowStage
+      workflowStage,
     };
   });
 
@@ -234,7 +252,7 @@ function migrateV6ToV7(state: LoadedData): LoadedData {
     tagIndex: normalizeTagIndex(state.tagIndex ?? {}),
     tagAliases: normalizeTagAliases(state.tagAliases),
     savedViews: Array.isArray(state.savedViews) ? state.savedViews : [],
-    engagement: normalizeEngagementState(state.engagement)
+    engagement: normalizeEngagementState(state.engagement),
   };
 }
 
@@ -246,7 +264,7 @@ function migrateV7ToV8(state: LoadedData): LoadedData {
 
     return {
       ...task,
-      checklist: normalizeChecklist(task.checklist)
+      checklist: normalizeChecklist(task.checklist),
     };
   });
 
@@ -257,17 +275,17 @@ function migrateV7ToV8(state: LoadedData): LoadedData {
     tagIndex: normalizeTagIndex(state.tagIndex ?? {}),
     tagAliases: normalizeTagAliases(state.tagAliases),
     savedViews: Array.isArray(state.savedViews) ? state.savedViews : [],
-    engagement: normalizeEngagementState(state.engagement)
+    engagement: normalizeEngagementState(state.engagement),
   };
 }
 
 export function migratePersistedStateToCurrent(
   input: LoadedData,
-  currentVersion: number
+  currentVersion: number,
 ): LoadedData {
   if (input.schemaVersion > currentVersion) {
     throw new Error(
-      `Unsupported schemaVersion ${input.schemaVersion}; current is ${currentVersion}`
+      `Unsupported schemaVersion ${input.schemaVersion}; current is ${currentVersion}`,
     );
   }
 
@@ -278,13 +296,15 @@ export function migratePersistedStateToCurrent(
     tagIndex: input.tagIndex ?? {},
     tagAliases: normalizeTagAliases(input.tagAliases),
     savedViews: Array.isArray(input.savedViews) ? input.savedViews : [],
-    engagement: normalizeEngagementState(input.engagement)
+    engagement: normalizeEngagementState(input.engagement),
   };
 
   while (next.schemaVersion < currentVersion) {
     const migration = migrations[next.schemaVersion];
     if (!migration) {
-      throw new Error(`Missing migration step ${next.schemaVersion} -> ${next.schemaVersion + 1}`);
+      throw new Error(
+        `Missing migration step ${next.schemaVersion} -> ${next.schemaVersion + 1}`,
+      );
     }
     next = migration(next);
   }

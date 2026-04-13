@@ -8,7 +8,7 @@ describe("redactedLogger", () => {
       log: (...args: unknown[]) => calls.push(args),
       warn: (...args: unknown[]) => calls.push(args),
       error: (...args: unknown[]) => calls.push(args),
-      debug: (...args: unknown[]) => calls.push(args)
+      debug: (...args: unknown[]) => calls.push(args),
     });
 
     logger.error("failed to open /tmp/private/notes.md");
@@ -22,8 +22,8 @@ describe("redactedLogger", () => {
       ownerRepo: "patrick/tadoi-backups",
       accessToken: "ghp_abcdefghijklmnopqrstuvwxyz123456",
       nested: {
-        passphrase: "super-secret"
-      }
+        passphrase: "super-secret",
+      },
     }) as {
       ownerRepo?: string;
       accessToken?: string;
@@ -36,9 +36,11 @@ describe("redactedLogger", () => {
 
   it("redacts inline credential-like tokens", () => {
     const output = redactLogValue(
-      "token=ghp_abcdefghijklmnopqrstuvwxyz123456 path=/tmp/file.txt"
+      "token=ghp_abcdefghijklmnopqrstuvwxyz123456 path=/tmp/file.txt",
     );
     expect(String(output)).toContain("[REDACTED]");
-    expect(String(output)).not.toContain("ghp_abcdefghijklmnopqrstuvwxyz123456");
+    expect(String(output)).not.toContain(
+      "ghp_abcdefghijklmnopqrstuvwxyz123456",
+    );
   });
 });

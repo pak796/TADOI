@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   findLcovRecord,
   parseArgs,
-  parseLcov
+  parseLcov,
 } from "./check-app-shell-coverage";
 
 describe("check-app-shell-coverage parseArgs", () => {
@@ -15,14 +15,14 @@ describe("check-app-shell-coverage parseArgs", () => {
       "--min-lines",
       "42.5",
       "--min-functions",
-      "39"
+      "39",
     ]);
 
     expect(parsed).toEqual({
       lcovFile: "tmp/lcov.info",
       file: "src/app/App.tsx",
       minLines: 42.5,
-      minFunctions: 39
+      minFunctions: 39,
     });
   });
 });
@@ -41,7 +41,7 @@ describe("check-app-shell-coverage LCOV parsing", () => {
       "DA:1,1",
       "DA:2,1",
       "FNDA:1,run",
-      "end_of_record"
+      "end_of_record",
     ].join("\n");
 
     const records = parseLcov(lcov);

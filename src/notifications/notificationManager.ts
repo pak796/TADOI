@@ -1,7 +1,10 @@
 import { addLocalDaysMs, startOfLocalDayMs } from "../domain/dates";
 import type { Task } from "../domain/models";
 import { isTaskOverdue } from "../domain/navigation";
-import { getOccurrences, latestOverdueOccurrence } from "../domain/recurrence/engine";
+import {
+  getOccurrences,
+  latestOverdueOccurrence,
+} from "../domain/recurrence/engine";
 import { parseLocalIsoToDate } from "../domain/recurrence/rruleAdapter";
 import type { Notifier } from "./notifier";
 import type { NotificationEvent } from "./types";
@@ -19,7 +22,10 @@ function isOpenDueTask(task: Task): boolean {
   return task.status === "open" && task.dueAt !== undefined;
 }
 
-function computeOverdueTransitionAtMs(dueAtMs: number, hasExplicitTime: boolean): number {
+function computeOverdueTransitionAtMs(
+  dueAtMs: number,
+  hasExplicitTime: boolean,
+): number {
   if (hasExplicitTime) {
     return dueAtMs + 1;
   }
@@ -86,18 +92,18 @@ export class NotificationManager {
     }
     if (isRecurringSeriesTask(task)) {
       return {
-        isOverdue: latestOverdueOccurrence(task, nowMs) !== null
+        isOverdue: latestOverdueOccurrence(task, nowMs) !== null,
       };
     }
     return {
-      isOverdue: isTaskOverdue(task, nowMs)
+      isOverdue: isTaskOverdue(task, nowMs),
     };
   }
 
   private evaluateRegularTask(
     task: Task,
     nowMs: number,
-    events: NotificationEvent[]
+    events: NotificationEvent[],
   ): void {
     const existing = cloneState(this.overdueByTaskId.get(task.id));
 
@@ -105,7 +111,7 @@ export class NotificationManager {
       this.overdueByTaskId.set(task.id, {
         ...existing,
         isOverdue: false,
-        ...(task.dueAt === undefined ? { lastNotifiedDueAt: undefined } : {})
+        ...(task.dueAt === undefined ? { lastNotifiedDueAt: undefined } : {}),
       });
       return;
     }
@@ -115,20 +121,24 @@ export class NotificationManager {
       this.overdueByTaskId.set(task.id, {
         ...existing,
         isOverdue: false,
-        lastNotifiedDueAt: undefined
+        lastNotifiedDueAt: undefined,
       });
       return;
     }
 
     const isOverdue = isTaskOverdue(task, nowMs);
-    if (!existing.isOverdue && isOverdue && existing.lastNotifiedDueAt !== dueAtMs) {
+    if (
+      !existing.isOverdue &&
+      isOverdue &&
+      existing.lastNotifiedDueAt !== dueAtMs
+    ) {
       this.emitOverdueEvent(task.id, task.title, dueAtMs, nowMs, events);
       existing.lastNotifiedDueAt = dueAtMs;
     }
 
     this.overdueByTaskId.set(task.id, {
       ...existing,
-      isOverdue
+      isOverdue,
     });
   }
 
@@ -136,29 +146,39 @@ export class NotificationManager {
     task: Task,
     previousNowMs: number,
     nowMs: number,
-    events: NotificationEvent[]
+    events: NotificationEvent[],
   ): void {
     const existing = cloneState(this.overdueByTaskId.get(task.id));
     if (task.status !== "open" || !task.recurrence) {
       this.overdueByTaskId.set(task.id, {
         ...existing,
-        isOverdue: false
+        isOverdue: false,
       });
       return;
     }
 
     const windowStart = Math.min(previousNowMs, nowMs);
     const windowEnd = Math.max(previousNowMs, nowMs);
-    const occurrenceRangeStart = addLocalDaysMs(startOfLocalDayMs(windowStart), -1);
+    const occurrenceRangeStart = addLocalDaysMs(
+      startOfLocalDayMs(windowStart),
+      -1,
+    );
     const occurrenceRangeEnd = windowEnd;
-    const occurrenceIsos = getOccurrences(task, occurrenceRangeStart, occurrenceRangeEnd);
+    const occurrenceIsos = getOccurrences(
+      task,
+      occurrenceRangeStart,
+      occurrenceRangeEnd,
+    );
     const hasExplicitTime = task.hasExplicitTime === true;
 
     for (const occurrenceIso of occurrenceIsos) {
       const occurrenceDate = parseLocalIsoToDate(occurrenceIso);
       if (!occurrenceDate) continue;
       const dueAtMs = occurrenceDate.getTime();
-      const transitionAtMs = computeOverdueTransitionAtMs(dueAtMs, hasExplicitTime);
+      const transitionAtMs = computeOverdueTransitionAtMs(
+        dueAtMs,
+        hasExplicitTime,
+      );
       if (!(windowStart < transitionAtMs && transitionAtMs <= windowEnd)) {
         continue;
       }
@@ -172,7 +192,7 @@ export class NotificationManager {
 
     this.overdueByTaskId.set(task.id, {
       ...existing,
-      isOverdue: latestOverdueOccurrence(task, nowMs) !== null
+      isOverdue: latestOverdueOccurrence(task, nowMs) !== null,
     });
   }
 
@@ -181,14 +201,14 @@ export class NotificationManager {
     title: string,
     dueAtMs: number,
     firedAtMs: number,
-    events: NotificationEvent[]
+    events: NotificationEvent[],
   ): void {
     const event: NotificationEvent = {
       type: "TASK_OVERDUE",
       taskId,
       title,
       dueAt: toIso(dueAtMs),
-      firedAt: toIso(firedAtMs)
+      firedAt: toIso(firedAtMs),
     };
     events.push(event);
     for (const notifier of this.notifiers) {

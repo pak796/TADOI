@@ -53,7 +53,7 @@ coordination_defaults:
 validation_defaults:
   workflow_and_memory:
     - "node scripts/codex/preflight.mjs"
-    - "npm run codex:new-task -- --slug bootstrap-test --title \"Bootstrap Test\" --dry-run"
+    - 'npm run codex:new-task -- --slug bootstrap-test --title "Bootstrap Test" --dry-run'
     - "node scripts/codex/manage-skills.mjs list"
   runtime_and_cli:
     - "bun run preflight:host:core"

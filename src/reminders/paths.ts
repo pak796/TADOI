@@ -9,9 +9,15 @@ export function getReminderSupportDir(dataFilePath: string): string {
 }
 
 export function getReminderIndexPath(dataFilePath: string): string {
-  return path.join(getReminderSupportDir(dataFilePath), REMINDER_INDEX_FILE_NAME);
+  return path.join(
+    getReminderSupportDir(dataFilePath),
+    REMINDER_INDEX_FILE_NAME,
+  );
 }
 
 export function getReminderStatePath(dataFilePath: string): string {
-  return path.join(getReminderSupportDir(dataFilePath), REMINDER_STATE_FILE_NAME);
+  return path.join(
+    getReminderSupportDir(dataFilePath),
+    REMINDER_STATE_FILE_NAME,
+  );
 }

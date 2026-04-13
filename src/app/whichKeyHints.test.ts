@@ -5,7 +5,7 @@ import {
   buildLeftRailHintLines,
   buildWhichKeyHintItems,
   buildWhichKeyPrefixPopup,
-  resolveWhichKeyContext
+  resolveWhichKeyContext,
 } from "./whichKeyHints";
 
 describe("whichKeyHints", () => {
@@ -14,36 +14,36 @@ describe("whichKeyHints", () => {
       resolveWhichKeyContext({
         mode: Mode.LIST,
         focus: FocusTarget.TASK_LIST,
-        backupScreen: null
-      })
+        backupScreen: null,
+      }),
     ).toBe("list");
     expect(
       resolveWhichKeyContext({
         mode: Mode.DASHBOARD,
         focus: FocusTarget.DASHBOARD,
-        backupScreen: null
-      })
+        backupScreen: null,
+      }),
     ).toBe("dashboard");
     expect(
       resolveWhichKeyContext({
         mode: Mode.BACKUP_CENTER,
         focus: FocusTarget.BACKUP_CENTER,
-        backupScreen: "menu"
-      })
+        backupScreen: "menu",
+      }),
     ).toBe("backup");
     expect(
       resolveWhichKeyContext({
         mode: Mode.HELP,
         focus: FocusTarget.TASK_LIST,
-        backupScreen: null
-      })
+        backupScreen: null,
+      }),
     ).toBe("help");
     expect(
       resolveWhichKeyContext({
         mode: Mode.MODAL_CONFIRM,
         focus: FocusTarget.MODAL,
-        backupScreen: null
-      })
+        backupScreen: null,
+      }),
     ).toBe("modal");
   });
 
@@ -52,12 +52,17 @@ describe("whichKeyHints", () => {
       normalizeKeymapAliases({
         list: {
           list_open_search: ["Ctrl+F"],
-          list_open_add: ["n"]
-        }
-      })
+          list_open_add: ["n"],
+        },
+      }),
     );
-    const items = buildWhichKeyHintItems({ context: "list", resolvedAliases: resolved });
-    const keysByLabel = Object.fromEntries(items.map((item) => [item.label, item.key]));
+    const items = buildWhichKeyHintItems({
+      context: "list",
+      resolvedAliases: resolved,
+    });
+    const keysByLabel = Object.fromEntries(
+      items.map((item) => [item.label, item.key]),
+    );
     expect(keysByLabel.search).toBe("Ctrl+F");
     expect(keysByLabel.add).toBe("n");
     expect(keysByLabel.TITS).toBe("`");
@@ -67,19 +72,22 @@ describe("whichKeyHints", () => {
     const resolved = resolveKeymapAliases(
       normalizeKeymapAliases({
         list: {
-          list_open_tag_panel: ["x"]
+          list_open_tag_panel: ["x"],
         },
         backup: {
-          backup_back: ["Ctrl+B"]
-        }
-      })
+          backup_back: ["Ctrl+B"],
+        },
+      }),
     );
-    const lines = buildLeftRailHintLines({ context: "list", resolvedAliases: resolved });
+    const lines = buildLeftRailHintLines({
+      context: "list",
+      resolvedAliases: resolved,
+    });
     expect(lines.some((line) => line.includes("x: TAG PANEL"))).toBe(true);
     expect(lines).toContain("`: TITS");
     const backupLines = buildLeftRailHintLines({
       context: "backup",
-      resolvedAliases: resolved
+      resolvedAliases: resolved,
     });
     expect(backupLines).toContain("Ctrl+B: BACK");
     expect(backupLines).toContain("1..4: MENU");
@@ -88,38 +96,50 @@ describe("whichKeyHints", () => {
   it("includes note delete hints for notes list and notes view contexts", () => {
     const noteListItems = buildWhichKeyHintItems({
       context: "notes",
-      resolvedAliases: null
+      resolvedAliases: null,
     });
-    expect(noteListItems.some((item) => item.key === "d" && item.label === "delete tome")).toBe(
-      true
-    );
+    expect(
+      noteListItems.some(
+        (item) => item.key === "d" && item.label === "delete tome",
+      ),
+    ).toBe(true);
 
     const noteViewItems = buildWhichKeyHintItems({
       context: "notes_view",
-      resolvedAliases: null
+      resolvedAliases: null,
     });
-    expect(noteViewItems.some((item) => item.key === "d" && item.label === "delete note")).toBe(
-      true
-    );
+    expect(
+      noteViewItems.some(
+        (item) => item.key === "d" && item.label === "delete note",
+      ),
+    ).toBe(true);
 
     const noteViewLines = buildLeftRailHintLines({
       context: "notes_view",
-      resolvedAliases: null
+      resolvedAliases: null,
     });
-    expect(noteViewLines.some((line) => line.includes("d: DELETE TOME"))).toBe(true);
+    expect(noteViewLines.some((line) => line.includes("d: DELETE TOME"))).toBe(
+      true,
+    );
   });
 
   it("includes tome rename/delete hints in notes surfaces", () => {
-    const items = buildWhichKeyHintItems({ context: "notes", resolvedAliases: null });
+    const items = buildWhichKeyHintItems({
+      context: "notes",
+      resolvedAliases: null,
+    });
     expect(items).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ key: "r/R", label: "rename tome" }),
         expect.objectContaining({ key: "i", label: "reindex" }),
-        expect.objectContaining({ key: "d", label: "delete tome" })
-      ])
+        expect.objectContaining({ key: "d", label: "delete tome" }),
+      ]),
     );
 
-    const lines = buildLeftRailHintLines({ context: "notes", resolvedAliases: null });
+    const lines = buildLeftRailHintLines({
+      context: "notes",
+      resolvedAliases: null,
+    });
     expect(lines).toContain("r/R: RENAME TOME");
     expect(lines).toContain("i: REINDEX");
     expect(lines).toContain("o: ROOT SETTINGS");
@@ -131,25 +151,25 @@ describe("whichKeyHints", () => {
       normalizeKeymapAliases({
         list: {
           list_jump_top: ["t"],
-          list_jump_bottom: ["b"]
-        }
-      })
+          list_jump_bottom: ["b"],
+        },
+      }),
     );
     const popup = buildWhichKeyPrefixPopup({
       pendingGPrefix: true,
-      resolvedAliases: resolved
+      resolvedAliases: resolved,
     });
     expect(popup?.title).toBe("PREFIX: Ctrl+g / Ctrl+p / Ctrl+y");
     expect(popup?.hints).toEqual([
       { key: "t", label: "jump top", actionId: "list_jump_top" },
       { key: "b", label: "jump bottom", actionId: "list_jump_bottom" },
-      { key: "Esc", label: "cancel prefix" }
+      { key: "Esc", label: "cancel prefix" },
     ]);
     expect(
       buildWhichKeyPrefixPopup({
         pendingGPrefix: false,
-        resolvedAliases: resolved
-      })
+        resolvedAliases: resolved,
+      }),
     ).toBeNull();
   });
 });

@@ -25,7 +25,9 @@ export type TadoiLockAcquireOptions = {
   staleAfterMs?: number;
   allowStaleTakeover?: boolean;
   archiveStaleLock?: boolean;
-  onStaleLockRecovered?: (event: TadoiStaleLockRecoveryEvent) => void | Promise<void>;
+  onStaleLockRecovered?: (
+    event: TadoiStaleLockRecoveryEvent,
+  ) => void | Promise<void>;
 };
 
 export type TadoiLockHeartbeatOptions = {
@@ -79,10 +81,16 @@ function isValidLockPayload(value: unknown): value is TadoiLockPayload {
   if (typeof value.pid !== "number" || !Number.isInteger(value.pid)) {
     return false;
   }
-  if (typeof value.startedAt !== "string" || value.startedAt.trim().length === 0) {
+  if (
+    typeof value.startedAt !== "string" ||
+    value.startedAt.trim().length === 0
+  ) {
     return false;
   }
-  if (value.heartbeatAt !== undefined && typeof value.heartbeatAt !== "string") {
+  if (
+    value.heartbeatAt !== undefined &&
+    typeof value.heartbeatAt !== "string"
+  ) {
     return false;
   }
   if (value.lockId !== undefined && typeof value.lockId !== "string") {
@@ -144,7 +152,7 @@ async function pathExists(filePath: string): Promise<boolean> {
 
 async function tryWriteTadoiLockExclusive(
   lockPath: string,
-  payload: TadoiLockPayload
+  payload: TadoiLockPayload,
 ): Promise<boolean> {
   let handle: Awaited<ReturnType<typeof fs.open>>;
   try {
@@ -168,13 +176,13 @@ async function tryWriteTadoiLockExclusive(
 
 async function writeExistingTadoiLock(
   lockPath: string,
-  payload: TadoiLockPayload
+  payload: TadoiLockPayload,
 ): Promise<boolean> {
   try {
     await fs.writeFile(lockPath, JSON.stringify(payload, null, 2), {
       encoding: "utf8",
       mode: PRIVATE_FILE_MODE,
-      flag: "r+"
+      flag: "r+",
     });
     return true;
   } catch (error: unknown) {
@@ -185,7 +193,10 @@ async function writeExistingTadoiLock(
   }
 }
 
-async function archiveStaleLock(lockPath: string, nowMs: number): Promise<string | undefined> {
+async function archiveStaleLock(
+  lockPath: string,
+  nowMs: number,
+): Promise<string | undefined> {
   const basePath = `${lockPath}.stale.${formatTimestampForFilename(nowMs)}`;
   for (let index = 0; index < STALE_ARCHIVE_ATTEMPTS_MAX; index += 1) {
     const archivePath = index === 0 ? basePath : `${basePath}.${String(index)}`;
@@ -202,12 +213,14 @@ async function archiveStaleLock(lockPath: string, nowMs: number): Promise<string
       throw error;
     }
   }
-  throw new Error(`Unable to archive stale lock after ${String(STALE_ARCHIVE_ATTEMPTS_MAX)} attempts`);
+  throw new Error(
+    `Unable to archive stale lock after ${String(STALE_ARCHIVE_ATTEMPTS_MAX)} attempts`,
+  );
 }
 
 async function isLockFileStaleByMtime(
   lockPath: string,
-  options: { nowMs: number; staleAfterMs: number }
+  options: { nowMs: number; staleAfterMs: number },
 ): Promise<boolean> {
   try {
     const stat = await fs.stat(lockPath);
@@ -237,7 +250,7 @@ export async function isTadoiLockPresent(lockPath: string): Promise<boolean> {
 }
 
 export async function readTadoiLockPayload(
-  lockPath: string
+  lockPath: string,
 ): Promise<TadoiLockPayload | undefined> {
   let raw = "";
   try {
@@ -260,7 +273,7 @@ export async function readTadoiLockPayload(
 export async function isTadoiLockOwnedByProcess(
   lockPath: string,
   pid = process.pid,
-  expectedDataFile?: string
+  expectedDataFile?: string,
 ): Promise<boolean> {
   const payload = await readTadoiLockPayload(lockPath);
   if (!payload || payload.pid !== pid) {
@@ -269,16 +282,20 @@ export async function isTadoiLockOwnedByProcess(
   if (!expectedDataFile || !payload.dataFile) {
     return true;
   }
-  return normalizeComparablePath(payload.dataFile) === normalizeComparablePath(expectedDataFile);
+  return (
+    normalizeComparablePath(payload.dataFile) ===
+    normalizeComparablePath(expectedDataFile)
+  );
 }
 
 export function isTadoiLockPayloadStale(
   payload: TadoiLockPayload,
-  options: { nowMs?: number; staleAfterMs?: number } = {}
+  options: { nowMs?: number; staleAfterMs?: number } = {},
 ): boolean {
   const nowMs = options.nowMs ?? Date.now();
   const staleAfterMs = normalizeStaleAfterMs(options.staleAfterMs);
-  const heartbeatTimeMs = parseIsoTimeMs(payload.heartbeatAt) ?? parseIsoTimeMs(payload.startedAt);
+  const heartbeatTimeMs =
+    parseIsoTimeMs(payload.heartbeatAt) ?? parseIsoTimeMs(payload.startedAt);
   if (heartbeatTimeMs === undefined) {
     return true;
   }
@@ -287,21 +304,27 @@ export function isTadoiLockPayloadStale(
 
 export async function writeTadoiLock(
   lockPath: string,
-  payload: TadoiLockPayload
+  payload: TadoiLockPayload,
 ): Promise<void> {
-  await fs.mkdir(path.dirname(lockPath), { recursive: true, mode: PRIVATE_DIR_MODE });
+  await fs.mkdir(path.dirname(lockPath), {
+    recursive: true,
+    mode: PRIVATE_DIR_MODE,
+  });
   await fs.writeFile(lockPath, JSON.stringify(payload, null, 2), {
     encoding: "utf8",
-    mode: PRIVATE_FILE_MODE
+    mode: PRIVATE_FILE_MODE,
   });
 }
 
 export async function tryAcquireTadoiLock(
   lockPath: string,
   payload: TadoiLockPayload,
-  options: TadoiLockAcquireOptions = {}
+  options: TadoiLockAcquireOptions = {},
 ): Promise<boolean> {
-  await fs.mkdir(path.dirname(lockPath), { recursive: true, mode: PRIVATE_DIR_MODE });
+  await fs.mkdir(path.dirname(lockPath), {
+    recursive: true,
+    mode: PRIVATE_DIR_MODE,
+  });
 
   const acquired = await tryWriteTadoiLockExclusive(lockPath, payload);
   if (acquired) {
@@ -330,7 +353,7 @@ export async function tryAcquireTadoiLock(
       try {
         await options.onStaleLockRecovered({
           lockPath,
-          ...(archivedPath ? { archivedPath } : {})
+          ...(archivedPath ? { archivedPath } : {}),
         });
       } catch {
         // Best effort reporting only; do not fail lock acquisition.
@@ -352,7 +375,7 @@ export async function tryAcquireTadoiLock(
 export async function acquireTadoiLockOrThrow(
   lockPath: string,
   payload: TadoiLockPayload,
-  options: TadoiLockAcquireOptions = {}
+  options: TadoiLockAcquireOptions = {},
 ): Promise<void> {
   const acquired = await tryAcquireTadoiLock(lockPath, payload, options);
   if (!acquired) {
@@ -362,7 +385,7 @@ export async function acquireTadoiLockOrThrow(
 
 export async function refreshTadoiLockHeartbeat(
   lockPath: string,
-  options: TadoiLockHeartbeatOptions = {}
+  options: TadoiLockHeartbeatOptions = {},
 ): Promise<boolean> {
   const payload = await readTadoiLockPayload(lockPath);
   if (!payload) {
@@ -388,7 +411,7 @@ export async function refreshTadoiLockHeartbeat(
   const updatedPayload: TadoiLockPayload = {
     ...payload,
     heartbeatAt: (options.now ?? new Date()).toISOString(),
-    ...(payload.lockId ? {} : options.lockId ? { lockId: options.lockId } : {})
+    ...(payload.lockId ? {} : options.lockId ? { lockId: options.lockId } : {}),
   };
   return writeExistingTadoiLock(lockPath, updatedPayload);
 }
@@ -421,6 +444,6 @@ export function createDefaultLockPayload(dataFile?: string): TadoiLockPayload {
     heartbeatAt: nowIso,
     lockId: randomUUID(),
     version: APP_VERSION,
-    ...(dataFile ? { dataFile } : {})
+    ...(dataFile ? { dataFile } : {}),
   };
 }

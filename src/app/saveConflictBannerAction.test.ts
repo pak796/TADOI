@@ -7,32 +7,32 @@ describe("save conflict banner mouse action", () => {
       shouldTriggerSaveConflictRetryFromMouse({
         isSaveConflictBanner: true,
         retryPending: false,
-        button: 0
-      })
+        button: 0,
+      }),
     ).toBe(true);
 
     expect(
       shouldTriggerSaveConflictRetryFromMouse({
         isSaveConflictBanner: true,
         retryPending: false,
-        button: 1
-      })
+        button: 1,
+      }),
     ).toBe(false);
 
     expect(
       shouldTriggerSaveConflictRetryFromMouse({
         isSaveConflictBanner: true,
         retryPending: true,
-        button: 0
-      })
+        button: 0,
+      }),
     ).toBe(false);
 
     expect(
       shouldTriggerSaveConflictRetryFromMouse({
         isSaveConflictBanner: false,
         retryPending: false,
-        button: 0
-      })
+        button: 0,
+      }),
     ).toBe(false);
   });
 });

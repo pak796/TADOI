@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   parseCalendarImportArgs,
   parseCalendarExportArgs,
-  runCalendarCommand
+  runCalendarCommand,
 } from "./calendarCommands";
 
 describe("parseCalendarExportArgs", () => {
@@ -30,7 +30,7 @@ describe("parseCalendarExportArgs", () => {
       "--range",
       "month",
       "--privacy",
-      "full"
+      "full",
     ]);
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
@@ -45,7 +45,7 @@ describe("parseCalendarExportArgs", () => {
       "--out",
       "./out.ics",
       "--range",
-      "year"
+      "year",
     ]);
     expect(parsed.ok).toBe(false);
   });
@@ -54,7 +54,7 @@ describe("parseCalendarExportArgs", () => {
     const parsed = parseCalendarExportArgs([
       "--out",
       "./out.ics",
-      "--include-details"
+      "--include-details",
     ]);
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
@@ -66,7 +66,7 @@ describe("parseCalendarExportArgs", () => {
       "--out",
       "./out.ics",
       "--privacy",
-      "everything"
+      "everything",
     ]);
     expect(parsed.ok).toBe(false);
   });
@@ -127,7 +127,7 @@ describe("parseCalendarImportArgs", () => {
       "--dry-run",
       "--tag",
       "imported",
-      "--report=./report.json"
+      "--report=./report.json",
     ]);
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
@@ -146,7 +146,7 @@ describe("parseCalendarImportArgs", () => {
       "--in",
       "./in.ics",
       "--range",
-      "year"
+      "year",
     ]);
     expect(badRange.ok).toBe(false);
 
@@ -154,7 +154,7 @@ describe("parseCalendarImportArgs", () => {
       "--in",
       "./in.ics",
       "--mode",
-      "replace"
+      "replace",
     ]);
     expect(badMode.ok).toBe(false);
   });
@@ -164,7 +164,7 @@ describe("parseCalendarImportArgs", () => {
       "--in",
       "./in.ics",
       "--horizon-days",
-      "0"
+      "0",
     ]);
     expect(zero.ok).toBe(false);
 
@@ -172,24 +172,16 @@ describe("parseCalendarImportArgs", () => {
       "--in",
       "./in.ics",
       "--horizon-days",
-      "3651"
+      "3651",
     ]);
     expect(tooHigh.ok).toBe(false);
   });
 
   it("rejects unknown flags and positional args", () => {
-    const unknown = parseCalendarImportArgs([
-      "--in",
-      "./in.ics",
-      "--wat"
-    ]);
+    const unknown = parseCalendarImportArgs(["--in", "./in.ics", "--wat"]);
     expect(unknown.ok).toBe(false);
 
-    const positional = parseCalendarImportArgs([
-      "--in",
-      "./in.ics",
-      "extra"
-    ]);
+    const positional = parseCalendarImportArgs(["--in", "./in.ics", "extra"]);
     expect(positional.ok).toBe(false);
   });
 });

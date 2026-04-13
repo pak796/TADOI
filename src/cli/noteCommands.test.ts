@@ -5,12 +5,15 @@ import path from "path";
 import { runNoteCommandCli } from "./noteCommands";
 import {
   resetSettingsStateForTests,
-  resolveSettingsPaths
+  resolveSettingsPaths,
 } from "../settings/settings";
 
 const cleanupDirs: string[] = [];
 
-function setOptionalEnv(key: "HOME" | "USERPROFILE", value: string | undefined): void {
+function setOptionalEnv(
+  key: "HOME" | "USERPROFILE",
+  value: string | undefined,
+): void {
   if (value === undefined) {
     delete process.env[key];
     return;
@@ -31,7 +34,9 @@ beforeEach(() => {
 afterEach(async () => {
   resetSettingsStateForTests();
   await Promise.all(
-    cleanupDirs.splice(0).map((dir) => fs.rm(dir, { recursive: true, force: true }))
+    cleanupDirs
+      .splice(0)
+      .map((dir) => fs.rm(dir, { recursive: true, force: true })),
   );
 });
 
@@ -46,7 +51,11 @@ describe("runNoteCommandCli integration", () => {
     await fs.mkdir(homeDir, { recursive: true });
     await fs.mkdir(defaultNotesRoot, { recursive: true });
     await fs.writeFile(dataPath, "{}", "utf8");
-    await fs.writeFile(path.join(defaultNotesRoot, "A.md"), "# A\n\nlocal note", "utf8");
+    await fs.writeFile(
+      path.join(defaultNotesRoot, "A.md"),
+      "# A\n\nlocal note",
+      "utf8",
+    );
 
     const previousHome = process.env.HOME;
     const previousUserProfile = process.env.USERPROFILE;
@@ -58,9 +67,9 @@ describe("runNoteCommandCli integration", () => {
         {
           type: "note",
           operation: "open",
-          query: "A"
+          query: "A",
         },
-        dataPath
+        dataPath,
       );
       expect(openBefore.output.kind).toBe("ok");
       expect(openBefore.output.text).toContain("Path: A.md");
@@ -69,9 +78,9 @@ describe("runNoteCommandCli integration", () => {
         {
           type: "note",
           operation: "root_set",
-          path: "./notes-next"
+          path: "./notes-next",
         },
-        dataPath
+        dataPath,
       );
       expect(migrate.output.kind).toBe("ok");
       expect(migrate.output.text).toContain(migratedNotesRoot);
@@ -80,11 +89,15 @@ describe("runNoteCommandCli integration", () => {
       await fs.access(path.join(migratedNotesRoot, "A.md"));
 
       const dataDirEntries = await fs.readdir(dataDir);
-      expect(dataDirEntries.some((entry) => entry.startsWith("tadoi_data.json.backup."))).toBe(true);
+      expect(
+        dataDirEntries.some((entry) =>
+          entry.startsWith("tadoi_data.json.backup."),
+        ),
+      ).toBe(true);
 
       const { primary } = resolveSettingsPaths({
         homeDir,
-        platform: process.platform
+        platform: process.platform,
       });
       const settingsRaw = await fs.readFile(primary, "utf8");
       const settings = JSON.parse(settingsRaw) as {
@@ -97,13 +110,15 @@ describe("runNoteCommandCli integration", () => {
         {
           type: "note",
           operation: "new",
-          title: "After Migration"
+          title: "After Migration",
         },
-        dataPath
+        dataPath,
       );
       expect(createAfterMigration.output.kind).toBe("ok");
       await fs.access(path.join(migratedNotesRoot, "After Migration.md"));
-      await expect(fs.access(path.join(defaultNotesRoot, "After Migration.md"))).rejects.toThrow();
+      await expect(
+        fs.access(path.join(defaultNotesRoot, "After Migration.md")),
+      ).rejects.toThrow();
     } finally {
       setOptionalEnv("HOME", previousHome);
       setOptionalEnv("USERPROFILE", previousUserProfile);

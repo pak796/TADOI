@@ -1,9 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { addLocalDaysMs, startOfLocalDayMs } from "../domain/dates";
-import {
-  isTimestampInRange,
-  resolveCalendarRangeWindow
-} from "./range";
+import { isTimestampInRange, resolveCalendarRangeWindow } from "./range";
 
 describe("calendar range", () => {
   it("computes next7 as local start-of-day(today) through start-of-day(+7)", () => {

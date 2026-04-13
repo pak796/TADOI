@@ -16,7 +16,11 @@ export function parseStrictLocalDate(value: string): LocalDateParts | null {
   const year = Number(match[1]);
   const month = Number(match[2]);
   const day = Number(match[3]);
-  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day)
+  ) {
     return null;
   }
 
@@ -57,7 +61,7 @@ export function buildLocalTimestamp(
   month: number,
   day: number,
   hours: number,
-  minutes: number
+  minutes: number,
 ): number | null {
   const date = new Date(year, month - 1, day, hours, minutes);
   if (

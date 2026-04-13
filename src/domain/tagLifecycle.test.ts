@@ -4,7 +4,7 @@ import {
   planTagCleanup,
   planTagMerge,
   planTagRename,
-  reportTagHygiene
+  reportTagHygiene,
 } from "./tagLifecycle";
 
 function makeTask(partial: Partial<Task> & Pick<Task, "id" | "title">): Task {
@@ -16,7 +16,7 @@ function makeTask(partial: Partial<Task> & Pick<Task, "id" | "title">): Task {
     updatedAt: partial.updatedAt ?? 1,
     dueAt: partial.dueAt,
     hasExplicitTime: partial.hasExplicitTime,
-    tags: partial.tags ?? []
+    tags: partial.tags ?? [],
   };
 }
 
@@ -24,14 +24,14 @@ describe("tag lifecycle", () => {
   it("plans rename with hard rewrite + alias updates", () => {
     const tasks: Task[] = [
       makeTask({ id: "1", title: "a", tags: ["work", "home"] }),
-      makeTask({ id: "2", title: "b", tags: ["legacy", "work"] })
+      makeTask({ id: "2", title: "b", tags: ["legacy", "work"] }),
     ];
     const preview = planTagRename({
       tasks,
       aliases: { legacy: "work" },
       oldTag: "work",
       newTag: "project",
-      now: 500
+      now: 500,
     });
 
     expect(preview.tasksAffected).toBe(2);
@@ -39,21 +39,21 @@ describe("tag lifecycle", () => {
     expect(preview.nextTasks[1]?.tags).toEqual(["project"]);
     expect(preview.nextAliases).toEqual({
       legacy: "project",
-      work: "project"
+      work: "project",
     });
   });
 
   it("plans merge with stable dedupe and source aliases", () => {
     const tasks: Task[] = [
       makeTask({ id: "1", title: "a", tags: ["a", "b", "x"] }),
-      makeTask({ id: "2", title: "b", tags: ["b"] })
+      makeTask({ id: "2", title: "b", tags: ["b"] }),
     ];
     const preview = planTagMerge({
       tasks,
       aliases: {},
       sources: ["a", "b"],
       target: "c",
-      now: 500
+      now: 500,
     });
 
     expect(preview.tasksAffected).toBe(2);
@@ -64,11 +64,11 @@ describe("tag lifecycle", () => {
 
   it("reports hygiene collisions/chains/cycles", () => {
     const tasks: Task[] = [
-      makeTask({ id: "1", title: "a", tags: ["Work", "work"] })
+      makeTask({ id: "1", title: "a", tags: ["Work", "work"] }),
     ];
     const report = reportTagHygiene({
       tasks,
-      aliases: { a: "b", b: "c", x: "y", y: "x" }
+      aliases: { a: "b", b: "c", x: "y", y: "x" },
     });
 
     expect(report.normalizationCollisions.length).toBeGreaterThan(0);
@@ -80,7 +80,7 @@ describe("tag lifecycle", () => {
     const tasks: Task[] = [makeTask({ id: "1", title: "a", tags: ["legacy"] })];
     const preview = planTagCleanup({
       tasks,
-      aliases: { legacy: "work", dangling: "ghost", ghost: "work" }
+      aliases: { legacy: "work", dangling: "ghost", ghost: "work" },
     });
 
     expect(preview.aliasesRemoved).toEqual(["dangling", "ghost"]);

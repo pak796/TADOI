@@ -22,7 +22,9 @@ export type CompletionInstallEntry = {
 const ALL_SHELLS: CompletionShell[] = ["bash", "zsh", "fish"];
 
 function isCompletionLayout(value: string): value is CompletionLayout {
-  return value === "user" || value === "linux-system" || value === "macos-system";
+  return (
+    value === "user" || value === "linux-system" || value === "macos-system"
+  );
 }
 
 function parseShellList(raw: string): CompletionShell[] {
@@ -38,7 +40,7 @@ function parseShellList(raw: string): CompletionShell[] {
     throw new Error("--shells requires at least one shell name");
   }
   const invalid = tokens.filter(
-    (token) => token !== "bash" && token !== "zsh" && token !== "fish"
+    (token) => token !== "bash" && token !== "zsh" && token !== "fish",
   );
   if (invalid.length > 0) {
     throw new Error(`Invalid shell name(s): ${invalid.join(", ")}`);
@@ -55,7 +57,7 @@ function requireValue(args: string[], index: number, flag: string): string {
 }
 
 export function parseInstallCompletionArgs(
-  args: string[] = process.argv.slice(2)
+  args: string[] = process.argv.slice(2),
 ): InstallCompletionOptions {
   let layout: CompletionLayout = "user";
   let shells: CompletionShell[] = [...ALL_SHELLS];
@@ -68,7 +70,9 @@ export function parseInstallCompletionArgs(
     if (arg === "--layout") {
       const value = requireValue(args, i, "--layout");
       if (!isCompletionLayout(value)) {
-        throw new Error(`--layout must be one of: user, linux-system, macos-system`);
+        throw new Error(
+          `--layout must be one of: user, linux-system, macos-system`,
+        );
       }
       layout = value;
       i += 1;
@@ -77,7 +81,9 @@ export function parseInstallCompletionArgs(
     if (arg.startsWith("--layout=")) {
       const value = arg.slice("--layout=".length);
       if (!isCompletionLayout(value)) {
-        throw new Error(`--layout must be one of: user, linux-system, macos-system`);
+        throw new Error(
+          `--layout must be one of: user, linux-system, macos-system`,
+        );
       }
       layout = value;
       continue;
@@ -120,7 +126,7 @@ export function parseInstallCompletionArgs(
     shells,
     ...(destRoot ? { destRoot } : {}),
     dryRun,
-    strict
+    strict,
   };
 }
 
@@ -129,7 +135,10 @@ function stripAbsolutePrefix(inputPath: string): string {
   return normalized.replace(/^([\\/])+/, "");
 }
 
-function withDestRoot(targetPath: string, destRoot: string | undefined): string {
+function withDestRoot(
+  targetPath: string,
+  destRoot: string | undefined,
+): string {
   if (!destRoot) {
     return targetPath;
   }
@@ -139,7 +148,7 @@ function withDestRoot(targetPath: string, destRoot: string | undefined): string 
 function targetPathByLayout(
   layout: CompletionLayout,
   shell: CompletionShell,
-  homeDir: string
+  homeDir: string,
 ): string {
   if (layout === "linux-system") {
     if (shell === "bash") return "/usr/share/bash-completion/completions/tadoi";
@@ -147,12 +156,22 @@ function targetPathByLayout(
     return "/usr/share/fish/vendor_completions.d/tadoi.fish";
   }
   if (layout === "macos-system") {
-    if (shell === "bash") return "/usr/local/share/bash-completion/completions/tadoi";
+    if (shell === "bash")
+      return "/usr/local/share/bash-completion/completions/tadoi";
     if (shell === "zsh") return "/usr/local/share/zsh/site-functions/_tadoi";
     return "/usr/local/share/fish/vendor_completions.d/tadoi.fish";
   }
-  if (shell === "bash") return path.join(homeDir, ".local", "share", "bash-completion", "completions", "tadoi");
-  if (shell === "zsh") return path.join(homeDir, ".zsh", "completions", "_tadoi");
+  if (shell === "bash")
+    return path.join(
+      homeDir,
+      ".local",
+      "share",
+      "bash-completion",
+      "completions",
+      "tadoi",
+    );
+  if (shell === "zsh")
+    return path.join(homeDir, ".zsh", "completions", "_tadoi");
   return path.join(homeDir, ".config", "fish", "completions", "tadoi.fish");
 }
 
@@ -165,7 +184,7 @@ function sourcePathForShell(repoRoot: string, shell: CompletionShell): string {
 
 export function resolveCompletionInstallPlan(
   options: InstallCompletionOptions,
-  context: { repoRoot?: string; homeDir?: string } = {}
+  context: { repoRoot?: string; homeDir?: string } = {},
 ): CompletionInstallEntry[] {
   const repoRoot = context.repoRoot ?? path.resolve(import.meta.dir, "..");
   const homeDir = context.homeDir ?? os.homedir();
@@ -175,15 +194,18 @@ export function resolveCompletionInstallPlan(
     return {
       shell,
       sourcePath: sourcePathForShell(repoRoot, shell),
-      targetPath: withDestRoot(targetPath, options.destRoot)
+      targetPath: withDestRoot(targetPath, options.destRoot),
     };
   });
 }
 
 export async function installCompletions(
   options: InstallCompletionOptions,
-  context: { repoRoot?: string; homeDir?: string } = {}
-): Promise<{ installed: CompletionInstallEntry[]; failed: Array<{ entry: CompletionInstallEntry; error: string }> }> {
+  context: { repoRoot?: string; homeDir?: string } = {},
+): Promise<{
+  installed: CompletionInstallEntry[];
+  failed: Array<{ entry: CompletionInstallEntry; error: string }>;
+}> {
   const plan = resolveCompletionInstallPlan(options, context);
   const installed: CompletionInstallEntry[] = [];
   const failed: Array<{ entry: CompletionInstallEntry; error: string }> = [];
@@ -191,19 +213,25 @@ export async function installCompletions(
   for (const entry of plan) {
     try {
       if (options.dryRun) {
-        console.log(`[completions] dry-run ${entry.shell}: ${entry.sourcePath} -> ${entry.targetPath}`);
+        console.log(
+          `[completions] dry-run ${entry.shell}: ${entry.sourcePath} -> ${entry.targetPath}`,
+        );
         installed.push(entry);
         continue;
       }
       await fs.mkdir(path.dirname(entry.targetPath), { recursive: true });
       await fs.copyFile(entry.sourcePath, entry.targetPath);
       await fs.chmod(entry.targetPath, 0o644);
-      console.log(`[completions] installed ${entry.shell}: ${entry.targetPath}`);
+      console.log(
+        `[completions] installed ${entry.shell}: ${entry.targetPath}`,
+      );
       installed.push(entry);
     } catch (error: unknown) {
       const detail = error instanceof Error ? error.message : String(error);
       failed.push({ entry, error: detail });
-      console.error(`[completions] failed ${entry.shell}: ${entry.targetPath} (${detail})`);
+      console.error(
+        `[completions] failed ${entry.shell}: ${entry.targetPath} (${detail})`,
+      );
     }
   }
 

@@ -2,14 +2,14 @@ import { describe, expect, it } from "bun:test";
 import {
   expandHierarchicalTagKeys,
   noteTagMatchesFilter,
-  parseNoteTags
+  parseNoteTags,
 } from "./tags";
 
 describe("parseNoteTags", () => {
   it("parses inline and frontmatter tags with nested support", () => {
     const result = parseNoteTags({
       markdown: "#inbox/to-read and #team\n```\n#ignore/me\n```",
-      frontmatterTags: ["focus", "inbox/to-read"]
+      frontmatterTags: ["focus", "inbox/to-read"],
     });
 
     expect(result.tags).toEqual(["focus", "inbox/to-read", "team"]);
@@ -18,11 +18,13 @@ describe("parseNoteTags", () => {
   it("surfaces normalization warnings and keeps valid tokens", () => {
     const result = parseNoteTags({
       markdown: "#In!box #ok",
-      frontmatterTags: []
+      frontmatterTags: [],
     });
 
     expect(result.tags).toContain("ok");
-    expect(result.warnings.some((warning) => warning.code === "tag_normalization")).toBe(true);
+    expect(
+      result.warnings.some((warning) => warning.code === "tag_normalization"),
+    ).toBe(true);
   });
 });
 
@@ -38,7 +40,7 @@ describe("expandHierarchicalTagKeys", () => {
   it("expands nested keys", () => {
     expect(expandHierarchicalTagKeys("inbox/to-read")).toEqual([
       "inbox",
-      "inbox/to-read"
+      "inbox/to-read",
     ]);
   });
 });

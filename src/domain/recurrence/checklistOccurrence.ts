@@ -14,9 +14,7 @@ export function materializeChecklistOccurrenceOverride(params: {
   context: ChecklistOccurrenceContext;
   checklist: ChecklistItem[];
   nowMs: number;
-}):
-  | { ok: true; tasks: Task[]; instance: Task }
-  | { ok: false; error: string } {
+}): { ok: true; tasks: Task[]; instance: Task } | { ok: false; error: string } {
   const { tasks, context, checklist, nowMs } = params;
   const occurrenceDate = parseLocalIsoToDate(context.occurrenceIso);
   if (!occurrenceDate) {
@@ -37,7 +35,10 @@ export function materializeChecklistOccurrenceOverride(params: {
     updatedAt: nowMs,
     dueAt: occurrenceDate.getTime(),
     hasExplicitTime: context.seriesTask.hasExplicitTime,
-    closedAt: instanceStatus === "done" ? context.instanceTask?.closedAt ?? nowMs : undefined,
+    closedAt:
+      instanceStatus === "done"
+        ? (context.instanceTask?.closedAt ?? nowMs)
+        : undefined,
     notes: source.notes,
     tags: source.tags,
     links: source.links,
@@ -48,8 +49,8 @@ export function materializeChecklistOccurrenceOverride(params: {
     ...(reminder ? { reminder } : {}),
     instance_of: {
       series_id: context.seriesId,
-      occurrence: context.occurrenceIso
-    }
+      occurrence: context.occurrenceIso,
+    },
   };
 
   const withoutPreviousInstance = tasks.filter(
@@ -57,11 +58,11 @@ export function materializeChecklistOccurrenceOverride(params: {
       !(
         task.instance_of?.series_id === context.seriesId &&
         task.instance_of?.occurrence === context.occurrenceIso
-      )
+      ),
   );
   return {
     ok: true,
     tasks: [...withoutPreviousInstance, instance],
-    instance
+    instance,
   };
 }

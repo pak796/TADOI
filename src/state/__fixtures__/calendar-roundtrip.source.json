@@ -9,9 +9,7 @@
       "updatedAt": 1,
       "dueAt": 1771113600000,
       "hasExplicitTime": false,
-      "tags": [
-        "ops"
-      ]
+      "tags": ["ops"]
     },
     {
       "id": "timed-1",
@@ -22,9 +20,7 @@
       "dueAt": 1771250400000,
       "hasExplicitTime": true,
       "notes": "Before import",
-      "tags": [
-        "ops"
-      ],
+      "tags": ["ops"],
       "links": [
         {
           "id": "link-1",
@@ -42,9 +38,7 @@
       "updatedAt": 3,
       "dueAt": 1770714000000,
       "hasExplicitTime": true,
-      "tags": [
-        "team"
-      ],
+      "tags": ["team"],
       "recurrence": {
         "dtstart": "2026-02-10T09:00:00",
         "rrule": "FREQ=DAILY;INTERVAL=1",

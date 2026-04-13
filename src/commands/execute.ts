@@ -9,9 +9,13 @@ import type {
   CheckCommand,
   DueCommand,
   ExecContext,
-  RecurCommand
+  RecurCommand,
 } from "./types";
-import { buildLocalTimestamp, parseStrictLocalDate, parseStrictTime } from "./validate";
+import {
+  buildLocalTimestamp,
+  parseStrictLocalDate,
+  parseStrictTime,
+} from "./validate";
 import type { Task } from "../domain/models";
 import { normalizeTag, updateTagIndex } from "../domain/tagIndex";
 import { completeTaskWithRecurrence } from "../domain/recurrence";
@@ -23,12 +27,12 @@ import {
   clearChecklist,
   deleteChecklistItem,
   editChecklistItem,
-  toggleChecklistItem
+  toggleChecklistItem,
 } from "../domain/checklist";
 import {
   normalizePriorityFilterValue,
   normalizePriorityTags,
-  isPriorityToken
+  isPriorityToken,
 } from "../domain/priorityTags";
 import { recomputeTagIndex } from "../state/portability";
 
@@ -47,7 +51,7 @@ const ALLOWED_ACTION_TYPES = new Set([
   "setTasks",
   "setSavedViews",
   "setSortMode",
-  "setTagIndex"
+  "setTagIndex",
 ] as const);
 
 const FIRST_RECURRING_TASK_TOAST_MS = 10_000;
@@ -55,7 +59,7 @@ const FIRST_RECURRING_TASK_TOAST_MS = 10_000;
 function error(text: string): CommandResult {
   return {
     actions: [],
-    output: { kind: "error", text }
+    output: { kind: "error", text },
   };
 }
 
@@ -67,11 +71,14 @@ function ok(actions: CommandResult["actions"], text: string): CommandResult {
   }
   return {
     actions,
-    output: { kind: "ok", text }
+    output: { kind: "ok", text },
   };
 }
 
-function resolveTargetTask(target: CommandTarget, ctx: ExecContext): Task | null {
+function resolveTargetTask(
+  target: CommandTarget,
+  ctx: ExecContext,
+): Task | null {
   if (target.type === "id") {
     return ctx.state.tasks.find((task) => task.id === target.id) ?? null;
   }
@@ -80,16 +87,11 @@ function resolveTargetTask(target: CommandTarget, ctx: ExecContext): Task | null
   return ctx.state.tasks.find((task) => task.id === selectedId) ?? null;
 }
 
-function weekdayFromDate(date: Date): "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun" {
-  const weekdays: Array<"sun" | "mon" | "tue" | "wed" | "thu" | "fri" | "sat"> = [
-    "sun",
-    "mon",
-    "tue",
-    "wed",
-    "thu",
-    "fri",
-    "sat"
-  ];
+function weekdayFromDate(
+  date: Date,
+): "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun" {
+  const weekdays: Array<"sun" | "mon" | "tue" | "wed" | "thu" | "fri" | "sat"> =
+    ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
   return weekdays[date.getDay()] ?? "mon";
 }
 
@@ -100,24 +102,36 @@ function toRRuleLine(command: Exclude<RecurCommand, { clear: true }>): string {
       : command.every === "week"
         ? "WEEKLY"
         : "MONTHLY";
-  const parts = [`FREQ=${freq}`, `INTERVAL=${Math.max(1, Math.floor(command.interval))}`];
+  const parts = [
+    `FREQ=${freq}`,
+    `INTERVAL=${Math.max(1, Math.floor(command.interval))}`,
+  ];
   if (command.every === "week" && command.onDays && command.onDays.length > 0) {
-    const byDay = command.onDays.map((day) => day.slice(0, 2).toUpperCase()).join(",");
+    const byDay = command.onDays
+      .map((day) => day.slice(0, 2).toUpperCase())
+      .join(",");
     parts.push(`BYDAY=${byDay}`);
   }
-  if (command.every === "month" && command.onMonthDays && command.onMonthDays.length > 0) {
+  if (
+    command.every === "month" &&
+    command.onMonthDays &&
+    command.onMonthDays.length > 0
+  ) {
     parts.push(`BYMONTHDAY=${command.onMonthDays.join(",")}`);
   }
   return parts.join(";");
 }
 
 function isTaskVisible(task: Task, ctx: ExecContext): boolean {
-  return filterTasks([task], ctx.state.filters, ctx.now, ctx.state.tagAliases).length > 0;
+  return (
+    filterTasks([task], ctx.state.filters, ctx.now, ctx.state.tagAliases)
+      .length > 0
+  );
 }
 
 function buildDueParts(
   dueDate: string,
-  atTime?: string
+  atTime?: string,
 ): { dueAt: number; hasExplicitTime: boolean } | null {
   const date = parseStrictLocalDate(dueDate);
   if (!date) return null;
@@ -130,7 +144,7 @@ function buildDueParts(
     date.month,
     date.day,
     time.hours,
-    time.minutes
+    time.minutes,
   );
   if (dueAt === null) return null;
   return { dueAt, hasExplicitTime: Boolean(atTime) };
@@ -157,8 +171,8 @@ function executeAdd(command: AddCommand, ctx: ExecContext): CommandResult {
     new Set(
       command.tags
         .map((tag) => normalizeTag(tag))
-        .filter((tag): tag is string => Boolean(tag))
-    )
+        .filter((tag): tag is string => Boolean(tag)),
+    ),
   ).sort((left, right) => left.localeCompare(right));
 
   const notes = command.notes?.trim();
@@ -172,22 +186,22 @@ function executeAdd(command: AddCommand, ctx: ExecContext): CommandResult {
     checklist: [],
     tags,
     ...(dueAt !== undefined ? { dueAt, hasExplicitTime } : {}),
-    ...(notes ? { notes } : {})
+    ...(notes ? { notes } : {}),
   };
 
   const actions: CommandResult["actions"] = [
     {
       type: "setTasks",
-      tasks: [...ctx.state.tasks, newTask]
+      tasks: [...ctx.state.tasks, newTask],
     },
     {
       type: "setTagIndex",
-      tagIndex: updateTagIndex(ctx.state.tagIndex, tags, ctx.now)
+      tagIndex: updateTagIndex(ctx.state.tagIndex, tags, ctx.now),
     },
     {
       type: "setSelected",
-      id: newTask.id
-    }
+      id: newTask.id,
+    },
   ];
 
   return ok(actions, `Added task: ${title} (id:${newTask.id})`);
@@ -204,7 +218,11 @@ function executeDone(target: CommandTarget, ctx: ExecContext): CommandResult {
   let spawnedId: string | undefined;
 
   if (transitionFromOpen) {
-    const completion = completeTaskWithRecurrence(ctx.state.tasks, task.id, ctx.now);
+    const completion = completeTaskWithRecurrence(
+      ctx.state.tasks,
+      task.id,
+      ctx.now,
+    );
     tasks = completion.tasks;
     spawnedId = completion.spawnedId;
   } else {
@@ -212,32 +230,34 @@ function executeDone(target: CommandTarget, ctx: ExecContext): CommandResult {
       ...task,
       status: "done",
       updatedAt: ctx.now,
-      closedAt: task.closedAt ?? ctx.now
+      closedAt: task.closedAt ?? ctx.now,
     };
     tasks = ctx.state.tasks.map((candidate) =>
-      candidate.id === task.id ? nextTask : candidate
+      candidate.id === task.id ? nextTask : candidate,
     );
   }
 
   const spawnedTask = spawnedId
     ? tasks.find((candidate) => candidate.id === spawnedId)
     : undefined;
-  const selectedId = spawnedTask && isTaskVisible(spawnedTask, ctx) ? spawnedTask.id : task.id;
+  const selectedId =
+    spawnedTask && isTaskVisible(spawnedTask, ctx) ? spawnedTask.id : task.id;
   const actions: CommandResult["actions"] = [
     { type: "setTasks", tasks },
-    { type: "setSelected", id: selectedId }
+    { type: "setSelected", id: selectedId },
   ];
   if (transitionFromOpen) {
-    const completedTask = tasks.find((candidate) => candidate.id === task.id) ?? task;
+    const completedTask =
+      tasks.find((candidate) => candidate.id === task.id) ?? task;
     actions.push({
       type: "recordCompletion",
       taskId: task.id,
       at: ctx.now,
-      tags: completedTask.tags
+      tags: completedTask.tags,
     });
     actions.push({
       type: "evaluateEngagement",
-      at: ctx.now
+      at: ctx.now,
     });
   }
 
@@ -257,7 +277,7 @@ function executeDue(command: DueCommand, ctx: ExecContext): CommandResult {
       ...task,
       dueAt: undefined,
       hasExplicitTime: false,
-      updatedAt: ctx.now
+      updatedAt: ctx.now,
     };
     output = `Due cleared: ${task.title}`;
   } else {
@@ -270,7 +290,7 @@ function executeDue(command: DueCommand, ctx: ExecContext): CommandResult {
       ...task,
       dueAt: dueParts.dueAt,
       hasExplicitTime: dueParts.hasExplicitTime,
-      updatedAt: ctx.now
+      updatedAt: ctx.now,
     };
     const dueLabel = command.atTime
       ? `${command.dueDate} ${command.atTime}`
@@ -282,13 +302,13 @@ function executeDue(command: DueCommand, ctx: ExecContext): CommandResult {
     {
       type: "setTasks",
       tasks: ctx.state.tasks.map((candidate) =>
-        candidate.id === task.id ? nextTask : candidate
-      )
+        candidate.id === task.id ? nextTask : candidate,
+      ),
     },
     {
       type: "setSelected",
-      id: task.id
-    }
+      id: task.id,
+    },
   ];
   return ok(actions, output);
 }
@@ -299,7 +319,9 @@ function executeRecur(command: RecurCommand, ctx: ExecContext): CommandResult {
     return error("Error: recur requires an existing selected task or id");
   }
   if (typeof task.dueAt !== "number") {
-    return error("Error: recurrence requires a due date (set due:YYYY-MM-DD [at:HH:MM] first).");
+    return error(
+      "Error: recurrence requires a due date (set due:YYYY-MM-DD [at:HH:MM] first).",
+    );
   }
 
   let nextTask: Task;
@@ -309,7 +331,7 @@ function executeRecur(command: RecurCommand, ctx: ExecContext): CommandResult {
     nextTask = {
       ...task,
       recurrence: undefined,
-      updatedAt: ctx.now
+      updatedAt: ctx.now,
     };
     output = `Recurrence cleared: ${task.title}`;
   } else {
@@ -328,29 +350,34 @@ function executeRecur(command: RecurCommand, ctx: ExecContext): CommandResult {
       freq,
       interval,
       ...(command.every === "week"
-        ? { byDay: command.onDays && command.onDays.length > 0 ? command.onDays : [weekday] }
+        ? {
+            byDay:
+              command.onDays && command.onDays.length > 0
+                ? command.onDays
+                : [weekday],
+          }
         : {}),
       ...(command.every === "month"
         ? {
             byMonthDay:
               command.onMonthDays && command.onMonthDays.length > 0
                 ? command.onMonthDays
-                : [fallbackMonthDay]
+                : [fallbackMonthDay],
           }
         : {}),
       anchorLocal: {
         hour: dueDate.getHours(),
-        minute: dueDate.getMinutes()
+        minute: dueDate.getMinutes(),
       },
       dtstart: formatDateToLocalIso(dueDate),
       rrule: toRRuleLine(command),
-      series_id: task.recurrence?.series_id ?? `series:${task.id}`
+      series_id: task.recurrence?.series_id ?? `series:${task.id}`,
     };
 
     nextTask = {
       ...task,
       recurrence,
-      updatedAt: ctx.now
+      updatedAt: ctx.now,
     };
     if (!task.recurrence) {
       createdRecurringSeriesId = recurrence.series_id;
@@ -362,10 +389,10 @@ function executeRecur(command: RecurCommand, ctx: ExecContext): CommandResult {
     {
       type: "setTasks",
       tasks: ctx.state.tasks.map((candidate) =>
-        candidate.id === task.id ? nextTask : candidate
-      )
+        candidate.id === task.id ? nextTask : candidate,
+      ),
     },
-    { type: "setSelected", id: task.id }
+    { type: "setSelected", id: task.id },
   ];
   if (createdRecurringSeriesId) {
     actions.push({
@@ -377,8 +404,8 @@ function executeRecur(command: RecurCommand, ctx: ExecContext): CommandResult {
       toast: {
         message: "Created your first recurring task.",
         priority: 3,
-        durationMs: FIRST_RECURRING_TASK_TOAST_MS
-      }
+        durationMs: FIRST_RECURRING_TASK_TOAST_MS,
+      },
     });
   }
   return ok(actions, output);
@@ -400,7 +427,11 @@ function executeCheck(command: CheckCommand, ctx: ExecContext): CommandResult {
   let output = "";
 
   if (command.operation === "add") {
-    nextChecklistResult = addChecklistItem(task.checklist, command.text, nowIso);
+    nextChecklistResult = addChecklistItem(
+      task.checklist,
+      command.text,
+      nowIso,
+    );
     output = `Checklist added: ${task.title}`;
   } else if (command.operation === "clear") {
     nextChecklistResult = clearChecklist();
@@ -411,10 +442,19 @@ function executeCheck(command: CheckCommand, ctx: ExecContext): CommandResult {
       return error("Error: checklist item not found");
     }
     if (command.operation === "toggle") {
-      nextChecklistResult = toggleChecklistItem(task.checklist, item.id, nowIso);
+      nextChecklistResult = toggleChecklistItem(
+        task.checklist,
+        item.id,
+        nowIso,
+      );
       output = `Checklist toggled: ${task.title} (#${String(command.index)})`;
     } else if (command.operation === "edit") {
-      nextChecklistResult = editChecklistItem(task.checklist, item.id, command.text, nowIso);
+      nextChecklistResult = editChecklistItem(
+        task.checklist,
+        item.id,
+        command.text,
+        nowIso,
+      );
       output = `Checklist edited: ${task.title} (#${String(command.index)})`;
     } else {
       nextChecklistResult = deleteChecklistItem(task.checklist, item.id);
@@ -429,7 +469,7 @@ function executeCheck(command: CheckCommand, ctx: ExecContext): CommandResult {
   const updatedTask: Task = {
     ...task,
     checklist: nextChecklistResult.checklist,
-    updatedAt: ctx.now
+    updatedAt: ctx.now,
   };
 
   return ok(
@@ -437,22 +477,25 @@ function executeCheck(command: CheckCommand, ctx: ExecContext): CommandResult {
       {
         type: "setTasks",
         tasks: ctx.state.tasks.map((candidate) =>
-          candidate.id === task.id ? updatedTask : candidate
-        )
+          candidate.id === task.id ? updatedTask : candidate,
+        ),
       },
       {
         type: "setSelected",
-        id: task.id
-      }
+        id: task.id,
+      },
     ],
-    output
+    output,
   );
 }
 
-function resolveBulkTargetIds(target: BulkTarget, ctx: ExecContext): string[] | null {
+function resolveBulkTargetIds(
+  target: BulkTarget,
+  ctx: ExecContext,
+): string[] | null {
   if (target.type === "ids") {
     return Array.from(new Set(target.ids)).sort((left, right) =>
-      left.localeCompare(right)
+      left.localeCompare(right),
     );
   }
 
@@ -463,7 +506,10 @@ function resolveBulkTargetIds(target: BulkTarget, ctx: ExecContext): string[] | 
   return marked.sort((left, right) => left.localeCompare(right));
 }
 
-function resolveBulkTasks(command: BulkCommand, ctx: ExecContext): {
+function resolveBulkTasks(
+  command: BulkCommand,
+  ctx: ExecContext,
+): {
   ids: string[];
   tasks: Task[];
 } | null {
@@ -485,7 +531,9 @@ function resolveBulkTasks(command: BulkCommand, ctx: ExecContext): {
   return { ids, tasks };
 }
 
-function mapBulkStage(stage: "todo" | "doing" | "blocked" | "done"): Task["workflowStage"] {
+function mapBulkStage(
+  stage: "todo" | "doing" | "blocked" | "done",
+): Task["workflowStage"] {
   if (stage === "doing") return "in_progress";
   return stage;
 }
@@ -514,7 +562,11 @@ function executeBulk(command: BulkCommand, ctx: ExecContext): CommandResult {
         return error(`Error: bulk target id not found (${id})`);
       }
       if (current.status === "open") {
-        const completion = completeTaskWithRecurrence(workingTasks, id, ctx.now);
+        const completion = completeTaskWithRecurrence(
+          workingTasks,
+          id,
+          ctx.now,
+        );
         workingTasks = completion.tasks;
         const completedTask = workingTasks.find((task) => task.id === id);
         if (completedTask?.status === "done") {
@@ -527,29 +579,29 @@ function executeBulk(command: BulkCommand, ctx: ExecContext): CommandResult {
                 ...task,
                 status: "done",
                 updatedAt: ctx.now,
-                closedAt: task.closedAt ?? ctx.now
+                closedAt: task.closedAt ?? ctx.now,
               }
-            : task
+            : task,
         );
       }
     }
 
     const actions: CommandResult["actions"] = [
       { type: "setTasks", tasks: workingTasks },
-      { type: "setSelected", id: ids[0] }
+      { type: "setSelected", id: ids[0] },
     ];
     for (const transition of transitionedToDone) {
       actions.push({
         type: "recordCompletion",
         taskId: transition.taskId,
         at: ctx.now,
-        tags: transition.tags
+        tags: transition.tags,
       });
     }
     if (transitionedToDone.length > 0) {
       actions.push({
         type: "evaluateEngagement",
-        at: ctx.now
+        at: ctx.now,
       });
     }
 
@@ -561,8 +613,8 @@ function executeBulk(command: BulkCommand, ctx: ExecContext): CommandResult {
       new Set(
         command.tags
           .map((tag) => normalizeTag(tag))
-          .filter((tag): tag is string => Boolean(tag))
-      )
+          .filter((tag): tag is string => Boolean(tag)),
+      ),
     );
     if (normalizedTags.length === 0) {
       return error("Error: bulk tag requires at least one valid tag");
@@ -579,28 +631,28 @@ function executeBulk(command: BulkCommand, ctx: ExecContext): CommandResult {
               task.tags.filter((tag) => {
                 const normalized = normalizeTag(tag);
                 return normalized ? !removeSet.has(normalized) : true;
-              })
+              }),
             );
       return {
         ...task,
         tags: nextTags,
-        updatedAt: ctx.now
+        updatedAt: ctx.now,
       };
     });
 
     const actions: CommandResult["actions"] = [
       { type: "setTasks", tasks: workingTasks },
-      { type: "setSelected", id: ids[0] }
+      { type: "setSelected", id: ids[0] },
     ];
     if (shouldRecomputeTagIndex) {
       actions.push({
         type: "setTagIndex",
-        tagIndex: recomputeTagIndex(workingTasks, ctx.now)
+        tagIndex: recomputeTagIndex(workingTasks, ctx.now),
       });
     }
     return ok(
       actions,
-      `Bulk tag ${command.operation === "tag_add" ? "add" : "rm"} applied (${String(ids.length)} tasks)`
+      `Bulk tag ${command.operation === "tag_add" ? "add" : "rm"} applied (${String(ids.length)} tasks)`,
     );
   }
 
@@ -618,18 +670,20 @@ function executeBulk(command: BulkCommand, ctx: ExecContext): CommandResult {
       return {
         ...task,
         dueAt: command.clear ? undefined : dueParts?.dueAt,
-        hasExplicitTime: command.clear ? false : dueParts?.hasExplicitTime ?? false,
-        updatedAt: ctx.now
+        hasExplicitTime: command.clear
+          ? false
+          : (dueParts?.hasExplicitTime ?? false),
+        updatedAt: ctx.now,
       };
     });
     return ok(
       [
         { type: "setTasks", tasks: workingTasks },
-        { type: "setSelected", id: ids[0] }
+        { type: "setSelected", id: ids[0] },
       ],
       command.clear
         ? `Bulk due cleared (${String(ids.length)} tasks)`
-        : `Bulk due set (${String(ids.length)} tasks)`
+        : `Bulk due set (${String(ids.length)} tasks)`,
     );
   }
 
@@ -646,23 +700,25 @@ function executeBulk(command: BulkCommand, ctx: ExecContext): CommandResult {
       shouldRecomputeTagIndex = true;
       const withoutPriority = task.tags.filter((tag) => !isPriorityToken(tag));
       const nextTags = normalizePriorityTags(
-        normalizedPriority ? [normalizedPriority, ...withoutPriority] : withoutPriority
+        normalizedPriority
+          ? [normalizedPriority, ...withoutPriority]
+          : withoutPriority,
       );
       return {
         ...task,
         tags: nextTags,
-        updatedAt: ctx.now
+        updatedAt: ctx.now,
       };
     });
 
     const actions: CommandResult["actions"] = [
       { type: "setTasks", tasks: workingTasks },
-      { type: "setSelected", id: ids[0] }
+      { type: "setSelected", id: ids[0] },
     ];
     if (shouldRecomputeTagIndex) {
       actions.push({
         type: "setTagIndex",
-        tagIndex: recomputeTagIndex(workingTasks, ctx.now)
+        tagIndex: recomputeTagIndex(workingTasks, ctx.now),
       });
     }
     return ok(actions, `Bulk priority applied (${String(ids.length)} tasks)`);
@@ -674,20 +730,28 @@ function executeBulk(command: BulkCommand, ctx: ExecContext): CommandResult {
       if (!idSet.has(task.id)) return task;
       const patch =
         command.operation === "assignee"
-          ? { assignee: command.clear ? undefined : command.value?.trim() || undefined }
-          : { project: command.clear ? undefined : command.value?.trim() || undefined };
+          ? {
+              assignee: command.clear
+                ? undefined
+                : command.value?.trim() || undefined,
+            }
+          : {
+              project: command.clear
+                ? undefined
+                : command.value?.trim() || undefined,
+            };
       return {
         ...task,
         ...patch,
-        updatedAt: ctx.now
+        updatedAt: ctx.now,
       };
     });
     return ok(
       [
         { type: "setTasks", tasks: workingTasks },
-        { type: "setSelected", id: ids[0] }
+        { type: "setSelected", id: ids[0] },
       ],
-      `Bulk ${command.operation} applied (${String(ids.length)} tasks)`
+      `Bulk ${command.operation} applied (${String(ids.length)} tasks)`,
     );
   }
 
@@ -699,23 +763,25 @@ function executeBulk(command: BulkCommand, ctx: ExecContext): CommandResult {
       return {
         ...task,
         workflowStage: mappedStage,
-        updatedAt: ctx.now
+        updatedAt: ctx.now,
       };
     });
     return ok(
       [
         { type: "setTasks", tasks: workingTasks },
-        { type: "setSelected", id: ids[0] }
+        { type: "setSelected", id: ids[0] },
       ],
-      `Bulk stage applied (${String(ids.length)} tasks)`
+      `Bulk stage applied (${String(ids.length)} tasks)`,
     );
   }
 
   const idSet = new Set(ids);
-  const blockedRecurringInstances = resolved.tasks.filter((task) => task.instance_of);
+  const blockedRecurringInstances = resolved.tasks.filter(
+    (task) => task.instance_of,
+  );
   if (blockedRecurringInstances.length > 0) {
     return error(
-      "Bulk delete cannot delete recurring occurrences. Unmark occurrences or delete individually (d)."
+      "Bulk delete cannot delete recurring occurrences. Unmark occurrences or delete individually (d).",
     );
   }
   workingTasks = workingTasks.filter((task) => !idSet.has(task.id));
@@ -723,18 +789,21 @@ function executeBulk(command: BulkCommand, ctx: ExecContext): CommandResult {
 
   const actions: CommandResult["actions"] = [
     { type: "setTasks", tasks: workingTasks },
-    { type: "setSelected", id: workingTasks[0]?.id }
+    { type: "setSelected", id: workingTasks[0]?.id },
   ];
   if (shouldRecomputeTagIndex) {
     actions.push({
       type: "setTagIndex",
-      tagIndex: recomputeTagIndex(workingTasks, ctx.now)
+      tagIndex: recomputeTagIndex(workingTasks, ctx.now),
     });
   }
   return ok(actions, `Bulk delete applied (${String(ids.length)} tasks)`);
 }
 
-export function executeCommand(command: Command, ctx: ExecContext): CommandResult {
+export function executeCommand(
+  command: Command,
+  ctx: ExecContext,
+): CommandResult {
   if (command.type === "add") {
     return executeAdd(command, ctx);
   }
