@@ -1,6 +1,6 @@
 # TADOI™ Task List (v0.4.0)
 
-Updated: 2026-03-03
+Updated: 2026-04-12
 Runtime baseline: `v0.4.0`
 Package baseline: `0.4.0`
 
@@ -134,7 +134,7 @@ Reference: `docs/TADOI_QA_Guide_v0.4.0.md`
 - `PN-002` Link UX polish:
   - optional bulk link import from pasted markdown list.
   - richer link kind detection and validation hints.
-- `PN-003` Packaging confidence:
+- `PN-003` Packaging confidence: (`Complete`)
   - expand installer smoke tests to all artifact outputs in CI.
 - `PN-004` Calendar import/post-import QA depth:
   - extend round-trip fixtures for recurring overrides/cancellations across mixed timezone datasets.
