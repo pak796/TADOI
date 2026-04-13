@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "skills": [
+    {
+      "name": "atomic-change-planner",
+      "source": "../guttenburg/ai/skills/atomic-change-planner",
+      "groundedBy": [
+        "guttenburg/AGENTS.md",
+        "guttenburg/docs/CODEX_WORKFLOW.md",
+        "VWA AIRPORT/AGENTS.md",
+        "VWA AIRPORT/docs/CODEX_WORKFLOW.md"
+      ]
+    },
+    {
+      "name": "brainstorming",
+      "source": "../guttenburg/ai/skills/brainstorming",
+      "groundedBy": [
+        "guttenburg/ai/skills/README.md",
+        "VWA AIRPORT/PlugNPlay/progress.md"
+      ]
+    },
+    {
+      "name": "release-readiness-gate",
+      "source": "../guttenburg/ai/skills/release-readiness-gate",
+      "groundedBy": [
+        "guttenburg/AGENTS.md",
+        "guttenburg/docs/CODEX_WORKFLOW.md",
+        "VWA AIRPORT/docs/codex/codex-capability-audit.md"
+      ]
+    },
+    {
+      "name": "safe-scope-enforcer",
+      "source": "../guttenburg/ai/skills/safe-scope-enforcer",
+      "groundedBy": [
+        "guttenburg/AGENTS.md",
+        "guttenburg/docs/CODEX_WORKFLOW.md",
+        "VWA AIRPORT/AGENTS.md",
+        "VWA AIRPORT/docs/CODEX_WORKFLOW.md"
+      ]
+    },
+    {
+      "name": "session-handoff-capture",
+      "source": "../guttenburg/ai/skills/session-handoff-capture",
+      "groundedBy": [
+        "guttenburg/AGENTS.md",
+        "guttenburg/docs/CODEX_WORKFLOW.md",
+        "VWA AIRPORT/AGENTS.md",
+        "VWA AIRPORT/docs/CODEX_WORKFLOW.md"
+      ]
+    },
+    {
+      "name": "spec-task-drift-guard",
+      "source": "../guttenburg/ai/skills/spec-task-drift-guard",
+      "groundedBy": [
+        "guttenburg/AGENTS.md",
+        "guttenburg/docs/CODEX_WORKFLOW.md",
+        "VWA AIRPORT/AGENTS.md",
+        "VWA AIRPORT/docs/CODEX_WORKFLOW.md"
+      ]
+    }
+  ]
+}

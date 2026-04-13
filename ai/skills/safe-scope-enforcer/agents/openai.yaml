@@ -1,0 +1,4 @@
+interface:
+  display_name: "Safe Scope Enforcer"
+  short_description: "Enforce allowed file-edit scope boundaries"
+  default_prompt: "Use $safe-scope-enforcer to verify planned or staged changes stay within approved file scope."

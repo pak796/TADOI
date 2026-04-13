@@ -40,6 +40,10 @@ Active package baseline: `0.4.0-beta.2`
 
 ## 5) Operations and Governance
 - `docs/DOC_AUDIT_REPORT.md`: latest docs/code drift audit report.
+- `AGENTS.md`: repo-local Codex workflow defaults.
+- `docs/CODEX_WORKFLOW.md`: repo-local Codex runbook and memory rules.
+- `docs/ai/01-meta.yaml` .. `docs/ai/05-update-tracker.md`: durable AI context and memory layer.
+- `docs/codex/README.md`: task-memory and vendored-skill usage guide.
 - `docs/KEYBINDS_CANONICAL.md`: canonical key table generated from key router + key router tests.
 - `docs/NOTION_SYNC.md`: Notion mapping and sync checklist.
 - `docs/notion/NOTION_SYNC_PAYLOAD.json`: deterministic Notion payload artifact.

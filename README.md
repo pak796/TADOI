@@ -15,6 +15,7 @@ Release checklist: see the release section in the docs index.
 Product spec: [`TADOI_SPEC_v0.4.0.md`](./TADOI_SPEC_v0.4.0.md)
 Task list: [`TADOI_TASKS_v0.4.0.md`](./TADOI_TASKS_v0.4.0.md)
 Documentation index: [`docs/DOC_INDEX.md`](./docs/DOC_INDEX.md)
+Codex workflow: [`AGENTS.md`](./AGENTS.md), [`docs/CODEX_WORKFLOW.md`](./docs/CODEX_WORKFLOW.md), [`docs/codex/README.md`](./docs/codex/README.md)
 Archival path policy: [`docs/ARCHIVAL_PATH_POLICY.md`](./docs/ARCHIVAL_PATH_POLICY.md)
 
 ## Setup

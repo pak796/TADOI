@@ -25,6 +25,9 @@ This index links the current user-facing TADOI documentation set.
 ## Operations and Design Docs
 - [Backup Center (In-App)](./backup-center.md)
 - [Recurring Tasks Implementation Plan](./recurring-tasks-implementation-plan.md)
+- [Codex Workflow](./CODEX_WORKFLOW.md)
+- [Codex Artifact Guide](./codex/README.md)
+- [AI Context Memory](./ai/01-meta.yaml)
 - [Branding Operations Guide](./ops/branding.md)
 - [Notion Sync Pack (v0.4.0)](./ops/notion_v0.4.0_sync_pack.md)
 - [Notion Deploy Package (2026-03-04)](./ops/NOTION_DEPLOY_PACKAGE_2026-03-04.md)

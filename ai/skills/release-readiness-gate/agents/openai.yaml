@@ -1,0 +1,4 @@
+interface:
+  display_name: "Release Readiness + Packaging"
+  short_description: "Run release checks, versioning, and packaging"
+  default_prompt: "Use $release-readiness-gate to run a release-readiness + packaging pass with PASS/FAIL/BLOCKED evidence."

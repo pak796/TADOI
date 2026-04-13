@@ -5,6 +5,8 @@ All notable changes to TADOI are documented in this file.
 The format is based on Keep a Changelog.
 
 ## [Unreleased]
+### Added
+- Imported the `VWA AIRPORT` and `guttenburg` Codex workflow layer into `TADOI`, including repo-local `AGENTS.md`, `docs/ai` durable memory, `docs/codex` task-memory scaffolding, vendored skill snapshots in `ai/skills/`, and repo-owned workflow scripts under `scripts/codex/`.
 
 ## [0.4.0-beta.2] - 2026-03-11
 ### Changed
