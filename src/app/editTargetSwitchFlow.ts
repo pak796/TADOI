@@ -24,6 +24,6 @@ export function decideEditTargetSwitch(input: {
   return {
     type: "prompt",
     fromTaskId: input.fromTaskId,
-    toTaskId: input.toTaskId
+    toTaskId: input.toTaskId,
   };
 }

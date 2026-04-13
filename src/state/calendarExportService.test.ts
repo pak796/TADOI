@@ -5,7 +5,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import {
   CalendarExportDomainError,
-  exportCalendarIcs
+  exportCalendarIcs,
 } from "./calendarExportService";
 
 type PersistedTask = {
@@ -37,10 +37,17 @@ type PersistedTask = {
 };
 
 async function withTempDataFile<T>(
-  payload: { schemaVersion: 4; tasks: PersistedTask[]; tagIndex: Record<string, never>; savedViews: unknown[] },
-  run: (context: { tempDir: string; dataPath: string }) => Promise<T>
+  payload: {
+    schemaVersion: 4;
+    tasks: PersistedTask[];
+    tagIndex: Record<string, never>;
+    savedViews: unknown[];
+  },
+  run: (context: { tempDir: string; dataPath: string }) => Promise<T>,
 ): Promise<T> {
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-calendar-export-"));
+  const tempDir = await fs.mkdtemp(
+    path.join(os.tmpdir(), "tadoi-calendar-export-"),
+  );
   const dataPath = path.join(tempDir, "tadoi_data.json");
   await fs.writeFile(dataPath, JSON.stringify(payload, null, 2), "utf8");
 
@@ -96,7 +103,7 @@ describe("calendarExportService", () => {
           dueAt: Date.UTC(2026, 1, 15, 0, 0, 0),
           hasExplicitTime: false,
           notes: "Note line",
-          tags: ["work"]
+          tags: ["work"],
         },
         {
           id: "timed-1",
@@ -112,9 +119,9 @@ describe("calendarExportService", () => {
               id: "link-1",
               target: "https://example.com/task",
               label: "ref",
-              kind: "url"
-            }
-          ]
+              kind: "url",
+            },
+          ],
         },
         {
           id: "series-1",
@@ -129,8 +136,8 @@ describe("calendarExportService", () => {
             dtstart: "2026-02-10T09:00:00",
             rrule: "FREQ=DAILY;INTERVAL=1",
             exdates: ["2026-02-11T09:00:00"],
-            series_id: "series:standup"
-          }
+            series_id: "series:standup",
+          },
         },
         {
           id: "inst-1",
@@ -143,12 +150,12 @@ describe("calendarExportService", () => {
           tags: ["team"],
           instance_of: {
             series_id: "series:standup",
-            occurrence: "2026-02-12T09:00:00"
-          }
-        }
+            occurrence: "2026-02-12T09:00:00",
+          },
+        },
       ],
       tagIndex: {},
-      savedViews: []
+      savedViews: [],
     };
 
     await withTempDataFile(payload, async ({ tempDir }) => {
@@ -158,7 +165,7 @@ describe("calendarExportService", () => {
         range: "all",
         now: new Date(Date.UTC(2026, 1, 12, 12, 30, 0)),
         timeZone: "UTC",
-        privacy: "full"
+        privacy: "full",
       });
 
       expect(result.outputPath).toBe(`${outputBasePath}.ics`);
@@ -170,7 +177,8 @@ describe("calendarExportService", () => {
       expect(result.privacyApplied).toBe("full");
 
       const fixturePath = fileURLToPath(
-        new URL("./__fixtures__/calendar-export.golden.ics", import.meta.url).href
+        new URL("./__fixtures__/calendar-export.golden.ics", import.meta.url)
+          .href,
       );
       const expected = await fs.readFile(fixturePath, "utf8");
       const actual = await fs.readFile(result.outputPath, "utf8");
@@ -200,12 +208,12 @@ describe("calendarExportService", () => {
           recurrence: {
             dtstart: "2026-02-10T09:00:00",
             rrule: "FREQ=NOPE",
-            series_id: "series:invalid"
-          }
-        }
+            series_id: "series:invalid",
+          },
+        },
       ],
       tagIndex: {},
-      savedViews: []
+      savedViews: [],
     };
 
     await withTempDataFile(payload, async ({ tempDir }) => {
@@ -216,7 +224,7 @@ describe("calendarExportService", () => {
           range: "all",
           now: new Date(Date.UTC(2026, 1, 12, 12, 30, 0)),
           timeZone: "UTC",
-          privacy: "minimal"
+          privacy: "minimal",
         });
       } catch (error: unknown) {
         thrown = error;
@@ -244,11 +252,11 @@ describe("calendarExportService", () => {
           hasExplicitTime: true,
           notes: "Sensitive notes",
           tags: ["private"],
-          links: [{ id: "link-1", target: "https://example.com", kind: "url" }]
-        }
+          links: [{ id: "link-1", target: "https://example.com", kind: "url" }],
+        },
       ],
       tagIndex: {},
-      savedViews: []
+      savedViews: [],
     };
 
     await withTempDataFile(payload, async ({ tempDir }) => {
@@ -256,7 +264,7 @@ describe("calendarExportService", () => {
         outputPath: path.join(tempDir, "minimal.ics"),
         range: "all",
         now: new Date(Date.UTC(2026, 1, 12, 12, 30, 0)),
-        timeZone: "UTC"
+        timeZone: "UTC",
       });
 
       expect(result.privacyApplied).toBe("minimal");
@@ -284,11 +292,11 @@ describe("calendarExportService", () => {
           updatedAt: 1,
           dueAt: Date.UTC(2026, 1, 15, 10, 0, 0),
           hasExplicitTime: true,
-          tags: []
-        }
+          tags: [],
+        },
       ],
       tagIndex: {},
-      savedViews: []
+      savedViews: [],
     };
 
     await withTempDataFile(payload, async ({ tempDir }) => {
@@ -297,14 +305,14 @@ describe("calendarExportService", () => {
       const result = await exportCalendarIcs({
         outputPath: path.join(tempDir, "settings-fallback.ics"),
         range: "all",
-        now: new Date(Date.UTC(2026, 1, 12, 12, 30, 0))
+        now: new Date(Date.UTC(2026, 1, 12, 12, 30, 0)),
       });
 
       expect(result.eventsWritten).toBe(1);
       expect(
         result.warnings?.some((warning) =>
-          warning.includes("settings file is not valid JSON")
-        )
+          warning.includes("settings file is not valid JSON"),
+        ),
       ).toBe(true);
     });
   });

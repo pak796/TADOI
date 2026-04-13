@@ -10,7 +10,7 @@ import {
   shouldCloseHelp,
   shouldCloseSearch,
   toEditorFocus,
-  toFocusTarget
+  toFocusTarget,
 } from "./uiState";
 
 function makeDraft(patch: Partial<EditorDraft> = {}): EditorDraft {
@@ -38,7 +38,7 @@ function makeDraft(patch: Partial<EditorDraft> = {}): EditorDraft {
     assigneeText: "",
     projectText: "",
     workflowStage: "todo",
-    ...patch
+    ...patch,
   };
 }
 
@@ -66,28 +66,38 @@ describe("uiState editor focus mapping", () => {
   it("maps editor focus round-trip", () => {
     expect(toEditorFocus(FocusTarget.EDITOR_DUE_DATE)).toBe("due");
     expect(toFocusTarget("time")).toBe(FocusTarget.EDITOR_DUE_TIME);
-    expect(toFocusTarget("reminder_kind")).toBe(FocusTarget.EDITOR_REMINDER_KIND);
-    expect(toEditorFocus(FocusTarget.EDITOR_REMINDER_OFFSET_UNIT)).toBe("reminder_offset_unit");
+    expect(toFocusTarget("reminder_kind")).toBe(
+      FocusTarget.EDITOR_REMINDER_KIND,
+    );
+    expect(toEditorFocus(FocusTarget.EDITOR_REMINDER_OFFSET_UNIT)).toBe(
+      "reminder_offset_unit",
+    );
     expect(toFocusTarget("repeat_mode")).toBe(FocusTarget.EDITOR_REPEAT_MODE);
-    expect(toEditorFocus(FocusTarget.EDITOR_REPEAT_CUSTOM)).toBe("repeat_custom");
+    expect(toEditorFocus(FocusTarget.EDITOR_REPEAT_CUSTOM)).toBe(
+      "repeat_custom",
+    );
     expect(toFocusTarget("assignee")).toBe(FocusTarget.EDITOR_ASSIGNEE);
     expect(toEditorFocus(FocusTarget.EDITOR_PROJECT)).toBe("project");
-    expect(toFocusTarget("workflow_stage")).toBe(FocusTarget.EDITOR_WORKFLOW_STAGE);
+    expect(toFocusTarget("workflow_stage")).toBe(
+      FocusTarget.EDITOR_WORKFLOW_STAGE,
+    );
     expect(toFocusTarget("checklist")).toBe(FocusTarget.EDITOR_CHECKLIST);
     expect(toEditorFocus(FocusTarget.EDITOR_CHECKLIST)).toBe("checklist");
   });
 
   it("cycles editor focus with tab order", () => {
-    expect(nextEditorFocusTarget(FocusTarget.EDITOR_TITLE, 1, makeDraft())).toBe(
-      FocusTarget.EDITOR_DUE_DATE
-    );
-    expect(nextEditorFocusTarget(FocusTarget.EDITOR_TITLE, -1, makeDraft())).toBe(
-      FocusTarget.EDITOR_CANCEL
-    );
+    expect(
+      nextEditorFocusTarget(FocusTarget.EDITOR_TITLE, 1, makeDraft()),
+    ).toBe(FocusTarget.EDITOR_DUE_DATE);
+    expect(
+      nextEditorFocusTarget(FocusTarget.EDITOR_TITLE, -1, makeDraft()),
+    ).toBe(FocusTarget.EDITOR_CANCEL);
   });
 
   it("builds repeat-aware visible focus order", () => {
-    const offOrder = getVisibleEditorFocusOrder(makeDraft({ repeatMode: "off" }));
+    const offOrder = getVisibleEditorFocusOrder(
+      makeDraft({ repeatMode: "off" }),
+    );
     expect(offOrder).toEqual([
       FocusTarget.EDITOR_TITLE,
       FocusTarget.EDITOR_DUE_DATE,
@@ -101,11 +111,11 @@ describe("uiState editor focus mapping", () => {
       FocusTarget.EDITOR_CHECKLIST,
       FocusTarget.EDITOR_NOTES,
       FocusTarget.EDITOR_SAVE,
-      FocusTarget.EDITOR_CANCEL
+      FocusTarget.EDITOR_CANCEL,
     ]);
 
     const dailyOrder = getVisibleEditorFocusOrder(
-      makeDraft({ repeatMode: "daily", repeatEndMode: "never" })
+      makeDraft({ repeatMode: "daily", repeatEndMode: "never" }),
     );
     expect(dailyOrder).toEqual([
       FocusTarget.EDITOR_TITLE,
@@ -122,11 +132,11 @@ describe("uiState editor focus mapping", () => {
       FocusTarget.EDITOR_CHECKLIST,
       FocusTarget.EDITOR_NOTES,
       FocusTarget.EDITOR_SAVE,
-      FocusTarget.EDITOR_CANCEL
+      FocusTarget.EDITOR_CANCEL,
     ]);
 
     const weeklyOrder = getVisibleEditorFocusOrder(
-      makeDraft({ repeatMode: "weekly", repeatEndMode: "until" })
+      makeDraft({ repeatMode: "weekly", repeatEndMode: "until" }),
     );
     expect(weeklyOrder).toEqual([
       FocusTarget.EDITOR_TITLE,
@@ -145,11 +155,11 @@ describe("uiState editor focus mapping", () => {
       FocusTarget.EDITOR_CHECKLIST,
       FocusTarget.EDITOR_NOTES,
       FocusTarget.EDITOR_SAVE,
-      FocusTarget.EDITOR_CANCEL
+      FocusTarget.EDITOR_CANCEL,
     ]);
 
     const monthlyOrder = getVisibleEditorFocusOrder(
-      makeDraft({ repeatMode: "monthly", repeatEndMode: "count" })
+      makeDraft({ repeatMode: "monthly", repeatEndMode: "count" }),
     );
     expect(monthlyOrder).toEqual([
       FocusTarget.EDITOR_TITLE,
@@ -168,11 +178,11 @@ describe("uiState editor focus mapping", () => {
       FocusTarget.EDITOR_CHECKLIST,
       FocusTarget.EDITOR_NOTES,
       FocusTarget.EDITOR_SAVE,
-      FocusTarget.EDITOR_CANCEL
+      FocusTarget.EDITOR_CANCEL,
     ]);
 
     const customOrder = getVisibleEditorFocusOrder(
-      makeDraft({ repeatMode: "custom", repeatEndMode: "count" })
+      makeDraft({ repeatMode: "custom", repeatEndMode: "count" }),
     );
     expect(customOrder).toEqual([
       FocusTarget.EDITOR_TITLE,
@@ -188,28 +198,34 @@ describe("uiState editor focus mapping", () => {
       FocusTarget.EDITOR_CHECKLIST,
       FocusTarget.EDITOR_NOTES,
       FocusTarget.EDITOR_SAVE,
-      FocusTarget.EDITOR_CANCEL
+      FocusTarget.EDITOR_CANCEL,
     ]);
   });
 
   it("reconciles focus when recurrence controls become hidden", () => {
-    const previousDraft = makeDraft({ repeatMode: "weekly", repeatEndMode: "until" });
+    const previousDraft = makeDraft({
+      repeatMode: "weekly",
+      repeatEndMode: "until",
+    });
     const nextOff = makeDraft({ repeatMode: "off", repeatEndMode: "never" });
     expect(
       resolveEditorFocusAfterDraftChange(
         FocusTarget.EDITOR_REPEAT_WEEKDAYS,
         previousDraft,
-        nextOff
-      )
+        nextOff,
+      ),
     ).toBe(FocusTarget.EDITOR_REPEAT_MODE);
 
-    const nextDaily = makeDraft({ repeatMode: "daily", repeatEndMode: "never" });
+    const nextDaily = makeDraft({
+      repeatMode: "daily",
+      repeatEndMode: "never",
+    });
     expect(
       resolveEditorFocusAfterDraftChange(
         FocusTarget.EDITOR_REPEAT_WEEKDAYS,
         previousDraft,
-        nextDaily
-      )
+        nextDaily,
+      ),
     ).toBe(FocusTarget.EDITOR_REPEAT_INTERVAL);
   });
 });
@@ -238,16 +254,16 @@ describe("uiState esc unwind target", () => {
         taskId: "t1",
         taskTitle: "task",
         previousMode: Mode.SEARCH,
-        previousFocus: FocusTarget.SEARCH_INPUT
+        previousFocus: FocusTarget.SEARCH_INPUT,
       },
       helpReturnMode: Mode.LIST,
-      helpReturnFocus: FocusTarget.TASK_LIST
+      helpReturnFocus: FocusTarget.TASK_LIST,
     });
     expect(target).toEqual({
       mode: Mode.SEARCH,
       focus: FocusTarget.SEARCH_INPUT,
       clearEditor: false,
-      clearModal: true
+      clearModal: true,
     });
   });
 
@@ -255,16 +271,16 @@ describe("uiState esc unwind target", () => {
     const target = resolveEscUnwindTarget({
       mode: Mode.MODAL_CONFIRM,
       modal: {
-        type: "emptyNux"
+        type: "emptyNux",
       },
       helpReturnMode: Mode.SEARCH,
-      helpReturnFocus: FocusTarget.SEARCH_INPUT
+      helpReturnFocus: FocusTarget.SEARCH_INPUT,
     });
     expect(target).toEqual({
       mode: Mode.LIST,
       focus: FocusTarget.TASK_LIST,
       clearEditor: false,
-      clearModal: true
+      clearModal: true,
     });
   });
 
@@ -274,13 +290,13 @@ describe("uiState esc unwind target", () => {
         mode: Mode.HELP,
         modal: null,
         helpReturnMode: Mode.EDIT,
-        helpReturnFocus: FocusTarget.EDITOR_NOTES
-      })
+        helpReturnFocus: FocusTarget.EDITOR_NOTES,
+      }),
     ).toEqual({
       mode: Mode.EDIT,
       focus: FocusTarget.EDITOR_NOTES,
       clearEditor: false,
-      clearModal: false
+      clearModal: false,
     });
 
     expect(
@@ -288,13 +304,13 @@ describe("uiState esc unwind target", () => {
         mode: Mode.BACKUP_CENTER,
         modal: null,
         helpReturnMode: Mode.SEARCH,
-        helpReturnFocus: FocusTarget.SEARCH_INPUT
-      })
+        helpReturnFocus: FocusTarget.SEARCH_INPUT,
+      }),
     ).toEqual({
       mode: Mode.SEARCH,
       focus: FocusTarget.SEARCH_INPUT,
       clearEditor: false,
-      clearModal: false
+      clearModal: false,
     });
 
     expect(
@@ -302,13 +318,13 @@ describe("uiState esc unwind target", () => {
         mode: Mode.TAG_FILTER,
         modal: null,
         helpReturnMode: Mode.DASHBOARD,
-        helpReturnFocus: FocusTarget.DASHBOARD
-      })
+        helpReturnFocus: FocusTarget.DASHBOARD,
+      }),
     ).toEqual({
       mode: Mode.DASHBOARD,
       focus: FocusTarget.DASHBOARD,
       clearEditor: false,
-      clearModal: false
+      clearModal: false,
     });
 
     expect(
@@ -316,13 +332,13 @@ describe("uiState esc unwind target", () => {
         mode: Mode.SEARCH,
         modal: null,
         helpReturnMode: Mode.LIST,
-        helpReturnFocus: FocusTarget.TASK_LIST
-      })
+        helpReturnFocus: FocusTarget.TASK_LIST,
+      }),
     ).toEqual({
       mode: Mode.LIST,
       focus: FocusTarget.TASK_LIST,
       clearEditor: false,
-      clearModal: false
+      clearModal: false,
     });
 
     expect(
@@ -330,13 +346,13 @@ describe("uiState esc unwind target", () => {
         mode: Mode.ADD,
         modal: null,
         helpReturnMode: Mode.LIST,
-        helpReturnFocus: FocusTarget.TASK_LIST
-      })
+        helpReturnFocus: FocusTarget.TASK_LIST,
+      }),
     ).toEqual({
       mode: Mode.LIST,
       focus: FocusTarget.TASK_LIST,
       clearEditor: true,
-      clearModal: false
+      clearModal: false,
     });
   });
 });

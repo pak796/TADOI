@@ -3,19 +3,19 @@ import type { AppState } from "../domain/models";
 import {
   hasMatchingCalendarImportDryRun,
   type BackupCenterScreen,
-  type BackupCenterState
+  type BackupCenterState,
 } from "../state/backupCenterFlow";
 import {
   buildDefaultCalendarImportReportPath,
   runCalendarExportFlow,
   runCalendarImportCommitFlow,
-  runCalendarImportDryRunFlow
+  runCalendarImportDryRunFlow,
 } from "../state/backupCenterCalendarController";
 import type { UIBackupFinalCheckpointModal } from "../ui/state";
 import { loadSettings } from "../settings/settings";
 import {
   parseCalendarImportHorizonOrThrow,
-  resolveCalendarViewSelectionDigit
+  resolveCalendarViewSelectionDigit,
 } from "./backupCalendarOrchestration";
 
 type CalendarFlowDeps = {
@@ -23,17 +23,21 @@ type CalendarFlowDeps = {
   backupDispatch: (action: any) => void;
   savedViews: AppState["savedViews"];
   calendarImportPathInputRef: React.MutableRefObject<string>;
-  calendarImportRangeRef: React.MutableRefObject<BackupCenterState["calendarImportRange"]>;
-  calendarImportModeRef: React.MutableRefObject<BackupCenterState["calendarImportMode"]>;
+  calendarImportRangeRef: React.MutableRefObject<
+    BackupCenterState["calendarImportRange"]
+  >;
+  calendarImportModeRef: React.MutableRefObject<
+    BackupCenterState["calendarImportMode"]
+  >;
   calendarImportConfirmInputRef: React.MutableRefObject<string>;
   openBackupError: (
     message: string,
     error?: unknown,
-    returnScreen?: BackupCenterScreen
+    returnScreen?: BackupCenterScreen,
   ) => void;
   openBackupFinalCheckpoint: (
     checkpoint: UIBackupFinalCheckpointModal["checkpoint"],
-    sourceScreen: BackupCenterScreen
+    sourceScreen: BackupCenterScreen,
   ) => void;
   refreshRuntimeStateFromDisk: () => Promise<void>;
   openGitHubCloudStatus: () => void;
@@ -50,7 +54,9 @@ type CalendarFlowHandlers = {
 };
 
 export function useCalendarFlow(deps: CalendarFlowDeps): CalendarFlowHandlers {
-  function resolveConfiguredCalendarTimeZone(settings: unknown): string | undefined {
+  function resolveConfiguredCalendarTimeZone(
+    settings: unknown,
+  ): string | undefined {
     if (typeof settings !== "object" || settings === null) return undefined;
     const record = settings as Record<string, unknown>;
     const timeZone = record.timeZone ?? record.timezone;
@@ -62,17 +68,19 @@ export function useCalendarFlow(deps: CalendarFlowDeps): CalendarFlowHandlers {
   async function refreshCalendarTimeZoneHint() {
     try {
       const settingsResult = await loadSettings();
-      const fromSettings = resolveConfiguredCalendarTimeZone(settingsResult.settings);
+      const fromSettings = resolveConfiguredCalendarTimeZone(
+        settingsResult.settings,
+      );
       const fromSystem = Intl.DateTimeFormat().resolvedOptions().timeZone;
       deps.backupDispatch({
         type: "setCalendarTimeZoneHint",
-        value: fromSettings ?? fromSystem ?? undefined
+        value: fromSettings ?? fromSystem ?? undefined,
       });
     } catch {
       const fromSystem = Intl.DateTimeFormat().resolvedOptions().timeZone;
       deps.backupDispatch({
         type: "setCalendarTimeZoneHint",
-        value: fromSystem ?? undefined
+        value: fromSystem ?? undefined,
       });
     }
   }
@@ -86,22 +94,27 @@ export function useCalendarFlow(deps: CalendarFlowDeps): CalendarFlowHandlers {
           range: deps.backupState.calendarExportRange,
           viewName: deps.backupState.calendarExportViewName,
           privacy: deps.backupState.calendarExportPrivacy,
-          outputPathInput: deps.backupState.calendarExportPathInput
+          outputPathInput: deps.backupState.calendarExportPathInput,
         });
         deps.backupDispatch({
           type: "calendarExportSucceeded",
           result,
-          warnings: result.warnings
+          warnings: result.warnings,
         });
       } catch (error: unknown) {
-        deps.openBackupError("Calendar export failed", error, "calendar_export_confirm");
+        deps.openBackupError(
+          "Calendar export failed",
+          error,
+          "calendar_export_confirm",
+        );
       }
     })();
   }
 
   function runCalendarImportDryRunFromBackupCenter() {
     const inputPath = (
-      deps.calendarImportPathInputRef.current || deps.backupState.calendarImportPathInput
+      deps.calendarImportPathInputRef.current ||
+      deps.backupState.calendarImportPathInput
     ).trim();
     const range = deps.calendarImportRangeRef.current;
     const mode = deps.calendarImportModeRef.current;
@@ -109,16 +122,22 @@ export function useCalendarFlow(deps: CalendarFlowDeps): CalendarFlowHandlers {
       deps.openBackupError(
         "Calendar import path is required.",
         undefined,
-        "calendar_import_path"
+        "calendar_import_path",
       );
       return;
     }
 
     let horizonDays = 0;
     try {
-      horizonDays = parseCalendarImportHorizonOrThrow(deps.backupState.calendarImportHorizonInput);
+      horizonDays = parseCalendarImportHorizonOrThrow(
+        deps.backupState.calendarImportHorizonInput,
+      );
     } catch (error: unknown) {
-      deps.openBackupError("Invalid horizon days.", error, "calendar_import_horizon");
+      deps.openBackupError(
+        "Invalid horizon days.",
+        error,
+        "calendar_import_horizon",
+      );
       return;
     }
 
@@ -133,7 +152,7 @@ export function useCalendarFlow(deps: CalendarFlowDeps): CalendarFlowHandlers {
           mode,
           horizonDays,
           importTag: deps.backupState.calendarImportTagInput,
-          reportPath
+          reportPath,
         });
         deps.backupDispatch({
           type: "calendarImportDryRunSucceeded",
@@ -142,10 +161,14 @@ export function useCalendarFlow(deps: CalendarFlowDeps): CalendarFlowHandlers {
           errorReasons: dryRun.errorReasons,
           fingerprint: dryRun.fingerprint,
           reportPath: dryRun.result.outputReportPath,
-          warnings: dryRun.result.warnings
+          warnings: dryRun.result.warnings,
         });
       } catch (error: unknown) {
-        deps.openBackupError("Calendar dry-run failed", error, "calendar_import_tag");
+        deps.openBackupError(
+          "Calendar dry-run failed",
+          error,
+          "calendar_import_tag",
+        );
       }
     })();
   }
@@ -159,7 +182,7 @@ export function useCalendarFlow(deps: CalendarFlowDeps): CalendarFlowHandlers {
       deps.openBackupError(
         "A matching dry-run is required before commit.",
         undefined,
-        "calendar_import_dryrun"
+        "calendar_import_dryrun",
       );
       return;
     }
@@ -167,20 +190,29 @@ export function useCalendarFlow(deps: CalendarFlowDeps): CalendarFlowHandlers {
       deps.openBackupError(
         "Dry-run reported errors. Resolve errors before commit.",
         undefined,
-        "calendar_import_dryrun"
+        "calendar_import_dryrun",
       );
       return;
     }
     if ((mode === "update" || range === "all") && !hasValidImportConfirmToken) {
-      deps.backupDispatch({ type: "setScreen", screen: "calendar_import_confirm" });
+      deps.backupDispatch({
+        type: "setScreen",
+        screen: "calendar_import_confirm",
+      });
       return;
     }
 
     let horizonDays = 0;
     try {
-      horizonDays = parseCalendarImportHorizonOrThrow(deps.backupState.calendarImportHorizonInput);
+      horizonDays = parseCalendarImportHorizonOrThrow(
+        deps.backupState.calendarImportHorizonInput,
+      );
     } catch (error: unknown) {
-      deps.openBackupError("Invalid horizon days.", error, "calendar_import_horizon");
+      deps.openBackupError(
+        "Invalid horizon days.",
+        error,
+        "calendar_import_horizon",
+      );
       return;
     }
 
@@ -197,18 +229,22 @@ export function useCalendarFlow(deps: CalendarFlowDeps): CalendarFlowHandlers {
           mode,
           horizonDays,
           importTag: deps.backupState.calendarImportTagInput,
-          reportPath
+          reportPath,
         });
         deps.backupDispatch({
           type: "calendarImportSucceeded",
           summary: commitResult.result.summary,
           reportPath: commitResult.result.outputReportPath,
           backupPath: commitResult.backupPath,
-          warnings: commitResult.result.warnings
+          warnings: commitResult.result.warnings,
         });
         await deps.refreshRuntimeStateFromDisk();
       } catch (error: unknown) {
-        deps.openBackupError("Calendar import failed", error, "calendar_import_dryrun");
+        deps.openBackupError(
+          "Calendar import failed",
+          error,
+          "calendar_import_dryrun",
+        );
       }
     })();
   }
@@ -217,24 +253,45 @@ export function useCalendarFlow(deps: CalendarFlowDeps): CalendarFlowHandlers {
     switch (index) {
       case 0:
         deps.backupDispatch({ type: "setCalendarExportRange", range: "next7" });
-        deps.backupDispatch({ type: "setCalendarExportViewName", viewName: undefined });
-        deps.backupDispatch({ type: "setCalendarExportPrivacy", privacy: "minimal" });
+        deps.backupDispatch({
+          type: "setCalendarExportViewName",
+          viewName: undefined,
+        });
+        deps.backupDispatch({
+          type: "setCalendarExportPrivacy",
+          privacy: "minimal",
+        });
         deps.backupDispatch({ type: "setCalendarExportPath", value: "" });
         void refreshCalendarTimeZoneHint();
-        deps.backupDispatch({ type: "setScreen", screen: "calendar_export_intro" });
+        deps.backupDispatch({
+          type: "setScreen",
+          screen: "calendar_export_intro",
+        });
         return;
       case 1:
         deps.backupDispatch({ type: "setCalendarImportPath", value: "" });
         deps.calendarImportPathInputRef.current = "";
         deps.backupDispatch({ type: "setCalendarImportRange", range: "next7" });
         deps.calendarImportRangeRef.current = "next7";
-        deps.backupDispatch({ type: "setCalendarImportViewName", viewName: undefined });
+        deps.backupDispatch({
+          type: "setCalendarImportViewName",
+          viewName: undefined,
+        });
         deps.backupDispatch({ type: "setCalendarImportMode", mode: "merge" });
         deps.calendarImportModeRef.current = "merge";
-        deps.backupDispatch({ type: "setCalendarImportHorizonInput", value: "365" });
+        deps.backupDispatch({
+          type: "setCalendarImportHorizonInput",
+          value: "365",
+        });
         deps.backupDispatch({ type: "setCalendarImportTagInput", value: "" });
-        deps.backupDispatch({ type: "setCalendarImportConfirmInput", value: "" });
-        deps.backupDispatch({ type: "setScreen", screen: "calendar_import_intro" });
+        deps.backupDispatch({
+          type: "setCalendarImportConfirmInput",
+          value: "",
+        });
+        deps.backupDispatch({
+          type: "setScreen",
+          screen: "calendar_import_intro",
+        });
         return;
       case 2:
         deps.openGitHubCloudStatus();
@@ -257,29 +314,58 @@ export function useCalendarFlow(deps: CalendarFlowDeps): CalendarFlowHandlers {
         }
         return true;
       case "calendar_export_range":
-        if (digit === 1) deps.backupDispatch({ type: "setCalendarExportRange", range: "next7" });
-        if (digit === 2) deps.backupDispatch({ type: "setCalendarExportRange", range: "month" });
-        if (digit === 3) deps.backupDispatch({ type: "setCalendarExportRange", range: "all" });
+        if (digit === 1)
+          deps.backupDispatch({
+            type: "setCalendarExportRange",
+            range: "next7",
+          });
+        if (digit === 2)
+          deps.backupDispatch({
+            type: "setCalendarExportRange",
+            range: "month",
+          });
+        if (digit === 3)
+          deps.backupDispatch({ type: "setCalendarExportRange", range: "all" });
         return true;
       case "calendar_export_view": {
-        const selected = resolveCalendarViewSelectionDigit(digit, deps.savedViews);
+        const selected = resolveCalendarViewSelectionDigit(
+          digit,
+          deps.savedViews,
+        );
         if (selected !== null) {
-          deps.backupDispatch({ type: "setCalendarExportViewName", viewName: selected });
+          deps.backupDispatch({
+            type: "setCalendarExportViewName",
+            viewName: selected,
+          });
         }
         return true;
       }
       case "calendar_export_privacy":
-        if (digit === 1) deps.backupDispatch({ type: "setCalendarExportPrivacy", privacy: "minimal" });
-        if (digit === 2) deps.backupDispatch({ type: "setCalendarExportPrivacy", privacy: "full" });
+        if (digit === 1)
+          deps.backupDispatch({
+            type: "setCalendarExportPrivacy",
+            privacy: "minimal",
+          });
+        if (digit === 2)
+          deps.backupDispatch({
+            type: "setCalendarExportPrivacy",
+            privacy: "full",
+          });
         return true;
       case "calendar_import_range":
         if (digit === 1) {
           deps.calendarImportRangeRef.current = "next7";
-          deps.backupDispatch({ type: "setCalendarImportRange", range: "next7" });
+          deps.backupDispatch({
+            type: "setCalendarImportRange",
+            range: "next7",
+          });
         }
         if (digit === 2) {
           deps.calendarImportRangeRef.current = "month";
-          deps.backupDispatch({ type: "setCalendarImportRange", range: "month" });
+          deps.backupDispatch({
+            type: "setCalendarImportRange",
+            range: "month",
+          });
         }
         if (digit === 3) {
           deps.calendarImportRangeRef.current = "all";
@@ -287,9 +373,15 @@ export function useCalendarFlow(deps: CalendarFlowDeps): CalendarFlowHandlers {
         }
         return true;
       case "calendar_import_view": {
-        const selected = resolveCalendarViewSelectionDigit(digit, deps.savedViews);
+        const selected = resolveCalendarViewSelectionDigit(
+          digit,
+          deps.savedViews,
+        );
         if (selected !== null) {
-          deps.backupDispatch({ type: "setCalendarImportViewName", viewName: selected });
+          deps.backupDispatch({
+            type: "setCalendarImportViewName",
+            viewName: selected,
+          });
         }
         return true;
       }
@@ -300,11 +392,17 @@ export function useCalendarFlow(deps: CalendarFlowDeps): CalendarFlowHandlers {
         }
         if (digit === 2) {
           deps.calendarImportModeRef.current = "update";
-          deps.backupDispatch({ type: "setCalendarImportMode", mode: "update" });
+          deps.backupDispatch({
+            type: "setCalendarImportMode",
+            mode: "update",
+          });
         }
         if (digit === 3) {
           deps.calendarImportModeRef.current = "create";
-          deps.backupDispatch({ type: "setCalendarImportMode", mode: "create" });
+          deps.backupDispatch({
+            type: "setCalendarImportMode",
+            mode: "create",
+          });
         }
         return true;
       default:
@@ -322,54 +420,93 @@ export function useCalendarFlow(deps: CalendarFlowDeps): CalendarFlowHandlers {
         deps.backupDispatch({ type: "setScreen", screen: "calendar_menu" });
         return true;
       case "calendar_export_intro":
-        deps.backupDispatch({ type: "setScreen", screen: "calendar_export_range" });
+        deps.backupDispatch({
+          type: "setScreen",
+          screen: "calendar_export_range",
+        });
         return true;
       case "calendar_export_range":
-        deps.backupDispatch({ type: "setScreen", screen: "calendar_export_view" });
+        deps.backupDispatch({
+          type: "setScreen",
+          screen: "calendar_export_view",
+        });
         return true;
       case "calendar_export_view":
-        deps.backupDispatch({ type: "setScreen", screen: "calendar_export_privacy" });
+        deps.backupDispatch({
+          type: "setScreen",
+          screen: "calendar_export_privacy",
+        });
         return true;
       case "calendar_export_privacy":
-        deps.backupDispatch({ type: "setScreen", screen: "calendar_export_path" });
+        deps.backupDispatch({
+          type: "setScreen",
+          screen: "calendar_export_path",
+        });
         return true;
       case "calendar_export_path":
-        deps.backupDispatch({ type: "setScreen", screen: "calendar_export_confirm" });
+        deps.backupDispatch({
+          type: "setScreen",
+          screen: "calendar_export_confirm",
+        });
         return true;
       case "calendar_export_confirm":
         runCalendarExportFromBackupCenter();
         return true;
       case "calendar_import_intro":
-        deps.backupDispatch({ type: "setScreen", screen: "calendar_import_path" });
+        deps.backupDispatch({
+          type: "setScreen",
+          screen: "calendar_import_path",
+        });
         return true;
       case "calendar_import_path":
         if (!deps.calendarImportPathInputRef.current.trim()) {
           deps.openBackupError(
             "Calendar import path is required.",
             undefined,
-            "calendar_import_path"
+            "calendar_import_path",
           );
           return true;
         }
-        deps.backupDispatch({ type: "setScreen", screen: "calendar_import_range" });
+        deps.backupDispatch({
+          type: "setScreen",
+          screen: "calendar_import_range",
+        });
         return true;
       case "calendar_import_range":
-        deps.backupDispatch({ type: "setScreen", screen: "calendar_import_view" });
+        deps.backupDispatch({
+          type: "setScreen",
+          screen: "calendar_import_view",
+        });
         return true;
       case "calendar_import_view":
-        deps.backupDispatch({ type: "setScreen", screen: "calendar_import_mode" });
+        deps.backupDispatch({
+          type: "setScreen",
+          screen: "calendar_import_mode",
+        });
         return true;
       case "calendar_import_mode":
-        deps.backupDispatch({ type: "setScreen", screen: "calendar_import_horizon" });
+        deps.backupDispatch({
+          type: "setScreen",
+          screen: "calendar_import_horizon",
+        });
         return true;
       case "calendar_import_horizon":
         try {
-          parseCalendarImportHorizonOrThrow(deps.backupState.calendarImportHorizonInput);
+          parseCalendarImportHorizonOrThrow(
+            deps.backupState.calendarImportHorizonInput,
+          );
         } catch (error: unknown) {
-          deps.openBackupError("Invalid horizon days.", error, "calendar_import_horizon");
+          deps.openBackupError(
+            "Invalid horizon days.",
+            error,
+            "calendar_import_horizon",
+          );
           return true;
         }
-        deps.backupDispatch({ type: "setScreen", screen: "calendar_import_tag" });
+        deps.backupDispatch({
+          type: "setScreen",
+          screen: "calendar_import_tag",
+        });
         return true;
       case "calendar_import_tag":
         runCalendarImportDryRunFromBackupCenter();
@@ -384,11 +521,20 @@ export function useCalendarFlow(deps: CalendarFlowDeps): CalendarFlowHandlers {
         const shouldRequireConfirm =
           deps.calendarImportModeRef.current === "update" ||
           deps.calendarImportRangeRef.current === "all";
-        if (shouldRequireConfirm && deps.calendarImportConfirmInputRef.current.trim() !== "IMPORT") {
-          deps.backupDispatch({ type: "setScreen", screen: "calendar_import_confirm" });
+        if (
+          shouldRequireConfirm &&
+          deps.calendarImportConfirmInputRef.current.trim() !== "IMPORT"
+        ) {
+          deps.backupDispatch({
+            type: "setScreen",
+            screen: "calendar_import_confirm",
+          });
           return true;
         }
-        deps.openBackupFinalCheckpoint("calendar_import", "calendar_import_dryrun");
+        deps.openBackupFinalCheckpoint(
+          "calendar_import",
+          "calendar_import_dryrun",
+        );
         return true;
       }
       case "calendar_import_confirm":
@@ -396,11 +542,14 @@ export function useCalendarFlow(deps: CalendarFlowDeps): CalendarFlowHandlers {
           deps.openBackupError(
             "Type IMPORT to confirm this high-impact import.",
             undefined,
-            "calendar_import_confirm"
+            "calendar_import_confirm",
           );
           return true;
         }
-        deps.openBackupFinalCheckpoint("calendar_import", "calendar_import_confirm");
+        deps.openBackupFinalCheckpoint(
+          "calendar_import",
+          "calendar_import_confirm",
+        );
         return true;
       case "calendar_exporting":
       case "calendar_import_dryrun_running":
@@ -418,7 +567,7 @@ export function useCalendarFlow(deps: CalendarFlowDeps): CalendarFlowHandlers {
     runCalendarImportCommitFromBackupCenter,
     handleCalendarMenuSelect,
     handleCalendarDigitSelection,
-    handleCalendarPrimaryAction
+    handleCalendarPrimaryAction,
   };
 }
 

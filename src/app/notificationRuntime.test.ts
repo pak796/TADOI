@@ -3,7 +3,7 @@ import type { NotificationSettings } from "../settings/settings";
 import {
   getTerminalBellCooldownMs,
   isInAppOverdueEnabled,
-  isTerminalBellOverdueEnabled
+  isTerminalBellOverdueEnabled,
 } from "./notificationRuntime";
 
 describe("notificationRuntime helpers", () => {
@@ -11,7 +11,7 @@ describe("notificationRuntime helpers", () => {
     enabled: true,
     inAppOverdueBanner: true,
     terminalBellOnOverdue: true,
-    bellCooldownMs: 15000
+    bellCooldownMs: 15000,
   };
 
   it("computes in-app and terminal bell enablement", () => {
@@ -21,14 +21,14 @@ describe("notificationRuntime helpers", () => {
     expect(
       isInAppOverdueEnabled({
         ...enabledSettings,
-        enabled: false
-      })
+        enabled: false,
+      }),
     ).toBe(false);
     expect(
       isTerminalBellOverdueEnabled({
         ...enabledSettings,
-        terminalBellOnOverdue: false
-      })
+        terminalBellOnOverdue: false,
+      }),
     ).toBe(false);
   });
 

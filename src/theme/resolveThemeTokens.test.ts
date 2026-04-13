@@ -15,7 +15,7 @@ const CUSTOM_GLOBAL: ThemeTokens = {
   warn: "#DDAA00",
   danger: "#DD3344",
   selectionBg: "#8844CC",
-  selectionText: "#111111"
+  selectionText: "#111111",
 };
 
 function makeSettings(): TadoiSettings {
@@ -28,39 +28,41 @@ function makeSettings(): TadoiSettings {
       inAppOverdueBanner: true,
       terminalBellOnOverdue: false,
       bannerDurationMs: 5000,
-      bellCooldownMs: 2000
+      bellCooldownMs: 2000,
     },
     security: {
-      nonHttpLinkPolicy: "prompt"
+      nonHttpLinkPolicy: "prompt",
     },
     customThemes: {
       custom1: {
         global: { ...CUSTOM_GLOBAL },
         objects: {
           taskRow: {
-            text: "#00FF00"
-          }
-        }
+            text: "#00FF00",
+          },
+        },
       },
       textByTheme: {
         retro: {
           global: {
-            text: "#0A0A0A"
+            text: "#0A0A0A",
           },
           objects: {
             taskRow: {
-              mutedText: "#ABCDEF"
-            }
-          }
-        }
-      }
-    }
+              mutedText: "#ABCDEF",
+            },
+          },
+        },
+      },
+    },
   };
 }
 
 describe("resolveThemeTokens", () => {
   it("returns built-in palette for non-custom themes", () => {
-    const resolved = resolveThemeTokens("retro", makeSettings(), { objectId: "taskRow" });
+    const resolved = resolveThemeTokens("retro", makeSettings(), {
+      objectId: "taskRow",
+    });
     expect(resolved.text).toBe("#0A0A0A");
     expect(resolved.mutedText).toBe("#ABCDEF");
     expect(resolved.bg).toBe(THEMES.retro.bg);
@@ -69,9 +71,11 @@ describe("resolveThemeTokens", () => {
   it("falls back to built-in palette when no built-in text overrides exist", () => {
     const settings = makeSettings();
     settings.customThemes = {
-      custom1: settings.customThemes?.custom1
+      custom1: settings.customThemes?.custom1,
     };
-    const resolved = resolveThemeTokens("retro", settings, { objectId: "taskRow" });
+    const resolved = resolveThemeTokens("retro", settings, {
+      objectId: "taskRow",
+    });
     expect(resolved).toEqual(THEMES.retro);
   });
 
@@ -81,7 +85,9 @@ describe("resolveThemeTokens", () => {
   });
 
   it("layers object override on top of custom1 global", () => {
-    const resolved = resolveThemeTokens("custom1", makeSettings(), { objectId: "taskRow" });
+    const resolved = resolveThemeTokens("custom1", makeSettings(), {
+      objectId: "taskRow",
+    });
     expect(resolved.text).toBe("#00FF00");
     expect(resolved.bg).toBe(CUSTOM_GLOBAL.bg);
   });
@@ -93,14 +99,14 @@ describe("resolveThemeTokens", () => {
       draft: {
         global: {
           ...CUSTOM_GLOBAL,
-          panel: "#ABCDEF"
+          panel: "#ABCDEF",
         },
         objects: {
           taskRow: {
-            text: "#123456"
-          }
-        }
-      }
+            text: "#123456",
+          },
+        },
+      },
     });
     expect(resolved.panel).toBe("#ABCDEF");
     expect(resolved.text).toBe("#123456");
@@ -113,15 +119,15 @@ describe("resolveThemeTokens", () => {
       builtInTextDraft: {
         retro: {
           global: {
-            text: "#112233"
+            text: "#112233",
           },
           objects: {
             taskRow: {
-              mutedText: "#445566"
-            }
-          }
-        }
-      }
+              mutedText: "#445566",
+            },
+          },
+        },
+      },
     });
     expect(resolved.text).toBe("#112233");
     expect(resolved.mutedText).toBe("#445566");
@@ -132,7 +138,9 @@ describe("resolveThemeTokens", () => {
     const settings = makeSettings();
     for (const objectId of THEME_OBJECT_IDS) {
       const resolved = resolveThemeTokens("custom1", settings, { objectId });
-      expect(Object.keys(resolved).sort()).toEqual([...THEME_TOKEN_KEYS].sort());
+      expect(Object.keys(resolved).sort()).toEqual(
+        [...THEME_TOKEN_KEYS].sort(),
+      );
       for (const token of THEME_TOKEN_KEYS) {
         expect(resolved[token]).toBeDefined();
       }
@@ -146,15 +154,15 @@ describe("resolveThemeTokens", () => {
       builtInTextDraft: {
         default: {
           global: {
-            text: "#ABCDEF"
+            text: "#ABCDEF",
           },
           objects: {
             taskRow: {
-              mutedText: "#112233"
-            }
-          }
-        }
-      }
+              mutedText: "#112233",
+            },
+          },
+        },
+      },
     });
     expect(resolved.bg).toBe(THEMES.rotating.bg);
     expect(resolved.panel).toBe(THEMES.rotating.panel);

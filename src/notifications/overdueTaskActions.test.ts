@@ -5,7 +5,7 @@ import { formatDateToLocalIso } from "../domain/recurrence/rruleAdapter";
 import {
   applyOverdueMarkDone,
   applyOverdueSnooze,
-  resolveGoToTaskTarget
+  resolveGoToTaskTarget,
 } from "./overdueTaskActions";
 import type { TaskOverdueEvent } from "./types";
 
@@ -23,17 +23,21 @@ function makeTask(partial: Partial<Task> & Pick<Task, "id" | "title">): Task {
     notes: partial.notes,
     tags: partial.tags ?? [],
     recurrence: partial.recurrence,
-    instance_of: partial.instance_of
+    instance_of: partial.instance_of,
   };
 }
 
-function makeEvent(taskId: string, dueAtMs: number, title = "Task"): TaskOverdueEvent {
+function makeEvent(
+  taskId: string,
+  dueAtMs: number,
+  title = "Task",
+): TaskOverdueEvent {
   return {
     type: "TASK_OVERDUE",
     taskId,
     title,
     dueAt: new Date(dueAtMs).toISOString(),
-    firedAt: new Date(dueAtMs + 1000).toISOString()
+    firedAt: new Date(dueAtMs + 1000).toISOString(),
   };
 }
 
@@ -45,10 +49,15 @@ describe("overdueTaskActions", () => {
       id: "task-1",
       title: "Regular",
       dueAt,
-      hasExplicitTime: true
+      hasExplicitTime: true,
     });
 
-    const updated = applyOverdueSnooze([task], makeEvent(task.id, dueAt), nowMs, 10);
+    const updated = applyOverdueSnooze(
+      [task],
+      makeEvent(task.id, dueAt),
+      nowMs,
+      10,
+    );
     expect(updated).toHaveLength(1);
     expect(updated[0]?.dueAt).toBe(nowMs + 10 * 60_000);
     expect(updated[0]?.hasExplicitTime).toBe(true);
@@ -61,10 +70,14 @@ describe("overdueTaskActions", () => {
       id: "task-2",
       title: "Regular",
       dueAt,
-      hasExplicitTime: true
+      hasExplicitTime: true,
     });
 
-    const updated = applyOverdueMarkDone([task], makeEvent(task.id, dueAt), nowMs);
+    const updated = applyOverdueMarkDone(
+      [task],
+      makeEvent(task.id, dueAt),
+      nowMs,
+    );
     expect(updated[0]?.status).toBe("done");
     expect(updated[0]?.closedAt).toBe(nowMs);
   });
@@ -82,18 +95,25 @@ describe("overdueTaskActions", () => {
       recurrence: {
         dtstart: occurrenceIso,
         rrule: "FREQ=DAILY;INTERVAL=1",
-        series_id: "series:1"
+        series_id: "series:1",
       },
-      tags: ["work"]
+      tags: ["work"],
     });
 
-    const updated = applyOverdueSnooze([series], makeEvent(series.id, dueAtMs, series.title), nowMs, 10);
+    const updated = applyOverdueSnooze(
+      [series],
+      makeEvent(series.id, dueAtMs, series.title),
+      nowMs,
+      10,
+    );
     expect(updated).toHaveLength(2);
 
     const nextSeries = updated.find((task) => task.id === series.id);
     expect(nextSeries?.recurrence?.exdates).toContain(occurrenceIso);
 
-    const instance = updated.find((task) => task.instance_of?.series_id === "series:1");
+    const instance = updated.find(
+      (task) => task.instance_of?.series_id === "series:1",
+    );
     expect(instance?.instance_of?.occurrence).toBe(occurrenceIso);
     expect(instance?.status).toBe("open");
     expect(instance?.dueAt).toBe(nowMs + 10 * 60_000);
@@ -112,17 +132,23 @@ describe("overdueTaskActions", () => {
       recurrence: {
         dtstart: occurrenceIso,
         rrule: "FREQ=DAILY;INTERVAL=1",
-        series_id: "series:2"
-      }
+        series_id: "series:2",
+      },
     });
 
-    const updated = applyOverdueMarkDone([series], makeEvent(series.id, dueAtMs, series.title), nowMs);
+    const updated = applyOverdueMarkDone(
+      [series],
+      makeEvent(series.id, dueAtMs, series.title),
+      nowMs,
+    );
     expect(updated).toHaveLength(2);
 
     const nextSeries = updated.find((task) => task.id === series.id);
     expect(nextSeries?.recurrence?.exdates).toContain(occurrenceIso);
 
-    const instance = updated.find((task) => task.instance_of?.series_id === "series:2");
+    const instance = updated.find(
+      (task) => task.instance_of?.series_id === "series:2",
+    );
     expect(instance?.status).toBe("done");
     expect(instance?.closedAt).toBe(nowMs);
     expect(instance?.dueAt).toBe(dueAtMs);
@@ -140,14 +166,17 @@ describe("overdueTaskActions", () => {
       recurrence: {
         dtstart: occurrenceIso,
         rrule: "FREQ=DAILY;INTERVAL=1",
-        series_id: "series:3"
-      }
+        series_id: "series:3",
+      },
     });
 
-    const target = resolveGoToTaskTarget([series], makeEvent(series.id, dueAtMs, series.title));
+    const target = resolveGoToTaskTarget(
+      [series],
+      makeEvent(series.id, dueAtMs, series.title),
+    );
     expect(target).toEqual({
       preferredTaskId: buildSeriesOccurrenceRowId("series:3", occurrenceIso),
-      fallbackSourceTaskId: "series-3"
+      fallbackSourceTaskId: "series-3",
     });
   });
 });

@@ -7,7 +7,7 @@ import {
   extractCurrentSpecPathFromReadme,
   extractDtfIdsFromSpec,
   extractDtfIdsFromTestCaseNames,
-  runDtfContractDriftCheck
+  runDtfContractDriftCheck,
 } from "./check-dtf-contract-drift";
 
 function createTempDir(prefix: string): string {
@@ -40,17 +40,25 @@ describe("x", () => {
   it("not a contract case", () => {});
 });
 `;
-    expect(extractDtfIdsFromTestCaseNames(source)).toEqual(["DTF-001", "DTF-002"]);
+    expect(extractDtfIdsFromTestCaseNames(source)).toEqual([
+      "DTF-001",
+      "DTF-002",
+    ]);
   });
 
   it("resolves current spec path from README inline code link", () => {
     const readme = "Current behavior is documented in `TADOI_SPEC_v0.4.0.md`.";
-    expect(extractCurrentSpecPathFromReadme(readme)).toBe("TADOI_SPEC_v0.4.0.md");
+    expect(extractCurrentSpecPathFromReadme(readme)).toBe(
+      "TADOI_SPEC_v0.4.0.md",
+    );
   });
 
   it("computes missing IDs from contract vs coverage", () => {
     expect(
-      computeMissingDtfIds(["DTF-001", "DTF-002", "DTF-003"], ["DTF-001", "DTF-003"])
+      computeMissingDtfIds(
+        ["DTF-001", "DTF-002", "DTF-003"],
+        ["DTF-001", "DTF-003"],
+      ),
     ).toEqual(["DTF-002"]);
   });
 });
@@ -62,7 +70,7 @@ describe("check-dtf-contract-drift end-to-end", () => {
       write(
         tempDir,
         "README.md",
-        "Canonical contract in `TADOI_SPEC_v0.9.9.md` and dashboard in docs."
+        "Canonical contract in `TADOI_SPEC_v0.9.9.md` and dashboard in docs.",
       );
       write(
         tempDir,
@@ -72,7 +80,7 @@ describe("check-dtf-contract-drift end-to-end", () => {
 | --- | --- |
 | DTF-001 | First |
 | DTF-002 | Second |
-`
+`,
       );
       write(
         tempDir,
@@ -81,7 +89,7 @@ describe("check-dtf-contract-drift end-to-end", () => {
 | ID | Contract |
 | --- | --- |
 | DTF-001 | First |
-`
+`,
       );
       write(
         tempDir,
@@ -89,7 +97,7 @@ describe("check-dtf-contract-drift end-to-end", () => {
         `
 import { it } from "bun:test";
 it("DTF-001: First", () => {});
-`
+`,
       );
 
       const result = await runDtfContractDriftCheck(tempDir);
@@ -107,7 +115,7 @@ it("DTF-001: First", () => {});
       write(
         tempDir,
         "README.md",
-        "Canonical contract in `TADOI_SPEC_v0.9.9.md` and dashboard in docs."
+        "Canonical contract in `TADOI_SPEC_v0.9.9.md` and dashboard in docs.",
       );
       write(
         tempDir,
@@ -117,7 +125,7 @@ it("DTF-001: First", () => {});
 | --- | --- |
 | DTF-001 | First |
 | DTF-002 | Second |
-`
+`,
       );
       write(
         tempDir,
@@ -127,7 +135,7 @@ it("DTF-001: First", () => {});
 | --- | --- |
 | DTF-001 | First |
 | DTF-002 | Second |
-`
+`,
       );
       write(
         tempDir,
@@ -138,7 +146,7 @@ describe("contract", () => {
   it("DTF-001: First", () => {});
   it("DTF-002: Second", () => {});
 });
-`
+`,
       );
 
       const result = await runDtfContractDriftCheck(tempDir);
@@ -161,7 +169,7 @@ describe("contract", () => {
 | ID | Contract |
 | --- | --- |
 | DTF-098 | Older |
-`
+`,
       );
       write(
         tempDir,
@@ -170,7 +178,7 @@ describe("contract", () => {
 | ID | Contract |
 | --- | --- |
 | DTF-099 | Newer |
-`
+`,
       );
       write(
         tempDir,
@@ -179,7 +187,7 @@ describe("contract", () => {
 | ID | Contract |
 | --- | --- |
 | DTF-001 | Dashboard |
-`
+`,
       );
       write(
         tempDir,
@@ -190,11 +198,14 @@ describe("contract", () => {
   it("DTF-001: Dashboard", () => {});
   it("DTF-099: Newer", () => {});
 });
-`
+`,
       );
 
       const result = await runDtfContractDriftCheck(tempDir);
-      expect(result.specFiles).toEqual(["DASHBOARD_SPEC_MVP.md", "TADOI_SPEC_v0.9.9.md"]);
+      expect(result.specFiles).toEqual([
+        "DASHBOARD_SPEC_MVP.md",
+        "TADOI_SPEC_v0.9.9.md",
+      ]);
       expect(result.specIds).toEqual(["DTF-001", "DTF-099"]);
       expect(result.missingIds).toEqual([]);
     } finally {
@@ -208,7 +219,7 @@ describe("contract", () => {
       write(
         tempDir,
         "README.md",
-        "Canonical contract in `TADOI_SPEC_v0.9.9.md` and dashboard in docs."
+        "Canonical contract in `TADOI_SPEC_v0.9.9.md` and dashboard in docs.",
       );
       write(
         tempDir,
@@ -217,7 +228,7 @@ describe("contract", () => {
 | ID | Contract |
 | --- | --- |
 | DTF-888 | Env |
-`
+`,
       );
       write(
         tempDir,
@@ -226,7 +237,7 @@ describe("contract", () => {
 | ID | Contract |
 | --- | --- |
 | DTF-999 | Readme |
-`
+`,
       );
       write(
         tempDir,
@@ -235,7 +246,7 @@ describe("contract", () => {
 | ID | Contract |
 | --- | --- |
 | DTF-001 | Dashboard |
-`
+`,
       );
       write(
         tempDir,
@@ -246,13 +257,16 @@ describe("contract", () => {
   it("DTF-001: Dashboard", () => {});
   it("DTF-888: Env", () => {});
 });
-`
+`,
       );
 
       const result = await runDtfContractDriftCheck(tempDir, {
-        TADOI_SPEC_PATH: "TADOI_SPEC_v0.9.8.md"
+        TADOI_SPEC_PATH: "TADOI_SPEC_v0.9.8.md",
       });
-      expect(result.specFiles).toEqual(["DASHBOARD_SPEC_MVP.md", "TADOI_SPEC_v0.9.8.md"]);
+      expect(result.specFiles).toEqual([
+        "DASHBOARD_SPEC_MVP.md",
+        "TADOI_SPEC_v0.9.8.md",
+      ]);
       expect(result.specIds).toEqual(["DTF-001", "DTF-888"]);
       expect(result.missingIds).toEqual([]);
     } finally {

@@ -6,7 +6,7 @@ const DIST_TARBALL_DIR = path.resolve("dist/tarball");
 const EXPECTED_HELP_TOKENS = [
   "TADOI",
   "Terminal Accessible Digital Organization Interface",
-  "Usage: tadoi [options]"
+  "Usage: tadoi [options]",
 ];
 
 function runOrFail(command: string, args: string[], cwd?: string): string {
@@ -15,8 +15,8 @@ function runOrFail(command: string, args: string[], cwd?: string): string {
     encoding: "utf8",
     env: {
       ...process.env,
-      TMPDIR: "/tmp"
-    }
+      TMPDIR: "/tmp",
+    },
   });
 
   if (result.status !== 0) {
@@ -54,7 +54,13 @@ function resolveTarballPath(): string {
   if (tarballPath) return tarballPath;
 
   mkdirSync(DIST_TARBALL_DIR, { recursive: true });
-  runOrFail("bun", ["pm", "pack", "--destination", DIST_TARBALL_DIR, "--quiet"]);
+  runOrFail("bun", [
+    "pm",
+    "pack",
+    "--destination",
+    DIST_TARBALL_DIR,
+    "--quiet",
+  ]);
   tarballPath = getNewestTarballPath();
   if (!tarballPath) {
     console.error("[pack:smoke] unable to locate tarball after pack");
@@ -75,11 +81,17 @@ function main(): void {
 
     const extractedPackageDir = path.join(tempRoot, "package");
     const cliEntry = path.join(extractedPackageDir, "bin", "tadoi.js");
-    const helpOutput = runOrFail("bun", [cliEntry, "--help"], extractedPackageDir);
+    const helpOutput = runOrFail(
+      "bun",
+      [cliEntry, "--help"],
+      extractedPackageDir,
+    );
 
     for (const expectedToken of EXPECTED_HELP_TOKENS) {
       if (!helpOutput.includes(expectedToken)) {
-        console.error(`[pack:smoke] expected help output to include: ${expectedToken}`);
+        console.error(
+          `[pack:smoke] expected help output to include: ${expectedToken}`,
+        );
         process.exit(1);
       }
     }

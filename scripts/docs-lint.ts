@@ -34,14 +34,16 @@ function isExternalTarget(target: string): boolean {
 function normalizeLinkTarget(raw: string): string {
   const trimmed = raw.trim();
   const withoutAngles =
-    trimmed.startsWith("<") && trimmed.endsWith(">") ? trimmed.slice(1, -1) : trimmed;
+    trimmed.startsWith("<") && trimmed.endsWith(">")
+      ? trimmed.slice(1, -1)
+      : trimmed;
   const firstToken = withoutAngles.split(/\s+/)[0] ?? "";
   return firstToken.trim();
 }
 
 async function walkMarkdownFiles(
   root: string,
-  dirRelative = ""
+  dirRelative = "",
 ): Promise<string[]> {
   const absoluteDir = path.join(root, dirRelative);
   const entries = await fs.readdir(absoluteDir, { withFileTypes: true });
@@ -57,7 +59,7 @@ async function walkMarkdownFiles(
       }
       const nested = await walkMarkdownFiles(
         root,
-        path.join(dirRelative, entry.name)
+        path.join(dirRelative, entry.name),
       );
       results.push(...nested);
       continue;
@@ -105,7 +107,7 @@ function splitAnchor(target: string): { filePart: string; anchor?: string } {
 function resolveTargetPath(
   repoRoot: string,
   sourceFile: string,
-  filePart: string
+  filePart: string,
 ): string {
   const decoded = decodeURIComponent(filePart);
   if (!decoded || decoded === ".") {
@@ -119,7 +121,7 @@ function resolveTargetPath(
 
 export async function lintDocs(repoRoot: string): Promise<LinkIssue[]> {
   const files = (await walkMarkdownFiles(repoRoot)).sort((a, b) =>
-    a.localeCompare(b)
+    a.localeCompare(b),
   );
   const headingCache = new Map<string, Set<string>>();
   const issues: LinkIssue[] = [];
@@ -142,7 +144,11 @@ export async function lintDocs(repoRoot: string): Promise<LinkIssue[]> {
         }
 
         const { filePart, anchor } = splitAnchor(target);
-        const resolvedPath = resolveTargetPath(repoRoot, absolutePath, filePart);
+        const resolvedPath = resolveTargetPath(
+          repoRoot,
+          absolutePath,
+          filePart,
+        );
 
         try {
           const stat = await fs.stat(resolvedPath);
@@ -153,7 +159,7 @@ export async function lintDocs(repoRoot: string): Promise<LinkIssue[]> {
           issues.push({
             file: relativePath,
             line: index + 1,
-            message: `Broken local link target: ${target}`
+            message: `Broken local link target: ${target}`,
           });
           match = LINK_PATTERN.exec(line);
           continue;
@@ -170,7 +176,7 @@ export async function lintDocs(repoRoot: string): Promise<LinkIssue[]> {
             issues.push({
               file: relativePath,
               line: index + 1,
-              message: `Missing heading anchor '#${anchor}' in ${target}`
+              message: `Missing heading anchor '#${anchor}' in ${target}`,
             });
           }
         }

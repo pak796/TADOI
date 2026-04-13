@@ -1,5 +1,11 @@
 import { describe, expect, it } from "bun:test";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -30,7 +36,7 @@ export function handleKey(input: { name: string; sequence: string }) {
   }
   return [];
 }
-`
+`,
       );
       write(
         tempDir,
@@ -44,7 +50,7 @@ expect(run({ name: "t", sequence: "t", ctrl: false, shift: false })).toEqual([
   { scope: "domain", type: "TOGGLE_TAG_FILTER" }
 ]);
 expect(run({ name: "T", sequence: "T", ctrl: false, shift: false })).toEqual([]);
-`
+`,
       );
       write(tempDir, "README.md", "- legacy tag cycle: \`t\`");
 
@@ -63,9 +69,9 @@ expect(run({ name: "T", sequence: "T", ctrl: false, shift: false })).toEqual([])
           "--out-json",
           outJson,
           "--out-md",
-          outMd
+          outMd,
         ],
-        { encoding: "utf8" }
+        { encoding: "utf8" },
       );
 
       expect(result.status).toBe(0);
@@ -98,9 +104,13 @@ export function handleKey(key: { name: string; sequence: string; ctrl: boolean }
   if (lowerName === "y" || lowerSequence === "y") return [{ scope: "domain", type: "MODAL_CONFIRM_DELETE" }];
   return [];
 }
-`
+`,
       );
-      write(tempDir, "README.md", "- keys: \\`Ctrl+S\\` \\`Ctrl+L\\` \\`h\\` \\`y\\`");
+      write(
+        tempDir,
+        "README.md",
+        "- keys: \\`Ctrl+S\\` \\`Ctrl+L\\` \\`h\\` \\`y\\`",
+      );
 
       const outJson = path.join(tempDir, "keybind-audit.json");
       const outMd = path.join(tempDir, "keybind-audit.md");
@@ -117,9 +127,9 @@ export function handleKey(key: { name: string; sequence: string; ctrl: boolean }
           "--out-json",
           outJson,
           "--out-md",
-          outMd
+          outMd,
         ],
-        { encoding: "utf8" }
+        { encoding: "utf8" },
       );
 
       expect(result.status).toBe(0);
@@ -151,7 +161,7 @@ export function handleKey(key: { name: string; sequence: string; ctrl: boolean; 
   }
   return [];
 }
-`
+`,
       );
       write(tempDir, "README.md", "- quick capture: \\`Ctrl+N\\`");
 
@@ -170,9 +180,9 @@ export function handleKey(key: { name: string; sequence: string; ctrl: boolean; 
           "--out-json",
           outJson,
           "--out-md",
-          outMd
+          outMd,
         ],
-        { encoding: "utf8" }
+        { encoding: "utf8" },
       );
 
       expect(result.status).toBe(0);
@@ -203,7 +213,7 @@ export function handleKey(input: { name: string; sequence: string }) {
   }
   return [];
 }
-`
+`,
       );
       write(
         tempDir,
@@ -211,8 +221,8 @@ export function handleKey(input: { name: string; sequence: string }) {
         [
           "- Schema version: `6`",
           "- App release: `v0.4.0`",
-          "- Open backup center: `u`"
-        ].join("\n")
+          "- Open backup center: `u`",
+        ].join("\n"),
       );
 
       const outJson = path.join(tempDir, "keybind-audit.json");
@@ -230,9 +240,9 @@ export function handleKey(input: { name: string; sequence: string }) {
           "--out-json",
           outJson,
           "--out-md",
-          outMd
+          outMd,
         ],
-        { encoding: "utf8" }
+        { encoding: "utf8" },
       );
 
       expect(result.status).toBe(0);
@@ -262,7 +272,7 @@ export function handleKey(input: { name: string; sequence: string }) {
   }
   return [];
 }
-`
+`,
       );
       write(tempDir, "README.md", "- backup menu keys: `1/2/3`");
 
@@ -281,9 +291,9 @@ export function handleKey(input: { name: string; sequence: string }) {
           "--out-json",
           outJson,
           "--out-md",
-          outMd
+          outMd,
         ],
-        { encoding: "utf8" }
+        { encoding: "utf8" },
       );
 
       expect(result.status).toBe(0);

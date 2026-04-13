@@ -9,14 +9,14 @@
 
 ## By Skill
 
-| Skill | Scenario Pass | Failure Pass | Overall Pass Rate |
-|---|---:|---:|---:|
-| `spec-task-drift-guard` | 3/3 | 1/1 | 100.00% |
-| `release-readiness-gate` | 3/3 | 1/1 | 100.00% |
-| `keybind-source-of-truth` | 3/3 | 1/1 | 100.00% |
-| `safe-scope-enforcer` | 3/3 | 1/1 | 100.00% |
-| `session-handoff-capture` | 3/3 | 1/1 | 100.00% |
-| `atomic-change-planner` | 3/3 | 1/1 | 100.00% |
+| Skill                     | Scenario Pass | Failure Pass | Overall Pass Rate |
+| ------------------------- | ------------: | -----------: | ----------------: |
+| `spec-task-drift-guard`   |           3/3 |          1/1 |           100.00% |
+| `release-readiness-gate`  |           3/3 |          1/1 |           100.00% |
+| `keybind-source-of-truth` |           3/3 |          1/1 |           100.00% |
+| `safe-scope-enforcer`     |           3/3 |          1/1 |           100.00% |
+| `session-handoff-capture` |           3/3 |          1/1 |           100.00% |
+| `atomic-change-planner`   |           3/3 |          1/1 |           100.00% |
 
 ## Scenario Details
 
@@ -73,7 +73,7 @@
 - `S3` (scenario) PASS: Respect include-git-log parameter in output.
   Evidence: short log heading present
 - `F1` (failure) PASS: Failure mode: invalid output path should return non-zero safely.
-  Evidence: Traceback (most recent call last):   File "/Users/patrickkazar/.codex/skills/session-handoff-capture/scripts/handoff_capture.py", line 127, in <module>     raise SystemExit(main())   File "/Users/patrickkazar/.codex/skil...
+  Evidence: Traceback (most recent call last): File "/Users/patrickkazar/.codex/skills/session-handoff-capture/scripts/handoff_capture.py", line 127, in <module> raise SystemExit(main()) File "/Users/patrickkazar/.codex/skil...
 
 ### `atomic-change-planner`
 

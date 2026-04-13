@@ -13,7 +13,7 @@ function makeTask(partial: Partial<Task> & Pick<Task, "id" | "title">): Task {
     hasExplicitTime: partial.hasExplicitTime,
     closedAt: partial.closedAt,
     notes: partial.notes,
-    tags: partial.tags ?? []
+    tags: partial.tags ?? [],
   };
 }
 
@@ -25,7 +25,7 @@ describe("due labels with optional time", () => {
       id: "time",
       title: "time",
       dueAt: dueLater,
-      hasExplicitTime: true
+      hasExplicitTime: true,
     });
     expect(getDueInLabel(dueTask, now)).toBe("DUE IN 3 HOURS");
     expect(getDueLabel(dueTask, now)).toBe("DUE IN 3 HOURS");
@@ -38,7 +38,7 @@ describe("due labels with optional time", () => {
       id: "minutes",
       title: "minutes",
       dueAt: dueSoon,
-      hasExplicitTime: true
+      hasExplicitTime: true,
     });
     expect(getDueInLabel(dueTask, now)).toBe("DUE IN 20 MIN");
   });
@@ -50,7 +50,7 @@ describe("due labels with optional time", () => {
       id: "overdue",
       title: "overdue",
       dueAt: dueEarlier,
-      hasExplicitTime: true
+      hasExplicitTime: true,
     });
     expect(getDueInLabel(dueTask, now)).toBe("OVERDUE BY 2 HOURS");
   });
@@ -62,7 +62,7 @@ describe("due labels with optional time", () => {
       id: "overdue-minutes",
       title: "overdue-minutes",
       dueAt: dueEarlier,
-      hasExplicitTime: true
+      hasExplicitTime: true,
     });
     expect(getDueInLabel(dueTask, now)).toBe("OVERDUE BY 25 MIN");
   });
@@ -74,7 +74,7 @@ describe("due labels with optional time", () => {
       id: "date-only",
       title: "date-only",
       dueAt,
-      hasExplicitTime: false
+      hasExplicitTime: false,
     });
     expect(getDueLabel(dueTask, now)).toBe("DUE TODAY");
   });

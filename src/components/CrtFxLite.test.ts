@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   CrtFxLite,
   resolveCrtFxColor,
-  resolveRetroSweepBorderColor
+  resolveRetroSweepBorderColor,
 } from "./CrtFxLite";
 
 describe("CrtFxLite", () => {
@@ -13,7 +13,7 @@ describe("CrtFxLite", () => {
       baseColor: "#0B130F",
       tick: 0,
       color: "green",
-      preset: "normal"
+      preset: "normal",
     });
     expect(result).toBeNull();
   });
@@ -27,7 +27,7 @@ describe("resolveCrtFxColor", () => {
       preset: "normal",
       color: "green",
       tick: 0,
-      role: "panel"
+      role: "panel",
     });
     expect(color).toBe("#202020");
   });
@@ -39,7 +39,7 @@ describe("resolveCrtFxColor", () => {
       preset: "subtle",
       color: "green",
       tick: 1,
-      role: "panel"
+      role: "panel",
     });
     const normal = resolveCrtFxColor({
       baseColor: "#202020",
@@ -47,7 +47,7 @@ describe("resolveCrtFxColor", () => {
       preset: "normal",
       color: "green",
       tick: 1,
-      role: "panel"
+      role: "panel",
     });
     const strong = resolveCrtFxColor({
       baseColor: "#202020",
@@ -55,7 +55,7 @@ describe("resolveCrtFxColor", () => {
       preset: "strong",
       color: "green",
       tick: 1,
-      role: "panel"
+      role: "panel",
     });
 
     expect(subtle).not.toBe("#202020");
@@ -70,7 +70,7 @@ describe("resolveCrtFxColor", () => {
       preset: "normal",
       color: "green",
       tick: 1,
-      role: "panel"
+      role: "panel",
     });
     const amber = resolveCrtFxColor({
       enabled: true,
@@ -78,7 +78,7 @@ describe("resolveCrtFxColor", () => {
       preset: "normal",
       color: "amber",
       tick: 1,
-      role: "panel"
+      role: "panel",
     });
 
     expect(green).not.toBe(amber);
@@ -91,7 +91,7 @@ describe("resolveCrtFxColor", () => {
       preset: "normal",
       color: "green",
       tick: 1,
-      role: "panel"
+      role: "panel",
     });
     const flicker = resolveCrtFxColor({
       enabled: true,
@@ -99,7 +99,7 @@ describe("resolveCrtFxColor", () => {
       preset: "normal",
       color: "green",
       tick: 12,
-      role: "panel"
+      role: "panel",
     });
     expect(flicker).not.toBe(steady);
   });
@@ -111,7 +111,7 @@ describe("resolveCrtFxColor", () => {
       preset: "normal",
       color: "green",
       tick: 1,
-      role: "panel"
+      role: "panel",
     });
     expect(color).toBe("not-a-hex");
   });
@@ -122,7 +122,7 @@ describe("resolveRetroSweepBorderColor", () => {
     const color = resolveRetroSweepBorderColor({
       baseColor: "#2A4A3A",
       mode: "off",
-      tick: 0
+      tick: 0,
     });
     expect(color).toBe("#2A4A3A");
   });
@@ -131,12 +131,12 @@ describe("resolveRetroSweepBorderColor", () => {
     const classic = resolveRetroSweepBorderColor({
       baseColor: "#2A4A3A",
       mode: "classic",
-      tick: 0
+      tick: 0,
     });
     const broadcast = resolveRetroSweepBorderColor({
       baseColor: "#2A4A3A",
       mode: "broadcast",
-      tick: 0
+      tick: 0,
     });
     expect(classic).not.toBe("#2A4A3A");
     expect(broadcast).not.toBe(classic);

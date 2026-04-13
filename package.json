@@ -15,10 +15,12 @@
     "tadoi": "bin/tadoi.js"
   },
   "engines": {
-    "bun": ">=1.3.9"
+    "bun": ">=1.3.12"
   },
   "scripts": {
     "postinstall": "bun run completions:install:user",
+    "format": "bun scripts/prettier-tracked.ts --write",
+    "format:check": "bun scripts/prettier-tracked.ts --check",
     "test": "bun scripts/test-sharded.ts",
     "test:full": "bun scripts/test-sharded.ts --shards 1",
     "test:reminders": "bun test src/cli/remindersCommands.test.ts src/reminders/helperState.test.ts src/reminders/indexer.test.ts src/reminders/invocation.test.ts src/reminders/isRunning.test.ts src/reminders/remindCommand.test.ts src/reminders/scheduler.test.ts src/reminders/terminalLauncher.test.ts",
@@ -30,6 +32,9 @@
     "preflight:host:core": "bun skills/host-prereq-preflight/scripts/host_preflight.ts --profile core",
     "preflight:host:docs": "bun skills/host-prereq-preflight/scripts/host_preflight.ts --profile docs",
     "preflight:host:release": "bun skills/host-prereq-preflight/scripts/host_preflight.ts --profile release",
+    "codex:preflight": "node scripts/codex/preflight.mjs",
+    "codex:new-task": "node scripts/codex/new-task-docs.mjs",
+    "codex:skills": "node scripts/codex/manage-skills.mjs",
     "pack:dry": "mkdir -p dist/tarball && bun pm pack --destination dist/tarball --quiet",
     "pack:inspect": "bun scripts/inspect-package.ts",
     "pack:smoke": "bun scripts/package-smoke-test.ts",
@@ -62,13 +67,14 @@
     "notion:sync:full:dry": "bun scripts/notion-sync-full.ts --dry-run"
   },
   "devDependencies": {
-    "bun-types": "^1.3.9",
+    "bun-types": "^1.3.12",
+    "prettier": "^3.8.2",
     "typescript": "^5.9.3"
   },
   "dependencies": {
     "@opentui/core": "0.1.79",
     "@opentui/react": "0.1.79",
-    "bun": "^1.3.9",
+    "bun": "^1.3.12",
     "dev": "^0.1.3",
     "react": "^19.0.0",
     "rrule": "^2.8.1",

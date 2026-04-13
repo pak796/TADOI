@@ -66,13 +66,15 @@ export function localIsoToIcsDateTime(localIso: string): string | undefined {
 
 export function formatRecurrenceExdates(
   exdates: string[] | undefined,
-  kind: ExdateValueKind
+  kind: ExdateValueKind,
 ): string[] {
   if (!exdates || exdates.length === 0) return [];
   const mapped = exdates
     .map((value) =>
-      kind === "date" ? localIsoToIcsDate(value) : localIsoToIcsDateTime(value)
+      kind === "date" ? localIsoToIcsDate(value) : localIsoToIcsDateTime(value),
     )
-    .filter((value): value is string => typeof value === "string" && value.length > 0);
+    .filter(
+      (value): value is string => typeof value === "string" && value.length > 0,
+    );
   return Array.from(new Set(mapped)).sort();
 }

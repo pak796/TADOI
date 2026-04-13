@@ -12,7 +12,7 @@ import {
   scanMarkdownFiles,
   statNoteFile,
   writeDefaultGuideSeedMarker,
-  writeNoteDocumentAtomic
+  writeNoteDocumentAtomic,
 } from "./storage";
 import { NoteGraphRuntimeIndex } from "./index";
 import { findUnlinkedMentions, type NoteMention } from "./mentions";
@@ -25,7 +25,7 @@ import type {
   NotePath,
   ParsedNote,
   NoteRef,
-  NoteWarning
+  NoteWarning,
 } from "./types";
 
 export type NotesServiceStatus = {
@@ -91,12 +91,15 @@ export class NotesService {
     upsertCount: 0,
     skippedByMtimeCount: 0,
     skippedByHashCount: 0,
-    lastResolvedPaths: []
+    lastResolvedPaths: [],
   };
 
   constructor(options: NotesServiceOptions) {
     this.dataFilePath = options.dataFilePath;
-    this.notesRoot = resolveNotesRootPath(options.dataFilePath, options.rootPath);
+    this.notesRoot = resolveNotesRootPath(
+      options.dataFilePath,
+      options.rootPath,
+    );
     this.enabled = options.enabled !== false;
   }
 
@@ -104,7 +107,7 @@ export class NotesService {
     return {
       ready: this.initialized,
       enabled: this.enabled,
-      notesRoot: this.notesRoot
+      notesRoot: this.notesRoot,
     };
   }
 
@@ -137,7 +140,7 @@ export class NotesService {
   getInstrumentation(): NotesServiceInstrumentation {
     return {
       ...this.instrumentation,
-      lastResolvedPaths: [...this.instrumentation.lastResolvedPaths]
+      lastResolvedPaths: [...this.instrumentation.lastResolvedPaths],
     };
   }
 
@@ -158,7 +161,7 @@ export class NotesService {
     await ensureNotesRoot(nextRoot);
     await copyNotesRoot({
       sourceRoot: this.notesRoot,
-      destinationRoot: nextRoot
+      destinationRoot: nextRoot,
     });
     this.notesRoot = nextRoot;
     await this.reindexAll();
@@ -172,7 +175,7 @@ export class NotesService {
     this.cacheByPath.set(document.path, {
       mtimeMs: document.mtimeMs,
       content: document.content,
-      hash: computeContentHash(document.content)
+      hash: computeContentHash(document.content),
     });
   }
 
@@ -243,7 +246,7 @@ export class NotesService {
   }
 
   private async runAutoRefreshCycle(
-    options: Pick<NotesAutoRefreshOptions, "onRefreshed" | "onError">
+    options: Pick<NotesAutoRefreshOptions, "onRefreshed" | "onError">,
   ): Promise<void> {
     if (!this.enabled) return;
     if (this.autoRefreshInFlight) {
@@ -279,7 +282,7 @@ export class NotesService {
     const triggerRefresh = () => {
       void this.runAutoRefreshCycle({
         onRefreshed: options.onRefreshed,
-        onError: options.onError
+        onError: options.onError,
       });
     };
 
@@ -287,7 +290,7 @@ export class NotesService {
       rootPath: this.notesRoot,
       onChange: triggerRefresh,
       onError: options.onError,
-      debounceMs: options.watchDebounceMs
+      debounceMs: options.watchDebounceMs,
     });
 
     let pollTimer: ReturnType<typeof setInterval> | undefined;
@@ -306,7 +309,7 @@ export class NotesService {
 
     await this.runAutoRefreshCycle({
       onRefreshed: options.onRefreshed,
-      onError: options.onError
+      onError: options.onError,
     });
   }
 
@@ -317,9 +320,12 @@ export class NotesService {
         path: note.path,
         title: note.title,
         mtimeMs: note.mtimeMs,
-        tags: [...note.tags]
+        tags: [...note.tags],
       }))
-      .sort((left, right) => right.mtimeMs - left.mtimeMs || left.path.localeCompare(right.path));
+      .sort(
+        (left, right) =>
+          right.mtimeMs - left.mtimeMs || left.path.localeCompare(right.path),
+      );
   }
 
   async getNoteContent(notePath: NotePath): Promise<NoteDocument | null> {
@@ -335,7 +341,7 @@ export class NotesService {
       return {
         path: notePath,
         content: cached.content,
-        mtimeMs: cached.mtimeMs
+        mtimeMs: cached.mtimeMs,
       };
     }
 
@@ -355,7 +361,7 @@ export class NotesService {
     const created = await createNoteFile({
       notesRoot: this.notesRoot,
       title,
-      initialContent
+      initialContent,
     });
     this.upsertDocument(created);
     return created;
@@ -365,19 +371,22 @@ export class NotesService {
     await writeNoteDocumentAtomic({
       notesRoot: this.notesRoot,
       notePath,
-      content
+      content,
     });
     const saved = await this.loadDocument(notePath);
     this.upsertDocument(saved);
     return saved;
   }
 
-  async renameNote(notePath: NotePath, title: string): Promise<NoteDocument | null> {
+  async renameNote(
+    notePath: NotePath,
+    title: string,
+  ): Promise<NoteDocument | null> {
     if (!this.enabled) return null;
     const nextPath = await renameNoteFile({
       notesRoot: this.notesRoot,
       notePath,
-      title
+      title,
     });
     if (nextPath !== notePath) {
       this.cacheByPath.delete(notePath);
@@ -393,7 +402,7 @@ export class NotesService {
     try {
       await deleteNoteFile({
         notesRoot: this.notesRoot,
-        notePath
+        notePath,
       });
     } catch (error: unknown) {
       const maybeErrno = error as NodeJS.ErrnoException;
@@ -413,7 +422,7 @@ export class NotesService {
         mode: "seed_if_empty",
         createdPaths: [],
         skippedPaths: [],
-        skippedReason: "disabled"
+        skippedReason: "disabled",
       };
     }
 
@@ -422,7 +431,7 @@ export class NotesService {
         mode: "seed_if_empty",
         createdPaths: [],
         skippedPaths: [],
-        skippedReason: "already_seeded"
+        skippedReason: "already_seeded",
       };
     }
 
@@ -433,7 +442,7 @@ export class NotesService {
         mode: "seed_if_empty",
         createdPaths: [],
         skippedPaths: [],
-        skippedReason: "non_empty"
+        skippedReason: "non_empty",
       };
     }
 
@@ -443,18 +452,20 @@ export class NotesService {
   }
 
   async restoreDefaultGuideDocs(
-    mode: RestoreDefaultGuideDocsMode = "restore_missing"
+    mode: RestoreDefaultGuideDocsMode = "restore_missing",
   ): Promise<RestoreDefaultGuideDocsResult> {
     if (!this.enabled) {
       return {
         mode,
         createdPaths: [],
         skippedPaths: [],
-        skippedReason: "disabled"
+        skippedReason: "disabled",
       };
     }
 
-    const existing = new Set((await scanMarkdownFiles(this.notesRoot)).map((item) => item.path));
+    const existing = new Set(
+      (await scanMarkdownFiles(this.notesRoot)).map((item) => item.path),
+    );
     const createdPaths: NotePath[] = [];
     const skippedPaths: NotePath[] = [];
 
@@ -466,7 +477,7 @@ export class NotesService {
       await writeNoteDocumentAtomic({
         notesRoot: this.notesRoot,
         notePath: doc.path,
-        content: doc.content
+        content: doc.content,
       });
       const created = await this.loadDocument(doc.path);
       this.upsertDocument(created);
@@ -481,7 +492,7 @@ export class NotesService {
     return {
       mode,
       createdPaths,
-      skippedPaths
+      skippedPaths,
     };
   }
 
@@ -499,12 +510,16 @@ export class NotesService {
   }
 
   getBacklinks(pathValue: NotePath): NotePath[] {
-    const backlinks = this.runtime.snapshot().backlinks.get(pathValue) ?? new Set<NotePath>();
-    return Array.from(backlinks).sort((left, right) => left.localeCompare(right));
+    const backlinks =
+      this.runtime.snapshot().backlinks.get(pathValue) ?? new Set<NotePath>();
+    return Array.from(backlinks).sort((left, right) =>
+      left.localeCompare(right),
+    );
   }
 
   getWarnings(pathValue: NotePath): NoteWarning[] {
-    const warnings = this.runtime.snapshot().warningsByPath.get(pathValue) ?? [];
+    const warnings =
+      this.runtime.snapshot().warningsByPath.get(pathValue) ?? [];
     return warnings.map((warning) => ({ ...warning }));
   }
 
@@ -525,14 +540,15 @@ export class NotesService {
       targetAliases: parsed.note.aliases,
       notes: this.runtime.listParsedNotes(),
       excludeCodeFences: true,
-      hideWhenLinked: false
+      hideWhenLinked: false,
     });
   }
 
   private recordUpsert(pathValue: NotePath): void {
     this.instrumentation.upsertCount += 1;
     this.instrumentation.lastUpsertPath = pathValue;
-    this.instrumentation.lastResolvedPaths = this.runtime.getDebugLastResolvedPaths();
+    this.instrumentation.lastResolvedPaths =
+      this.runtime.getDebugLastResolvedPaths();
   }
 }
 
@@ -545,7 +561,10 @@ export function deriveDefaultNoteTitleFromTaskTitle(title: string): string {
   return trimmed.length > 0 ? trimmed : "Untitled task note";
 }
 
-export function buildTaskSeededNoteContent(taskId: string, taskTitle: string): string {
+export function buildTaskSeededNoteContent(
+  taskId: string,
+  taskTitle: string,
+): string {
   const safeTitle = taskTitle.trim() || "Task note";
   return `# ${safeTitle}\n\nLinked task: @task:${taskId}\n`;
 }
@@ -554,5 +573,8 @@ export function isPathWithin(rootPath: string, candidatePath: string): boolean {
   const resolvedRoot = path.resolve(rootPath);
   const resolvedCandidate = path.resolve(candidatePath);
   const relative = path.relative(resolvedRoot, resolvedCandidate);
-  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+  return (
+    relative === "" ||
+    (!relative.startsWith("..") && !path.isAbsolute(relative))
+  );
 }

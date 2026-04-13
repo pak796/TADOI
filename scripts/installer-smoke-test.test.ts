@@ -5,7 +5,7 @@ import path from "node:path";
 import {
   parseScopeArg,
   parseTargetArg,
-  resolveSmokePaths
+  resolveSmokePaths,
 } from "./installer-smoke-test";
 
 function createTempDir(prefix: string): string {
@@ -41,33 +41,35 @@ describe("installer-smoke-test path resolution", () => {
       writeFileSync(
         path.join(tempDir, "package.json"),
         JSON.stringify({ version: "1.2.3" }, null, 2),
-        "utf8"
+        "utf8",
       );
       mkdirSync(path.join(tempDir, "dist", "installers"), { recursive: true });
 
       const linuxPaths = resolveSmokePaths(tempDir, "linux");
-      expect(linuxPaths.binaryPath).toBe(path.join(tempDir, "dist", "bin", "linux", "tadoi"));
+      expect(linuxPaths.binaryPath).toBe(
+        path.join(tempDir, "dist", "bin", "linux", "tadoi"),
+      );
       expect(linuxPaths.linuxDebPath).toBe(
-        path.join(tempDir, "dist", "installers", "tadoi_1.2.3_amd64.deb")
+        path.join(tempDir, "dist", "installers", "tadoi_1.2.3_amd64.deb"),
       );
       expect(linuxPaths.linuxAppImagePath).toBe(
-        path.join(tempDir, "dist", "installers", "tadoi-1.2.3-x86_64.AppImage")
+        path.join(tempDir, "dist", "installers", "tadoi-1.2.3-x86_64.AppImage"),
       );
 
       const windowsPaths = resolveSmokePaths(tempDir, "windows");
       expect(windowsPaths.binaryPath).toBe(
-        path.join(tempDir, "dist", "bin", "windows", "tadoi.exe")
+        path.join(tempDir, "dist", "bin", "windows", "tadoi.exe"),
       );
       expect(windowsPaths.windowsInstallerPath).toBe(
-        path.join(tempDir, "dist", "installers", "TADOI-Setup-x64-1.2.3.exe")
+        path.join(tempDir, "dist", "installers", "TADOI-Setup-x64-1.2.3.exe"),
       );
 
       const macPaths = resolveSmokePaths(tempDir, "macos");
       expect(macPaths.macPkgPath).toBe(
-        path.join(tempDir, "dist", "installers", "TADOI-1.2.3.pkg")
+        path.join(tempDir, "dist", "installers", "TADOI-1.2.3.pkg"),
       );
       expect(macPaths.macDmgPath).toBe(
-        path.join(tempDir, "dist", "installers", "TADOI-macOS-1.2.3.dmg")
+        path.join(tempDir, "dist", "installers", "TADOI-macOS-1.2.3.dmg"),
       );
     } finally {
       rmSync(tempDir, { recursive: true, force: true });

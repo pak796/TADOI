@@ -16,6 +16,7 @@ Runtime baseline: **v0.4.0-beta.2**.
 4. `Calendar (ICS)...`
 
 Calendar submenu:
+
 1. `Export Calendar (.ics)`
 2. `Import Calendar (.ics)`
 3. `Cloud Backups -> GitHub (CLI)`
@@ -76,6 +77,7 @@ Output summary includes event counts, recurring series count, instance override 
 9. Commit (blocked until dry-run is valid and error-free).
 
 Safety:
+
 - Dry-run is mandatory before commit.
 - Pre-import backup of `tadoi_data.json` is created before calendar commit.
 - RRULE validity/horizon/hard-cap safeguards remain enforced by the calendar import service.
@@ -85,11 +87,13 @@ Safety:
 ## Cloud Backups: GitHub (CLI)
 
 Scope (v1):
+
 - Optional flow under Backup Center only (no background live sync).
 - Personal repository only (`owner/repo` owner must match active `gh` account).
 - Uses GitHub CLI auth state from `gh`; no PAT/token storage in TADOI settings.
 
 Status panel shows:
+
 - `gh` detected / logged-in state
 - active account username
 - configured repo (`owner/repo`)
@@ -143,10 +147,12 @@ Status panel shows:
 ## CLI Parity
 
 Calendar flows are available through CLI and in-app Backup Center:
+
 - `calendar:export`
 - `calendar:import`
 
 Import exit codes:
+
 - `0`: success
 - `1`: usage/validation/parse/import-domain errors
 - `2`: filesystem errors

@@ -21,7 +21,7 @@ export function findNextMatchingIndex<T>(
   currentIndex: number,
   direction: 1 | -1,
   predicate: (item: T, index: number) => boolean,
-  wrap = true
+  wrap = true,
 ): number | null {
   if (items.length === 0) return null;
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Session Handoff Capture"
+  short_description: "Create decision-complete session handoff notes"
+  default_prompt: "Use $session-handoff-capture to generate a structured handoff with decisions, risks, and next commands."

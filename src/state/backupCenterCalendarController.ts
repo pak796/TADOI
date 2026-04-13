@@ -5,11 +5,14 @@ import type { CalendarImportMode } from "../calendar/importMapper";
 import type { CalendarExportRange } from "../calendar/range";
 import { createDataBackup } from "./persistence";
 import { getDefaultBackupDir, getResolvedDataPath } from "./backupService";
-import { exportCalendarIcs, type CalendarExportResult } from "./calendarExportService";
+import {
+  exportCalendarIcs,
+  type CalendarExportResult,
+} from "./calendarExportService";
 import {
   importCalendarIcs,
   type CalendarImportReport,
-  type CalendarImportResult
+  type CalendarImportResult,
 } from "./calendarImportService";
 
 type CalendarControllerDeps = {
@@ -83,7 +86,10 @@ async function buildUniquePath(basePath: string): Promise<string> {
   const parsed = path.parse(basePath);
   let suffix = 1;
   while (true) {
-    const candidate = path.join(parsed.dir, `${parsed.name}.${String(suffix)}${parsed.ext}`);
+    const candidate = path.join(
+      parsed.dir,
+      `${parsed.name}.${String(suffix)}${parsed.ext}`,
+    );
     if (!(await pathExists(candidate))) {
       return candidate;
     }
@@ -92,14 +98,18 @@ async function buildUniquePath(basePath: string): Promise<string> {
 }
 
 function resolveFromCwd(filePath: string, cwd: string): string {
-  return path.isAbsolute(filePath) ? path.normalize(filePath) : path.resolve(cwd, filePath);
+  return path.isAbsolute(filePath)
+    ? path.normalize(filePath)
+    : path.resolve(cwd, filePath);
 }
 
-export async function buildDefaultCalendarExportPath(options: {
-  cwd?: string;
-  dataPath?: string;
-  now?: Date;
-} = {}): Promise<string> {
+export async function buildDefaultCalendarExportPath(
+  options: {
+    cwd?: string;
+    dataPath?: string;
+    now?: Date;
+  } = {},
+): Promise<string> {
   const cwd = options.cwd ?? process.cwd();
   const now = options.now ?? new Date();
   const dataPath = options.dataPath ?? getResolvedDataPath();
@@ -109,11 +119,13 @@ export async function buildDefaultCalendarExportPath(options: {
   return buildUniquePath(path.normalize(candidate));
 }
 
-export async function buildDefaultCalendarImportReportPath(options: {
-  cwd?: string;
-  dataPath?: string;
-  now?: Date;
-} = {}): Promise<string> {
+export async function buildDefaultCalendarImportReportPath(
+  options: {
+    cwd?: string;
+    dataPath?: string;
+    now?: Date;
+  } = {},
+): Promise<string> {
   const cwd = options.cwd ?? process.cwd();
   const now = options.now ?? new Date();
   const dataPath = options.dataPath ?? getResolvedDataPath();
@@ -134,7 +146,7 @@ export async function resolveCalendarExportOutputPath(options: {
   const defaultPath = await buildDefaultCalendarExportPath({
     cwd,
     now: options.now,
-    dataPath: options.dataPath
+    dataPath: options.dataPath,
   });
   if (!raw) {
     return defaultPath;
@@ -175,13 +187,13 @@ export function buildCalendarImportFingerprint(options: {
     viewName: normalizeOptional(options.viewName),
     mode: options.mode,
     horizonDays: options.horizonDays,
-    importTag: normalizeOptional(options.importTag)
+    importTag: normalizeOptional(options.importTag),
   });
 }
 
 export function collectTopCalendarImportErrorReasons(
   report: CalendarImportReport,
-  limit = 3
+  limit = 3,
 ): string[] {
   const counts = new Map<string, number>();
   for (const entry of report.entries) {
@@ -190,22 +202,24 @@ export function collectTopCalendarImportErrorReasons(
     counts.set(message, (counts.get(message) ?? 0) + 1);
   }
   return [...counts.entries()]
-    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+    .sort(
+      (left, right) => right[1] - left[1] || left[0].localeCompare(right[0]),
+    )
     .slice(0, Math.max(1, limit))
     .map(([message, count]) =>
-      count > 1 ? `${message} (${String(count)} events)` : message
+      count > 1 ? `${message} (${String(count)} events)` : message,
     );
 }
 
 export async function runCalendarExportFlow(
   input: CalendarExportFlowInput,
-  deps: CalendarControllerDeps = {}
+  deps: CalendarControllerDeps = {},
 ): Promise<CalendarExportResult> {
   const exportFn = deps.exportCalendar ?? exportCalendarIcs;
   const outputPath = await resolveCalendarExportOutputPath({
     outputPathInput: input.outputPathInput,
     cwd: input.cwd,
-    now: input.now
+    now: input.now,
   });
 
   return exportFn({
@@ -214,13 +228,13 @@ export async function runCalendarExportFlow(
     viewName: normalizeOptional(input.viewName),
     privacy: input.privacy,
     cwd: input.cwd,
-    now: input.now
+    now: input.now,
   });
 }
 
 export async function runCalendarImportDryRunFlow(
   input: CalendarImportFlowInput,
-  deps: CalendarControllerDeps = {}
+  deps: CalendarControllerDeps = {},
 ): Promise<CalendarImportFlowSummary> {
   const importFn = deps.importCalendar ?? importCalendarIcs;
   const result = await importFn({
@@ -233,7 +247,7 @@ export async function runCalendarImportDryRunFlow(
     importTag: normalizeOptional(input.importTag),
     reportPath: normalizeOptional(input.reportPath),
     cwd: input.cwd,
-    now: input.now
+    now: input.now,
   });
 
   return {
@@ -245,14 +259,14 @@ export async function runCalendarImportDryRunFlow(
       viewName: input.viewName,
       mode: input.mode,
       horizonDays: input.horizonDays,
-      importTag: input.importTag
-    })
+      importTag: input.importTag,
+    }),
   };
 }
 
 export async function runCalendarImportCommitFlow(
   input: CalendarImportFlowInput,
-  deps: CalendarControllerDeps = {}
+  deps: CalendarControllerDeps = {},
 ): Promise<CalendarImportCommitResult> {
   const importFn = deps.importCalendar ?? importCalendarIcs;
   const resolveDataPathFn = deps.resolveDataPath ?? getResolvedDataPath;
@@ -271,11 +285,11 @@ export async function runCalendarImportCommitFlow(
     importTag: normalizeOptional(input.importTag),
     reportPath: normalizeOptional(input.reportPath),
     cwd: input.cwd,
-    now
+    now,
   });
 
   return {
     result,
-    ...(backupPath ? { backupPath } : {})
+    ...(backupPath ? { backupPath } : {}),
   };
 }

@@ -4,7 +4,7 @@ import { Task } from "./models";
 import {
   findNextMatchingIndex,
   isTaskDueToday,
-  isTaskOverdue
+  isTaskOverdue,
 } from "./navigation";
 
 function makeTask(overrides: Partial<Task>): Task {
@@ -18,7 +18,7 @@ function makeTask(overrides: Partial<Task>): Task {
     hasExplicitTime: overrides.hasExplicitTime,
     closedAt: overrides.closedAt,
     notes: overrides.notes,
-    tags: overrides.tags ?? []
+    tags: overrides.tags ?? [],
   };
 }
 
@@ -43,8 +43,12 @@ describe("findNextMatchingIndex", () => {
 
   it("supports non-wrapping search", () => {
     const values = [false, false, true, false];
-    expect(findNextMatchingIndex(values, 2, 1, (value) => value, false)).toBeNull();
-    expect(findNextMatchingIndex(values, 3, -1, (value) => value, false)).toBe(2);
+    expect(
+      findNextMatchingIndex(values, 2, 1, (value) => value, false),
+    ).toBeNull();
+    expect(findNextMatchingIndex(values, 3, -1, (value) => value, false)).toBe(
+      2,
+    );
   });
 });
 
@@ -57,15 +61,15 @@ describe("attention predicates", () => {
     const sameDayDateOnly = makeTask({ dueAt: today, hasExplicitTime: false });
     const sameDayTimeFuture = makeTask({
       dueAt: new Date("2026-02-09T18:00:00").getTime(),
-      hasExplicitTime: true
+      hasExplicitTime: true,
     });
     const sameDayTimePast = makeTask({
       dueAt: new Date("2026-02-09T09:00:00").getTime(),
-      hasExplicitTime: true
+      hasExplicitTime: true,
     });
     const doneTask = makeTask({
       status: "done",
-      dueAt: addLocalDaysMs(today, -2)
+      dueAt: addLocalDaysMs(today, -2),
     });
 
     expect(isTaskOverdue(dayOverdue, now)).toBe(true);
@@ -80,7 +84,7 @@ describe("attention predicates", () => {
     const today = startOfLocalDayMs(now);
     const todayTimedPast = makeTask({
       dueAt: new Date("2026-02-09T08:00:00").getTime(),
-      hasExplicitTime: true
+      hasExplicitTime: true,
     });
     const tomorrow = makeTask({ dueAt: addLocalDaysMs(today, 1) });
     const archivedToday = makeTask({ status: "archived", dueAt: today });

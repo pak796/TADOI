@@ -11,7 +11,7 @@ function clampIndex(index: number, itemCount: number): number {
 export function reconcileSelectionById(
   visibleItems: Array<{ id: string }>,
   selectedId: string | undefined,
-  previousIndex: number
+  previousIndex: number,
 ): SelectionReconcileResult {
   if (visibleItems.length === 0) {
     return { selectedId: undefined, selectedIndex: 0 };
@@ -27,6 +27,6 @@ export function reconcileSelectionById(
   const fallbackIndex = clampIndex(previousIndex, visibleItems.length);
   return {
     selectedId: visibleItems[fallbackIndex].id,
-    selectedIndex: fallbackIndex
+    selectedIndex: fallbackIndex,
   };
 }

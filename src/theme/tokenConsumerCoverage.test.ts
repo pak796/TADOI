@@ -32,13 +32,13 @@ describe("theme token consumer coverage", () => {
   const allConsumerSource = readFiles([...appFiles, ...componentFiles]);
   const visibleUiSource = readFiles([
     ...componentFiles,
-    path.join(repoRoot, "src", "app", "App.tsx")
+    path.join(repoRoot, "src", "app", "App.tsx"),
   ]);
 
   it("keeps each user-facing theme role anchored to runtime consumers", () => {
     for (const role of Object.values(USER_THEME_ROLE_CONTRACT)) {
       const hasRuntimeUsage = role.runtimeAliases.some((alias) =>
-        new RegExp(`\\btheme\\.${alias}\\b`).test(allConsumerSource)
+        new RegExp(`\\btheme\\.${alias}\\b`).test(allConsumerSource),
       );
       expect(hasRuntimeUsage).toBe(true);
     }

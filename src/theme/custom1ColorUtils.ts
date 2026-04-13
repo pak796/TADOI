@@ -12,7 +12,7 @@ export const THEME_TOKEN_KEYS: Array<keyof ThemeTokens> = [
   "warn",
   "danger",
   "selectionBg",
-  "selectionText"
+  "selectionText",
 ];
 
 export const THEME_TEXT_TOKEN_KEYS: Array<
@@ -59,7 +59,7 @@ export function hexToRgb(value: string): RgbColor | null {
   return {
     r: Number.parseInt(normalized.slice(1, 3), 16),
     g: Number.parseInt(normalized.slice(3, 5), 16),
-    b: Number.parseInt(normalized.slice(5, 7), 16)
+    b: Number.parseInt(normalized.slice(5, 7), 16),
   };
 }
 

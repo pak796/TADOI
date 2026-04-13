@@ -1,16 +1,25 @@
 import { diffLocalDays, getLocalDayNumber, startOfLocalDayMs } from "./dates";
 import { Filters, SortMode, Task } from "./models";
-import { normalizePriorityFilterValue, resolveTaskPriorityTag } from "./priorityTags";
+import {
+  normalizePriorityFilterValue,
+  resolveTaskPriorityTag,
+} from "./priorityTags";
 import { matchesTagFilter } from "./tagFilter";
 import { resolveTag, type TagAliases } from "./tagAliases";
 import { normalizeTag } from "./tagIndex";
 
-export const SORT_MODE_ORDER: SortMode[] = ["due", "updated", "created", "title"];
+export const SORT_MODE_ORDER: SortMode[] = [
+  "due",
+  "updated",
+  "created",
+  "title",
+];
 export const ANALYTICS_WINDOWS = ["7d", "14d", "30d"] as const;
-export const DEFAULT_ANALYTICS_WINDOW: (typeof ANALYTICS_WINDOWS)[number] = "7d";
+export const DEFAULT_ANALYTICS_WINDOW: (typeof ANALYTICS_WINDOWS)[number] =
+  "7d";
 
 export function resolveAnalyticsWindowDays(
-  analyticsWindow: Filters["analyticsWindow"]
+  analyticsWindow: Filters["analyticsWindow"],
 ): number {
   if (analyticsWindow === "14d") return 14;
   if (analyticsWindow === "30d") return 30;
@@ -52,9 +61,13 @@ function compareByDue(a: Task, b: Task): number {
   }
 
   const dueDayA =
-    a.dueAt !== undefined ? getLocalDayNumber(a.dueAt) : Number.MAX_SAFE_INTEGER;
+    a.dueAt !== undefined
+      ? getLocalDayNumber(a.dueAt)
+      : Number.MAX_SAFE_INTEGER;
   const dueDayB =
-    b.dueAt !== undefined ? getLocalDayNumber(b.dueAt) : Number.MAX_SAFE_INTEGER;
+    b.dueAt !== undefined
+      ? getLocalDayNumber(b.dueAt)
+      : Number.MAX_SAFE_INTEGER;
   if (dueDayA !== dueDayB) {
     return dueDayA - dueDayB;
   }
@@ -86,7 +99,9 @@ function compareByCreated(a: Task, b: Task): number {
 }
 
 function compareByTitle(a: Task, b: Task): number {
-  const titleDiff = a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
+  const titleDiff = a.title.localeCompare(b.title, undefined, {
+    sensitivity: "base",
+  });
   if (titleDiff !== 0) return titleDiff;
   return compareStableFallback(a, b);
 }
@@ -95,7 +110,7 @@ export function filterTasks(
   tasks: Task[],
   filters: Filters,
   now: number,
-  aliases: TagAliases = {}
+  aliases: TagAliases = {},
 ): Task[] {
   const start = startOfLocalDayMs(now);
   const search = (filters.searchText ?? "").trim().toLowerCase();
@@ -116,7 +131,10 @@ export function filterTasks(
       return false;
     }
 
-    if (priorityFilter && resolveTaskPriorityTag(task.tags) !== priorityFilter) {
+    if (
+      priorityFilter &&
+      resolveTaskPriorityTag(task.tags) !== priorityFilter
+    ) {
       return false;
     }
 
@@ -138,13 +156,15 @@ export function filterTasks(
 
     if (
       filters.assignee &&
-      (task.assignee ?? "").trim().toLowerCase() !== filters.assignee.trim().toLowerCase()
+      (task.assignee ?? "").trim().toLowerCase() !==
+        filters.assignee.trim().toLowerCase()
     ) {
       return false;
     }
     if (
       filters.project &&
-      (task.project ?? "").trim().toLowerCase() !== filters.project.trim().toLowerCase()
+      (task.project ?? "").trim().toLowerCase() !==
+        filters.project.trim().toLowerCase()
     ) {
       return false;
     }
@@ -152,7 +172,8 @@ export function filterTasks(
       return false;
     }
 
-    const dayDiff = task.dueAt !== undefined ? diffLocalDays(task.dueAt, start) : undefined;
+    const dayDiff =
+      task.dueAt !== undefined ? diffLocalDays(task.dueAt, start) : undefined;
     const timeOverdue =
       task.dueAt !== undefined &&
       task.hasExplicitTime === true &&
@@ -184,7 +205,11 @@ export function filterTasks(
   });
 }
 
-export function sortTasks(tasks: Task[], _now: number, sortMode: SortMode = "due"): Task[] {
+export function sortTasks(
+  tasks: Task[],
+  _now: number,
+  sortMode: SortMode = "due",
+): Task[] {
   const comparator =
     sortMode === "updated"
       ? compareByUpdated

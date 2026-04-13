@@ -6,7 +6,7 @@ import {
   fromFloatingUtcDate,
   parseLocalIsoToDate,
   parseRRule,
-  toFloatingUtcDate
+  toFloatingUtcDate,
 } from "./rruleAdapter";
 
 function normalizeOccurrenceIso(iso: string): string | null {
@@ -20,23 +20,29 @@ function normalizeExdates(exdates: string[] | undefined): string[] {
   const normalized = exdates
     .map((exdate) => normalizeOccurrenceIso(exdate))
     .filter((value): value is string => Boolean(value));
-  return Array.from(new Set(normalized)).sort((left, right) => left.localeCompare(right));
+  return Array.from(new Set(normalized)).sort((left, right) =>
+    left.localeCompare(right),
+  );
 }
 
 function buildRecurrenceWithExdates(
   recurrence: TaskRecurrence,
   exdates: string[],
-  rrule: string
+  rrule: string,
 ): TaskRecurrence {
   return {
     dtstart: recurrence.dtstart,
     series_id: recurrence.series_id,
     rrule,
-    ...(exdates.length > 0 ? { exdates } : {})
+    ...(exdates.length > 0 ? { exdates } : {}),
   };
 }
 
-function resolveSeriesTask(tasks: Task[], seriesTaskId: string, seriesId: string): Task | undefined {
+function resolveSeriesTask(
+  tasks: Task[],
+  seriesTaskId: string,
+  seriesId: string,
+): Task | undefined {
   return (
     tasks.find((task) => task.id === seriesTaskId && task.recurrence) ??
     tasks.find((task) => task.recurrence?.series_id === seriesId)
@@ -45,7 +51,7 @@ function resolveSeriesTask(tasks: Task[], seriesTaskId: string, seriesId: string
 
 function previousOccurrenceIso(
   recurrence: TaskRecurrence,
-  selectedOccurrenceIso: string
+  selectedOccurrenceIso: string,
 ): string | null {
   const selectedDate = parseLocalIsoToDate(selectedOccurrenceIso);
   if (!selectedDate) return null;
@@ -64,7 +70,7 @@ export type RecurringDeleteOptions = {
 
 export function deleteRecurringOccurrence(
   tasks: Task[],
-  options: RecurringDeleteOptions
+  options: RecurringDeleteOptions,
 ): Task[] {
   const normalizedOccurrenceIso = normalizeOccurrenceIso(options.occurrenceIso);
   if (!normalizedOccurrenceIso) return tasks;
@@ -72,12 +78,19 @@ export function deleteRecurringOccurrence(
   const updatedSeriesTasks = tasks.map((task) => {
     if (task.id !== options.seriesTaskId || !task.recurrence) return task;
     const nextExdates = Array.from(
-      new Set([...normalizeExdates(task.recurrence.exdates), normalizedOccurrenceIso])
+      new Set([
+        ...normalizeExdates(task.recurrence.exdates),
+        normalizedOccurrenceIso,
+      ]),
     ).sort((left, right) => left.localeCompare(right));
     return {
       ...task,
       updatedAt: options.nowMs,
-      recurrence: buildRecurrenceWithExdates(task.recurrence, nextExdates, task.recurrence.rrule)
+      recurrence: buildRecurrenceWithExdates(
+        task.recurrence,
+        nextExdates,
+        task.recurrence.rrule,
+      ),
     };
   });
 
@@ -86,31 +99,38 @@ export function deleteRecurringOccurrence(
       !(
         task.instance_of?.series_id === options.seriesId &&
         task.instance_of?.occurrence === normalizedOccurrenceIso
-      )
+      ),
   );
 }
 
 export function deleteRecurringOccurrenceAndFuture(
   tasks: Task[],
-  options: RecurringDeleteOptions
+  options: RecurringDeleteOptions,
 ): Task[] {
   const normalizedOccurrenceIso = normalizeOccurrenceIso(options.occurrenceIso);
   if (!normalizedOccurrenceIso) return tasks;
 
-  const seriesTask = resolveSeriesTask(tasks, options.seriesTaskId, options.seriesId);
+  const seriesTask = resolveSeriesTask(
+    tasks,
+    options.seriesTaskId,
+    options.seriesId,
+  );
   const withoutFutureInstances = tasks.filter(
     (task) =>
       !(
         task.instance_of?.series_id === options.seriesId &&
         task.instance_of?.occurrence >= normalizedOccurrenceIso
-      )
+      ),
   );
 
   if (!seriesTask?.recurrence) {
     return withoutFutureInstances;
   }
 
-  const previousIso = previousOccurrenceIso(seriesTask.recurrence, normalizedOccurrenceIso);
+  const previousIso = previousOccurrenceIso(
+    seriesTask.recurrence,
+    normalizedOccurrenceIso,
+  );
   if (!previousIso) {
     return withoutFutureInstances.filter((task) => task.id !== seriesTask.id);
   }
@@ -121,18 +141,22 @@ export function deleteRecurringOccurrenceAndFuture(
     interval: parsed.interval,
     byday: parsed.byday,
     bymonthday: parsed.bymonthday,
-    untilIso: previousIso
+    untilIso: previousIso,
   });
-  const retainedExdates = normalizeExdates(seriesTask.recurrence.exdates).filter(
-    (exdate) => exdate < normalizedOccurrenceIso
-  );
+  const retainedExdates = normalizeExdates(
+    seriesTask.recurrence.exdates,
+  ).filter((exdate) => exdate < normalizedOccurrenceIso);
 
   return withoutFutureInstances.map((task) => {
     if (task.id !== seriesTask.id || !task.recurrence) return task;
     return {
       ...task,
       updatedAt: options.nowMs,
-      recurrence: buildRecurrenceWithExdates(task.recurrence, retainedExdates, truncatedRRule)
+      recurrence: buildRecurrenceWithExdates(
+        task.recurrence,
+        retainedExdates,
+        truncatedRRule,
+      ),
     };
   });
 }

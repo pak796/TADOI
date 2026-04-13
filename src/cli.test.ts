@@ -89,7 +89,7 @@ describe("runCli", () => {
       smoke: 0,
       help: 0,
       version: 0,
-      seenDataPath: ""
+      seenDataPath: "",
     };
 
     const deps: CliRunDeps = {
@@ -128,7 +128,7 @@ describe("runCli", () => {
       },
       printVersion() {
         calls.version += 1;
-      }
+      },
     };
 
     return { calls, deps };
@@ -260,7 +260,10 @@ describe("runCli", () => {
     const previous = process.env.TADOI_DATA_PATH;
     process.env.TADOI_DATA_PATH = "/tmp/original-data.json";
     try {
-      const code = await runCli(["--data-file", "/tmp/override-data.json", "export", "--help"], deps);
+      const code = await runCli(
+        ["--data-file", "/tmp/override-data.json", "export", "--help"],
+        deps,
+      );
       expect(code).toBe(0);
       expect(calls.seenDataPath).toBe("/tmp/override-data.json");
       expect(process.env.TADOI_DATA_PATH).toBe("/tmp/original-data.json");
@@ -289,7 +292,9 @@ describe("printHelp", () => {
 
     const output = lines.join("\n");
     expect(output).toContain("TADOI");
-    expect(output).toContain("Terminal Accessible Digital Organization Interface");
+    expect(output).toContain(
+      "Terminal Accessible Digital Organization Interface",
+    );
     expect(output).toContain("Usage: tadoi [options]");
     expect(output).toContain("--interactive");
     expect(output).toContain("--uninstall");

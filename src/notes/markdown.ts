@@ -51,7 +51,9 @@ export function renderMarkdownToTerminalLines(markdown: string): string[] {
 
     const orderedMatch = line.match(/^\s*(\d+)\.\s+(.*)$/);
     if (orderedMatch) {
-      rendered.push(`${orderedMatch[1]}. ${stripInlineFormatting(orderedMatch[2])}`);
+      rendered.push(
+        `${orderedMatch[1]}. ${stripInlineFormatting(orderedMatch[2])}`,
+      );
       continue;
     }
 

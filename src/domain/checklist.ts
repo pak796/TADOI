@@ -4,22 +4,21 @@ const ASCII_CONTROL_CHARS_RE = /[\u0000-\u001F\u007F]/;
 
 export const CHECKLIST_MAX_ITEMS = 100;
 
-export type ChecklistMutationResult = {
-  ok: true;
-  checklist: ChecklistItem[];
-} | {
-  ok: false;
-  error: string;
-};
+export type ChecklistMutationResult =
+  | {
+      ok: true;
+      checklist: ChecklistItem[];
+    }
+  | {
+      ok: false;
+      error: string;
+    };
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-function normalizeIsoTimestamp(
-  value: unknown,
-  fallbackIso: string
-): string {
+function normalizeIsoTimestamp(value: unknown, fallbackIso: string): string {
   if (typeof value !== "string" || value.trim().length === 0) {
     return fallbackIso;
   }
@@ -51,7 +50,7 @@ export function sortChecklistItems(items: ChecklistItem[]): ChecklistItem[] {
 
 export function normalizeChecklist(
   rawChecklist: unknown,
-  nowIso = new Date().toISOString()
+  nowIso = new Date().toISOString(),
 ): ChecklistItem[] {
   if (!Array.isArray(rawChecklist)) return [];
 
@@ -80,7 +79,9 @@ export function normalizeChecklist(
       createdAt,
       updatedAt,
       ...(completedAt ? { completedAt } : {}),
-      sort: isFiniteNumber(record.sort) ? Math.max(0, Math.floor(record.sort)) : index
+      sort: isFiniteNumber(record.sort)
+        ? Math.max(0, Math.floor(record.sort))
+        : index,
     });
 
     if (normalized.length >= CHECKLIST_MAX_ITEMS) {
@@ -108,7 +109,7 @@ export function getChecklistProgress(checklist: ChecklistItem[] | undefined): {
 
 export function checklistItemAtDisplayIndex(
   checklist: ChecklistItem[] | undefined,
-  index: number
+  index: number,
 ): ChecklistItem | null {
   if (!Number.isInteger(index) || index < 1) {
     return null;
@@ -120,14 +121,14 @@ export function checklistItemAtDisplayIndex(
 function resequenceChecklistSort(checklist: ChecklistItem[]): ChecklistItem[] {
   return checklist.map((item, index) => ({
     ...item,
-    sort: index
+    sort: index,
   }));
 }
 
 export function addChecklistItem(
   checklist: ChecklistItem[] | undefined,
   text: string,
-  nowIso = new Date().toISOString()
+  nowIso = new Date().toISOString(),
 ): ChecklistMutationResult {
   const normalizedText = normalizeChecklistText(text);
   if (!normalizedText) {
@@ -137,7 +138,7 @@ export function addChecklistItem(
   if (sorted.length >= CHECKLIST_MAX_ITEMS) {
     return {
       ok: false,
-      error: `Error: checklist supports at most ${String(CHECKLIST_MAX_ITEMS)} items`
+      error: `Error: checklist supports at most ${String(CHECKLIST_MAX_ITEMS)} items`,
     };
   }
   const next = resequenceChecklistSort([
@@ -148,8 +149,8 @@ export function addChecklistItem(
       isDone: false,
       createdAt: nowIso,
       updatedAt: nowIso,
-      sort: sorted.length
-    }
+      sort: sorted.length,
+    },
   ]);
   return { ok: true, checklist: next };
 }
@@ -158,7 +159,7 @@ export function editChecklistItem(
   checklist: ChecklistItem[] | undefined,
   itemId: string,
   text: string,
-  nowIso = new Date().toISOString()
+  nowIso = new Date().toISOString(),
 ): ChecklistMutationResult {
   const normalizedText = normalizeChecklistText(text);
   if (!normalizedText) {
@@ -172,7 +173,7 @@ export function editChecklistItem(
     return {
       ...item,
       text: normalizedText,
-      updatedAt: nowIso
+      updatedAt: nowIso,
     };
   });
   if (!matched) {
@@ -183,7 +184,7 @@ export function editChecklistItem(
 
 export function deleteChecklistItem(
   checklist: ChecklistItem[] | undefined,
-  itemId: string
+  itemId: string,
 ): ChecklistMutationResult {
   const sorted = sortChecklistItems(checklist ?? []);
   const next = sorted.filter((item) => item.id !== itemId);
@@ -200,7 +201,7 @@ export function clearChecklist(): ChecklistMutationResult {
 export function toggleChecklistItem(
   checklist: ChecklistItem[] | undefined,
   itemId: string,
-  nowIso = new Date().toISOString()
+  nowIso = new Date().toISOString(),
 ): ChecklistMutationResult {
   const sorted = sortChecklistItems(checklist ?? []);
   let matched = false;
@@ -212,7 +213,7 @@ export function toggleChecklistItem(
       ...item,
       isDone,
       updatedAt: nowIso,
-      completedAt: isDone ? nowIso : undefined
+      completedAt: isDone ? nowIso : undefined,
     };
   });
   if (!matched) {
@@ -224,7 +225,7 @@ export function toggleChecklistItem(
 export function reconcileOverrideChecklistWithSeries(
   overrideChecklist: ChecklistItem[] | undefined,
   seriesChecklist: ChecklistItem[] | undefined,
-  nowIso = new Date().toISOString()
+  nowIso = new Date().toISOString(),
 ): ChecklistItem[] {
   const seriesSorted = sortChecklistItems(seriesChecklist ?? []);
   const overrideSorted = sortChecklistItems(overrideChecklist ?? []);
@@ -243,7 +244,7 @@ export function reconcileOverrideChecklistWithSeries(
       ...seriesItem,
       isDone: false,
       updatedAt: nowIso,
-      completedAt: undefined
+      completedAt: undefined,
     });
   }
 

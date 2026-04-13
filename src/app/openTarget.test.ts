@@ -3,7 +3,7 @@ import { EventEmitter } from "node:events";
 import {
   getOpenTargetCommandForPlatform,
   openTarget,
-  type OpenTargetSpawn
+  type OpenTargetSpawn,
 } from "./openTarget";
 
 class MockChildProcess extends EventEmitter {
@@ -16,23 +16,29 @@ class MockChildProcess extends EventEmitter {
 
 describe("getOpenTargetCommandForPlatform", () => {
   it("returns macOS command args", () => {
-    expect(getOpenTargetCommandForPlatform("https://example.com", "darwin")).toEqual({
+    expect(
+      getOpenTargetCommandForPlatform("https://example.com", "darwin"),
+    ).toEqual({
       command: "open",
-      args: ["https://example.com"]
+      args: ["https://example.com"],
     });
   });
 
   it("returns Linux command args", () => {
-    expect(getOpenTargetCommandForPlatform("https://example.com", "linux")).toEqual({
+    expect(
+      getOpenTargetCommandForPlatform("https://example.com", "linux"),
+    ).toEqual({
       command: "xdg-open",
-      args: ["https://example.com"]
+      args: ["https://example.com"],
     });
   });
 
   it("returns Windows command args", () => {
-    expect(getOpenTargetCommandForPlatform("https://example.com", "win32")).toEqual({
+    expect(
+      getOpenTargetCommandForPlatform("https://example.com", "win32"),
+    ).toEqual({
       command: "explorer",
-      args: ["https://example.com"]
+      args: ["https://example.com"],
     });
   });
 });
@@ -52,7 +58,7 @@ describe("openTarget", () => {
 
     await openTarget("https://example.com", {
       platform: "darwin",
-      spawnImpl
+      spawnImpl,
     });
 
     expect(calls).toEqual([{ command: "open", args: ["https://example.com"] }]);
@@ -61,7 +67,7 @@ describe("openTarget", () => {
 
   it("rejects when platform is unsupported", async () => {
     await expect(
-      openTarget("https://example.com", { platform: "aix" as NodeJS.Platform })
+      openTarget("https://example.com", { platform: "aix" as NodeJS.Platform }),
     ).rejects.toThrow("Unsupported platform");
   });
 
@@ -75,13 +81,13 @@ describe("openTarget", () => {
     };
 
     await expect(
-      openTarget("https://example.com", { platform: "linux", spawnImpl })
+      openTarget("https://example.com", { platform: "linux", spawnImpl }),
     ).rejects.toThrow("spawn failed");
   });
 
   it("rejects targets containing control characters", async () => {
     await expect(
-      openTarget("https://example.com/\nmalformed", { platform: "linux" })
+      openTarget("https://example.com/\nmalformed", { platform: "linux" }),
     ).rejects.toThrow("Target contains control characters");
   });
 
@@ -98,29 +104,34 @@ describe("openTarget", () => {
 
     await openTarget("   https://example.com/path  ", {
       platform: "linux",
-      spawnImpl
+      spawnImpl,
     });
-    expect(calls).toEqual([{ command: "xdg-open", args: ["https://example.com/path"] }]);
+    expect(calls).toEqual([
+      { command: "xdg-open", args: ["https://example.com/path"] },
+    ]);
   });
 
   it("preserves spaces inside a file path target across platforms", () => {
     expect(
-      getOpenTargetCommandForPlatform("/tmp/Quarterly Report.pdf", "darwin")
+      getOpenTargetCommandForPlatform("/tmp/Quarterly Report.pdf", "darwin"),
     ).toEqual({
       command: "open",
-      args: ["/tmp/Quarterly Report.pdf"]
+      args: ["/tmp/Quarterly Report.pdf"],
     });
     expect(
-      getOpenTargetCommandForPlatform("C:\\Users\\me\\Project Notes.txt", "win32")
+      getOpenTargetCommandForPlatform(
+        "C:\\Users\\me\\Project Notes.txt",
+        "win32",
+      ),
     ).toEqual({
       command: "explorer",
-      args: ["C:\\Users\\me\\Project Notes.txt"]
+      args: ["C:\\Users\\me\\Project Notes.txt"],
     });
   });
 
   it("rejects empty targets after trimming whitespace", async () => {
     await expect(openTarget("   ", { platform: "darwin" })).rejects.toThrow(
-      "Target is required"
+      "Target is required",
     );
   });
 });

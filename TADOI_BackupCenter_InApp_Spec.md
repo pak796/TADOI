@@ -10,6 +10,7 @@
 Ship a **Backup Center** inside the TUI that makes existing **CLI import/export** discoverable, safe, and guided.
 
 **Key outcomes**
+
 - Users can **export a timestamped backup** without leaving the app.
 - Users can **import** a backup via **merge (default)** or **replace (destructive with explicit confirmation)**.
 - Users see a **dry-run summary** (added/changed/overwritten counts) before committing an import.
@@ -20,9 +21,11 @@ Ship a **Backup Center** inside the TUI that makes existing **CLI import/export*
 ## 2) Scope (v1)
 
 ### Entry point
+
 - Help menu item: **`DATA: Backup / Export / Import`**
 
 ### Backup Center options (v1)
+
 1. **Export backup (recommended)**
    - Writes timestamped export to a default backup folder
    - Shows the final path in-app
@@ -51,11 +54,13 @@ Ship a **Backup Center** inside the TUI that makes existing **CLI import/export*
 Your tree indicates these primary integration surfaces:
 
 ### CLI Entrypoint
+
 - **`bin/tadoi.js`** (packaged CLI launcher)
 - **`src/cli.ts`** (actual CLI command router)
 - **`src/state/backupService.ts`** (shared import/export service consumed by CLI + TUI)
 
 ### App / TUI Shell
+
 - **`src/index.tsx`** (app boot)
 - **`src/app/`** (routing / screen orchestration)
 - **`src/ui/`** + **`src/components/`** (views & UI primitives)
@@ -65,6 +70,7 @@ Your tree indicates these primary integration surfaces:
 - **`src/brand/`**, **`src/theme/`** (styling/branding)
 
 ### Packaging / Distribution (FYI)
+
 - **`packaging/`**, **`dist/`**, **`scripts/build-binary.ts`**
 - This feature must behave consistently when bundled.
 
@@ -73,12 +79,15 @@ Your tree indicates these primary integration surfaces:
 ## 5) Architecture Principle (DoD-critical)
 
 ### Zero new domain logic
+
 All export/import work must flow through the same logic used by the CLI today.
 
 **Implementation expectation**
+
 - If CLI logic is currently embedded in command handlers, refactor to a shared service module **called by both CLI and TUI**.
 
 **Current module location**
+
 - `src/state/backupService.ts` (active shared portability service)
 
 ---
@@ -86,7 +95,9 @@ All export/import work must flow through the same logic used by the CLI today.
 ## 6) UX / Screen Spec
 
 ### 6.1 Help Menu
+
 Add menu item:
+
 - `DATA: Backup / Export / Import`
 
 Selecting opens Backup Center.
@@ -98,12 +109,14 @@ Selecting opens Backup Center.
 **Title:** `Backup Center`
 
 **Options**
+
 - `1) Export backup (recommended)`
 - `2) Import data…`
 - `3) Show data path`
 - `Esc) Back`
 
 **Keybindings**
+
 - `1/2/3` activate
 - `Enter` confirm
 - `Esc` back/cancel
@@ -113,6 +126,7 @@ Selecting opens Backup Center.
 ### 6.3 Flow A — Export backup
 
 **Behavior**
+
 1. Create default backup directory if missing
 2. Generate timestamped filename:
    - `tadoi-backup-YYYYMMDD-HHMMSS.<ext>`
@@ -120,12 +134,14 @@ Selecting opens Backup Center.
 4. Show completion view
 
 **Export Completion View**
+
 - `Backup created`
 - `Path: <full path>`
 - Optional: `Size: <bytes>`
 - `[Enter] Done` / `[Esc] Back`
 
 **Default backup directory**
+
 - Prefer whatever the CLI already uses (config/env).
 - Otherwise: use the app’s resolved data directory + `/backups`
 
@@ -134,25 +150,33 @@ Selecting opens Backup Center.
 ### 6.4 Flow B — Import data (path → mode → dry-run → commit)
 
 #### Step 1: Path input
+
 Prompt:
+
 - `Paste export file path:`
 
 Validation (minimal):
+
 - file exists
 - readable
 - optional: extension sanity check (or defer to pipeline)
 
 #### Step 2: Mode selection
+
 - `Merge (default)`
 - `Replace (destructive)`
 
 #### Step 3: Replace confirmation gate
+
 If Replace:
+
 - Require typed confirmation: `REPLACE`
 - Any other input cancels back to mode selection
 
 #### Step 4: Dry-run summary (always before commit)
+
 Show counts returned by pipeline:
+
 - `Added: N`
 - `Updated: N`
 - `Overwritten: N` (or equivalent semantics from existing logic)
@@ -160,21 +184,26 @@ Show counts returned by pipeline:
 - Optional: warnings/errors list
 
 Actions:
+
 - `[Enter] Commit import`
 - `[Esc] Cancel`
 
 #### Step 5: Commit
+
 Run import without dry-run.
 Show result view with counts and success/failure.
 
 ---
 
 ### 6.5 Flow C — Show data path
+
 View:
+
 - Title: `Data location`
 - `Path: <resolved data directory>`
 
 Actions:
+
 - `[Enter/Esc] Back`
 - Optional v1.1: `[c] Copy` if you already have clipboard utility
 
@@ -183,11 +212,13 @@ Actions:
 ## 7) Functional Requirements
 
 ### 7.1 Export
+
 - Must write a timestamped backup to default folder
 - Must display absolute/normalized path
 - Must surface errors (permission denied, disk full, invalid path)
 
 ### 7.2 Import
+
 - Must support `merge` (default) and `replace`
 - Replace requires explicit typed confirmation
 - Must show dry-run summary before commit
@@ -195,6 +226,7 @@ Actions:
 - Must not introduce new semantics; rely on existing pipeline behavior
 
 ### 7.3 Data path
+
 - Must show the exact data directory the app is using at runtime
 
 ---
@@ -216,9 +248,9 @@ export type ImportDryRunSummary = {
 };
 
 export async function exportBackup(opts?: {
-  outputDir?: string;     // default resolved
-  outputPath?: string;    // if specified, overrides outputDir+filename
-  filename?: string;      // optional
+  outputDir?: string; // default resolved
+  outputPath?: string; // if specified, overrides outputDir+filename
+  filename?: string; // optional
 }): Promise<{
   outputPath: string;
   bytesWritten?: number;
@@ -240,9 +272,11 @@ export async function getDataPath(): Promise<string>;
 ## 9) State / UI Wiring (Repo-specific guidance)
 
 Suggested state shape (in `src/state/`):
+
 - `backupCenter: { screen: "menu"|"exporting"|"export_done"|"import_path"|"import_mode"|"import_confirm"|"import_dryrun"|"importing"|"import_done"|"show_path"|"error"; ... }`
 
 Suggested UI components (in `src/ui/` or `src/components/`):
+
 - `BackupCenterScreen`
 - `ExportBackupScreen`
 - `ImportPathScreen`
@@ -253,6 +287,7 @@ Suggested UI components (in `src/ui/` or `src/components/`):
 - `BackupErrorScreen`
 
 Routing (in `src/app/`):
+
 - Register Backup Center entry
 - Connect Help menu item to route open
 
@@ -261,11 +296,13 @@ Routing (in `src/app/`):
 ## 10) Error Handling Requirements
 
 Errors must be caught and rendered as a UI state:
+
 - Title: `Operation failed`
 - Message: human readable + raw error (single-line)
 - Action: `[Enter] Back`
 
 Common errors:
+
 - `ENOENT` file not found
 - `EACCES` permission denied
 - parse errors / incompatible export version
@@ -276,11 +313,11 @@ Common errors:
 
 - Help menu contains **`DATA: Backup / Export / Import`**
 - User can:
-  1) Export a timestamped backup and see its path
-  2) Import via merge or replace
-  3) See dry-run summary before commit
-  4) Restore from a created backup without leaving the app
-  5) View data path from inside the app
+  1. Export a timestamped backup and see its path
+  2. Import via merge or replace
+  3. See dry-run summary before commit
+  4. Restore from a created backup without leaving the app
+  5. View data path from inside the app
 - **No new domain semantics**: TUI calls existing CLI pipeline/shared service
 - Replace mode includes typed confirmation gate
 - Errors are surfaced in-app with actionable messaging
@@ -309,10 +346,11 @@ Common errors:
 ## 13) Packaging Notes (Repo-specific)
 
 Because you ship binaries (`scripts/build-binary.ts`) and have `dist/install-check`, ensure:
+
 - default backup directory resolves correctly under packaged runtime
 - paths are normalized for macOS/windows
 - error strings remain readable when bundled
 
 ---
 
-*End of spec.*
+_End of spec._

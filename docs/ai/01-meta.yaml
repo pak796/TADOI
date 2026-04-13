@@ -1,0 +1,87 @@
+context_note: "Repo-derived working context. Update this file when repo behavior changes."
+doc_id: ai_meta
+last_reviewed_on: "2026-04-12"
+audience: "ai_agents_first_human_readable"
+repo_name: "tadoi"
+repo_root: "/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI"
+current_mode: "shipping_beta_terminal_app_with_local_first_notes_and_packaging"
+bootstrap_branch: "master"
+
+ai_context_contract:
+  read_first_order:
+    - "docs/ai/01-meta.yaml"
+    - "docs/ai/02-system.yaml"
+    - "docs/ai/03-structure.yaml"
+    - "docs/ai/04-memory.yaml"
+  search_expectation:
+    - "Search docs/ai YAML files first for repo context before broader discovery."
+  maintenance_rules:
+    - "After any file-editing job, review impacted docs/ai YAML files and update changed facts before finishing."
+    - "Keep docs/ai entries short, factual, and easy to maintain."
+    - "Update docs/ai/05-update-tracker.md only for meaningful changes."
+
+observed_repo_state:
+  observed_on: "2026-04-12"
+  branch_at_observation: "master"
+  working_tree_state: "clean_before_workflow_import"
+  active_local_implementation: "beta terminal task manager with shared TITS command routing, TOME local markdown notes, backup center, reminder flows, packaging scripts, and documentation sync tooling"
+
+primary_active_surfaces:
+  - "src"
+  - "scripts"
+  - "skills"
+  - "packaging"
+  - "docs"
+  - "bin"
+  - "docs/ai"
+  - "docs/codex"
+  - "ai/skills"
+
+coordination_defaults:
+  branch_prefix: "codex/"
+  recommended_repo_branch_pattern: "codex/repo/<task>"
+  recommended_docs_branch_pattern: "codex/docs/<task>"
+  recommended_runtime_branch_pattern: "codex/app/<task>"
+  agent_ownership_rule: "one_agent_per_branch"
+  request_frame:
+    - "Scope"
+    - "Allowed files"
+    - "Do not touch"
+    - "Validation"
+    - "Dataset impact"
+
+validation_defaults:
+  workflow_and_memory:
+    - "node scripts/codex/preflight.mjs"
+    - 'npm run codex:new-task -- --slug bootstrap-test --title "Bootstrap Test" --dry-run'
+    - "node scripts/codex/manage-skills.mjs list"
+  runtime_and_cli:
+    - "bun run preflight:host:core"
+    - "bun run test"
+    - "bun run typecheck"
+  docs_and_keybinds:
+    - "bun run preflight:host:docs"
+    - "bun run docs:lint"
+    - "bun run keybind:canonical:check"
+  release_and_packaging:
+    - "bun run preflight:host:release"
+    - "bun run release:rc:check"
+
+source_of_truth_docs_used:
+  - "/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/README.md"
+  - "/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/docs/README.md"
+  - "/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/docs/DOC_INDEX.md"
+  - "/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/TADOI_SPEC_v0.4.0.md"
+  - "/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/TADOI_TASKS_v0.4.0.md"
+  - "/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/docs/ARCHITECTURE_OVERVIEW.md"
+  - "/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/docs/USAGE.md"
+  - "/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/docs/TADOI_QA_Guide_v0.4.0.md"
+
+maintenance_expectation:
+  update_when:
+    - "branching or ownership rules change"
+    - "validation defaults change"
+    - "primary repo surfaces change"
+    - "source-of-truth docs move or are replaced"
+    - "repo-owned live skills or vendored skill snapshots change"
+    - "the docs/ai workflow contract changes"

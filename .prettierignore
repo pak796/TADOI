@@ -1,0 +1,8 @@
+.git
+node_modules
+dist
+build
+coverage
+.cache
+.turbo
+dist.prepack.20260303-133353

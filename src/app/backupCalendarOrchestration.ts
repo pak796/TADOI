@@ -3,7 +3,7 @@ import type { SavedView } from "../domain/models";
 
 export function resolveCalendarViewSelectionDigit(
   digit: number,
-  savedViews: SavedView[]
+  savedViews: SavedView[],
 ): string | undefined | null {
   if (digit <= 0) return null;
   if (digit === 1) return undefined;
@@ -11,7 +11,9 @@ export function resolveCalendarViewSelectionDigit(
   return view ? view.name : null;
 }
 
-export function parseCalendarImportHorizonOrThrow(horizonInput: string): number {
+export function parseCalendarImportHorizonOrThrow(
+  horizonInput: string,
+): number {
   const raw = horizonInput.trim();
   const parsed = Number.parseInt(raw, 10);
   if (!Number.isInteger(parsed) || parsed <= 0 || parsed > 3650) {
@@ -21,7 +23,7 @@ export function parseCalendarImportHorizonOrThrow(horizonInput: string): number 
 }
 
 export function shouldRequireBackupReplaceConfirmation(
-  state: BackupCenterState
+  state: BackupCenterState,
 ): boolean {
   return state.importMode === "replace" && !state.replaceConfirmed;
 }

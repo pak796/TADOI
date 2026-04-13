@@ -8,6 +8,7 @@ type ParsedArgs = {
 const DEFAULT_SHARD_COUNT = 4;
 const MAX_SHARDS = 64;
 const TEST_GLOBS = ["src/**/*.test.ts", "scripts/**/*.test.ts"] as const;
+const BUN_EXECUTABLE_ENV = "TADOI_BUN_EXECUTABLE";
 
 function parseArgs(argv: string[]): ParsedArgs {
   const passthrough: string[] = [];
@@ -33,15 +34,19 @@ function parseArgs(argv: string[]): ParsedArgs {
     ? Number.parseInt(resolvedShardRaw, 10)
     : DEFAULT_SHARD_COUNT;
 
-  if (!Number.isFinite(shardCount) || shardCount < 1 || shardCount > MAX_SHARDS) {
+  if (
+    !Number.isFinite(shardCount) ||
+    shardCount < 1 ||
+    shardCount > MAX_SHARDS
+  ) {
     throw new Error(
-      `Invalid shard count "${resolvedShardRaw ?? String(shardCount)}"; expected integer 1..${String(MAX_SHARDS)}`
+      `Invalid shard count "${resolvedShardRaw ?? String(shardCount)}"; expected integer 1..${String(MAX_SHARDS)}`,
     );
   }
 
   return {
     shardCount,
-    passthrough
+    passthrough,
   };
 }
 
@@ -70,18 +75,20 @@ async function runShard(
   shardIndex: number,
   shardTotal: number,
   files: string[],
-  passthrough: string[]
+  passthrough: string[],
 ): Promise<number> {
   const cwd = path.resolve(".");
   const absoluteFiles = files.map((filePath) => path.resolve(cwd, filePath));
   const label = `[test-sharded] shard ${String(shardIndex + 1)}/${String(shardTotal)} (${String(files.length)} files)`;
   console.log(label);
+  const bunExecutable =
+    process.env[BUN_EXECUTABLE_ENV]?.trim() || process.execPath;
   const child = Bun.spawn({
-    cmd: [process.execPath, "test", ...passthrough, ...absoluteFiles],
+    cmd: [bunExecutable, "test", ...passthrough, ...absoluteFiles],
     cwd,
     stdout: "inherit",
     stderr: "inherit",
-    stdin: "inherit"
+    stdin: "inherit",
   });
   return await child.exited;
 }
@@ -97,7 +104,7 @@ async function main(): Promise<void> {
 
   const shards = shardFiles(files, parsed.shardCount);
   console.log(
-    `[test-sharded] running ${String(files.length)} files across ${String(shards.length)} shard(s)`
+    `[test-sharded] running ${String(files.length)} files across ${String(shards.length)} shard(s)`,
   );
 
   for (let index = 0; index < shards.length; index += 1) {
@@ -107,7 +114,7 @@ async function main(): Promise<void> {
       index,
       shards.length,
       shardFilesList,
-      parsed.passthrough
+      parsed.passthrough,
     );
     if (exitCode !== 0) {
       process.exit(exitCode);

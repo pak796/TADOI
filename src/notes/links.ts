@@ -36,7 +36,10 @@ export function normalizeTitleKey(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-function normalizeMarkdownPath(fromPath: NotePath, rawTarget: string): NotePath | null {
+function normalizeMarkdownPath(
+  fromPath: NotePath,
+  rawTarget: string,
+): NotePath | null {
   const cleaned = cleanLinkTarget(rawTarget);
   if (!cleaned) return null;
 
@@ -50,7 +53,9 @@ function normalizeMarkdownPath(fromPath: NotePath, rawTarget: string): NotePath 
   if (!looksPath) return null;
 
   const fromDir = path.posix.dirname(fromPath);
-  const resolved = path.posix.normalize(path.posix.resolve("/", fromDir, withoutFragment));
+  const resolved = path.posix.normalize(
+    path.posix.resolve("/", fromDir, withoutFragment),
+  );
   const relative = resolved.startsWith("/") ? resolved.slice(1) : resolved;
 
   if (!relative) return null;
@@ -59,7 +64,7 @@ function normalizeMarkdownPath(fromPath: NotePath, rawTarget: string): NotePath 
 
 function resolveByTitle(
   rawTarget: string,
-  notesByTitle: Map<string, NotePath[]>
+  notesByTitle: Map<string, NotePath[]>,
 ): { resolved?: NotePath; ambiguous?: boolean } {
   const key = normalizeTitleKey(rawTarget.replace(/\.md$/i, ""));
   const candidates = notesByTitle.get(key) ?? [];
@@ -72,7 +77,10 @@ function resolveByTitle(
   return {};
 }
 
-export function parseOutgoingNoteRefs(fromPath: NotePath, markdown: string): NoteRef[] {
+export function parseOutgoingNoteRefs(
+  fromPath: NotePath,
+  markdown: string,
+): NoteRef[] {
   const refs: NoteRef[] = [];
 
   WIKILINK_PATTERN.lastIndex = 0;
@@ -89,7 +97,7 @@ export function parseOutgoingNoteRefs(fromPath: NotePath, markdown: string): Not
         from: fromPath,
         kind: "wikilink",
         toRaw: target.trim(),
-        ...(alias?.trim() ? { display: alias.trim() } : {})
+        ...(alias?.trim() ? { display: alias.trim() } : {}),
       });
     }
     wikiMatch = WIKILINK_PATTERN.exec(markdown);
@@ -113,7 +121,7 @@ export function parseOutgoingNoteRefs(fromPath: NotePath, markdown: string): Not
         from: fromPath,
         kind: "mdlink",
         toRaw: target,
-        ...(text ? { display: text } : {})
+        ...(text ? { display: text } : {}),
       });
     }
     mdMatch = MDLINK_PATTERN.exec(markdown);
@@ -124,7 +132,7 @@ export function parseOutgoingNoteRefs(fromPath: NotePath, markdown: string): Not
 
 export function resolveNoteRef(
   ref: NoteRef,
-  context: NoteReferenceResolverContext
+  context: NoteReferenceResolverContext,
 ): NoteRef {
   const idTarget = extractIdTarget(ref.toRaw);
   if (idTarget) {
@@ -141,7 +149,12 @@ export function resolveNoteRef(
 
   const byTitle = resolveByTitle(ref.toRaw, context.notesByTitle);
   if (byTitle.resolved) {
-    return { ...ref, toResolved: byTitle.resolved, broken: false, ambiguous: false };
+    return {
+      ...ref,
+      toResolved: byTitle.resolved,
+      broken: false,
+      ambiguous: false,
+    };
   }
   if (byTitle.ambiguous) {
     return { ...ref, ambiguous: true, broken: false };

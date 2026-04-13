@@ -5,7 +5,7 @@ import {
   hexToRgb,
   normalizeHexColor,
   rgbToHex,
-  stepRgbChannel
+  stepRgbChannel,
 } from "./custom1ColorUtils";
 
 describe("custom1ColorUtils", () => {
@@ -19,7 +19,9 @@ describe("custom1ColorUtils", () => {
   it("converts hex to rgb and back", () => {
     const rgb = hexToRgb("#A1B2C3");
     expect(rgb).toEqual({ r: 161, g: 178, b: 195 });
-    expect(rgbToHex(rgb as { r: number; g: number; b: number })).toBe("#A1B2C3");
+    expect(rgbToHex(rgb as { r: number; g: number; b: number })).toBe(
+      "#A1B2C3",
+    );
   });
 
   it("clamps and steps rgb channels", () => {

@@ -1,10 +1,17 @@
 import { formatLocalTimeHHmm } from "../domain/dates";
 import type { Task } from "../domain/models";
-import { formatTagForReadOnlyDisplay, normalizePriorityTags } from "../domain/priorityTags";
+import {
+  formatTagForReadOnlyDisplay,
+  normalizePriorityTags,
+} from "../domain/priorityTags";
 import { themeForObject } from "../app/theme";
 import { formatDate } from "../state/store";
 import type { TaskOverdueEvent } from "../notifications/types";
-import { ModalActionButton, ModalActionRow, ModalContainer } from "./ModalPrimitives";
+import {
+  ModalActionButton,
+  ModalActionRow,
+  ModalContainer,
+} from "./ModalPrimitives";
 
 type OverdueNotificationModalProps = {
   event: TaskOverdueEvent;
@@ -48,7 +55,7 @@ export function OverdueNotificationModal({
   onSnooze,
   onDone,
   onGoToTask,
-  onDismiss
+  onDismiss,
 }: OverdueNotificationModalProps) {
   const theme = themeForObject("notifications");
   const modalWidth = 64;
@@ -63,7 +70,9 @@ export function OverdueNotificationModal({
       <text>Due: {dueLabel}</text>
       <text>Status: overdue by {overdueBy}</text>
       {tags.length > 0 ? (
-        <text>Tags: {tags.map((tag) => formatTagForReadOnlyDisplay(tag)).join(" ")}</text>
+        <text>
+          Tags: {tags.map((tag) => formatTagForReadOnlyDisplay(tag)).join(" ")}
+        </text>
       ) : null}
       <ModalActionRow marginTop={1}>
         <ModalActionButton

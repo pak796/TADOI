@@ -12,11 +12,11 @@ const BASE_STATE = {
       status: "open",
       createdAt: 1,
       updatedAt: 1,
-      tags: ["work"]
-    }
+      tags: ["work"],
+    },
   ],
   tagIndex: {},
-  savedViews: []
+  savedViews: [],
 };
 
 describe("validatePersistedState", () => {
@@ -34,12 +34,12 @@ describe("validatePersistedState", () => {
             ...BASE_STATE.tasks[0],
             noteRef: {
               type: "filename",
-              value: "Task One.md"
-            }
-          }
-        ]
+              value: "Task One.md",
+            },
+          },
+        ],
       },
-      "strict"
+      "strict",
     );
     expect(valid.ok).toBe(true);
 
@@ -51,12 +51,12 @@ describe("validatePersistedState", () => {
             ...BASE_STATE.tasks[0],
             noteRef: {
               type: "bad",
-              value: "x"
-            }
-          }
-        ]
+              value: "x",
+            },
+          },
+        ],
       },
-      "strict"
+      "strict",
     );
     expect(invalidType.ok).toBe(false);
 
@@ -68,12 +68,12 @@ describe("validatePersistedState", () => {
             ...BASE_STATE.tasks[0],
             noteRef: {
               type: "id",
-              value: " "
-            }
-          }
-        ]
+              value: " ",
+            },
+          },
+        ],
       },
-      "strict"
+      "strict",
     );
     expect(invalidValue.ok).toBe(false);
   });
@@ -83,10 +83,10 @@ describe("validatePersistedState", () => {
       {
         ...BASE_STATE,
         tagAliases: {
-          legacy: "work"
-        }
+          legacy: "work",
+        },
       },
-      "strict"
+      "strict",
     );
     expect(good.ok).toBe(true);
 
@@ -94,10 +94,10 @@ describe("validatePersistedState", () => {
       {
         ...BASE_STATE,
         tagAliases: {
-          " Legacy Tag ": "work"
-        }
+          " Legacy Tag ": "work",
+        },
       },
-      "strict"
+      "strict",
     );
     expect(bad.ok).toBe(false);
   });
@@ -106,9 +106,9 @@ describe("validatePersistedState", () => {
     const result = validatePersistedState(
       {
         ...BASE_STATE,
-        schemaVersion: 5
+        schemaVersion: 5,
       },
-      "strict"
+      "strict",
     );
     expect(result.ok).toBe(false);
   });
@@ -124,11 +124,11 @@ describe("validatePersistedState", () => {
           streak: {
             currentDays: 0,
             bestDays: 0,
-            lastCompletionDayKey: null
-          }
-        }
+            lastCompletionDayKey: null,
+          },
+        },
       },
-      "strict"
+      "strict",
     );
     expect(result.ok).toBe(true);
   });
@@ -144,11 +144,11 @@ describe("validatePersistedState", () => {
           streak: {
             currentDays: 0,
             bestDays: 0,
-            lastCompletionDayKey: null
-          }
-        }
+            lastCompletionDayKey: null,
+          },
+        },
       },
-      "strict"
+      "strict",
     );
     expect(missingRevision.ok).toBe(false);
 
@@ -163,11 +163,11 @@ describe("validatePersistedState", () => {
           streak: {
             currentDays: 0,
             bestDays: 0,
-            lastCompletionDayKey: null
-          }
-        }
+            lastCompletionDayKey: null,
+          },
+        },
       },
-      "strict"
+      "strict",
     );
     expect(fractionalRevision.ok).toBe(false);
 
@@ -182,11 +182,11 @@ describe("validatePersistedState", () => {
           streak: {
             currentDays: 0,
             bestDays: 0,
-            lastCompletionDayKey: null
-          }
-        }
+            lastCompletionDayKey: null,
+          },
+        },
       },
-      "strict"
+      "strict",
     );
     expect(negativeRevision.ok).toBe(false);
   });
@@ -203,11 +203,11 @@ describe("validatePersistedState", () => {
           streak: {
             currentDays: 0,
             bestDays: 0,
-            lastCompletionDayKey: null
-          }
-        }
+            lastCompletionDayKey: null,
+          },
+        },
       },
-      "strict"
+      "strict",
     );
     expect(result.ok).toBe(true);
   });
@@ -224,11 +224,11 @@ describe("validatePersistedState", () => {
           streak: {
             currentDays: 0,
             bestDays: 0,
-            lastCompletionDayKey: null
-          }
-        }
+            lastCompletionDayKey: null,
+          },
+        },
       },
-      "strict"
+      "strict",
     );
     expect(missingWorkflowStage.ok).toBe(false);
   });
@@ -244,8 +244,8 @@ describe("validatePersistedState", () => {
             ...BASE_STATE.tasks[0],
             workflowStage: "todo",
             assignee: "alice",
-            project: "alpha"
-          }
+            project: "alpha",
+          },
         ],
         savedViews: [
           {
@@ -260,9 +260,9 @@ describe("validatePersistedState", () => {
               dueDayOffset: 3,
               assignee: "alice",
               project: "alpha",
-              workflowStage: "todo"
-            }
-          }
+              workflowStage: "todo",
+            },
+          },
         ],
         engagement: {
           completionLog: [],
@@ -270,11 +270,11 @@ describe("validatePersistedState", () => {
           streak: {
             currentDays: 0,
             bestDays: 0,
-            lastCompletionDayKey: null
-          }
-        }
+            lastCompletionDayKey: null,
+          },
+        },
       },
-      "strict"
+      "strict",
     );
     expect(result.ok).toBe(true);
   });
@@ -296,10 +296,10 @@ describe("validatePersistedState", () => {
                 isDone: "yes",
                 createdAt: "bad",
                 updatedAt: "bad",
-                sort: -1
-              }
-            ]
-          }
+                sort: -1,
+              },
+            ],
+          },
         ],
         engagement: {
           completionLog: [],
@@ -307,11 +307,11 @@ describe("validatePersistedState", () => {
           streak: {
             currentDays: 0,
             bestDays: 0,
-            lastCompletionDayKey: null
-          }
-        }
+            lastCompletionDayKey: null,
+          },
+        },
       },
-      "strict"
+      "strict",
     );
     expect(malformedChecklist.ok).toBe(false);
   });
@@ -333,10 +333,10 @@ describe("validatePersistedState", () => {
                 isDone: false,
                 createdAt: "2026-02-26T12:00:00.000Z",
                 updatedAt: "2026-02-26T12:00:00.000Z",
-                sort: 0
-              }
-            ]
-          }
+                sort: 0,
+              },
+            ],
+          },
         ],
         engagement: {
           completionLog: [],
@@ -344,11 +344,11 @@ describe("validatePersistedState", () => {
           streak: {
             currentDays: 0,
             bestDays: 0,
-            lastCompletionDayKey: null
-          }
-        }
+            lastCompletionDayKey: null,
+          },
+        },
       },
-      "strict"
+      "strict",
     );
     expect(result.ok).toBe(true);
   });
@@ -356,7 +356,7 @@ describe("validatePersistedState", () => {
   it("rejects missing schemaVersion", () => {
     const result = validatePersistedState(
       { ...BASE_STATE, schemaVersion: undefined },
-      "minimal"
+      "minimal",
     );
     expect(result.ok).toBe(false);
   });
@@ -365,9 +365,9 @@ describe("validatePersistedState", () => {
     const result = validatePersistedState(
       {
         ...BASE_STATE,
-        tasks: [...BASE_STATE.tasks, { ...BASE_STATE.tasks[0] }]
+        tasks: [...BASE_STATE.tasks, { ...BASE_STATE.tasks[0] }],
       },
-      "strict"
+      "strict",
     );
     expect(result.ok).toBe(false);
   });
@@ -376,9 +376,9 @@ describe("validatePersistedState", () => {
     const result = validatePersistedState(
       {
         ...BASE_STATE,
-        tasks: [{ ...BASE_STATE.tasks[0], status: "invalid" }]
+        tasks: [{ ...BASE_STATE.tasks[0], status: "invalid" }],
       },
-      "strict"
+      "strict",
     );
     expect(result.ok).toBe(false);
   });
@@ -387,9 +387,9 @@ describe("validatePersistedState", () => {
     const result = validatePersistedState(
       {
         ...BASE_STATE,
-        tasks: [{ ...BASE_STATE.tasks[0], createdAt: "now" }]
+        tasks: [{ ...BASE_STATE.tasks[0], createdAt: "now" }],
       },
-      "strict"
+      "strict",
     );
     expect(result.ok).toBe(false);
   });
@@ -398,9 +398,9 @@ describe("validatePersistedState", () => {
     const result = validatePersistedState(
       {
         ...BASE_STATE,
-        tasks: [{ ...BASE_STATE.tasks[0], hasExplicitTime: "yes" }]
+        tasks: [{ ...BASE_STATE.tasks[0], hasExplicitTime: "yes" }],
       },
-      "strict"
+      "strict",
     );
     expect(result.ok).toBe(false);
   });
@@ -418,13 +418,13 @@ describe("validatePersistedState", () => {
                 target: "https://example.com",
                 label: "Spec",
                 kind: "url",
-                source: "manual"
-              }
-            ]
-          }
-        ]
+                source: "manual",
+              },
+            ],
+          },
+        ],
       },
-      "strict"
+      "strict",
     );
     expect(result.ok).toBe(true);
   });
@@ -433,9 +433,9 @@ describe("validatePersistedState", () => {
     const result = validatePersistedState(
       {
         ...BASE_STATE,
-        tasks: [{ ...BASE_STATE.tasks[0], tags: ["#p2", "work", "home"] }]
+        tasks: [{ ...BASE_STATE.tasks[0], tags: ["#p2", "work", "home"] }],
       },
-      "strict"
+      "strict",
     );
     expect(result.ok).toBe(true);
   });
@@ -444,9 +444,9 @@ describe("validatePersistedState", () => {
     const result = validatePersistedState(
       {
         ...BASE_STATE,
-        tasks: [{ ...BASE_STATE.tasks[0], tags: ["work", "#p2", "#p1"] }]
+        tasks: [{ ...BASE_STATE.tasks[0], tags: ["work", "#p2", "#p1"] }],
       },
-      "strict"
+      "strict",
     );
     expect(result.ok).toBe(false);
   });
@@ -463,13 +463,13 @@ describe("validatePersistedState", () => {
                 id: "link-1",
                 target: "/tmp/report.txt",
                 kind: "path",
-                source: "calendar_import"
-              }
-            ]
-          }
-        ]
+                source: "calendar_import",
+              },
+            ],
+          },
+        ],
       },
-      "strict"
+      "strict",
     );
     expect(result.ok).toBe(true);
   });
@@ -485,13 +485,13 @@ describe("validatePersistedState", () => {
               {
                 id: "link-1",
                 target: "https://example.com",
-                kind: "ftp"
-              }
-            ]
-          }
-        ]
+                kind: "ftp",
+              },
+            ],
+          },
+        ],
       },
-      "strict"
+      "strict",
     );
     expect(invalidKind.ok).toBe(false);
 
@@ -501,11 +501,11 @@ describe("validatePersistedState", () => {
         tasks: [
           {
             ...BASE_STATE.tasks[0],
-            links: [{ id: "link-2", target: "" }]
-          }
-        ]
+            links: [{ id: "link-2", target: "" }],
+          },
+        ],
       },
-      "strict"
+      "strict",
     );
     expect(missingTarget.ok).toBe(false);
 
@@ -519,13 +519,13 @@ describe("validatePersistedState", () => {
               {
                 id: "link-3",
                 target: "https://example.com",
-                source: "imported"
-              }
-            ]
-          }
-        ]
+                source: "imported",
+              },
+            ],
+          },
+        ],
       },
-      "strict"
+      "strict",
     );
     expect(invalidSource.ok).toBe(false);
 
@@ -538,13 +538,14 @@ describe("validatePersistedState", () => {
             links: [
               {
                 id: "link-4",
-                target: "https://example.com/path\nATTENDEE:mailto:test@example.com"
-              }
-            ]
-          }
-        ]
+                target:
+                  "https://example.com/path\nATTENDEE:mailto:test@example.com",
+              },
+            ],
+          },
+        ],
       },
-      "strict"
+      "strict",
     );
     expect(controlCharsInV4.ok).toBe(false);
 
@@ -558,8 +559,8 @@ describe("validatePersistedState", () => {
           streak: {
             currentDays: 0,
             bestDays: 0,
-            lastCompletionDayKey: null
-          }
+            lastCompletionDayKey: null,
+          },
         },
         tasks: [
           {
@@ -567,13 +568,14 @@ describe("validatePersistedState", () => {
             links: [
               {
                 id: "link-5",
-                target: "https://example.com/path\nATTENDEE:mailto:test@example.com"
-              }
-            ]
-          }
-        ]
+                target:
+                  "https://example.com/path\nATTENDEE:mailto:test@example.com",
+              },
+            ],
+          },
+        ],
       },
-      "strict"
+      "strict",
     );
     expect(controlCharsInV5.ok).toBe(false);
   });
@@ -583,16 +585,16 @@ describe("validatePersistedState", () => {
       {
         ...BASE_STATE,
         extra: "ignored",
-        tasks: [{ ...BASE_STATE.tasks[0], unknown: "value" }]
+        tasks: [{ ...BASE_STATE.tasks[0], unknown: "value" }],
       },
-      "strict"
+      "strict",
     );
     expect(result.ok).toBe(true);
   });
 
   it("rejects invalid fixture shape", async () => {
     const fixturePath = fileURLToPath(
-      new URL("./__fixtures__/persisted.invalid.json", import.meta.url).href
+      new URL("./__fixtures__/persisted.invalid.json", import.meta.url).href,
     );
     const raw = await fs.readFile(fixturePath, "utf8");
     const fixture = JSON.parse(raw) as unknown;
@@ -612,8 +614,8 @@ describe("validatePersistedState", () => {
               dtstart: "2026-02-10T09:00:00",
               rrule: "FREQ=WEEKLY;INTERVAL=1;BYDAY=TU",
               series_id: "series:series",
-              exdates: ["2026-02-17T09:00:00"]
-            }
+              exdates: ["2026-02-17T09:00:00"],
+            },
           },
           {
             ...BASE_STATE.tasks[0],
@@ -621,12 +623,12 @@ describe("validatePersistedState", () => {
             status: "done",
             instance_of: {
               series_id: "series:series",
-              occurrence: "2026-02-17T09:00:00"
-            }
-          }
-        ]
+              occurrence: "2026-02-17T09:00:00",
+            },
+          },
+        ],
       },
-      "strict"
+      "strict",
     );
     expect(result.ok).toBe(true);
   });
@@ -642,16 +644,16 @@ describe("validatePersistedState", () => {
               dtstart: "2026-02-10T9:00:00",
               rrule: "",
               series_id: "",
-              exdates: ["2026-02-17T09:00:00", "2026-02-17T09:00:00"]
+              exdates: ["2026-02-17T09:00:00", "2026-02-17T09:00:00"],
             },
             instance_of: {
               series_id: "series:a",
-              occurrence: "2026-02-17T09:00:00"
-            }
-          }
-        ]
+              occurrence: "2026-02-17T09:00:00",
+            },
+          },
+        ],
       },
-      "strict"
+      "strict",
     );
     expect(result.ok).toBe(false);
   });
@@ -668,12 +670,12 @@ describe("validatePersistedState", () => {
               dtstart: "2026-02-10T09:00:00",
               rrule: "FREQ=DAILY;INTERVAL=1",
               series_id: "series:test",
-              exdates: ["2026-02-12T09:00:00", "2026-02-11T09:00:00"]
-            }
-          }
-        ]
+              exdates: ["2026-02-12T09:00:00", "2026-02-11T09:00:00"],
+            },
+          },
+        ],
       },
-      "strict"
+      "strict",
     );
     expect(result.ok).toBe(false);
   });
@@ -694,13 +696,13 @@ describe("validatePersistedState", () => {
               tagFilter: {
                 all: ["home", "work"],
                 any: ["urgent"],
-                none: ["blocked"]
-              }
-            }
-          }
-        ]
+                none: ["blocked"],
+              },
+            },
+          },
+        ],
       },
-      "strict"
+      "strict",
     );
     expect(result.ok).toBe(true);
   });
@@ -719,13 +721,13 @@ describe("validatePersistedState", () => {
               status: "open",
               due: "today",
               tagFilter: {
-                all: "work"
-              }
-            }
-          }
-        ]
+                all: "work",
+              },
+            },
+          },
+        ],
       },
-      "strict"
+      "strict",
     );
     expect(invalidShape.ok).toBe(false);
 
@@ -742,13 +744,13 @@ describe("validatePersistedState", () => {
               status: "open",
               due: "today",
               tagFilter: {
-                all: ["work", "work"]
-              }
-            }
-          }
-        ]
+                all: ["work", "work"],
+              },
+            },
+          },
+        ],
       },
-      "strict"
+      "strict",
     );
     expect(nonNormalized.ok).toBe(false);
   });
@@ -766,12 +768,12 @@ describe("validatePersistedState", () => {
             filters: {
               status: "open",
               due: "today",
-              priority: "#p2"
-            }
-          }
-        ]
+              priority: "#p2",
+            },
+          },
+        ],
       },
-      "strict"
+      "strict",
     );
     expect(result.ok).toBe(true);
   });
@@ -789,12 +791,12 @@ describe("validatePersistedState", () => {
             filters: {
               status: "open",
               due: "today",
-              priority: "p2"
-            }
-          }
-        ]
+              priority: "p2",
+            },
+          },
+        ],
       },
-      "strict"
+      "strict",
     );
     expect(result.ok).toBe(false);
   });
@@ -810,12 +812,12 @@ describe("validatePersistedState", () => {
               kind: "before_due",
               offsetMs: 600000,
               lastFiredAt: 100,
-              snoozedUntilAt: 200
-            }
-          }
-        ]
+              snoozedUntilAt: 200,
+            },
+          },
+        ],
       },
-      "strict"
+      "strict",
     );
     expect(result.ok).toBe(true);
   });
@@ -829,12 +831,12 @@ describe("validatePersistedState", () => {
             ...BASE_STATE.tasks[0],
             reminder: {
               kind: "before_due",
-              offsetMs: 0
-            }
-          }
-        ]
+              offsetMs: 0,
+            },
+          },
+        ],
       },
-      "strict"
+      "strict",
     );
     expect(result.ok).toBe(false);
   });
@@ -849,18 +851,18 @@ describe("validatePersistedState", () => {
             {
               taskId: "task-a",
               at: 1,
-              tags: ["work", "Work", "work", ""]
-            }
+              tags: ["work", "Work", "work", ""],
+            },
           ],
           achievements: {},
           streak: {
             currentDays: 0,
             bestDays: 0,
-            lastCompletionDayKey: null
-          }
-        }
+            lastCompletionDayKey: null,
+          },
+        },
       },
-      "strict"
+      "strict",
     );
     expect(result.ok).toBe(false);
   });
@@ -878,18 +880,18 @@ describe("validatePersistedState", () => {
               unlockedAt: 1,
               meta: {
                 count: 1,
-                seen: true
-              }
-            }
+                seen: true,
+              },
+            },
           },
           streak: {
             currentDays: 0,
             bestDays: 0,
-            lastCompletionDayKey: null
-          }
-        }
+            lastCompletionDayKey: null,
+          },
+        },
       },
-      "strict"
+      "strict",
     );
     expect(result.ok).toBe(false);
   });
@@ -905,11 +907,11 @@ describe("validatePersistedState", () => {
           streak: {
             currentDays: -1,
             bestDays: 1,
-            lastCompletionDayKey: null
-          }
-        }
+            lastCompletionDayKey: null,
+          },
+        },
       },
-      "strict"
+      "strict",
     );
     expect(negative.ok).toBe(false);
 
@@ -923,11 +925,11 @@ describe("validatePersistedState", () => {
           streak: {
             currentDays: 1,
             bestDays: 1,
-            lastCompletionDayKey: "2026-13-99"
-          }
-        }
+            lastCompletionDayKey: "2026-13-99",
+          },
+        },
       },
-      "strict"
+      "strict",
     );
     expect(malformedDate.ok).toBe(false);
   });

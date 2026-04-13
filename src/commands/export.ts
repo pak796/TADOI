@@ -1,7 +1,7 @@
 import { CLI_NAME } from "../brand/brand";
 import {
   BackupExportFilesystemError,
-  exportBackup
+  exportBackup,
 } from "../state/backupService";
 import type { ExportCommandOptions } from "../cli/portabilityCommands";
 import { CLI_EXIT_CODE } from "../cli/exitCodes";
@@ -18,24 +18,31 @@ export function printExportHelp(): void {
   redactedLogger.log("  --out <path>        Output file path (required)");
   redactedLogger.log("  --format json       Export format (json only)");
   redactedLogger.log("  --pretty            Pretty-print output JSON");
-  redactedLogger.log("  --redact-mode <basic|strict|strict-v2>  Redaction profile");
-  redactedLogger.log("  --redact            Compatibility alias for --redact-mode=strict");
+  redactedLogger.log(
+    "  --redact-mode <basic|strict|strict-v2>  Redaction profile",
+  );
+  redactedLogger.log(
+    "  --redact            Compatibility alias for --redact-mode=strict",
+  );
   redactedLogger.log("  -h, --help          Show export help");
 }
 
-export async function runExportCommand(parsed: ExportCommandOptions): Promise<number> {
+export async function runExportCommand(
+  parsed: ExportCommandOptions,
+): Promise<number> {
   if (parsed.help) {
     printExportHelp();
     return CLI_EXIT_CODE.SUCCESS;
   }
 
   try {
-    const redactMode = parsed.redactMode ?? (parsed.redact ? "strict" : undefined);
+    const redactMode =
+      parsed.redactMode ?? (parsed.redact ? "strict" : undefined);
     const result = await exportBackup({
       outputPath: parsed.outPath,
       pretty: parsed.pretty,
       redact: parsed.redact,
-      redactMode
+      redactMode,
     });
 
     redactedLogger.log(`[export] wrote: ${result.outputPath}`);

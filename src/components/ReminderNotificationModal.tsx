@@ -3,7 +3,11 @@ import { formatLocalTimeHHmm } from "../domain/dates";
 import type { Task } from "../domain/models";
 import { themeForObject } from "../app/theme";
 import { formatDate } from "../state/store";
-import { ModalActionButton, ModalActionRow, ModalContainer } from "./ModalPrimitives";
+import {
+  ModalActionButton,
+  ModalActionRow,
+  ModalContainer,
+} from "./ModalPrimitives";
 
 type ReminderNotificationModalProps = {
   event: TaskReminderEvent;
@@ -20,7 +24,10 @@ function formatDateTimeLabel(epochMs: number): string {
   return `${formatDate(epochMs)} ${formatLocalTimeHHmm(epochMs)}`;
 }
 
-function resolveDueLabel(task: Task | undefined, fallbackDueAtIso: string | undefined): string | null {
+function resolveDueLabel(
+  task: Task | undefined,
+  fallbackDueAtIso: string | undefined,
+): string | null {
   if (typeof task?.dueAt === "number" && Number.isFinite(task.dueAt)) {
     return formatDateTimeLabel(task.dueAt);
   }
@@ -37,7 +44,7 @@ export function ReminderNotificationModal({
   onSnooze10m,
   onSnooze1h,
   onSnooze1d,
-  onGoToTask
+  onGoToTask,
 }: ReminderNotificationModalProps) {
   const theme = themeForObject("modal");
   const dueLabel = resolveDueLabel(task, event.dueAt);
@@ -49,8 +56,12 @@ export function ReminderNotificationModal({
         REMINDER [ENTER/ESC/1/2/3/G]
       </text>
       <text style={{ color: theme.text }}>Task: {event.title}</text>
-      {dueLabel ? <text style={{ color: theme.muted }}>Due: {dueLabel}</text> : null}
-      <text style={{ color: theme.muted }}>Reminder time: {reminderTimeLabel}</text>
+      {dueLabel ? (
+        <text style={{ color: theme.muted }}>Due: {dueLabel}</text>
+      ) : null}
+      <text style={{ color: theme.muted }}>
+        Reminder time: {reminderTimeLabel}
+      </text>
       <ModalActionRow marginTop={1}>
         <ModalActionButton
           theme={theme}
@@ -72,8 +83,18 @@ export function ReminderNotificationModal({
           onPress={onSnooze10m}
           paddingX={2}
         />
-        <ModalActionButton theme={theme} label="SNOOZE +1H [2]" onPress={onSnooze1h} paddingX={2} />
-        <ModalActionButton theme={theme} label="SNOOZE +1D [3]" onPress={onSnooze1d} paddingX={2} />
+        <ModalActionButton
+          theme={theme}
+          label="SNOOZE +1H [2]"
+          onPress={onSnooze1h}
+          paddingX={2}
+        />
+        <ModalActionButton
+          theme={theme}
+          label="SNOOZE +1D [3]"
+          onPress={onSnooze1d}
+          paddingX={2}
+        />
       </ModalActionRow>
     </ModalContainer>
   );

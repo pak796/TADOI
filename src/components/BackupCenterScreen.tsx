@@ -70,7 +70,7 @@ type BackupFooterAction = {
 function renderImportStats(
   label: string,
   value: number,
-  theme: RuntimeTheme
+  theme: RuntimeTheme,
 ): React.ReactNode {
   return (
     <box style={{ flexDirection: "row", gap: 1 }}>
@@ -162,7 +162,7 @@ function BackupActionButton({
   label,
   onPress,
   tone = "primary",
-  active = false
+  active = false,
 }: BackupActionButtonProps) {
   const theme = themeForObject("modal");
   const backgroundColor = active
@@ -197,14 +197,14 @@ function SelectableOptionLine({
   label,
   theme,
   selected = false,
-  onSelect
+  onSelect,
 }: SelectableOptionLineProps) {
   return (
     <box
       style={{
         backgroundColor: selected ? theme.accentBlue : "transparent",
         paddingLeft: 1,
-        paddingRight: 1
+        paddingRight: 1,
       }}
       onMouseDown={(event) => {
         if (!onSelect) return;
@@ -220,17 +220,24 @@ function SelectableOptionLine({
   );
 }
 
-export function isScreenForInput(state: BackupCenterState["screen"], kind: string): boolean {
+export function isScreenForInput(
+  state: BackupCenterState["screen"],
+  kind: string,
+): boolean {
   if (kind === "data-import-path") return state === "import_path";
   if (kind === "data-replace-confirm") return state === "import_confirm";
   if (kind === "calendar-export-path") return state === "calendar_export_path";
   if (kind === "calendar-import-path") return state === "calendar_import_path";
-  if (kind === "calendar-import-horizon") return state === "calendar_import_horizon";
+  if (kind === "calendar-import-horizon")
+    return state === "calendar_import_horizon";
   if (kind === "calendar-import-tag") return state === "calendar_import_tag";
-  if (kind === "calendar-import-confirm") return state === "calendar_import_confirm";
+  if (kind === "calendar-import-confirm")
+    return state === "calendar_import_confirm";
   if (kind === "github-repo-name") return state === "github_connect_mode";
-  if (kind === "github-owner-repo") return state === "github_connect_repo_input";
-  if (kind === "github-public-confirm") return state === "github_connect_public_confirm";
+  if (kind === "github-owner-repo")
+    return state === "github_connect_repo_input";
+  if (kind === "github-public-confirm")
+    return state === "github_connect_public_confirm";
   return false;
 }
 
@@ -249,10 +256,13 @@ export function resolveImportPickerWindow(options: {
   const pickerRows = Math.max(4, Math.min(8, options.visibleRows));
   const pickerSelectedIndex = Math.max(
     0,
-    Math.min(options.selectedIndex, Math.max(0, options.fileCount - 1))
+    Math.min(options.selectedIndex, Math.max(0, options.fileCount - 1)),
   );
   const pickerMaxOffset = Math.max(0, options.fileCount - pickerRows);
-  let pickerStart = Math.max(0, Math.min(options.scrollOffset, pickerMaxOffset));
+  let pickerStart = Math.max(
+    0,
+    Math.min(options.scrollOffset, pickerMaxOffset),
+  );
   if (pickerSelectedIndex < pickerStart) {
     pickerStart = pickerSelectedIndex;
   } else if (pickerSelectedIndex >= pickerStart + pickerRows) {
@@ -263,12 +273,12 @@ export function resolveImportPickerWindow(options: {
   return {
     selectedIndex: pickerSelectedIndex,
     start: pickerStart,
-    end: pickerEnd
+    end: pickerEnd,
   };
 }
 
 export function resolveBackupWheelDelta(
-  direction: "up" | "down" | "left" | "right" | undefined
+  direction: "up" | "down" | "left" | "right" | undefined,
 ): 1 | -1 | 0 {
   if (direction === "up") return -1;
   if (direction === "down") return 1;
@@ -309,7 +319,7 @@ export function BackupCenterScreen({
   onGitHubPushNow,
   onGitHubOpenRestore,
   onGitHubSnapshotSelectIndex,
-  onGitHubSnapshotWheelScroll
+  onGitHubSnapshotWheelScroll,
 }: BackupCenterScreenProps) {
   const theme = themeForObject("modal");
   const inputTheme = themeForObject("inputs");
@@ -324,18 +334,18 @@ export function BackupCenterScreen({
     { index: 0, label: "1) Export backup (recommended)" },
     { index: 1, label: "2) Import data..." },
     { index: 2, label: "3) Show data path" },
-    { index: 3, label: "4) Calendar (ICS) + Cloud..." }
+    { index: 3, label: "4) Calendar (ICS) + Cloud..." },
   ];
   const calendarMenuOptions: Array<{ index: 0 | 1 | 2 | 3; label: string }> = [
     { index: 0, label: "1) Export Calendar (.ics)" },
     { index: 1, label: "2) Import Calendar (.ics)" },
     { index: 2, label: "3) Cloud Backups -> GitHub (CLI)" },
-    { index: 3, label: "4) Back" }
+    { index: 3, label: "4) Back" },
   ];
 
   const calendarViewChoices: Array<{ label: string; value?: string }> = [
     { label: "(All tasks)", value: undefined },
-    ...savedViewNames.map((name) => ({ label: name, value: name }))
+    ...savedViewNames.map((name) => ({ label: name, value: name })),
   ];
 
   const shouldBlockCalendarCommit =
@@ -346,18 +356,21 @@ export function BackupCenterScreen({
     fileCount: state.importPickerFiles.length,
     selectedIndex: state.importPickerSelectedIndex,
     scrollOffset: state.importPickerScrollOffset,
-    visibleRows: importPickerVisibleRows
+    visibleRows: importPickerVisibleRows,
   });
-  const pickerVisibleFiles = state.importPickerFiles.slice(pickerWindow.start, pickerWindow.end);
+  const pickerVisibleFiles = state.importPickerFiles.slice(
+    pickerWindow.start,
+    pickerWindow.end,
+  );
   const githubPickerWindow = resolveImportPickerWindow({
     fileCount: state.githubSnapshots.length,
     selectedIndex: state.githubSnapshotSelectedIndex,
     scrollOffset: state.githubSnapshotScrollOffset,
-    visibleRows: importPickerVisibleRows
+    visibleRows: importPickerVisibleRows,
   });
   const githubVisibleSnapshots = state.githubSnapshots.slice(
     githubPickerWindow.start,
-    githubPickerWindow.end
+    githubPickerWindow.end,
   );
   const bodyScrollboxRef = useRef<ScrollBoxRenderable | null>(null);
 
@@ -376,17 +389,43 @@ export function BackupCenterScreen({
       footerActions = [
         { key: "export", label: "EXPORT", onPress: () => onMenuSelect(0) },
         { key: "import", label: "IMPORT", onPress: () => onMenuSelect(1) },
-        { key: "show-path", label: "SHOW PATH", onPress: () => onMenuSelect(2) },
+        {
+          key: "show-path",
+          label: "SHOW PATH",
+          onPress: () => onMenuSelect(2),
+        },
         { key: "calendar", label: "CALENDAR", onPress: () => onMenuSelect(3) },
-        { key: "close", label: "CLOSE", onPress: onBackAction, tone: "neutral" }
+        {
+          key: "close",
+          label: "CLOSE",
+          onPress: onBackAction,
+          tone: "neutral",
+        },
       ];
       break;
     case "calendar_menu":
       footerActions = [
-        { key: "cal-export", label: "EXPORT ICS", onPress: () => onCalendarMenuSelect(0) },
-        { key: "cal-import", label: "IMPORT ICS", onPress: () => onCalendarMenuSelect(1) },
-        { key: "cloud-github", label: "CLOUD GITHUB", onPress: () => onCalendarMenuSelect(2) },
-        { key: "back", label: "BACK", onPress: () => onCalendarMenuSelect(3), tone: "neutral" }
+        {
+          key: "cal-export",
+          label: "EXPORT ICS",
+          onPress: () => onCalendarMenuSelect(0),
+        },
+        {
+          key: "cal-import",
+          label: "IMPORT ICS",
+          onPress: () => onCalendarMenuSelect(1),
+        },
+        {
+          key: "cloud-github",
+          label: "CLOUD GITHUB",
+          onPress: () => onCalendarMenuSelect(2),
+        },
+        {
+          key: "back",
+          label: "BACK",
+          onPress: () => onCalendarMenuSelect(3),
+          tone: "neutral",
+        },
       ];
       break;
     case "import_mode":
@@ -395,17 +434,17 @@ export function BackupCenterScreen({
           key: "merge",
           label: "MERGE",
           onPress: () => onImportModeSelect("merge"),
-          active: state.importMode === "merge"
+          active: state.importMode === "merge",
         },
         {
           key: "replace",
           label: "REPLACE",
           onPress: () => onImportModeSelect("replace"),
           tone: "danger",
-          active: state.importMode === "replace"
+          active: state.importMode === "replace",
         },
         { key: "dry-run", label: "DRY-RUN", onPress: onPrimaryAction },
-        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
+        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" },
       ];
       break;
     case "calendar_export_range":
@@ -414,28 +453,28 @@ export function BackupCenterScreen({
           key: "next7",
           label: "NEXT7",
           onPress: () => onCalendarExportRangeSelect("next7"),
-          active: state.calendarExportRange === "next7"
+          active: state.calendarExportRange === "next7",
         },
         {
           key: "month",
           label: "MONTH",
           onPress: () => onCalendarExportRangeSelect("month"),
-          active: state.calendarExportRange === "month"
+          active: state.calendarExportRange === "month",
         },
         {
           key: "all",
           label: "ALL",
           onPress: () => onCalendarExportRangeSelect("all"),
-          active: state.calendarExportRange === "all"
+          active: state.calendarExportRange === "all",
         },
         { key: "continue", label: "CONTINUE", onPress: onPrimaryAction },
-        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
+        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" },
       ];
       break;
     case "calendar_export_view":
       footerActions = [
         { key: "continue", label: "CONTINUE", onPress: onPrimaryAction },
-        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
+        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" },
       ];
       break;
     case "calendar_export_privacy":
@@ -444,16 +483,16 @@ export function BackupCenterScreen({
           key: "minimal",
           label: "MINIMAL",
           onPress: () => onCalendarExportPrivacySelect("minimal"),
-          active: state.calendarExportPrivacy === "minimal"
+          active: state.calendarExportPrivacy === "minimal",
         },
         {
           key: "full",
           label: "FULL",
           onPress: () => onCalendarExportPrivacySelect("full"),
-          active: state.calendarExportPrivacy === "full"
+          active: state.calendarExportPrivacy === "full",
         },
         { key: "continue", label: "CONTINUE", onPress: onPrimaryAction },
-        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
+        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" },
       ];
       break;
     case "calendar_import_range":
@@ -462,28 +501,28 @@ export function BackupCenterScreen({
           key: "next7",
           label: "NEXT7",
           onPress: () => onCalendarImportRangeSelect("next7"),
-          active: state.calendarImportRange === "next7"
+          active: state.calendarImportRange === "next7",
         },
         {
           key: "month",
           label: "MONTH",
           onPress: () => onCalendarImportRangeSelect("month"),
-          active: state.calendarImportRange === "month"
+          active: state.calendarImportRange === "month",
         },
         {
           key: "all",
           label: "ALL",
           onPress: () => onCalendarImportRangeSelect("all"),
-          active: state.calendarImportRange === "all"
+          active: state.calendarImportRange === "all",
         },
         { key: "continue", label: "CONTINUE", onPress: onPrimaryAction },
-        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
+        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" },
       ];
       break;
     case "calendar_import_view":
       footerActions = [
         { key: "continue", label: "CONTINUE", onPress: onPrimaryAction },
-        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
+        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" },
       ];
       break;
     case "calendar_import_mode":
@@ -492,22 +531,22 @@ export function BackupCenterScreen({
           key: "merge",
           label: "MERGE",
           onPress: () => onCalendarImportModeSelect("merge"),
-          active: state.calendarImportMode === "merge"
+          active: state.calendarImportMode === "merge",
         },
         {
           key: "update",
           label: "UPDATE",
           onPress: () => onCalendarImportModeSelect("update"),
-          active: state.calendarImportMode === "update"
+          active: state.calendarImportMode === "update",
         },
         {
           key: "create",
           label: "CREATE",
           onPress: () => onCalendarImportModeSelect("create"),
-          active: state.calendarImportMode === "create"
+          active: state.calendarImportMode === "create",
         },
         { key: "continue", label: "CONTINUE", onPress: onPrimaryAction },
-        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
+        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" },
       ];
       break;
     case "calendar_import_dryrun":
@@ -516,17 +555,25 @@ export function BackupCenterScreen({
           key: "commit",
           label: shouldBlockCalendarCommit ? "COMMIT BLOCKED" : "COMMIT IMPORT",
           onPress: shouldBlockCalendarCommit ? () => {} : onPrimaryAction,
-          tone: shouldBlockCalendarCommit ? "neutral" : "primary"
+          tone: shouldBlockCalendarCommit ? "neutral" : "primary",
         },
-        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
+        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" },
       ];
       break;
     case "github_status":
       footerActions = [
         { key: "connect", label: "CONNECT", onPress: onPrimaryAction },
-        { key: "push-now", label: "PUSH NOW", onPress: onGitHubPushNow ?? (() => {}) },
-        { key: "restore", label: "RESTORE", onPress: onGitHubOpenRestore ?? (() => {}) },
-        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
+        {
+          key: "push-now",
+          label: "PUSH NOW",
+          onPress: onGitHubPushNow ?? (() => {}),
+        },
+        {
+          key: "restore",
+          label: "RESTORE",
+          onPress: onGitHubOpenRestore ?? (() => {}),
+        },
+        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" },
       ];
       break;
     case "github_connect_mode":
@@ -535,49 +582,55 @@ export function BackupCenterScreen({
           key: "create-private",
           label: "CREATE PRIVATE",
           onPress: () => onGitHubConnectModeSelect?.("create"),
-          active: state.githubConnectMode === "create"
+          active: state.githubConnectMode === "create",
         },
         {
           key: "use-existing",
           label: "USE EXISTING",
           onPress: () => onGitHubConnectModeSelect?.("existing"),
-          active: state.githubConnectMode === "existing"
+          active: state.githubConnectMode === "existing",
         },
         { key: "continue", label: "CONTINUE", onPress: onPrimaryAction },
-        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
+        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" },
       ];
       break;
     case "github_connect_repo_input":
     case "github_connect_public_confirm":
       footerActions = [
         { key: "continue", label: "CONTINUE", onPress: onPrimaryAction },
-        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
+        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" },
       ];
       break;
     case "github_restore_picker":
       footerActions = [
         {
           key: "restore",
-          label: state.githubSnapshots.length > 0 ? "RESTORE SELECTED" : "RESTORE (NONE)",
-          onPress: state.githubSnapshots.length > 0 ? onPrimaryAction : () => {}
+          label:
+            state.githubSnapshots.length > 0
+              ? "RESTORE SELECTED"
+              : "RESTORE (NONE)",
+          onPress:
+            state.githubSnapshots.length > 0 ? onPrimaryAction : () => {},
         },
-        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
+        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" },
       ];
       break;
     case "import_picker":
       footerActions = [
         {
           key: "select",
-          label: state.importPickerFiles.length > 0 ? "SELECT" : "SELECT (NONE)",
-          onPress: state.importPickerFiles.length > 0 ? onPrimaryAction : () => {}
+          label:
+            state.importPickerFiles.length > 0 ? "SELECT" : "SELECT (NONE)",
+          onPress:
+            state.importPickerFiles.length > 0 ? onPrimaryAction : () => {},
         },
         {
           key: "manual-path",
           label: "MANUAL PATH",
           onPress: onOpenImportPathFallback,
-          tone: "neutral"
+          tone: "neutral",
         },
-        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
+        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" },
       ];
       break;
     case "import_path":
@@ -591,7 +644,7 @@ export function BackupCenterScreen({
     case "calendar_import_confirm":
       footerActions = [
         { key: "continue", label: "CONTINUE", onPress: onPrimaryAction },
-        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
+        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" },
       ];
       break;
     case "import_confirm":
@@ -600,15 +653,20 @@ export function BackupCenterScreen({
           key: "confirm-replace",
           label: "CONFIRM REPLACE",
           onPress: onPrimaryAction,
-          tone: "danger"
+          tone: "danger",
         },
-        { key: "cancel", label: "CANCEL", onPress: onBackAction, tone: "neutral" }
+        {
+          key: "cancel",
+          label: "CANCEL",
+          onPress: onBackAction,
+          tone: "neutral",
+        },
       ];
       break;
     case "import_dryrun":
       footerActions = [
         { key: "commit", label: "COMMIT IMPORT", onPress: onPrimaryAction },
-        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" }
+        { key: "back", label: "BACK", onPress: onBackAction, tone: "neutral" },
       ];
       break;
     case "export_done":
@@ -618,7 +676,9 @@ export function BackupCenterScreen({
     case "calendar_import_done":
     case "github_push_done":
     case "error":
-      footerActions = [{ key: "back", label: "BACK", onPress: onPrimaryAction }];
+      footerActions = [
+        { key: "back", label: "BACK", onPress: onPrimaryAction },
+      ];
       break;
     case "exporting":
     case "importing":
@@ -647,10 +707,12 @@ export function BackupCenterScreen({
         borderStyle: "single",
         borderColor: theme.outline,
         padding: 1,
-        overflow: "hidden"
+        overflow: "hidden",
       }}
     >
-      <text style={{ color: theme.text, fontWeight: "bold" }}>Backup Center</text>
+      <text style={{ color: theme.text, fontWeight: "bold" }}>
+        Backup Center
+      </text>
       <text style={{ color: theme.muted }}>
         Guided backup, import, calendar, and cloud flows
       </text>
@@ -659,664 +721,1076 @@ export function BackupCenterScreen({
         <text style={{ color: theme.muted }}>DATA MODE: {modeLabel}</text>
       </box>
 
-      <box style={{ flexDirection: "column", flexGrow: 1, marginTop: 1, overflow: "hidden" }}>
-        <scrollbox ref={bodyScrollboxRef} scrollY style={{ flexGrow: 1, paddingRight: 1 }}>
-      {state.screen === "menu" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          {rootMenuOptions.map((option) => {
-            const selected = state.menuIndex === option.index;
-            return (
-              <SelectableOptionLine
-                key={option.label}
-                label={option.label}
-                selected={selected}
-                theme={theme}
-                onSelect={() => onMenuSelect(option.index)}
-              />
-            );
-          })}
-          <text style={{ color: theme.muted, marginTop: 1 }}>
-            1/2/3/4 or Enter: select   j/k: move   Esc: close Backup Center
-          </text>
-        </box>
-      ) : null}
-
-      {state.screen === "calendar_menu" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.text, fontWeight: "bold" }}>
-            CALENDAR (ICS): Export / Import
-          </text>
-          {calendarMenuOptions.map((option) => {
-            const selected = state.calendarMenuIndex === option.index;
-            return (
-              <SelectableOptionLine
-                key={option.label}
-                label={option.label}
-                selected={selected}
-                theme={theme}
-                onSelect={() => onCalendarMenuSelect(option.index)}
-              />
-            );
-          })}
-          <text style={{ color: theme.muted, marginTop: 1 }}>
-            One-way per action (not sync). Import can round-trip by X-TADOI-TASK-ID.
-          </text>
-          <text style={{ color: theme.muted }}>1/2/3/4 or Enter: select   j/k: move   Esc: back</text>
-        </box>
-      ) : null}
-
-      {state.screen === "exporting" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.text }}>Creating timestamped backup...</text>
-          <text style={{ color: theme.muted }}>Please wait. This may take a moment.</text>
-        </box>
-      ) : null}
-
-      {state.screen === "export_done" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.ok, fontWeight: "bold" }}>Backup created</text>
-          <text style={{ color: theme.muted }}>Saved to:</text>
-          <text style={{ color: theme.text }}>{state.lastExportPath ?? "(unknown)"}</text>
-          <text style={{ color: theme.muted, marginTop: 1 }}>
-            Enter or Esc: return
-          </text>
-        </box>
-      ) : null}
-
-      {state.screen === "import_picker" ? (
-        <box
-          style={{ flexDirection: "column", marginTop: 1 }}
-          onMouseScroll={(event) => {
-            const delta = resolveBackupWheelDelta(event.scroll?.direction);
-            if (delta === 0 || state.importPickerFiles.length === 0) return;
-            if (typeof event.stopPropagation === "function") {
-              event.stopPropagation();
-            }
-            onImportPickerWheelScroll(delta);
-          }}
+      <box
+        style={{
+          flexDirection: "column",
+          flexGrow: 1,
+          marginTop: 1,
+          overflow: "hidden",
+        }}
+      >
+        <scrollbox
+          ref={bodyScrollboxRef}
+          scrollY
+          style={{ flexGrow: 1, paddingRight: 1 }}
         >
-          <text style={{ color: theme.text, fontWeight: "bold" }}>Select backup file</text>
-          <text style={{ color: theme.muted }}>
-            Directory: {state.importPickerDirectoryPath || "(unresolved)"}
-          </text>
-          {state.importPickerLoading ? (
-            <text style={{ color: theme.muted, marginTop: 1 }}>Loading backups...</text>
+          {state.screen === "menu" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              {rootMenuOptions.map((option) => {
+                const selected = state.menuIndex === option.index;
+                return (
+                  <SelectableOptionLine
+                    key={option.label}
+                    label={option.label}
+                    selected={selected}
+                    theme={theme}
+                    onSelect={() => onMenuSelect(option.index)}
+                  />
+                );
+              })}
+              <text style={{ color: theme.muted, marginTop: 1 }}>
+                1/2/3/4 or Enter: select j/k: move Esc: close Backup Center
+              </text>
+            </box>
           ) : null}
-          {state.importPickerError ? (
-            <text style={{ color: theme.warn, marginTop: 1 }}>
-              Unable to list backups: {state.importPickerError}
-            </text>
-          ) : null}
-          {!state.importPickerLoading && state.importPickerFiles.length === 0 ? (
-            <>
-              <text style={{ color: theme.warn, marginTop: 1 }}>
-                No backups found in {state.importPickerDirectoryPath || "(unresolved)"}.
+
+          {state.screen === "calendar_menu" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.text, fontWeight: "bold" }}>
+                CALENDAR (ICS): Export / Import
+              </text>
+              {calendarMenuOptions.map((option) => {
+                const selected = state.calendarMenuIndex === option.index;
+                return (
+                  <SelectableOptionLine
+                    key={option.label}
+                    label={option.label}
+                    selected={selected}
+                    theme={theme}
+                    onSelect={() => onCalendarMenuSelect(option.index)}
+                  />
+                );
+              })}
+              <text style={{ color: theme.muted, marginTop: 1 }}>
+                One-way per action (not sync). Import can round-trip by
+                X-TADOI-TASK-ID.
               </text>
               <text style={{ color: theme.muted }}>
-                Create one with Export backup, or place backup files in this directory.
+                1/2/3/4 or Enter: select j/k: move Esc: back
               </text>
-              <text style={{ color: theme.muted }}>Press m for manual path fallback.</text>
-            </>
+            </box>
           ) : null}
-          {!state.importPickerLoading && state.importPickerFiles.length > 0 ? (
-            <>
-              <box
-                style={{
-                  flexDirection: "column",
-                  marginTop: 1,
-                  border: true,
-                  borderStyle: "single",
-                  borderColor: theme.outline
-                }}
-              >
-                {pickerVisibleFiles.map((file, visibleIndex) => {
-                  const index = pickerWindow.start + visibleIndex;
-                  const selected = index === pickerWindow.selectedIndex;
-                  return (
-                    <SelectableOptionLine
-                      key={file.path}
-                      label={`${file.filename}  ${formatBackupFileTimestamp(file.mtimeMs)}  ${formatBackupFileSize(file.sizeBytes)}`}
-                      selected={selected}
-                      theme={theme}
-                      onSelect={() => onImportPickerSelectIndex(index)}
-                    />
-                  );
-                })}
-              </box>
+
+          {state.screen === "exporting" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.text }}>
+                Creating timestamped backup...
+              </text>
+              <text style={{ color: theme.muted }}>
+                Please wait. This may take a moment.
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "export_done" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.ok, fontWeight: "bold" }}>
+                Backup created
+              </text>
+              <text style={{ color: theme.muted }}>Saved to:</text>
+              <text style={{ color: theme.text }}>
+                {state.lastExportPath ?? "(unknown)"}
+              </text>
               <text style={{ color: theme.muted, marginTop: 1 }}>
-                Showing {String(pickerWindow.start + 1)}-{String(pickerWindow.end)} of{" "}
-                {String(state.importPickerFiles.length)} backups
+                Enter or Esc: return
               </text>
-            </>
+            </box>
           ) : null}
-          <text style={{ color: theme.muted, marginTop: 1 }}>
-            ↑/↓: move   PgUp/PgDn: page   Home/End: jump
-          </text>
-          <text style={{ color: theme.muted }}>
-            Enter: select   m: manual path   Esc: back
-          </text>
-        </box>
-      ) : null}
 
-      {state.screen === "import_path" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.text }}>Paste backup/export file path:</text>
-          <input
-            value={state.importPathInput}
-            onChange={onImportPathChange}
-            onSubmit={(value) => {
-              onImportPathChange(value);
-              onPrimaryAction();
-            }}
-            focused={isScreenForInput(state.screen, "data-import-path")}
-            placeholder="/absolute/or/relative/path/to/export.json"
-            style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
-          />
-          <text style={{ color: theme.muted }}>
-            Relative paths resolve from the current working directory.
-          </text>
-          <text style={{ color: theme.muted }}>Enter: continue   Esc: back</text>
-        </box>
-      ) : null}
-
-      {state.screen === "import_mode" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.text, fontWeight: "bold" }}>Select import mode</text>
-          <SelectableOptionLine
-            label={`1) Merge (recommended) ${state.importMode === "merge" ? "(selected)" : ""}`}
-            selected={state.importMode === "merge"}
-            theme={theme}
-            onSelect={() => onImportModeSelect("merge")}
-          />
-          <SelectableOptionLine
-            label={`2) Replace ${state.importMode === "replace" ? "(selected)" : ""}`}
-            selected={state.importMode === "replace"}
-            theme={theme}
-            onSelect={() => onImportModeSelect("replace")}
-          />
-          <text style={{ color: theme.muted }}>
-            Merge keeps local-only tasks. Replace overwrites local data.
-          </text>
-          <text style={{ color: theme.muted, marginTop: 1 }}>
-            Replace confirmed: {replaceArmed}
-          </text>
-          <text style={{ color: theme.muted }}>1/2: switch mode   Enter: dry-run   Esc: back</text>
-        </box>
-      ) : null}
-
-      {state.screen === "import_confirm" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.warn, fontWeight: "bold" }}>Replace is destructive.</text>
-          <text style={{ color: theme.text }}>Type REPLACE to continue:</text>
-          <input
-            value={state.replaceConfirmInput}
-            onChange={onReplaceConfirmChange}
-            onSubmit={(value) => {
-              onReplaceConfirmChange(value);
-              onPrimaryAction();
-            }}
-            focused={isScreenForInput(state.screen, "data-replace-confirm")}
-            placeholder="REPLACE"
-            style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
-          />
-          <text style={{ color: theme.muted }}>
-            Enter: confirm   Any other value returns to mode select
-          </text>
-        </box>
-      ) : null}
-
-      {state.screen === "import_dryrun" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.text, fontWeight: "bold" }}>Dry-run summary</text>
-          {dryRun ? (
-            <>
-              <text style={{ color: theme.muted }}>Mode: {dryRun.mode.toUpperCase()}</text>
-              <text style={{ color: theme.muted }}>No data has been written yet.</text>
-              {renderImportStats("Added", dryRun.tasks.added, theme)}
-              {renderImportStats("Updated", dryRun.tasks.updated, theme)}
-              {renderImportStats("Overwritten (removed)", dryRun.tasks.removed, theme)}
-              {renderImportStats("Unchanged", dryRun.tasks.unchanged, theme)}
-              {dryRun.warnings && dryRun.warnings.length > 0 ? (
-                <box style={{ flexDirection: "column", marginTop: 1 }}>
-                  <text style={{ color: theme.warn, fontWeight: "bold" }}>Warnings</text>
-                  {dryRun.warnings.map((warning) => (
-                    <text key={`dryrun-warning-${warning}`} style={{ color: theme.warn }}>
-                      - {warning}
-                    </text>
-                  ))}
-                </box>
-              ) : null}
-              <text style={{ color: theme.muted, marginTop: 1 }}>
-                Enter: commit import   Esc: cancel
+          {state.screen === "import_picker" ? (
+            <box
+              style={{ flexDirection: "column", marginTop: 1 }}
+              onMouseScroll={(event) => {
+                const delta = resolveBackupWheelDelta(event.scroll?.direction);
+                if (delta === 0 || state.importPickerFiles.length === 0) return;
+                if (typeof event.stopPropagation === "function") {
+                  event.stopPropagation();
+                }
+                onImportPickerWheelScroll(delta);
+              }}
+            >
+              <text style={{ color: theme.text, fontWeight: "bold" }}>
+                Select backup file
               </text>
-            </>
-          ) : (
-            <text style={{ color: theme.warn }}>Dry-run result unavailable.</text>
-          )}
-        </box>
-      ) : null}
-
-      {state.screen === "importing" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.text }}>Applying import...</text>
-          <text style={{ color: theme.muted }}>Writing data and creating backup if enabled.</text>
-        </box>
-      ) : null}
-
-      {state.screen === "import_done" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.ok, fontWeight: "bold" }}>Import complete</text>
-          {committed ? (
-            <>
-              {renderImportStats("Added", committed.tasks.added, theme)}
-              {renderImportStats("Updated", committed.tasks.updated, theme)}
-              {renderImportStats("Overwritten (removed)", committed.tasks.removed, theme)}
-              {renderImportStats("Unchanged", committed.tasks.unchanged, theme)}
-              {committed.backupPath ? (
-                <>
-                  <text style={{ color: theme.muted, marginTop: 1 }}>Backup:</text>
-                  <text style={{ color: theme.text }}>{committed.backupPath}</text>
-                </>
-              ) : null}
-              {committed.warnings && committed.warnings.length > 0 ? (
-                <box style={{ flexDirection: "column", marginTop: 1 }}>
-                  <text style={{ color: theme.warn, fontWeight: "bold" }}>Warnings</text>
-                  {committed.warnings.map((warning) => (
-                    <text key={`import-warning-${warning}`} style={{ color: theme.warn }}>
-                      - {warning}
-                    </text>
-                  ))}
-                </box>
-              ) : null}
-            </>
-          ) : null}
-          <text style={{ color: theme.muted, marginTop: 1 }}>Enter or Esc: return</text>
-        </box>
-      ) : null}
-
-      {state.screen === "show_path" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.text, fontWeight: "bold" }}>Data location</text>
-          <text style={{ color: theme.text }}>{state.shownDataPath ?? dataPath}</text>
-          <text style={{ color: theme.muted, marginTop: 1 }}>Enter or Esc: back</text>
-        </box>
-      ) : null}
-
-      {state.screen === "calendar_export_intro" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.text, fontWeight: "bold" }}>Export Calendar (.ics)</text>
-          <text style={{ color: theme.text }}>
-            Exports open tasks as calendar events. Range and optional view filter apply.
-          </text>
-          <text style={{ color: theme.muted }}>
-            This is a one-way export action, not continuous sync.
-          </text>
-          <text style={{ color: theme.muted }}>
-            Timezone: {state.calendarTimeZoneHint ?? "System default"}
-          </text>
-          <text style={{ color: theme.muted, marginTop: 1 }}>Enter: continue   Esc: back</text>
-        </box>
-      ) : null}
-
-      {state.screen === "calendar_export_range" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.text, fontWeight: "bold" }}>Choose range</text>
-          <SelectableOptionLine
-            label={`1) next7 ${state.calendarExportRange === "next7" ? "(selected)" : ""}`}
-            selected={state.calendarExportRange === "next7"}
-            theme={theme}
-            onSelect={() => onCalendarExportRangeSelect("next7")}
-          />
-          <SelectableOptionLine
-            label={`2) month ${state.calendarExportRange === "month" ? "(selected)" : ""}`}
-            selected={state.calendarExportRange === "month"}
-            theme={theme}
-            onSelect={() => onCalendarExportRangeSelect("month")}
-          />
-          <SelectableOptionLine
-            label={`3) all ${state.calendarExportRange === "all" ? "(selected)" : ""}`}
-            selected={state.calendarExportRange === "all"}
-            theme={theme}
-            onSelect={() => onCalendarExportRangeSelect("all")}
-          />
-          <text style={{ color: theme.muted }}>
-            next7 = today..+6, month = today..+29 (local start-of-day boundaries).
-          </text>
-          <text style={{ color: theme.muted }}>1/2/3 select   Enter continue   Esc back</text>
-        </box>
-      ) : null}
-
-      {state.screen === "calendar_export_view" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.text, fontWeight: "bold" }}>Choose saved view (optional)</text>
-          {calendarViewChoices.map((choice, index) => {
-            const active =
-              (choice.value ?? "") === (state.calendarExportViewName ?? "");
-            return (
-              <SelectableOptionLine
-                key={`${choice.label}-${String(index)}`}
-                label={`${String(index + 1)}) ${choice.label} ${active ? "(selected)" : ""}`}
-                selected={active}
-                theme={theme}
-                onSelect={() => onCalendarExportViewSelect(choice.value)}
-              />
-            );
-          })}
-          {savedViewNames.length === 0 ? (
-            <text style={{ color: theme.muted }}>No saved views available. Using all tasks.</text>
-          ) : null}
-          <text style={{ color: theme.muted }}>Number to select   Enter continue   Esc back</text>
-        </box>
-      ) : null}
-
-      {state.screen === "calendar_export_privacy" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.text, fontWeight: "bold" }}>Choose privacy level</text>
-          <SelectableOptionLine
-            label={`1) minimal ${state.calendarExportPrivacy === "minimal" ? "(selected)" : ""}`}
-            selected={state.calendarExportPrivacy === "minimal"}
-            theme={theme}
-            onSelect={() => onCalendarExportPrivacySelect("minimal")}
-          />
-          <SelectableOptionLine
-            label={`2) full ${state.calendarExportPrivacy === "full" ? "(selected)" : ""}`}
-            selected={state.calendarExportPrivacy === "full"}
-            theme={theme}
-            onSelect={() => onCalendarExportPrivacySelect("full")}
-          />
-          <text style={{ color: theme.muted }}>
-            minimal omits notes/tags/links/url. full includes all mapped metadata.
-          </text>
-          <text style={{ color: theme.muted }}>1/2 select   Enter continue   Esc back</text>
-        </box>
-      ) : null}
-
-      {state.screen === "calendar_export_path" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.text }}>Output path (.ics):</text>
-          <input
-            value={state.calendarExportPathInput}
-            onChange={onCalendarExportPathChange}
-            onSubmit={(value) => {
-              onCalendarExportPathChange(value);
-              onPrimaryAction();
-            }}
-            focused={isScreenForInput(state.screen, "calendar-export-path")}
-            placeholder="Defaults to backups/tadoi-calendar.YYYYMMDD-HHMMSS.ics"
-            style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
-          />
-          <text style={{ color: theme.muted }}>
-            Leave blank to use a timestamped path in the backups folder.
-          </text>
-          <text style={{ color: theme.muted }}>Enter: continue   Esc: back</text>
-        </box>
-      ) : null}
-
-      {state.screen === "calendar_export_confirm" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.text, fontWeight: "bold" }}>Confirm calendar export</text>
-          <text style={{ color: theme.muted }}>Range: {state.calendarExportRange}</text>
-          <text style={{ color: theme.muted }}>
-            View: {state.calendarExportViewName ?? "(All tasks)"}
-          </text>
-          <text style={{ color: theme.muted }}>Privacy: {state.calendarExportPrivacy}</text>
-          <text style={{ color: theme.muted }}>
-            Output: {state.calendarExportPathInput.trim() || "(auto timestamped path)"}
-          </text>
-          <text style={{ color: theme.muted, marginTop: 1 }}>Enter: export   Esc: back</text>
-        </box>
-      ) : null}
-
-      {state.screen === "calendar_exporting" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.text }}>Exporting calendar ICS...</text>
-          <text style={{ color: theme.muted }}>Please wait.</text>
-        </box>
-      ) : null}
-
-      {state.screen === "calendar_export_done" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.ok, fontWeight: "bold" }}>Calendar export complete</text>
-          <text style={{ color: theme.muted }}>
-            Path: {state.calendarExportResult?.outputPath ?? "(unknown)"}
-          </text>
-          <text style={{ color: theme.muted }}>
-            Events written: {String(state.calendarExportResult?.eventsWritten ?? 0)}
-          </text>
-          <text style={{ color: theme.muted }}>
-            Series RRULE exported: {String(state.calendarExportResult?.seriesRruleExported ?? 0)}
-          </text>
-          <text style={{ color: theme.muted }}>
-            Instance overrides: {String(state.calendarExportResult?.instanceOverridesExported ?? 0)}
-          </text>
-          <text style={{ color: theme.muted }}>EXDATE count: {String(state.calendarExportResult?.exdateCount ?? 0)}</text>
-          {state.calendarExportWarnings.length > 0 ? (
-            <>
-              <text style={{ color: theme.warn, marginTop: 1, fontWeight: "bold" }}>
-                Warnings:
+              <text style={{ color: theme.muted }}>
+                Directory: {state.importPickerDirectoryPath || "(unresolved)"}
               </text>
-              {state.calendarExportWarnings.map((warning) => (
-                <text key={warning} style={{ color: theme.warn }}>
-                  - {warning}
+              {state.importPickerLoading ? (
+                <text style={{ color: theme.muted, marginTop: 1 }}>
+                  Loading backups...
                 </text>
-              ))}
-            </>
-          ) : null}
-          <text style={{ color: theme.muted }}>Enter or Esc: back</text>
-        </box>
-      ) : null}
-
-      {state.screen === "calendar_import_intro" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.text, fontWeight: "bold" }}>Import Calendar (.ics)</text>
-          <text style={{ color: theme.text }}>
-            Imports events into tasks and can round-trip update existing tasks by X-TADOI-TASK-ID.
-          </text>
-          <text style={{ color: theme.muted }}>
-            Default mode is merge: tags/links union, notes append, minimal overwrite.
-          </text>
-          <text style={{ color: theme.muted }}>
-            Recurrence guardrails: RRULE must be valid. RECURRENCE-ID overrides supported.
-          </text>
-          <text style={{ color: theme.muted, marginTop: 1 }}>Enter: continue   Esc: back</text>
-        </box>
-      ) : null}
-
-      {state.screen === "calendar_import_path" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.text }}>Input ICS file path:</text>
-          <input
-            value={state.calendarImportPathInput}
-            onChange={onCalendarImportPathChange}
-            onSubmit={(value) => {
-              onCalendarImportPathChange(value);
-              onPrimaryAction();
-            }}
-            focused={isScreenForInput(state.screen, "calendar-import-path")}
-            placeholder="/absolute/or/relative/path/to/file.ics"
-            style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
-          />
-          <text style={{ color: theme.muted }}>
-            .ics extension is recommended. Relative paths resolve from CWD.
-          </text>
-          <text style={{ color: theme.muted }}>Enter: continue   Esc: back</text>
-        </box>
-      ) : null}
-
-      {state.screen === "calendar_import_range" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.text, fontWeight: "bold" }}>Choose range</text>
-          <SelectableOptionLine
-            label={`1) next7 ${state.calendarImportRange === "next7" ? "(selected)" : ""}`}
-            selected={state.calendarImportRange === "next7"}
-            theme={theme}
-            onSelect={() => onCalendarImportRangeSelect("next7")}
-          />
-          <SelectableOptionLine
-            label={`2) month ${state.calendarImportRange === "month" ? "(selected)" : ""}`}
-            selected={state.calendarImportRange === "month"}
-            theme={theme}
-            onSelect={() => onCalendarImportRangeSelect("month")}
-          />
-          <SelectableOptionLine
-            label={`3) all ${state.calendarImportRange === "all" ? "(selected)" : ""}`}
-            selected={state.calendarImportRange === "all"}
-            theme={theme}
-            onSelect={() => onCalendarImportRangeSelect("all")}
-          />
-          {state.calendarImportRange === "all" ? (
-            <text style={{ color: theme.warn }}>Warning: all can apply broader task updates.</text>
-          ) : null}
-          <text style={{ color: theme.muted }}>1/2/3 select   Enter continue   Esc back</text>
-        </box>
-      ) : null}
-
-      {state.screen === "calendar_import_view" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.text, fontWeight: "bold" }}>Choose saved view (optional)</text>
-          {calendarViewChoices.map((choice, index) => {
-            const active =
-              (choice.value ?? "") === (state.calendarImportViewName ?? "");
-            return (
-              <SelectableOptionLine
-                key={`import-view-${choice.label}-${String(index)}`}
-                label={`${String(index + 1)}) ${choice.label} ${active ? "(selected)" : ""}`}
-                selected={active}
-                theme={theme}
-                onSelect={() => onCalendarImportViewSelect(choice.value)}
-              />
-            );
-          })}
-          {savedViewNames.length === 0 ? (
-            <text style={{ color: theme.muted }}>No saved views available. No view filter will apply.</text>
-          ) : null}
-          <text style={{ color: theme.muted }}>Number to select   Enter continue   Esc back</text>
-        </box>
-      ) : null}
-
-      {state.screen === "calendar_import_mode" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.text, fontWeight: "bold" }}>Choose import mode</text>
-          <SelectableOptionLine
-            label={`1) merge ${state.calendarImportMode === "merge" ? "(selected)" : ""}`}
-            selected={state.calendarImportMode === "merge"}
-            theme={theme}
-            onSelect={() => onCalendarImportModeSelect("merge")}
-          />
-          <SelectableOptionLine
-            label={`2) update ${state.calendarImportMode === "update" ? "(selected)" : ""}`}
-            selected={state.calendarImportMode === "update"}
-            theme={theme}
-            onSelect={() => onCalendarImportModeSelect("update")}
-          />
-          <SelectableOptionLine
-            label={`3) create ${state.calendarImportMode === "create" ? "(selected)" : ""}`}
-            selected={state.calendarImportMode === "create"}
-            theme={theme}
-            onSelect={() => onCalendarImportModeSelect("create")}
-          />
-          <text style={{ color: theme.muted }}>
-            merge = conservative, update = calendar wins, create = always new tasks.
-          </text>
-          <text style={{ color: theme.muted }}>1/2/3 select   Enter continue   Esc back</text>
-        </box>
-      ) : null}
-
-      {state.screen === "calendar_import_horizon" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.text }}>Horizon days (default 365, max 3650):</text>
-          <input
-            value={state.calendarImportHorizonInput}
-            onChange={onCalendarImportHorizonChange}
-            onSubmit={(value) => {
-              onCalendarImportHorizonChange(value);
-              onPrimaryAction();
-            }}
-            focused={isScreenForInput(state.screen, "calendar-import-horizon")}
-            placeholder="365"
-            style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
-          />
-          <text style={{ color: theme.muted }}>
-            Bounds recurrence expansion paths and hard-cap checks.
-          </text>
-          <text style={{ color: theme.muted }}>Enter: continue   Esc: back</text>
-        </box>
-      ) : null}
-
-      {state.screen === "calendar_import_tag" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.text }}>
-            Optional tag for newly created tasks (recommended: imported):
-          </text>
-          <input
-            value={state.calendarImportTagInput}
-            onChange={onCalendarImportTagChange}
-            onSubmit={(value) => {
-              onCalendarImportTagChange(value);
-              onPrimaryAction();
-            }}
-            focused={isScreenForInput(state.screen, "calendar-import-tag")}
-            placeholder="(optional)"
-            style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
-          />
-          <text style={{ color: theme.muted }}>
-            Applies to created tasks only.
-          </text>
-          <text style={{ color: theme.muted }}>Enter: run mandatory dry-run   Esc: back</text>
-        </box>
-      ) : null}
-
-      {state.screen === "calendar_import_dryrun_running" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.text }}>Running dry-run import...</text>
-          <text style={{ color: theme.muted }}>
-            Validating RRULE, range/view filters, and recurrence safeguards.
-          </text>
-        </box>
-      ) : null}
-
-      {state.screen === "calendar_import_dryrun" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.text, fontWeight: "bold" }}>Dry-run summary (required)</text>
-          {state.calendarImportDryRun ? (
-            <>
-              {renderImportStats("Events parsed", state.calendarImportDryRun.eventsParsed, theme)}
-              {renderImportStats("Matched by X-TADOI-TASK-ID", state.calendarImportDryRun.matchedByTaskId, theme)}
-              {renderImportStats("Matched by UID", state.calendarImportDryRun.matchedByUid, theme)}
-              {renderImportStats("Created", state.calendarImportDryRun.created, theme)}
-              {renderImportStats("Updated", state.calendarImportDryRun.updated, theme)}
-              {renderImportStats("Merged", state.calendarImportDryRun.merged, theme)}
-              {renderImportStats("Skipped", state.calendarImportDryRun.skipped, theme)}
-              {renderImportStats("Errors", state.calendarImportDryRun.errors, theme)}
-              {renderImportStats("Series imported", state.calendarImportDryRun.recurringSeriesImported, theme)}
-              {renderImportStats("Overrides created", state.calendarImportDryRun.overridesCreated, theme)}
-              {renderImportStats("Overrides updated", state.calendarImportDryRun.overridesUpdated, theme)}
-              {renderImportStats("Cancellations applied", state.calendarImportDryRun.cancellationsApplied, theme)}
-              {state.calendarImportDryRunHasErrors &&
-              state.calendarImportDryRunErrorReasons.length > 0 ? (
+              ) : null}
+              {state.importPickerError ? (
+                <text style={{ color: theme.warn, marginTop: 1 }}>
+                  Unable to list backups: {state.importPickerError}
+                </text>
+              ) : null}
+              {!state.importPickerLoading &&
+              state.importPickerFiles.length === 0 ? (
                 <>
-                  <text style={{ color: theme.warn, marginTop: 1, fontWeight: "bold" }}>
-                    Top errors:
+                  <text style={{ color: theme.warn, marginTop: 1 }}>
+                    No backups found in{" "}
+                    {state.importPickerDirectoryPath || "(unresolved)"}.
                   </text>
-                  {state.calendarImportDryRunErrorReasons.map((reason) => (
-                    <text key={reason} style={{ color: theme.warn }}>
-                      - {reason}
-                    </text>
-                  ))}
+                  <text style={{ color: theme.muted }}>
+                    Create one with Export backup, or place backup files in this
+                    directory.
+                  </text>
+                  <text style={{ color: theme.muted }}>
+                    Press m for manual path fallback.
+                  </text>
                 </>
               ) : null}
-              {state.calendarImportDryRunReportPath ? (
+              {!state.importPickerLoading &&
+              state.importPickerFiles.length > 0 ? (
                 <>
-                  <text style={{ color: theme.muted, marginTop: 1 }}>Report details:</text>
-                  <text style={{ color: theme.text }}>{state.calendarImportDryRunReportPath}</text>
+                  <box
+                    style={{
+                      flexDirection: "column",
+                      marginTop: 1,
+                      border: true,
+                      borderStyle: "single",
+                      borderColor: theme.outline,
+                    }}
+                  >
+                    {pickerVisibleFiles.map((file, visibleIndex) => {
+                      const index = pickerWindow.start + visibleIndex;
+                      const selected = index === pickerWindow.selectedIndex;
+                      return (
+                        <SelectableOptionLine
+                          key={file.path}
+                          label={`${file.filename}  ${formatBackupFileTimestamp(file.mtimeMs)}  ${formatBackupFileSize(file.sizeBytes)}`}
+                          selected={selected}
+                          theme={theme}
+                          onSelect={() => onImportPickerSelectIndex(index)}
+                        />
+                      );
+                    })}
+                  </box>
+                  <text style={{ color: theme.muted, marginTop: 1 }}>
+                    Showing {String(pickerWindow.start + 1)}-
+                    {String(pickerWindow.end)} of{" "}
+                    {String(state.importPickerFiles.length)} backups
+                  </text>
                 </>
               ) : null}
-              {state.calendarImportDryRunWarnings.length > 0 ? (
+              <text style={{ color: theme.muted, marginTop: 1 }}>
+                ↑/↓: move PgUp/PgDn: page Home/End: jump
+              </text>
+              <text style={{ color: theme.muted }}>
+                Enter: select m: manual path Esc: back
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "import_path" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.text }}>
+                Paste backup/export file path:
+              </text>
+              <input
+                value={state.importPathInput}
+                onChange={onImportPathChange}
+                onSubmit={(value) => {
+                  onImportPathChange(value);
+                  onPrimaryAction();
+                }}
+                focused={isScreenForInput(state.screen, "data-import-path")}
+                placeholder="/absolute/or/relative/path/to/export.json"
+                style={{
+                  backgroundColor: inputTheme.bg,
+                  color: inputTheme.text,
+                }}
+              />
+              <text style={{ color: theme.muted }}>
+                Relative paths resolve from the current working directory.
+              </text>
+              <text style={{ color: theme.muted }}>
+                Enter: continue Esc: back
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "import_mode" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.text, fontWeight: "bold" }}>
+                Select import mode
+              </text>
+              <SelectableOptionLine
+                label={`1) Merge (recommended) ${state.importMode === "merge" ? "(selected)" : ""}`}
+                selected={state.importMode === "merge"}
+                theme={theme}
+                onSelect={() => onImportModeSelect("merge")}
+              />
+              <SelectableOptionLine
+                label={`2) Replace ${state.importMode === "replace" ? "(selected)" : ""}`}
+                selected={state.importMode === "replace"}
+                theme={theme}
+                onSelect={() => onImportModeSelect("replace")}
+              />
+              <text style={{ color: theme.muted }}>
+                Merge keeps local-only tasks. Replace overwrites local data.
+              </text>
+              <text style={{ color: theme.muted, marginTop: 1 }}>
+                Replace confirmed: {replaceArmed}
+              </text>
+              <text style={{ color: theme.muted }}>
+                1/2: switch mode Enter: dry-run Esc: back
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "import_confirm" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.warn, fontWeight: "bold" }}>
+                Replace is destructive.
+              </text>
+              <text style={{ color: theme.text }}>
+                Type REPLACE to continue:
+              </text>
+              <input
+                value={state.replaceConfirmInput}
+                onChange={onReplaceConfirmChange}
+                onSubmit={(value) => {
+                  onReplaceConfirmChange(value);
+                  onPrimaryAction();
+                }}
+                focused={isScreenForInput(state.screen, "data-replace-confirm")}
+                placeholder="REPLACE"
+                style={{
+                  backgroundColor: inputTheme.bg,
+                  color: inputTheme.text,
+                }}
+              />
+              <text style={{ color: theme.muted }}>
+                Enter: confirm Any other value returns to mode select
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "import_dryrun" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.text, fontWeight: "bold" }}>
+                Dry-run summary
+              </text>
+              {dryRun ? (
                 <>
-                  <text style={{ color: theme.warn, marginTop: 1, fontWeight: "bold" }}>
+                  <text style={{ color: theme.muted }}>
+                    Mode: {dryRun.mode.toUpperCase()}
+                  </text>
+                  <text style={{ color: theme.muted }}>
+                    No data has been written yet.
+                  </text>
+                  {renderImportStats("Added", dryRun.tasks.added, theme)}
+                  {renderImportStats("Updated", dryRun.tasks.updated, theme)}
+                  {renderImportStats(
+                    "Overwritten (removed)",
+                    dryRun.tasks.removed,
+                    theme,
+                  )}
+                  {renderImportStats(
+                    "Unchanged",
+                    dryRun.tasks.unchanged,
+                    theme,
+                  )}
+                  {dryRun.warnings && dryRun.warnings.length > 0 ? (
+                    <box style={{ flexDirection: "column", marginTop: 1 }}>
+                      <text style={{ color: theme.warn, fontWeight: "bold" }}>
+                        Warnings
+                      </text>
+                      {dryRun.warnings.map((warning) => (
+                        <text
+                          key={`dryrun-warning-${warning}`}
+                          style={{ color: theme.warn }}
+                        >
+                          - {warning}
+                        </text>
+                      ))}
+                    </box>
+                  ) : null}
+                  <text style={{ color: theme.muted, marginTop: 1 }}>
+                    Enter: commit import Esc: cancel
+                  </text>
+                </>
+              ) : (
+                <text style={{ color: theme.warn }}>
+                  Dry-run result unavailable.
+                </text>
+              )}
+            </box>
+          ) : null}
+
+          {state.screen === "importing" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.text }}>Applying import...</text>
+              <text style={{ color: theme.muted }}>
+                Writing data and creating backup if enabled.
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "import_done" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.ok, fontWeight: "bold" }}>
+                Import complete
+              </text>
+              {committed ? (
+                <>
+                  {renderImportStats("Added", committed.tasks.added, theme)}
+                  {renderImportStats("Updated", committed.tasks.updated, theme)}
+                  {renderImportStats(
+                    "Overwritten (removed)",
+                    committed.tasks.removed,
+                    theme,
+                  )}
+                  {renderImportStats(
+                    "Unchanged",
+                    committed.tasks.unchanged,
+                    theme,
+                  )}
+                  {committed.backupPath ? (
+                    <>
+                      <text style={{ color: theme.muted, marginTop: 1 }}>
+                        Backup:
+                      </text>
+                      <text style={{ color: theme.text }}>
+                        {committed.backupPath}
+                      </text>
+                    </>
+                  ) : null}
+                  {committed.warnings && committed.warnings.length > 0 ? (
+                    <box style={{ flexDirection: "column", marginTop: 1 }}>
+                      <text style={{ color: theme.warn, fontWeight: "bold" }}>
+                        Warnings
+                      </text>
+                      {committed.warnings.map((warning) => (
+                        <text
+                          key={`import-warning-${warning}`}
+                          style={{ color: theme.warn }}
+                        >
+                          - {warning}
+                        </text>
+                      ))}
+                    </box>
+                  ) : null}
+                </>
+              ) : null}
+              <text style={{ color: theme.muted, marginTop: 1 }}>
+                Enter or Esc: return
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "show_path" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.text, fontWeight: "bold" }}>
+                Data location
+              </text>
+              <text style={{ color: theme.text }}>
+                {state.shownDataPath ?? dataPath}
+              </text>
+              <text style={{ color: theme.muted, marginTop: 1 }}>
+                Enter or Esc: back
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "calendar_export_intro" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.text, fontWeight: "bold" }}>
+                Export Calendar (.ics)
+              </text>
+              <text style={{ color: theme.text }}>
+                Exports open tasks as calendar events. Range and optional view
+                filter apply.
+              </text>
+              <text style={{ color: theme.muted }}>
+                This is a one-way export action, not continuous sync.
+              </text>
+              <text style={{ color: theme.muted }}>
+                Timezone: {state.calendarTimeZoneHint ?? "System default"}
+              </text>
+              <text style={{ color: theme.muted, marginTop: 1 }}>
+                Enter: continue Esc: back
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "calendar_export_range" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.text, fontWeight: "bold" }}>
+                Choose range
+              </text>
+              <SelectableOptionLine
+                label={`1) next7 ${state.calendarExportRange === "next7" ? "(selected)" : ""}`}
+                selected={state.calendarExportRange === "next7"}
+                theme={theme}
+                onSelect={() => onCalendarExportRangeSelect("next7")}
+              />
+              <SelectableOptionLine
+                label={`2) month ${state.calendarExportRange === "month" ? "(selected)" : ""}`}
+                selected={state.calendarExportRange === "month"}
+                theme={theme}
+                onSelect={() => onCalendarExportRangeSelect("month")}
+              />
+              <SelectableOptionLine
+                label={`3) all ${state.calendarExportRange === "all" ? "(selected)" : ""}`}
+                selected={state.calendarExportRange === "all"}
+                theme={theme}
+                onSelect={() => onCalendarExportRangeSelect("all")}
+              />
+              <text style={{ color: theme.muted }}>
+                next7 = today..+6, month = today..+29 (local start-of-day
+                boundaries).
+              </text>
+              <text style={{ color: theme.muted }}>
+                1/2/3 select Enter continue Esc back
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "calendar_export_view" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.text, fontWeight: "bold" }}>
+                Choose saved view (optional)
+              </text>
+              {calendarViewChoices.map((choice, index) => {
+                const active =
+                  (choice.value ?? "") === (state.calendarExportViewName ?? "");
+                return (
+                  <SelectableOptionLine
+                    key={`${choice.label}-${String(index)}`}
+                    label={`${String(index + 1)}) ${choice.label} ${active ? "(selected)" : ""}`}
+                    selected={active}
+                    theme={theme}
+                    onSelect={() => onCalendarExportViewSelect(choice.value)}
+                  />
+                );
+              })}
+              {savedViewNames.length === 0 ? (
+                <text style={{ color: theme.muted }}>
+                  No saved views available. Using all tasks.
+                </text>
+              ) : null}
+              <text style={{ color: theme.muted }}>
+                Number to select Enter continue Esc back
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "calendar_export_privacy" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.text, fontWeight: "bold" }}>
+                Choose privacy level
+              </text>
+              <SelectableOptionLine
+                label={`1) minimal ${state.calendarExportPrivacy === "minimal" ? "(selected)" : ""}`}
+                selected={state.calendarExportPrivacy === "minimal"}
+                theme={theme}
+                onSelect={() => onCalendarExportPrivacySelect("minimal")}
+              />
+              <SelectableOptionLine
+                label={`2) full ${state.calendarExportPrivacy === "full" ? "(selected)" : ""}`}
+                selected={state.calendarExportPrivacy === "full"}
+                theme={theme}
+                onSelect={() => onCalendarExportPrivacySelect("full")}
+              />
+              <text style={{ color: theme.muted }}>
+                minimal omits notes/tags/links/url. full includes all mapped
+                metadata.
+              </text>
+              <text style={{ color: theme.muted }}>
+                1/2 select Enter continue Esc back
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "calendar_export_path" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.text }}>Output path (.ics):</text>
+              <input
+                value={state.calendarExportPathInput}
+                onChange={onCalendarExportPathChange}
+                onSubmit={(value) => {
+                  onCalendarExportPathChange(value);
+                  onPrimaryAction();
+                }}
+                focused={isScreenForInput(state.screen, "calendar-export-path")}
+                placeholder="Defaults to backups/tadoi-calendar.YYYYMMDD-HHMMSS.ics"
+                style={{
+                  backgroundColor: inputTheme.bg,
+                  color: inputTheme.text,
+                }}
+              />
+              <text style={{ color: theme.muted }}>
+                Leave blank to use a timestamped path in the backups folder.
+              </text>
+              <text style={{ color: theme.muted }}>
+                Enter: continue Esc: back
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "calendar_export_confirm" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.text, fontWeight: "bold" }}>
+                Confirm calendar export
+              </text>
+              <text style={{ color: theme.muted }}>
+                Range: {state.calendarExportRange}
+              </text>
+              <text style={{ color: theme.muted }}>
+                View: {state.calendarExportViewName ?? "(All tasks)"}
+              </text>
+              <text style={{ color: theme.muted }}>
+                Privacy: {state.calendarExportPrivacy}
+              </text>
+              <text style={{ color: theme.muted }}>
+                Output:{" "}
+                {state.calendarExportPathInput.trim() ||
+                  "(auto timestamped path)"}
+              </text>
+              <text style={{ color: theme.muted, marginTop: 1 }}>
+                Enter: export Esc: back
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "calendar_exporting" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.text }}>
+                Exporting calendar ICS...
+              </text>
+              <text style={{ color: theme.muted }}>Please wait.</text>
+            </box>
+          ) : null}
+
+          {state.screen === "calendar_export_done" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.ok, fontWeight: "bold" }}>
+                Calendar export complete
+              </text>
+              <text style={{ color: theme.muted }}>
+                Path: {state.calendarExportResult?.outputPath ?? "(unknown)"}
+              </text>
+              <text style={{ color: theme.muted }}>
+                Events written:{" "}
+                {String(state.calendarExportResult?.eventsWritten ?? 0)}
+              </text>
+              <text style={{ color: theme.muted }}>
+                Series RRULE exported:{" "}
+                {String(state.calendarExportResult?.seriesRruleExported ?? 0)}
+              </text>
+              <text style={{ color: theme.muted }}>
+                Instance overrides:{" "}
+                {String(
+                  state.calendarExportResult?.instanceOverridesExported ?? 0,
+                )}
+              </text>
+              <text style={{ color: theme.muted }}>
+                EXDATE count:{" "}
+                {String(state.calendarExportResult?.exdateCount ?? 0)}
+              </text>
+              {state.calendarExportWarnings.length > 0 ? (
+                <>
+                  <text
+                    style={{
+                      color: theme.warn,
+                      marginTop: 1,
+                      fontWeight: "bold",
+                    }}
+                  >
                     Warnings:
                   </text>
-                  {state.calendarImportDryRunWarnings.map((warning) => (
+                  {state.calendarExportWarnings.map((warning) => (
+                    <text key={warning} style={{ color: theme.warn }}>
+                      - {warning}
+                    </text>
+                  ))}
+                </>
+              ) : null}
+              <text style={{ color: theme.muted }}>Enter or Esc: back</text>
+            </box>
+          ) : null}
+
+          {state.screen === "calendar_import_intro" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.text, fontWeight: "bold" }}>
+                Import Calendar (.ics)
+              </text>
+              <text style={{ color: theme.text }}>
+                Imports events into tasks and can round-trip update existing
+                tasks by X-TADOI-TASK-ID.
+              </text>
+              <text style={{ color: theme.muted }}>
+                Default mode is merge: tags/links union, notes append, minimal
+                overwrite.
+              </text>
+              <text style={{ color: theme.muted }}>
+                Recurrence guardrails: RRULE must be valid. RECURRENCE-ID
+                overrides supported.
+              </text>
+              <text style={{ color: theme.muted, marginTop: 1 }}>
+                Enter: continue Esc: back
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "calendar_import_path" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.text }}>Input ICS file path:</text>
+              <input
+                value={state.calendarImportPathInput}
+                onChange={onCalendarImportPathChange}
+                onSubmit={(value) => {
+                  onCalendarImportPathChange(value);
+                  onPrimaryAction();
+                }}
+                focused={isScreenForInput(state.screen, "calendar-import-path")}
+                placeholder="/absolute/or/relative/path/to/file.ics"
+                style={{
+                  backgroundColor: inputTheme.bg,
+                  color: inputTheme.text,
+                }}
+              />
+              <text style={{ color: theme.muted }}>
+                .ics extension is recommended. Relative paths resolve from CWD.
+              </text>
+              <text style={{ color: theme.muted }}>
+                Enter: continue Esc: back
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "calendar_import_range" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.text, fontWeight: "bold" }}>
+                Choose range
+              </text>
+              <SelectableOptionLine
+                label={`1) next7 ${state.calendarImportRange === "next7" ? "(selected)" : ""}`}
+                selected={state.calendarImportRange === "next7"}
+                theme={theme}
+                onSelect={() => onCalendarImportRangeSelect("next7")}
+              />
+              <SelectableOptionLine
+                label={`2) month ${state.calendarImportRange === "month" ? "(selected)" : ""}`}
+                selected={state.calendarImportRange === "month"}
+                theme={theme}
+                onSelect={() => onCalendarImportRangeSelect("month")}
+              />
+              <SelectableOptionLine
+                label={`3) all ${state.calendarImportRange === "all" ? "(selected)" : ""}`}
+                selected={state.calendarImportRange === "all"}
+                theme={theme}
+                onSelect={() => onCalendarImportRangeSelect("all")}
+              />
+              {state.calendarImportRange === "all" ? (
+                <text style={{ color: theme.warn }}>
+                  Warning: all can apply broader task updates.
+                </text>
+              ) : null}
+              <text style={{ color: theme.muted }}>
+                1/2/3 select Enter continue Esc back
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "calendar_import_view" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.text, fontWeight: "bold" }}>
+                Choose saved view (optional)
+              </text>
+              {calendarViewChoices.map((choice, index) => {
+                const active =
+                  (choice.value ?? "") === (state.calendarImportViewName ?? "");
+                return (
+                  <SelectableOptionLine
+                    key={`import-view-${choice.label}-${String(index)}`}
+                    label={`${String(index + 1)}) ${choice.label} ${active ? "(selected)" : ""}`}
+                    selected={active}
+                    theme={theme}
+                    onSelect={() => onCalendarImportViewSelect(choice.value)}
+                  />
+                );
+              })}
+              {savedViewNames.length === 0 ? (
+                <text style={{ color: theme.muted }}>
+                  No saved views available. No view filter will apply.
+                </text>
+              ) : null}
+              <text style={{ color: theme.muted }}>
+                Number to select Enter continue Esc back
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "calendar_import_mode" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.text, fontWeight: "bold" }}>
+                Choose import mode
+              </text>
+              <SelectableOptionLine
+                label={`1) merge ${state.calendarImportMode === "merge" ? "(selected)" : ""}`}
+                selected={state.calendarImportMode === "merge"}
+                theme={theme}
+                onSelect={() => onCalendarImportModeSelect("merge")}
+              />
+              <SelectableOptionLine
+                label={`2) update ${state.calendarImportMode === "update" ? "(selected)" : ""}`}
+                selected={state.calendarImportMode === "update"}
+                theme={theme}
+                onSelect={() => onCalendarImportModeSelect("update")}
+              />
+              <SelectableOptionLine
+                label={`3) create ${state.calendarImportMode === "create" ? "(selected)" : ""}`}
+                selected={state.calendarImportMode === "create"}
+                theme={theme}
+                onSelect={() => onCalendarImportModeSelect("create")}
+              />
+              <text style={{ color: theme.muted }}>
+                merge = conservative, update = calendar wins, create = always
+                new tasks.
+              </text>
+              <text style={{ color: theme.muted }}>
+                1/2/3 select Enter continue Esc back
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "calendar_import_horizon" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.text }}>
+                Horizon days (default 365, max 3650):
+              </text>
+              <input
+                value={state.calendarImportHorizonInput}
+                onChange={onCalendarImportHorizonChange}
+                onSubmit={(value) => {
+                  onCalendarImportHorizonChange(value);
+                  onPrimaryAction();
+                }}
+                focused={isScreenForInput(
+                  state.screen,
+                  "calendar-import-horizon",
+                )}
+                placeholder="365"
+                style={{
+                  backgroundColor: inputTheme.bg,
+                  color: inputTheme.text,
+                }}
+              />
+              <text style={{ color: theme.muted }}>
+                Bounds recurrence expansion paths and hard-cap checks.
+              </text>
+              <text style={{ color: theme.muted }}>
+                Enter: continue Esc: back
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "calendar_import_tag" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.text }}>
+                Optional tag for newly created tasks (recommended: imported):
+              </text>
+              <input
+                value={state.calendarImportTagInput}
+                onChange={onCalendarImportTagChange}
+                onSubmit={(value) => {
+                  onCalendarImportTagChange(value);
+                  onPrimaryAction();
+                }}
+                focused={isScreenForInput(state.screen, "calendar-import-tag")}
+                placeholder="(optional)"
+                style={{
+                  backgroundColor: inputTheme.bg,
+                  color: inputTheme.text,
+                }}
+              />
+              <text style={{ color: theme.muted }}>
+                Applies to created tasks only.
+              </text>
+              <text style={{ color: theme.muted }}>
+                Enter: run mandatory dry-run Esc: back
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "calendar_import_dryrun_running" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.text }}>
+                Running dry-run import...
+              </text>
+              <text style={{ color: theme.muted }}>
+                Validating RRULE, range/view filters, and recurrence safeguards.
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "calendar_import_dryrun" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.text, fontWeight: "bold" }}>
+                Dry-run summary (required)
+              </text>
+              {state.calendarImportDryRun ? (
+                <>
+                  {renderImportStats(
+                    "Events parsed",
+                    state.calendarImportDryRun.eventsParsed,
+                    theme,
+                  )}
+                  {renderImportStats(
+                    "Matched by X-TADOI-TASK-ID",
+                    state.calendarImportDryRun.matchedByTaskId,
+                    theme,
+                  )}
+                  {renderImportStats(
+                    "Matched by UID",
+                    state.calendarImportDryRun.matchedByUid,
+                    theme,
+                  )}
+                  {renderImportStats(
+                    "Created",
+                    state.calendarImportDryRun.created,
+                    theme,
+                  )}
+                  {renderImportStats(
+                    "Updated",
+                    state.calendarImportDryRun.updated,
+                    theme,
+                  )}
+                  {renderImportStats(
+                    "Merged",
+                    state.calendarImportDryRun.merged,
+                    theme,
+                  )}
+                  {renderImportStats(
+                    "Skipped",
+                    state.calendarImportDryRun.skipped,
+                    theme,
+                  )}
+                  {renderImportStats(
+                    "Errors",
+                    state.calendarImportDryRun.errors,
+                    theme,
+                  )}
+                  {renderImportStats(
+                    "Series imported",
+                    state.calendarImportDryRun.recurringSeriesImported,
+                    theme,
+                  )}
+                  {renderImportStats(
+                    "Overrides created",
+                    state.calendarImportDryRun.overridesCreated,
+                    theme,
+                  )}
+                  {renderImportStats(
+                    "Overrides updated",
+                    state.calendarImportDryRun.overridesUpdated,
+                    theme,
+                  )}
+                  {renderImportStats(
+                    "Cancellations applied",
+                    state.calendarImportDryRun.cancellationsApplied,
+                    theme,
+                  )}
+                  {state.calendarImportDryRunHasErrors &&
+                  state.calendarImportDryRunErrorReasons.length > 0 ? (
+                    <>
+                      <text
+                        style={{
+                          color: theme.warn,
+                          marginTop: 1,
+                          fontWeight: "bold",
+                        }}
+                      >
+                        Top errors:
+                      </text>
+                      {state.calendarImportDryRunErrorReasons.map((reason) => (
+                        <text key={reason} style={{ color: theme.warn }}>
+                          - {reason}
+                        </text>
+                      ))}
+                    </>
+                  ) : null}
+                  {state.calendarImportDryRunReportPath ? (
+                    <>
+                      <text style={{ color: theme.muted, marginTop: 1 }}>
+                        Report details:
+                      </text>
+                      <text style={{ color: theme.text }}>
+                        {state.calendarImportDryRunReportPath}
+                      </text>
+                    </>
+                  ) : null}
+                  {state.calendarImportDryRunWarnings.length > 0 ? (
+                    <>
+                      <text
+                        style={{
+                          color: theme.warn,
+                          marginTop: 1,
+                          fontWeight: "bold",
+                        }}
+                      >
+                        Warnings:
+                      </text>
+                      {state.calendarImportDryRunWarnings.map((warning) => (
+                        <text key={warning} style={{ color: theme.warn }}>
+                          - {warning}
+                        </text>
+                      ))}
+                    </>
+                  ) : null}
+                  <text style={{ color: theme.muted, marginTop: 1 }}>
+                    Enter:{" "}
+                    {shouldBlockCalendarCommit
+                      ? "commit blocked (fix dry-run errors)"
+                      : "commit import"}
+                  </text>
+                </>
+              ) : (
+                <text style={{ color: theme.warn }}>
+                  Dry-run result unavailable.
+                </text>
+              )}
+            </box>
+          ) : null}
+
+          {state.screen === "calendar_import_confirm" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.warn, fontWeight: "bold" }}>
+                High-impact import confirmation required.
+              </text>
+              <text style={{ color: theme.text }}>
+                Type IMPORT to continue (mode={state.calendarImportMode}, range=
+                {state.calendarImportRange}).
+              </text>
+              <input
+                value={state.calendarImportConfirmInput}
+                onChange={onCalendarImportConfirmChange}
+                onSubmit={(value) => {
+                  onCalendarImportConfirmChange(value);
+                  onPrimaryAction();
+                }}
+                focused={isScreenForInput(
+                  state.screen,
+                  "calendar-import-confirm",
+                )}
+                placeholder="IMPORT"
+                style={{
+                  backgroundColor: inputTheme.bg,
+                  color: inputTheme.text,
+                }}
+              />
+              <text style={{ color: theme.muted }}>
+                Enter: confirm Esc: back
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "calendar_importing" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.text }}>
+                Applying calendar import...
+              </text>
+              <text style={{ color: theme.muted }}>
+                Creating pre-import backup and writing updates atomically.
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "calendar_import_done" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.ok, fontWeight: "bold" }}>
+                Calendar import complete
+              </text>
+              {state.calendarImportCommitted ? (
+                <>
+                  {renderImportStats(
+                    "Created",
+                    state.calendarImportCommitted.created,
+                    theme,
+                  )}
+                  {renderImportStats(
+                    "Updated",
+                    state.calendarImportCommitted.updated,
+                    theme,
+                  )}
+                  {renderImportStats(
+                    "Merged",
+                    state.calendarImportCommitted.merged,
+                    theme,
+                  )}
+                  {renderImportStats(
+                    "Skipped",
+                    state.calendarImportCommitted.skipped,
+                    theme,
+                  )}
+                  {renderImportStats(
+                    "Series imported",
+                    state.calendarImportCommitted.recurringSeriesImported,
+                    theme,
+                  )}
+                  {renderImportStats(
+                    "Overrides created",
+                    state.calendarImportCommitted.overridesCreated,
+                    theme,
+                  )}
+                  {renderImportStats(
+                    "Overrides updated",
+                    state.calendarImportCommitted.overridesUpdated,
+                    theme,
+                  )}
+                  {renderImportStats(
+                    "Cancellations applied",
+                    state.calendarImportCommitted.cancellationsApplied,
+                    theme,
+                  )}
+                </>
+              ) : null}
+              {state.calendarImportCommittedBackupPath ? (
+                <>
+                  <text style={{ color: theme.muted, marginTop: 1 }}>
+                    Pre-import backup:
+                  </text>
+                  <text style={{ color: theme.text }}>
+                    {state.calendarImportCommittedBackupPath}
+                  </text>
+                </>
+              ) : null}
+              {state.calendarImportCommittedReportPath ? (
+                <>
+                  <text style={{ color: theme.muted, marginTop: 1 }}>
+                    Report:
+                  </text>
+                  <text style={{ color: theme.text }}>
+                    {state.calendarImportCommittedReportPath}
+                  </text>
+                </>
+              ) : null}
+              {state.calendarImportCommittedWarnings.length > 0 ? (
+                <>
+                  <text
+                    style={{
+                      color: theme.warn,
+                      marginTop: 1,
+                      fontWeight: "bold",
+                    }}
+                  >
+                    Warnings:
+                  </text>
+                  {state.calendarImportCommittedWarnings.map((warning) => (
                     <text key={warning} style={{ color: theme.warn }}>
                       - {warning}
                     </text>
@@ -1324,402 +1798,378 @@ export function BackupCenterScreen({
                 </>
               ) : null}
               <text style={{ color: theme.muted, marginTop: 1 }}>
-                Enter: {shouldBlockCalendarCommit ? "commit blocked (fix dry-run errors)" : "commit import"}
+                Enter or Esc: back
               </text>
-            </>
-          ) : (
-            <text style={{ color: theme.warn }}>Dry-run result unavailable.</text>
-          )}
-        </box>
-      ) : null}
-
-      {state.screen === "calendar_import_confirm" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.warn, fontWeight: "bold" }}>
-            High-impact import confirmation required.
-          </text>
-          <text style={{ color: theme.text }}>
-            Type IMPORT to continue (mode={state.calendarImportMode}, range={state.calendarImportRange}).
-          </text>
-          <input
-            value={state.calendarImportConfirmInput}
-            onChange={onCalendarImportConfirmChange}
-            onSubmit={(value) => {
-              onCalendarImportConfirmChange(value);
-              onPrimaryAction();
-            }}
-            focused={isScreenForInput(state.screen, "calendar-import-confirm")}
-            placeholder="IMPORT"
-            style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
-          />
-          <text style={{ color: theme.muted }}>Enter: confirm   Esc: back</text>
-        </box>
-      ) : null}
-
-      {state.screen === "calendar_importing" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.text }}>Applying calendar import...</text>
-          <text style={{ color: theme.muted }}>
-            Creating pre-import backup and writing updates atomically.
-          </text>
-        </box>
-      ) : null}
-
-      {state.screen === "calendar_import_done" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.ok, fontWeight: "bold" }}>Calendar import complete</text>
-          {state.calendarImportCommitted ? (
-            <>
-              {renderImportStats("Created", state.calendarImportCommitted.created, theme)}
-              {renderImportStats("Updated", state.calendarImportCommitted.updated, theme)}
-              {renderImportStats("Merged", state.calendarImportCommitted.merged, theme)}
-              {renderImportStats("Skipped", state.calendarImportCommitted.skipped, theme)}
-              {renderImportStats("Series imported", state.calendarImportCommitted.recurringSeriesImported, theme)}
-              {renderImportStats("Overrides created", state.calendarImportCommitted.overridesCreated, theme)}
-              {renderImportStats("Overrides updated", state.calendarImportCommitted.overridesUpdated, theme)}
-              {renderImportStats("Cancellations applied", state.calendarImportCommitted.cancellationsApplied, theme)}
-            </>
+            </box>
           ) : null}
-          {state.calendarImportCommittedBackupPath ? (
-            <>
-              <text style={{ color: theme.muted, marginTop: 1 }}>Pre-import backup:</text>
-              <text style={{ color: theme.text }}>{state.calendarImportCommittedBackupPath}</text>
-            </>
-          ) : null}
-          {state.calendarImportCommittedReportPath ? (
-            <>
-              <text style={{ color: theme.muted, marginTop: 1 }}>Report:</text>
-              <text style={{ color: theme.text }}>{state.calendarImportCommittedReportPath}</text>
-            </>
-          ) : null}
-          {state.calendarImportCommittedWarnings.length > 0 ? (
-            <>
-              <text style={{ color: theme.warn, marginTop: 1, fontWeight: "bold" }}>
-                Warnings:
+
+          {state.screen === "github_status" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.text, fontWeight: "bold" }}>
+                GitHub (CLI) Cloud Backups
               </text>
-              {state.calendarImportCommittedWarnings.map((warning) => (
-                <text key={warning} style={{ color: theme.warn }}>
-                  - {warning}
-                </text>
-              ))}
-            </>
-          ) : null}
-          <text style={{ color: theme.muted, marginTop: 1 }}>
-            Enter or Esc: back
-          </text>
-        </box>
-      ) : null}
-
-      {state.screen === "github_status" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.text, fontWeight: "bold" }}>
-            GitHub (CLI) Cloud Backups
-          </text>
-          <text style={{ color: state.githubGhDetected ? theme.ok : theme.warn }}>
-            gh detected: {state.githubGhDetected ? "yes" : "no"}
-          </text>
-          <text style={{ color: state.githubLoggedIn ? theme.ok : theme.warn }}>
-            gh login: {state.githubLoggedIn ? "yes" : "no"}
-          </text>
-          <text style={{ color: theme.muted }}>
-            account: {state.githubUsername ?? "(unknown)"}
-          </text>
-          <text style={{ color: theme.muted }}>
-            repo: {state.githubOwnerRepoConfigured ?? "(not configured)"}
-          </text>
-          <text
-            style={{
-              color:
-                state.githubRepoIsPublic === true
-                  ? theme.warn
-                  : state.githubRepoIsPublic === false
-                    ? theme.ok
-                    : theme.muted
-            }}
-          >
-            visibility:{" "}
-            {state.githubRepoIsPublic === true
-              ? "public"
-              : state.githubRepoIsPublic === false
-                ? "private"
-                : "unknown"}
-          </text>
-          {state.githubRepoIsPublic === true ? (
-            <text style={{ color: theme.warn, fontWeight: "bold" }}>
-              WARNING: repo is public; cloud backups are publicly accessible.
-            </text>
-          ) : null}
-          <text style={{ color: theme.muted }}>
-            auto-push policy: {state.githubAutoPushPolicy}
-          </text>
-          <text
-            style={{
-              color: state.githubSnapshotEncryptionActive ? theme.ok : theme.warn
-            }}
-          >
-            snapshot encryption:{" "}
-            {state.githubSnapshotEncryptionActive ? "on (passphrase set)" : "off"}
-          </text>
-          <text style={{ color: theme.muted }}>
-            last push: {state.githubLastPushedAt ?? "(never)"}
-          </text>
-          <text style={{ color: theme.muted }}>
-            last restore pull: {state.githubLastRestorePulledAt ?? "(never)"}
-          </text>
-          {state.githubSelectedSnapshotTimestamp ? (
-            <text style={{ color: theme.muted }}>
-              last selected snapshot: {state.githubSelectedSnapshotTimestamp}
-            </text>
-          ) : null}
-          <text style={{ color: theme.muted, marginTop: 1 }}>
-            Connect checks gh auth and enforces personal repo ownership.
-          </text>
-          <text style={{ color: theme.muted }}>
-            Push/Restore stay inside existing JSON import safety gates.
-          </text>
-          <text style={{ color: theme.muted, marginTop: 1 }}>
-            1 connect   2 push now   3 restore   4 back   Enter: connect flow
-          </text>
-        </box>
-      ) : null}
-
-      {state.screen === "github_connect_mode" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.text, fontWeight: "bold" }}>
-            Connect GitHub backup repo
-          </text>
-          <SelectableOptionLine
-            label={`1) Create private repo (${state.githubConnectMode === "create" ? "selected" : ""})`}
-            selected={state.githubConnectMode === "create"}
-            theme={theme}
-            onSelect={() => onGitHubConnectModeSelect("create")}
-          />
-          <SelectableOptionLine
-            label={`2) Use existing repo (${state.githubConnectMode === "existing" ? "selected" : ""})`}
-            selected={state.githubConnectMode === "existing"}
-            theme={theme}
-            onSelect={() => onGitHubConnectModeSelect("existing")}
-          />
-          {state.githubConnectMode === "create" ? (
-            <>
-              <text style={{ color: theme.text, marginTop: 1 }}>
-                New private repo name:
-              </text>
-              <input
-                value={state.githubRepoNameInput}
-                onChange={(value) => onGitHubRepoNameChange?.(value)}
-                onSubmit={(value) => {
-                  onGitHubRepoNameChange?.(value);
-                  onPrimaryAction();
-                }}
-                focused={isScreenForInput(state.screen, "github-repo-name")}
-                placeholder="tadoi-backups"
-                style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
-              />
-            </>
-          ) : (
-            <text style={{ color: theme.muted, marginTop: 1 }}>
-              Continue to enter owner/repo.
-            </text>
-          )}
-          <text style={{ color: theme.muted, marginTop: 1 }}>
-            1/2 select mode   Enter continue   Esc back
-          </text>
-        </box>
-      ) : null}
-
-      {state.screen === "github_connect_repo_input" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.text, fontWeight: "bold" }}>
-            Use existing personal repo
-          </text>
-          <text style={{ color: theme.text }}>owner/repo:</text>
-          <input
-            value={state.githubOwnerRepoInput}
-            onChange={(value) => onGitHubOwnerRepoChange?.(value)}
-            onSubmit={(value) => {
-              onGitHubOwnerRepoChange?.(value);
-              onPrimaryAction();
-            }}
-            focused={isScreenForInput(state.screen, "github-owner-repo")}
-            placeholder="your-username/tadoi-backups"
-            style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
-          />
-          <text style={{ color: theme.muted }}>
-            v1 supports personal repos only (owner must match active gh account).
-          </text>
-          <text style={{ color: theme.muted, marginTop: 1 }}>
-            Enter continue   Esc back
-          </text>
-        </box>
-      ) : null}
-
-      {state.screen === "github_connect_public_confirm" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.warn, fontWeight: "bold" }}>
-            Repository is public
-          </text>
-          <text style={{ color: theme.text }}>
-            Type PUBLIC to confirm using a public repo:
-          </text>
-          <text style={{ color: theme.warn }}>
-            This repo is not private. Backup snapshots will be publicly readable.
-          </text>
-          <input
-            value={state.githubPublicConfirmInput}
-            onChange={(value) => onGitHubPublicConfirmChange?.(value)}
-            onSubmit={(value) => {
-              onGitHubPublicConfirmChange?.(value);
-              onPrimaryAction();
-            }}
-            focused={isScreenForInput(state.screen, "github-public-confirm")}
-            placeholder="PUBLIC"
-            style={{ backgroundColor: inputTheme.bg, color: inputTheme.text }}
-          />
-          <text style={{ color: theme.muted }}>
-            Enter confirm   Esc back
-          </text>
-        </box>
-      ) : null}
-
-      {state.screen === "github_connecting" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.text }}>Connecting GitHub backup repo...</text>
-          <text style={{ color: theme.muted }}>
-            Checking gh, auth status, and repository privacy.
-          </text>
-        </box>
-      ) : null}
-
-      {state.screen === "github_push_running" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.text }}>Pushing snapshot to GitHub...</text>
-          <text style={{ color: theme.muted }}>
-            Writing timestamped state/settings/manifest and updating latest pointers.
-          </text>
-        </box>
-      ) : null}
-
-      {state.screen === "github_push_done" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.ok, fontWeight: "bold" }}>GitHub snapshot pushed</text>
-          <text style={{ color: theme.muted }}>
-            Last push: {state.githubLastPushedAt ?? "(unknown)"}
-          </text>
-          <text style={{ color: theme.muted }}>
-            Commit: {state.githubPushCommitSha ?? "(n/a)"}
-          </text>
-          <text style={{ color: theme.muted, marginTop: 1 }}>
-            Enter or Esc: back
-          </text>
-        </box>
-      ) : null}
-
-      {state.screen === "github_restore_loading" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.text }}>Loading remote snapshots...</text>
-          <text style={{ color: theme.muted }}>
-            Listing manifests from the configured GitHub repo.
-          </text>
-        </box>
-      ) : null}
-
-      {state.screen === "github_restore_picker" ? (
-        <box
-          style={{ flexDirection: "column", marginTop: 1 }}
-          onMouseScroll={(event) => {
-            const delta = resolveBackupWheelDelta(event.scroll?.direction);
-            if (delta === 0 || state.githubSnapshots.length === 0) return;
-            if (typeof event.stopPropagation === "function") {
-              event.stopPropagation();
-            }
-            onGitHubSnapshotWheelScroll?.(delta);
-          }}
-        >
-          <text style={{ color: theme.text, fontWeight: "bold" }}>Restore from GitHub</text>
-          {state.githubSnapshotLoading ? (
-            <text style={{ color: theme.muted, marginTop: 1 }}>Loading snapshots...</text>
-          ) : null}
-          {state.githubSnapshotError ? (
-            <text style={{ color: theme.warn, marginTop: 1 }}>
-              Failed to list snapshots: {state.githubSnapshotError}
-            </text>
-          ) : null}
-          {state.githubSnapshots.length === 0 ? (
-            <text style={{ color: theme.muted, marginTop: 1 }}>
-              No snapshots found for this device path prefix.
-            </text>
-          ) : (
-            <>
-              <box
+              <text
                 style={{
-                  flexDirection: "column",
-                  marginTop: 1,
-                  border: true,
-                  borderStyle: "single",
-                  borderColor: theme.outline
+                  color: state.githubGhDetected ? theme.ok : theme.warn,
                 }}
               >
-                {githubVisibleSnapshots.map((snapshot, visibleIndex) => {
-                  const index = githubPickerWindow.start + visibleIndex;
-                  const selected = index === githubPickerWindow.selectedIndex;
-                  const counts =
-                    snapshot.tasksTotal !== undefined
-                      ? ` open=${String(snapshot.tasksOpen ?? 0)} total=${String(snapshot.tasksTotal)}`
-                      : "";
-                  return (
-                    <SelectableOptionLine
-                      key={snapshot.id}
-                      label={`${snapshot.timestamp}${counts}`}
-                      selected={selected}
-                      theme={theme}
-                      onSelect={() => onGitHubSnapshotSelectIndex?.(index)}
-                    />
-                  );
-                })}
-              </box>
-              <text style={{ color: theme.muted, marginTop: 1 }}>
-                Showing {String(githubPickerWindow.start + 1)}-{String(githubPickerWindow.end)} of{" "}
-                {String(state.githubSnapshots.length)} snapshots
+                gh detected: {state.githubGhDetected ? "yes" : "no"}
               </text>
-            </>
-          )}
-          <text style={{ color: theme.muted, marginTop: 1 }}>
-            ↑/↓ move   PgUp/PgDn page   Home/End jump
-          </text>
-          <text style={{ color: theme.muted }}>
-            Enter: download + run dry-run import gate   Esc: back
-          </text>
-        </box>
-      ) : null}
-
-      {state.screen === "github_restore_downloading" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.text }}>Downloading selected snapshot...</text>
-          <text style={{ color: theme.muted }}>
-            Preparing staged JSON payload for existing dry-run import flow.
-          </text>
-        </box>
-      ) : null}
-
-      {state.screen === "error" ? (
-        <box style={{ flexDirection: "column", marginTop: 1 }}>
-          <text style={{ color: theme.warn, fontWeight: "bold" }}>Operation failed</text>
-          <text style={{ color: theme.text }}>{state.errorMessage ?? "Unknown error"}</text>
-          {state.errorDetail ? (
-            <>
-              <text style={{ color: theme.muted }}>Detail:</text>
-              <text style={{ color: theme.muted }}>{state.errorDetail}</text>
-            </>
+              <text
+                style={{ color: state.githubLoggedIn ? theme.ok : theme.warn }}
+              >
+                gh login: {state.githubLoggedIn ? "yes" : "no"}
+              </text>
+              <text style={{ color: theme.muted }}>
+                account: {state.githubUsername ?? "(unknown)"}
+              </text>
+              <text style={{ color: theme.muted }}>
+                repo: {state.githubOwnerRepoConfigured ?? "(not configured)"}
+              </text>
+              <text
+                style={{
+                  color:
+                    state.githubRepoIsPublic === true
+                      ? theme.warn
+                      : state.githubRepoIsPublic === false
+                        ? theme.ok
+                        : theme.muted,
+                }}
+              >
+                visibility:{" "}
+                {state.githubRepoIsPublic === true
+                  ? "public"
+                  : state.githubRepoIsPublic === false
+                    ? "private"
+                    : "unknown"}
+              </text>
+              {state.githubRepoIsPublic === true ? (
+                <text style={{ color: theme.warn, fontWeight: "bold" }}>
+                  WARNING: repo is public; cloud backups are publicly
+                  accessible.
+                </text>
+              ) : null}
+              <text style={{ color: theme.muted }}>
+                auto-push policy: {state.githubAutoPushPolicy}
+              </text>
+              <text
+                style={{
+                  color: state.githubSnapshotEncryptionActive
+                    ? theme.ok
+                    : theme.warn,
+                }}
+              >
+                snapshot encryption:{" "}
+                {state.githubSnapshotEncryptionActive
+                  ? "on (passphrase set)"
+                  : "off"}
+              </text>
+              <text style={{ color: theme.muted }}>
+                last push: {state.githubLastPushedAt ?? "(never)"}
+              </text>
+              <text style={{ color: theme.muted }}>
+                last restore pull:{" "}
+                {state.githubLastRestorePulledAt ?? "(never)"}
+              </text>
+              {state.githubSelectedSnapshotTimestamp ? (
+                <text style={{ color: theme.muted }}>
+                  last selected snapshot:{" "}
+                  {state.githubSelectedSnapshotTimestamp}
+                </text>
+              ) : null}
+              <text style={{ color: theme.muted, marginTop: 1 }}>
+                Connect checks gh auth and enforces personal repo ownership.
+              </text>
+              <text style={{ color: theme.muted }}>
+                Push/Restore stay inside existing JSON import safety gates.
+              </text>
+              <text style={{ color: theme.muted, marginTop: 1 }}>
+                1 connect 2 push now 3 restore 4 back Enter: connect flow
+              </text>
+            </box>
           ) : null}
-          <text style={{ color: theme.muted, marginTop: 1 }}>Enter or Esc: back</text>
-        </box>
-      ) : null}
+
+          {state.screen === "github_connect_mode" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.text, fontWeight: "bold" }}>
+                Connect GitHub backup repo
+              </text>
+              <SelectableOptionLine
+                label={`1) Create private repo (${state.githubConnectMode === "create" ? "selected" : ""})`}
+                selected={state.githubConnectMode === "create"}
+                theme={theme}
+                onSelect={() => onGitHubConnectModeSelect("create")}
+              />
+              <SelectableOptionLine
+                label={`2) Use existing repo (${state.githubConnectMode === "existing" ? "selected" : ""})`}
+                selected={state.githubConnectMode === "existing"}
+                theme={theme}
+                onSelect={() => onGitHubConnectModeSelect("existing")}
+              />
+              {state.githubConnectMode === "create" ? (
+                <>
+                  <text style={{ color: theme.text, marginTop: 1 }}>
+                    New private repo name:
+                  </text>
+                  <input
+                    value={state.githubRepoNameInput}
+                    onChange={(value) => onGitHubRepoNameChange?.(value)}
+                    onSubmit={(value) => {
+                      onGitHubRepoNameChange?.(value);
+                      onPrimaryAction();
+                    }}
+                    focused={isScreenForInput(state.screen, "github-repo-name")}
+                    placeholder="tadoi-backups"
+                    style={{
+                      backgroundColor: inputTheme.bg,
+                      color: inputTheme.text,
+                    }}
+                  />
+                </>
+              ) : (
+                <text style={{ color: theme.muted, marginTop: 1 }}>
+                  Continue to enter owner/repo.
+                </text>
+              )}
+              <text style={{ color: theme.muted, marginTop: 1 }}>
+                1/2 select mode Enter continue Esc back
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "github_connect_repo_input" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.text, fontWeight: "bold" }}>
+                Use existing personal repo
+              </text>
+              <text style={{ color: theme.text }}>owner/repo:</text>
+              <input
+                value={state.githubOwnerRepoInput}
+                onChange={(value) => onGitHubOwnerRepoChange?.(value)}
+                onSubmit={(value) => {
+                  onGitHubOwnerRepoChange?.(value);
+                  onPrimaryAction();
+                }}
+                focused={isScreenForInput(state.screen, "github-owner-repo")}
+                placeholder="your-username/tadoi-backups"
+                style={{
+                  backgroundColor: inputTheme.bg,
+                  color: inputTheme.text,
+                }}
+              />
+              <text style={{ color: theme.muted }}>
+                v1 supports personal repos only (owner must match active gh
+                account).
+              </text>
+              <text style={{ color: theme.muted, marginTop: 1 }}>
+                Enter continue Esc back
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "github_connect_public_confirm" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.warn, fontWeight: "bold" }}>
+                Repository is public
+              </text>
+              <text style={{ color: theme.text }}>
+                Type PUBLIC to confirm using a public repo:
+              </text>
+              <text style={{ color: theme.warn }}>
+                This repo is not private. Backup snapshots will be publicly
+                readable.
+              </text>
+              <input
+                value={state.githubPublicConfirmInput}
+                onChange={(value) => onGitHubPublicConfirmChange?.(value)}
+                onSubmit={(value) => {
+                  onGitHubPublicConfirmChange?.(value);
+                  onPrimaryAction();
+                }}
+                focused={isScreenForInput(
+                  state.screen,
+                  "github-public-confirm",
+                )}
+                placeholder="PUBLIC"
+                style={{
+                  backgroundColor: inputTheme.bg,
+                  color: inputTheme.text,
+                }}
+              />
+              <text style={{ color: theme.muted }}>Enter confirm Esc back</text>
+            </box>
+          ) : null}
+
+          {state.screen === "github_connecting" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.text }}>
+                Connecting GitHub backup repo...
+              </text>
+              <text style={{ color: theme.muted }}>
+                Checking gh, auth status, and repository privacy.
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "github_push_running" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.text }}>
+                Pushing snapshot to GitHub...
+              </text>
+              <text style={{ color: theme.muted }}>
+                Writing timestamped state/settings/manifest and updating latest
+                pointers.
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "github_push_done" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.ok, fontWeight: "bold" }}>
+                GitHub snapshot pushed
+              </text>
+              <text style={{ color: theme.muted }}>
+                Last push: {state.githubLastPushedAt ?? "(unknown)"}
+              </text>
+              <text style={{ color: theme.muted }}>
+                Commit: {state.githubPushCommitSha ?? "(n/a)"}
+              </text>
+              <text style={{ color: theme.muted, marginTop: 1 }}>
+                Enter or Esc: back
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "github_restore_loading" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.text }}>
+                Loading remote snapshots...
+              </text>
+              <text style={{ color: theme.muted }}>
+                Listing manifests from the configured GitHub repo.
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "github_restore_picker" ? (
+            <box
+              style={{ flexDirection: "column", marginTop: 1 }}
+              onMouseScroll={(event) => {
+                const delta = resolveBackupWheelDelta(event.scroll?.direction);
+                if (delta === 0 || state.githubSnapshots.length === 0) return;
+                if (typeof event.stopPropagation === "function") {
+                  event.stopPropagation();
+                }
+                onGitHubSnapshotWheelScroll?.(delta);
+              }}
+            >
+              <text style={{ color: theme.text, fontWeight: "bold" }}>
+                Restore from GitHub
+              </text>
+              {state.githubSnapshotLoading ? (
+                <text style={{ color: theme.muted, marginTop: 1 }}>
+                  Loading snapshots...
+                </text>
+              ) : null}
+              {state.githubSnapshotError ? (
+                <text style={{ color: theme.warn, marginTop: 1 }}>
+                  Failed to list snapshots: {state.githubSnapshotError}
+                </text>
+              ) : null}
+              {state.githubSnapshots.length === 0 ? (
+                <text style={{ color: theme.muted, marginTop: 1 }}>
+                  No snapshots found for this device path prefix.
+                </text>
+              ) : (
+                <>
+                  <box
+                    style={{
+                      flexDirection: "column",
+                      marginTop: 1,
+                      border: true,
+                      borderStyle: "single",
+                      borderColor: theme.outline,
+                    }}
+                  >
+                    {githubVisibleSnapshots.map((snapshot, visibleIndex) => {
+                      const index = githubPickerWindow.start + visibleIndex;
+                      const selected =
+                        index === githubPickerWindow.selectedIndex;
+                      const counts =
+                        snapshot.tasksTotal !== undefined
+                          ? ` open=${String(snapshot.tasksOpen ?? 0)} total=${String(snapshot.tasksTotal)}`
+                          : "";
+                      return (
+                        <SelectableOptionLine
+                          key={snapshot.id}
+                          label={`${snapshot.timestamp}${counts}`}
+                          selected={selected}
+                          theme={theme}
+                          onSelect={() => onGitHubSnapshotSelectIndex?.(index)}
+                        />
+                      );
+                    })}
+                  </box>
+                  <text style={{ color: theme.muted, marginTop: 1 }}>
+                    Showing {String(githubPickerWindow.start + 1)}-
+                    {String(githubPickerWindow.end)} of{" "}
+                    {String(state.githubSnapshots.length)} snapshots
+                  </text>
+                </>
+              )}
+              <text style={{ color: theme.muted, marginTop: 1 }}>
+                ↑/↓ move PgUp/PgDn page Home/End jump
+              </text>
+              <text style={{ color: theme.muted }}>
+                Enter: download + run dry-run import gate Esc: back
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "github_restore_downloading" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.text }}>
+                Downloading selected snapshot...
+              </text>
+              <text style={{ color: theme.muted }}>
+                Preparing staged JSON payload for existing dry-run import flow.
+              </text>
+            </box>
+          ) : null}
+
+          {state.screen === "error" ? (
+            <box style={{ flexDirection: "column", marginTop: 1 }}>
+              <text style={{ color: theme.warn, fontWeight: "bold" }}>
+                Operation failed
+              </text>
+              <text style={{ color: theme.text }}>
+                {state.errorMessage ?? "Unknown error"}
+              </text>
+              {state.errorDetail ? (
+                <>
+                  <text style={{ color: theme.muted }}>Detail:</text>
+                  <text style={{ color: theme.muted }}>
+                    {state.errorDetail}
+                  </text>
+                </>
+              ) : null}
+              <text style={{ color: theme.muted, marginTop: 1 }}>
+                Enter or Esc: back
+              </text>
+            </box>
+          ) : null}
         </scrollbox>
       </box>
 
       {footerActions.length > 0 ? (
-        <box style={{ flexDirection: "row", gap: 1, marginTop: 1, flexWrap: "wrap" }}>
+        <box
+          style={{
+            flexDirection: "row",
+            gap: 1,
+            marginTop: 1,
+            flexWrap: "wrap",
+          }}
+        >
           {footerActions.map((action) => (
             <BackupActionButton
               key={action.key}

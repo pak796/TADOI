@@ -1,0 +1,47 @@
+context_note: "Repo-derived working context. Update this file when repo behavior changes."
+doc_id: ai_memory
+last_reviewed_on: "2026-04-12"
+
+active_focus:
+  - "Keep the active `v0.4.0-beta.2` runtime, package, and docs surfaces aligned."
+  - "Preserve TITS parity between the in-app command bar and the external CLI."
+  - "Keep TOME local markdown notes flows stable, including seed notes, reindex, delete, and notes-root migration safety."
+  - "Keep backup, export, import, and GitHub backup flows reliable and reversible."
+  - "Keep host-preflight, release, and packaging checks deterministic."
+  - "Keep docs, keybind tables, Notion sync artifacts, and active specs aligned to shipped behavior."
+  - "Use docs/ai as durable project memory and docs/codex/tasks as the task and session memory layer."
+  - "Keep repo-owned live skills in `skills/**` separate from vendored cross-repo snapshots in `ai/skills/**`."
+
+known_risks:
+  - "The repo has many active and historical versioned docs, so drift can appear quickly if updates miss the active v0.4.0 surfaces."
+  - "Release, installer, and package-smoke workflows are host-sensitive and depend on external tools and OS state."
+  - "`postinstall` installs user-shell completions unless `TADOI_SKIP_COMPLETION_INSTALL=1` is set, so automation contexts can mutate the user environment if that guard is missed."
+  - "Filesystem-heavy flows such as notes-root migration, backup restore, import, and export can regress data safety if they are not exercised with dry-run-first behavior."
+  - "CLI and TUI lock behavior plus persistence schema changes are easy regression points because they cross app, CLI, and docs surfaces."
+  - "Vendored skills are portable snapshots only and are not automatically installed into the active Codex runtime."
+
+lessons_learned:
+  - "Run `bun run preflight:host:docs` before docs, keybind, or release-doc validation."
+  - "Run `bun run keybind:canonical:check` whenever key routing, help text, or QA key tables change."
+  - "Run `bun run notion:sync:validate` when Notion sync docs or payloads change."
+  - "Keep durable repo facts in docs/ai and task or session execution state in docs/codex/tasks."
+  - "Keep repo-owned live skills under `skills/**` and use `ai/skills/**` as portable references only."
+  - "Use `node scripts/codex/manage-skills.mjs` instead of ad hoc vendored-skill copy steps."
+  - "Prefer dry-run-first behavior for imports, restore flows, and destructive filesystem actions."
+
+open_debt:
+  - "Backfill task packages under docs/codex/tasks only as future work lands; there is no requirement to migrate historical docs into the new structure."
+  - "Add repo-specific automation for docs/ai maintenance only if manual updates become noisy."
+  - "Consider a tighter release-time drift gate for active v0.4.0 docs if docs churn increases."
+  - "Vendor additional cross-repo skills only when TADOI scope changes warrant them."
+
+recent_milestones:
+  - date: "2026-04-12"
+    summary: "Imported the VWA AIRPORT and guttenburg Codex workflow layer into TADOI, including repo-local AGENTS defaults, docs/ai durable memory, docs/codex task-memory scaffolding, vendored skill snapshots, and repo-owned preflight/task/skill scripts."
+    evidence: "AGENTS.md, docs/CODEX_WORKFLOW.md, docs/ai/01-meta.yaml, docs/codex/README.md, scripts/codex/preflight.mjs, scripts/codex/new-task-docs.mjs, scripts/codex/manage-skills.mjs, ai/skills/README.md"
+  - date: "2026-03-11"
+    summary: "Aligned the beta 2 runtime and package version surfaces and refreshed active documentation to the `v0.4.0-beta.2` baseline."
+    evidence: "package.json, README.md, docs/README.md, docs/DOC_INDEX.md, CHANGELOG.md"
+  - date: "2026-03-04"
+    summary: "Added the GitHub CLI backup path, encrypted snapshot support, notes file watching, and beta release documentation for the `0.4.0` line."
+    evidence: "CHANGELOG.md, src/backup/githubCli.ts, src/logging/redactedLogger.ts, src/notes/watch.ts"

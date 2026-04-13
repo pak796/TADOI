@@ -1,6 +1,10 @@
 import { describe, expect, it } from "bun:test";
 import type { EditorDraft } from "./models";
-import { areEditorDraftsEqual, cloneEditorDraft, isEditorDraftDirty } from "./editorDraftDirty";
+import {
+  areEditorDraftsEqual,
+  cloneEditorDraft,
+  isEditorDraftDirty,
+} from "./editorDraftDirty";
 
 function makeDraft(overrides: Partial<EditorDraft> = {}): EditorDraft {
   return {
@@ -21,8 +25,8 @@ function makeDraft(overrides: Partial<EditorDraft> = {}): EditorDraft {
         target: "https://example.com",
         label: "Example",
         kind: "url",
-        source: "manual"
-      }
+        source: "manual",
+      },
     ],
     checklist: [],
     repeatMode: "weekly",
@@ -40,7 +44,7 @@ function makeDraft(overrides: Partial<EditorDraft> = {}): EditorDraft {
     sourceTaskId: "task-a",
     sourceSeriesId: "series:task-a",
     occurrenceIso: "2026-02-20T09:15:00",
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -77,9 +81,9 @@ describe("editor draft dirty helpers", () => {
           target: "https://different.example.com",
           label: "Example",
           kind: "url",
-          source: "manual"
-        }
-      ]
+          source: "manual",
+        },
+      ],
     });
     expect(areEditorDraftsEqual(withDifferentLink, baseline)).toBe(false);
   });

@@ -7,7 +7,7 @@ import {
   createDefaultLockPayload,
   getTadoiLockPath,
   isTadoiLockPresent,
-  writeTadoiLock
+  writeTadoiLock,
 } from "./lockfile";
 
 const SIMPLE_ICS = [
@@ -20,7 +20,7 @@ const SIMPLE_ICS = [
   "DTSTART:20260212T090000",
   "DTEND:20260212T093000",
   "END:VEVENT",
-  "END:VCALENDAR"
+  "END:VCALENDAR",
 ].join("\n");
 
 const SERIES_WITH_OVERRIDE_ICS = [
@@ -40,7 +40,7 @@ const SERIES_WITH_OVERRIDE_ICS = [
   "DTSTART;TZID=America/Chicago:20260211T110000",
   "SUMMARY:Daily standup (moved)",
   "END:VEVENT",
-  "END:VCALENDAR"
+  "END:VCALENDAR",
 ].join("\n");
 
 const OVERRIDE_ONLY_ICS = [
@@ -55,7 +55,7 @@ const OVERRIDE_ONLY_ICS = [
   "SUMMARY:Daily standup (moved)",
   "CATEGORIES:team",
   "END:VEVENT",
-  "END:VCALENDAR"
+  "END:VCALENDAR",
 ].join("\n");
 
 const CANCELLED_OVERRIDE_ONLY_ICS = [
@@ -69,7 +69,7 @@ const CANCELLED_OVERRIDE_ONLY_ICS = [
   "STATUS:CANCELLED",
   "SUMMARY:Daily standup (cancelled)",
   "END:VEVENT",
-  "END:VCALENDAR"
+  "END:VCALENDAR",
 ].join("\n");
 
 async function readPersistedState(dataPath: string): Promise<{
@@ -108,12 +108,22 @@ async function expectUnixPrivateFileMode(filePath: string): Promise<void> {
 
 async function withTempImportEnv<T>(
   setup: { statePayload: unknown; inputIcs: string },
-  run: (context: { tempDir: string; dataPath: string; inputPath: string }) => Promise<T>
+  run: (context: {
+    tempDir: string;
+    dataPath: string;
+    inputPath: string;
+  }) => Promise<T>,
 ): Promise<T> {
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-calendar-import-test-"));
+  const tempDir = await fs.mkdtemp(
+    path.join(os.tmpdir(), "tadoi-calendar-import-test-"),
+  );
   const dataPath = path.join(tempDir, "tadoi_data.json");
   const inputPath = path.join(tempDir, "incoming.ics");
-  await fs.writeFile(dataPath, JSON.stringify(setup.statePayload, null, 2), "utf8");
+  await fs.writeFile(
+    dataPath,
+    JSON.stringify(setup.statePayload, null, 2),
+    "utf8",
+  );
   await fs.writeFile(inputPath, setup.inputIcs, "utf8");
 
   const previousDataPath = process.env.TADOI_DATA_PATH;
@@ -138,14 +148,20 @@ async function withTempImportEnv<T>(
 
 describe("calendarImportService import size limits", () => {
   it("enforces ICS import size limits at boundary values", async () => {
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-calendar-import-size-"));
+    const tempDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "tadoi-calendar-import-size-"),
+    );
     const dataPath = path.join(tempDir, "tadoi_data.json");
     const inputPath = path.join(tempDir, "incoming.ics");
 
     await fs.writeFile(
       dataPath,
-      JSON.stringify({ schemaVersion: 4, tasks: [], tagIndex: {}, savedViews: [] }, null, 2),
-      "utf8"
+      JSON.stringify(
+        { schemaVersion: 4, tasks: [], tagIndex: {}, savedViews: [] },
+        null,
+        2,
+      ),
+      "utf8",
     );
     await fs.writeFile(inputPath, SIMPLE_ICS, "utf8");
 
@@ -162,8 +178,8 @@ describe("calendarImportService import size limits", () => {
           range: "all",
           mode: "merge",
           dryRun: true,
-          maxImportBytes: fileSize - 1
-        })
+          maxImportBytes: fileSize - 1,
+        }),
       ).rejects.toThrow("Input ICS exceeds maximum size");
 
       const atLimit = await importCalendarIcs({
@@ -171,7 +187,7 @@ describe("calendarImportService import size limits", () => {
         range: "all",
         mode: "merge",
         dryRun: true,
-        maxImportBytes: fileSize
+        maxImportBytes: fileSize,
       });
       expect(atLimit.summary.eventsParsed).toBe(1);
 
@@ -180,7 +196,7 @@ describe("calendarImportService import size limits", () => {
         range: "all",
         mode: "merge",
         dryRun: true,
-        maxImportBytes: fileSize + 1
+        maxImportBytes: fileSize + 1,
       });
       expect(underLimit.summary.eventsParsed).toBe(1);
     } finally {
@@ -202,8 +218,13 @@ describe("calendarImportService import flow", () => {
   it("does not persist state during dry-run but still writes report output", async () => {
     await withTempImportEnv(
       {
-        statePayload: { schemaVersion: 4, tasks: [], tagIndex: {}, savedViews: [] },
-        inputIcs: SIMPLE_ICS
+        statePayload: {
+          schemaVersion: 4,
+          tasks: [],
+          tagIndex: {},
+          savedViews: [],
+        },
+        inputIcs: SIMPLE_ICS,
       },
       async ({ tempDir, dataPath, inputPath }) => {
         const before = await fs.readFile(dataPath, "utf8");
@@ -213,7 +234,7 @@ describe("calendarImportService import flow", () => {
           range: "all",
           mode: "merge",
           dryRun: true,
-          reportPath
+          reportPath,
         });
 
         expect(result.report.persisted).toBe(false);
@@ -221,19 +242,27 @@ describe("calendarImportService import flow", () => {
         const after = await fs.readFile(dataPath, "utf8");
         expect(after).toBe(before);
         const reportRaw = await fs.readFile(reportPath, "utf8");
-        const report = JSON.parse(reportRaw) as { dryRun: boolean; persisted: boolean };
+        const report = JSON.parse(reportRaw) as {
+          dryRun: boolean;
+          persisted: boolean;
+        };
         expect(report.dryRun).toBe(true);
         expect(report.persisted).toBe(false);
         await expectUnixPrivateFileMode(reportPath);
-      }
+      },
     );
   });
 
   it("allows commit import when current process already owns lock", async () => {
     await withTempImportEnv(
       {
-        statePayload: { schemaVersion: 4, tasks: [], tagIndex: {}, savedViews: [] },
-        inputIcs: SIMPLE_ICS
+        statePayload: {
+          schemaVersion: 4,
+          tasks: [],
+          tagIndex: {},
+          savedViews: [],
+        },
+        inputIcs: SIMPLE_ICS,
       },
       async ({ dataPath, inputPath }) => {
         const lockPath = getTadoiLockPath(dataPath);
@@ -243,27 +272,32 @@ describe("calendarImportService import flow", () => {
           inputPath,
           range: "all",
           mode: "merge",
-          dryRun: false
+          dryRun: false,
         });
 
         expect(result.hasErrors).toBe(false);
         expect(result.summary.created).toBe(1);
         expect(await isTadoiLockPresent(lockPath)).toBe(true);
-      }
+      },
     );
   });
 
   it("rejects commit import when lock belongs to another pid", async () => {
     await withTempImportEnv(
       {
-        statePayload: { schemaVersion: 4, tasks: [], tagIndex: {}, savedViews: [] },
-        inputIcs: SIMPLE_ICS
+        statePayload: {
+          schemaVersion: 4,
+          tasks: [],
+          tagIndex: {},
+          savedViews: [],
+        },
+        inputIcs: SIMPLE_ICS,
       },
       async ({ dataPath, inputPath }) => {
         const lockPath = getTadoiLockPath(dataPath);
         await writeTadoiLock(lockPath, {
           ...createDefaultLockPayload(dataPath),
-          pid: process.pid + 10_000
+          pid: process.pid + 10_000,
         });
 
         await expect(
@@ -271,57 +305,69 @@ describe("calendarImportService import flow", () => {
             inputPath,
             range: "all",
             mode: "merge",
-            dryRun: false
-          })
+            dryRun: false,
+          }),
         ).rejects.toThrow("TADOI is running (lock present)");
-      }
+      },
     );
   });
 
   it("keeps recurrence override imports idempotent across repeated commits", async () => {
     await withTempImportEnv(
       {
-        statePayload: { schemaVersion: 4, tasks: [], tagIndex: {}, savedViews: [] },
-        inputIcs: SERIES_WITH_OVERRIDE_ICS
+        statePayload: {
+          schemaVersion: 4,
+          tasks: [],
+          tagIndex: {},
+          savedViews: [],
+        },
+        inputIcs: SERIES_WITH_OVERRIDE_ICS,
       },
       async ({ dataPath, inputPath }) => {
         const first = await importCalendarIcs({
           inputPath,
           range: "all",
           mode: "merge",
-          dryRun: false
+          dryRun: false,
         });
         expect(first.hasErrors).toBe(false);
         expect(first.summary.recurringSeriesImported).toBe(1);
         expect(first.summary.overridesCreated).toBe(1);
 
-        const firstPersisted = JSON.parse(await fs.readFile(dataPath, "utf8")) as {
+        const firstPersisted = JSON.parse(
+          await fs.readFile(dataPath, "utf8"),
+        ) as {
           tasks: Array<{ recurrence?: unknown; instance_of?: unknown }>;
         };
         expect(firstPersisted.tasks.length).toBe(2);
         expect(
-          firstPersisted.tasks.filter((task) => Boolean(task.recurrence)).length
+          firstPersisted.tasks.filter((task) => Boolean(task.recurrence))
+            .length,
         ).toBe(1);
         expect(
-          firstPersisted.tasks.filter((task) => Boolean(task.instance_of)).length
+          firstPersisted.tasks.filter((task) => Boolean(task.instance_of))
+            .length,
         ).toBe(1);
 
         const second = await importCalendarIcs({
           inputPath,
           range: "all",
           mode: "merge",
-          dryRun: false
+          dryRun: false,
         });
         expect(second.hasErrors).toBe(false);
 
-        const secondPersisted = JSON.parse(await fs.readFile(dataPath, "utf8")) as {
+        const secondPersisted = JSON.parse(
+          await fs.readFile(dataPath, "utf8"),
+        ) as {
           tasks: Array<{ recurrence?: unknown; instance_of?: unknown }>;
         };
         expect(secondPersisted.tasks.length).toBe(2);
         expect(
-          secondPersisted.tasks.filter((task) => Boolean(task.instance_of)).length
+          secondPersisted.tasks.filter((task) => Boolean(task.instance_of))
+            .length,
         ).toBe(1);
-      }
+      },
     );
   });
 
@@ -343,9 +389,9 @@ describe("calendarImportService import flow", () => {
               recurrence: {
                 dtstart: "2026-02-10T09:00:00",
                 rrule: "FREQ=DAILY;INTERVAL=1",
-                series_id: "series:standup"
-              }
-            }
+                series_id: "series:standup",
+              },
+            },
           ],
           tagIndex: {},
           savedViews: [
@@ -354,11 +400,11 @@ describe("calendarImportService import flow", () => {
               name: "Only Work",
               filters: { status: "open", due: "any", tag: "work" },
               createdAt: 1,
-              updatedAt: 1
-            }
-          ]
+              updatedAt: 1,
+            },
+          ],
         },
-        inputIcs: OVERRIDE_ONLY_ICS
+        inputIcs: OVERRIDE_ONLY_ICS,
       },
       async ({ dataPath, inputPath }) => {
         const result = await importCalendarIcs({
@@ -366,7 +412,7 @@ describe("calendarImportService import flow", () => {
           range: "all",
           mode: "merge",
           viewName: "Only Work",
-          dryRun: false
+          dryRun: false,
         });
 
         expect(result.hasErrors).toBe(false);
@@ -376,7 +422,7 @@ describe("calendarImportService import flow", () => {
         const persisted = await readPersistedState(dataPath);
         expect(persisted.tasks).toHaveLength(1);
         expect(persisted.tasks[0]?.recurrence?.exdates).toBeUndefined();
-      }
+      },
     );
   });
 
@@ -398,8 +444,8 @@ describe("calendarImportService import flow", () => {
               recurrence: {
                 dtstart: "2026-02-10T09:00:00",
                 rrule: "FREQ=DAILY;INTERVAL=1",
-                series_id: "series:standup"
-              }
+                series_id: "series:standup",
+              },
             },
             {
               id: "inst-root",
@@ -412,9 +458,9 @@ describe("calendarImportService import flow", () => {
               tags: ["team"],
               instance_of: {
                 series_id: "series:standup",
-                occurrence: "2026-02-11T09:00:00"
-              }
-            }
+                occurrence: "2026-02-11T09:00:00",
+              },
+            },
           ],
           tagIndex: {},
           savedViews: [
@@ -423,11 +469,11 @@ describe("calendarImportService import flow", () => {
               name: "Only Work",
               filters: { status: "open", due: "any", tag: "work" },
               createdAt: 1,
-              updatedAt: 1
-            }
-          ]
+              updatedAt: 1,
+            },
+          ],
         },
-        inputIcs: CANCELLED_OVERRIDE_ONLY_ICS
+        inputIcs: CANCELLED_OVERRIDE_ONLY_ICS,
       },
       async ({ dataPath, inputPath }) => {
         const result = await importCalendarIcs({
@@ -435,7 +481,7 @@ describe("calendarImportService import flow", () => {
           range: "all",
           mode: "merge",
           viewName: "Only Work",
-          dryRun: false
+          dryRun: false,
         });
 
         expect(result.hasErrors).toBe(false);
@@ -443,11 +489,15 @@ describe("calendarImportService import flow", () => {
         expect(result.summary.cancellationsApplied).toBe(0);
 
         const persisted = await readPersistedState(dataPath);
-        const series = persisted.tasks.find((task) => task.id === "series-root");
-        const instance = persisted.tasks.find((task) => task.id === "inst-root");
+        const series = persisted.tasks.find(
+          (task) => task.id === "series-root",
+        );
+        const instance = persisted.tasks.find(
+          (task) => task.id === "inst-root",
+        );
         expect(series?.recurrence?.exdates).toBeUndefined();
         expect(instance?.status).toBe("open");
-      }
+      },
     );
   });
 
@@ -469,8 +519,8 @@ describe("calendarImportService import flow", () => {
               recurrence: {
                 dtstart: "2026-02-10T09:00:00",
                 rrule: "FREQ=DAILY;INTERVAL=1",
-                series_id: "series:standup"
-              }
+                series_id: "series:standup",
+              },
             },
             {
               id: "inst-root",
@@ -483,9 +533,9 @@ describe("calendarImportService import flow", () => {
               tags: ["team"],
               instance_of: {
                 series_id: "series:standup",
-                occurrence: "2026-02-11T09:00:00"
-              }
-            }
+                occurrence: "2026-02-11T09:00:00",
+              },
+            },
           ],
           tagIndex: {},
           savedViews: [
@@ -494,11 +544,11 @@ describe("calendarImportService import flow", () => {
               name: "Team View",
               filters: { status: "open", due: "any", tag: "team" },
               createdAt: 1,
-              updatedAt: 1
-            }
-          ]
+              updatedAt: 1,
+            },
+          ],
         },
-        inputIcs: OVERRIDE_ONLY_ICS
+        inputIcs: OVERRIDE_ONLY_ICS,
       },
       async ({ dataPath, inputPath }) => {
         const moved = await importCalendarIcs({
@@ -506,38 +556,52 @@ describe("calendarImportService import flow", () => {
           range: "all",
           mode: "merge",
           viewName: "Team View",
-          dryRun: false
+          dryRun: false,
         });
         expect(moved.summary.overridesUpdated).toBe(1);
         expect(moved.summary.merged + moved.summary.updated).toBeGreaterThan(0);
 
         const afterMoved = await readPersistedState(dataPath);
-        const seriesAfterMove = afterMoved.tasks.find((task) => task.id === "series-root");
-        expect(seriesAfterMove?.recurrence?.exdates).toEqual(["2026-02-11T09:00:00"]);
+        const seriesAfterMove = afterMoved.tasks.find(
+          (task) => task.id === "series-root",
+        );
+        expect(seriesAfterMove?.recurrence?.exdates).toEqual([
+          "2026-02-11T09:00:00",
+        ]);
 
-        const cancelledPath = path.join(path.dirname(inputPath), "cancelled.ics");
+        const cancelledPath = path.join(
+          path.dirname(inputPath),
+          "cancelled.ics",
+        );
         await fs.writeFile(cancelledPath, CANCELLED_OVERRIDE_ONLY_ICS, "utf8");
         const cancelled = await importCalendarIcs({
           inputPath: cancelledPath,
           range: "all",
           mode: "merge",
           viewName: "Team View",
-          dryRun: false
+          dryRun: false,
         });
         expect(cancelled.summary.cancellationsApplied).toBe(1);
 
         const finalState = await readPersistedState(dataPath);
-        const instance = finalState.tasks.find((task) => task.id === "inst-root");
+        const instance = finalState.tasks.find(
+          (task) => task.id === "inst-root",
+        );
         expect(instance?.status).toBe("done");
-      }
+      },
     );
   });
 
   it("treats report write failures as non-fatal warnings for dry-run and commit", async () => {
     await withTempImportEnv(
       {
-        statePayload: { schemaVersion: 4, tasks: [], tagIndex: {}, savedViews: [] },
-        inputIcs: SIMPLE_ICS
+        statePayload: {
+          schemaVersion: 4,
+          tasks: [],
+          tagIndex: {},
+          savedViews: [],
+        },
+        inputIcs: SIMPLE_ICS,
       },
       async ({ tempDir, inputPath }) => {
         const invalidReportPath = path.join(tempDir, "report-as-directory");
@@ -548,35 +612,44 @@ describe("calendarImportService import flow", () => {
           range: "all",
           mode: "merge",
           dryRun: true,
-          reportPath: invalidReportPath
+          reportPath: invalidReportPath,
         });
         expect(dryRun.report.persisted).toBe(false);
         expect(dryRun.hasErrors).toBe(false);
-        expect(dryRun.warnings?.some((warning) => warning.includes("Failed to write import report"))).toBe(
-          true
-        );
+        expect(
+          dryRun.warnings?.some((warning) =>
+            warning.includes("Failed to write import report"),
+          ),
+        ).toBe(true);
 
         const committed = await importCalendarIcs({
           inputPath,
           range: "all",
           mode: "merge",
           dryRun: false,
-          reportPath: invalidReportPath
+          reportPath: invalidReportPath,
         });
         expect(committed.report.persisted).toBe(true);
         expect(committed.hasErrors).toBe(false);
         expect(
-          committed.warnings?.some((warning) => warning.includes("Failed to write import report"))
+          committed.warnings?.some((warning) =>
+            warning.includes("Failed to write import report"),
+          ),
         ).toBe(true);
-      }
+      },
     );
   });
 
   it("continues import when settings file is invalid and surfaces warning", async () => {
     await withTempImportEnv(
       {
-        statePayload: { schemaVersion: 4, tasks: [], tagIndex: {}, savedViews: [] },
-        inputIcs: SIMPLE_ICS
+        statePayload: {
+          schemaVersion: 4,
+          tasks: [],
+          tagIndex: {},
+          savedViews: [],
+        },
+        inputIcs: SIMPLE_ICS,
       },
       async ({ tempDir, inputPath }) => {
         await writeInvalidSettings(tempDir);
@@ -585,25 +658,25 @@ describe("calendarImportService import flow", () => {
           inputPath,
           range: "all",
           mode: "merge",
-          dryRun: true
+          dryRun: true,
         });
         expect(dryRun.hasErrors).toBe(false);
         expect(dryRun.summary.created).toBe(1);
         expect(
           dryRun.warnings?.some((warning) =>
-            warning.includes("settings file is not valid JSON")
-          )
+            warning.includes("settings file is not valid JSON"),
+          ),
         ).toBe(true);
 
         const commit = await importCalendarIcs({
           inputPath,
           range: "all",
           mode: "merge",
-          dryRun: false
+          dryRun: false,
         });
         expect(commit.hasErrors).toBe(false);
         expect(commit.report.persisted).toBe(true);
-      }
+      },
     );
   });
 
@@ -625,9 +698,9 @@ describe("calendarImportService import flow", () => {
               external: {
                 calendar: {
                   uid: "external-dup-uid",
-                  lastImportedAt: "2026-02-12T00:00:00.000Z"
-                }
-              }
+                  lastImportedAt: "2026-02-12T00:00:00.000Z",
+                },
+              },
             },
             {
               id: "second-task",
@@ -641,13 +714,13 @@ describe("calendarImportService import flow", () => {
               external: {
                 calendar: {
                   uid: "external-dup-uid",
-                  lastImportedAt: "2026-02-12T00:00:00.000Z"
-                }
-              }
-            }
+                  lastImportedAt: "2026-02-12T00:00:00.000Z",
+                },
+              },
+            },
           ],
           tagIndex: {},
-          savedViews: []
+          savedViews: [],
         },
         inputIcs: [
           "BEGIN:VCALENDAR",
@@ -659,25 +732,27 @@ describe("calendarImportService import flow", () => {
           "DTSTART:20260212T120000",
           "DTEND:20260212T123000",
           "END:VEVENT",
-          "END:VCALENDAR"
-        ].join("\n")
+          "END:VCALENDAR",
+        ].join("\n"),
       },
       async ({ dataPath, inputPath }) => {
         const result = await importCalendarIcs({
           inputPath,
           range: "all",
           mode: "update",
-          dryRun: false
+          dryRun: false,
         });
         expect(result.hasErrors).toBe(false);
         expect(result.summary.updated).toBe(1);
 
         const persisted = await readPersistedState(dataPath);
         const first = persisted.tasks.find((task) => task.id === "first-task");
-        const second = persisted.tasks.find((task) => task.id === "second-task");
+        const second = persisted.tasks.find(
+          (task) => task.id === "second-task",
+        );
         expect(first?.title).toBe("Updated by duplicate UID");
         expect(second?.title).toBe("Second title");
-      }
+      },
     );
   });
 
@@ -690,7 +765,7 @@ describe("calendarImportService import flow", () => {
       updatedAt: index + 1,
       dueAt: Date.UTC(2026, 1, 20, 9, 0, 0),
       hasExplicitTime: true,
-      tags: ["noise"]
+      tags: ["noise"],
     }));
 
     await withTempImportEnv(
@@ -699,16 +774,16 @@ describe("calendarImportService import flow", () => {
           schemaVersion: 4,
           tasks: noisyTasks,
           tagIndex: {},
-          savedViews: []
+          savedViews: [],
         },
-        inputIcs: SERIES_WITH_OVERRIDE_ICS
+        inputIcs: SERIES_WITH_OVERRIDE_ICS,
       },
       async ({ inputPath }) => {
         const result = await importCalendarIcs({
           inputPath,
           range: "all",
           mode: "merge",
-          dryRun: true
+          dryRun: true,
         });
 
         expect(result.hasErrors).toBe(false);
@@ -717,7 +792,7 @@ describe("calendarImportService import flow", () => {
         expect(result.summary.recurringSeriesImported).toBe(1);
         expect(result.summary.overridesCreated).toBe(1);
         expect(result.summary.errors).toBe(0);
-      }
+      },
     );
   });
 });

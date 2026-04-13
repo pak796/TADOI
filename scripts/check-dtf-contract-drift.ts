@@ -42,7 +42,9 @@ export function extractDtfIdsFromTestCaseNames(source: string): string[] {
   return normalizeDtfIds(ids);
 }
 
-export function extractCurrentSpecPathFromReadme(readme: string): string | null {
+export function extractCurrentSpecPathFromReadme(
+  readme: string,
+): string | null {
   const match = README_SPEC_LINK_PATTERN.exec(readme);
   README_SPEC_LINK_PATTERN.lastIndex = 0;
   return match?.[1] ?? null;
@@ -50,7 +52,7 @@ export function extractCurrentSpecPathFromReadme(readme: string): string | null 
 
 function compareVersionTriples(
   a: readonly [number, number, number],
-  b: readonly [number, number, number]
+  b: readonly [number, number, number],
 ): number {
   if (a[0] !== b[0]) return a[0] - b[0];
   if (a[1] !== b[1]) return a[1] - b[1];
@@ -64,13 +66,19 @@ function parseSpecVersion(filename: string): [number, number, number] | null {
   const major = Number(match[1]);
   const minor = Number(match[2]);
   const patch = Number(match[3]);
-  if (!Number.isInteger(major) || !Number.isInteger(minor) || !Number.isInteger(patch)) {
+  if (
+    !Number.isInteger(major) ||
+    !Number.isInteger(minor) ||
+    !Number.isInteger(patch)
+  ) {
     return null;
   }
   return [major, minor, patch];
 }
 
-async function resolveSpecPathFromFallback(rootDir: string): Promise<string | null> {
+async function resolveSpecPathFromFallback(
+  rootDir: string,
+): Promise<string | null> {
   const entries = await fs.readdir(rootDir, { withFileTypes: true });
   const specFiles = entries
     .filter((entry) => entry.isFile() && SPEC_FILENAME_PATTERN.test(entry.name))
@@ -78,9 +86,9 @@ async function resolveSpecPathFromFallback(rootDir: string): Promise<string | nu
     .map((filename) => ({ filename, version: parseSpecVersion(filename) }))
     .filter(
       (
-        candidate
+        candidate,
       ): candidate is { filename: string; version: [number, number, number] } =>
-        candidate.version !== null
+        candidate.version !== null,
     )
     .sort((a, b) => compareVersionTriples(b.version, a.version));
   return specFiles[0]?.filename ?? null;
@@ -90,7 +98,7 @@ type DriftCheckEnv = NodeJS.ProcessEnv | Record<string, string | undefined>;
 
 async function resolveCurrentSpecPath(
   rootDir: string,
-  env: DriftCheckEnv
+  env: DriftCheckEnv,
 ): Promise<string> {
   const envSpecPath = env[SPEC_PATH_ENV];
   if (envSpecPath && envSpecPath.trim().length > 0) {
@@ -115,19 +123,22 @@ async function resolveCurrentSpecPath(
   }
 
   throw new Error(
-    `[dtf-contract] Could not resolve current product spec from ${README_PATH}, ${SPEC_PATH_ENV}, or TADOI_SPEC_v*.md files.`
+    `[dtf-contract] Could not resolve current product spec from ${README_PATH}, ${SPEC_PATH_ENV}, or TADOI_SPEC_v*.md files.`,
   );
 }
 
 export function computeMissingDtfIds(
   specIds: Iterable<string>,
-  coveredIds: Iterable<string>
+  coveredIds: Iterable<string>,
 ): string[] {
   const covered = new Set(coveredIds);
   return normalizeDtfIds(specIds).filter((id) => !covered.has(id));
 }
 
-async function collectTestFiles(dirPath: string, files: string[]): Promise<void> {
+async function collectTestFiles(
+  dirPath: string,
+  files: string[],
+): Promise<void> {
   const entries = await fs.readdir(dirPath, { withFileTypes: true });
   for (const entry of entries) {
     if (SKIP_DIRS.has(entry.name)) continue;
@@ -142,7 +153,10 @@ async function collectTestFiles(dirPath: string, files: string[]): Promise<void>
   }
 }
 
-async function resolveSpecFiles(rootDir: string, env: DriftCheckEnv): Promise<string[]> {
+async function resolveSpecFiles(
+  rootDir: string,
+  env: DriftCheckEnv,
+): Promise<string[]> {
   const currentSpec = await resolveCurrentSpecPath(rootDir, env);
   const candidates = [currentSpec, DASHBOARD_SPEC_PATH];
   const resolved: string[] = [];
@@ -166,7 +180,7 @@ type DriftResult = {
 
 export async function runDtfContractDriftCheck(
   rootDir = ROOT_DIR,
-  env: DriftCheckEnv = process.env
+  env: DriftCheckEnv = process.env,
 ): Promise<DriftResult> {
   const specFiles = await resolveSpecFiles(rootDir, env);
   const sourcesById = new Map<string, string[]>();
@@ -204,7 +218,7 @@ export async function runDtfContractDriftCheck(
     specIds,
     coveredIds,
     missingIds,
-    sourcesById
+    sourcesById,
   };
 }
 
@@ -219,15 +233,15 @@ async function main(): Promise<void> {
       console.error(`- ${id} (spec: ${sourceLabel})`);
     }
     console.error(
-      '[dtf-contract] Add matching test case names, e.g. it("DTF-001: ...", ...).'
+      '[dtf-contract] Add matching test case names, e.g. it("DTF-001: ...", ...).',
     );
     process.exit(1);
   }
 
   console.log(
     `[dtf-contract] OK: ${result.specIds.length} DTF IDs from ${result.specFiles.join(
-      ", "
-    )} are covered by named test cases in ${result.testFilesScanned} test files.`
+      ", ",
+    )} are covered by named test cases in ${result.testFilesScanned} test files.`,
   );
 }
 
@@ -236,7 +250,7 @@ if (import.meta.main) {
     console.error(
       `[dtf-contract] Check failed: ${
         error instanceof Error ? error.message : String(error)
-      }`
+      }`,
     );
     process.exit(1);
   });

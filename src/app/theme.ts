@@ -1,14 +1,19 @@
-import { THEMES, ThemeId, ThemeTokens, resolveThemeTokens } from "../theme/themes";
+import {
+  THEMES,
+  ThemeId,
+  ThemeTokens,
+  resolveThemeTokens,
+} from "../theme/themes";
 import {
   runtimeThemeFromContract,
-  type RuntimeThemeAlias
+  type RuntimeThemeAlias,
 } from "../theme/semanticTokenContract";
 import {
   BuiltInThemeTextOverrides,
   CustomThemeConfig,
   THEME_OBJECT_IDS,
   ThemeObjectId,
-  TadoiSettings
+  TadoiSettings,
 } from "../settings/settings";
 
 export type RuntimeTheme = Record<RuntimeThemeAlias, string>;
@@ -26,7 +31,7 @@ function createRuntimeThemeByObject(): Record<ThemeObjectId, RuntimeTheme> {
       acc[objectId] = { ...initial };
       return acc;
     },
-    {} as Record<ThemeObjectId, RuntimeTheme>
+    {} as Record<ThemeObjectId, RuntimeTheme>,
   );
 }
 
@@ -40,35 +45,35 @@ export const theme: RuntimeTheme = themeForObject("appChrome");
 
 export const layout = {
   railWidth: 36,
-  rightWidth: 40
+  rightWidth: 40,
 };
 
 export const styles = {
   heading: {
     color: theme.text,
-    fontWeight: "bold"
+    fontWeight: "bold",
   },
   muted: {
-    color: theme.muted
+    color: theme.muted,
   },
   badge: {
     paddingLeft: 1,
     paddingRight: 1,
     backgroundColor: theme.accentOrange,
-    color: theme.bg
+    color: theme.bg,
   },
   button: {
     paddingLeft: 2,
     paddingRight: 2,
     backgroundColor: theme.accentBlue,
-    color: theme.bg
+    color: theme.bg,
   },
   buttonDanger: {
     paddingLeft: 2,
     paddingRight: 2,
     backgroundColor: theme.warn,
-    color: theme.bg
-  }
+    color: theme.bg,
+  },
 };
 
 function syncStyles(): void {
@@ -90,12 +95,12 @@ function assertRuntimeThemesValid(context: string): void {
     for (const [key, value] of Object.entries(runtimeTheme)) {
       if (typeof value !== "string" || value.trim().length === 0) {
         throw new Error(
-          `Invalid runtime theme token (${context}) for ${objectId}.${key}: empty value`
+          `Invalid runtime theme token (${context}) for ${objectId}.${key}: empty value`,
         );
       }
       if (!HEX_COLOR_RE.test(value)) {
         throw new Error(
-          `Invalid runtime theme token (${context}) for ${objectId}.${key}: ${value}`
+          `Invalid runtime theme token (${context}) for ${objectId}.${key}: ${value}`,
         );
       }
     }
@@ -105,7 +110,10 @@ function assertRuntimeThemesValid(context: string): void {
 export function applyTheme(themeId: ThemeId): void {
   for (const objectId of THEME_OBJECT_IDS) {
     const tokens = resolveThemeTokens(themeId, undefined, { objectId });
-    Object.assign(runtimeThemeByObject[objectId], runtimeThemeFromTokens(tokens));
+    Object.assign(
+      runtimeThemeByObject[objectId],
+      runtimeThemeFromTokens(tokens),
+    );
   }
   syncStyles();
   assertRuntimeThemesValid(`applyTheme(${themeId})`);
@@ -117,15 +125,18 @@ export function applyThemeWithSettings(
   options: {
     draft?: CustomThemeConfig;
     builtInTextDraft?: BuiltInThemeTextOverrides;
-  } = {}
+  } = {},
 ): void {
   for (const objectId of THEME_OBJECT_IDS) {
     const tokens = resolveThemeTokens(themeId, settings, {
       objectId,
       draft: options.draft,
-      builtInTextDraft: options.builtInTextDraft
+      builtInTextDraft: options.builtInTextDraft,
     });
-    Object.assign(runtimeThemeByObject[objectId], runtimeThemeFromTokens(tokens));
+    Object.assign(
+      runtimeThemeByObject[objectId],
+      runtimeThemeFromTokens(tokens),
+    );
   }
   syncStyles();
   assertRuntimeThemesValid(`applyThemeWithSettings(${themeId})`);
@@ -147,7 +158,7 @@ const tagPalette = [
   "#6c5ce7",
   "#fab1a0",
   "#00cec9",
-  "#ffeaa7"
+  "#ffeaa7",
 ];
 
 export function colorForTag(tag: string): string {

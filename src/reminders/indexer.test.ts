@@ -14,9 +14,9 @@ function buildTask(overrides: Partial<Task> = {}): Task {
     dueAt: Date.parse("2026-03-03T15:00:00.000Z"),
     reminder: {
       kind: "before_due",
-      offsetMs: 10 * 60_000
+      offsetMs: 10 * 60_000,
     },
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -39,8 +39,8 @@ describe("buildReminderIndex", () => {
     const shifted = buildTask({
       reminder: {
         kind: "before_due",
-        offsetMs: 60 * 60_000
-      }
+        offsetMs: 60 * 60_000,
+      },
     });
 
     const first = buildReminderIndex([task], nowMs);
@@ -58,8 +58,8 @@ describe("buildReminderIndex", () => {
       recurrence: {
         dtstart: "2026-03-03T09:00:00",
         rrule: "FREQ=DAILY;INTERVAL=1",
-        series_id: "series-abc"
-      }
+        series_id: "series-abc",
+      },
     });
 
     const instanceTask = buildTask({
@@ -68,14 +68,14 @@ describe("buildReminderIndex", () => {
       dueAt: Date.parse("2026-03-04T09:00:00.000Z"),
       instance_of: {
         series_id: "series-abc",
-        occurrence: "2026-03-04T09:00:00"
-      }
+        occurrence: "2026-03-04T09:00:00",
+      },
     });
 
     const index = buildReminderIndex([seriesTask, instanceTask], nowMs);
 
     const recurringEvents = index.events.filter((event) =>
-      event.occurrenceKey.startsWith("series_occurrence:")
+      event.occurrenceKey.startsWith("series_occurrence:"),
     );
     expect(recurringEvents.length).toBeGreaterThan(0);
 
@@ -85,7 +85,9 @@ describe("buildReminderIndex", () => {
     expect(parsed.length).toBeGreaterThan(0);
 
     const matchingOccurrences = parsed.filter(
-      (entry) => entry?.seriesId === "series-abc" && entry?.occurrenceIso === "2026-03-04T09:00:00"
+      (entry) =>
+        entry?.seriesId === "series-abc" &&
+        entry?.occurrenceIso === "2026-03-04T09:00:00",
     );
     expect(matchingOccurrences).toHaveLength(1);
   });

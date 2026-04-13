@@ -10,7 +10,7 @@ function makeTask(id: string, title: string, tags: string[]): Task {
     createdAt: 1,
     updatedAt: 1,
     workflowStage: "todo",
-    tags
+    tags,
   };
 }
 
@@ -25,9 +25,9 @@ describe("runUnifiedSearch", () => {
           path: "Alpha.md",
           title: "Alpha note",
           tags: ["work"],
-          content: "Contains alpha context"
-        }
-      ]
+          content: "Contains alpha context",
+        },
+      ],
     });
     expect(results.map((result) => result.kind)).toEqual(["task", "note"]);
   });
@@ -42,9 +42,9 @@ describe("runUnifiedSearch", () => {
           path: "Alpha.md",
           title: "Alpha note",
           tags: [],
-          content: "Contains alpha context"
-        }
-      ]
+          content: "Contains alpha context",
+        },
+      ],
     });
     expect(results).toHaveLength(1);
     expect(results[0]?.kind).toBe("note");

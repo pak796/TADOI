@@ -4,7 +4,7 @@ import {
   BackupImportUsageError,
   BackupImportPartialError,
   importBackup,
-  type BackupImportSummary
+  type BackupImportSummary,
 } from "../state/backupService";
 import { TadoiLockBusyError } from "../state/lockfile";
 import type { ImportCommandOptions } from "../cli/portabilityCommands";
@@ -21,42 +21,55 @@ export function printImportHelp(): void {
   redactedLogger.log("Options:");
   redactedLogger.log("  --in <path>              Input file path (required)");
   redactedLogger.log("  --mode <merge|replace>   Import mode (default: merge)");
-  redactedLogger.log("  --backup                 Enable backup before write (default: true)");
+  redactedLogger.log(
+    "  --backup                 Enable backup before write (default: true)",
+  );
   redactedLogger.log("  --backup=false           Disable backup");
   redactedLogger.log("  --no-backup              Disable backup");
-  redactedLogger.log("  --dry-run                Validate and merge without writing");
+  redactedLogger.log(
+    "  --dry-run                Validate and merge without writing",
+  );
   redactedLogger.log("  --yes                    Required with --mode replace");
-  redactedLogger.log("  --pretty                 Pretty-print import summary as JSON");
+  redactedLogger.log(
+    "  --pretty                 Pretty-print import summary as JSON",
+  );
   redactedLogger.log("  -h, --help               Show import help");
 }
 
-function printImportSummary(summary: BackupImportSummary, pretty: boolean): void {
+function printImportSummary(
+  summary: BackupImportSummary,
+  pretty: boolean,
+): void {
   if (pretty) {
     redactedLogger.log(JSON.stringify(summary, null, 2));
     return;
   }
 
-  redactedLogger.log(`[import] mode: ${summary.mode}${summary.dryRun ? " (dry-run)" : ""}`);
+  redactedLogger.log(
+    `[import] mode: ${summary.mode}${summary.dryRun ? " (dry-run)" : ""}`,
+  );
   redactedLogger.log(`[import] schemaVersion: ${summary.schemaVersion}`);
   redactedLogger.log(`[import] data path: ${summary.resolvedDataPath}`);
   if (summary.backupPath) {
     redactedLogger.log(`[import] backup: ${summary.backupPath}`);
   }
   redactedLogger.log(
-    `[import] tasks added=${summary.tasks.added} updated=${summary.tasks.updated} unchanged=${summary.tasks.unchanged} removed=${summary.tasks.removed}`
+    `[import] tasks added=${summary.tasks.added} updated=${summary.tasks.updated} unchanged=${summary.tasks.unchanged} removed=${summary.tasks.removed}`,
   );
   redactedLogger.log(
-    `[import] conflicts resolved by updatedAt: ${summary.conflictsResolvedByUpdatedAt}`
+    `[import] conflicts resolved by updatedAt: ${summary.conflictsResolvedByUpdatedAt}`,
   );
   redactedLogger.log(
-    `[import] saved views added=${summary.savedViews.added} updated=${summary.savedViews.updated} unchanged=${summary.savedViews.unchanged}`
+    `[import] saved views added=${summary.savedViews.added} updated=${summary.savedViews.updated} unchanged=${summary.savedViews.unchanged}`,
   );
   for (const warning of summary.warnings ?? []) {
     redactedLogger.log(`[import] warning: ${warning}`);
   }
 }
 
-export async function runImportCommand(parsed: ImportCommandOptions): Promise<number> {
+export async function runImportCommand(
+  parsed: ImportCommandOptions,
+): Promise<number> {
   if (parsed.help) {
     printImportHelp();
     return CLI_EXIT_CODE.SUCCESS;
@@ -72,7 +85,7 @@ export async function runImportCommand(parsed: ImportCommandOptions): Promise<nu
       inputPath: parsed.inPath,
       mode: parsed.mode,
       dryRun: parsed.dryRun,
-      backup: parsed.backup
+      backup: parsed.backup,
     });
 
     printImportSummary(summary, parsed.pretty);

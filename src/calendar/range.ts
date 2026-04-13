@@ -10,7 +10,7 @@ export type CalendarRangeWindow = {
 
 export function resolveCalendarRangeWindow(
   range: CalendarExportRange,
-  nowMs: number
+  nowMs: number,
 ): CalendarRangeWindow {
   if (range === "all") {
     return { range };
@@ -21,13 +21,13 @@ export function resolveCalendarRangeWindow(
   return {
     range,
     startMs,
-    endMs: addLocalDaysMs(startMs, days)
+    endMs: addLocalDaysMs(startMs, days),
   };
 }
 
 export function isTimestampInRange(
   timestampMs: number,
-  rangeWindow: CalendarRangeWindow
+  rangeWindow: CalendarRangeWindow,
 ): boolean {
   if (rangeWindow.range === "all") return true;
   if (rangeWindow.startMs === undefined || rangeWindow.endMs === undefined) {

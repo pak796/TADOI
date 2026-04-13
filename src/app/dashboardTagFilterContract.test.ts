@@ -1,6 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import { addLocalDaysMs, startOfLocalDayMs } from "../domain/dates";
-import { computePriorityBucketBreakdown, computeTopTagsOpen } from "../domain/dashboard";
+import {
+  computePriorityBucketBreakdown,
+  computeTopTagsOpen,
+} from "../domain/dashboard";
 import { computeDashboardKpis } from "../domain/dashboardKpis";
 import { type Filters, FocusTarget, Mode, type Task } from "../domain/models";
 import { filterTasks } from "../domain/query";
@@ -21,20 +24,20 @@ function makeTask(partial: Partial<Task> & Pick<Task, "id" | "title">): Task {
     notes: partial.notes,
     tags: partial.tags ?? [],
     recurrence: partial.recurrence,
-    instance_of: partial.instance_of
+    instance_of: partial.instance_of,
   };
 }
 
 function run(
   key: Partial<KeyInput>,
-  contextOverrides: Partial<KeyRouterContext> = {}
+  contextOverrides: Partial<KeyRouterContext> = {},
 ) {
   const input: KeyInput = {
     name: "",
     sequence: "",
     ctrl: false,
     shift: false,
-    ...key
+    ...key,
   };
   const context: KeyRouterContext = {
     uiState: initialUIState,
@@ -46,7 +49,7 @@ function run(
     saveViewPromptOpen: false,
     allowEmptyNuxRecoveryImport: false,
     backupScreen: null,
-    ...contextOverrides
+    ...contextOverrides,
   };
   return handleKey(input, context);
 }
@@ -56,30 +59,34 @@ describe("dashboard/tag-filter canonical invariant contract", () => {
     const now = new Date(2026, 1, 13, 12, 0, 0, 0).getTime();
     const tasks: Task[] = [
       makeTask({ id: "work", title: "work", tags: ["work"] }),
-      makeTask({ id: "home", title: "home", tags: ["home"] })
+      makeTask({ id: "home", title: "home", tags: ["home"] }),
     ];
     const filters: Filters = {
       status: "all",
       due: "any",
       tag: "work",
-      tagFilter: { any: ["home"] }
+      tagFilter: { any: ["home"] },
     };
-    expect(filterTasks(tasks, filters, now).map((task) => task.id)).toEqual(["home"]);
+    expect(filterTasks(tasks, filters, now).map((task) => task.id)).toEqual([
+      "home",
+    ]);
   });
 
   it("DTF-002: empty boolean buckets are a no-op and fall back to legacy tag", () => {
     const now = new Date(2026, 1, 13, 12, 0, 0, 0).getTime();
     const tasks: Task[] = [
       makeTask({ id: "work", title: "work", tags: ["work"] }),
-      makeTask({ id: "home", title: "home", tags: ["home"] })
+      makeTask({ id: "home", title: "home", tags: ["home"] }),
     ];
     const filters: Filters = {
       status: "all",
       due: "any",
       tag: "work",
-      tagFilter: { all: [], any: [], none: [] }
+      tagFilter: { all: [], any: [], none: [] },
     };
-    expect(filterTasks(tasks, filters, now).map((task) => task.id)).toEqual(["work"]);
+    expect(filterTasks(tasks, filters, now).map((task) => task.id)).toEqual([
+      "work",
+    ]);
   });
 
   it("DTF-003: next7 window uses local-day [today..+6] boundaries", () => {
@@ -88,10 +95,10 @@ describe("dashboard/tag-filter canonical invariant contract", () => {
     const tasks: Task[] = [
       makeTask({ id: "t0", title: "today", dueAt: start }),
       makeTask({ id: "t6", title: "plus6", dueAt: addLocalDaysMs(start, 6) }),
-      makeTask({ id: "t7", title: "plus7", dueAt: addLocalDaysMs(start, 7) })
+      makeTask({ id: "t7", title: "plus7", dueAt: addLocalDaysMs(start, 7) }),
     ];
     const result = filterTasks(tasks, { status: "all", due: "next7" }, now).map(
-      (task) => task.id
+      (task) => task.id,
     );
     expect(result).toEqual(["t0", "t6"]);
   });
@@ -100,23 +107,29 @@ describe("dashboard/tag-filter canonical invariant contract", () => {
     const now = new Date(2026, 1, 13, 12, 0, 0, 0).getTime();
     const start = startOfLocalDayMs(now);
     const tasks: Task[] = [
-      makeTask({ id: "yesterday", title: "yesterday", dueAt: addLocalDaysMs(start, -1) }),
+      makeTask({
+        id: "yesterday",
+        title: "yesterday",
+        dueAt: addLocalDaysMs(start, -1),
+      }),
       makeTask({
         id: "today-past-time",
         title: "today-past-time",
         dueAt: new Date(2026, 1, 13, 9, 0, 0, 0).getTime(),
-        hasExplicitTime: true
+        hasExplicitTime: true,
       }),
       makeTask({
         id: "today-future-time",
         title: "today-future-time",
         dueAt: new Date(2026, 1, 13, 13, 0, 0, 0).getTime(),
-        hasExplicitTime: true
-      })
+        hasExplicitTime: true,
+      }),
     ];
-    const result = filterTasks(tasks, { status: "all", due: "overdue" }, now).map(
-      (task) => task.id
-    );
+    const result = filterTasks(
+      tasks,
+      { status: "all", due: "overdue" },
+      now,
+    ).map((task) => task.id);
     expect(result).toEqual(["yesterday", "today-past-time"]);
   });
 
@@ -124,17 +137,19 @@ describe("dashboard/tag-filter canonical invariant contract", () => {
     const dashboardState = {
       ...initialUIState,
       mode: Mode.DASHBOARD,
-      focus: FocusTarget.DASHBOARD
+      focus: FocusTarget.DASHBOARD,
     };
-    expect(run({ name: "j", sequence: "j" }, { uiState: dashboardState })).toEqual([]);
+    expect(
+      run({ name: "j", sequence: "j" }, { uiState: dashboardState }),
+    ).toEqual([]);
     expect(run({ name: "up" }, { uiState: dashboardState })).toEqual([
-      { scope: "ui", type: "DASHBOARD_MOVE_ACTIVE_SELECTION", delta: -1 }
+      { scope: "ui", type: "DASHBOARD_MOVE_ACTIVE_SELECTION", delta: -1 },
     ]);
     expect(run({ name: "down" }, { uiState: dashboardState })).toEqual([
-      { scope: "ui", type: "DASHBOARD_MOVE_ACTIVE_SELECTION", delta: 1 }
+      { scope: "ui", type: "DASHBOARD_MOVE_ACTIVE_SELECTION", delta: 1 },
     ]);
     expect(run({ name: "enter" }, { uiState: dashboardState })).toEqual([
-      { scope: "domain", type: "APPLY_DASHBOARD_ACTIVE_SELECTION" }
+      { scope: "domain", type: "APPLY_DASHBOARD_ACTIVE_SELECTION" },
     ]);
   });
 
@@ -142,13 +157,15 @@ describe("dashboard/tag-filter canonical invariant contract", () => {
     const panelState = {
       ...initialUIState,
       mode: Mode.TAG_FILTER,
-      focus: FocusTarget.TAG_FILTER_INPUT
+      focus: FocusTarget.TAG_FILTER_INPUT,
     };
     expect(run({ name: "down" }, { uiState: panelState })).toEqual([]);
     expect(run({ name: "enter" }, { uiState: panelState })).toEqual([]);
-    expect(run({ name: "j", sequence: "j" }, { uiState: panelState })).toEqual([]);
+    expect(run({ name: "j", sequence: "j" }, { uiState: panelState })).toEqual(
+      [],
+    );
     expect(run({ name: "escape" }, { uiState: panelState })).toEqual([
-      { scope: "ui", type: "UNWIND" }
+      { scope: "ui", type: "UNWIND" },
     ]);
   });
 
@@ -164,9 +181,9 @@ describe("dashboard/tag-filter canonical invariant contract", () => {
         recurrence: {
           dtstart: "2026-02-13T09:00:00",
           rrule: "FREQ=DAILY;INTERVAL=1;COUNT=3",
-          series_id: "series:standup"
-        }
-      })
+          series_id: "series:standup",
+        },
+      }),
     ];
     const filters: Filters = { status: "all", due: "today" };
     const visibleRows = buildVisibleTaskRows(tasks, filters, "due", now);

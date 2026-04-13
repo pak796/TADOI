@@ -19,7 +19,7 @@ import {
   LogoMode,
   SecuritySettings,
   NotificationSettings,
-  getDefaultSettings
+  getDefaultSettings,
 } from "../settings/settings";
 import type { KeymapAliases } from "../app/keymapAliases";
 
@@ -87,20 +87,20 @@ export const initialSettingsState: SettingsState = {
     terminalBellOnOverdue: false,
     outOfAppRemindersEnabled: false,
     bannerDurationMs: 5000,
-    bellCooldownMs: 2000
+    bellCooldownMs: 2000,
   },
   security: {
-    nonHttpLinkPolicy: "prompt"
+    nonHttpLinkPolicy: "prompt",
   },
   customThemes: getDefaultSettings().customThemes,
   keymapAliases: getDefaultSettings().keymapAliases,
   githubBackup: getDefaultSettings().githubBackup,
-  notes: getDefaultSettings().notes ?? { enabled: true, rootPath: null }
+  notes: getDefaultSettings().notes ?? { enabled: true, rootPath: null },
 };
 
 export function settingsReducer(
   state: SettingsState,
-  action: SettingsAction
+  action: SettingsAction,
 ): SettingsState {
   switch (action.type) {
     case "setTheme":
@@ -110,11 +110,17 @@ export function settingsReducer(
     case "setLogoMode":
       return { ...state, logoMode: action.logoMode };
     case "cycleLogoMode":
-      return { ...state, logoMode: cycleLogoMode(state.logoMode, action.direction ?? 1) };
+      return {
+        ...state,
+        logoMode: cycleLogoMode(state.logoMode, action.direction ?? 1),
+      };
     case "setFlashMode":
       return { ...state, flashMode: action.flashMode };
     case "toggleFlashMode":
-      return { ...state, flashMode: state.flashMode === "slow" ? "static" : "slow" };
+      return {
+        ...state,
+        flashMode: state.flashMode === "slow" ? "static" : "slow",
+      };
     case "setHintDisplayMode":
       return { ...state, hintDisplayMode: action.hintDisplayMode };
     case "cycleHintDisplayMode": {
@@ -184,32 +190,33 @@ export function settingsReducer(
         ...state,
         notifications: {
           ...state.notifications,
-          enabled: !state.notifications.enabled
-        }
+          enabled: !state.notifications.enabled,
+        },
       };
     case "toggleInAppOverdueBanner":
       return {
         ...state,
         notifications: {
           ...state.notifications,
-          inAppOverdueBanner: !state.notifications.inAppOverdueBanner
-        }
+          inAppOverdueBanner: !state.notifications.inAppOverdueBanner,
+        },
       };
     case "toggleTerminalBellOnOverdue":
       return {
         ...state,
         notifications: {
           ...state.notifications,
-          terminalBellOnOverdue: !state.notifications.terminalBellOnOverdue
-        }
+          terminalBellOnOverdue: !state.notifications.terminalBellOnOverdue,
+        },
       };
     case "toggleOutOfAppRemindersEnabled":
       return {
         ...state,
         notifications: {
           ...state.notifications,
-          outOfAppRemindersEnabled: !state.notifications.outOfAppRemindersEnabled
-        }
+          outOfAppRemindersEnabled:
+            !state.notifications.outOfAppRemindersEnabled,
+        },
       };
     default:
       return state;

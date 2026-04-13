@@ -5,7 +5,7 @@ function clamp(value: number, min: number, max: number): number {
 export function centerLogoInBox(
   lines: string[],
   boxWidth: number,
-  boxHeight: number
+  boxHeight: number,
 ): string[] {
   const safeWidth = Math.max(0, Math.floor(boxWidth));
   const safeHeight = Math.max(0, Math.floor(boxHeight));
@@ -39,14 +39,18 @@ export function centerLogoInBox(
   const contentLines = lines.slice(firstNonEmpty, lastNonEmpty + 1);
   const contentWidth = contentLines.reduce(
     (maxWidth, line) => Math.max(maxWidth, line.length),
-    0
+    0,
   );
 
-  const leftPad = clamp(Math.floor((safeWidth - contentWidth) / 2), 0, safeWidth);
+  const leftPad = clamp(
+    Math.floor((safeWidth - contentWidth) / 2),
+    0,
+    safeWidth,
+  );
   const topPad = clamp(
     Math.floor((safeHeight - contentLines.length) / 2),
     0,
-    safeHeight
+    safeHeight,
   );
 
   for (let i = 0; i < contentLines.length; i += 1) {
@@ -64,4 +68,3 @@ export function centerLogoInBox(
 
   return out;
 }
-

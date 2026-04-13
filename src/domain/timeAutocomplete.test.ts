@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   applyAutocomplete,
   getAutocompleteStep,
-  getSuggestedTime
+  getSuggestedTime,
 } from "./timeAutocomplete";
 
 describe("time autocomplete", () => {

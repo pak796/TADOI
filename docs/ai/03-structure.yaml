@@ -1,0 +1,82 @@
+context_note: "Repo-derived working context. Update this file when repo behavior changes."
+doc_id: ai_structure
+last_reviewed_on: "2026-04-12"
+
+top_level_paths:
+  - path: "/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/.codex"
+    purpose: "Local Codex desktop environment metadata for this repo."
+  - path: "/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/.github"
+    purpose: "GitHub workflow and automation definitions."
+  - path: "/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/bin"
+    purpose: "CLI entrypoint wrappers."
+  - path: "/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/src"
+    purpose: "Terminal runtime source for app, CLI, domain, notes, backup, reminders, and supporting modules."
+  - path: "/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/scripts"
+    purpose: "Repo-owned helper scripts for test orchestration, docs drift, packaging, and workflow automation."
+  - path: "/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/skills"
+    purpose: "Repo-owned live skill implementations and agent definitions."
+  - path: "/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/ai"
+    purpose: "Repo-local AI assets, currently limited to vendored skill snapshots."
+  - path: "/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/docs"
+    purpose: "Repo-owned usage, QA, audit, workflow, release, and AI-context documentation."
+  - path: "/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/packaging"
+    purpose: "Installer and packaging inputs."
+  - path: "/Users/patrickkazar/Library/CloudStorage/GoogleDrive-pakazar@gmail.com/Other computers/My Computer/Google Drive/CODE PROJECTS/TADOI/package.json"
+    purpose: "Repo manifest exposing runtime, validation, release, and Codex workflow commands."
+
+ai_context_docs:
+  - path: "docs/ai/01-meta.yaml"
+    role: "Repo metadata and workflow contract."
+    read_first_order: 1
+  - path: "docs/ai/02-system.yaml"
+    role: "System map."
+    read_first_order: 2
+  - path: "docs/ai/03-structure.yaml"
+    role: "Repo structure map."
+    read_first_order: 3
+  - path: "docs/ai/04-memory.yaml"
+    role: "Compact working memory."
+    read_first_order: 4
+  - path: "docs/ai/05-update-tracker.md"
+    role: "Meaningful change log only."
+    read_first_order: "not_read_first"
+
+workflow_artifact_paths:
+  - path: "docs/codex"
+    role: "Repo-owned Codex workflow docs, templates, and task artifact root."
+  - path: "docs/codex/templates"
+    role: "Reusable planning, review, docs-update, scope, release, and handoff templates."
+  - path: "docs/codex/tasks"
+    role: "Canonical per-task and per-session artifact root."
+  - path: "scripts/codex"
+    role: "Workflow scripts for preflight, task scaffolding, and vendored skill management."
+  - path: "ai/skills"
+    role: "Vendored skill snapshots plus provenance and machine-readable manifest."
+
+placement_rules:
+  - "Put durable repo facts in docs/ai."
+  - "Put per-task and per-session notes in docs/codex/tasks."
+  - "Put reusable workflow templates in docs/codex/templates."
+  - "Put repo-owned workflow scripts in scripts/codex."
+  - "Put repo-owned live skills in skills."
+  - "Put vendored skill copies, provenance, and manifest data in ai/skills."
+  - "Put terminal runtime source in src."
+  - "Put release packaging inputs in packaging."
+  - "Read docs/ai/01-04 first and use docs/ai/05-update-tracker.md only for meaningful change logging."
+  - "Treat existing docs/handoff files as historical notes only. Do not create new ad hoc handoff or progress journals outside docs/codex/tasks."
+
+generated_or_runtime_paths:
+  - path: "node_modules"
+    status: "dependency_install"
+  - path: "dist"
+    status: "generated_output"
+  - path: "coverage"
+    status: "generated_test_artifacts"
+  - path: "dist.prepack.*"
+    status: "generated_packaging_artifacts"
+
+ownership_notes:
+  - "Keep docs/ai compact and factual."
+  - "Keep docs/codex/tasks as the default task-memory path for future Codex work."
+  - "Treat skills as live repo-owned implementations and ai/skills as copied snapshots."
+  - "Keep generated output and package artifacts out of normal commits unless a task explicitly requires them."

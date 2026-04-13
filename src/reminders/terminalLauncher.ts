@@ -1,8 +1,9 @@
-import { spawn, type ChildProcess, type SpawnOptionsWithoutStdio } from "node:child_process";
 import {
-  buildShellCommandLine,
-  type TadoiInvocation
-} from "./invocation";
+  spawn,
+  type ChildProcess,
+  type SpawnOptionsWithoutStdio,
+} from "node:child_process";
+import { buildShellCommandLine, type TadoiInvocation } from "./invocation";
 
 export type TerminalLaunchResult = {
   ok: boolean;
@@ -15,7 +16,7 @@ export type TerminalLauncherDeps = {
   spawnImpl?: (
     command: string,
     args: string[],
-    options: SpawnOptionsWithoutStdio
+    options: SpawnOptionsWithoutStdio,
   ) => Pick<ChildProcess, "once" | "unref">;
 };
 
@@ -32,14 +33,14 @@ function baseSpawnOptions(): SpawnOptionsWithoutStdio {
   return {
     stdio: "ignore",
     detached: true,
-    windowsHide: true
+    windowsHide: true,
   };
 }
 
 async function spawnDetached(
   command: string,
   args: string[],
-  spawnImpl: TerminalLauncherDeps["spawnImpl"]
+  spawnImpl: TerminalLauncherDeps["spawnImpl"],
 ): Promise<void> {
   const runner = spawnImpl ?? spawn;
   await new Promise<void>((resolve, reject) => {
@@ -67,39 +68,31 @@ function escapeAppleScriptString(value: string): string {
 
 async function launchMacTerminal(
   commandLine: string,
-  spawnImpl: TerminalLauncherDeps["spawnImpl"]
+  spawnImpl: TerminalLauncherDeps["spawnImpl"],
 ): Promise<{ launcher: string; attempted: string[] }> {
   const escaped = escapeAppleScriptString(commandLine);
   const doScript = `tell application \"Terminal\" to do script \"${escaped}\"`;
   const fallbackScript = [
-    "tell application \"Terminal\"",
+    'tell application "Terminal"',
     `  do script \"${escaped}\"`,
     "  activate",
-    "end tell"
+    "end tell",
   ].join("\n");
   const primary = `osascript primary`;
   const fallback = `osascript fallback`;
   const attempted = [primary];
   try {
-    await spawnDetached(
-      "osascript",
-      ["-e", doScript],
-      spawnImpl
-    );
+    await spawnDetached("osascript", ["-e", doScript], spawnImpl);
     return { launcher: primary, attempted };
   } catch {
     attempted.push(fallback);
     try {
-      await spawnDetached(
-        "osascript",
-        ["-e", fallbackScript],
-        spawnImpl
-      );
+      await spawnDetached("osascript", ["-e", fallbackScript], spawnImpl);
       return { launcher: fallback, attempted };
     } catch (error: unknown) {
       throw new LaunchAttemptError(
         error instanceof Error ? error.message : String(error),
-        attempted
+        attempted,
       );
     }
   }
@@ -107,29 +100,39 @@ async function launchMacTerminal(
 
 async function launchWindowsTerminal(
   commandLine: string,
-  spawnImpl: TerminalLauncherDeps["spawnImpl"]
+  spawnImpl: TerminalLauncherDeps["spawnImpl"],
 ): Promise<{ launcher: string; attempted: string[] }> {
   const attempted = ["wt.exe", "powershell"];
   try {
-    await spawnDetached("wt.exe", ["new-tab", "cmd", "/k", commandLine], spawnImpl);
+    await spawnDetached(
+      "wt.exe",
+      ["new-tab", "cmd", "/k", commandLine],
+      spawnImpl,
+    );
     return { launcher: "wt.exe", attempted };
   } catch {
     const ps =
       "Start-Process -FilePath 'cmd.exe' -ArgumentList '/k', " +
       `'${commandLine.replace(/'/g, "''")}'`;
     try {
-      await spawnDetached("powershell", ["-NoProfile", "-Command", ps], spawnImpl);
+      await spawnDetached(
+        "powershell",
+        ["-NoProfile", "-Command", ps],
+        spawnImpl,
+      );
       return { launcher: "powershell:Start-Process", attempted };
     } catch (error: unknown) {
       throw new LaunchAttemptError(
         error instanceof Error ? error.message : String(error),
-        attempted
+        attempted,
       );
     }
   }
 }
 
-function linuxTerminalCandidates(env: NodeJS.ProcessEnv): Array<{ command: string; args: string[] }> {
+function linuxTerminalCandidates(
+  env: NodeJS.ProcessEnv,
+): Array<{ command: string; args: string[] }> {
   const candidates: Array<{ command: string; args: string[] }> = [];
 
   const fromEnv = env.TERMINAL?.trim();
@@ -151,7 +154,7 @@ function linuxTerminalCandidates(env: NodeJS.ProcessEnv): Array<{ command: strin
 async function launchLinuxTerminal(
   commandLine: string,
   spawnImpl: TerminalLauncherDeps["spawnImpl"],
-  env: NodeJS.ProcessEnv
+  env: NodeJS.ProcessEnv,
 ): Promise<{ launcher: string; attempted: string[] }> {
   const attempted: string[] = [];
   for (const candidate of linuxTerminalCandidates(env)) {
@@ -160,11 +163,11 @@ async function launchLinuxTerminal(
       await spawnDetached(
         candidate.command,
         [...candidate.args, "sh", "-lc", commandLine],
-        spawnImpl
+        spawnImpl,
       );
       return {
         launcher: candidate.command,
-        attempted
+        attempted,
       };
     } catch {
       // keep trying
@@ -173,7 +176,7 @@ async function launchLinuxTerminal(
 
   throw new LaunchAttemptError(
     `No supported GUI terminal found (${attempted.join(", ")})`,
-    attempted
+    attempted,
   );
 }
 
@@ -192,9 +195,9 @@ export async function launchReminderTerminal(options: {
       ...options.invocation.baseArgs,
       "remind",
       "--event",
-      options.eventId
+      options.eventId,
     ],
-    platform
+    platform,
   );
 
   try {
@@ -203,25 +206,32 @@ export async function launchReminderTerminal(options: {
       return {
         ok: true,
         launcher: result.launcher,
-        attempted: result.attempted
+        attempted: result.attempted,
       };
     }
 
     if (platform === "win32") {
-      const launcher = await launchWindowsTerminal(commandLine, options.spawnImpl);
+      const launcher = await launchWindowsTerminal(
+        commandLine,
+        options.spawnImpl,
+      );
       return {
         ok: true,
         launcher: launcher.launcher,
-        attempted: launcher.attempted
+        attempted: launcher.attempted,
       };
     }
 
     if (platform === "linux") {
-      const result = await launchLinuxTerminal(commandLine, options.spawnImpl, env);
+      const result = await launchLinuxTerminal(
+        commandLine,
+        options.spawnImpl,
+        env,
+      );
       return {
         ok: true,
         launcher: result.launcher,
-        attempted: result.attempted
+        attempted: result.attempted,
       };
     }
 
@@ -229,7 +239,7 @@ export async function launchReminderTerminal(options: {
       ok: false,
       launcher: "unsupported",
       attempted: [],
-      error: `Unsupported platform: ${platform}`
+      error: `Unsupported platform: ${platform}`,
     };
   } catch (error: unknown) {
     return {
@@ -241,7 +251,7 @@ export async function launchReminderTerminal(options: {
           : platform === "linux"
             ? linuxTerminalCandidates(env).map((item) => item.command)
             : [],
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     };
   }
 }

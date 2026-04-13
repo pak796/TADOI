@@ -1,13 +1,13 @@
 import { Task } from "../domain/models";
 import {
   formatDateToLocalIso,
-  parseLocalIsoToDate
+  parseLocalIsoToDate,
 } from "../domain/recurrence/rruleAdapter";
 import {
   formatRecurrenceExdates,
   localIsoToIcsDate,
   localIsoToIcsDateTime,
-  toRRuleLine
+  toRRuleLine,
 } from "./rrule";
 
 const DEFAULT_TIMED_DURATION_MS = 30 * 60 * 1000;
@@ -75,7 +75,9 @@ function pad2(value: number): string {
   return String(value).padStart(2, "0");
 }
 
-function formatIcsDate(parts: Pick<ZonedDateParts, "year" | "month" | "day">): string {
+function formatIcsDate(
+  parts: Pick<ZonedDateParts, "year" | "month" | "day">,
+): string {
   return `${parts.year}${pad2(parts.month)}${pad2(parts.day)}`;
 }
 
@@ -113,9 +115,7 @@ function stripTagPrefix(tag: string): string {
 }
 
 function buildCategories(tags: string[]): string[] {
-  return tags
-    .map(stripTagPrefix)
-    .filter((tag) => tag.length > 0);
+  return tags.map(stripTagPrefix).filter((tag) => tag.length > 0);
 }
 
 function buildDescription(task: Task): string | undefined {
@@ -159,13 +159,16 @@ function getZonedFormatter(timeZone: string): Intl.DateTimeFormat {
     minute: "2-digit",
     second: "2-digit",
     hour12: false,
-    hourCycle: "h23"
+    hourCycle: "h23",
   });
   ZONED_DATE_TIME_FORMATTERS.set(timeZone, formatter);
   return formatter;
 }
 
-function getPart(parts: Intl.DateTimeFormatPart[], type: Intl.DateTimeFormatPartTypes): number {
+function getPart(
+  parts: Intl.DateTimeFormatPart[],
+  type: Intl.DateTimeFormatPartTypes,
+): number {
   const value = parts.find((part) => part.type === type)?.value;
   return Number(value ?? "0");
 }
@@ -178,14 +181,14 @@ function getZonedParts(date: Date, timeZone: string): ZonedDateParts {
     day: getPart(parts, "day"),
     hour: getPart(parts, "hour"),
     minute: getPart(parts, "minute"),
-    second: getPart(parts, "second")
+    second: getPart(parts, "second"),
   };
 }
 
 function buildTemporalFromEpoch(
   dueAt: number,
   hasExplicitTime: boolean,
-  timeContext: CalendarTimeContext
+  timeContext: CalendarTimeContext,
 ): { dtstart: CalendarTemporalValue; dtend: CalendarTemporalValue } {
   if (!hasExplicitTime) {
     if (timeContext.mode === "tzid") {
@@ -193,7 +196,7 @@ function buildTemporalFromEpoch(
       const startDate = formatIcsDate(parts);
       return {
         dtstart: { kind: "date", value: startDate },
-        dtend: { kind: "date", value: addDaysToIcsDate(startDate, 1) }
+        dtend: { kind: "date", value: addDaysToIcsDate(startDate, 1) },
       };
     }
 
@@ -201,24 +204,27 @@ function buildTemporalFromEpoch(
     const startDate = `${date.getUTCFullYear()}${pad2(date.getUTCMonth() + 1)}${pad2(date.getUTCDate())}`;
     return {
       dtstart: { kind: "date", value: startDate },
-      dtend: { kind: "date", value: addDaysToIcsDate(startDate, 1) }
+      dtend: { kind: "date", value: addDaysToIcsDate(startDate, 1) },
     };
   }
 
   if (timeContext.mode === "tzid") {
     const start = getZonedParts(new Date(dueAt), timeContext.timeZone);
-    const end = getZonedParts(new Date(dueAt + DEFAULT_TIMED_DURATION_MS), timeContext.timeZone);
+    const end = getZonedParts(
+      new Date(dueAt + DEFAULT_TIMED_DURATION_MS),
+      timeContext.timeZone,
+    );
     return {
       dtstart: {
         kind: "date-time",
         value: formatIcsDateTime(start),
-        tzid: timeContext.timeZone
+        tzid: timeContext.timeZone,
       },
       dtend: {
         kind: "date-time",
         value: formatIcsDateTime(end),
-        tzid: timeContext.timeZone
-      }
+        tzid: timeContext.timeZone,
+      },
     };
   }
 
@@ -226,27 +232,27 @@ function buildTemporalFromEpoch(
     dtstart: {
       kind: "date-time",
       value: formatUtcDateTime(new Date(dueAt)),
-      utc: true
+      utc: true,
     },
     dtend: {
       kind: "date-time",
       value: formatUtcDateTime(new Date(dueAt + DEFAULT_TIMED_DURATION_MS)),
-      utc: true
-    }
+      utc: true,
+    },
   };
 }
 
 function buildTemporalFromLocalIso(
   localIso: string,
   hasExplicitTime: boolean,
-  timeContext: CalendarTimeContext
+  timeContext: CalendarTimeContext,
 ): { dtstart: CalendarTemporalValue; dtend: CalendarTemporalValue } | null {
   if (!hasExplicitTime) {
     const startDate = localIsoToIcsDate(localIso);
     if (!startDate) return null;
     return {
       dtstart: { kind: "date", value: startDate },
-      dtend: { kind: "date", value: addDaysToIcsDate(startDate, 1) }
+      dtend: { kind: "date", value: addDaysToIcsDate(startDate, 1) },
     };
   }
 
@@ -262,13 +268,13 @@ function buildTemporalFromLocalIso(
       dtstart: {
         kind: "date-time",
         value: start,
-        tzid: timeContext.timeZone
+        tzid: timeContext.timeZone,
       },
       dtend: {
         kind: "date-time",
         value: end,
-        tzid: timeContext.timeZone
-      }
+        tzid: timeContext.timeZone,
+      },
     };
   }
 
@@ -276,20 +282,20 @@ function buildTemporalFromLocalIso(
     dtstart: {
       kind: "date-time",
       value: formatUtcDateTime(startDate),
-      utc: true
+      utc: true,
     },
     dtend: {
       kind: "date-time",
       value: formatUtcDateTime(endDate),
-      utc: true
-    }
+      utc: true,
+    },
   };
 }
 
 function buildExdates(
   exdates: string[] | undefined,
   hasExplicitTime: boolean,
-  timeContext: CalendarTimeContext
+  timeContext: CalendarTimeContext,
 ): CalendarExdates | undefined {
   if (!exdates || exdates.length === 0) return undefined;
 
@@ -305,7 +311,7 @@ function buildExdates(
     return {
       kind: "date-time",
       values,
-      tzid: timeContext.timeZone
+      tzid: timeContext.timeZone,
     };
   }
 
@@ -319,13 +325,13 @@ function buildExdates(
   return {
     kind: "date-time",
     values: deduped,
-    utc: true
+    utc: true,
   };
 }
 
 function buildCommonFields(
   task: Task,
-  privacyMode: CalendarEventPrivacyMode
+  privacyMode: CalendarEventPrivacyMode,
 ): Pick<
   CalendarVEvent,
   "summary" | "description" | "categories" | "transp" | "url"
@@ -336,7 +342,7 @@ function buildCommonFields(
       description: undefined,
       categories: [],
       transp: "TRANSPARENT",
-      url: undefined
+      url: undefined,
     };
   }
 
@@ -345,7 +351,7 @@ function buildCommonFields(
     description: buildDescription(task),
     categories: buildCategories(task.tags),
     transp: "TRANSPARENT",
-    url: findFirstHttpUrl(task)
+    url: findFirstHttpUrl(task),
   };
 }
 
@@ -375,7 +381,7 @@ function createBaseEvent(params: {
     ...(params.rrule ? { rrule: params.rrule } : {}),
     ...(params.exdates ? { exdates: params.exdates } : {}),
     ...(params.relatedTo ? { relatedTo: params.relatedTo } : {}),
-    sortKey: toSortKey(params.temporal.dtstart)
+    sortKey: toSortKey(params.temporal.dtstart),
   };
 }
 
@@ -383,7 +389,7 @@ export function mapNonRecurringTaskToEvent(
   task: Task,
   timeContext: CalendarTimeContext,
   generatedAt: Date,
-  privacyMode: CalendarEventPrivacyMode = "full"
+  privacyMode: CalendarEventPrivacyMode = "full",
 ): CalendarVEvent | null {
   if (task.recurrence || task.instance_of) return null;
   if (task.dueAt === undefined) return null;
@@ -392,9 +398,13 @@ export function mapNonRecurringTaskToEvent(
     uid: `tadoi-${task.id}@local`,
     xTaskId: task.id,
     task,
-    temporal: buildTemporalFromEpoch(task.dueAt, task.hasExplicitTime === true, timeContext),
+    temporal: buildTemporalFromEpoch(
+      task.dueAt,
+      task.hasExplicitTime === true,
+      timeContext,
+    ),
     generatedAt,
-    privacyMode
+    privacyMode,
   });
 }
 
@@ -403,7 +413,7 @@ export function mapInstanceOverrideTaskToEvent(
   timeContext: CalendarTimeContext,
   generatedAt: Date,
   relatedToSeriesUid?: string,
-  privacyMode: CalendarEventPrivacyMode = "full"
+  privacyMode: CalendarEventPrivacyMode = "full",
 ): CalendarVEvent | null {
   if (!task.instance_of) return null;
   if (task.dueAt === undefined) return null;
@@ -413,10 +423,14 @@ export function mapInstanceOverrideTaskToEvent(
     xTaskId: task.id,
     xInstanceOf: task.instance_of.series_id,
     task,
-    temporal: buildTemporalFromEpoch(task.dueAt, task.hasExplicitTime === true, timeContext),
+    temporal: buildTemporalFromEpoch(
+      task.dueAt,
+      task.hasExplicitTime === true,
+      timeContext,
+    ),
     generatedAt,
     privacyMode,
-    relatedTo: relatedToSeriesUid
+    relatedTo: relatedToSeriesUid,
   });
 }
 
@@ -424,21 +438,21 @@ export function mapSeriesTaskToRecurringEvent(
   task: Task,
   timeContext: CalendarTimeContext,
   generatedAt: Date,
-  privacyMode: CalendarEventPrivacyMode = "full"
+  privacyMode: CalendarEventPrivacyMode = "full",
 ): CalendarVEvent | null {
   if (!task.recurrence || task.instance_of) return null;
 
   const temporal = buildTemporalFromLocalIso(
     task.recurrence.dtstart,
     task.hasExplicitTime === true,
-    timeContext
+    timeContext,
   );
   if (!temporal) return null;
 
   const exdates = buildExdates(
     task.recurrence.exdates,
     task.hasExplicitTime === true,
-    timeContext
+    timeContext,
   );
 
   return createBaseEvent({
@@ -450,7 +464,7 @@ export function mapSeriesTaskToRecurringEvent(
     generatedAt,
     privacyMode,
     rrule: toRRuleLine(task.recurrence.rrule),
-    exdates
+    exdates,
   });
 }
 
@@ -459,21 +473,21 @@ export function mapSeriesOccurrenceToEvent(
   occurrenceIso: string,
   timeContext: CalendarTimeContext,
   generatedAt: Date,
-  privacyMode: CalendarEventPrivacyMode = "full"
+  privacyMode: CalendarEventPrivacyMode = "full",
 ): CalendarVEvent | null {
   if (!task.recurrence || task.instance_of) return null;
 
   const temporal = buildTemporalFromLocalIso(
     occurrenceIso,
     task.hasExplicitTime === true,
-    timeContext
+    timeContext,
   );
   if (!temporal) return null;
 
   const compactOccurrence =
     task.hasExplicitTime === true
       ? (localIsoToIcsDateTime(occurrenceIso) ?? "").replace(/[^\d]/g, "")
-      : localIsoToIcsDate(occurrenceIso) ?? "";
+      : (localIsoToIcsDate(occurrenceIso) ?? "");
 
   return createBaseEvent({
     uid: `tadoi-occ-${task.id}-${compactOccurrence}@local`,
@@ -483,6 +497,6 @@ export function mapSeriesOccurrenceToEvent(
     temporal,
     generatedAt,
     privacyMode,
-    relatedTo: `tadoi-series-${task.id}@local`
+    relatedTo: `tadoi-series-${task.id}@local`,
   });
 }

@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import { THEME_OBJECT_IDS, type TadoiSettings, type ThemeObjectId } from "../settings/settings";
+import {
+  THEME_OBJECT_IDS,
+  type TadoiSettings,
+  type ThemeObjectId,
+} from "../settings/settings";
 import { applyTheme, applyThemeWithSettings, themeForObject } from "./theme";
 
 const HEX_COLOR_RE = /^#[0-9A-F]{6}$/;
@@ -9,9 +13,9 @@ function makeSettingsWithObjectOverrides(): TadoiSettings {
     THEME_OBJECT_IDS.map((objectId, index) => [
       objectId,
       {
-        text: `#${String(index + 1).padStart(6, "0")}`
-      }
-    ])
+        text: `#${String(index + 1).padStart(6, "0")}`,
+      },
+    ]),
   ) as Record<ThemeObjectId, { text: string }>;
 
   return {
@@ -23,10 +27,10 @@ function makeSettingsWithObjectOverrides(): TadoiSettings {
       inAppOverdueBanner: true,
       terminalBellOnOverdue: false,
       bannerDurationMs: 5000,
-      bellCooldownMs: 2000
+      bellCooldownMs: 2000,
     },
     security: {
-      nonHttpLinkPolicy: "prompt"
+      nonHttpLinkPolicy: "prompt",
     },
     customThemes: {
       custom1: {
@@ -42,23 +46,23 @@ function makeSettingsWithObjectOverrides(): TadoiSettings {
           warn: "#DDAA00",
           danger: "#DD3344",
           selectionBg: "#8844CC",
-          selectionText: "#111111"
+          selectionText: "#111111",
         },
-        objects
+        objects,
       },
       textByTheme: {
         retro: {
           global: {
-            text: "#101112"
+            text: "#101112",
           },
           objects: {
             taskList: {
-              mutedText: "#334455"
-            }
-          }
-        }
-      }
-    }
+              mutedText: "#334455",
+            },
+          },
+        },
+      },
+    },
   };
 }
 
@@ -76,7 +80,7 @@ describe("app theme runtime mapping", () => {
       "help",
       "inputs",
       "dashboard",
-      "notifications"
+      "notifications",
     ]);
   });
 
@@ -85,7 +89,9 @@ describe("app theme runtime mapping", () => {
     applyThemeWithSettings("custom1", settings);
 
     for (const [index, objectId] of THEME_OBJECT_IDS.entries()) {
-      expect(themeForObject(objectId).text).toBe(`#${String(index + 1).padStart(6, "0")}`);
+      expect(themeForObject(objectId).text).toBe(
+        `#${String(index + 1).padStart(6, "0")}`,
+      );
     }
   });
 
@@ -95,15 +101,15 @@ describe("app theme runtime mapping", () => {
       builtInTextDraft: {
         retro: {
           global: {
-            text: "#AABBCC"
+            text: "#AABBCC",
           },
           objects: {
             taskList: {
-              mutedText: "#445566"
-            }
-          }
-        }
-      }
+              mutedText: "#445566",
+            },
+          },
+        },
+      },
     });
 
     expect(themeForObject("taskList").text).toBe("#AABBCC");

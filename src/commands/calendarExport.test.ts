@@ -35,20 +35,26 @@ describe("calendarExport command", () => {
         outPath: "",
         range: "next7",
         privacy: "minimal",
-        help: false
-      })
+        help: false,
+      }),
     );
     expect(code).toBe(2);
   });
 
   it("returns target-resolution exit code for unknown saved view", async () => {
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-calendar-export-cmd-view-"));
+    const tempDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "tadoi-calendar-export-cmd-view-"),
+    );
     const dataPath = path.join(tempDir, "tadoi_data.json");
     const outPath = path.join(tempDir, "out.ics");
     await fs.writeFile(
       dataPath,
-      JSON.stringify({ schemaVersion: 4, tasks: [], tagIndex: {}, savedViews: [] }, null, 2),
-      "utf8"
+      JSON.stringify(
+        { schemaVersion: 4, tasks: [], tagIndex: {}, savedViews: [] },
+        null,
+        2,
+      ),
+      "utf8",
     );
 
     const previousDataPath = process.env.TADOI_DATA_PATH;
@@ -60,8 +66,8 @@ describe("calendarExport command", () => {
           viewName: "Missing",
           range: "next7",
           privacy: "minimal",
-          help: false
-        })
+          help: false,
+        }),
       );
       expect(code).toBe(3);
     } finally {
@@ -74,7 +80,9 @@ describe("calendarExport command", () => {
   });
 
   it("returns filesystem exit code when state path cannot be read", async () => {
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-calendar-export-cmd-fs-"));
+    const tempDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "tadoi-calendar-export-cmd-fs-"),
+    );
     const outPath = path.join(tempDir, "out.ics");
 
     const previousDataPath = process.env.TADOI_DATA_PATH;
@@ -85,8 +93,8 @@ describe("calendarExport command", () => {
           outPath,
           range: "next7",
           privacy: "minimal",
-          help: false
-        })
+          help: false,
+        }),
       );
       expect(code).toBe(5);
     } finally {

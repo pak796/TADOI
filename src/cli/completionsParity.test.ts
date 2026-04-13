@@ -5,7 +5,7 @@ import path from "path";
 const COMPLETION_FILES = [
   path.resolve(import.meta.dir, "../../docs/completions/tadoi.bash"),
   path.resolve(import.meta.dir, "../../docs/completions/_tadoi"),
-  path.resolve(import.meta.dir, "../../docs/completions/tadoi.fish")
+  path.resolve(import.meta.dir, "../../docs/completions/tadoi.fish"),
 ];
 
 const REQUIRED_COMMAND_TOKENS = [
@@ -27,7 +27,7 @@ const REQUIRED_COMMAND_TOKENS = [
   "bulk:assignee",
   "bulk:project",
   "bulk:stage",
-  "bulk:delete"
+  "bulk:delete",
 ];
 
 describe("CLI completion parity", () => {

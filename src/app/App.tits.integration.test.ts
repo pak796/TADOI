@@ -27,7 +27,7 @@ function makeTask(id: string, title: string, nowMs = Date.now()): Task {
     workflowStage: "todo",
     createdAt: nowMs,
     updatedAt: nowMs,
-    tags: []
+    tags: [],
   };
 }
 
@@ -38,7 +38,7 @@ function makeInitialData(tasks: Task[]): LoadedData {
     tasks,
     tagIndex: {},
     savedViews: [],
-    engagement: createDefaultEngagementState()
+    engagement: createDefaultEngagementState(),
   };
 }
 
@@ -54,9 +54,11 @@ function toLocalFloatingIso(date: Date): string {
 
 async function createSession(
   initialData: LoadedData,
-  options: { skipInitialSave?: boolean } = {}
+  options: { skipInitialSave?: boolean } = {},
 ): Promise<AppSession> {
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-app-tits-flow-"));
+  const tempDir = await fs.mkdtemp(
+    path.join(os.tmpdir(), "tadoi-app-tits-flow-"),
+  );
   const settingsPath = path.join(tempDir, "settings.json");
   await fs.writeFile(
     settingsPath,
@@ -67,26 +69,26 @@ async function createSession(
           inAppOverdueBanner: false,
           terminalBellOnOverdue: false,
           bannerDurationMs: 6000,
-          bellCooldownMs: 3000
+          bellCooldownMs: 3000,
         },
         notes: {
           enabled: false,
-          rootPath: null
-        }
+          rootPath: null,
+        },
       },
       null,
-      2
+      2,
     ),
-    "utf8"
+    "utf8",
   );
   const harness = await testRender(
     React.createElement(App, {
       initialData,
       skipInitialSave: options.skipInitialSave ?? true,
       showLogo: false,
-      settingsPath
+      settingsPath,
     }),
-    { width: 140, height: 40 }
+    { width: 140, height: 40 },
   );
   await harness.renderOnce();
   return { harness, tempDir };
@@ -100,7 +102,7 @@ async function cleanupSession(session: AppSession): Promise<void> {
 async function waitForFrame(
   harness: RenderHarness,
   predicate: (frame: string) => boolean,
-  timeoutMs = 4000
+  timeoutMs = 4000,
 ): Promise<string> {
   const deadline = Date.now() + timeoutMs;
   let lastFrame = "";
@@ -112,13 +114,15 @@ async function waitForFrame(
     }
     await Bun.sleep(20);
   }
-  throw new Error(`Timed out waiting for frame condition.\nLast frame:\n${lastFrame}`);
+  throw new Error(
+    `Timed out waiting for frame condition.\nLast frame:\n${lastFrame}`,
+  );
 }
 
 async function waitForText(
   harness: RenderHarness,
   text: string,
-  timeoutMs = 4000
+  timeoutMs = 4000,
 ): Promise<string> {
   return waitForFrame(harness, (frame) => frame.includes(text), timeoutMs);
 }
@@ -126,7 +130,7 @@ async function waitForText(
 async function waitForTextAbsent(
   harness: RenderHarness,
   text: string,
-  timeoutMs = 4000
+  timeoutMs = 4000,
 ): Promise<string> {
   return waitForFrame(harness, (frame) => !frame.includes(text), timeoutMs);
 }
@@ -152,7 +156,7 @@ async function readSavedData(pathname: string): Promise<LoadedData> {
 async function pressKeyAndRender(
   mockInput: MockInput,
   harness: RenderHarness,
-  key: string
+  key: string,
 ): Promise<string> {
   await mockInput.pressKeys([key]);
   await Bun.sleep(10);
@@ -162,7 +166,7 @@ async function pressKeyAndRender(
 
 async function pressEscapeAndRender(
   mockInput: MockInput,
-  harness: RenderHarness
+  harness: RenderHarness,
 ): Promise<string> {
   await Promise.resolve(mockInput.pressEscape());
   await Bun.sleep(10);
@@ -172,7 +176,7 @@ async function pressEscapeAndRender(
 
 async function pressEnterAndRender(
   mockInput: MockInput,
-  harness: RenderHarness
+  harness: RenderHarness,
 ): Promise<string> {
   await Promise.resolve(mockInput.pressEnter());
   await Bun.sleep(10);
@@ -183,7 +187,7 @@ async function pressEnterAndRender(
 async function typeTextAndRender(
   mockInput: MockInput,
   harness: RenderHarness,
-  text: string
+  text: string,
 ): Promise<string> {
   await mockInput.typeText(text);
   await Bun.sleep(20);
@@ -193,7 +197,7 @@ async function typeTextAndRender(
 
 async function pressTabAndRender(
   mockInput: MockInput,
-  harness: RenderHarness
+  harness: RenderHarness,
 ): Promise<string> {
   await Promise.resolve(mockInput.pressTab());
   await Bun.sleep(10);
@@ -204,7 +208,7 @@ async function pressTabAndRender(
 async function pressArrowAndRender(
   mockInput: MockInput,
   harness: RenderHarness,
-  direction: "up" | "down" | "left" | "right"
+  direction: "up" | "down" | "left" | "right",
 ): Promise<string> {
   await Promise.resolve(mockInput.pressArrow(direction));
   await Bun.sleep(10);
@@ -236,7 +240,10 @@ describe("App TITS integration", () => {
   it("opens/closes TITS and suppresses j/k list routing while active", async () => {
     const now = new Date(2026, 1, 26, 12, 0).getTime();
     const session = await createSession(
-      makeInitialData([makeTask("task-1", "Task One", now), makeTask("task-2", "Task Two", now)])
+      makeInitialData([
+        makeTask("task-1", "Task One", now),
+        makeTask("task-2", "Task Two", now),
+      ]),
     );
     const { harness } = session;
     const { mockInput } = harness;
@@ -290,15 +297,19 @@ describe("App TITS integration", () => {
       workflowStage: "todo",
       createdAt: now - 1000,
       updatedAt: now - 1000,
-      tags: ["work"]
+      tags: ["work"],
     };
 
-    const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-app-tits-tag-dry-run-"));
+    const dataDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "tadoi-app-tits-tag-dry-run-"),
+    );
     const dataPath = path.join(dataDir, "tadoi_data.json");
     const originalDataPath = process.env.TADOI_DATA_PATH;
     process.env.TADOI_DATA_PATH = dataPath;
 
-    const session = await createSession(makeInitialData([task]), { skipInitialSave: false });
+    const session = await createSession(makeInitialData([task]), {
+      skipInitialSave: false,
+    });
     const { harness } = session;
     const { mockInput } = harness;
 
@@ -309,19 +320,27 @@ describe("App TITS integration", () => {
 
       await pressKeyAndRender(mockInput, harness, "`");
       await waitForText(harness, TITS_HEADER_TEXT);
-      await typeTextAndRender(mockInput, harness, "tag rename work project --dry-run");
+      await typeTextAndRender(
+        mockInput,
+        harness,
+        "tag rename work project --dry-run",
+      );
       await pressEnterAndRender(mockInput, harness);
       await waitForText(harness, "Dry run: Rename work -> project");
 
       await Bun.sleep(1100);
       const savedJson = await readSavedData(dataPath);
-      const persistedTask = savedJson.tasks.find((candidate) => candidate.id === task.id);
+      const persistedTask = savedJson.tasks.find(
+        (candidate) => candidate.id === task.id,
+      );
       expect(persistedTask?.tags).toEqual(["work"]);
       expect(savedJson.tagAliases ?? {}).toEqual({});
 
       const entries = await fs.readdir(dataDir);
       const backupPrefix = `${path.basename(dataPath)}.backup.`;
-      expect(entries.some((entry) => entry.startsWith(backupPrefix))).toBe(false);
+      expect(entries.some((entry) => entry.startsWith(backupPrefix))).toBe(
+        false,
+      );
     } finally {
       await cleanupSession(session);
       await fs.rm(dataDir, { recursive: true, force: true });
@@ -342,15 +361,19 @@ describe("App TITS integration", () => {
       workflowStage: "todo",
       createdAt: now - 1000,
       updatedAt: now - 1000,
-      tags: ["work"]
+      tags: ["work"],
     };
 
-    const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-app-tits-tag-cancel-"));
+    const dataDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "tadoi-app-tits-tag-cancel-"),
+    );
     const dataPath = path.join(dataDir, "tadoi_data.json");
     const originalDataPath = process.env.TADOI_DATA_PATH;
     process.env.TADOI_DATA_PATH = dataPath;
 
-    const session = await createSession(makeInitialData([task]), { skipInitialSave: false });
+    const session = await createSession(makeInitialData([task]), {
+      skipInitialSave: false,
+    });
     const { harness } = session;
     const { mockInput } = harness;
 
@@ -370,13 +393,17 @@ describe("App TITS integration", () => {
 
       await Bun.sleep(1100);
       const savedJson = await readSavedData(dataPath);
-      const persistedTask = savedJson.tasks.find((candidate) => candidate.id === task.id);
+      const persistedTask = savedJson.tasks.find(
+        (candidate) => candidate.id === task.id,
+      );
       expect(persistedTask?.tags).toEqual(["work"]);
       expect(savedJson.tagAliases ?? {}).toEqual({});
 
       const entries = await fs.readdir(dataDir);
       const backupPrefix = `${path.basename(dataPath)}.backup.`;
-      expect(entries.some((entry) => entry.startsWith(backupPrefix))).toBe(false);
+      expect(entries.some((entry) => entry.startsWith(backupPrefix))).toBe(
+        false,
+      );
     } finally {
       await cleanupSession(session);
       await fs.rm(dataDir, { recursive: true, force: true });
@@ -398,16 +425,20 @@ describe("App TITS integration", () => {
         workflowStage: "todo",
         createdAt: now - 2000,
         updatedAt: now - 2000,
-        tags: ["Work", "work"]
-      }
+        tags: ["Work", "work"],
+      },
     ];
 
-    const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-app-tits-tag-apply-"));
+    const dataDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "tadoi-app-tits-tag-apply-"),
+    );
     const dataPath = path.join(dataDir, "tadoi_data.json");
     const originalDataPath = process.env.TADOI_DATA_PATH;
     process.env.TADOI_DATA_PATH = dataPath;
 
-    const session = await createSession(makeInitialData(tasks), { skipInitialSave: false });
+    const session = await createSession(makeInitialData(tasks), {
+      skipInitialSave: false,
+    });
     const { harness } = session;
     const { mockInput } = harness;
 
@@ -428,13 +459,17 @@ describe("App TITS integration", () => {
       await pressKeyAndRender(mockInput, harness, "y");
       await Bun.sleep(1300);
       const savedJson = await readSavedData(dataPath);
-      const firstTask = savedJson.tasks.find((candidate) => candidate.id === "task-tag-apply-1");
+      const firstTask = savedJson.tasks.find(
+        (candidate) => candidate.id === "task-tag-apply-1",
+      );
       expect(firstTask?.tags).toEqual(["focus"]);
       expect(savedJson.tagAliases).toEqual({ work: "focus" });
 
       const entries = await fs.readdir(dataDir);
       const backupPrefix = `${path.basename(dataPath)}.backup.`;
-      expect(entries.some((entry) => entry.startsWith(backupPrefix))).toBe(true);
+      expect(entries.some((entry) => entry.startsWith(backupPrefix))).toBe(
+        true,
+      );
     } finally {
       await cleanupSession(session);
       await fs.rm(dataDir, { recursive: true, force: true });
@@ -456,16 +491,20 @@ describe("App TITS integration", () => {
         workflowStage: "todo",
         createdAt: now - 2000,
         updatedAt: now - 2000,
-        tags: ["work", "project", "misc"]
-      }
+        tags: ["work", "project", "misc"],
+      },
     ];
 
-    const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-app-tits-tag-merge-"));
+    const dataDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "tadoi-app-tits-tag-merge-"),
+    );
     const dataPath = path.join(dataDir, "tadoi_data.json");
     const originalDataPath = process.env.TADOI_DATA_PATH;
     process.env.TADOI_DATA_PATH = dataPath;
 
-    const session = await createSession(makeInitialData(tasks), { skipInitialSave: false });
+    const session = await createSession(makeInitialData(tasks), {
+      skipInitialSave: false,
+    });
     const { harness } = session;
     const { mockInput } = harness;
 
@@ -476,7 +515,11 @@ describe("App TITS integration", () => {
 
       await pressKeyAndRender(mockInput, harness, "`");
       await waitForText(harness, TITS_HEADER_TEXT);
-      await typeTextAndRender(mockInput, harness, "tag merge work,project -> focus");
+      await typeTextAndRender(
+        mockInput,
+        harness,
+        "tag merge work,project -> focus",
+      );
       await pressEnterAndRender(mockInput, harness);
       await waitForText(harness, "APPLY TAG MERGE? [Y/N/ESC]");
 
@@ -487,13 +530,17 @@ describe("App TITS integration", () => {
 
       await Bun.sleep(1300);
       const savedJson = await readSavedData(dataPath);
-      const firstTask = savedJson.tasks.find((candidate) => candidate.id === "task-tag-merge-1");
+      const firstTask = savedJson.tasks.find(
+        (candidate) => candidate.id === "task-tag-merge-1",
+      );
       expect(firstTask?.tags).toEqual(["focus", "misc"]);
       expect(savedJson.tagAliases).toEqual({ project: "focus", work: "focus" });
 
       const entries = await fs.readdir(dataDir);
       const backupPrefix = `${path.basename(dataPath)}.backup.`;
-      expect(entries.some((entry) => entry.startsWith(backupPrefix))).toBe(true);
+      expect(entries.some((entry) => entry.startsWith(backupPrefix))).toBe(
+        true,
+      );
     } finally {
       await cleanupSession(session);
       await fs.rm(dataDir, { recursive: true, force: true });
@@ -517,15 +564,19 @@ describe("App TITS integration", () => {
       updatedAt: now - 1000,
       dueAt,
       hasExplicitTime: true,
-      tags: []
+      tags: [],
     };
 
-    const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-app-tits-recur-"));
+    const dataDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "tadoi-app-tits-recur-"),
+    );
     const dataPath = path.join(dataDir, "tadoi_data.json");
     const originalDataPath = process.env.TADOI_DATA_PATH;
     process.env.TADOI_DATA_PATH = dataPath;
 
-    const session = await createSession(makeInitialData([task]), { skipInitialSave: false });
+    const session = await createSession(makeInitialData([task]), {
+      skipInitialSave: false,
+    });
     const { harness } = session;
     const { mockInput } = harness;
 
@@ -537,18 +588,24 @@ describe("App TITS integration", () => {
       await typeTextAndRender(
         mockInput,
         harness,
-        "recur id:task-recur-tits-1 every:week interval:1 on:mon"
+        "recur id:task-recur-tits-1 every:week interval:1 on:mon",
       );
       await pressEnterAndRender(mockInput, harness);
-      await waitForText(harness, "Recurrence set: Plan recurring from TITS -> every week");
+      await waitForText(
+        harness,
+        "Recurrence set: Plan recurring from TITS -> every week",
+      );
 
       await typeTextAndRender(
         mockInput,
         harness,
-        "recur id:task-recur-tits-1 every:week interval:2 on:mon"
+        "recur id:task-recur-tits-1 every:week interval:2 on:mon",
       );
       await pressEnterAndRender(mockInput, harness);
-      await waitForText(harness, "Recurrence set: Plan recurring from TITS -> every week");
+      await waitForText(
+        harness,
+        "Recurrence set: Plan recurring from TITS -> every week",
+      );
 
       await pressEscapeAndRender(mockInput, harness);
       await waitForTextAbsent(harness, TITS_HEADER_TEXT);
@@ -557,11 +614,16 @@ describe("App TITS integration", () => {
       await Bun.sleep(1400);
       const raw = await fs.readFile(dataPath, "utf8");
       const savedJson = JSON.parse(raw) as LoadedData;
-      const updatedTask = savedJson.tasks.find((candidate) => candidate.id === task.id);
+      const updatedTask = savedJson.tasks.find(
+        (candidate) => candidate.id === task.id,
+      );
       expect(updatedTask?.recurrence?.interval).toBe(2);
-      expect(savedJson.engagement.achievements.FIRST_RECURRING_TASK_CREATED).toBeDefined();
       expect(
-        savedJson.engagement.achievements.FIRST_RECURRING_TASK_CREATED?.meta?.seriesId
+        savedJson.engagement.achievements.FIRST_RECURRING_TASK_CREATED,
+      ).toBeDefined();
+      expect(
+        savedJson.engagement.achievements.FIRST_RECURRING_TASK_CREATED?.meta
+          ?.seriesId,
       ).toBe("series:task-recur-tits-1");
     } finally {
       await cleanupSession(session);
@@ -574,84 +636,102 @@ describe("App TITS integration", () => {
     }
   });
 
-  it(
-    "emits checklist-created and checklist-fully-completed milestones once via TITS check commands",
-    async () => {
-      const now = new Date(2026, 1, 26, 12, 0).getTime();
-      const task: Task = {
-        id: "task-check-milestone-1",
-        title: "Checklist milestone from TITS",
-        status: "open",
-        workflowStage: "todo",
-        createdAt: now - 1000,
-        updatedAt: now - 1000,
-        tags: []
-      };
+  it("emits checklist-created and checklist-fully-completed milestones once via TITS check commands", async () => {
+    const now = new Date(2026, 1, 26, 12, 0).getTime();
+    const task: Task = {
+      id: "task-check-milestone-1",
+      title: "Checklist milestone from TITS",
+      status: "open",
+      workflowStage: "todo",
+      createdAt: now - 1000,
+      updatedAt: now - 1000,
+      tags: [],
+    };
 
-      const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-app-tits-check-"));
-      const dataPath = path.join(dataDir, "tadoi_data.json");
-      const originalDataPath = process.env.TADOI_DATA_PATH;
-      process.env.TADOI_DATA_PATH = dataPath;
+    const dataDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "tadoi-app-tits-check-"),
+    );
+    const dataPath = path.join(dataDir, "tadoi_data.json");
+    const originalDataPath = process.env.TADOI_DATA_PATH;
+    process.env.TADOI_DATA_PATH = dataPath;
 
-      const session = await createSession(makeInitialData([task]), { skipInitialSave: false });
-      const { harness } = session;
-      const { mockInput } = harness;
+    const session = await createSession(makeInitialData([task]), {
+      skipInitialSave: false,
+    });
+    const { harness } = session;
+    const { mockInput } = harness;
 
-      try {
-        await waitForText(harness, "CHECKLIST MILESTONE FROM TITS");
+    try {
+      await waitForText(harness, "CHECKLIST MILESTONE FROM TITS");
 
-        await pressKeyAndRender(mockInput, harness, "`");
-        await waitForText(harness, TITS_HEADER_TEXT);
-        await typeTextAndRender(mockInput, harness, 'check add @selected "Milestone item one"');
-        await pressEnterAndRender(mockInput, harness);
-        await waitForText(harness, "Checklist added: Checklist milestone from TITS");
+      await pressKeyAndRender(mockInput, harness, "`");
+      await waitForText(harness, TITS_HEADER_TEXT);
+      await typeTextAndRender(
+        mockInput,
+        harness,
+        'check add @selected "Milestone item one"',
+      );
+      await pressEnterAndRender(mockInput, harness);
+      await waitForText(
+        harness,
+        "Checklist added: Checklist milestone from TITS",
+      );
 
-        await typeTextAndRender(mockInput, harness, "check toggle @selected 1");
-        await pressEnterAndRender(mockInput, harness);
-        await waitForText(harness, "Checklist toggled: Checklist milestone from TITS (#1)");
+      await typeTextAndRender(mockInput, harness, "check toggle @selected 1");
+      await pressEnterAndRender(mockInput, harness);
+      await waitForText(
+        harness,
+        "Checklist toggled: Checklist milestone from TITS (#1)",
+      );
 
-        await waitForFile(dataPath, 4000);
-        await Bun.sleep(1400);
-        let raw = await fs.readFile(dataPath, "utf8");
-        const afterFirstCompletion = JSON.parse(raw) as LoadedData;
-        const firstCreatedAt =
-          afterFirstCompletion.engagement.achievements.FIRST_CHECKLIST_CREATED?.unlockedAt;
-        const firstCompletedAt =
-          afterFirstCompletion.engagement.achievements.FIRST_CHECKLIST_FULLY_COMPLETED
-            ?.unlockedAt;
-        expect(firstCreatedAt).toBeDefined();
-        expect(firstCompletedAt).toBeDefined();
+      await waitForFile(dataPath, 4000);
+      await Bun.sleep(1400);
+      let raw = await fs.readFile(dataPath, "utf8");
+      const afterFirstCompletion = JSON.parse(raw) as LoadedData;
+      const firstCreatedAt =
+        afterFirstCompletion.engagement.achievements.FIRST_CHECKLIST_CREATED
+          ?.unlockedAt;
+      const firstCompletedAt =
+        afterFirstCompletion.engagement.achievements
+          .FIRST_CHECKLIST_FULLY_COMPLETED?.unlockedAt;
+      expect(firstCreatedAt).toBeDefined();
+      expect(firstCompletedAt).toBeDefined();
 
-        await typeTextAndRender(mockInput, harness, "check toggle @selected 1");
-        await pressEnterAndRender(mockInput, harness);
-        await waitForText(harness, "Checklist toggled: Checklist milestone from TITS (#1)");
-        await typeTextAndRender(mockInput, harness, "check toggle @selected 1");
-        await pressEnterAndRender(mockInput, harness);
-        await waitForText(harness, "Checklist toggled: Checklist milestone from TITS (#1)");
-        await pressEscapeAndRender(mockInput, harness);
-        await waitForTextAbsent(harness, TITS_HEADER_TEXT);
+      await typeTextAndRender(mockInput, harness, "check toggle @selected 1");
+      await pressEnterAndRender(mockInput, harness);
+      await waitForText(
+        harness,
+        "Checklist toggled: Checklist milestone from TITS (#1)",
+      );
+      await typeTextAndRender(mockInput, harness, "check toggle @selected 1");
+      await pressEnterAndRender(mockInput, harness);
+      await waitForText(
+        harness,
+        "Checklist toggled: Checklist milestone from TITS (#1)",
+      );
+      await pressEscapeAndRender(mockInput, harness);
+      await waitForTextAbsent(harness, TITS_HEADER_TEXT);
 
-        await Bun.sleep(1400);
-        raw = await fs.readFile(dataPath, "utf8");
-        const finalSaved = JSON.parse(raw) as LoadedData;
-        expect(finalSaved.engagement.achievements.FIRST_CHECKLIST_CREATED?.unlockedAt).toBe(
-          firstCreatedAt
-        );
-        expect(
-          finalSaved.engagement.achievements.FIRST_CHECKLIST_FULLY_COMPLETED?.unlockedAt
-        ).toBe(firstCompletedAt);
-      } finally {
-        await cleanupSession(session);
-        await fs.rm(dataDir, { recursive: true, force: true });
-        if (originalDataPath === undefined) {
-          delete process.env.TADOI_DATA_PATH;
-        } else {
-          process.env.TADOI_DATA_PATH = originalDataPath;
-        }
+      await Bun.sleep(1400);
+      raw = await fs.readFile(dataPath, "utf8");
+      const finalSaved = JSON.parse(raw) as LoadedData;
+      expect(
+        finalSaved.engagement.achievements.FIRST_CHECKLIST_CREATED?.unlockedAt,
+      ).toBe(firstCreatedAt);
+      expect(
+        finalSaved.engagement.achievements.FIRST_CHECKLIST_FULLY_COMPLETED
+          ?.unlockedAt,
+      ).toBe(firstCompletedAt);
+    } finally {
+      await cleanupSession(session);
+      await fs.rm(dataDir, { recursive: true, force: true });
+      if (originalDataPath === undefined) {
+        delete process.env.TADOI_DATA_PATH;
+      } else {
+        process.env.TADOI_DATA_PATH = originalDataPath;
       }
-    },
-    20_000
-  );
+    }
+  }, 20_000);
 
   it("toggles checklist on a virtual occurrence by materializing an override without EXDATE", async () => {
     const now = Date.now();
@@ -659,7 +739,9 @@ describe("App TITS integration", () => {
     start.setDate(start.getDate() + 1);
     start.setHours(9, 0, 0, 0);
     const createdIso = new Date(now).toISOString();
-    const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-app-checklist-virtual-"));
+    const dataDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "tadoi-app-checklist-virtual-"),
+    );
     const dataPath = path.join(dataDir, "tadoi_data.json");
     const originalDataPath = process.env.TADOI_DATA_PATH;
     process.env.TADOI_DATA_PATH = dataPath;
@@ -677,7 +759,7 @@ describe("App TITS integration", () => {
           recurrence: {
             dtstart: toLocalFloatingIso(start),
             rrule: "FREQ=DAILY;INTERVAL=1",
-            series_id: "series:1"
+            series_id: "series:1",
           },
           checklist: [
             {
@@ -686,12 +768,12 @@ describe("App TITS integration", () => {
               isDone: false,
               createdAt: createdIso,
               updatedAt: createdIso,
-              sort: 0
-            }
-          ]
-        }
+              sort: 0,
+            },
+          ],
+        },
       ]),
-      { skipInitialSave: false }
+      { skipInitialSave: false },
     );
     const { harness } = session;
     const { mockInput } = harness;
@@ -709,13 +791,17 @@ describe("App TITS integration", () => {
       await Bun.sleep(1400);
       const raw = await fs.readFile(dataPath, "utf8");
       const savedJson = JSON.parse(raw) as LoadedData;
-      const instance = savedJson.tasks.find((task) => task.instance_of?.series_id === "series:1");
+      const instance = savedJson.tasks.find(
+        (task) => task.instance_of?.series_id === "series:1",
+      );
       const seriesTask = savedJson.tasks.find((task) => task.id === "series-1");
       expect(instance).toBeDefined();
       expect(instance?.checklist?.[0]?.isDone).toBe(true);
-      expect((seriesTask?.recurrence?.exdates ?? []).includes(instance!.instance_of!.occurrence)).toBe(
-        false
-      );
+      expect(
+        (seriesTask?.recurrence?.exdates ?? []).includes(
+          instance!.instance_of!.occurrence,
+        ),
+      ).toBe(false);
     } finally {
       await cleanupSession(session);
       await fs.rm(dataDir, { recursive: true, force: true });

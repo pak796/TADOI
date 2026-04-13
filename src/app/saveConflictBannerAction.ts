@@ -3,5 +3,7 @@ export function shouldTriggerSaveConflictRetryFromMouse(params: {
   retryPending: boolean;
   button: number;
 }): boolean {
-  return params.isSaveConflictBanner && !params.retryPending && params.button === 0;
+  return (
+    params.isSaveConflictBanner && !params.retryPending && params.button === 0
+  );
 }

@@ -32,6 +32,7 @@ Verify:
 ## 3) Installable Binaries (Preferred for End Users)
 
 Expected release artifacts:
+
 - macOS: `TADOI-macOS-<version>.dmg` (contains `TADOI-<version>.pkg` + `README.txt`)
 - Windows: `TADOI-Setup-x64-<version>.exe`
 - Linux: `tadoi_<version>_amd64.deb` and `tadoi-<version>-x86_64.AppImage`
@@ -39,6 +40,7 @@ Expected release artifacts:
 - Per-target checksum file: `SHA256SUMS-<target>.txt`
 
 GitHub download paths:
+
 - Release assets for version tags (`v*`) via the GitHub Actions release workflow
 - Per-commit macOS artifacts via `.github/workflows/package-macos.yml`:
   1. Push branch to GitHub.
@@ -46,6 +48,7 @@ GitHub download paths:
   3. Download `tadoi-macos-<commit-sha>` artifact from the run.
 
 Install from artifacts:
+
 - macOS:
   1. Open DMG.
   2. Confirm it includes `TADOI-<version>.pkg` and `README.txt`.
@@ -71,6 +74,7 @@ Install from artifacts:
      - Fish: `/usr/share/fish/vendor_completions.d/tadoi.fish`
 
 Verify manifest-backed artifacts:
+
 1. Confirm `TADOI-<target>-<version>-manifest.json` is present in your artifact bundle.
 2. Run gate check in repo root:
    - `bun run installer:gate --target macos`
@@ -93,9 +97,11 @@ Verify manifest-backed artifacts:
 `bun install` runs a `postinstall` hook that installs user-level shell completions (`bash`, `zsh`, `fish`) using `scripts/install-completions.ts`.
 
 To skip completion install in CI/automation:
+
 - `TADOI_SKIP_COMPLETION_INSTALL=1 bun install`
 
 Manual rerun:
+
 - `bun run completions:install:user`
 
 ### 4.3 Run TADOI
@@ -126,6 +132,7 @@ Check these basics:
 If these checks pass, your install is healthy.
 
 Optional notification check:
+
 - Create a timed task due within 1 minute and keep the app open.
 - Confirm overdue popup modal appears and responds to `S`/`D`/`G`/`Esc`.
 
@@ -187,13 +194,16 @@ Optional full validation:
 ## 7) Build and Packaging Commands
 
 Daily build (artifacts + report):
+
 - `bun run build:daily`
 
 Planner-only mode (default):
+
 - `bun scripts/build-binary.ts --target macos --format raw`
 - `bun scripts/build-binary.ts --target windows --format installer`
 
 Real build mode:
+
 - `bun scripts/build-binary.ts --target macos --format raw --mode build`
 - `bun scripts/build-binary.ts --target macos --format installer --mode build`
 - `bun scripts/build-binary.ts --target windows --format raw --mode build`
@@ -203,15 +213,18 @@ Real build mode:
 - `bun run build:installer:mac:all` (raw binary + DMG/PKG in one command)
 
 Tool prerequisites:
+
 - macOS: `pkgbuild`, `productbuild`, `hdiutil` (Xcode command line tools)
 - Windows: Inno Setup compiler (`iscc`)
 - Linux: `dpkg-deb` for DEB and `appimagetool` for AppImage (strict requirement in installer build mode)
 
 Optional signing env vars:
+
 - macOS: `TADOI_MAC_SIGN_IDENTITY_INSTALLER`, `TADOI_MAC_NOTARY_PROFILE`
 - Windows: `TADOI_WIN_SIGN_CERT_PATH`, `TADOI_WIN_SIGN_CERT_PASSWORD`
 
 Installer manifest gate:
+
 - `bun run installer:gate --target <macos|windows|linux>`
 
 ## 8) Troubleshooting

@@ -5,7 +5,7 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
-  statSync
+  statSync,
 } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -47,11 +47,15 @@ function parseArg(argv: string[], name: string): string | null {
 
 export function parseTargetArg(
   argv: string[] = process.argv.slice(2),
-  defaultTarget: Target = hostTarget()
+  defaultTarget: Target = hostTarget(),
 ): Target {
   const requested = parseArg(argv, "--target");
   if (requested === null || requested.trim() === "") return defaultTarget;
-  if (requested === "macos" || requested === "windows" || requested === "linux") {
+  if (
+    requested === "macos" ||
+    requested === "windows" ||
+    requested === "linux"
+  ) {
     return requested;
   }
   fail(`invalid --target. expected macos|windows|linux, got: ${requested}`);
@@ -59,11 +63,15 @@ export function parseTargetArg(
 
 export function parseScopeArg(
   argv: string[] = process.argv.slice(2),
-  defaultScope: SmokeScope = "all"
+  defaultScope: SmokeScope = "all",
 ): SmokeScope {
   const requested = parseArg(argv, "--scope");
   if (requested === null || requested.trim() === "") return defaultScope;
-  if (requested === "binary" || requested === "installer" || requested === "all") {
+  if (
+    requested === "binary" ||
+    requested === "installer" ||
+    requested === "all"
+  ) {
     return requested;
   }
   fail(`invalid --scope. expected binary|installer|all, got: ${requested}`);
@@ -90,13 +98,13 @@ export function resolveSmokePaths(rootDir: string, target: Target): SmokePaths {
     macDmgPath: path.join(installerDir, `TADOI-macOS-${packageVersion}.dmg`),
     windowsInstallerPath: path.join(
       installerDir,
-      `TADOI-Setup-x64-${packageVersion}.exe`
+      `TADOI-Setup-x64-${packageVersion}.exe`,
     ),
     linuxDebPath: path.join(installerDir, `tadoi_${packageVersion}_amd64.deb`),
     linuxAppImagePath: path.join(
       installerDir,
-      `tadoi-${packageVersion}-x86_64.AppImage`
-    )
+      `tadoi-${packageVersion}-x86_64.AppImage`,
+    ),
   };
 }
 
@@ -104,7 +112,7 @@ function runOrFail(command: string, args: string[], cwd?: string): string {
   const result = spawnSync(command, args, {
     cwd,
     encoding: "utf8",
-    env: process.env
+    env: process.env,
   });
   if (result.error) {
     fail(`failed to execute ${command}: ${String(result.error)}`);
@@ -119,7 +127,7 @@ function runOrFail(command: string, args: string[], cwd?: string): string {
 function commandExists(command: string): boolean {
   const result = spawnSync(command, ["--help"], {
     stdio: "ignore",
-    env: process.env
+    env: process.env,
   });
   return !result.error;
 }
@@ -143,7 +151,7 @@ function smokeBinary(binaryPath: string, expectedVersion: string): void {
   const versionOutput = runOrFail(binaryPath, ["--version"]).trim();
   if (!versionOutput.includes(expectedVersion)) {
     fail(
-      `--version output did not include package version ${expectedVersion}. Output: ${versionOutput}`
+      `--version output did not include package version ${expectedVersion}. Output: ${versionOutput}`,
     );
   }
 
@@ -173,7 +181,7 @@ function smokeMacInstaller(paths: SmokePaths): void {
       "-readonly",
       "-nobrowse",
       "-mountpoint",
-      mountPoint
+      mountPoint,
     ]);
 
     const expectedPkgName = `TADOI-${paths.packageVersion}.pkg`;
@@ -184,7 +192,7 @@ function smokeMacInstaller(paths: SmokePaths): void {
   } finally {
     spawnSync("hdiutil", ["detach", mountPoint], {
       stdio: "ignore",
-      env: process.env
+      env: process.env,
     });
     rmSync(tempRoot, { recursive: true, force: true });
   }
@@ -194,14 +202,16 @@ function smokeWindowsInstaller(paths: SmokePaths): void {
   ensureFile(paths.windowsInstallerPath, "Windows installer EXE");
   const bytes = readFileSync(paths.windowsInstallerPath);
   if (bytes.length < 2 || bytes[0] !== 0x4d || bytes[1] !== 0x5a) {
-    fail("Windows installer does not look like a valid PE executable (missing MZ header)");
+    fail(
+      "Windows installer does not look like a valid PE executable (missing MZ header)",
+    );
   }
 }
 
 function smokeLinuxInstallers(paths: SmokePaths): void {
   if (!commandExists("appimagetool")) {
     fail(
-      "appimagetool is required for Linux AppImage smoke checks (strict installer mode)."
+      "appimagetool is required for Linux AppImage smoke checks (strict installer mode).",
     );
   }
 
@@ -221,7 +231,7 @@ function smokeLinuxInstallers(paths: SmokePaths): void {
 export function runInstallerSmoke(
   rootDir: string,
   target: Target,
-  scope: SmokeScope = "all"
+  scope: SmokeScope = "all",
 ): void {
   const paths = resolveSmokePaths(rootDir, target);
   if (scope === "binary" || scope === "all") {

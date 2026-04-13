@@ -111,11 +111,17 @@ export function unescapeIcsText(value: string): string {
 }
 
 export function unfoldIcsLines(content: string): string[] {
-  const rawLines = content.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+  const rawLines = content
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .split("\n");
   const unfolded: string[] = [];
 
   for (const line of rawLines) {
-    if ((line.startsWith(" ") || line.startsWith("\t")) && unfolded.length > 0) {
+    if (
+      (line.startsWith(" ") || line.startsWith("\t")) &&
+      unfolded.length > 0
+    ) {
       unfolded[unfolded.length - 1] += line.slice(1);
       continue;
     }
@@ -166,13 +172,16 @@ function getZonedFormatter(timeZone: string): Intl.DateTimeFormat {
     minute: "2-digit",
     second: "2-digit",
     hour12: false,
-    hourCycle: "h23"
+    hourCycle: "h23",
   });
   ZONED_DATE_TIME_FORMATTERS.set(timeZone, formatter);
   return formatter;
 }
 
-function getPart(parts: Intl.DateTimeFormatPart[], type: Intl.DateTimeFormatPartTypes): number {
+function getPart(
+  parts: Intl.DateTimeFormatPart[],
+  type: Intl.DateTimeFormatPartTypes,
+): number {
   const value = parts.find((part) => part.type === type)?.value;
   return Number(value ?? "0");
 }
@@ -185,7 +194,7 @@ function getZonedParts(epochMs: number, timeZone: string): DateParts {
     day: getPart(parts, "day"),
     hour: getPart(parts, "hour"),
     minute: getPart(parts, "minute"),
-    second: getPart(parts, "second")
+    second: getPart(parts, "second"),
   };
 }
 
@@ -196,7 +205,7 @@ function toComparableUtc(parts: DateParts): number {
     parts.day,
     parts.hour,
     parts.minute,
-    parts.second
+    parts.second,
   );
 }
 
@@ -224,14 +233,18 @@ function epochFromZonedParts(parts: DateParts, timeZone: string): number {
     zoned.second !== parts.second
   ) {
     throw new IcsParseError(
-      `Unable to resolve datetime ${parts.year}-${pad2(parts.month)}-${pad2(parts.day)} ${pad2(parts.hour)}:${pad2(parts.minute)}:${pad2(parts.second)} in timezone ${timeZone}`
+      `Unable to resolve datetime ${parts.year}-${pad2(parts.month)}-${pad2(parts.day)} ${pad2(parts.hour)}:${pad2(parts.minute)}:${pad2(parts.second)} in timezone ${timeZone}`,
     );
   }
 
   return guess;
 }
 
-function parseDateValue(value: string): { year: number; month: number; day: number } {
+function parseDateValue(value: string): {
+  year: number;
+  month: number;
+  day: number;
+} {
   const match = /^(\d{4})(\d{2})(\d{2})$/.exec(value.trim());
   if (!match) {
     throw new IcsParseError(`Invalid DATE value: ${value}`);
@@ -250,8 +263,13 @@ function parseDateValue(value: string): { year: number; month: number; day: numb
   return { year, month, day };
 }
 
-function parseDateTimeValue(value: string): { parts: DateParts; isUtc: boolean } {
-  const match = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z?)$/.exec(value.trim());
+function parseDateTimeValue(value: string): {
+  parts: DateParts;
+  isUtc: boolean;
+} {
+  const match = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z?)$/.exec(
+    value.trim(),
+  );
   if (!match) {
     throw new IcsParseError(`Invalid DATE-TIME value: ${value}`);
   }
@@ -261,7 +279,7 @@ function parseDateTimeValue(value: string): { parts: DateParts; isUtc: boolean }
     day: Number(match[3]),
     hour: Number(match[4]),
     minute: Number(match[5]),
-    second: Number(match[6])
+    second: Number(match[6]),
   };
 
   const test = new Date(
@@ -270,7 +288,7 @@ function parseDateTimeValue(value: string): { parts: DateParts; isUtc: boolean }
     parts.day,
     parts.hour,
     parts.minute,
-    parts.second
+    parts.second,
   );
   if (
     test.getFullYear() !== parts.year ||
@@ -285,14 +303,14 @@ function parseDateTimeValue(value: string): { parts: DateParts; isUtc: boolean }
 
   return {
     parts,
-    isUtc: match[7] === "Z"
+    isUtc: match[7] === "Z",
   };
 }
 
 function parseTemporalValue(
   rawValue: string,
   params: Record<string, string[]>,
-  calendarTimeZone?: string
+  calendarTimeZone?: string,
 ): ParsedIcsTemporalValue {
   const valueType = params.VALUE?.[0]?.toUpperCase();
   const tzid = normalizeTzid(params.TZID?.[0] ?? calendarTimeZone);
@@ -300,7 +318,14 @@ function parseTemporalValue(
 
   if (valueType === "DATE" || /^\d{8}$/.test(value)) {
     const parsed = parseDateValue(value);
-    const epochMs = new Date(parsed.year, parsed.month - 1, parsed.day, 0, 0, 0).getTime();
+    const epochMs = new Date(
+      parsed.year,
+      parsed.month - 1,
+      parsed.day,
+      0,
+      0,
+      0,
+    ).getTime();
     const localIso = formatDateToLocalIso(new Date(epochMs));
     return {
       kind: "date",
@@ -308,7 +333,7 @@ function parseTemporalValue(
       tzid,
       isUtc: false,
       epochMs,
-      localIso
+      localIso,
     };
   }
 
@@ -322,7 +347,7 @@ function parseTemporalValue(
       parsedDateTime.parts.day,
       parsedDateTime.parts.hour,
       parsedDateTime.parts.minute,
-      parsedDateTime.parts.second
+      parsedDateTime.parts.second,
     );
   } else if (tzid) {
     epochMs = epochFromZonedParts(parsedDateTime.parts, tzid);
@@ -333,7 +358,7 @@ function parseTemporalValue(
       parsedDateTime.parts.day,
       parsedDateTime.parts.hour,
       parsedDateTime.parts.minute,
-      parsedDateTime.parts.second
+      parsedDateTime.parts.second,
     ).getTime();
   }
 
@@ -343,17 +368,21 @@ function parseTemporalValue(
     ...(tzid ? { tzid } : {}),
     isUtc: parsedDateTime.isUtc,
     epochMs,
-    localIso: formatDateToLocalIso(new Date(epochMs))
+    localIso: formatDateToLocalIso(new Date(epochMs)),
   };
 }
 
 function parseTemporalList(
   rawValue: string,
   params: Record<string, string[]>,
-  calendarTimeZone?: string
+  calendarTimeZone?: string,
 ): ParsedIcsTemporalValue[] {
-  const values = splitCommaValues(rawValue).map((entry) => entry.trim()).filter(Boolean);
-  return values.map((entry) => parseTemporalValue(entry, params, calendarTimeZone));
+  const values = splitCommaValues(rawValue)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  return values.map((entry) =>
+    parseTemporalValue(entry, params, calendarTimeZone),
+  );
 }
 
 function normalizeRRuleValue(value: string): string {
@@ -396,7 +425,7 @@ export function parseIcs(content: string): ParsedIcsCalendar {
       currentEvent = {
         categories: [],
         exdates: [],
-        rdates: []
+        rdates: [],
       };
       continue;
     }
@@ -435,29 +464,37 @@ export function parseIcs(content: string): ParsedIcsCalendar {
         currentEvent.url = parsed.value.trim();
         break;
       case "DTSTART":
-        currentEvent.dtstart = parseTemporalValue(parsed.value, parsed.params, calendarTimeZone);
+        currentEvent.dtstart = parseTemporalValue(
+          parsed.value,
+          parsed.params,
+          calendarTimeZone,
+        );
         break;
       case "DTEND":
-        currentEvent.dtend = parseTemporalValue(parsed.value, parsed.params, calendarTimeZone);
+        currentEvent.dtend = parseTemporalValue(
+          parsed.value,
+          parsed.params,
+          calendarTimeZone,
+        );
         break;
       case "RRULE":
         currentEvent.rrule = normalizeRRuleValue(parsed.value);
         break;
       case "EXDATE":
         currentEvent.exdates.push(
-          ...parseTemporalList(parsed.value, parsed.params, calendarTimeZone)
+          ...parseTemporalList(parsed.value, parsed.params, calendarTimeZone),
         );
         break;
       case "RDATE":
         currentEvent.rdates.push(
-          ...parseTemporalList(parsed.value, parsed.params, calendarTimeZone)
+          ...parseTemporalList(parsed.value, parsed.params, calendarTimeZone),
         );
         break;
       case "RECURRENCE-ID":
         currentEvent.recurrenceId = parseTemporalValue(
           parsed.value,
           parsed.params,
-          calendarTimeZone
+          calendarTimeZone,
         );
         break;
       case "STATUS":
@@ -482,6 +519,6 @@ export function parseIcs(content: string): ParsedIcsCalendar {
 
   return {
     ...(calendarTimeZone ? { calendarTimeZone } : {}),
-    events
+    events,
   };
 }

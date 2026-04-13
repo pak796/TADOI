@@ -7,7 +7,7 @@ import {
   deleteViewAtIndex,
   isSavedViewActive,
   snapshotFilters,
-  saveViewByName
+  saveViewByName,
 } from "./savedViews";
 
 const BASE_FILTERS: Filters = {
@@ -15,16 +15,20 @@ const BASE_FILTERS: Filters = {
   due: "today",
   priority: "#p2",
   tag: "work",
-  searchText: " important "
+  searchText: " important ",
 };
 
-function makeView(name: string, filters: Filters, id = crypto.randomUUID()): SavedView {
+function makeView(
+  name: string,
+  filters: Filters,
+  id = crypto.randomUUID(),
+): SavedView {
   return {
     id,
     name,
     filters,
     createdAt: 1,
-    updatedAt: 1
+    updatedAt: 1,
   };
 }
 
@@ -38,7 +42,7 @@ describe("saved views", () => {
       analyticsWindow: "7d",
       priority: "#p2",
       tag: "work",
-      searchText: "important"
+      searchText: "important",
     });
   });
 
@@ -50,9 +54,9 @@ describe("saved views", () => {
       tag: "work",
       tagFilter: {
         all: ["#Work", "home"],
-        any: ["work", "work"]
+        any: ["work", "work"],
       },
-      searchText: "  focus  "
+      searchText: "  focus  ",
     });
 
     expect(snapped).toEqual({
@@ -62,9 +66,9 @@ describe("saved views", () => {
       priority: "#p3",
       tagFilter: {
         all: ["home", "work"],
-        any: ["work"]
+        any: ["work"],
       },
-      searchText: "focus"
+      searchText: "focus",
     });
   });
 
@@ -73,14 +77,14 @@ describe("saved views", () => {
       status: "open",
       due: "today",
       tag: "work",
-      tagFilter: { any: ["home"] }
+      tagFilter: { any: ["home"] },
     });
 
     expect(applySavedView(view)).toEqual({
       status: "open",
       due: "today",
       analyticsWindow: "7d",
-      tagFilter: { any: ["home"] }
+      tagFilter: { any: ["home"] },
     });
   });
 
@@ -88,26 +92,26 @@ describe("saved views", () => {
     const converted = snapshotFilters({
       status: "open",
       due: "today",
-      tag: "#p10"
+      tag: "#p10",
     });
     expect(converted).toEqual({
       status: "open",
       due: "today",
       analyticsWindow: "7d",
-      priority: "#p10"
+      priority: "#p10",
     });
 
     const explicitPriorityWins = snapshotFilters({
       status: "open",
       due: "today",
       priority: "#p2",
-      tag: "#p10"
+      tag: "#p10",
     });
     expect(explicitPriorityWins).toEqual({
       status: "open",
       due: "today",
       analyticsWindow: "7d",
-      priority: "#p2"
+      priority: "#p2",
     });
   });
 
@@ -118,8 +122,8 @@ describe("saved views", () => {
       tagFilter: {
         all: ["work", "p2"],
         any: ["#p1", "home"],
-        none: ["#p10"]
-      }
+        none: ["#p10"],
+      },
     });
     expect(snapped).toEqual({
       status: "open",
@@ -127,8 +131,8 @@ describe("saved views", () => {
       analyticsWindow: "7d",
       tagFilter: {
         all: ["work"],
-        any: ["home"]
-      }
+        any: ["home"],
+      },
     });
   });
 
@@ -137,14 +141,14 @@ describe("saved views", () => {
       status: "open",
       due: "any",
       analyticsWindow: "30d",
-      dueDayOffset: 4
+      dueDayOffset: 4,
     });
 
     expect(applySavedView(view)).toEqual({
       status: "open",
       due: "any",
       analyticsWindow: "30d",
-      dueDayOffset: 4
+      dueDayOffset: 4,
     });
   });
 
@@ -158,7 +162,7 @@ describe("saved views", () => {
       created.savedViews,
       "today",
       { status: "done", due: "any" },
-      20
+      20,
     );
     expect(updated.kind).toBe("updated");
     if (updated.kind !== "updated") return;
@@ -187,7 +191,7 @@ describe("saved views", () => {
     const views = [
       makeView("One", BASE_FILTERS),
       makeView("Two", { status: "done", due: "any" }),
-      makeView("Three", { status: "all", due: "next7" })
+      makeView("Three", { status: "all", due: "next7" }),
     ];
     const after = deleteViewAtIndex(views, 1);
     expect(after).toHaveLength(2);
@@ -206,10 +210,10 @@ describe("saved views", () => {
           analyticsWindow: "7d",
           priority: "#p2",
           tag: "work",
-          searchText: "important"
+          searchText: "important",
         },
-        view
-      )
+        view,
+      ),
     ).toBe(true);
     expect(
       isSavedViewActive(
@@ -219,10 +223,10 @@ describe("saved views", () => {
           analyticsWindow: "7d",
           priority: "#p2",
           tag: "work",
-          searchText: "different"
+          searchText: "different",
         },
-        view
-      )
+        view,
+      ),
     ).toBe(false);
     expect(
       isSavedViewActive(
@@ -232,10 +236,10 @@ describe("saved views", () => {
           analyticsWindow: "7d",
           priority: "#p3",
           tag: "work",
-          searchText: "important"
+          searchText: "important",
         },
-        view
-      )
+        view,
+      ),
     ).toBe(false);
   });
 

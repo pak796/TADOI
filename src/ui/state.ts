@@ -1,8 +1,14 @@
-import { FocusTarget, Mode, isEditorMode, isModalMode, type Mode as ModeType } from "./modeFocus";
+import {
+  FocusTarget,
+  Mode,
+  isEditorMode,
+  isModalMode,
+  type Mode as ModeType,
+} from "./modeFocus";
 import type {
   NotificationModalEvent,
   TaskOverdueEvent,
-  TaskReminderEvent
+  TaskReminderEvent,
 } from "../notifications/types";
 import type { BackupCenterScreen } from "../state/backupCenterFlow";
 
@@ -29,7 +35,9 @@ export type UIRecurringOccurrenceDeleteModal = UIDeleteModalBase & {
   selectedRowId: string;
 };
 
-export type UIDeleteModal = UIRegularTaskDeleteModal | UIRecurringOccurrenceDeleteModal;
+export type UIDeleteModal =
+  | UIRegularTaskDeleteModal
+  | UIRecurringOccurrenceDeleteModal;
 
 export type UINoteDeleteModal = {
   type: "note_delete";
@@ -48,7 +56,12 @@ export type UIReminderModal = {
 } & UIModalReturnContext;
 
 export type UITaskLinkModalKind = "auto" | "url" | "path";
-export type UITaskLinkFormField = "label" | "target" | "type" | "save" | "cancel";
+export type UITaskLinkFormField =
+  | "label"
+  | "target"
+  | "type"
+  | "save"
+  | "cancel";
 
 type UITaskLinkFormTaskScope = {
   scope: "task";
@@ -261,7 +274,7 @@ export const initialUIState: UIState = {
   emptyNux: undefined,
   emptyNuxCelebratePending: false,
   previousMode: Mode.LIST,
-  previousFocus: FocusTarget.TASK_LIST
+  previousFocus: FocusTarget.TASK_LIST,
 };
 
 export function openEmptyNux(options?: {
@@ -271,26 +284,26 @@ export function openEmptyNux(options?: {
 }): UIAction {
   return {
     type: "OPEN_EMPTY_NUX",
-    ...(options ?? {})
+    ...(options ?? {}),
   };
 }
 
 export function dismissEmptyNux(): UIAction {
   return {
-    type: "DISMISS_EMPTY_NUX"
+    type: "DISMISS_EMPTY_NUX",
   };
 }
 
 export function clearEmptyNux(): UIAction {
   return {
-    type: "CLEAR_EMPTY_NUX"
+    type: "CLEAR_EMPTY_NUX",
   };
 }
 
 export function setEmptyNuxCelebratePending(pending: boolean): UIAction {
   return {
     type: "SET_EMPTY_NUX_CELEBRATE_PENDING",
-    pending
+    pending,
   };
 }
 
@@ -319,16 +332,16 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
             : {}),
           ...(action.createdTaskId !== undefined
             ? { createdTaskId: action.createdTaskId }
-            : {})
+            : {}),
         };
         return {
           ...state,
           modal: {
-            type: "emptyNux"
+            type: "emptyNux",
           },
           emptyNux: nextEmptyNux,
           emptyNuxCelebratePending:
-            step === "celebrate" ? false : state.emptyNuxCelebratePending
+            step === "celebrate" ? false : state.emptyNuxCelebratePending,
         };
       }
     case "DISMISS_EMPTY_NUX": {
@@ -338,13 +351,13 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
         ...(closingActiveEmptyNux
           ? {
               mode: Mode.LIST,
-              focus: FocusTarget.TASK_LIST
+              focus: FocusTarget.TASK_LIST,
             }
           : {}),
         emptyNuxDismissed: true,
         modal: closingActiveEmptyNux ? null : state.modal,
         emptyNux: undefined,
-        emptyNuxCelebratePending: false
+        emptyNuxCelebratePending: false,
       };
     }
     case "CLEAR_EMPTY_NUX": {
@@ -354,23 +367,23 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
         ...(closingActiveEmptyNux
           ? {
               mode: Mode.LIST,
-              focus: FocusTarget.TASK_LIST
+              focus: FocusTarget.TASK_LIST,
             }
           : {}),
         modal: closingActiveEmptyNux ? null : state.modal,
         emptyNux: undefined,
-        emptyNuxCelebratePending: false
+        emptyNuxCelebratePending: false,
       };
     }
     case "SET_EMPTY_NUX_CELEBRATE_PENDING":
       return {
         ...state,
-        emptyNuxCelebratePending: action.pending
+        emptyNuxCelebratePending: action.pending,
       };
     case "enqueueNotificationModal":
       return {
         ...state,
-        notificationModalQueue: [...state.notificationModalQueue, action.event]
+        notificationModalQueue: [...state.notificationModalQueue, action.event],
       };
     case "dequeueNotificationModal":
       if (state.notificationModalQueue.length === 0) {
@@ -378,7 +391,7 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
       }
       return {
         ...state,
-        notificationModalQueue: state.notificationModalQueue.slice(1)
+        notificationModalQueue: state.notificationModalQueue.slice(1),
       };
     case "clearNotificationModalQueue":
       if (state.notificationModalQueue.length === 0) {
@@ -390,7 +403,7 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
         return state;
       }
       const nextQueue = state.notificationModalQueue.filter(
-        (event) => event.type !== "TASK_OVERDUE"
+        (event) => event.type !== "TASK_OVERDUE",
       );
       if (nextQueue.length === state.notificationModalQueue.length) {
         return state;
@@ -407,7 +420,7 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
       return {
         ...state,
         previousMode: action.mode,
-        previousFocus: action.focus
+        previousFocus: action.focus,
       };
     case "replace":
       return action.state;
@@ -427,9 +440,9 @@ export function unwind(state: UIState): UnwindResult | null {
           modal: null,
           emptyNuxDismissed: true,
           emptyNux: undefined,
-          emptyNuxCelebratePending: false
+          emptyNuxCelebratePending: false,
         },
-        clearEditorDraft: false
+        clearEditorDraft: false,
       };
     }
     if (state.modal) {
@@ -438,9 +451,9 @@ export function unwind(state: UIState): UnwindResult | null {
           ...state,
           mode: state.modal.previousMode,
           focus: state.modal.previousFocus,
-          modal: null
+          modal: null,
         },
-        clearEditorDraft: false
+        clearEditorDraft: false,
       };
     }
     return {
@@ -448,9 +461,9 @@ export function unwind(state: UIState): UnwindResult | null {
         ...state,
         mode: Mode.LIST,
         focus: FocusTarget.TASK_LIST,
-        modal: null
+        modal: null,
       },
-      clearEditorDraft: false
+      clearEditorDraft: false,
     };
   }
 
@@ -468,9 +481,9 @@ export function unwind(state: UIState): UnwindResult | null {
       state: {
         ...state,
         mode: state.previousMode,
-        focus: state.previousFocus
+        focus: state.previousFocus,
       },
-      clearEditorDraft: false
+      clearEditorDraft: false,
     };
   }
 
@@ -479,9 +492,9 @@ export function unwind(state: UIState): UnwindResult | null {
       state: {
         ...state,
         mode: Mode.LIST,
-        focus: FocusTarget.TASK_LIST
+        focus: FocusTarget.TASK_LIST,
       },
-      clearEditorDraft: false
+      clearEditorDraft: false,
     };
   }
 
@@ -490,9 +503,9 @@ export function unwind(state: UIState): UnwindResult | null {
       state: {
         ...state,
         mode: Mode.LIST,
-        focus: FocusTarget.TASK_LIST
+        focus: FocusTarget.TASK_LIST,
       },
-      clearEditorDraft: false
+      clearEditorDraft: false,
     };
   }
 
@@ -501,9 +514,9 @@ export function unwind(state: UIState): UnwindResult | null {
       state: {
         ...state,
         mode: Mode.LIST,
-        focus: FocusTarget.TASK_LIST
+        focus: FocusTarget.TASK_LIST,
       },
-      clearEditorDraft: true
+      clearEditorDraft: true,
     };
   }
 

@@ -3,7 +3,7 @@ import type { Task } from "../models";
 import {
   completeRecurringOccurrenceInTasks,
   skipRecurringOccurrenceInTasks,
-  snoozeRecurringOccurrenceInTasks
+  snoozeRecurringOccurrenceInTasks,
 } from "./occurrenceMutations";
 
 function buildSeriesTask(): Task {
@@ -17,8 +17,8 @@ function buildSeriesTask(): Task {
     recurrence: {
       dtstart: "2026-03-02T09:00:00",
       rrule: "FREQ=DAILY;INTERVAL=1",
-      series_id: "series-1"
-    }
+      series_id: "series-1",
+    },
   };
 }
 
@@ -30,14 +30,14 @@ describe("occurrenceMutations", () => {
     const next = completeRecurringOccurrenceInTasks(tasks, {
       seriesId: "series-1",
       occurrenceIso: "2026-03-04T09:00:00",
-      nowMs
+      nowMs,
     });
 
     const series = next.find((task) => task.id === "series-task");
     const instance = next.find(
       (task) =>
         task.instance_of?.series_id === "series-1" &&
-        task.instance_of?.occurrence === "2026-03-04T09:00:00"
+        task.instance_of?.occurrence === "2026-03-04T09:00:00",
     );
 
     expect(series?.recurrence?.exdates).toContain("2026-03-04T09:00:00");
@@ -56,14 +56,14 @@ describe("occurrenceMutations", () => {
       tags: ["p2"],
       instance_of: {
         series_id: "series-1",
-        occurrence: "2026-03-04T09:00:00"
-      }
+        occurrence: "2026-03-04T09:00:00",
+      },
     };
 
     const next = skipRecurringOccurrenceInTasks([buildSeriesTask(), instance], {
       seriesId: "series-1",
       occurrenceIso: "2026-03-04T09:00:00",
-      nowMs
+      nowMs,
     });
 
     const series = next.find((task) => task.id === "series-task");
@@ -77,14 +77,14 @@ describe("occurrenceMutations", () => {
     const next = snoozeRecurringOccurrenceInTasks([buildSeriesTask()], {
       seriesId: "series-1",
       occurrenceIso: "2026-03-04T09:00:00",
-      nowMs
+      nowMs,
     });
 
     const series = next.find((task) => task.id === "series-task");
     const instance = next.find(
       (task) =>
         task.instance_of?.series_id === "series-1" &&
-        task.instance_of?.occurrence === "2026-03-04T09:00:00"
+        task.instance_of?.occurrence === "2026-03-04T09:00:00",
     );
 
     expect(series?.recurrence?.exdates).toContain("2026-03-04T09:00:00");

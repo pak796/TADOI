@@ -1,0 +1,4 @@
+interface:
+  display_name: "Spec/Task Drift Guard"
+  short_description: "Detect docs-to-code drift in specs/tasks"
+  default_prompt: "Use $spec-task-drift-guard to scan this repo for spec/task drift against code and produce actionable findings."

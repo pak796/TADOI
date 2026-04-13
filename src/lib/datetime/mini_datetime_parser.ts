@@ -62,7 +62,7 @@ const WEEKDAY_INDEX_BY_TOKEN: Record<string, number> = {
   fri: 5,
   friday: 5,
   sat: 6,
-  saturday: 6
+  saturday: 6,
 };
 
 const ZONED_DATE_TIME_FORMATTERS = new Map<string, Intl.DateTimeFormat>();
@@ -73,7 +73,7 @@ function okDate(dateISO: string): MiniParseOk {
     dateISO,
     time24: null,
     precision: "date",
-    source: "mini"
+    source: "mini",
   };
 }
 
@@ -83,7 +83,7 @@ function okDateTime(dateISO: string, time24: string): MiniParseOk {
     dateISO,
     time24,
     precision: "datetime",
-    source: "mini"
+    source: "mini",
   };
 }
 
@@ -104,11 +104,13 @@ function formatTime24(hours: number, minutes: number): string {
 }
 
 function addDays(parts: DateParts, days: number): DateParts {
-  const result = new Date(Date.UTC(parts.year, parts.month - 1, parts.day + days));
+  const result = new Date(
+    Date.UTC(parts.year, parts.month - 1, parts.day + days),
+  );
   return {
     year: result.getUTCFullYear(),
     month: result.getUTCMonth() + 1,
-    day: result.getUTCDate()
+    day: result.getUTCDate(),
   };
 }
 
@@ -136,13 +138,16 @@ function getZonedFormatter(timeZone: string): Intl.DateTimeFormat {
     minute: "2-digit",
     second: "2-digit",
     hour12: false,
-    hourCycle: "h23"
+    hourCycle: "h23",
   });
   ZONED_DATE_TIME_FORMATTERS.set(timeZone, formatter);
   return formatter;
 }
 
-function getPart(parts: Intl.DateTimeFormatPart[], type: Intl.DateTimeFormatPartTypes): number {
+function getPart(
+  parts: Intl.DateTimeFormatPart[],
+  type: Intl.DateTimeFormatPartTypes,
+): number {
   const value = parts.find((part) => part.type === type)?.value;
   return Number(value ?? "0");
 }
@@ -155,7 +160,7 @@ function getZonedParts(epochMs: number, timeZone: string): DateTimeParts {
     day: getPart(parts, "day"),
     hour: getPart(parts, "hour"),
     minute: getPart(parts, "minute"),
-    second: getPart(parts, "second")
+    second: getPart(parts, "second"),
   };
 }
 
@@ -166,11 +171,14 @@ function toComparableUtc(parts: DateTimeParts): number {
     parts.day,
     parts.hour,
     parts.minute,
-    parts.second
+    parts.second,
   );
 }
 
-function epochFromZonedParts(parts: DateTimeParts, timeZone: string): number | null {
+function epochFromZonedParts(
+  parts: DateTimeParts,
+  timeZone: string,
+): number | null {
   const desired = toComparableUtc(parts);
   let guess = desired;
 
@@ -252,10 +260,7 @@ function resolveTimeToken(token: string): TimeToken | MiniParseErr {
       return err("INVALID_TIME", `Invalid time token "${token}"`);
     }
 
-    const hours =
-      meridiem === "am"
-        ? hour12 % 12
-        : (hour12 % 12) + 12;
+    const hours = meridiem === "am" ? hour12 % 12 : (hour12 % 12) + 12;
 
     return { hours, minutes };
   }
@@ -294,7 +299,11 @@ function resolveDate(token: DateToken, today: DateParts): DateParts {
   return addDays(today, delta);
 }
 
-function buildEpochForDateTime(date: DateParts, time: TimeToken, timeZone: string): number | null {
+function buildEpochForDateTime(
+  date: DateParts,
+  time: TimeToken,
+  timeZone: string,
+): number | null {
   return epochFromZonedParts(
     {
       year: date.year,
@@ -302,13 +311,17 @@ function buildEpochForDateTime(date: DateParts, time: TimeToken, timeZone: strin
       day: date.day,
       hour: time.hours,
       minute: time.minutes,
-      second: 0
+      second: 0,
     },
-    timeZone
+    timeZone,
   );
 }
 
-export function parseMiniDateTime(input: string, now: number, tz: string): MiniParseOk | MiniParseErr {
+export function parseMiniDateTime(
+  input: string,
+  now: number,
+  tz: string,
+): MiniParseOk | MiniParseErr {
   const trimmed = input.trim().toLowerCase();
   if (!trimmed) {
     return err("EMPTY_INPUT", "Input is empty");
@@ -334,7 +347,7 @@ export function parseMiniDateTime(input: string, now: number, tz: string): MiniP
   const today: DateParts = {
     year: nowParts.year,
     month: nowParts.month,
-    day: nowParts.day
+    day: nowParts.day,
   };
 
   if (tokens.length === 1) {
@@ -359,7 +372,10 @@ export function parseMiniDateTime(input: string, now: number, tz: string): MiniP
     }
 
     const resolvedDate = todayEpoch > now ? today : addDays(today, 1);
-    return okDateTime(formatDateIso(resolvedDate), formatTime24(timeToken.hours, timeToken.minutes));
+    return okDateTime(
+      formatDateIso(resolvedDate),
+      formatTime24(timeToken.hours, timeToken.minutes),
+    );
   }
 
   const first = tokens[0] ?? "";
@@ -391,5 +407,8 @@ export function parseMiniDateTime(input: string, now: number, tz: string): MiniP
     return err("INVALID_TIME", `Invalid time token "${second}"`);
   }
 
-  return okDateTime(formatDateIso(resolvedDate), formatTime24(timeToken.hours, timeToken.minutes));
+  return okDateTime(
+    formatDateIso(resolvedDate),
+    formatTime24(timeToken.hours, timeToken.minutes),
+  );
 }

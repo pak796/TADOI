@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import path from "node:path";
 import {
   parseInstallCompletionArgs,
-  resolveCompletionInstallPlan
+  resolveCompletionInstallPlan,
 } from "./install-completions";
 
 describe("install-completions argument parsing", () => {
@@ -22,7 +22,7 @@ describe("install-completions argument parsing", () => {
       "--dest-root",
       "/tmp/payload",
       "--dry-run",
-      "--strict"
+      "--strict",
     ]);
     expect(parsed.layout).toBe("linux-system");
     expect(parsed.shells).toEqual(["bash", "fish"]);
@@ -33,7 +33,7 @@ describe("install-completions argument parsing", () => {
 
   it("rejects invalid shell list", () => {
     expect(() => parseInstallCompletionArgs(["--shells", "bash,pwsh"])).toThrow(
-      "Invalid shell name(s): pwsh"
+      "Invalid shell name(s): pwsh",
     );
   });
 });
@@ -48,16 +48,18 @@ describe("install-completions plan resolution", () => {
         layout: "user",
         shells: ["bash", "zsh", "fish"],
         dryRun: false,
-        strict: false
+        strict: false,
       },
-      { repoRoot, homeDir }
+      { repoRoot, homeDir },
     );
     expect(plan.map((entry) => entry.targetPath)).toEqual([
       "/home/tester/.local/share/bash-completion/completions/tadoi",
       "/home/tester/.zsh/completions/_tadoi",
-      "/home/tester/.config/fish/completions/tadoi.fish"
+      "/home/tester/.config/fish/completions/tadoi.fish",
     ]);
-    expect(plan[0]?.sourcePath).toBe(path.join("/repo", "docs", "completions", "tadoi.bash"));
+    expect(plan[0]?.sourcePath).toBe(
+      path.join("/repo", "docs", "completions", "tadoi.bash"),
+    );
   });
 
   it("resolves payload-rooted linux system targets", () => {
@@ -67,14 +69,14 @@ describe("install-completions plan resolution", () => {
         shells: ["bash", "zsh", "fish"],
         destRoot: "/tmp/payload",
         dryRun: false,
-        strict: true
+        strict: true,
       },
-      { repoRoot, homeDir }
+      { repoRoot, homeDir },
     );
     expect(plan.map((entry) => entry.targetPath)).toEqual([
       "/tmp/payload/usr/share/bash-completion/completions/tadoi",
       "/tmp/payload/usr/share/zsh/site-functions/_tadoi",
-      "/tmp/payload/usr/share/fish/vendor_completions.d/tadoi.fish"
+      "/tmp/payload/usr/share/fish/vendor_completions.d/tadoi.fish",
     ]);
   });
 });

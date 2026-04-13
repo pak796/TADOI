@@ -34,7 +34,7 @@ export function ModalContainer({
   width,
   minWidth,
   gap = 1,
-  children
+  children,
 }: ModalContainerProps) {
   const warningTone = tone === "warning";
   return (
@@ -49,7 +49,7 @@ export function ModalContainer({
         width,
         minWidth,
         flexDirection: "column",
-        gap
+        gap,
       }}
     >
       {children}
@@ -57,7 +57,11 @@ export function ModalContainer({
   );
 }
 
-export function ModalActionRow({ marginTop, gap = 1, children }: ModalActionRowProps) {
+export function ModalActionRow({
+  marginTop,
+  gap = 1,
+  children,
+}: ModalActionRowProps) {
   return (
     <box
       style={{
@@ -65,7 +69,7 @@ export function ModalActionRow({ marginTop, gap = 1, children }: ModalActionRowP
         gap,
         justifyContent: "center",
         width: "100%",
-        marginTop
+        marginTop,
       }}
     >
       {children}
@@ -80,13 +84,25 @@ export function ModalActionButton({
   onPress,
   primary = false,
   active = false,
-  paddingX = 3
+  paddingX = 3,
 }: ModalActionButtonProps) {
   const warningTone = tone === "warning";
   const highlighted = !warningTone && (primary || active);
-  const backgroundColor = warningTone ? theme.bg : highlighted ? theme.accentBlue : theme.panel;
-  const borderColor = warningTone ? theme.warn : highlighted ? theme.accentBlue : theme.outline;
-  const textColor = warningTone ? theme.warn : highlighted ? theme.bg : theme.text;
+  const backgroundColor = warningTone
+    ? theme.bg
+    : highlighted
+      ? theme.accentBlue
+      : theme.panel;
+  const borderColor = warningTone
+    ? theme.warn
+    : highlighted
+      ? theme.accentBlue
+      : theme.outline;
+  const textColor = warningTone
+    ? theme.warn
+    : highlighted
+      ? theme.bg
+      : theme.text;
 
   return (
     <box
@@ -96,7 +112,7 @@ export function ModalActionButton({
         borderStyle: "single",
         borderColor,
         paddingLeft: paddingX,
-        paddingRight: paddingX
+        paddingRight: paddingX,
       }}
       onMouseDown={(event) => {
         if (event.button !== 0) return;
@@ -106,7 +122,7 @@ export function ModalActionButton({
       <text
         style={{
           color: textColor,
-          fontWeight: "bold"
+          fontWeight: "bold",
         }}
       >
         {label}

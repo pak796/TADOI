@@ -13,18 +13,21 @@ function formatHintLine(key: string, label: string): string {
 
 export function buildWhichKeyPopupLines(
   model: WhichKeyPrefixPopup,
-  maxLineWidth: number
+  maxLineWidth: number,
 ): { title: string; hints: string[] } {
   const safeWidth = Math.max(12, maxLineWidth);
   return {
     title: truncateToWidth(model.title, safeWidth),
     hints: model.hints.map((hint) =>
-      truncateToWidth(formatHintLine(hint.key, hint.label), safeWidth)
-    )
+      truncateToWidth(formatHintLine(hint.key, hint.label), safeWidth),
+    ),
   };
 }
 
-export function WhichKeyPopup({ model, maxLineWidth = 24 }: WhichKeyPopupProps) {
+export function WhichKeyPopup({
+  model,
+  maxLineWidth = 24,
+}: WhichKeyPopupProps) {
   const theme = themeForObject("help");
   const lines = buildWhichKeyPopupLines(model, maxLineWidth);
   return (
@@ -37,12 +40,17 @@ export function WhichKeyPopup({ model, maxLineWidth = 24 }: WhichKeyPopupProps) 
         borderColor: theme.accentBlue,
         minWidth: 28,
         paddingLeft: 1,
-        paddingRight: 1
+        paddingRight: 1,
       }}
     >
-      <text style={{ color: theme.text, fontWeight: "bold" }}>{lines.title}</text>
+      <text style={{ color: theme.text, fontWeight: "bold" }}>
+        {lines.title}
+      </text>
       {lines.hints.map((hintLine, index) => (
-        <text key={`${hintLine}-${String(index)}`} style={{ color: theme.muted }}>
+        <text
+          key={`${hintLine}-${String(index)}`}
+          style={{ color: theme.muted }}
+        >
           {hintLine}
         </text>
       ))}

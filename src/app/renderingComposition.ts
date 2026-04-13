@@ -56,7 +56,7 @@ export function truncateTagDisplay(value: string, maxLen: number): string {
 
 export function buildTagTickerSegments(
   stats: TopTagStat[],
-  maxWidth: number
+  maxWidth: number,
 ): TagTickerSegment[] {
   const separator = "  ";
   const segments: TagTickerSegment[] = [];
@@ -95,7 +95,7 @@ export function buildTagTickerSegments(
 
 export function buildPriorityTickerSegments(
   stats: OpenPriorityStat[],
-  maxWidth: number
+  maxWidth: number,
 ): PriorityTickerSegment[] {
   const separator = "  ";
   const segments: PriorityTickerSegment[] = [];

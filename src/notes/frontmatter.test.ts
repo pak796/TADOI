@@ -1,9 +1,15 @@
 import { describe, expect, it } from "bun:test";
-import { parseFrontmatter, upsertFrontmatter, upsertFrontmatterTags } from "./frontmatter";
+import {
+  parseFrontmatter,
+  upsertFrontmatter,
+  upsertFrontmatterTags,
+} from "./frontmatter";
 
 describe("parseFrontmatter", () => {
   it("parses supported fields and returns body", () => {
-    const result = parseFrontmatter(`---\nid: note-1\ntitle: Inbox\ntags: [inbox, inbox/to-read]\naliases:\n  - Start\n  - Backlog\ncreated: 2026-02-20T00:00:00Z\nupdated: 2026-02-21T00:00:00Z\n---\n\n# Heading\nBody`);
+    const result = parseFrontmatter(
+      `---\nid: note-1\ntitle: Inbox\ntags: [inbox, inbox/to-read]\naliases:\n  - Start\n  - Backlog\ncreated: 2026-02-20T00:00:00Z\nupdated: 2026-02-21T00:00:00Z\n---\n\n# Heading\nBody`,
+    );
 
     expect(result.frontmatter).toEqual({
       id: "note-1",
@@ -12,7 +18,7 @@ describe("parseFrontmatter", () => {
       aliases: ["Start", "Backlog"],
       created: "2026-02-20T00:00:00Z",
       updated: "2026-02-21T00:00:00Z",
-      extra: {}
+      extra: {},
     });
     expect(result.body).toContain("# Heading");
     expect(result.warnings).toEqual([]);
@@ -28,17 +34,19 @@ describe("parseFrontmatter", () => {
   });
 
   it("parses reserved capture fields and preserves unknown keys", () => {
-    const result = parseFrontmatter(`---\ntitle: Daily\nstatus: done\ncapture.source: cli\ncapture.timestamp: 2026-03-01T00:00:00Z\nx-custom: value\n---\n\nBody`);
+    const result = parseFrontmatter(
+      `---\ntitle: Daily\nstatus: done\ncapture.source: cli\ncapture.timestamp: 2026-03-01T00:00:00Z\nx-custom: value\n---\n\nBody`,
+    );
     expect(result.frontmatter).toEqual({
       title: "Daily",
       status: "done",
       capture: {
         source: "cli",
-        timestamp: "2026-03-01T00:00:00Z"
+        timestamp: "2026-03-01T00:00:00Z",
       },
       extra: {
-        "x-custom": "value"
-      }
+        "x-custom": "value",
+      },
     });
   });
 });
@@ -47,7 +55,9 @@ describe("upsertFrontmatterTags", () => {
   it("adds frontmatter tags when the note has no frontmatter", () => {
     const content = "# Title\n\nBody";
     const updated = upsertFrontmatterTags(content, ["focus", "inbox/to-read"]);
-    expect(updated).toBe("---\ntags: [focus, inbox/to-read]\n---\n\n# Title\n\nBody");
+    expect(updated).toBe(
+      "---\ntags: [focus, inbox/to-read]\n---\n\n# Title\n\nBody",
+    );
   });
 
   it("replaces existing tags and preserves other frontmatter fields", () => {
@@ -96,8 +106,8 @@ Body`;
       captureTimestamp: "2026-03-02T12:00:00Z",
       status: "open",
       metadata: {
-        "x-second": "value"
-      }
+        "x-second": "value",
+      },
     });
     expect(updated).toContain("status: open");
     expect(updated).toContain("capture.source: cli");

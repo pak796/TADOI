@@ -1,10 +1,12 @@
 # Local Markdown Notes v0.1 Implementation Notes
 
 ## Scope
+
 This document captures implemented integration points for Local Markdown Notes slices 1-4 plus slice 5 B6/B7 command-parser/help constraints in TADOI (`v0.4.0` baseline).
 The user-facing product name for this feature is TOME (Terminal Oriented Markdown Environment), a notes-oriented markdown tool.
 
 ## Boot and Load Integration
+
 - TOME settings are loaded from the existing settings pipeline:
   - `src/settings/settings.ts`: adds `notes.enabled` and `notes.rootPath` normalization/defaults.
   - `src/state/settingsStore.ts`: extends runtime settings reducer/state with `notes`.
@@ -25,6 +27,7 @@ The user-facing product name for this feature is TOME (Terminal Oriented Markdow
   - App boot still proceeds; opening TOME surfaces the disabled/error message.
 
 ## Settings and Safe Root Migration
+
 - Settings fields:
   - `notes.enabled: boolean` (default `true`)
   - `notes.rootPath: string | null` (default `null` => default root)
@@ -39,6 +42,7 @@ The user-facing product name for this feature is TOME (Terminal Oriented Markdow
   - `src/state/backupService.ts`
 
 ## TOME Runtime and Reindex
+
 - Runtime modules: `src/notes/*`
   - `storage.ts`: scan/load/create/save, atomic writes (`tmp + rename`) with per-path queue
   - `frontmatter.ts`: frontmatter parser (`id/title/tags/created/updated/aliases`)
@@ -56,6 +60,7 @@ The user-facing product name for this feature is TOME (Terminal Oriented Markdow
   - instrumentation is available via `NotesService.getInstrumentation()` for dev/test guardrails
 
 ## UI and Mode Isolation
+
 - Added modes in `src/ui/modeFocus.ts`:
   - `NOTES_LIST`, `NOTES_VIEW`, `NOTES_EDIT`, `NOTES_SEARCH`, `NOTES_TAG_FILTER`
 - Added TOME routing in `src/app/keyRouter.ts` with isolated branches and no key leakage into existing task modes.
@@ -68,6 +73,7 @@ The user-facing product name for this feature is TOME (Terminal Oriented Markdow
   - modal confirm/cancel contract: `y` confirm, `n`/`Esc` cancel
 
 ## Slice QA Mapping
+
 - Slice 1 (MVP):
   - create/open/edit/save markdown notes under resolved root
   - relaunch persistence
@@ -88,6 +94,7 @@ The user-facing product name for this feature is TOME (Terminal Oriented Markdow
   - safe root migration flow implemented
 
 ## Deterministic Fixture Vault
+
 - Shared fixture vault path:
   - `test/fixtures/notes_vault_basic/notes`
 - Fixture coverage includes:
@@ -97,6 +104,7 @@ The user-facing product name for this feature is TOME (Terminal Oriented Markdow
   - `src/notes/index.fixture.test.ts`
 
 ## Slice 5 Command Layer Baseline (B6/B7)
+
 - Shared parser/execution path now supports TOME commands:
   - parser: `src/commands/parse.ts` (`note q|quick|capture`, `nq`, `note new --template`, `note template`, `note search|query`, `note graph|links`, plus existing `open/delete/restore-defaults/reindex/help/root set`)
   - shared note execution: `src/notes/commands.ts`
@@ -119,6 +127,7 @@ The user-facing product name for this feature is TOME (Terminal Oriented Markdow
 - Minimal help copy added in docs and command help (`help note` / `note help`) with the required command shape.
 
 ## Known Deferred Items
+
 - Heading/block-level links and block references
 - Persisted on-disk TOME index cache
 - Full markdown renderer fidelity beyond pragmatic terminal formatting

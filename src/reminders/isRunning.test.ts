@@ -6,7 +6,9 @@ import { probeTadoiRunningState } from "./isRunning";
 import { getTadoiLockPath, writeTadoiLock } from "../state/lockfile";
 
 async function makeTempDataFilePath(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "tadoi-reminders-running-"));
+  const dir = await fs.mkdtemp(
+    path.join(os.tmpdir(), "tadoi-reminders-running-"),
+  );
   return path.join(dir, "tadoi_data.json");
 }
 
@@ -28,12 +30,12 @@ describe("probeTadoiRunningState", () => {
       pid: 1234,
       startedAt: nowIso,
       heartbeatAt: nowIso,
-      dataFile: dataFilePath
+      dataFile: dataFilePath,
     });
 
     const result = await probeTadoiRunningState({
       dataFilePath,
-      nowMs: Date.parse("2026-03-03T10:00:10.000Z")
+      nowMs: Date.parse("2026-03-03T10:00:10.000Z"),
     });
     expect(result.running).toBe(true);
     expect(result.reason).toBe("active_lock");
@@ -48,12 +50,12 @@ describe("probeTadoiRunningState", () => {
       pid: 1234,
       startedAt: "2026-03-03T09:00:00.000Z",
       heartbeatAt: "2026-03-03T09:00:00.000Z",
-      dataFile: dataFilePath
+      dataFile: dataFilePath,
     });
 
     const result = await probeTadoiRunningState({
       dataFilePath,
-      nowMs: Date.parse("2026-03-03T10:10:00.000Z")
+      nowMs: Date.parse("2026-03-03T10:10:00.000Z"),
     });
     expect(result.running).toBe(false);
     expect(result.reason).toBe("stale_lock");

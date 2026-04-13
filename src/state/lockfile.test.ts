@@ -15,7 +15,7 @@ import {
   removeTadoiLockSync,
   TadoiLockBusyError,
   tryAcquireTadoiLock,
-  writeTadoiLock
+  writeTadoiLock,
 } from "./lockfile";
 
 async function makeTempDir(): Promise<string> {
@@ -68,14 +68,18 @@ describe("lockfile helpers", () => {
     expect(parsed?.pid).toBe(process.pid);
     expect(parsed?.dataFile).toBe(dataPath);
 
-    await expect(isTadoiLockOwnedByProcess(lockPath, process.pid, dataPath)).resolves.toBe(
-      true
-    );
     await expect(
-      isTadoiLockOwnedByProcess(lockPath, process.pid + 1, dataPath)
+      isTadoiLockOwnedByProcess(lockPath, process.pid, dataPath),
+    ).resolves.toBe(true);
+    await expect(
+      isTadoiLockOwnedByProcess(lockPath, process.pid + 1, dataPath),
     ).resolves.toBe(false);
     await expect(
-      isTadoiLockOwnedByProcess(lockPath, process.pid, path.join(dir, "other.json"))
+      isTadoiLockOwnedByProcess(
+        lockPath,
+        process.pid,
+        path.join(dir, "other.json"),
+      ),
     ).resolves.toBe(false);
   });
 
@@ -83,10 +87,16 @@ describe("lockfile helpers", () => {
     const dir = await makeTempDir();
     const lockPath = path.join(dir, "exclusive.lock");
 
-    const acquired = await tryAcquireTadoiLock(lockPath, createDefaultLockPayload());
+    const acquired = await tryAcquireTadoiLock(
+      lockPath,
+      createDefaultLockPayload(),
+    );
     expect(acquired).toBe(true);
 
-    const secondAcquire = await tryAcquireTadoiLock(lockPath, createDefaultLockPayload());
+    const secondAcquire = await tryAcquireTadoiLock(
+      lockPath,
+      createDefaultLockPayload(),
+    );
     expect(secondAcquire).toBe(false);
   });
 
@@ -99,7 +109,7 @@ describe("lockfile helpers", () => {
     const refreshed = await refreshTadoiLockHeartbeat(lockPath, {
       pid: payload.pid,
       lockId: payload.lockId,
-      now: new Date("2026-02-28T10:00:00.000Z")
+      now: new Date("2026-02-28T10:00:00.000Z"),
     });
     expect(refreshed).toBe(true);
     const updated = await readTadoiLockPayload(lockPath);
@@ -107,7 +117,7 @@ describe("lockfile helpers", () => {
 
     const rejected = await refreshTadoiLockHeartbeat(lockPath, {
       pid: payload.pid,
-      lockId: "wrong-lock-id"
+      lockId: "wrong-lock-id",
     });
     expect(rejected).toBe(false);
     const afterRejected = await readTadoiLockPayload(lockPath);
@@ -122,17 +132,23 @@ describe("lockfile helpers", () => {
       startedAt: "2026-02-28T09:50:00.000Z",
       heartbeatAt: "2026-02-28T09:50:00.000Z",
       lockId: "old-lock-id",
-      dataFile: path.join(dir, "tadoi_data.json")
+      dataFile: path.join(dir, "tadoi_data.json"),
     });
-    const nextPayload = createDefaultLockPayload(path.join(dir, "tadoi_data.json"));
-    const recoveredEvents: Array<{ lockPath: string; archivedPath?: string }> = [];
+    const nextPayload = createDefaultLockPayload(
+      path.join(dir, "tadoi_data.json"),
+    );
+    const recoveredEvents: Array<{ lockPath: string; archivedPath?: string }> =
+      [];
 
     const stalePayload = await readTadoiLockPayload(lockPath);
     expect(
-      isTadoiLockPayloadStale(stalePayload as NonNullable<typeof stalePayload>, {
-        nowMs: Date.parse("2026-02-28T10:00:00.000Z"),
-        staleAfterMs: 120_000
-      })
+      isTadoiLockPayloadStale(
+        stalePayload as NonNullable<typeof stalePayload>,
+        {
+          nowMs: Date.parse("2026-02-28T10:00:00.000Z"),
+          staleAfterMs: 120_000,
+        },
+      ),
     ).toBe(true);
 
     const acquired = await tryAcquireTadoiLock(lockPath, nextPayload, {
@@ -140,7 +156,7 @@ describe("lockfile helpers", () => {
       staleAfterMs: 120_000,
       onStaleLockRecovered: (event) => {
         recoveredEvents.push(event);
-      }
+      },
     });
     expect(acquired).toBe(true);
     const current = await readTadoiLockPayload(lockPath);
@@ -148,10 +164,18 @@ describe("lockfile helpers", () => {
     expect(current?.pid).toBe(nextPayload.pid);
 
     const archivePrefix = `${path.basename(lockPath)}.stale.`;
-    const archived = (await fs.readdir(dir)).filter((entry) => entry.startsWith(archivePrefix));
+    const archived = (await fs.readdir(dir)).filter((entry) =>
+      entry.startsWith(archivePrefix),
+    );
     expect(archived.length).toBe(1);
-    const archivedPayloadRaw = await fs.readFile(path.join(dir, archived[0] as string), "utf8");
-    const archivedPayload = JSON.parse(archivedPayloadRaw) as { pid: number; lockId?: string };
+    const archivedPayloadRaw = await fs.readFile(
+      path.join(dir, archived[0] as string),
+      "utf8",
+    );
+    const archivedPayload = JSON.parse(archivedPayloadRaw) as {
+      pid: number;
+      lockId?: string;
+    };
     expect(archivedPayload.pid).toBe(424242);
     expect(archivedPayload.lockId).toBe("old-lock-id");
     expect(recoveredEvents).toHaveLength(1);
@@ -164,7 +188,7 @@ describe("lockfile helpers", () => {
     const lockPath = path.join(dir, "busy.lock");
     await writeTadoiLock(lockPath, createDefaultLockPayload());
     await expect(
-      acquireTadoiLockOrThrow(lockPath, createDefaultLockPayload())
+      acquireTadoiLockOrThrow(lockPath, createDefaultLockPayload()),
     ).rejects.toBeInstanceOf(TadoiLockBusyError);
   });
 

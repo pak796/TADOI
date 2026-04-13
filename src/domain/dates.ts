@@ -12,7 +12,11 @@ export function parseDateToLocalMidnight(input: string): Date | undefined {
   const year = Number(match[1]);
   const month = Number(match[2]);
   const day = Number(match[3]);
-  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day)
+  ) {
     return undefined;
   }
   const date = new Date(year, month - 1, day);
@@ -79,13 +83,19 @@ export function parseTimeToMinutes(input: string): number | undefined {
 
 export function combineLocalDateAndTime(
   date: Date,
-  timeText: string
+  timeText: string,
 ): Date | undefined {
   const minutes = parseTimeToMinutes(timeText);
   if (minutes === undefined) return undefined;
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours, mins);
+  return new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    hours,
+    mins,
+  );
 }
 
 export function diffMinutes(a: Date, b: Date): number {
@@ -99,12 +109,18 @@ export function startOfLocalDayMs(now: number): number {
 
 export function addLocalDaysMs(startDayMs: number, days: number): number {
   const date = new Date(startDayMs);
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days).getTime();
+  return new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate() + days,
+  ).getTime();
 }
 
 export function getLocalDayNumber(epochMs: number): number {
   const date = new Date(epochMs);
-  return Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / DAY_MS);
+  return Math.floor(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / DAY_MS,
+  );
 }
 
 export function diffLocalDays(targetMs: number, referenceMs: number): number {

@@ -13,7 +13,11 @@ async function makeTempDir(prefix: string): Promise<string> {
   return dir;
 }
 
-async function writeNote(root: string, notePath: string, content: string): Promise<void> {
+async function writeNote(
+  root: string,
+  notePath: string,
+  content: string,
+): Promise<void> {
   const fullPath = path.join(root, notePath);
   await fs.mkdir(path.dirname(fullPath), { recursive: true });
   await fs.writeFile(fullPath, content, "utf8");
@@ -21,7 +25,9 @@ async function writeNote(root: string, notePath: string, content: string): Promi
 
 afterEach(async () => {
   await Promise.all(
-    cleanupDirs.splice(0).map((dir) => fs.rm(dir, { recursive: true, force: true }))
+    cleanupDirs
+      .splice(0)
+      .map((dir) => fs.rm(dir, { recursive: true, force: true })),
   );
 });
 
@@ -38,7 +44,7 @@ describe("NotesService incremental behavior", () => {
     const service = createNotesService({
       dataFilePath: path.join(dir, "data.json"),
       rootPath: notesRoot,
-      enabled: true
+      enabled: true,
     });
 
     await service.initialize();
@@ -66,7 +72,7 @@ describe("NotesService incremental behavior", () => {
     const service = createNotesService({
       dataFilePath: path.join(dir, "data.json"),
       rootPath: notesRoot,
-      enabled: true
+      enabled: true,
     });
     await service.initialize();
 
@@ -77,12 +83,16 @@ describe("NotesService incremental behavior", () => {
 
     await service.refreshChanged();
     const afterHashSkip = service.getInstrumentation();
-    expect(afterHashSkip.skippedByHashCount).toBeGreaterThan(baseline.skippedByHashCount);
+    expect(afterHashSkip.skippedByHashCount).toBeGreaterThan(
+      baseline.skippedByHashCount,
+    );
     expect(afterHashSkip.upsertCount).toBe(baseline.upsertCount);
 
     await service.refreshChanged();
     const afterMtimeSkip = service.getInstrumentation();
-    expect(afterMtimeSkip.skippedByMtimeCount).toBeGreaterThan(afterHashSkip.skippedByMtimeCount);
+    expect(afterMtimeSkip.skippedByMtimeCount).toBeGreaterThan(
+      afterHashSkip.skippedByMtimeCount,
+    );
   });
 
   it("keeps full reindex count stable during repeated edits in a 100-note vault", async () => {
@@ -90,13 +100,17 @@ describe("NotesService incremental behavior", () => {
     const notesRoot = path.join(dir, "notes");
 
     for (let index = 0; index < 100; index += 1) {
-      await writeNote(notesRoot, `N${String(index)}.md`, `# N${String(index)}\n\nBody ${String(index)}`);
+      await writeNote(
+        notesRoot,
+        `N${String(index)}.md`,
+        `# N${String(index)}\n\nBody ${String(index)}`,
+      );
     }
 
     const service = createNotesService({
       dataFilePath: path.join(dir, "data.json"),
       rootPath: notesRoot,
-      enabled: true
+      enabled: true,
     });
     await service.initialize();
 
@@ -121,7 +135,7 @@ describe("NotesService incremental behavior", () => {
     const service = createNotesService({
       dataFilePath: path.join(dir, "data.json"),
       rootPath: notesRoot,
-      enabled: true
+      enabled: true,
     });
     await service.initialize();
 
@@ -129,7 +143,9 @@ describe("NotesService incremental behavior", () => {
     expect(renamed?.path).toBe("Gamma.md");
     expect(service.listNotes().map((note) => note.path)).toEqual(["Gamma.md"]);
     await expect(service.getNoteContent("Alpha.md")).resolves.toBeNull();
-    await expect(fs.stat(path.join(notesRoot, "Gamma.md"))).resolves.toBeDefined();
+    await expect(
+      fs.stat(path.join(notesRoot, "Gamma.md")),
+    ).resolves.toBeDefined();
     await expect(fs.stat(path.join(notesRoot, "Alpha.md"))).rejects.toThrow();
 
     const deleted = await service.deleteNote("Gamma.md");
@@ -144,7 +160,7 @@ describe("NotesService incremental behavior", () => {
     const service = createNotesService({
       dataFilePath: path.join(dir, "data.json"),
       rootPath: notesRoot,
-      enabled: true
+      enabled: true,
     });
 
     await service.initialize();
@@ -162,7 +178,9 @@ describe("NotesService incremental behavior", () => {
     expect(secondSeed.skippedReason).toBe("already_seeded");
 
     for (const notePath of DEFAULT_TOME_GUIDE_PATHS) {
-      await expect(fs.stat(path.join(notesRoot, notePath))).resolves.toBeDefined();
+      await expect(
+        fs.stat(path.join(notesRoot, notePath)),
+      ).resolves.toBeDefined();
     }
   });
 
@@ -174,7 +192,7 @@ describe("NotesService incremental behavior", () => {
     const service = createNotesService({
       dataFilePath: path.join(dir, "data.json"),
       rootPath: notesRoot,
-      enabled: true
+      enabled: true,
     });
     await service.initialize();
 
@@ -190,7 +208,7 @@ describe("NotesService incremental behavior", () => {
     const service = createNotesService({
       dataFilePath: path.join(dir, "data.json"),
       rootPath: notesRoot,
-      enabled: true
+      enabled: true,
     });
     await service.initialize();
 
@@ -205,7 +223,7 @@ describe("NotesService incremental behavior", () => {
     const restoreAfterDelete = await service.restoreDefaultGuideDocs();
     expect(restoreAfterDelete.createdPaths).toEqual([deletedPath]);
     expect(restoreAfterDelete.skippedPaths).toEqual(
-      DEFAULT_TOME_GUIDE_PATHS.filter((item) => item !== deletedPath)
+      DEFAULT_TOME_GUIDE_PATHS.filter((item) => item !== deletedPath),
     );
   });
 });

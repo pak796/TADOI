@@ -6,17 +6,17 @@ const EVENT = {
   taskId: "task-1",
   title: "Task",
   dueAt: "2026-02-10T09:00:00.000Z",
-  firedAt: "2026-02-10T09:00:01.000Z"
+  firedAt: "2026-02-10T09:00:01.000Z",
 };
 
 describe("InAppModalNotifier", () => {
   it("enqueues overdue events when enabled", () => {
-    const queued: typeof EVENT[] = [];
+    const queued: (typeof EVENT)[] = [];
     const notifier = new InAppModalNotifier({
       enqueueEvent: (event) => {
         queued.push(event);
       },
-      isEnabled: () => true
+      isEnabled: () => true,
     });
 
     notifier.notify(EVENT);
@@ -24,12 +24,12 @@ describe("InAppModalNotifier", () => {
   });
 
   it("suppresses events when disabled", () => {
-    const queued: typeof EVENT[] = [];
+    const queued: (typeof EVENT)[] = [];
     const notifier = new InAppModalNotifier({
       enqueueEvent: (event) => {
         queued.push(event);
       },
-      isEnabled: () => false
+      isEnabled: () => false,
     });
 
     notifier.notify(EVENT);

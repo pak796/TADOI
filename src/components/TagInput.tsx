@@ -14,9 +14,13 @@ export function TagInput({
   inlineSuggestion,
   onChange,
 }: TagInputProps) {
-  const hasSuggestion = inlineSuggestion && inlineSuggestion.remainder.length > 0;
+  const hasSuggestion =
+    inlineSuggestion && inlineSuggestion.remainder.length > 0;
   const prefix = hasSuggestion
-    ? inlineSuggestion.full.slice(0, inlineSuggestion.full.length - inlineSuggestion.remainder.length)
+    ? inlineSuggestion.full.slice(
+        0,
+        inlineSuggestion.full.length - inlineSuggestion.remainder.length,
+      )
     : "";
   const displayPrefix = formatTagForDisplay(prefix);
 
@@ -33,7 +37,9 @@ export function TagInput({
         <box style={{ flexDirection: "row", gap: 0, marginTop: 1 }}>
           <text style={{ color: theme.muted }}>→ </text>
           <text style={{ color: theme.text }}>{displayPrefix}</text>
-          <text style={{ color: theme.muted }}>{inlineSuggestion?.remainder}</text>
+          <text style={{ color: theme.muted }}>
+            {inlineSuggestion?.remainder}
+          </text>
           <text style={{ color: theme.muted }}> (press →)</text>
         </box>
       ) : null}

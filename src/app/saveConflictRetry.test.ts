@@ -4,7 +4,7 @@ import { StateRevisionConflictError } from "../state/persistence";
 import {
   normalizeStateRevision,
   retrySaveAfterConflictReload,
-  type SaveConflictRetrySnapshot
+  type SaveConflictRetrySnapshot,
 } from "./saveConflictRetry";
 
 function createSnapshot(): SaveConflictRetrySnapshot {
@@ -13,7 +13,7 @@ function createSnapshot(): SaveConflictRetrySnapshot {
     tasks: [],
     tagIndex: {},
     savedViews: [],
-    engagement: createDefaultEngagementState()
+    engagement: createDefaultEngagementState(),
   };
 }
 
@@ -40,17 +40,17 @@ describe("save conflict retry helper", () => {
         saveAtomic: async (_data, filePath, options) => {
           calls.push({
             filePath,
-            expected: options.expectedStateRevision ?? -1
+            expected: options.expectedStateRevision ?? -1,
           });
           return 8;
-        }
-      }
+        },
+      },
     });
 
     expect(result).toEqual({
       ok: true,
       filePath: "/tmp/tadoi_data.json",
-      stateRevision: 8
+      stateRevision: 8,
     });
     expect(calls).toEqual([{ filePath: "/tmp/tadoi_data.json", expected: 7 }]);
   });
@@ -63,8 +63,8 @@ describe("save conflict retry helper", () => {
         loadLatest: async () => ({ stateRevision: 1 }),
         saveAtomic: async () => {
           throw new StateRevisionConflictError("/tmp/tadoi_data.json", 1, 2);
-        }
-      }
+        },
+      },
     });
 
     expect(result).toEqual({
@@ -72,7 +72,7 @@ describe("save conflict retry helper", () => {
       kind: "conflict",
       filePath: "/tmp/tadoi_data.json",
       expectedStateRevision: 1,
-      actualStateRevision: 2
+      actualStateRevision: 2,
     });
   });
 
@@ -84,8 +84,8 @@ describe("save conflict retry helper", () => {
         loadLatest: async () => ({ stateRevision: 3 }),
         saveAtomic: async () => {
           throw new Error("disk full");
-        }
-      }
+        },
+      },
     });
 
     expect(result.ok).toBe(false);

@@ -1,4 +1,8 @@
-import { diffLocalDays, formatLocalTimeHHmm, startOfLocalDayMs } from "../domain/dates";
+import {
+  diffLocalDays,
+  formatLocalTimeHHmm,
+  startOfLocalDayMs,
+} from "../domain/dates";
 import { getChecklistProgress, sortChecklistItems } from "../domain/checklist";
 import { getRecurrenceSummary } from "../domain/recurrence/draft";
 import { formatTagForReadOnlyDisplay } from "../domain/priorityTags";
@@ -104,10 +108,12 @@ export function DetailsPane({
   onSelectChecklistItem,
   onOpenLinkedNote,
   onSelectNotesReferencing,
-  onSelectNoteLinkPickerItem
+  onSelectNoteLinkPickerItem,
 }: DetailsPaneProps) {
   if (!task) {
-    return <text style={{ color: theme.muted }}>Select a task to view details.</text>;
+    return (
+      <text style={{ color: theme.muted }}>Select a task to view details.</text>
+    );
   }
 
   const startOfToday = startOfLocalDayMs(now);
@@ -123,9 +129,14 @@ export function DetailsPane({
     task.dueAt !== undefined &&
     now > task.dueAt;
   const isDueToday =
-    task.status === "open" && dayDiff !== null && dayDiff === 0 && !isTimeOverdue;
+    task.status === "open" &&
+    dayDiff !== null &&
+    dayDiff === 0 &&
+    !isTimeOverdue;
   const isOverdue =
-    task.status === "open" && dayDiff !== null && (dayDiff < 0 || isTimeOverdue);
+    task.status === "open" &&
+    dayDiff !== null &&
+    (dayDiff < 0 || isTimeOverdue);
   const isDueSoon =
     task.status === "open" && dayDiff !== null && dayDiff >= 1 && dayDiff <= 7;
   const isDueLater = task.status === "open" && dayDiff !== null && dayDiff >= 8;
@@ -163,26 +174,31 @@ export function DetailsPane({
   const checklistVisibleRows = Math.max(1, checklistWindowSize);
   const checklistStart = Math.max(
     0,
-    Math.min(checklistWindowStart, Math.max(0, checklistItems.length - checklistVisibleRows))
+    Math.min(
+      checklistWindowStart,
+      Math.max(0, checklistItems.length - checklistVisibleRows),
+    ),
   );
   const checklistWindow = checklistItems.slice(
     checklistStart,
-    checklistStart + checklistVisibleRows
+    checklistStart + checklistVisibleRows,
   );
   const checklistHiddenAbove = checklistStart;
   const checklistHiddenBelow = Math.max(
     0,
-    checklistItems.length - (checklistStart + checklistWindow.length)
+    checklistItems.length - (checklistStart + checklistWindow.length),
   );
 
   return (
     <box style={{ flexDirection: "column" }}>
-      <text style={{ color: theme.text, fontWeight: "bold" }}>{task.title}</text>
+      <text style={{ color: theme.text, fontWeight: "bold" }}>
+        {task.title}
+      </text>
       <box
         style={{
           flexDirection: "row",
           gap: 1,
-          backgroundColor: highlightBackground
+          backgroundColor: highlightBackground,
         }}
       >
         <text style={{ color: highlightText }}>STATUS:</text>
@@ -193,17 +209,17 @@ export function DetailsPane({
                 ? theme.ok
                 : task.status === "archived"
                   ? theme.muted
-                : isOverdue
-                  ? theme.bg
-                  : isDueToday && dueTodayPulseOn
+                  : isOverdue
                     ? theme.bg
-                    : isDueToday
-                      ? theme.dueSoon
-                      : isDueSoon
+                    : isDueToday && dueTodayPulseOn
+                      ? theme.bg
+                      : isDueToday
                         ? theme.dueSoon
-                        : isDueLater
-                          ? theme.dueLater
-                          : theme.accentOrange
+                        : isDueSoon
+                          ? theme.dueSoon
+                          : isDueLater
+                            ? theme.dueLater
+                            : theme.accentOrange,
           }}
         >
           {task.status === "done"
@@ -215,7 +231,7 @@ export function DetailsPane({
       </box>
       <box
         style={{
-          backgroundColor: highlightBackground
+          backgroundColor: highlightBackground,
         }}
       >
         <text style={{ color: highlightText }}>{getDueLabel(task, now)}</text>
@@ -234,7 +250,9 @@ export function DetailsPane({
         <text style={{ color: theme.muted }}>REPEATS: {recurrenceSummary}</text>
       ) : null}
       {isOccurrenceRow && task.occurrenceIso ? (
-        <text style={{ color: theme.muted }}>OCCURRENCE: {task.occurrenceIso}</text>
+        <text style={{ color: theme.muted }}>
+          OCCURRENCE: {task.occurrenceIso}
+        </text>
       ) : null}
       {isOccurrenceRow && task.seriesId ? (
         <text style={{ color: theme.muted }}>SERIES: {task.seriesId}</text>
@@ -250,7 +268,7 @@ export function DetailsPane({
                   backgroundColor: colorForTag(tag),
                   color: theme.bg,
                   paddingLeft: 1,
-                  paddingRight: 1
+                  paddingRight: 1,
                 }}
               >
                 <text>{formatTagForReadOnlyDisplay(tag)}</text>
@@ -278,7 +296,9 @@ export function DetailsPane({
           <text style={{ color: theme.muted }}>Linked: (none)</text>
         )}
         {!linkedTaskNotePath ? (
-          <text style={{ color: theme.muted }}>Actions: c create note · l link existing</text>
+          <text style={{ color: theme.muted }}>
+            Actions: c create note · l link existing
+          </text>
         ) : (
           <text style={{ color: theme.muted }}>
             Actions: Enter/o open · l/r relink · u unlink
@@ -290,15 +310,21 @@ export function DetailsPane({
         {linkedTaskNotePreviewLines.length > 0 ? (
           <box style={{ flexDirection: "column" }}>
             {linkedTaskNotePreviewLines.slice(0, 3).map((line, index) => (
-              <text key={`note-preview-${index}`} style={{ color: theme.muted }}>
+              <text
+                key={`note-preview-${index}`}
+                style={{ color: theme.muted }}
+              >
                 {line || " "}
               </text>
             ))}
           </box>
         ) : null}
-        <text style={{ color: theme.muted }}>Notes linking here: {String(linkedNotes.length)}</text>
         <text style={{ color: theme.muted }}>
-          Tasks referenced by linked note: {String(linkedTaskReferencedTaskCount)}
+          Notes linking here: {String(linkedNotes.length)}
+        </text>
+        <text style={{ color: theme.muted }}>
+          Tasks referenced by linked note:{" "}
+          {String(linkedTaskReferencedTaskCount)}
         </text>
         <text style={{ color: theme.muted }}>
           Capture hint: Ctrl+N (or `note q`) captures into this task context.
@@ -319,17 +345,25 @@ export function DetailsPane({
                   key={`picker-${item.path}`}
                   style={{
                     flexDirection: "column",
-                    backgroundColor: item.selected ? theme.accentBlue : "transparent",
+                    backgroundColor: item.selected
+                      ? theme.accentBlue
+                      : "transparent",
                     paddingLeft: 1,
-                    paddingRight: 1
+                    paddingRight: 1,
                   }}
                   onMouseDown={(event) => {
                     if (event.button !== 0) return;
                     onSelectNoteLinkPickerItem?.(item.path);
                   }}
                 >
-                  <text style={{ color: item.selected ? theme.bg : theme.text }}>{item.title}</text>
-                  <text style={{ color: item.selected ? theme.bg : theme.muted }}>
+                  <text
+                    style={{ color: item.selected ? theme.bg : theme.text }}
+                  >
+                    {item.title}
+                  </text>
+                  <text
+                    style={{ color: item.selected ? theme.bg : theme.muted }}
+                  >
                     {item.path}
                     {item.id ? ` [id:${item.id}]` : ""}
                   </text>
@@ -340,7 +374,8 @@ export function DetailsPane({
         ) : (
           <box style={{ flexDirection: "column", marginTop: 1 }}>
             <text style={{ color: theme.muted }}>
-              NOTES REFERENCING THIS TASK ({String(notesReferencingTask.length)})
+              NOTES REFERENCING THIS TASK ({String(notesReferencingTask.length)}
+              )
             </text>
             {notesReferencingTask.length === 0 ? (
               <text style={{ color: theme.muted }}>(none)</text>
@@ -351,9 +386,11 @@ export function DetailsPane({
                   <box
                     key={`note-ref-${notePath}`}
                     style={{
-                      backgroundColor: selected ? theme.accentBlue : "transparent",
+                      backgroundColor: selected
+                        ? theme.accentBlue
+                        : "transparent",
                       paddingLeft: 1,
-                      paddingRight: 1
+                      paddingRight: 1,
                     }}
                     onMouseDown={(event) => {
                       if (event.button !== 0) return;
@@ -364,7 +401,9 @@ export function DetailsPane({
                       onSelectNotesReferencing?.(notePath);
                     }}
                   >
-                    <text style={{ color: selected ? theme.bg : theme.text }}>{notePath}</text>
+                    <text style={{ color: selected ? theme.bg : theme.text }}>
+                      {notePath}
+                    </text>
                   </box>
                 );
               })
@@ -377,7 +416,9 @@ export function DetailsPane({
           Links / Attachments ({links.length})
         </text>
         {links.length === 0 ? (
-          <text style={{ color: theme.muted }}>No links yet — press L to add</text>
+          <text style={{ color: theme.muted }}>
+            No links yet — press L to add
+          </text>
         ) : (
           <box style={{ flexDirection: "column", marginTop: 1 }}>
             {links.map((link) => {
@@ -387,14 +428,17 @@ export function DetailsPane({
                   ? theme.accentBlue
                   : theme.outline
                 : "transparent";
-              const rowTextColor = selected && linksFocused ? theme.bg : theme.text;
-              const secondaryColor = selected && linksFocused ? theme.bg : theme.muted;
+              const rowTextColor =
+                selected && linksFocused ? theme.bg : theme.text;
+              const secondaryColor =
+                selected && linksFocused ? theme.bg : theme.muted;
               const primary = link.label?.trim().length
                 ? link.label.trim()
                 : link.target;
-              const secondary = resolveTaskLinkKind(link) === "url"
-                ? summarizeUrlTarget(link.target)
-                : summarizePathTarget(link.target);
+              const secondary =
+                resolveTaskLinkKind(link) === "url"
+                  ? summarizeUrlTarget(link.target)
+                  : summarizePathTarget(link.target);
 
               return (
                 <box
@@ -403,7 +447,7 @@ export function DetailsPane({
                     flexDirection: "column",
                     paddingLeft: 1,
                     paddingRight: 1,
-                    backgroundColor: rowBackground
+                    backgroundColor: rowBackground,
                   }}
                   onMouseDown={(event) => {
                     if (event.button !== 0) return;
@@ -428,7 +472,8 @@ export function DetailsPane({
       </box>
       <box style={{ flexDirection: "column", marginTop: 1 }}>
         <text style={{ color: theme.muted }}>
-          CHECKLIST ({String(checklistProgress.done)}/{String(checklistProgress.total)})
+          CHECKLIST ({String(checklistProgress.done)}/
+          {String(checklistProgress.total)})
         </text>
         {checklistItems.length === 0 ? (
           <text style={{ color: theme.muted }}>No checklist items</text>
@@ -446,7 +491,8 @@ export function DetailsPane({
                   ? theme.accentBlue
                   : theme.outline
                 : "transparent";
-              const rowTextColor = selected && checklistFocused ? theme.bg : theme.text;
+              const rowTextColor =
+                selected && checklistFocused ? theme.bg : theme.text;
               const status = item.isDone ? "[x]" : "[ ]";
               return (
                 <box
@@ -456,7 +502,7 @@ export function DetailsPane({
                     gap: 1,
                     paddingLeft: 1,
                     paddingRight: 1,
-                    backgroundColor: rowBackground
+                    backgroundColor: rowBackground,
                   }}
                   onMouseDown={(event) => {
                     if (event.button !== 0) return;
@@ -478,7 +524,10 @@ export function DetailsPane({
       </box>
       {isOccurrenceRow ? (
         <box style={{ marginTop: 1 }}>
-          <text style={{ color: theme.muted }}>space: complete/reopen · x: skip · z: snooze · e: edit occurrence · E: edit series</text>
+          <text style={{ color: theme.muted }}>
+            space: complete/reopen · x: skip · z: snooze · e: edit occurrence ·
+            E: edit series
+          </text>
         </box>
       ) : null}
     </box>

@@ -7,12 +7,12 @@ describe("decideTaskLinkOpen", () => {
       decideTaskLinkOpen({
         target: "https://example.com/docs",
         kind: "url",
-        source: "manual"
-      })
+        source: "manual",
+      }),
     ).toEqual({
       policy: "allow",
       scheme: "https",
-      target: "https://example.com/docs"
+      target: "https://example.com/docs",
     });
   });
 
@@ -21,24 +21,24 @@ describe("decideTaskLinkOpen", () => {
       decideTaskLinkOpen({
         target: "vscode://repo/file",
         kind: "url",
-        source: "manual"
-      })
+        source: "manual",
+      }),
     ).toEqual({
       policy: "confirm",
       scheme: "vscode",
-      target: "vscode://repo/file"
+      target: "vscode://repo/file",
     });
 
     expect(
       decideTaskLinkOpen({
         target: "/tmp/a file.txt",
         kind: "path",
-        source: "manual"
-      })
+        source: "manual",
+      }),
     ).toEqual({
       policy: "confirm",
       scheme: "path",
-      target: "/tmp/a file.txt"
+      target: "/tmp/a file.txt",
     });
   });
 
@@ -48,14 +48,14 @@ describe("decideTaskLinkOpen", () => {
         {
           target: "file:///tmp/report.txt",
           kind: "url",
-          source: "manual"
+          source: "manual",
         },
-        { nonHttpLinkPolicy: "block" }
-      )
+        { nonHttpLinkPolicy: "block" },
+      ),
     ).toEqual({
       policy: "block",
       scheme: "file",
-      target: "file:///tmp/report.txt"
+      target: "file:///tmp/report.txt",
     });
   });
 });

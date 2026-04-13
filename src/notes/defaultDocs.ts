@@ -34,7 +34,7 @@ TADOI is a keyboard-first terminal task manager with an integrated notes tool ca
 - Main usage guide: docs/USAGE.md
 - QA guide: docs/TADOI_QA_Guide_v0.4.0.md
 - Notes implementation notes: docs/specs/local-markdown-notes-implementation-notes.md
-`
+`,
   },
   {
     path: "TADOI Guides/Guide - Using TADOI.md",
@@ -73,7 +73,7 @@ This guide is a quick start for daily usage.
 - Keep note titles specific to reduce open/delete ambiguity.
 - Use \`id:<note-id>\` in \`note open\` and \`note delete\` when needed.
 - Reindex after major external note changes.
-`
+`,
   },
   {
     path: "TADOI Guides/Troubleshooting.md",
@@ -103,7 +103,7 @@ This guide is a quick start for daily usage.
 - Confirm file permissions for data and notes directories.
 - Check free disk space.
 - If save conflict appears, reload and retry as instructed by the banner.
-`
+`,
   },
   {
     path: "TADOI Guides/Support - Placeholder.md",
@@ -129,10 +129,9 @@ This is a placeholder support document for future built-in documentation.
   - \`note restore-defaults\`
 
 Future releases can extend this note or add more built-in guide notes under \`TADOI Guides/\`.
-`
-  }
+`,
+  },
 ] as const;
 
-export const DEFAULT_TOME_GUIDE_PATHS: ReadonlyArray<NotePath> = DEFAULT_TOME_GUIDE_DOCS.map(
-  (doc) => doc.path
-);
+export const DEFAULT_TOME_GUIDE_PATHS: ReadonlyArray<NotePath> =
+  DEFAULT_TOME_GUIDE_DOCS.map((doc) => doc.path);

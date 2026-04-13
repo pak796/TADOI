@@ -7,7 +7,7 @@ import {
   normalizeTag,
   normalizeTagPrefix,
   normalizeTags,
-  normalizeTagsFromInput
+  normalizeTagsFromInput,
 } from "./tagIndex";
 
 describe("tag normalization", () => {
@@ -71,25 +71,37 @@ describe("tag normalization", () => {
     const merged = mergeTagIndexWithTaskHistory(
       {
         work: { tagName: "work", usageCount: 5, lastUsedAt: 100 },
-        home: { tagName: "home", usageCount: 2, lastUsedAt: 80 }
+        home: { tagName: "home", usageCount: 2, lastUsedAt: 80 },
       },
       [
         {
           tags: ["#work", "p1"],
           createdAt: 90,
-          updatedAt: 95
+          updatedAt: 95,
         },
         {
           tags: ["home", "chore"],
           createdAt: 120,
-          updatedAt: 130
-        }
-      ]
+          updatedAt: 130,
+        },
+      ],
     );
 
-    expect(merged.work).toEqual({ tagName: "work", usageCount: 6, lastUsedAt: 100 });
-    expect(merged.home).toEqual({ tagName: "home", usageCount: 3, lastUsedAt: 130 });
-    expect(merged.chore).toEqual({ tagName: "chore", usageCount: 1, lastUsedAt: 130 });
+    expect(merged.work).toEqual({
+      tagName: "work",
+      usageCount: 6,
+      lastUsedAt: 100,
+    });
+    expect(merged.home).toEqual({
+      tagName: "home",
+      usageCount: 3,
+      lastUsedAt: 130,
+    });
+    expect(merged.chore).toEqual({
+      tagName: "chore",
+      usageCount: 1,
+      lastUsedAt: 130,
+    });
     expect(merged.p1).toEqual({ tagName: "p1", usageCount: 1, lastUsedAt: 95 });
   });
 });

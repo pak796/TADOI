@@ -6,7 +6,7 @@ import {
   evaluateMilestones,
   normalizeEngagementState,
   suppressActiveToastWithCap,
-  updateStreak
+  updateStreak,
 } from "../domain/engagement";
 import {
   combineLocalDateAndTime,
@@ -14,14 +14,14 @@ import {
   formatLocalTimeHHmm,
   parseDateToLocalMidnight,
   parseTimeToMinutes,
-  startOfLocalDayMs
+  startOfLocalDayMs,
 } from "../domain/dates";
 import { formatTagForDisplay } from "../domain/tagIndex";
 import { parseRRule } from "../domain/recurrence/rruleAdapter";
 import {
   createDefaultReminderDraftFields,
   normalizeTaskReminder,
-  reminderDraftFieldsFromTask
+  reminderDraftFieldsFromTask,
 } from "../domain/reminders";
 import { canonicalizeDueAtInput } from "../lib/datetime/due_at_canonicalizer";
 import {
@@ -32,7 +32,7 @@ import {
   SavedView,
   SortMode,
   TagIndexEntry,
-  Task
+  Task,
 } from "../domain/models";
 import { normalizePriorityTags } from "../domain/priorityTags";
 import { normalizeChecklist } from "../domain/checklist";
@@ -79,7 +79,7 @@ export const initialState: AppState = {
   filters: {
     status: "all",
     due: "any",
-    analyticsWindow: "7d"
+    analyticsWindow: "7d",
   },
   sortMode: "due",
   selectedId: undefined,
@@ -91,13 +91,13 @@ function normalizeTaskForRuntime(task: Task): Task {
   return {
     ...task,
     checklist: normalizeChecklist(task.checklist),
-    reminder
+    reminder,
   };
 }
 
 export function applyArchiveAging(
   data: LoadedData,
-  now: number
+  now: number,
 ): { data: LoadedData; changed: boolean } {
   const threshold = 7 * 24 * 60 * 60 * 1000;
   let changed = false;
@@ -121,9 +121,9 @@ export function archiveOldDoneTasks(tasks: Task[], now: number): Task[] {
       tasks,
       tagIndex: {},
       savedViews: [],
-      engagement: createDefaultEngagementState()
+      engagement: createDefaultEngagementState(),
     },
-    now
+    now,
   ).data.tasks;
 }
 
@@ -138,7 +138,7 @@ export function reducer(state: AppState, action: Action): AppState {
         savedViews: action.data.savedViews,
         engagement: normalizeEngagementState(action.data.engagement),
         engagementToastQueue: [],
-        engagementToastActive: null
+        engagementToastActive: null,
       };
     case "recordCompletion": {
       const nextLog = enforceCompletionRetention(
@@ -148,19 +148,19 @@ export function reducer(state: AppState, action: Action): AppState {
             taskId: action.taskId,
             at: action.at,
             tags: Array.from(new Set(action.tags)).sort((left, right) =>
-              left.localeCompare(right)
-            )
-          }
+              left.localeCompare(right),
+            ),
+          },
         ],
-        action.at
+        action.at,
       );
       return {
         ...state,
         engagement: {
           ...state.engagement,
           completionLog: nextLog,
-          streak: updateStreak(state.engagement.streak, action.at)
-        }
+          streak: updateStreak(state.engagement.streak, action.at),
+        },
       };
     }
     case "evaluateEngagement": {
@@ -172,7 +172,7 @@ export function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         engagement: result.engagement,
-        engagementToastQueue: nextQueue
+        engagementToastQueue: nextQueue,
       };
     }
     case "triggerEngagementMilestone": {
@@ -184,7 +184,7 @@ export function reducer(state: AppState, action: Action): AppState {
         message: action.toast.message,
         priority: action.toast.priority,
         createdAt: action.at,
-        durationMs: action.toast.durationMs
+        durationMs: action.toast.durationMs,
       };
       return {
         ...state,
@@ -195,17 +195,21 @@ export function reducer(state: AppState, action: Action): AppState {
             [action.achievementKey]: {
               id: action.achievementId,
               unlockedAt: action.at,
-              ...(action.meta ? { meta: action.meta } : {})
-            }
-          }
+              ...(action.meta ? { meta: action.meta } : {}),
+            },
+          },
         },
-        engagementToastQueue: enqueueToastsWithCap(state.engagementToastQueue, [toast])
+        engagementToastQueue: enqueueToastsWithCap(state.engagementToastQueue, [
+          toast,
+        ]),
       };
     }
     case "pushEngagementToast":
       return {
         ...state,
-        engagementToastQueue: enqueueToastsWithCap(state.engagementToastQueue, [action.toast])
+        engagementToastQueue: enqueueToastsWithCap(state.engagementToastQueue, [
+          action.toast,
+        ]),
       };
     case "tickEngagementToast": {
       let active = state.engagementToastActive;
@@ -227,7 +231,7 @@ export function reducer(state: AppState, action: Action): AppState {
         const [next, ...rest] = queue;
         active = {
           ...next,
-          createdAt: action.now
+          createdAt: action.now,
         };
         queue = rest;
         changed = true;
@@ -237,14 +241,14 @@ export function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         engagementToastQueue: queue,
-        engagementToastActive: active
+        engagementToastActive: active,
       };
     }
     case "popEngagementToast":
       if (!state.engagementToastActive) return state;
       return {
         ...state,
-        engagementToastActive: null
+        engagementToastActive: null,
       };
     case "setSelected":
       return { ...state, selectedId: action.id };
@@ -253,7 +257,7 @@ export function reducer(state: AppState, action: Action): AppState {
     case "setEditor":
       return {
         ...state,
-        editor: action.editor
+        editor: action.editor,
       };
     case "updateEditor":
       return state.editor
@@ -275,7 +279,12 @@ export function reducer(state: AppState, action: Action): AppState {
 }
 
 export function getVisibleTasks(state: AppState, now: number): Task[] {
-  const filtered = filterTasks(state.tasks, state.filters, now, state.tagAliases);
+  const filtered = filterTasks(
+    state.tasks,
+    state.filters,
+    now,
+    state.tagAliases,
+  );
   return sortTasks(filtered, now, state.sortMode);
 }
 
@@ -299,7 +308,7 @@ export function createEmptyDraft(): EditorDraft {
     repeatCustomRRuleText: "",
     assigneeText: "",
     projectText: "",
-    workflowStage: "todo"
+    workflowStage: "todo",
   };
 }
 
@@ -324,7 +333,8 @@ export function createDraftFromTask(task: Task): EditorDraft {
     id: task.id,
     title: task.title,
     dueText: task.dueAt ? formatDate(task.dueAt) : "",
-    timeText: task.hasExplicitTime && task.dueAt ? formatLocalTimeHHmm(task.dueAt) : "",
+    timeText:
+      task.hasExplicitTime && task.dueAt ? formatLocalTimeHHmm(task.dueAt) : "",
     ...reminderDraft,
     tagsText: normalizePriorityTags(task.tags)
       .map((tag) => formatTagForDisplay(tag))
@@ -337,7 +347,7 @@ export function createDraftFromTask(task: Task): EditorDraft {
     repeatWeekdays: parsedRule?.byday ?? [],
     repeatMonthdayText: String(
       parsedRule?.bymonthday?.[0] ??
-        (task.dueAt ? new Date(task.dueAt).getDate() : "")
+        (task.dueAt ? new Date(task.dueAt).getDate() : ""),
     ),
     repeatEndMode,
     repeatUntilText: parsedRule?.untilIso?.slice(0, 10) ?? "",
@@ -346,7 +356,7 @@ export function createDraftFromTask(task: Task): EditorDraft {
     assigneeText: task.assignee ?? "",
     projectText: task.project ?? "",
     workflowStage: task.workflowStage,
-    editKind: "regular"
+    editKind: "regular",
   };
 }
 
@@ -420,14 +430,18 @@ type CombineDueDateTimeOptions = {
 export function combineDueDateTime(
   dateText: string,
   timeText: string,
-  options?: CombineDueDateTimeOptions
+  options?: CombineDueDateTimeOptions,
 ): { dueAt?: number; hasExplicitTime: boolean } {
   if (options) {
     const normalizedDate = dateText.trim();
-    const canonicalized = canonicalizeDueAtInput(normalizedDate, timeText.trim() || undefined, {
-      now: options.now,
-      tz: options.tz
-    });
+    const canonicalized = canonicalizeDueAtInput(
+      normalizedDate,
+      timeText.trim() || undefined,
+      {
+        now: options.now,
+        tz: options.tz,
+      },
+    );
 
     if (canonicalized.ok) {
       const date = parseDateToLocalMidnight(canonicalized.dueDate);
@@ -436,7 +450,7 @@ export function combineDueDateTime(
         const combined = combineLocalDateAndTime(date, canonicalized.atTime);
         return {
           dueAt: combined ? combined.getTime() : date.getTime(),
-          hasExplicitTime: true
+          hasExplicitTime: true,
         };
       }
       return { dueAt: date.getTime(), hasExplicitTime: false };
@@ -453,7 +467,10 @@ export function combineDueDateTime(
     return { dueAt: date.getTime(), hasExplicitTime: false };
   }
   const combined = combineLocalDateAndTime(date, timeText);
-  return { dueAt: combined ? combined.getTime() : date.getTime(), hasExplicitTime: true };
+  return {
+    dueAt: combined ? combined.getTime() : date.getTime(),
+    hasExplicitTime: true,
+  };
 }
 
 function getDueTimeLabel(task: Task, now: number): string {

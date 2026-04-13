@@ -9,10 +9,7 @@
       "createdAt": 1700000000000,
       "updatedAt": 1700000000000,
       "hasExplicitTime": false,
-      "tags": [
-        "alpha",
-        "work"
-      ]
+      "tags": ["alpha", "work"]
     },
     {
       "id": "series-1",
@@ -22,17 +19,12 @@
       "updatedAt": 1700000000000,
       "dueAt": 1760432400000,
       "hasExplicitTime": true,
-      "tags": [
-        "team",
-        "work"
-      ],
+      "tags": ["team", "work"],
       "recurrence": {
         "dtstart": "2025-10-14T09:00:00",
         "rrule": "FREQ=WEEKLY;INTERVAL=1;BYDAY=TU",
         "series_id": "series:series-1",
-        "exdates": [
-          "2025-10-21T09:00:00"
-        ]
+        "exdates": ["2025-10-21T09:00:00"]
       }
     },
     {
@@ -44,10 +36,7 @@
       "closedAt": 1700000002000,
       "dueAt": 1761037200000,
       "hasExplicitTime": true,
-      "tags": [
-        "team",
-        "work"
-      ],
+      "tags": ["team", "work"],
       "instance_of": {
         "series_id": "series:series-1",
         "occurrence": "2025-10-21T09:00:00"

@@ -5,19 +5,19 @@ import {
   resolveCustom1EditorRightFocus,
   resolveCustom1EditorTabFocus,
   shouldExitHexToTokenListOnLeft,
-  tokenListEditorEntryFocusTarget
+  tokenListEditorEntryFocusTarget,
 } from "./Custom1ThemeEditor";
 
 describe("custom1 theme editor focus routing", () => {
   it("routes tab from token list into the token editor entry control", () => {
     expect(resolveCustom1EditorTabFocus("tokenList", false)).toBe(
-      tokenListEditorEntryFocusTarget()
+      tokenListEditorEntryFocusTarget(),
     );
   });
 
   it("routes right-arrow from token list to the same editor entry control as tab", () => {
     expect(resolveCustom1EditorRightFocus("tokenList")).toBe(
-      resolveCustom1EditorTabFocus("tokenList", false)
+      resolveCustom1EditorTabFocus("tokenList", false),
     );
   });
 
@@ -45,22 +45,22 @@ describe("custom1 theme editor focus routing", () => {
       shouldExitHexToTokenListOnLeft({
         cursorOffset: 3,
         hasSelection: false,
-        leftBoundary: 0
-      })
+        leftBoundary: 0,
+      }),
     ).toBe(false);
     expect(
       shouldExitHexToTokenListOnLeft({
         cursorOffset: 0,
         hasSelection: true,
-        leftBoundary: 0
-      })
+        leftBoundary: 0,
+      }),
     ).toBe(false);
     expect(
       shouldExitHexToTokenListOnLeft({
         cursorOffset: 0,
         hasSelection: false,
-        leftBoundary: 0
-      })
+        leftBoundary: 0,
+      }),
     ).toBe(true);
   });
 });

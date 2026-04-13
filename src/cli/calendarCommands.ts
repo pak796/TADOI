@@ -1,10 +1,10 @@
 import {
   printCalendarExportHelp,
-  runCalendarExportCommand
+  runCalendarExportCommand,
 } from "../commands/calendarExport";
 import {
   printCalendarImportHelp,
-  runCalendarImportCommand
+  runCalendarImportCommand,
 } from "../commands/calendarImport";
 import { CLI_EXIT_CODE } from "./exitCodes";
 import type { CalendarExportRange } from "../calendar/range";
@@ -12,9 +12,7 @@ import type { CalendarEventPrivacyMode } from "../calendar/calendarMapper";
 import type { CalendarImportMode } from "../calendar/importMapper";
 import { redactedLogger } from "../logging/redactedLogger";
 
-type ParseResult<T> =
-  | { ok: true; value: T }
-  | { ok: false; error: string };
+type ParseResult<T> = { ok: true; value: T } | { ok: false; error: string };
 
 export type CalendarExportCommandOptions = {
   outPath: string;
@@ -36,7 +34,11 @@ export type CalendarImportCommandOptions = {
   help: boolean;
 };
 
-function requireNextArg(args: string[], index: number, flag: string): ParseResult<string> {
+function requireNextArg(
+  args: string[],
+  index: number,
+  flag: string,
+): ParseResult<string> {
   const next = args[index + 1];
   if (!next || next.startsWith("-")) {
     return { ok: false, error: `${flag} requires a value` };
@@ -57,7 +59,7 @@ function isImportMode(value: string): value is CalendarImportMode {
 }
 
 export function parseCalendarExportArgs(
-  args: string[]
+  args: string[],
 ): ParseResult<CalendarExportCommandOptions> {
   let outPath = "";
   let viewName: string | undefined;
@@ -152,7 +154,7 @@ export function parseCalendarExportArgs(
 
     return {
       ok: false,
-      error: `Unexpected positional argument for calendar:export: ${arg}`
+      error: `Unexpected positional argument for calendar:export: ${arg}`,
     };
   }
 
@@ -167,13 +169,13 @@ export function parseCalendarExportArgs(
       range,
       privacy,
       ...(viewName?.trim() ? { viewName: viewName.trim() } : {}),
-      help
-    }
+      help,
+    },
   };
 }
 
 export function parseCalendarImportArgs(
-  args: string[]
+  args: string[],
 ): ParseResult<CalendarImportCommandOptions> {
   let inPath = "";
   let viewName: string | undefined;
@@ -266,7 +268,10 @@ export function parseCalendarImportArgs(
       if (!next.ok) return next;
       const parsed = Number.parseInt(next.value, 10);
       if (!Number.isInteger(parsed) || parsed <= 0 || parsed > 3650) {
-        return { ok: false, error: "--horizon-days must be a positive integer <= 3650" };
+        return {
+          ok: false,
+          error: "--horizon-days must be a positive integer <= 3650",
+        };
       }
       horizonDays = parsed;
       i += 1;
@@ -276,7 +281,10 @@ export function parseCalendarImportArgs(
     if (arg.startsWith("--horizon-days=")) {
       const parsed = Number.parseInt(arg.slice("--horizon-days=".length), 10);
       if (!Number.isInteger(parsed) || parsed <= 0 || parsed > 3650) {
-        return { ok: false, error: "--horizon-days must be a positive integer <= 3650" };
+        return {
+          ok: false,
+          error: "--horizon-days must be a positive integer <= 3650",
+        };
       }
       horizonDays = parsed;
       continue;
@@ -319,7 +327,7 @@ export function parseCalendarImportArgs(
 
     return {
       ok: false,
-      error: `Unexpected positional argument for calendar:import: ${arg}`
+      error: `Unexpected positional argument for calendar:import: ${arg}`,
     };
   }
 
@@ -338,14 +346,14 @@ export function parseCalendarImportArgs(
       ...(viewName?.trim() ? { viewName: viewName.trim() } : {}),
       ...(tag?.trim() ? { tag: tag.trim() } : {}),
       ...(reportPath?.trim() ? { reportPath: reportPath.trim() } : {}),
-      help
-    }
+      help,
+    },
   };
 }
 
 export async function runCalendarCommand(
   command: "export" | "import",
-  args: string[]
+  args: string[],
 ): Promise<number> {
   if (command === "export") {
     const parsed = parseCalendarExportArgs(args);

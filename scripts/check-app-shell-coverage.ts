@@ -33,7 +33,7 @@ export function parseArgs(argv: string[]): CoverageCheckOptions {
     lcovFile: "coverage/lcov.info",
     file: "src/app/App.tsx",
     minLines: 45,
-    minFunctions: 40
+    minFunctions: 40,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -62,7 +62,7 @@ export function parseArgs(argv: string[]): CoverageCheckOptions {
     if (token === "--help") {
       throw new Error(
         "Usage: bun scripts/check-app-shell-coverage.ts " +
-          "[--lcov-file <path>] [--file <path>] [--min-lines <0-100>] [--min-functions <0-100>]"
+          "[--lcov-file <path>] [--file <path>] [--min-lines <0-100>] [--min-functions <0-100>]",
       );
     }
     if (token.startsWith("--")) {
@@ -90,7 +90,7 @@ export function parseLcov(content: string): LcovRecord[] {
       linesFound,
       linesHit,
       functionsFound,
-      functionsHit
+      functionsHit,
     });
   };
 
@@ -170,15 +170,19 @@ export function parseLcov(content: string): LcovRecord[] {
 export function findLcovRecord(
   records: LcovRecord[],
   targetPath: string,
-  cwd: string = process.cwd()
+  cwd: string = process.cwd(),
 ): LcovRecord | undefined {
   const absoluteTarget = normalizeFilePath(path.resolve(cwd, targetPath));
   const relativeTarget = normalizeFilePath(targetPath).replace(/^\.\//, "");
 
   for (const record of records) {
     const normalizedRecord = normalizeFilePath(record.sourceFile);
-    const absoluteRecord = normalizeFilePath(path.resolve(cwd, normalizedRecord));
-    const relativeRecord = normalizeFilePath(path.relative(cwd, absoluteRecord));
+    const absoluteRecord = normalizeFilePath(
+      path.resolve(cwd, normalizedRecord),
+    );
+    const relativeRecord = normalizeFilePath(
+      path.relative(cwd, absoluteRecord),
+    );
     if (
       absoluteRecord === absoluteTarget ||
       relativeRecord === relativeTarget ||
@@ -196,14 +200,18 @@ function toPercent(covered: number, total: number): number {
   return (covered / total) * 100;
 }
 
-export async function checkCoverage(options: CoverageCheckOptions): Promise<number> {
+export async function checkCoverage(
+  options: CoverageCheckOptions,
+): Promise<number> {
   const lcovPath = path.resolve(options.lcovFile);
   const content = await fs.readFile(lcovPath, "utf8");
   const records = parseLcov(content);
   const record = findLcovRecord(records, options.file);
 
   if (!record) {
-    console.error(`[app-shell-coverage] coverage record not found for ${options.file}`);
+    console.error(
+      `[app-shell-coverage] coverage record not found for ${options.file}`,
+    );
     return 2;
   }
 
@@ -218,8 +226,8 @@ export async function checkCoverage(options: CoverageCheckOptions): Promise<numb
     console.error(summary);
     console.error(
       `[app-shell-coverage] FAIL: minimum lines=${options.minLines.toFixed(
-        2
-      )}% funcs=${options.minFunctions.toFixed(2)}%`
+        2,
+      )}% funcs=${options.minFunctions.toFixed(2)}%`,
     );
     return 1;
   }
@@ -227,8 +235,8 @@ export async function checkCoverage(options: CoverageCheckOptions): Promise<numb
   console.log(summary);
   console.log(
     `[app-shell-coverage] PASS: minimum lines=${options.minLines.toFixed(
-      2
-    )}% funcs=${options.minFunctions.toFixed(2)}%`
+      2,
+    )}% funcs=${options.minFunctions.toFixed(2)}%`,
   );
   return 0;
 }

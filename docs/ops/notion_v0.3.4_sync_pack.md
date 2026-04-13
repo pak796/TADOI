@@ -3,6 +3,7 @@
 Date: `2026-02-12`
 
 ## Status
+
 Notion sync is available through MCP in this environment.  
 This pack has been applied in-place on `2026-02-12` and remains the canonical payload for repeat syncs.
 
@@ -10,14 +11,17 @@ Target database: `collection://3035aa1e-f93f-80a3-ba35-000b3b596866`
 Parent project: `Patrick's Projects > TADOI`
 
 ## Page 1: Installation Guide
+
 Page ID: `3045aa1e-f93f-8191-848a-cbc69ec6e869`
 
 Property updates:
+
 - `Name`: `TADOI Installation Guide (All Platforms) v0.3.4`
 - `date:Date:start`: `2026-02-12`
 - `Notes`: `Synced to runtime/package v0.3.4. QA reference updated to v0.3.4 guide and keybinding behavior aligned.`
 
 Replace the top context block with:
+
 ```md
 # TADOI™ Installation Guide (macOS, Windows, Linux)
 
@@ -27,14 +31,17 @@ Manual QA reference: `docs/TADOI_QA_Guide_v0.3.4.md`.
 ```
 
 ## Page 2: QA Guide
+
 Page ID: `3045aa1e-f93f-8103-bda5-f77d2bf55e8e`
 
 Property updates:
+
 - `Name`: `TADOI QA Guide (v0.3.4)`
 - `date:Date:start`: `2026-02-12`
 - `Notes`: `Synced to v0.3.4 runtime and latest automated snapshot (403/403 pass, typecheck pass). Calendar docs aligned to Backup Center import/export flows and CLI boundaries.`
 
 Replace the release baseline section with:
+
 ```md
 # TADOI™ QA Guide (v0.3.4)
 
@@ -44,6 +51,7 @@ Package baseline: **0.3.4**
 ```
 
 Replace the automated snapshot section with:
+
 ```md
 ## Current Automated Validation Snapshot
 
@@ -52,6 +60,7 @@ Replace the automated snapshot section with:
 ```
 
 Ensure these checklist cases are present:
+
 ```md
 - [ ] QA-047 Logo mode cycles through all variants, including blocks.
 - [ ] QA-048 Tag panel open behavior parity from list, dashboard, and left rail.
@@ -70,14 +79,17 @@ Ensure these checklist cases are present:
 ```
 
 ## Page 3: User Guide
+
 Page ID: `3045aa1e-f93f-810c-82a5-c03e17858168`
 
 Property updates:
+
 - `Name`: `TADOI User Guide (v0.3.4)`
 - `date:Date:start`: `2026-02-12`
 - `Notes`: `Updated for v0.3.4 behavior: tag panel key standardization, left-rail menu/hints, and logo mode expansion.`
 
 Add/update this release delta block near the top:
+
 ```md
 ## v0.3.4 Behavior Updates
 
@@ -88,14 +100,17 @@ Add/update this release delta block near the top:
 ```
 
 ## Page 4: App Overview + Feature Catalog
+
 Page ID: `3045aa1e-f93f-81fd-84cd-c93a6b68b49c`
 
 Property updates:
+
 - `Name`: `TADOI App Overview + Feature Catalog (v0.3.4)`
 - `date:Date:start`: `2026-02-12`
 - `Notes`: `Feature catalog synced to v0.3.4 and validated against key router, left rail, brand, and settings surfaces.`
 
 Replace/update feature bullets with:
+
 ```md
 ## Feature Highlights (v0.3.4)
 
@@ -115,9 +130,11 @@ Replace/update feature bullets with:
 ```
 
 ## Page 5: Product Spec (v0.3.4)
+
 Page ID: `3055aa1e-f93f-812d-ad44-f3d94b8a7219`
 
 Property updates:
+
 - `Name`: `TADOI Product Spec (v0.3.4)`
 - `date:Date:start`: `2026-02-12`
 - `Notes`: `Created from code-truth audit and linked to active runtime contracts.`
@@ -126,9 +143,11 @@ Use this source file:
 `TADOI_SPEC_v0.3.4.md`
 
 ## Page 6: Task List (v0.3.4)
+
 Page ID: `3055aa1e-f93f-8159-b07c-ee692df137eb`
 
 Property updates:
+
 - `Name`: `TADOI Task List (v0.3.4)`
 - `date:Date:start`: `2026-02-12`
 - `Notes`: `Created from code-truth audit with completed scope and pending follow-up items.`
@@ -137,6 +156,7 @@ Use this source file:
 `TADOI_TASKS_v0.3.4.md`
 
 ## Validation Checklist After Notion Paste
+
 - Confirm each page title and date property shows `2026-02-12`.
 - Confirm all runtime/package references show `v0.3.4` / `0.3.4`.
 - Confirm tag panel key is `p` (not Shift+T).

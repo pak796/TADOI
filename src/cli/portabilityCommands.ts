@@ -4,9 +4,7 @@ import { printImportHelp, runImportCommand } from "../commands/import";
 import { CLI_EXIT_CODE } from "./exitCodes";
 import { redactedLogger } from "../logging/redactedLogger";
 
-type ParseResult<T> =
-  | { ok: true; value: T }
-  | { ok: false; error: string };
+type ParseResult<T> = { ok: true; value: T } | { ok: false; error: string };
 
 export type ExportCommandOptions = {
   outPath: string;
@@ -27,7 +25,11 @@ export type ImportCommandOptions = {
   help: boolean;
 };
 
-function requireNextArg(args: string[], index: number, flag: string): ParseResult<string> {
+function requireNextArg(
+  args: string[],
+  index: number,
+  flag: string,
+): ParseResult<string> {
   const next = args[index + 1];
   if (!next || next.startsWith("-")) {
     return { ok: false, error: `${flag} requires a value` };
@@ -46,7 +48,9 @@ function parseBooleanLike(value: string): ParseResult<boolean> {
   return { ok: false, error: `Invalid boolean value: ${value}` };
 }
 
-export function parseExportArgs(args: string[]): ParseResult<ExportCommandOptions> {
+export function parseExportArgs(
+  args: string[],
+): ParseResult<ExportCommandOptions> {
   let outPath = "";
   let format: "json" = "json";
   let pretty = false;
@@ -115,7 +119,10 @@ export function parseExportArgs(args: string[]): ParseResult<ExportCommandOption
         normalized !== "strict" &&
         normalized !== "strict-v2"
       ) {
-        return { ok: false, error: "--redact-mode must be basic, strict, or strict-v2" };
+        return {
+          ok: false,
+          error: "--redact-mode must be basic, strict, or strict-v2",
+        };
       }
       redactMode = normalized;
       i += 1;
@@ -123,13 +130,19 @@ export function parseExportArgs(args: string[]): ParseResult<ExportCommandOption
     }
 
     if (arg.startsWith("--redact-mode=")) {
-      const normalized = arg.slice("--redact-mode=".length).trim().toLowerCase();
+      const normalized = arg
+        .slice("--redact-mode=".length)
+        .trim()
+        .toLowerCase();
       if (
         normalized !== "basic" &&
         normalized !== "strict" &&
         normalized !== "strict-v2"
       ) {
-        return { ok: false, error: "--redact-mode must be basic, strict, or strict-v2" };
+        return {
+          ok: false,
+          error: "--redact-mode must be basic, strict, or strict-v2",
+        };
       }
       redactMode = normalized;
       continue;
@@ -139,7 +152,10 @@ export function parseExportArgs(args: string[]): ParseResult<ExportCommandOption
       return { ok: false, error: `Unknown option for export: ${arg}` };
     }
 
-    return { ok: false, error: `Unexpected positional argument for export: ${arg}` };
+    return {
+      ok: false,
+      error: `Unexpected positional argument for export: ${arg}`,
+    };
   }
 
   if (!help && outPath.trim().length === 0) {
@@ -154,12 +170,14 @@ export function parseExportArgs(args: string[]): ParseResult<ExportCommandOption
       pretty,
       redact,
       ...(redactMode ? { redactMode } : {}),
-      help
-    }
+      help,
+    },
   };
 }
 
-export function parseImportArgs(args: string[]): ParseResult<ImportCommandOptions> {
+export function parseImportArgs(
+  args: string[],
+): ParseResult<ImportCommandOptions> {
   let inPath = "";
   let mode: ImportMode = "merge";
   let backup = true;
@@ -246,7 +264,10 @@ export function parseImportArgs(args: string[]): ParseResult<ImportCommandOption
       return { ok: false, error: `Unknown option for import: ${arg}` };
     }
 
-    return { ok: false, error: `Unexpected positional argument for import: ${arg}` };
+    return {
+      ok: false,
+      error: `Unexpected positional argument for import: ${arg}`,
+    };
   }
 
   if (!help && inPath.trim().length === 0) {
@@ -262,14 +283,14 @@ export function parseImportArgs(args: string[]): ParseResult<ImportCommandOption
       dryRun,
       yes,
       pretty,
-      help
-    }
+      help,
+    },
   };
 }
 
 export async function runPortabilityCommand(
   command: "export" | "import",
-  args: string[]
+  args: string[],
 ): Promise<number> {
   if (command === "export") {
     const parsed = parseExportArgs(args);

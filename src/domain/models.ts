@@ -23,7 +23,14 @@ export type TaskLink = {
 
 export type RecurrenceFrequency = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
 
-export type RecurrenceWeekday = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+export type RecurrenceWeekday =
+  | "mon"
+  | "tue"
+  | "wed"
+  | "thu"
+  | "fri"
+  | "sat"
+  | "sun";
 
 export type RecurrenceRule = {
   freq: "daily" | "weekly" | "monthly";

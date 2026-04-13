@@ -5,14 +5,14 @@ import {
   isEmptyTagFilter,
   matchesTagFilter,
   normalizeTagFilter,
-  normalizeTagToken
+  normalizeTagToken,
 } from "./tagFilter";
 
 function baseFilters(patch: Partial<Filters> = {}): Filters {
   return {
     status: "all",
     due: "any",
-    ...patch
+    ...patch,
   };
 }
 
@@ -52,7 +52,7 @@ describe("tagFilter helpers", () => {
   it("non-empty tagFilter takes precedence over legacy tag", () => {
     const filters = baseFilters({
       tag: "work",
-      tagFilter: { any: ["home"] }
+      tagFilter: { any: ["home"] },
     });
     expect(matchesTagFilter(["home"], filters)).toBe(true);
     expect(matchesTagFilter(["work"], filters)).toBe(false);
@@ -65,7 +65,7 @@ describe("tagFilter helpers", () => {
 
     const filters = baseFilters({
       tag: "work",
-      tagFilter: { all: [], any: [], none: [] }
+      tagFilter: { all: [], any: [], none: [] },
     });
     expect(matchesTagFilter(["work"], filters)).toBe(true);
     expect(matchesTagFilter(["home"], filters)).toBe(false);
@@ -91,8 +91,8 @@ describe("tagFilter helpers", () => {
       formatTagFilterBooleanSummary({
         all: ["work"],
         any: ["home"],
-        none: ["blocked"]
-      })
+        none: ["blocked"],
+      }),
     ).toBe("+#work ~#home -#blocked");
   });
 
@@ -101,8 +101,8 @@ describe("tagFilter helpers", () => {
       formatTagFilterBooleanSummary({
         all: ["work", "#p2"],
         any: ["#p3"],
-        none: ["#p4"]
-      })
+        none: ["#p4"],
+      }),
     ).toBe("+#work");
   });
 });

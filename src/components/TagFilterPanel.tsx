@@ -3,7 +3,10 @@ import { colorForTag, themeForObject } from "../app/theme";
 import type { TagFilter } from "../domain/models";
 import { formatTagForReadOnlyDisplay } from "../domain/priorityTags";
 import { type TagStats } from "../domain/tagAliases";
-import { formatTagFilterBooleanSummary, type TagFilterBucket } from "../domain/tagFilter";
+import {
+  formatTagFilterBooleanSummary,
+  type TagFilterBucket,
+} from "../domain/tagFilter";
 import { formatTagForDisplay } from "../domain/tagIndex";
 
 type TagFilterPanelProps = {
@@ -31,7 +34,7 @@ const BUCKET_META: Array<{
 }> = [
   { bucket: "all", label: "ALL (AND)", marker: "+" },
   { bucket: "any", label: "ANY (OR)", marker: "~" },
-  { bucket: "none", label: "NONE (NOT)", marker: "-" }
+  { bucket: "none", label: "NONE (NOT)", marker: "-" },
 ];
 
 const MAX_TAG_CHIPS_PER_BUCKET = 24;
@@ -59,13 +62,19 @@ function formatAliasExamples(values: string[]): string {
 function formatTopCoTags(stats: TagStats): string {
   if (stats.topCoTags.length === 0) return "(none)";
   return stats.topCoTags
-    .map((entry) => `${formatTagForReadOnlyDisplay(entry.tag)}(${String(entry.count)})`)
+    .map(
+      (entry) =>
+        `${formatTagForReadOnlyDisplay(entry.tag)}(${String(entry.count)})`,
+    )
     .join(", ");
 }
 
 function buildNarrowInsightsSummary(stats: TagStats, width: number): string {
   if (!stats.selectedCanonical) {
-    return truncateInline("INSIGHTS: type a tag or choose one from the active bucket", width);
+    return truncateInline(
+      "INSIGHTS: type a tag or choose one from the active bucket",
+      width,
+    );
   }
   const sourceLabel =
     stats.selectedInput && stats.selectedInput !== stats.selectedCanonical
@@ -73,18 +82,26 @@ function buildNarrowInsightsSummary(stats: TagStats, width: number): string {
       : "";
   const topCoTags = formatTopCoTags(stats);
   return truncateInline(
-    `INSIGHTS: ${formatTagForReadOnlyDisplay(stats.selectedCanonical)}${sourceLabel} | ${String(stats.usageCount)} tasks | aliases in ${String(stats.incomingAliases.length)} | co: ${topCoTags}`,
-    width
+    [
+      `INSIGHTS: ${formatTagForReadOnlyDisplay(stats.selectedCanonical)}${sourceLabel}`,
+      `${String(stats.usageCount)} tasks`,
+      `aliases in ${String(stats.incomingAliases.length)}`,
+      `co: ${topCoTags}`,
+    ].join(" | "),
+    width,
   );
 }
 
-export function getBucketTags(draft: TagFilter | undefined, bucket: TagFilterBucket): string[] {
+export function getBucketTags(
+  draft: TagFilter | undefined,
+  bucket: TagFilterBucket,
+): string[] {
   return draft?.[bucket] ?? [];
 }
 
 export function splitBucketTags(
   tags: string[],
-  maxVisible: number = MAX_TAG_CHIPS_PER_BUCKET
+  maxVisible: number = MAX_TAG_CHIPS_PER_BUCKET,
 ): { visibleTags: string[]; hiddenTagCount: number } {
   const visibleTags = tags.slice(0, maxVisible);
   const hiddenTagCount = Math.max(0, tags.length - visibleTags.length);
@@ -120,7 +137,7 @@ function TagFilterMainPanel({
   onRemoveTag,
   onApply,
   onClear,
-  onCancel
+  onCancel,
 }: TagFilterMainPanelProps) {
   const theme = themeForObject("inputs");
   const summary = formatTagFilterBooleanSummary(draft) ?? "(none)";
@@ -128,25 +145,32 @@ function TagFilterMainPanel({
 
   return (
     <box style={{ flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
-      <text style={{ color: theme.text, fontWeight: "bold" }}>TAG FILTER PANEL</text>
+      <text style={{ color: theme.text, fontWeight: "bold" }}>
+        TAG FILTER PANEL
+      </text>
       <text style={{ color: theme.muted }}>
         Tab/Arrows: bucket | Enter: add | Ctrl+Enter/Ctrl+S: apply | Esc: close
       </text>
-      <text style={{ color: theme.muted }}>Insights are informational only.</text>
+      <text style={{ color: theme.muted }}>
+        Insights are informational only.
+      </text>
 
       {BUCKET_META.map((meta) => {
         const isActive = activeBucket === meta.bucket;
         const tags = getBucketTags(draft, meta.bucket);
         const { visibleTags, hiddenTagCount } = splitBucketTags(tags);
         return (
-          <box key={meta.bucket} style={{ flexDirection: "column", marginTop: 1 }}>
+          <box
+            key={meta.bucket}
+            style={{ flexDirection: "column", marginTop: 1 }}
+          >
             <box
               style={{
                 flexDirection: "row",
                 alignItems: "center",
                 backgroundColor: isActive ? theme.accentBlue : "transparent",
                 paddingLeft: 1,
-                paddingRight: 1
+                paddingRight: 1,
               }}
               onMouseDown={(event) => {
                 if (event.button !== 0) return;
@@ -154,9 +178,18 @@ function TagFilterMainPanel({
                 onSetBucket(meta.bucket);
               }}
             >
-              <text style={{ color: isActive ? theme.bg : theme.text }}>{meta.label}</text>
+              <text style={{ color: isActive ? theme.bg : theme.text }}>
+                {meta.label}
+              </text>
             </box>
-            <box style={{ flexDirection: "row", flexWrap: "wrap", gap: 1, paddingLeft: 1 }}>
+            <box
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: 1,
+                paddingLeft: 1,
+              }}
+            >
               {tags.length === 0 ? (
                 <text style={{ color: theme.muted }}>(none)</text>
               ) : (
@@ -166,7 +199,7 @@ function TagFilterMainPanel({
                     style={{
                       backgroundColor: colorForTag(tag),
                       paddingLeft: 1,
-                      paddingRight: 1
+                      paddingRight: 1,
                     }}
                     onMouseDown={(event) => {
                       if (event.button !== 0) return;
@@ -193,7 +226,9 @@ function TagFilterMainPanel({
       })}
 
       <box style={{ flexDirection: "column", marginTop: 1 }}>
-        <text style={{ color: theme.muted }}>Add tag ({activeBucket.toUpperCase()}): </text>
+        <text style={{ color: theme.muted }}>
+          Add tag ({activeBucket.toUpperCase()}):{" "}
+        </text>
         <input
           value={inputValue}
           onInput={onInputChange}
@@ -205,17 +240,20 @@ function TagFilterMainPanel({
         />
         {hasSuggestion ? (
           <box style={{ flexDirection: "row", gap: 0, marginTop: 1 }}>
-            <text style={{ color: theme.muted }}>-> </text>
+            <text style={{ color: theme.muted }}>{"-> "}</text>
             <text style={{ color: theme.text }}>
               {formatTagForDisplay(
                 inlineSuggestion?.full.slice(
                   0,
-                  inlineSuggestion.full.length - inlineSuggestion.remainder.length
-                ) ?? ""
+                  inlineSuggestion.full.length -
+                    inlineSuggestion.remainder.length,
+                ) ?? "",
               )}
             </text>
-            <text style={{ color: theme.muted }}>{inlineSuggestion?.remainder}</text>
-            <text style={{ color: theme.muted }}> (press ->)</text>
+            <text style={{ color: theme.muted }}>
+              {inlineSuggestion?.remainder}
+            </text>
+            <text style={{ color: theme.muted }}>{" (press ->)"}</text>
           </box>
         ) : null}
         <text style={{ color: theme.muted, marginTop: 1 }}>
@@ -232,7 +270,11 @@ function TagFilterMainPanel({
       <text style={{ color: theme.text, marginTop: 1 }}>Tags: {summary}</text>
       <box style={{ flexDirection: "row", gap: 1, marginTop: 1 }}>
         <box
-          style={{ backgroundColor: theme.accentBlue, paddingLeft: 1, paddingRight: 1 }}
+          style={{
+            backgroundColor: theme.accentBlue,
+            paddingLeft: 1,
+            paddingRight: 1,
+          }}
           onMouseDown={(event) => {
             if (event.button !== 0) return;
             onApply();
@@ -241,7 +283,11 @@ function TagFilterMainPanel({
           <text style={{ color: theme.bg, fontWeight: "bold" }}>APPLY</text>
         </box>
         <box
-          style={{ backgroundColor: theme.warn, paddingLeft: 1, paddingRight: 1 }}
+          style={{
+            backgroundColor: theme.warn,
+            paddingLeft: 1,
+            paddingRight: 1,
+          }}
           onMouseDown={(event) => {
             if (event.button !== 0) return;
             onClear();
@@ -250,7 +296,11 @@ function TagFilterMainPanel({
           <text style={{ color: theme.bg, fontWeight: "bold" }}>CLEAR</text>
         </box>
         <box
-          style={{ backgroundColor: theme.outline, paddingLeft: 1, paddingRight: 1 }}
+          style={{
+            backgroundColor: theme.outline,
+            paddingLeft: 1,
+            paddingRight: 1,
+          }}
           onMouseDown={(event) => {
             if (event.button !== 0) return;
             onCancel();
@@ -265,7 +315,7 @@ function TagFilterMainPanel({
 
 function TagFilterInsightsPanel({
   insights,
-  width
+  width,
 }: {
   insights: TagStats;
   width: number;
@@ -274,7 +324,9 @@ function TagFilterInsightsPanel({
   const selectedCanonical = insights.selectedCanonical;
   const selectedInput = insights.selectedInput?.trim();
   const header = selectedCanonical
-    ? selectedInput && selectedInput.length > 0 && selectedInput !== selectedCanonical
+    ? selectedInput &&
+      selectedInput.length > 0 &&
+      selectedInput !== selectedCanonical
       ? `TAG: ${formatTagForReadOnlyDisplay(selectedCanonical)} (from "${selectedInput}")`
       : `TAG: ${formatTagForReadOnlyDisplay(selectedCanonical)}`
     : "TAG: (none)";
@@ -296,7 +348,7 @@ function TagFilterInsightsPanel({
         paddingRight: 1,
         paddingTop: 1,
         paddingBottom: 1,
-        overflow: "hidden"
+        overflow: "hidden",
       }}
     >
       <text style={{ color: theme.text, fontWeight: "bold" }}>
@@ -350,18 +402,24 @@ export function TagFilterPanel({
   onRemoveTag,
   onApply,
   onClear,
-  onCancel
+  onCancel,
 }: TagFilterPanelProps) {
   const theme = themeForObject("inputs");
-  const panelWidth = Math.max(MIN_PANEL_WIDTH, Math.min(MAX_PANEL_WIDTH, availableWidth));
+  const panelWidth = Math.max(
+    MIN_PANEL_WIDTH,
+    Math.min(MAX_PANEL_WIDTH, availableWidth),
+  );
   const showSideInsights = panelWidth >= SIDE_PANEL_THRESHOLD;
   const sidePanelWidth = showSideInsights
     ? Math.max(
         SIDE_PANEL_MIN_WIDTH,
-        Math.min(SIDE_PANEL_MAX_WIDTH, Math.floor(panelWidth * 0.38))
+        Math.min(SIDE_PANEL_MAX_WIDTH, Math.floor(panelWidth * 0.38)),
       )
     : 0;
-  const narrowSummary = buildNarrowInsightsSummary(insights, Math.max(1, panelWidth - 4));
+  const narrowSummary = buildNarrowInsightsSummary(
+    insights,
+    Math.max(1, panelWidth - 4),
+  );
 
   return (
     <box
@@ -379,11 +437,18 @@ export function TagFilterPanel({
         paddingRight: 1,
         paddingTop: 1,
         paddingBottom: 1,
-        overflow: "hidden"
+        overflow: "hidden",
       }}
     >
       {showSideInsights ? (
-        <box style={{ flexDirection: "row", gap: 1, minHeight: 0, overflow: "hidden" }}>
+        <box
+          style={{
+            flexDirection: "row",
+            gap: 1,
+            minHeight: 0,
+            overflow: "hidden",
+          }}
+        >
           <box style={{ flexGrow: 1, minHeight: 0, overflow: "hidden" }}>
             <TagFilterMainPanel
               draft={draft}
@@ -404,7 +469,9 @@ export function TagFilterPanel({
           <TagFilterInsightsPanel insights={insights} width={sidePanelWidth} />
         </box>
       ) : (
-        <box style={{ flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+        <box
+          style={{ flexDirection: "column", minHeight: 0, overflow: "hidden" }}
+        >
           <TagFilterMainPanel
             draft={draft}
             inputValue={inputValue}
@@ -420,7 +487,9 @@ export function TagFilterPanel({
             onClear={onClear}
             onCancel={onCancel}
           />
-          <text style={{ color: theme.muted, marginTop: 1 }}>{narrowSummary}</text>
+          <text style={{ color: theme.muted, marginTop: 1 }}>
+            {narrowSummary}
+          </text>
         </box>
       )}
     </box>

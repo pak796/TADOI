@@ -5,7 +5,7 @@ import type { ImportMode } from "../state/portability";
 import {
   resolveAliasActionIdForInput,
   type ActionAliasId,
-  type ResolvedKeymapAliases
+  type ResolvedKeymapAliases,
 } from "./keymapAliases";
 
 export type KeyInput = {
@@ -116,7 +116,11 @@ export type KeyRouterAction =
   | { scope: "ui"; type: "BACKUP_SET_IMPORT_MODE"; mode: ImportMode }
   | { scope: "ui"; type: "BACKUP_PICKER_MOVE_SELECTION"; delta: 1 | -1 }
   | { scope: "ui"; type: "BACKUP_PICKER_PAGE_SELECTION"; delta: 1 | -1 }
-  | { scope: "ui"; type: "BACKUP_PICKER_JUMP_SELECTION"; target: "start" | "end" }
+  | {
+      scope: "ui";
+      type: "BACKUP_PICKER_JUMP_SELECTION";
+      target: "start" | "end";
+    }
   | { scope: "ui"; type: "BACKUP_PICKER_CONFIRM_SELECTION" }
   | { scope: "ui"; type: "BACKUP_PICKER_OPEN_MANUAL_PATH" }
   | { scope: "ui"; type: "BACKUP_SCROLL_BODY"; delta: number }
@@ -203,7 +207,10 @@ export type KeyRouterAction =
   | {
       scope: "ui";
       type: "OPEN_UNSAVED_CHANGES_MODAL";
-      modal: Extract<NonNullable<UIState["modal"]>, { type: "unsaved_changes" }>;
+      modal: Extract<
+        NonNullable<UIState["modal"]>,
+        { type: "unsaved_changes" }
+      >;
     }
   | { scope: "domain"; type: "MODAL_CONFIRM_UNSAVED_SAVE_CONTINUE" }
   | { scope: "domain"; type: "MODAL_CONFIRM_UNSAVED_DISCARD_CONTINUE" }
@@ -211,7 +218,10 @@ export type KeyRouterAction =
   | {
       scope: "ui";
       type: "OPEN_BACKUP_FINAL_CHECKPOINT_MODAL";
-      modal: Extract<NonNullable<UIState["modal"]>, { type: "backup_final_checkpoint" }>;
+      modal: Extract<
+        NonNullable<UIState["modal"]>,
+        { type: "backup_final_checkpoint" }
+      >;
     }
   | { scope: "domain"; type: "MODAL_CONFIRM_BACKUP_FINAL_CHECKPOINT" }
   | { scope: "ui"; type: "MODAL_CANCEL_BACKUP_FINAL_CHECKPOINT" }
@@ -223,7 +233,10 @@ export type KeyRouterAction =
         { type: "recurring_delete_future_checkpoint" }
       >;
     }
-  | { scope: "domain"; type: "MODAL_CONFIRM_RECURRING_DELETE_FUTURE_CHECKPOINT" }
+  | {
+      scope: "domain";
+      type: "MODAL_CONFIRM_RECURRING_DELETE_FUTURE_CHECKPOINT";
+    }
   | { scope: "ui"; type: "MODAL_CANCEL_RECURRING_DELETE_FUTURE_CHECKPOINT" }
   | { scope: "domain"; type: "MODAL_CONFIRM_DELETE" }
   | { scope: "domain"; type: "MODAL_CONFIRM_DELETE_FUTURE" }
@@ -261,7 +274,12 @@ export type KeyRouterAction =
   | { scope: "domain"; type: "ACCEPT_DUE_SUGGESTION" }
   | { scope: "domain"; type: "ACCEPT_TAG_INLINE" };
 
-function isLowerG(name: string, sequence: string, ctrl: boolean, shift: boolean): boolean {
+function isLowerG(
+  name: string,
+  sequence: string,
+  ctrl: boolean,
+  shift: boolean,
+): boolean {
   return !ctrl && !shift && (name === "g" || sequence === "g");
 }
 
@@ -287,15 +305,22 @@ function isPageDownKey(name: string, ctrl: boolean): boolean {
   );
 }
 
-function isDashboardToggleKey(name: string, sequence: string, ctrl: boolean): boolean {
-  return !ctrl && (name === "b" || name === "B" || sequence === "b" || sequence === "B");
+function isDashboardToggleKey(
+  name: string,
+  sequence: string,
+  ctrl: boolean,
+): boolean {
+  return (
+    !ctrl &&
+    (name === "b" || name === "B" || sequence === "b" || sequence === "B")
+  );
 }
 
 function isTagPanelOpenKey(
   name: string,
   sequence: string,
   ctrl: boolean,
-  shift: boolean
+  shift: boolean,
 ): boolean {
   return !ctrl && !shift && (name === "p" || sequence === "p");
 }
@@ -304,7 +329,7 @@ function isNotesOpenKey(
   name: string,
   sequence: string,
   ctrl: boolean,
-  shift: boolean
+  shift: boolean,
 ): boolean {
   return !ctrl && !shift && (name === "n" || sequence === "n");
 }
@@ -313,9 +338,13 @@ function isQuickCaptureOpenKey(
   name: string,
   sequence: string,
   ctrl: boolean,
-  shift: boolean
+  shift: boolean,
 ): boolean {
-  return ctrl && !shift && (name.toLowerCase() === "n" || sequence.toLowerCase() === "n");
+  return (
+    ctrl &&
+    !shift &&
+    (name.toLowerCase() === "n" || sequence.toLowerCase() === "n")
+  );
 }
 
 const BACKUP_INPUT_SUBMIT_SCREENS = new Set<BackupCenterScreen>([
@@ -327,15 +356,17 @@ const BACKUP_INPUT_SUBMIT_SCREENS = new Set<BackupCenterScreen>([
   "calendar_import_tag",
   "calendar_import_confirm",
   "github_connect_repo_input",
-  "github_connect_public_confirm"
+  "github_connect_public_confirm",
 ]);
 
 const BACKUP_PICKER_JUMP_KEYS = {
   start: "home",
-  end: "end"
+  end: "end",
 } as const;
 
-function backupScreenSupportsBodyScrollKeys(screen: BackupCenterScreen | null): boolean {
+function backupScreenSupportsBodyScrollKeys(
+  screen: BackupCenterScreen | null,
+): boolean {
   return (
     screen !== null &&
     screen !== "menu" &&
@@ -349,14 +380,18 @@ function backupScreenSupportsBodyScrollKeys(screen: BackupCenterScreen | null): 
 function resolveContextAliasActionId(
   context: "list" | "dashboard" | "backup" | "help",
   key: KeyInput,
-  routerContext: KeyRouterContext
+  routerContext: KeyRouterContext,
 ): ActionAliasId | null {
-  return resolveAliasActionIdForInput(context, key, routerContext.resolvedKeymapAliases);
+  return resolveAliasActionIdForInput(
+    context,
+    key,
+    routerContext.resolvedKeymapAliases,
+  );
 }
 
 function resolveListAliasActions(
   key: KeyInput,
-  context: KeyRouterContext
+  context: KeyRouterContext,
 ): KeyRouterAction[] | null {
   const actionId = resolveContextAliasActionId("list", key, context);
   if (!actionId) return null;
@@ -404,15 +439,19 @@ function resolveListAliasActions(
 
 function resolveDashboardAliasActions(
   key: KeyInput,
-  context: KeyRouterContext
+  context: KeyRouterContext,
 ): KeyRouterAction[] | null {
   const actionId = resolveContextAliasActionId("dashboard", key, context);
   if (!actionId) return null;
   switch (actionId) {
     case "dashboard_move_up":
-      return [{ scope: "ui", type: "DASHBOARD_MOVE_ACTIVE_SELECTION", delta: -1 }];
+      return [
+        { scope: "ui", type: "DASHBOARD_MOVE_ACTIVE_SELECTION", delta: -1 },
+      ];
     case "dashboard_move_down":
-      return [{ scope: "ui", type: "DASHBOARD_MOVE_ACTIVE_SELECTION", delta: 1 }];
+      return [
+        { scope: "ui", type: "DASHBOARD_MOVE_ACTIVE_SELECTION", delta: 1 },
+      ];
     case "dashboard_apply_selection":
       return [{ scope: "domain", type: "APPLY_DASHBOARD_ACTIVE_SELECTION" }];
     case "dashboard_cycle_status":
@@ -444,7 +483,7 @@ function resolveDashboardAliasActions(
 
 function resolveHelpAliasActions(
   key: KeyInput,
-  context: KeyRouterContext
+  context: KeyRouterContext,
 ): KeyRouterAction[] | null {
   const actionId = resolveContextAliasActionId("help", key, context);
   if (!actionId) return null;
@@ -474,7 +513,7 @@ function resolveHelpAliasActions(
 
 function resolveBackupAliasActions(
   key: KeyInput,
-  context: KeyRouterContext
+  context: KeyRouterContext,
 ): KeyRouterAction[] | null {
   const actionId = resolveContextAliasActionId("backup", key, context);
   if (!actionId) return null;
@@ -482,21 +521,26 @@ function resolveBackupAliasActions(
 
   switch (actionId) {
     case "backup_primary":
-      if (
-        backupScreen &&
-        BACKUP_INPUT_SUBMIT_SCREENS.has(backupScreen)
-      ) {
+      if (backupScreen && BACKUP_INPUT_SUBMIT_SCREENS.has(backupScreen)) {
         return [];
       }
-      if (backupScreen === "import_picker" || backupScreen === "github_restore_picker") {
+      if (
+        backupScreen === "import_picker" ||
+        backupScreen === "github_restore_picker"
+      ) {
         return [{ scope: "ui", type: "BACKUP_PICKER_CONFIRM_SELECTION" }];
       }
       return [{ scope: "ui", type: "BACKUP_PRIMARY" }];
     case "backup_back":
       return [{ scope: "ui", type: "BACKUP_BACK" }];
     case "backup_move_up":
-      if (backupScreen === "import_picker" || backupScreen === "github_restore_picker") {
-        return [{ scope: "ui", type: "BACKUP_PICKER_MOVE_SELECTION", delta: -1 }];
+      if (
+        backupScreen === "import_picker" ||
+        backupScreen === "github_restore_picker"
+      ) {
+        return [
+          { scope: "ui", type: "BACKUP_PICKER_MOVE_SELECTION", delta: -1 },
+        ];
       }
       if (backupScreen === "menu" || backupScreen === "calendar_menu") {
         return [{ scope: "ui", type: "BACKUP_MOVE_MENU_SELECTION", delta: -1 }];
@@ -506,8 +550,13 @@ function resolveBackupAliasActions(
       }
       return [];
     case "backup_move_down":
-      if (backupScreen === "import_picker" || backupScreen === "github_restore_picker") {
-        return [{ scope: "ui", type: "BACKUP_PICKER_MOVE_SELECTION", delta: 1 }];
+      if (
+        backupScreen === "import_picker" ||
+        backupScreen === "github_restore_picker"
+      ) {
+        return [
+          { scope: "ui", type: "BACKUP_PICKER_MOVE_SELECTION", delta: 1 },
+        ];
       }
       if (backupScreen === "menu" || backupScreen === "calendar_menu") {
         return [{ scope: "ui", type: "BACKUP_MOVE_MENU_SELECTION", delta: 1 }];
@@ -517,29 +566,53 @@ function resolveBackupAliasActions(
       }
       return [];
     case "backup_page_up":
-      if (backupScreen === "import_picker" || backupScreen === "github_restore_picker") {
-        return [{ scope: "ui", type: "BACKUP_PICKER_PAGE_SELECTION", delta: -1 }];
+      if (
+        backupScreen === "import_picker" ||
+        backupScreen === "github_restore_picker"
+      ) {
+        return [
+          { scope: "ui", type: "BACKUP_PICKER_PAGE_SELECTION", delta: -1 },
+        ];
       }
       if (backupScreenSupportsBodyScrollKeys(backupScreen)) {
         return [{ scope: "ui", type: "BACKUP_SCROLL_BODY", delta: -8 }];
       }
       return [];
     case "backup_page_down":
-      if (backupScreen === "import_picker" || backupScreen === "github_restore_picker") {
-        return [{ scope: "ui", type: "BACKUP_PICKER_PAGE_SELECTION", delta: 1 }];
+      if (
+        backupScreen === "import_picker" ||
+        backupScreen === "github_restore_picker"
+      ) {
+        return [
+          { scope: "ui", type: "BACKUP_PICKER_PAGE_SELECTION", delta: 1 },
+        ];
       }
       if (backupScreenSupportsBodyScrollKeys(backupScreen)) {
         return [{ scope: "ui", type: "BACKUP_SCROLL_BODY", delta: 8 }];
       }
       return [];
     case "backup_jump_start":
-      if (backupScreen === "import_picker" || backupScreen === "github_restore_picker") {
-        return [{ scope: "ui", type: "BACKUP_PICKER_JUMP_SELECTION", target: "start" }];
+      if (
+        backupScreen === "import_picker" ||
+        backupScreen === "github_restore_picker"
+      ) {
+        return [
+          {
+            scope: "ui",
+            type: "BACKUP_PICKER_JUMP_SELECTION",
+            target: "start",
+          },
+        ];
       }
       return [];
     case "backup_jump_end":
-      if (backupScreen === "import_picker" || backupScreen === "github_restore_picker") {
-        return [{ scope: "ui", type: "BACKUP_PICKER_JUMP_SELECTION", target: "end" }];
+      if (
+        backupScreen === "import_picker" ||
+        backupScreen === "github_restore_picker"
+      ) {
+        return [
+          { scope: "ui", type: "BACKUP_PICKER_JUMP_SELECTION", target: "end" },
+        ];
       }
       return [];
     case "backup_open_manual_path":
@@ -574,15 +647,17 @@ function resolveBackupAliasActions(
 
 function listModeActions(
   key: KeyInput,
-  context: KeyRouterContext
+  context: KeyRouterContext,
 ): KeyRouterAction[] {
   const { name, sequence, ctrl, shift } = key;
-  const selectedTaskHasChecklistItems = context.selectedTaskHasChecklistItems ?? false;
+  const selectedTaskHasChecklistItems =
+    context.selectedTaskHasChecklistItems ?? false;
   const aliasedActions = resolveListAliasActions(key, context);
   if (aliasedActions !== null) return aliasedActions;
   if (sequence === "?") return [{ scope: "ui", type: "OPEN_HELP" }];
   if (name === "q") return [{ scope: "domain", type: "EXIT_APP" }];
-  if (isUpperG(name, sequence, ctrl)) return [{ scope: "domain", type: "JUMP_BOTTOM" }];
+  if (isUpperG(name, sequence, ctrl))
+    return [{ scope: "domain", type: "JUMP_BOTTOM" }];
   if (isPageUpKey(name, ctrl)) {
     return [{ scope: "domain", type: "MOVE_SELECTION_PAGE", direction: -1 }];
   }
@@ -591,22 +666,42 @@ function listModeActions(
   }
   if (sequence === "]" || name === "]") {
     return [
-      { scope: "domain", type: "JUMP_TO_ATTENTION", kind: "overdue", direction: 1 }
+      {
+        scope: "domain",
+        type: "JUMP_TO_ATTENTION",
+        kind: "overdue",
+        direction: 1,
+      },
     ];
   }
   if (sequence === "[" || name === "[") {
     return [
-      { scope: "domain", type: "JUMP_TO_ATTENTION", kind: "overdue", direction: -1 }
+      {
+        scope: "domain",
+        type: "JUMP_TO_ATTENTION",
+        kind: "overdue",
+        direction: -1,
+      },
     ];
   }
   if (sequence === "}" || name === "}") {
     return [
-      { scope: "domain", type: "JUMP_TO_ATTENTION", kind: "today", direction: 1 }
+      {
+        scope: "domain",
+        type: "JUMP_TO_ATTENTION",
+        kind: "today",
+        direction: 1,
+      },
     ];
   }
   if (sequence === "{" || name === "{") {
     return [
-      { scope: "domain", type: "JUMP_TO_ATTENTION", kind: "today", direction: -1 }
+      {
+        scope: "domain",
+        type: "JUMP_TO_ATTENTION",
+        kind: "today",
+        direction: -1,
+      },
     ];
   }
   if (name === "j" || name === "down") {
@@ -620,9 +715,12 @@ function listModeActions(
   }
   if (name === "space") return [{ scope: "domain", type: "TOGGLE_SELECTED" }];
   if (name === "v") return [{ scope: "ui", type: "TOGGLE_VIEWS_OVERLAY" }];
-  if (ctrl && name === "s") return [{ scope: "ui", type: "OPEN_SAVE_VIEW_PROMPT" }];
+  if (ctrl && name === "s")
+    return [{ scope: "ui", type: "OPEN_SAVE_VIEW_PROMPT" }];
   if (/^[1-9]$/.test(sequence)) {
-    return [{ scope: "domain", type: "APPLY_VIEW_SLOT", slot: Number(sequence) - 1 }];
+    return [
+      { scope: "domain", type: "APPLY_VIEW_SLOT", slot: Number(sequence) - 1 },
+    ];
   }
   if (name === "a") return [{ scope: "domain", type: "OPEN_ADD" }];
   if (name === "right" && selectedTaskHasChecklistItems) {
@@ -636,14 +734,18 @@ function listModeActions(
     return [{ scope: "domain", type: "OPEN_EDIT_SERIES" }];
   }
   if (name === "c") return [{ scope: "domain", type: "OPEN_DUPLICATE" }];
-  if (name === "x") return [{ scope: "domain", type: "SKIP_SELECTED_OCCURRENCE" }];
-  if (name === "z") return [{ scope: "domain", type: "SNOOZE_SELECTED_OCCURRENCE" }];
-  if (!ctrl && name === "d") return [{ scope: "domain", type: "OPEN_DELETE_CONFIRM" }];
+  if (name === "x")
+    return [{ scope: "domain", type: "SKIP_SELECTED_OCCURRENCE" }];
+  if (name === "z")
+    return [{ scope: "domain", type: "SNOOZE_SELECTED_OCCURRENCE" }];
+  if (!ctrl && name === "d")
+    return [{ scope: "domain", type: "OPEN_DELETE_CONFIRM" }];
   if (name === "/") return [{ scope: "ui", type: "OPEN_SEARCH" }];
   if (name === "f") return [{ scope: "domain", type: "CYCLE_STATUS" }];
   if (!ctrl && name === "s") return [{ scope: "domain", type: "CYCLE_SORT" }];
   if (!ctrl && name === "g") return [{ scope: "domain", type: "CYCLE_DUE" }];
-  if (!ctrl && name === "r") return [{ scope: "domain", type: "CYCLE_PRIORITY" }];
+  if (!ctrl && name === "r")
+    return [{ scope: "domain", type: "CYCLE_PRIORITY" }];
   if (!ctrl && !shift && (name === "u" || sequence === "u")) {
     return [{ scope: "ui", type: "OPEN_BACKUP_CENTER" }];
   }
@@ -667,7 +769,7 @@ function isHelpCloseKey(name: string, sequence: string): boolean {
 
 function resolveQuickCaptureActions(
   key: KeyInput,
-  context: KeyRouterContext
+  context: KeyRouterContext,
 ): KeyRouterAction[] | null {
   const { name, sequence, ctrl, shift } = key;
   if (!isQuickCaptureOpenKey(name, sequence, ctrl, shift)) {
@@ -688,9 +790,11 @@ function resolveQuickCaptureActions(
 
 export function handleKey(
   key: KeyInput,
-  context: KeyRouterContext
+  context: KeyRouterContext,
 ): KeyRouterAction[] {
-  const resolvers: Array<(k: KeyInput, c: KeyRouterContext) => KeyRouterAction[] | null> = [
+  const resolvers: Array<
+    (k: KeyInput, c: KeyRouterContext) => KeyRouterAction[] | null
+  > = [
     resolveEscapeActions,
     resolveModalModeActions,
     resolveQuickCaptureActions,
@@ -701,7 +805,7 @@ export function handleKey(
     resolveNotesModeActions,
     resolveSearchModeActions,
     resolveEditorModeActions,
-    resolveListModeActions
+    resolveListModeActions,
   ];
 
   for (const resolve of resolvers) {
@@ -714,7 +818,7 @@ export function handleKey(
 
 function resolveEscapeActions(
   key: KeyInput,
-  context: KeyRouterContext
+  context: KeyRouterContext,
 ): KeyRouterAction[] | null {
   const { name } = key;
   if (name !== "escape") return null;
@@ -730,7 +834,7 @@ function resolveEscapeActions(
     notesCreatePromptOpen = false,
     notesRenamePromptOpen = false,
     notesDeletePromptOpen = false,
-    detailsNotesLinkPickerOpen = false
+    detailsNotesLinkPickerOpen = false,
   } = context;
   const { mode, focus } = uiState;
 
@@ -776,13 +880,24 @@ function resolveEscapeActions(
     // Step-specific Escape behavior is handled by resolveModalModeActions.
     return null;
   }
-  if (mode === Mode.MODAL_CONFIRM && uiState.modal?.type === "recurring_delete_future_checkpoint") {
-    return [{ scope: "ui", type: "MODAL_CANCEL_RECURRING_DELETE_FUTURE_CHECKPOINT" }];
+  if (
+    mode === Mode.MODAL_CONFIRM &&
+    uiState.modal?.type === "recurring_delete_future_checkpoint"
+  ) {
+    return [
+      { scope: "ui", type: "MODAL_CANCEL_RECURRING_DELETE_FUTURE_CHECKPOINT" },
+    ];
   }
-  if (mode === Mode.MODAL_CONFIRM && uiState.modal?.type === "unsaved_changes") {
+  if (
+    mode === Mode.MODAL_CONFIRM &&
+    uiState.modal?.type === "unsaved_changes"
+  ) {
     return [{ scope: "ui", type: "MODAL_CANCEL_UNSAVED_CONTINUE" }];
   }
-  if (mode === Mode.MODAL_CONFIRM && uiState.modal?.type === "backup_final_checkpoint") {
+  if (
+    mode === Mode.MODAL_CONFIRM &&
+    uiState.modal?.type === "backup_final_checkpoint"
+  ) {
     return [{ scope: "ui", type: "MODAL_CANCEL_BACKUP_FINAL_CHECKPOINT" }];
   }
   if (mode === Mode.MODAL_CONFIRM && uiState.modal?.type === "reminder") {
@@ -813,14 +928,16 @@ function resolveEscapeActions(
       focus === FocusTarget.DETAILS_NOTES ||
       focus === FocusTarget.DETAILS_CHECKLIST)
   ) {
-    return [{ scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.TASK_LIST }];
+    return [
+      { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.TASK_LIST },
+    ];
   }
   return [{ scope: "ui", type: "UNWIND" }];
 }
 
 function resolveModalModeActions(
   key: KeyInput,
-  context: KeyRouterContext
+  context: KeyRouterContext,
 ): KeyRouterAction[] | null {
   const { name, sequence, ctrl, shift } = key;
   const { uiState, allowEmptyNuxRecoveryImport } = context;
@@ -847,14 +964,14 @@ function resolveModalModeActions(
         scope: "ui",
         type: "OPEN_EMPTY_NUX",
         step: "adding",
-        startedFromNux: true
+        startedFromNux: true,
       },
       {
         scope: "ui",
         type: "SET_MODAL",
-        modal: null
+        modal: null,
       },
-      { scope: "domain", type: "OPEN_ADD" }
+      { scope: "domain", type: "OPEN_ADD" },
     ];
 
     if (step === "welcome") {
@@ -913,10 +1030,15 @@ function resolveModalModeActions(
     }
 
     if (step === "what_next") {
-      if (name === "return" || name === "enter" || lowerName === "l" || lowerSequence === "l") {
+      if (
+        name === "return" ||
+        name === "enter" ||
+        lowerName === "l" ||
+        lowerSequence === "l"
+      ) {
         return [
           { scope: "ui", type: "CLEAR_EMPTY_NUX" },
-          { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.TASK_LIST }
+          { scope: "ui", type: "SET_LIST_FOCUS", focus: FocusTarget.TASK_LIST },
         ];
       }
       if (lowerName === "t" || lowerSequence === "t") {
@@ -949,12 +1071,18 @@ function resolveModalModeActions(
       uiState.modal.target === "recurring_occurrence" &&
       (lowerName === "f" || lowerSequence === "f")
     ) {
-      return [{ scope: "ui", type: "OPEN_RECURRING_DELETE_FUTURE_CHECKPOINT_MODAL", modal: {
-        type: "recurring_delete_future_checkpoint",
-        deleteModal: uiState.modal,
-        previousMode: uiState.modal.previousMode,
-        previousFocus: uiState.modal.previousFocus
-      } }];
+      return [
+        {
+          scope: "ui",
+          type: "OPEN_RECURRING_DELETE_FUTURE_CHECKPOINT_MODAL",
+          modal: {
+            type: "recurring_delete_future_checkpoint",
+            deleteModal: uiState.modal,
+            previousMode: uiState.modal.previousMode,
+            previousFocus: uiState.modal.previousFocus,
+          },
+        },
+      ];
     }
     if (lowerName === "n" || lowerSequence === "n") {
       return [{ scope: "ui", type: "UNWIND" }];
@@ -967,7 +1095,7 @@ function resolveModalModeActions(
     if (lowerName === "y" || lowerSequence === "y") {
       return [
         { scope: "ui", type: "NOTES_CONFIRM_DELETE" },
-        { scope: "ui", type: "NOTES_BACK_TO_LIST" }
+        { scope: "ui", type: "NOTES_BACK_TO_LIST" },
       ];
     }
     if (lowerName === "n" || lowerSequence === "n") {
@@ -1037,13 +1165,31 @@ function resolveModalModeActions(
       return [{ scope: "domain", type: "MODAL_REMINDER_GO_TO_TASK" }];
     }
     if (name === "1" || sequence === "1") {
-      return [{ scope: "domain", type: "MODAL_REMINDER_SNOOZE", deltaMs: 10 * 60_000 }];
+      return [
+        {
+          scope: "domain",
+          type: "MODAL_REMINDER_SNOOZE",
+          deltaMs: 10 * 60_000,
+        },
+      ];
     }
     if (name === "2" || sequence === "2") {
-      return [{ scope: "domain", type: "MODAL_REMINDER_SNOOZE", deltaMs: 60 * 60_000 }];
+      return [
+        {
+          scope: "domain",
+          type: "MODAL_REMINDER_SNOOZE",
+          deltaMs: 60 * 60_000,
+        },
+      ];
     }
     if (name === "3" || sequence === "3") {
-      return [{ scope: "domain", type: "MODAL_REMINDER_SNOOZE", deltaMs: 24 * 60 * 60_000 }];
+      return [
+        {
+          scope: "domain",
+          type: "MODAL_REMINDER_SNOOZE",
+          deltaMs: 24 * 60 * 60_000,
+        },
+      ];
     }
     return [];
   }
@@ -1062,7 +1208,9 @@ function resolveModalModeActions(
     const lowerName = name.toLowerCase();
     const lowerSequence = sequence.toLowerCase();
     if (lowerName === "y" || lowerSequence === "y") {
-      return [{ scope: "domain", type: "MODAL_CONFIRM_TASK_LINK_OPEN_EXTERNAL" }];
+      return [
+        { scope: "domain", type: "MODAL_CONFIRM_TASK_LINK_OPEN_EXTERNAL" },
+      ];
     }
     if (lowerName === "n" || lowerSequence === "n") {
       return [{ scope: "ui", type: "UNWIND" }];
@@ -1087,10 +1235,20 @@ function resolveModalModeActions(
     const lowerName = name.toLowerCase();
     const lowerSequence = sequence.toLowerCase();
     if (lowerName === "y" || lowerSequence === "y") {
-      return [{ scope: "domain", type: "MODAL_CONFIRM_RECURRING_DELETE_FUTURE_CHECKPOINT" }];
+      return [
+        {
+          scope: "domain",
+          type: "MODAL_CONFIRM_RECURRING_DELETE_FUTURE_CHECKPOINT",
+        },
+      ];
     }
     if (lowerName === "n" || lowerSequence === "n") {
-      return [{ scope: "ui", type: "MODAL_CANCEL_RECURRING_DELETE_FUTURE_CHECKPOINT" }];
+      return [
+        {
+          scope: "ui",
+          type: "MODAL_CANCEL_RECURRING_DELETE_FUTURE_CHECKPOINT",
+        },
+      ];
     }
     return [];
   }
@@ -1101,9 +1259,16 @@ function resolveModalModeActions(
       return [{ scope: "domain", type: "MODAL_CONFIRM_UNSAVED_SAVE_CONTINUE" }];
     }
     if (lowerName === "d" || lowerSequence === "d") {
-      return [{ scope: "domain", type: "MODAL_CONFIRM_UNSAVED_DISCARD_CONTINUE" }];
+      return [
+        { scope: "domain", type: "MODAL_CONFIRM_UNSAVED_DISCARD_CONTINUE" },
+      ];
     }
-    if (lowerName === "c" || lowerSequence === "c" || lowerName === "n" || lowerSequence === "n") {
+    if (
+      lowerName === "c" ||
+      lowerSequence === "c" ||
+      lowerName === "n" ||
+      lowerSequence === "n"
+    ) {
       return [{ scope: "ui", type: "MODAL_CANCEL_UNSAVED_CONTINUE" }];
     }
     return [];
@@ -1112,7 +1277,9 @@ function resolveModalModeActions(
     const lowerName = name.toLowerCase();
     const lowerSequence = sequence.toLowerCase();
     if (lowerName === "y" || lowerSequence === "y") {
-      return [{ scope: "domain", type: "MODAL_CONFIRM_BACKUP_FINAL_CHECKPOINT" }];
+      return [
+        { scope: "domain", type: "MODAL_CONFIRM_BACKUP_FINAL_CHECKPOINT" },
+      ];
     }
     if (lowerName === "n" || lowerSequence === "n") {
       return [{ scope: "ui", type: "MODAL_CANCEL_BACKUP_FINAL_CHECKPOINT" }];
@@ -1128,28 +1295,42 @@ function resolveModalModeActions(
         {
           scope: "ui",
           type: "MODAL_MOVE_TASK_LINK_FORM_FOCUS",
-          direction: shift ? -1 : 1
-        }
+          direction: shift ? -1 : 1,
+        },
       ];
     }
     if (name === "left" && uiState.modal.activeField === "type") {
-      return [{ scope: "ui", type: "MODAL_CYCLE_TASK_LINK_FORM_TYPE", direction: -1 }];
+      return [
+        { scope: "ui", type: "MODAL_CYCLE_TASK_LINK_FORM_TYPE", direction: -1 },
+      ];
     }
     if (name === "right" && uiState.modal.activeField === "type") {
-      return [{ scope: "ui", type: "MODAL_CYCLE_TASK_LINK_FORM_TYPE", direction: 1 }];
+      return [
+        { scope: "ui", type: "MODAL_CYCLE_TASK_LINK_FORM_TYPE", direction: 1 },
+      ];
     }
     if (name === "up") {
-      return [{ scope: "ui", type: "MODAL_MOVE_TASK_LINK_FORM_FOCUS", direction: -1 }];
+      return [
+        { scope: "ui", type: "MODAL_MOVE_TASK_LINK_FORM_FOCUS", direction: -1 },
+      ];
     }
     if (name === "down") {
-      return [{ scope: "ui", type: "MODAL_MOVE_TASK_LINK_FORM_FOCUS", direction: 1 }];
+      return [
+        { scope: "ui", type: "MODAL_MOVE_TASK_LINK_FORM_FOCUS", direction: 1 },
+      ];
     }
     if (name === "return" || name === "enter") {
       if (uiState.modal.activeField === "cancel") {
         return [{ scope: "ui", type: "UNWIND" }];
       }
       if (uiState.modal.activeField === "type") {
-        return [{ scope: "ui", type: "MODAL_CYCLE_TASK_LINK_FORM_TYPE", direction: 1 }];
+        return [
+          {
+            scope: "ui",
+            type: "MODAL_CYCLE_TASK_LINK_FORM_TYPE",
+            direction: 1,
+          },
+        ];
       }
       if (uiState.modal.activeField === "save") {
         return [{ scope: "domain", type: "MODAL_SUBMIT_TASK_LINK_FORM" }];
@@ -1162,7 +1343,7 @@ function resolveModalModeActions(
 
 function resolveDashboardToggleActions(
   key: KeyInput,
-  context: KeyRouterContext
+  context: KeyRouterContext,
 ): KeyRouterAction[] | null {
   const { name, sequence, ctrl } = key;
   const { uiState, saveViewPromptOpen } = context;
@@ -1187,7 +1368,7 @@ function resolveDashboardToggleActions(
 
 function resolveHelpModeActions(
   key: KeyInput,
-  context: KeyRouterContext
+  context: KeyRouterContext,
 ): KeyRouterAction[] | null {
   const { name, sequence, ctrl } = key;
   const { uiState, helpPage } = context;
@@ -1247,10 +1428,22 @@ function resolveHelpModeActions(
     return [{ scope: "ui", type: "HELP_SCROLL_PAGE", direction: 1 }];
   }
   if (name === "left") {
-    return [{ scope: "ui", type: "HELP_SET_FOCUSED_SECTION_EXPANDED", expanded: false }];
+    return [
+      {
+        scope: "ui",
+        type: "HELP_SET_FOCUSED_SECTION_EXPANDED",
+        expanded: false,
+      },
+    ];
   }
   if (name === "right") {
-    return [{ scope: "ui", type: "HELP_SET_FOCUSED_SECTION_EXPANDED", expanded: true }];
+    return [
+      {
+        scope: "ui",
+        type: "HELP_SET_FOCUSED_SECTION_EXPANDED",
+        expanded: true,
+      },
+    ];
   }
   if (name === "space" || name === "return" || name === "enter") {
     return [{ scope: "ui", type: "HELP_TOGGLE_FOCUSED_SECTION" }];
@@ -1266,7 +1459,7 @@ function resolveHelpModeActions(
 
 function resolveBackupCenterModeActions(
   key: KeyInput,
-  context: KeyRouterContext
+  context: KeyRouterContext,
 ): KeyRouterAction[] | null {
   const { name, sequence, ctrl } = key;
   const { uiState, backupScreen } = context;
@@ -1275,7 +1468,8 @@ function resolveBackupCenterModeActions(
   const aliasedActions = resolveBackupAliasActions(key, context);
   if (aliasedActions !== null) return aliasedActions;
 
-  const maybeDigit = sequence.length === 1 && /\d/.test(sequence) ? Number(sequence) : NaN;
+  const maybeDigit =
+    sequence.length === 1 && /\d/.test(sequence) ? Number(sequence) : NaN;
 
   if (backupScreen === "menu") {
     if (sequence === "1" || name === "1") {
@@ -1316,7 +1510,10 @@ function resolveBackupCenterModeActions(
     }
   }
 
-  if (backupScreen === "import_picker" || backupScreen === "github_restore_picker") {
+  if (
+    backupScreen === "import_picker" ||
+    backupScreen === "github_restore_picker"
+  ) {
     const lowerName = name.toLowerCase();
     const lowerSequence = sequence.toLowerCase();
     if (name === "up" || lowerName === "k" || lowerSequence === "k") {
@@ -1332,10 +1529,14 @@ function resolveBackupCenterModeActions(
       return [{ scope: "ui", type: "BACKUP_PICKER_PAGE_SELECTION", delta: 1 }];
     }
     if (name === BACKUP_PICKER_JUMP_KEYS.start) {
-      return [{ scope: "ui", type: "BACKUP_PICKER_JUMP_SELECTION", target: "start" }];
+      return [
+        { scope: "ui", type: "BACKUP_PICKER_JUMP_SELECTION", target: "start" },
+      ];
     }
     if (name === BACKUP_PICKER_JUMP_KEYS.end) {
-      return [{ scope: "ui", type: "BACKUP_PICKER_JUMP_SELECTION", target: "end" }];
+      return [
+        { scope: "ui", type: "BACKUP_PICKER_JUMP_SELECTION", target: "end" },
+      ];
     }
     if (name === "return" || name === "enter") {
       return [{ scope: "ui", type: "BACKUP_PICKER_CONFIRM_SELECTION" }];
@@ -1349,7 +1550,8 @@ function resolveBackupCenterModeActions(
     return [];
   }
 
-  const supportsBodyScrollKeys = backupScreenSupportsBodyScrollKeys(backupScreen);
+  const supportsBodyScrollKeys =
+    backupScreenSupportsBodyScrollKeys(backupScreen);
   if (supportsBodyScrollKeys) {
     const lowerName = name.toLowerCase();
     const lowerSequence = sequence.toLowerCase();
@@ -1387,7 +1589,7 @@ function resolveBackupCenterModeActions(
 
 function resolveDashboardModeActions(
   key: KeyInput,
-  context: KeyRouterContext
+  context: KeyRouterContext,
 ): KeyRouterAction[] | null {
   const { name, sequence, ctrl, shift } = key;
   const { uiState } = context;
@@ -1403,7 +1605,8 @@ function resolveDashboardModeActions(
   if (!ctrl && !shift && (name === "w" || sequence === "w")) {
     return [{ scope: "domain", type: "CYCLE_ANALYTICS_WINDOW" }];
   }
-  if (!ctrl && name === "r") return [{ scope: "domain", type: "CYCLE_PRIORITY" }];
+  if (!ctrl && name === "r")
+    return [{ scope: "domain", type: "CYCLE_PRIORITY" }];
   if (!ctrl && !shift && (name === "u" || sequence === "u")) {
     return [{ scope: "ui", type: "OPEN_BACKUP_CENTER" }];
   }
@@ -1424,7 +1627,9 @@ function resolveDashboardModeActions(
     return [{ scope: "ui", type: "DASHBOARD_MOVE_ACTIVE_SELECTION", delta: 1 }];
   }
   if (name === "up") {
-    return [{ scope: "ui", type: "DASHBOARD_MOVE_ACTIVE_SELECTION", delta: -1 }];
+    return [
+      { scope: "ui", type: "DASHBOARD_MOVE_ACTIVE_SELECTION", delta: -1 },
+    ];
   }
   if (name === "return" || name === "enter") {
     return [{ scope: "domain", type: "APPLY_DASHBOARD_ACTIVE_SELECTION" }];
@@ -1434,7 +1639,7 @@ function resolveDashboardModeActions(
 
 function resolveNotesModeActions(
   key: KeyInput,
-  context: KeyRouterContext
+  context: KeyRouterContext,
 ): KeyRouterAction[] | null {
   const { name, sequence, ctrl, shift } = key;
   const {
@@ -1442,7 +1647,7 @@ function resolveNotesModeActions(
     notesRootSettingsOpen = false,
     notesCreatePromptOpen = false,
     notesRenamePromptOpen = false,
-    notesDeletePromptOpen = false
+    notesDeletePromptOpen = false,
   } = context;
 
   if (
@@ -1511,10 +1716,14 @@ function resolveNotesModeActions(
 
   if (uiState.mode === Mode.NOTES_VIEW) {
     if (name === "j" || name === "down") {
-      return [{ scope: "ui", type: "NOTES_VIEW_MOVE_LINK_SELECTION", delta: 1 }];
+      return [
+        { scope: "ui", type: "NOTES_VIEW_MOVE_LINK_SELECTION", delta: 1 },
+      ];
     }
     if (name === "k" || name === "up") {
-      return [{ scope: "ui", type: "NOTES_VIEW_MOVE_LINK_SELECTION", delta: -1 }];
+      return [
+        { scope: "ui", type: "NOTES_VIEW_MOVE_LINK_SELECTION", delta: -1 },
+      ];
     }
     if (name === "return" || name === "enter") {
       return [{ scope: "ui", type: "NOTES_FOLLOW_LINK" }];
@@ -1595,19 +1804,25 @@ function resolveNotesModeActions(
 
 function resolveSearchModeActions(
   key: KeyInput,
-  context: KeyRouterContext
+  context: KeyRouterContext,
 ): KeyRouterAction[] | null {
   const { name, shift } = key;
   const {
     uiState,
     searchHasUnifiedResults = false,
-    searchResultsFocused = false
+    searchResultsFocused = false,
   } = context;
   if (uiState.mode !== Mode.SEARCH) return null;
 
   if (name === "tab") {
     if (!searchHasUnifiedResults) return [];
-    return [{ scope: "ui", type: "SEARCH_SET_RESULTS_FOCUS", focused: !searchResultsFocused }];
+    return [
+      {
+        scope: "ui",
+        type: "SEARCH_SET_RESULTS_FOCUS",
+        focused: !searchResultsFocused,
+      },
+    ];
   }
 
   if (searchResultsFocused) {
@@ -1638,7 +1853,7 @@ function resolveSearchModeActions(
 
 function resolveEditorModeActions(
   key: KeyInput,
-  context: KeyRouterContext
+  context: KeyRouterContext,
 ): KeyRouterAction[] | null {
   const { name, sequence, ctrl, shift } = key;
   const {
@@ -1646,7 +1861,7 @@ function resolveEditorModeActions(
     hasTitleInlineSuggestion = false,
     hasTagInlineSuggestion,
     hasDueSuggestion,
-    timeAutocompleteStep
+    timeAutocompleteStep,
   } = context;
   const { mode, focus } = uiState;
   if (mode !== Mode.ADD && mode !== Mode.EDIT) return null;
@@ -1675,7 +1890,7 @@ function resolveEditorModeActions(
     actions.push({
       scope: "ui",
       type: "MOVE_EDITOR_FOCUS",
-      direction: shift ? -1 : 1
+      direction: shift ? -1 : 1,
     });
     return actions;
   }
@@ -1733,10 +1948,16 @@ function resolveEditorModeActions(
   ) {
     return [{ scope: "domain", type: "ACCEPT_TAG_INLINE" }];
   }
-  if ((name === "return" || name === "enter") && focus === FocusTarget.EDITOR_SAVE) {
+  if (
+    (name === "return" || name === "enter") &&
+    focus === FocusTarget.EDITOR_SAVE
+  ) {
     return [{ scope: "domain", type: "SAVE_EDITOR" }];
   }
-  if ((name === "return" || name === "enter") && focus === FocusTarget.EDITOR_CANCEL) {
+  if (
+    (name === "return" || name === "enter") &&
+    focus === FocusTarget.EDITOR_CANCEL
+  ) {
     return [{ scope: "ui", type: "UNWIND" }];
   }
 
@@ -1746,17 +1967,19 @@ function resolveEditorModeActions(
 
 function resolveListModeActions(
   key: KeyInput,
-  context: KeyRouterContext
+  context: KeyRouterContext,
 ): KeyRouterAction[] | null {
   const { name, sequence, ctrl, shift } = key;
-  const { uiState, hasPendingGPrefix, viewsOverlayOpen, saveViewPromptOpen } = context;
+  const { uiState, hasPendingGPrefix, viewsOverlayOpen, saveViewPromptOpen } =
+    context;
   const { mode, focus } = uiState;
 
   if (mode === Mode.TAG_FILTER) return [];
   if (mode !== Mode.LIST) return null;
 
   if (saveViewPromptOpen) {
-    if (name === "escape") return [{ scope: "ui", type: "CANCEL_SAVE_VIEW_PROMPT" }];
+    if (name === "escape")
+      return [{ scope: "ui", type: "CANCEL_SAVE_VIEW_PROMPT" }];
     if (name === "return" || name === "enter") {
       return [{ scope: "ui", type: "CONFIRM_SAVE_VIEW_PROMPT" }];
     }
@@ -1773,14 +1996,22 @@ function resolveListModeActions(
     if (name === "k" || name === "up") {
       return [{ scope: "ui", type: "MOVE_VIEW_SELECTION", delta: -1 }];
     }
-    if (name === "d") return [{ scope: "domain", type: "DELETE_SELECTED_VIEW" }];
+    if (name === "d")
+      return [{ scope: "domain", type: "DELETE_SELECTED_VIEW" }];
     if (name === "return" || name === "enter") {
       return [{ scope: "domain", type: "APPLY_SELECTED_VIEW" }];
     }
     if (/^[1-9]$/.test(sequence)) {
-      return [{ scope: "domain", type: "APPLY_VIEW_SLOT", slot: Number(sequence) - 1 }];
+      return [
+        {
+          scope: "domain",
+          type: "APPLY_VIEW_SLOT",
+          slot: Number(sequence) - 1,
+        },
+      ];
     }
-    if (ctrl && name === "s") return [{ scope: "ui", type: "OPEN_SAVE_VIEW_PROMPT" }];
+    if (ctrl && name === "s")
+      return [{ scope: "ui", type: "OPEN_SAVE_VIEW_PROMPT" }];
     return [];
   }
 
@@ -1792,8 +2023,8 @@ function resolveListModeActions(
         focus:
           focus === FocusTarget.TASK_LIST
             ? FocusTarget.DETAILS_LINKS
-            : FocusTarget.TASK_LIST
-      }
+            : FocusTarget.TASK_LIST,
+      },
     ];
   }
 
@@ -1811,8 +2042,8 @@ function resolveListModeActions(
         {
           scope: "ui",
           type: "SET_LIST_FOCUS",
-          focus: nextFocus
-        }
+          focus: nextFocus,
+        },
       ];
     }
     if (name === "right") {
@@ -1824,8 +2055,8 @@ function resolveListModeActions(
         {
           scope: "ui",
           type: "SET_LIST_FOCUS",
-          focus: nextFocus
-        }
+          focus: nextFocus,
+        },
       ];
     }
   }
@@ -1871,10 +2102,14 @@ function resolveListModeActions(
   if (focus === FocusTarget.DETAILS_NOTES) {
     if (context.detailsNotesLinkPickerOpen) {
       if (name === "j" || name === "down") {
-        return [{ scope: "ui", type: "DETAILS_NOTES_MOVE_SELECTION", delta: 1 }];
+        return [
+          { scope: "ui", type: "DETAILS_NOTES_MOVE_SELECTION", delta: 1 },
+        ];
       }
       if (name === "k" || name === "up") {
-        return [{ scope: "ui", type: "DETAILS_NOTES_MOVE_SELECTION", delta: -1 }];
+        return [
+          { scope: "ui", type: "DETAILS_NOTES_MOVE_SELECTION", delta: -1 },
+        ];
       }
       if (name === "return" || name === "enter") {
         return [{ scope: "ui", type: "DETAILS_NOTES_CONFIRM_LINK_PICKER" }];
@@ -1950,18 +2185,18 @@ function resolveListModeActions(
     if (isLowerG(name, sequence, ctrl, shift)) {
       return [
         { scope: "ui", type: "SET_G_PREFIX", active: false },
-        { scope: "domain", type: "JUMP_TOP" }
+        { scope: "domain", type: "JUMP_TOP" },
       ];
     }
     if (isUpperG(name, sequence, ctrl)) {
       return [
         { scope: "ui", type: "SET_G_PREFIX", active: false },
-        { scope: "domain", type: "JUMP_BOTTOM" }
+        { scope: "domain", type: "JUMP_BOTTOM" },
       ];
     }
     return [
       { scope: "ui", type: "SET_G_PREFIX", active: false },
-      ...listModeActions(key, context)
+      ...listModeActions(key, context),
     ];
   }
 

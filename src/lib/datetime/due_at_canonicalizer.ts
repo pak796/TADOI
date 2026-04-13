@@ -3,7 +3,7 @@ import {
   MINI_DEFAULT_TIMEZONE,
   parseMiniDateTime,
   type MiniParseErr,
-  type MiniParseErrCode
+  type MiniParseErrCode,
 } from "./mini_datetime_parser";
 
 export { MINI_DEFAULT_TIMEZONE } from "./mini_datetime_parser";
@@ -62,7 +62,7 @@ function invalidDue(input: string): {
   return {
     ok: false,
     code: "INVALID_DUE",
-    message: `Error: invalid due date "${input}"`
+    message: `Error: invalid due date "${input}"`,
   };
 }
 
@@ -70,7 +70,7 @@ function invalidTime(input: string): TimeOnlyCanonicalErr {
   return {
     ok: false,
     code: "INVALID_TIME",
-    message: `Error: invalid time "${input}"`
+    message: `Error: invalid time "${input}"`,
   };
 }
 
@@ -78,11 +78,14 @@ function ambiguousTime(input: string): TimeOnlyCanonicalErr {
   return {
     ok: false,
     code: "AMBIGUOUS_TIME",
-    message: `Error: ambiguous time "${input}"`
+    message: `Error: ambiguous time "${input}"`,
   };
 }
 
-function mapMiniTimeError(error: MiniParseErr, rawInput: string): TimeOnlyCanonicalErr {
+function mapMiniTimeError(
+  error: MiniParseErr,
+  rawInput: string,
+): TimeOnlyCanonicalErr {
   if (error.code === "AMBIGUOUS_TIME") {
     return ambiguousTime(rawInput);
   }
@@ -91,10 +94,14 @@ function mapMiniTimeError(error: MiniParseErr, rawInput: string): TimeOnlyCanoni
 
 function parseDueCore(
   dueInput: string,
-  options: CanonicalizeOptions
+  options: CanonicalizeOptions,
 ):
   | { ok: true; dueDate: string; dueTime?: string }
-  | { ok: false; code: "INVALID_DUE" | "INVALID_TIME" | "AMBIGUOUS_TIME"; message: string } {
+  | {
+      ok: false;
+      code: "INVALID_DUE" | "INVALID_TIME" | "AMBIGUOUS_TIME";
+      message: string;
+    } {
   const normalizedInput = dueInput.trim();
   const tz = options.tz ?? MINI_DEFAULT_TIMEZONE;
   const mini = parseMiniDateTime(normalizedInput, options.now, tz);
@@ -102,7 +109,9 @@ function parseDueCore(
     return {
       ok: true,
       dueDate: mini.dateISO,
-      ...(mini.precision === "datetime" && mini.time24 ? { dueTime: mini.time24 } : {})
+      ...(mini.precision === "datetime" && mini.time24
+        ? { dueTime: mini.time24 }
+        : {}),
     };
   }
 
@@ -113,7 +122,7 @@ function parseDueCore(
     }
     return {
       ok: true,
-      dueDate: formatDate(strictDate.year, strictDate.month, strictDate.day)
+      dueDate: formatDate(strictDate.year, strictDate.month, strictDate.day),
     };
   }
 
@@ -130,19 +139,23 @@ function parseDueCore(
 
 export function canonicalizeTimeOnlyInput(
   timeInput: string,
-  options: CanonicalizeOptions
+  options: CanonicalizeOptions,
 ): TimeOnlyCanonicalOk | TimeOnlyCanonicalErr {
   const normalizedInput = timeInput.trim();
   const tz = options.tz ?? MINI_DEFAULT_TIMEZONE;
   const mini = parseMiniDateTime(normalizedInput, options.now, tz);
 
   if (mini.ok) {
-    if (mini.precision !== "datetime" || !mini.time24 || /\s/.test(normalizedInput)) {
+    if (
+      mini.precision !== "datetime" ||
+      !mini.time24 ||
+      /\s/.test(normalizedInput)
+    ) {
       return invalidTime(normalizedInput);
     }
     return {
       ok: true,
-      time24: mini.time24
+      time24: mini.time24,
     };
   }
 
@@ -153,7 +166,7 @@ export function canonicalizeTimeOnlyInput(
     }
     return {
       ok: true,
-      time24: formatTime(strict.hours, strict.minutes)
+      time24: formatTime(strict.hours, strict.minutes),
     };
   }
 
@@ -163,7 +176,7 @@ export function canonicalizeTimeOnlyInput(
 export function canonicalizeDueAtInput(
   dueInput: string,
   atInput: string | undefined,
-  options: CanonicalizeOptions
+  options: CanonicalizeOptions,
 ): DueAtCanonicalOk | DueAtCanonicalErr {
   const normalizedDue = dueInput.trim();
   if (!normalizedDue) {
@@ -180,7 +193,7 @@ export function canonicalizeDueAtInput(
     return {
       ok: false,
       code: "DUPLICATE_TIME",
-      message: 'Error: due value already includes time; omit "at:"'
+      message: 'Error: due value already includes time; omit "at:"',
     };
   }
 
@@ -193,17 +206,19 @@ export function canonicalizeDueAtInput(
     return {
       ok: true,
       dueDate: parsedDue.dueDate,
-      atTime: parsedTime.time24
+      atTime: parsedTime.time24,
     };
   }
 
   return {
     ok: true,
     dueDate: parsedDue.dueDate,
-    ...(parsedDue.dueTime ? { atTime: parsedDue.dueTime } : {})
+    ...(parsedDue.dueTime ? { atTime: parsedDue.dueTime } : {}),
   };
 }
 
-export function shouldFallbackStrictForMiniError(code: MiniParseErrCode): boolean {
+export function shouldFallbackStrictForMiniError(
+  code: MiniParseErrCode,
+): boolean {
   return code === "UNKNOWN_TOKEN";
 }

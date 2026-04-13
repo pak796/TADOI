@@ -94,7 +94,7 @@ const LIST_ACTIONS: ActionAliasId[] = [
   "list_page_up",
   "list_page_down",
   "list_jump_top",
-  "list_jump_bottom"
+  "list_jump_bottom",
 ];
 
 const DASHBOARD_ACTIONS: ActionAliasId[] = [
@@ -111,7 +111,7 @@ const DASHBOARD_ACTIONS: ActionAliasId[] = [
   "dashboard_prev_focus",
   "dashboard_toggle_dashboard",
   "dashboard_open_help",
-  "dashboard_open_backup_center"
+  "dashboard_open_backup_center",
 ];
 
 const BACKUP_ACTIONS: ActionAliasId[] = [
@@ -127,7 +127,7 @@ const BACKUP_ACTIONS: ActionAliasId[] = [
   "backup_menu_option_1",
   "backup_menu_option_2",
   "backup_menu_option_3",
-  "backup_menu_option_4"
+  "backup_menu_option_4",
 ];
 
 const HELP_ACTIONS: ActionAliasId[] = [
@@ -139,14 +139,14 @@ const HELP_ACTIONS: ActionAliasId[] = [
   "help_nav_forward",
   "help_toggle_focused_section",
   "help_close",
-  "help_open_backup_center"
+  "help_open_backup_center",
 ];
 
 const ACTIONS_BY_CONTEXT: Record<AliasContext, readonly ActionAliasId[]> = {
   list: LIST_ACTIONS,
   dashboard: DASHBOARD_ACTIONS,
   backup: BACKUP_ACTIONS,
-  help: HELP_ACTIONS
+  help: HELP_ACTIONS,
 };
 
 const NAMED_KEY_NORMALIZATION: Record<string, string> = {
@@ -172,7 +172,7 @@ const NAMED_KEY_NORMALIZATION: Record<string, string> = {
   page_down: "PageDown",
   next: "PageDown",
   home: "home",
-  end: "end"
+  end: "end",
 };
 
 const CONTEXTS: AliasContext[] = ["list", "dashboard", "backup", "help"];
@@ -187,7 +187,7 @@ function isAliasContext(value: string): value is AliasContext {
 
 export function isActionAliasSupportedInContext(
   context: AliasContext,
-  actionId: string
+  actionId: string,
 ): actionId is ActionAliasId {
   return ACTIONS_BY_CONTEXT[context].includes(actionId as ActionAliasId);
 }
@@ -232,7 +232,9 @@ function normalizeAliasTokens(input: unknown): string[] {
   return normalized;
 }
 
-export function normalizeKeymapAliases(input: unknown): KeymapAliases | undefined {
+export function normalizeKeymapAliases(
+  input: unknown,
+): KeymapAliases | undefined {
   if (!isRecord(input)) return undefined;
 
   const normalized: KeymapAliases = {};
@@ -258,7 +260,7 @@ export function normalizeKeymapAliases(input: unknown): KeymapAliases | undefine
 }
 
 export function resolveKeymapAliases(
-  aliases: KeymapAliases | undefined
+  aliases: KeymapAliases | undefined,
 ): ResolvedKeymapAliases {
   const byContext: Partial<Record<AliasContext, ContextAliasResolution>> = {};
   const warnings: string[] = [];
@@ -278,7 +280,7 @@ export function resolveKeymapAliases(
       for (const token of tokens ?? []) {
         if (tokenToAction[token] && tokenToAction[token] !== actionId) {
           warnings.push(
-            `[${context}] token "${token}" kept for "${tokenToAction[token]}", ignored for "${actionId}".`
+            `[${context}] token "${token}" kept for "${tokenToAction[token]}", ignored for "${actionId}".`,
           );
           continue;
         }
@@ -309,7 +311,8 @@ export function keyInputToAliasTokens(input: KeyLikeInput): string[] {
 
   if (input.ctrl) {
     const source = input.name || input.sequence;
-    const ctrlToken = source.length === 1 ? normalizeAliasToken(`ctrl+${source}`) : null;
+    const ctrlToken =
+      source.length === 1 ? normalizeAliasToken(`ctrl+${source}`) : null;
     add(ctrlToken);
     return tokens;
   }
@@ -324,7 +327,7 @@ export function keyInputToAliasTokens(input: KeyLikeInput): string[] {
 export function resolveAliasActionIdForInput(
   context: AliasContext,
   input: KeyLikeInput,
-  resolvedAliases: ResolvedKeymapAliases | null | undefined
+  resolvedAliases: ResolvedKeymapAliases | null | undefined,
 ): ActionAliasId | null {
   const contextMap = resolvedAliases?.byContext[context];
   if (!contextMap) return null;
@@ -340,7 +343,7 @@ export function resolveAliasActionIdForInput(
 export function getAliasTokensForAction(
   context: AliasContext,
   actionId: ActionAliasId,
-  resolvedAliases: ResolvedKeymapAliases | null | undefined
+  resolvedAliases: ResolvedKeymapAliases | null | undefined,
 ): string[] {
   const tokens = resolvedAliases?.byContext[context]?.actionToTokens[actionId];
   return tokens ? [...tokens] : [];

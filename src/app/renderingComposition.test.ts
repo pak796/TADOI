@@ -4,7 +4,7 @@ import {
   buildTagTickerSegments,
   fitLineToWidth,
   pickHelpCloseButtonLabel,
-  truncateToWidth
+  truncateToWidth,
 } from "./renderingComposition";
 
 describe("renderingComposition helpers", () => {
@@ -24,18 +24,18 @@ describe("renderingComposition helpers", () => {
     const tagSegments = buildTagTickerSegments(
       [
         { tag: "work", total: 5, dueThisWeek: 2 },
-        { tag: "home", total: 2, dueThisWeek: 1 }
+        { tag: "home", total: 2, dueThisWeek: 1 },
       ],
-      24
+      24,
     );
     expect(tagSegments.length).toBeGreaterThan(0);
 
     const prioritySegments = buildPriorityTickerSegments(
       [
         { priorityTag: "p1", displayPriority: "P1", total: 3 },
-        { priorityTag: "p2", displayPriority: "P2", total: 2 }
+        { priorityTag: "p2", displayPriority: "P2", total: 2 },
       ],
-      24
+      24,
     );
     expect(prioritySegments.length).toBeGreaterThan(0);
   });

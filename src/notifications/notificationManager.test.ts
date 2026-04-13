@@ -17,7 +17,7 @@ function makeTask(partial: Partial<Task> & Pick<Task, "id" | "title">): Task {
     notes: partial.notes,
     tags: partial.tags ?? [],
     recurrence: partial.recurrence,
-    instance_of: partial.instance_of
+    instance_of: partial.instance_of,
   };
 }
 
@@ -29,7 +29,7 @@ describe("NotificationManager", () => {
       id: "t1",
       title: "overdue",
       dueAt: new Date(2026, 1, 11, 9, 0, 0).getTime(),
-      hasExplicitTime: true
+      hasExplicitTime: true,
     });
 
     const events = manager.evaluate([overdueTask], now);
@@ -43,12 +43,18 @@ describe("NotificationManager", () => {
       id: "t2",
       title: "transition",
       dueAt,
-      hasExplicitTime: true
+      hasExplicitTime: true,
     });
 
     manager.evaluate([task], new Date(2026, 1, 11, 8, 55, 0).getTime());
-    const first = manager.evaluate([task], new Date(2026, 1, 11, 9, 5, 0).getTime());
-    const second = manager.evaluate([task], new Date(2026, 1, 11, 9, 10, 0).getTime());
+    const first = manager.evaluate(
+      [task],
+      new Date(2026, 1, 11, 9, 5, 0).getTime(),
+    );
+    const second = manager.evaluate(
+      [task],
+      new Date(2026, 1, 11, 9, 10, 0).getTime(),
+    );
 
     expect(first).toHaveLength(1);
     expect(first[0]?.type).toBe("TASK_OVERDUE");
@@ -67,19 +73,32 @@ describe("NotificationManager", () => {
       id: "t3",
       title: "reset",
       dueAt: firstDueAt,
-      hasExplicitTime: true
+      hasExplicitTime: true,
     });
 
     manager.evaluate([baseTask], t0);
-    const first = manager.evaluate([baseTask], new Date(2026, 1, 11, 8, 40, 0).getTime());
+    const first = manager.evaluate(
+      [baseTask],
+      new Date(2026, 1, 11, 8, 40, 0).getTime(),
+    );
     expect(first).toHaveLength(1);
 
     const noDueTask = { ...baseTask, dueAt: undefined, hasExplicitTime: false };
-    const cleared = manager.evaluate([noDueTask], new Date(2026, 1, 11, 8, 41, 0).getTime());
+    const cleared = manager.evaluate(
+      [noDueTask],
+      new Date(2026, 1, 11, 8, 41, 0).getTime(),
+    );
     expect(cleared).toHaveLength(0);
 
-    const nextDueTask = { ...baseTask, dueAt: secondDueAt, hasExplicitTime: true };
-    const second = manager.evaluate([nextDueTask], new Date(2026, 1, 11, 8, 46, 0).getTime());
+    const nextDueTask = {
+      ...baseTask,
+      dueAt: secondDueAt,
+      hasExplicitTime: true,
+    };
+    const second = manager.evaluate(
+      [nextDueTask],
+      new Date(2026, 1, 11, 8, 46, 0).getTime(),
+    );
     expect(second).toHaveLength(1);
     expect(new Date(second[0]?.dueAt ?? "").getTime()).toBe(secondDueAt);
   });
@@ -95,16 +114,26 @@ describe("NotificationManager", () => {
       recurrence: {
         dtstart: formatDateToLocalIso(start),
         rrule: "FREQ=DAILY;INTERVAL=1;COUNT=3",
-        series_id: "series:1"
-      }
+        series_id: "series:1",
+      },
     });
 
     manager.evaluate([seriesTask], new Date(2026, 1, 10, 8, 59, 0).getTime());
-    const burst = manager.evaluate([seriesTask], new Date(2026, 1, 12, 9, 30, 0).getTime());
-    const next = manager.evaluate([seriesTask], new Date(2026, 1, 12, 10, 0, 0).getTime());
+    const burst = manager.evaluate(
+      [seriesTask],
+      new Date(2026, 1, 12, 9, 30, 0).getTime(),
+    );
+    const next = manager.evaluate(
+      [seriesTask],
+      new Date(2026, 1, 12, 10, 0, 0).getTime(),
+    );
 
     expect(burst).toHaveLength(3);
-    expect(burst.map((event) => event.taskId)).toEqual(["series-1", "series-1", "series-1"]);
+    expect(burst.map((event) => event.taskId)).toEqual([
+      "series-1",
+      "series-1",
+      "series-1",
+    ]);
     expect(next).toHaveLength(0);
   });
 });

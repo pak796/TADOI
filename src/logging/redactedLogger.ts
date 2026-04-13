@@ -3,8 +3,10 @@ import { redactPathForDisplay } from "../app/pathRedaction";
 
 type ConsoleLike = Pick<Console, "log" | "warn" | "error" | "debug">;
 
-const SENSITIVE_KEY_PATTERN = /token|secret|passphrase|password|authorization|cookie|api[-_]?key/i;
-const INLINE_SECRET_PATTERN = /\b(gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_]{20,})\b/g;
+const SENSITIVE_KEY_PATTERN =
+  /token|secret|passphrase|password|authorization|cookie|api[-_]?key/i;
+const INLINE_SECRET_PATTERN =
+  /\b(gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_]{20,})\b/g;
 const PATH_TOKEN_PATTERN = /^([("'[{<]*)(.*?)([)"'\]}>:;,!?]*)$/;
 const WINDOWS_ABSOLUTE_PATTERN = /^[A-Za-z]:[\\/]/;
 
@@ -36,7 +38,10 @@ function redactTokenForPaths(token: string): string {
 }
 
 function redactString(value: string): string {
-  const withoutInlineSecrets = value.replace(INLINE_SECRET_PATTERN, "[REDACTED]");
+  const withoutInlineSecrets = value.replace(
+    INLINE_SECRET_PATTERN,
+    "[REDACTED]",
+  );
   return withoutInlineSecrets
     .split(/(\s+)/)
     .map((part) => (part.trim().length > 0 ? redactTokenForPaths(part) : part))
@@ -46,21 +51,26 @@ function redactString(value: string): string {
 function redactUnknown(
   value: unknown,
   seen: WeakSet<object>,
-  depth: number
+  depth: number,
 ): unknown {
   if (value === null || value === undefined) return value;
   if (typeof value === "string") return redactString(value);
-  if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") {
+  if (
+    typeof value === "number" ||
+    typeof value === "boolean" ||
+    typeof value === "bigint"
+  ) {
     return value;
   }
   if (typeof value === "symbol") return String(value);
-  if (typeof value === "function") return `[Function ${value.name || "anonymous"}]`;
+  if (typeof value === "function")
+    return `[Function ${value.name || "anonymous"}]`;
 
   if (value instanceof Error) {
     return {
       name: value.name,
       message: redactString(value.message),
-      ...(value.stack ? { stack: redactString(value.stack) } : {})
+      ...(value.stack ? { stack: redactString(value.stack) } : {}),
     };
   }
 
@@ -69,7 +79,9 @@ function redactUnknown(
   }
 
   if (Array.isArray(value)) {
-    return value.slice(0, 40).map((entry) => redactUnknown(entry, seen, depth + 1));
+    return value
+      .slice(0, 40)
+      .map((entry) => redactUnknown(entry, seen, depth + 1));
   }
 
   if (!isRecord(value)) {
@@ -96,7 +108,10 @@ export function redactLogValue(value: unknown): unknown {
 }
 
 export function createRedactedLogger(consoleLike: ConsoleLike = console) {
-  const emit = (method: "log" | "warn" | "error" | "debug", args: unknown[]): void => {
+  const emit = (
+    method: "log" | "warn" | "error" | "debug",
+    args: unknown[],
+  ): void => {
     const target = consoleLike[method] ?? consoleLike.log;
     target(...args.map((arg) => redactLogValue(arg)));
   };
@@ -105,7 +120,7 @@ export function createRedactedLogger(consoleLike: ConsoleLike = console) {
     log: (...args: unknown[]) => emit("log", args),
     warn: (...args: unknown[]) => emit("warn", args),
     error: (...args: unknown[]) => emit("error", args),
-    debug: (...args: unknown[]) => emit("debug", args)
+    debug: (...args: unknown[]) => emit("debug", args),
   };
 }
 

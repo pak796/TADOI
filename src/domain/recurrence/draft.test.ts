@@ -3,7 +3,7 @@ import { EditorDraft } from "../models";
 import {
   buildRecurrenceFromDraft,
   buildRecurrencePreviewFromDraft,
-  getRecurrenceSummary
+  getRecurrenceSummary,
 } from "./draft";
 
 function makeDraft(overrides: Partial<EditorDraft> = {}): EditorDraft {
@@ -31,7 +31,7 @@ function makeDraft(overrides: Partial<EditorDraft> = {}): EditorDraft {
     assigneeText: "",
     projectText: "",
     workflowStage: undefined,
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -49,13 +49,13 @@ describe("buildRecurrenceFromDraft", () => {
       repeatIntervalText: "2",
       repeatWeekdays: ["MO", "WE"],
       repeatEndMode: "count",
-      repeatCountText: "5"
+      repeatCountText: "5",
     });
 
     const built = buildRecurrenceFromDraft(
       draft,
       new Date(2026, 1, 10, 9, 0, 0, 0).getTime(),
-      "series:test"
+      "series:test",
     );
 
     expect(built.error).toBeUndefined();
@@ -70,7 +70,7 @@ describe("buildRecurrencePreviewFromDraft", () => {
   it("returns upcoming preview occurrences", () => {
     const draft = makeDraft({
       repeatMode: "daily",
-      repeatIntervalText: "1"
+      repeatIntervalText: "1",
     });
 
     const now = new Date(2026, 1, 10, 12, 0, 0, 0).getTime();
@@ -79,13 +79,13 @@ describe("buildRecurrencePreviewFromDraft", () => {
       new Date(2026, 1, 10, 9, 0, 0, 0).getTime(),
       true,
       now,
-      3
+      3,
     );
 
     expect(preview).toEqual([
       "2026-02-11T09:00:00",
       "2026-02-12T09:00:00",
-      "2026-02-13T09:00:00"
+      "2026-02-13T09:00:00",
     ]);
   });
 
@@ -93,7 +93,7 @@ describe("buildRecurrencePreviewFromDraft", () => {
     const summary = getRecurrenceSummary({
       dtstart: "2026-02-10T09:00:00",
       rrule: "FREQ=WEEKLY;INTERVAL=1;BYDAY=MO,WE",
-      series_id: "series:test"
+      series_id: "series:test",
     });
     expect(summary).toContain("Weekly");
     expect(summary).toContain("MO,WE");

@@ -1,6 +1,7 @@
 # Help/Settings Doc Drift Runbook
 
 ## Standard Command
+
 Use the locked package script:
 
 ```bash
@@ -8,10 +9,12 @@ bun run doc:drift:help-settings
 ```
 
 This writes:
+
 - JSON: `/tmp/help_settings_doc_drift.recheck_final.json`
 - Markdown: `/tmp/help_settings_doc_drift.recheck_final.md`
 
 ## Direct Invocation (Equivalent)
+
 ```bash
 python3 scripts/doc-drift-scan.py \
   --repo-root . \
@@ -26,6 +29,7 @@ python3 scripts/doc-drift-scan.py \
 ```
 
 ## Auto-Close Diff Against Baseline
+
 If comparing against a baseline file (for example `/tmp/help_settings_doc_drift.json`), run:
 
 ```bash
@@ -48,10 +52,12 @@ PY
 ```
 
 ## Policy
+
 - For Help/Settings drift checks, do not call external skill-scanner paths directly.
 - Use `scripts/doc-drift-scan.py` (or the package alias) to ensure matcher parity with current Help/Settings audit workflow.
 
 ## CI Enforcement
+
 - Workflow: `.github/workflows/docs-lint.yml`
 - Job: `doc-drift-help-settings`
 - Gate command: `bun run doc:drift:help-settings`

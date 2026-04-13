@@ -7,11 +7,11 @@ import type {
   NoteOutputFormat,
   NoteSearchFilters,
   RecurEvery,
-  ParseCommandResult
+  ParseCommandResult,
 } from "./types";
 import {
   MINI_DEFAULT_TIMEZONE,
-  canonicalizeDueAtInput
+  canonicalizeDueAtInput,
 } from "../lib/datetime/due_at_canonicalizer";
 
 export type ParseCommandOptions = {
@@ -60,7 +60,9 @@ function parsePositiveOneBasedIndex(token: string): number | null {
   return parsed;
 }
 
-function parseBulkTarget(tokens: string[]): { target: BulkTarget; rest: string[] } | null {
+function parseBulkTarget(
+  tokens: string[],
+): { target: BulkTarget; rest: string[] } | null {
   const ids: string[] = [];
   const seen = new Set<string>();
   let index = 0;
@@ -81,20 +83,20 @@ function parseBulkTarget(tokens: string[]): { target: BulkTarget; rest: string[]
   if (ids.length > 0) {
     return {
       target: { type: "ids", ids },
-      rest: tokens.slice(index)
+      rest: tokens.slice(index),
     };
   }
 
   return {
     target: { type: "marked" },
-    rest: tokens
+    rest: tokens,
   };
 }
 
 function parseAddCommand(
   tokens: string[],
   firstTokenQuoted: boolean,
-  context: ParseContext
+  context: ParseContext,
 ): ParseCommandResult {
   if (tokens.length === 0) {
     return error("Error: add requires a title");
@@ -108,7 +110,7 @@ function parseAddCommand(
   } else {
     if (isAddOptionToken(tokens[0])) {
       return error(
-        'Error: add title is required before options (quote titles starting with #, due:, at:, or notes:)'
+        "Error: add title is required before options (quote titles starting with #, due:, at:, or notes:)",
       );
     }
     const titleParts: string[] = [];
@@ -170,7 +172,7 @@ function parseAddCommand(
   if (dueDate) {
     const canonicalized = canonicalizeDueAtInput(dueDate, atTime, {
       now: context.now,
-      tz: context.tz
+      tz: context.tz,
     });
     if (!canonicalized.ok) {
       return error(canonicalized.message);
@@ -187,8 +189,8 @@ function parseAddCommand(
       dueDate,
       atTime,
       tags,
-      notes
-    }
+      notes,
+    },
   };
 }
 
@@ -196,7 +198,7 @@ function parseDoneCommand(tokens: string[]): ParseCommandResult {
   if (tokens.length === 0) {
     return {
       ok: true,
-      command: { type: "done", target: { type: "selected" } }
+      command: { type: "done", target: { type: "selected" } },
     };
   }
   if (tokens.length !== 1) {
@@ -209,11 +211,14 @@ function parseDoneCommand(tokens: string[]): ParseCommandResult {
   }
   return {
     ok: true,
-    command: { type: "done", target }
+    command: { type: "done", target },
   };
 }
 
-function parseDueCommand(tokens: string[], context: ParseContext): ParseCommandResult {
+function parseDueCommand(
+  tokens: string[],
+  context: ParseContext,
+): ParseCommandResult {
   if (tokens.length < 2) {
     return error("Error: due requires target and date/clear");
   }
@@ -231,7 +236,7 @@ function parseDueCommand(tokens: string[], context: ParseContext): ParseCommandR
     }
     return {
       ok: true,
-      command: { type: "due", target, clear: true }
+      command: { type: "due", target, clear: true },
     };
   }
 
@@ -256,7 +261,7 @@ function parseDueCommand(tokens: string[], context: ParseContext): ParseCommandR
   const dueInput = dueTokens.join(" ").trim();
   const canonicalized = canonicalizeDueAtInput(dueInput, atInput, {
     now: context.now,
-    tz: context.tz
+    tz: context.tz,
   });
   if (!canonicalized.ok) {
     return error(canonicalized.message);
@@ -269,14 +274,14 @@ function parseDueCommand(tokens: string[], context: ParseContext): ParseCommandR
       target,
       clear: false,
       dueDate: canonicalized.dueDate,
-      ...(canonicalized.atTime ? { atTime: canonicalized.atTime } : {})
-    }
+      ...(canonicalized.atTime ? { atTime: canonicalized.atTime } : {}),
+    },
   };
 }
 
 function parseCheckCommand(
   operationToken: string | undefined,
-  tokens: string[]
+  tokens: string[],
 ): ParseCommandResult {
   const operation = operationToken?.toLowerCase().trim();
   if (!operation) {
@@ -303,14 +308,16 @@ function parseCheckCommand(
         type: "check",
         operation: "add",
         target,
-        text
-      }
+        text,
+      },
     };
   }
 
   if (operation === "toggle" || operation === "del" || operation === "delete") {
     if (tokens.length !== 2) {
-      return error(`Error: check ${operation === "toggle" ? "toggle" : "del"} requires index`);
+      return error(
+        `Error: check ${operation === "toggle" ? "toggle" : "del"} requires index`,
+      );
     }
     const index = parsePositiveOneBasedIndex(tokens[1] ?? "");
     if (index === null) {
@@ -322,8 +329,8 @@ function parseCheckCommand(
         type: "check",
         operation: operation === "toggle" ? "toggle" : "del",
         target,
-        index
-      }
+        index,
+      },
     };
   }
 
@@ -343,8 +350,8 @@ function parseCheckCommand(
         operation: "edit",
         target,
         index,
-        text
-      }
+        text,
+      },
     };
   }
 
@@ -357,8 +364,8 @@ function parseCheckCommand(
       command: {
         type: "check",
         operation: "clear",
-        target
-      }
+        target,
+      },
     };
   }
 
@@ -368,12 +375,12 @@ function parseCheckCommand(
 function parseBulkCommand(
   operationToken: string | undefined,
   tokens: string[],
-  context: ParseContext
+  context: ParseContext,
 ): ParseCommandResult {
   const operationRaw = operationToken?.toLowerCase().trim();
   if (!operationRaw) {
     return error(
-      "Error: bulk requires operation done|tag add|tag rm|due|priority|assignee|project|stage|delete"
+      "Error: bulk requires operation done|tag add|tag rm|due|priority|assignee|project|stage|delete",
     );
   }
 
@@ -415,8 +422,8 @@ function parseBulkCommand(
       command: {
         type: "bulk",
         operation: "done",
-        target
-      }
+        target,
+      },
     };
   }
 
@@ -429,14 +436,16 @@ function parseBulkCommand(
       command: {
         type: "bulk",
         operation: "delete",
-        target
-      }
+        target,
+      },
     };
   }
 
   if (operation === "tag_add" || operation === "tag_rm") {
     if (rest.length === 0) {
-      return error(`Error: bulk tag ${operation === "tag_add" ? "add" : "rm"} requires tags`);
+      return error(
+        `Error: bulk tag ${operation === "tag_add" ? "add" : "rm"} requires tags`,
+      );
     }
     if (!rest.every((token) => token.startsWith("#"))) {
       return error('Error: bulk tag tokens must start with "#"');
@@ -447,8 +456,8 @@ function parseBulkCommand(
         type: "bulk",
         operation,
         target,
-        tags: rest
-      }
+        tags: rest,
+      },
     };
   }
 
@@ -466,8 +475,8 @@ function parseBulkCommand(
           type: "bulk",
           operation: "due",
           target,
-          clear: true
-        }
+          clear: true,
+        },
       };
     }
     const dueTokens = [...rest];
@@ -492,7 +501,7 @@ function parseBulkCommand(
     const dueInput = dueTokens.join(" ").trim();
     const canonicalized = canonicalizeDueAtInput(dueInput, atInput, {
       now: context.now,
-      tz: context.tz
+      tz: context.tz,
     });
     if (!canonicalized.ok) {
       return error(canonicalized.message);
@@ -506,8 +515,8 @@ function parseBulkCommand(
         target,
         clear: false,
         dueDate: canonicalized.dueDate,
-        ...(canonicalized.atTime ? { atTime: canonicalized.atTime } : {})
-      }
+        ...(canonicalized.atTime ? { atTime: canonicalized.atTime } : {}),
+      },
     };
   }
 
@@ -526,8 +535,8 @@ function parseBulkCommand(
           type: "bulk",
           operation: "priority",
           target,
-          clear: true
-        }
+          clear: true,
+        },
       };
     }
     return {
@@ -537,8 +546,8 @@ function parseBulkCommand(
         operation: "priority",
         target,
         clear: false,
-        value
-      }
+        value,
+      },
     };
   }
 
@@ -557,8 +566,8 @@ function parseBulkCommand(
           type: "bulk",
           operation,
           target,
-          clear: true
-        }
+          clear: true,
+        },
       };
     }
     return {
@@ -568,8 +577,8 @@ function parseBulkCommand(
         operation,
         target,
         clear: false,
-        value
-      }
+        value,
+      },
     };
   }
 
@@ -578,8 +587,15 @@ function parseBulkCommand(
       return error("Error: bulk stage requires one value");
     }
     const stage = rest[0]?.toLowerCase();
-    if (stage !== "todo" && stage !== "doing" && stage !== "blocked" && stage !== "done") {
-      return error('Error: bulk stage must be "todo", "doing", "blocked", or "done"');
+    if (
+      stage !== "todo" &&
+      stage !== "doing" &&
+      stage !== "blocked" &&
+      stage !== "done"
+    ) {
+      return error(
+        'Error: bulk stage must be "todo", "doing", "blocked", or "done"',
+      );
     }
     return {
       ok: true,
@@ -587,13 +603,13 @@ function parseBulkCommand(
         type: "bulk",
         operation: "stage",
         target,
-        stage
-      }
+        stage,
+      },
     };
   }
 
   return error(
-    "Error: bulk requires operation done|tag add|tag rm|due|priority|assignee|project|stage|delete"
+    "Error: bulk requires operation done|tag add|tag rm|due|priority|assignee|project|stage|delete",
   );
 }
 
@@ -601,7 +617,7 @@ function parseHelpCommand(tokens: string[]): ParseCommandResult {
   if (tokens.length === 0) {
     return {
       ok: true,
-      command: { type: "help" }
+      command: { type: "help" },
     };
   }
   if (tokens.length !== 1) {
@@ -620,13 +636,13 @@ function parseHelpCommand(tokens: string[]): ParseCommandResult {
     topic !== "tag"
   ) {
     return error(
-      'Error: help topics are "add", "done", "due", "recur", "check", "bulk", "note", or "tag"'
+      'Error: help topics are "add", "done", "due", "recur", "check", "bulk", "note", or "tag"',
     );
   }
 
   return {
     ok: true,
-    command: { type: "help", topic }
+    command: { type: "help", topic },
   };
 }
 
@@ -651,7 +667,7 @@ function splitTagDryRun(tokens: string[]): SplitTagDryRunResult {
   return {
     ok: true,
     args: tokens.slice(0, -1),
-    dryRun: true
+    dryRun: true,
   };
 }
 
@@ -677,8 +693,8 @@ function parseTagCommand(tokens: string[]): ParseCommandResult {
         operation: "rename",
         oldTag: args[0] as string,
         newTag: args[1] as string,
-        dryRun
-      }
+        dryRun,
+      },
     };
   }
 
@@ -695,7 +711,9 @@ function parseTagCommand(tokens: string[]): ParseCommandResult {
       .filter((source) => source.length > 0);
     const target = (args[2] as string).trim();
     if (sourceList.length === 0 || target.length === 0) {
-      return error("Error: tag merge requires at least one source and a target");
+      return error(
+        "Error: tag merge requires at least one source and a target",
+      );
     }
     return {
       ok: true,
@@ -704,8 +722,8 @@ function parseTagCommand(tokens: string[]): ParseCommandResult {
         operation: "merge",
         sources: sourceList,
         target,
-        dryRun
-      }
+        dryRun,
+      },
     };
   }
 
@@ -721,8 +739,8 @@ function parseTagCommand(tokens: string[]): ParseCommandResult {
       command: {
         type: "tag",
         operation,
-        dryRun
-      }
+        dryRun,
+      },
     };
   }
 
@@ -754,7 +772,7 @@ function isIsoDate(value: string): boolean {
 
 function parseDateWindowToken(
   value: string,
-  context: ParseContext
+  context: ParseContext,
 ): { after?: string; before?: string; error?: string } {
   const trimmed = value.trim().toLowerCase();
   const today = localIsoDate(new Date(context.now));
@@ -762,14 +780,14 @@ function parseDateWindowToken(
   if (trimmed === "today") {
     return {
       after: today,
-      before: shiftIsoDate(today, 1) ?? undefined
+      before: shiftIsoDate(today, 1) ?? undefined,
     };
   }
   if (trimmed === "yesterday") {
     const yesterday = shiftIsoDate(today, -1);
     return {
       ...(yesterday ? { after: yesterday } : {}),
-      before: today
+      before: today,
     };
   }
 
@@ -787,7 +805,9 @@ function parseDateWindowToken(
       return { error: `Error: invalid date filter "${value}"` };
     }
     const next = shiftIsoDate(date, 1);
-    return next ? { before: next } : { error: `Error: invalid date filter "${value}"` };
+    return next
+      ? { before: next }
+      : { error: `Error: invalid date filter "${value}"` };
   }
 
   if (trimmed.includes("..")) {
@@ -805,7 +825,9 @@ function parseDateWindowToken(
 
   if (isIsoDate(trimmed)) {
     const next = shiftIsoDate(trimmed, 1);
-    return next ? { after: trimmed, before: next } : { error: `Error: invalid date "${value}"` };
+    return next
+      ? { after: trimmed, before: next }
+      : { error: `Error: invalid date "${value}"` };
   }
 
   return { error: `Error: invalid date filter "${value}"` };
@@ -817,7 +839,7 @@ function createEmptyNoteSearchFilters(): NoteSearchFilters {
     titleFilters: [],
     pathFilters: [],
     tagFilters: [],
-    excludedTagFilters: []
+    excludedTagFilters: [],
   };
 }
 
@@ -829,15 +851,23 @@ function parseFormatToken(value: string): NoteOutputFormat | null {
   return null;
 }
 
-function parseNoteSearchFilters(rawQuery: string, context: ParseContext): {
-  ok: true;
-  filters: NoteSearchFilters;
-} | {
-  ok: false;
-  error: string;
-} {
+function parseNoteSearchFilters(
+  rawQuery: string,
+  context: ParseContext,
+):
+  | {
+      ok: true;
+      filters: NoteSearchFilters;
+    }
+  | {
+      ok: false;
+      error: string;
+    } {
   const filters = createEmptyNoteSearchFilters();
-  const tokens = rawQuery.split(/\s+/).map((token) => token.trim()).filter(Boolean);
+  const tokens = rawQuery
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
 
   for (const token of tokens) {
     const lowered = token.toLowerCase();
@@ -877,7 +907,10 @@ function parseNoteSearchFilters(rawQuery: string, context: ParseContext): {
       continue;
     }
     if (lowered.startsWith("created:")) {
-      const parsed = parseDateWindowToken(token.slice("created:".length), context);
+      const parsed = parseDateWindowToken(
+        token.slice("created:".length),
+        context,
+      );
       if (parsed.error) {
         return { ok: false, error: parsed.error };
       }
@@ -886,7 +919,10 @@ function parseNoteSearchFilters(rawQuery: string, context: ParseContext): {
       continue;
     }
     if (lowered.startsWith("updated:")) {
-      const parsed = parseDateWindowToken(token.slice("updated:".length), context);
+      const parsed = parseDateWindowToken(
+        token.slice("updated:".length),
+        context,
+      );
       if (parsed.error) {
         return { ok: false, error: parsed.error };
       }
@@ -897,7 +933,10 @@ function parseNoteSearchFilters(rawQuery: string, context: ParseContext): {
     if (lowered.startsWith("limit:")) {
       const parsed = Number.parseInt(token.slice("limit:".length), 10);
       if (!Number.isInteger(parsed) || parsed < 1) {
-        return { ok: false, error: `Error: invalid note search limit "${token}"` };
+        return {
+          ok: false,
+          error: `Error: invalid note search limit "${token}"`,
+        };
       }
       filters.limit = parsed;
       continue;
@@ -905,7 +944,10 @@ function parseNoteSearchFilters(rawQuery: string, context: ParseContext): {
     if (lowered.startsWith("format:")) {
       const parsed = parseFormatToken(token.slice("format:".length));
       if (!parsed) {
-        return { ok: false, error: `Error: note search format must be text|json` };
+        return {
+          ok: false,
+          error: `Error: note search format must be text|json`,
+        };
       }
       filters.format = parsed;
       continue;
@@ -916,11 +958,14 @@ function parseNoteSearchFilters(rawQuery: string, context: ParseContext): {
 
   return {
     ok: true,
-    filters
+    filters,
   };
 }
 
-function parseNoteQuickCommand(tokens: string[], context: ParseContext): ParseCommandResult {
+function parseNoteQuickCommand(
+  tokens: string[],
+  context: ParseContext,
+): ParseCommandResult {
   const tags: string[] = [];
   const aliases: string[] = [];
   const metadata: Record<string, string> = {};
@@ -952,12 +997,16 @@ function parseNoteQuickCommand(tokens: string[], context: ParseContext): ParseCo
       const pair = token.slice("--meta:".length);
       const separator = pair.indexOf("=");
       if (separator <= 0 || separator >= pair.length - 1) {
-        return error('Error: --meta:key=value requires non-empty key and value');
+        return error(
+          "Error: --meta:key=value requires non-empty key and value",
+        );
       }
       const key = pair.slice(0, separator).trim();
       const value = pair.slice(separator + 1).trim();
       if (!key || !value) {
-        return error('Error: --meta:key=value requires non-empty key and value');
+        return error(
+          "Error: --meta:key=value requires non-empty key and value",
+        );
       }
       metadata[key] = value;
       continue;
@@ -1001,8 +1050,14 @@ function parseNoteQuickCommand(tokens: string[], context: ParseContext): ParseCo
           ? (tokens[(index += 1)] ?? "")
           : token.slice("--capture-mode=".length);
       const normalized = value.trim().toLowerCase();
-      if (normalized !== "append" && normalized !== "new" && normalized !== "prompt") {
-        return error('Error: --capture-mode must be "append", "new", or "prompt"');
+      if (
+        normalized !== "append" &&
+        normalized !== "new" &&
+        normalized !== "prompt"
+      ) {
+        return error(
+          'Error: --capture-mode must be "append", "new", or "prompt"',
+        );
       }
       captureMode = normalized as NoteCaptureMode;
       continue;
@@ -1026,7 +1081,9 @@ function parseNoteQuickCommand(tokens: string[], context: ParseContext): ParseCo
     if (token === "@selected" || token.startsWith("id:")) {
       const parsedTarget = parseCommandTarget(token);
       if (!parsedTarget) {
-        return error('Error: note quick target must be "@selected" or "id:<task-id>"');
+        return error(
+          'Error: note quick target must be "@selected" or "id:<task-id>"',
+        );
       }
       if (target) {
         return error("Error: note quick accepts at most one task target");
@@ -1053,7 +1110,9 @@ function parseNoteQuickCommand(tokens: string[], context: ParseContext): ParseCo
     ) {
       title = `Quick Capture ${localIsoDate(new Date(context.now))}`;
     } else {
-      return error('Error: note quick requires a title (example: note q "Title" "Body")');
+      return error(
+        'Error: note quick requires a title (example: note q "Title" "Body")',
+      );
     }
   } else if (positional.length === 1) {
     const pipeIndex = positional[0].indexOf("|");
@@ -1069,7 +1128,9 @@ function parseNoteQuickCommand(tokens: string[], context: ParseContext): ParseCo
   }
 
   if (!title) {
-    return error('Error: note quick requires a title (example: note q "Title" "Body")');
+    return error(
+      'Error: note quick requires a title (example: note q "Title" "Body")',
+    );
   }
 
   return {
@@ -1089,15 +1150,15 @@ function parseNoteQuickCommand(tokens: string[], context: ParseContext): ParseCo
       ...(noLink ? { noLink: true } : {}),
       ...(fromTaskNotes ? { fromTaskNotes: true } : {}),
       ...(setPrimary ? { setPrimary: true } : {}),
-      ...(clearTaskNotes ? { clearTaskNotes: true } : {})
-    }
+      ...(clearTaskNotes ? { clearTaskNotes: true } : {}),
+    },
   };
 }
 
 function parseNoteSearchLikeCommand(
   operation: "search" | "query",
   tokens: string[],
-  context: ParseContext
+  context: ParseContext,
 ): ParseCommandResult {
   const queryTokens: string[] = [];
   let flagLimit: number | undefined;
@@ -1136,7 +1197,7 @@ function parseNoteSearchLikeCommand(
   const query = queryTokens.join(" ").trim();
   if (!query) {
     return error(
-      `Error: note ${operation} requires a query (example: note ${operation} \"tag:work title:retro\")`
+      `Error: note ${operation} requires a query (example: note ${operation} \"tag:work title:retro\")`,
     );
   }
 
@@ -1157,14 +1218,14 @@ function parseNoteSearchLikeCommand(
       type: "note",
       operation,
       query,
-      filters: parsed.filters
-    }
+      filters: parsed.filters,
+    },
   };
 }
 
 function parseNoteGraphLikeCommand(
   operation: "graph" | "links",
-  tokens: string[]
+  tokens: string[],
 ): ParseCommandResult {
   const queryTokens: string[] = [];
   let direction: NoteLinkDirection = "both";
@@ -1174,7 +1235,11 @@ function parseNoteGraphLikeCommand(
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index] ?? "";
     const lowered = token.toLowerCase();
-    if (lowered === "incoming" || lowered === "outgoing" || lowered === "both") {
+    if (
+      lowered === "incoming" ||
+      lowered === "outgoing" ||
+      lowered === "both"
+    ) {
       direction = lowered;
       continue;
     }
@@ -1184,9 +1249,15 @@ function parseNoteGraphLikeCommand(
         direction = raw;
         continue;
       }
-      return error("Error: note links direction must be incoming|outgoing|both");
+      return error(
+        "Error: note links direction must be incoming|outgoing|both",
+      );
     }
-    if (lowered === "--limit" || lowered.startsWith("--limit=") || lowered.startsWith("limit:")) {
+    if (
+      lowered === "--limit" ||
+      lowered.startsWith("--limit=") ||
+      lowered.startsWith("limit:")
+    ) {
       const rawValue = lowered.startsWith("limit:")
         ? token.slice("limit:".length)
         : lowered === "--limit"
@@ -1199,7 +1270,11 @@ function parseNoteGraphLikeCommand(
       limit = parsed;
       continue;
     }
-    if (lowered === "--format" || lowered.startsWith("--format=") || lowered.startsWith("format:")) {
+    if (
+      lowered === "--format" ||
+      lowered.startsWith("--format=") ||
+      lowered.startsWith("format:")
+    ) {
       const rawValue = lowered.startsWith("format:")
         ? token.slice("format:".length)
         : lowered === "--format"
@@ -1228,16 +1303,20 @@ function parseNoteGraphLikeCommand(
       query,
       direction,
       ...(limit !== undefined ? { limit } : {}),
-      ...(format ? { format } : {})
-    }
+      ...(format ? { format } : {}),
+    },
   };
 }
 
-function parseNoteCommand(tokens: string[], context: ParseContext): ParseCommandResult {
+const NOTE_SUBCOMMANDS =
+  "new|template|q|quick|capture|open|search|query|graph|links|delete|restore-defaults|reindex|help|root set";
+
+function parseNoteCommand(
+  tokens: string[],
+  context: ParseContext,
+): ParseCommandResult {
   if (tokens.length === 0) {
-    return error(
-      "Error: note requires subcommand new|template|q|quick|capture|open|search|query|graph|links|delete|restore-defaults|reindex|help|root set"
-    );
+    return error(`Error: note requires subcommand ${NOTE_SUBCOMMANDS}`);
   }
 
   const operation = tokens[0]?.toLowerCase();
@@ -1251,8 +1330,8 @@ function parseNoteCommand(tokens: string[], context: ParseContext): ParseCommand
       ok: true,
       command: {
         type: "note",
-        operation: "help"
-      }
+        operation: "help",
+      },
     };
   }
 
@@ -1277,7 +1356,9 @@ function parseNoteCommand(tokens: string[], context: ParseContext): ParseCommand
     }
     const title = titleTokens.join(" ").trim();
     if (!title) {
-      return error('Error: note new requires a title (example: note new "Title")');
+      return error(
+        'Error: note new requires a title (example: note new "Title")',
+      );
     }
     return {
       ok: true,
@@ -1285,8 +1366,8 @@ function parseNoteCommand(tokens: string[], context: ParseContext): ParseCommand
         type: "note",
         operation: "new",
         title,
-        ...(template ? { template } : {})
-      }
+        ...(template ? { template } : {}),
+      },
     };
   }
 
@@ -1294,7 +1375,9 @@ function parseNoteCommand(tokens: string[], context: ParseContext): ParseCommand
     const template = rest[0]?.trim() ?? "";
     const title = rest.slice(1).join(" ").trim();
     if (!template) {
-      return error('Error: note template requires a template id (example: note template meeting)');
+      return error(
+        "Error: note template requires a template id (example: note template meeting)",
+      );
     }
     return {
       ok: true,
@@ -1302,8 +1385,8 @@ function parseNoteCommand(tokens: string[], context: ParseContext): ParseCommand
         type: "note",
         operation: "template",
         template,
-        ...(title ? { title } : {})
-      }
+        ...(title ? { title } : {}),
+      },
     };
   }
 
@@ -1314,15 +1397,17 @@ function parseNoteCommand(tokens: string[], context: ParseContext): ParseCommand
   if (operation === "open") {
     const query = rest.join(" ").trim();
     if (!query) {
-      return error('Error: note open requires a query (example: note open "Query")');
+      return error(
+        'Error: note open requires a query (example: note open "Query")',
+      );
     }
     return {
       ok: true,
       command: {
         type: "note",
         operation: "open",
-        query
-      }
+        query,
+      },
     };
   }
 
@@ -1345,15 +1430,17 @@ function parseNoteCommand(tokens: string[], context: ParseContext): ParseCommand
   if (operation === "delete") {
     const query = rest.join(" ").trim();
     if (!query) {
-      return error('Error: note delete requires a query (example: note delete "Query")');
+      return error(
+        'Error: note delete requires a query (example: note delete "Query")',
+      );
     }
     return {
       ok: true,
       command: {
         type: "note",
         operation: "delete",
-        query
-      }
+        query,
+      },
     };
   }
 
@@ -1365,8 +1452,8 @@ function parseNoteCommand(tokens: string[], context: ParseContext): ParseCommand
       ok: true,
       command: {
         type: "note",
-        operation: "restore_defaults"
-      }
+        operation: "restore_defaults",
+      },
     };
   }
 
@@ -1378,8 +1465,8 @@ function parseNoteCommand(tokens: string[], context: ParseContext): ParseCommand
       ok: true,
       command: {
         type: "note",
-        operation: "reindex"
-      }
+        operation: "reindex",
+      },
     };
   }
 
@@ -1390,21 +1477,21 @@ function parseNoteCommand(tokens: string[], context: ParseContext): ParseCommand
     }
     const rootPath = rest.slice(1).join(" ").trim();
     if (!rootPath) {
-      return error('Error: note root set requires a path (example: note root set "/path/to/notes")');
+      return error(
+        'Error: note root set requires a path (example: note root set "/path/to/notes")',
+      );
     }
     return {
       ok: true,
       command: {
         type: "note",
         operation: "root_set",
-        path: rootPath
-      }
+        path: rootPath,
+      },
     };
   }
 
-  return error(
-    "Error: note requires subcommand new|template|q|quick|capture|open|search|query|graph|links|delete|restore-defaults|reindex|help|root set"
-  );
+  return error(`Error: note requires subcommand ${NOTE_SUBCOMMANDS}`);
 }
 
 const WEEKDAYS = new Set(["mon", "tue", "wed", "thu", "fri", "sat", "sun"]);
@@ -1426,12 +1513,12 @@ function parseRecurCommand(tokens: string[]): ParseCommandResult {
     }
     return {
       ok: true,
-      command: { type: "recur", target, clear: true }
+      command: { type: "recur", target, clear: true },
     };
   }
 
   if (!second.startsWith("every:")) {
-    return error('Error: recur requires every:day|week|month');
+    return error("Error: recur requires every:day|week|month");
   }
 
   const rawEvery = second.slice(6).trim().toLowerCase();
@@ -1444,12 +1531,18 @@ function parseRecurCommand(tokens: string[]): ParseCommandResult {
           ? "month"
           : rawEvery;
 
-  if (normalizedEvery !== "day" && normalizedEvery !== "week" && normalizedEvery !== "month") {
+  if (
+    normalizedEvery !== "day" &&
+    normalizedEvery !== "week" &&
+    normalizedEvery !== "month"
+  ) {
     return error(`Error: invalid every value "${rawEvery}"`);
   }
   const every = normalizedEvery as RecurEvery;
   let interval = 1;
-  let onDays: Array<"mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun"> | undefined;
+  let onDays:
+    | Array<"mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun">
+    | undefined;
   let onMonthDays: number[] | undefined;
 
   for (let i = 2; i < tokens.length; i += 1) {
@@ -1494,10 +1587,12 @@ function parseRecurCommand(tokens: string[]): ParseCommandResult {
         return error(`Error: invalid monthly on value "${raw}"`);
       }
       const parsedMonthDays = Array.from(
-        new Set(values.map((value) => Number.parseInt(value, 10)))
+        new Set(values.map((value) => Number.parseInt(value, 10))),
       );
       if (
-        parsedMonthDays.some((value) => !Number.isInteger(value) || value < 1 || value > 31)
+        parsedMonthDays.some(
+          (value) => !Number.isInteger(value) || value < 1 || value > 31,
+        )
       ) {
         return error(`Error: invalid monthly on value "${raw}"`);
       }
@@ -1516,8 +1611,8 @@ function parseRecurCommand(tokens: string[]): ParseCommandResult {
       every,
       interval,
       ...(onDays ? { onDays } : {}),
-      ...(onMonthDays ? { onMonthDays } : {})
-    }
+      ...(onMonthDays ? { onMonthDays } : {}),
+    },
   };
 }
 
@@ -1552,7 +1647,7 @@ export function tokenize(input: string): string[] {
 
 export function parseCommand(
   input: string,
-  options: ParseCommandOptions = {}
+  options: ParseCommandOptions = {},
 ): ParseCommandResult {
   const trimmed = input.trim();
   if (!trimmed) return error("Error: command is empty");
@@ -1561,7 +1656,11 @@ export function parseCommand(
   try {
     tokens = tokenize(trimmed);
   } catch (tokenError) {
-    return error(tokenError instanceof Error ? tokenError.message : "Error: invalid command");
+    return error(
+      tokenError instanceof Error
+        ? tokenError.message
+        : "Error: invalid command",
+    );
   }
   if (tokens.length === 0) return error("Error: command is empty");
 
@@ -1572,7 +1671,7 @@ export function parseCommand(
   const firstTokenQuoted = remainder.startsWith('"');
   const context: ParseContext = {
     now: options.now ?? Date.now(),
-    tz: options.tz ?? MINI_DEFAULT_TIMEZONE
+    tz: options.tz ?? MINI_DEFAULT_TIMEZONE,
   };
 
   if (commandName === "add") {
@@ -1606,7 +1705,10 @@ export function parseCommand(
     return parseNoteCommand(args, context);
   }
   if (commandName.startsWith("note:")) {
-    return parseNoteCommand([commandName.slice("note:".length), ...args], context);
+    return parseNoteCommand(
+      [commandName.slice("note:".length), ...args],
+      context,
+    );
   }
   if (commandName === "nq") {
     return parseNoteCommand(["q", ...args], context);

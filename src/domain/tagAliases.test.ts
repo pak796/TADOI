@@ -4,7 +4,7 @@ import {
   computeTagStats,
   normalizeTagAliases,
   resolveTag,
-  rewriteTagsOnTask
+  rewriteTagsOnTask,
 } from "./tagAliases";
 
 function makeTask(partial: Partial<Task> & Pick<Task, "id" | "title">): Task {
@@ -16,7 +16,7 @@ function makeTask(partial: Partial<Task> & Pick<Task, "id" | "title">): Task {
     updatedAt: partial.updatedAt ?? 1,
     dueAt: partial.dueAt,
     hasExplicitTime: partial.hasExplicitTime,
-    tags: partial.tags ?? []
+    tags: partial.tags ?? [],
   };
 }
 
@@ -29,26 +29,30 @@ describe("tagAliases", () => {
       b: "c",
       c: "c",
       loop1: "loop2",
-      loop2: "loop1"
+      loop2: "loop1",
     });
 
     expect(aliases).toEqual({
       a: "c",
       b: "c",
-      legacy: "work"
+      legacy: "work",
     });
   });
 
   it("resolves aliases with chain support and cycle safety", () => {
-    expect(resolveTag("legacy", { legacy: "work", work: "project" })).toBe("project");
-    expect(resolveTag("loop1", { loop1: "loop2", loop2: "loop1" })).toBe("loop1");
+    expect(resolveTag("legacy", { legacy: "work", work: "project" })).toBe(
+      "project",
+    );
+    expect(resolveTag("loop1", { loop1: "loop2", loop2: "loop1" })).toBe(
+      "loop1",
+    );
   });
 
   it("computes tag stats and rewrite helper results", () => {
     const tasks: Task[] = [
       makeTask({ id: "1", title: "a", tags: ["Work", "project"] }),
       makeTask({ id: "2", title: "b", tags: ["work", "urgent"] }),
-      makeTask({ id: "3", title: "c", tags: ["legacy"] })
+      makeTask({ id: "3", title: "c", tags: ["legacy"] }),
     ];
     const aliases = normalizeTagAliases({ legacy: "work" });
     const stats = computeTagStats(tasks, aliases, "work");
@@ -56,17 +60,20 @@ describe("tagAliases", () => {
     expect(stats.selectedCanonical).toBe("work");
     expect(stats.usageCount).toBe(3);
     expect(stats.incomingAliases).toEqual(["legacy"]);
-    expect(stats.topCoTags.map((entry) => entry.tag)).toEqual(["project", "urgent"]);
+    expect(stats.topCoTags.map((entry) => entry.tag)).toEqual([
+      "project",
+      "urgent",
+    ]);
 
     const rewritten = rewriteTagsOnTask(
       makeTask({
         id: "x",
         title: "rewrite",
-        tags: ["work", "legacy", "project", "#p1", "work"]
+        tags: ["work", "legacy", "project", "#p1", "work"],
       }),
       new Map([["work", "career"]]),
       aliases,
-      500
+      500,
     );
 
     expect(rewritten.tags).toEqual(["#p1", "career", "project"]);

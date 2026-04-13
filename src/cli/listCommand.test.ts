@@ -11,7 +11,7 @@ function createLoadedData(overrides: Partial<LoadedData> = {}): LoadedData {
     tagIndex: {},
     savedViews: [],
     engagement: createDefaultEngagementState(),
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -23,18 +23,18 @@ describe("parseListArgs", () => {
       selectors: ["+work"],
       sortMode: "updated",
       limit: 3,
-      help: false
+      help: false,
     });
   });
 
   it("rejects invalid sort and limit values", () => {
     expect(parseListArgs(["--sort", "rank"])).toEqual({
       ok: false,
-      error: "--sort must be due, updated, created, or title"
+      error: "--sort must be due, updated, created, or title",
     });
     expect(parseListArgs(["--limit", "0"])).toEqual({
       ok: false,
-      error: "--limit must be a positive integer"
+      error: "--limit must be a positive integer",
     });
   });
 });
@@ -48,7 +48,7 @@ describe("runListCommandWithDeps", () => {
       getDataFilePath: () => "/tmp/tadoi_data.json",
       loadData: async () => loadedData,
       log: (line: string) => logs.push(line),
-      error: (line: string) => errors.push(line)
+      error: (line: string) => errors.push(line),
     };
     return { deps, logs, errors };
   }
@@ -63,7 +63,7 @@ describe("runListCommandWithDeps", () => {
           createdAt: 1,
           updatedAt: 2,
           tags: ["work"],
-          workflowStage: "todo"
+          workflowStage: "todo",
         },
         {
           id: "done-b",
@@ -72,9 +72,9 @@ describe("runListCommandWithDeps", () => {
           createdAt: 1,
           updatedAt: 3,
           tags: ["work"],
-          workflowStage: "done"
-        }
-      ]
+          workflowStage: "done",
+        },
+      ],
     });
     const { deps, errors } = createDeps(loaded);
 
@@ -85,13 +85,13 @@ describe("runListCommandWithDeps", () => {
       type: "tadoi.list.v1",
       filters: { status: "open", due: "any" },
       sort: "due",
-      count: 1
+      count: 1,
     });
     expect(result.data?.tasks[0]).toMatchObject({
       id: "open-a",
       status: "open",
       dueAt: null,
-      hasExplicitTime: false
+      hasExplicitTime: false,
     });
   });
 
@@ -105,7 +105,7 @@ describe("runListCommandWithDeps", () => {
           createdAt: 1,
           updatedAt: 10,
           tags: ["work"],
-          workflowStage: "todo"
+          workflowStage: "todo",
         },
         {
           id: "b",
@@ -114,7 +114,7 @@ describe("runListCommandWithDeps", () => {
           createdAt: 1,
           updatedAt: 20,
           tags: ["work"],
-          workflowStage: "todo"
+          workflowStage: "todo",
         },
         {
           id: "c",
@@ -123,16 +123,16 @@ describe("runListCommandWithDeps", () => {
           createdAt: 1,
           updatedAt: 30,
           tags: ["home"],
-          workflowStage: "todo"
-        }
-      ]
+          workflowStage: "todo",
+        },
+      ],
     });
     const { deps } = createDeps(loaded);
 
     const result = await runListCommandWithDeps(
       ["+work", "--sort", "updated", "--limit", "1"],
       { json: true },
-      deps
+      deps,
     );
     expect(result.exitCode).toBe(0);
     expect(result.data?.count).toBe(1);
@@ -149,9 +149,9 @@ describe("runListCommandWithDeps", () => {
           createdAt: 1,
           updatedAt: 1,
           tags: [],
-          workflowStage: "todo"
-        }
-      ]
+          workflowStage: "todo",
+        },
+      ],
     });
     const { deps, logs, errors } = createDeps(loaded);
     const result = await runListCommandWithDeps([], { json: false }, deps);
@@ -161,4 +161,3 @@ describe("runListCommandWithDeps", () => {
     expect(logs).toEqual(["[list] count: 1", "[open] task-1 Alpha"]);
   });
 });
-

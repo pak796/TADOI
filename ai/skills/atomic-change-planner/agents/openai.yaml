@@ -1,0 +1,4 @@
+interface:
+  display_name: "Atomic Change Planner"
+  short_description: "Split broad requests into atomic patch plans"
+  default_prompt: "Use $atomic-change-planner to convert a broad request into ordered, testable atomic patches with rollback notes."

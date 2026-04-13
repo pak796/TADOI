@@ -37,7 +37,9 @@ export function normalizeTagCompat(raw: string): string | null {
   return normalizeTag(collapseTagWhitespace(raw));
 }
 
-export function normalizeTagAliases(input: Record<string, string> | undefined): TagAliases {
+export function normalizeTagAliases(
+  input: Record<string, string> | undefined,
+): TagAliases {
   if (!input) return {};
   const next: TagAliases = {};
   for (const [rawSource, rawTarget] of Object.entries(input)) {
@@ -51,14 +53,17 @@ export function normalizeTagAliases(input: Record<string, string> | undefined): 
   return compressTagAliases(next);
 }
 
-export function resolveTagWithMeta(raw: string, aliases: TagAliases): ResolveTagMeta {
+export function resolveTagWithMeta(
+  raw: string,
+  aliases: TagAliases,
+): ResolveTagMeta {
   const normalized = normalizeTagCompat(raw);
   if (!normalized) {
     return {
       canonical: null,
       chain: [],
       cycleDetected: false,
-      depthCapped: false
+      depthCapped: false,
     };
   }
 
@@ -76,7 +81,7 @@ export function resolveTagWithMeta(raw: string, aliases: TagAliases): ResolveTag
         canonical: current,
         chain,
         cycleDetected,
-        depthCapped
+        depthCapped,
       };
     }
     if (seen.has(next)) {
@@ -86,7 +91,7 @@ export function resolveTagWithMeta(raw: string, aliases: TagAliases): ResolveTag
         canonical: root,
         chain,
         cycleDetected,
-        depthCapped
+        depthCapped,
       };
     }
     current = next;
@@ -99,7 +104,7 @@ export function resolveTagWithMeta(raw: string, aliases: TagAliases): ResolveTag
     canonical: current,
     chain,
     cycleDetected,
-    depthCapped
+    depthCapped,
   };
 }
 
@@ -113,7 +118,12 @@ export function compressTagAliases(aliases: TagAliases): TagAliases {
   for (const source of Object.keys(normalized)) {
     const resolution = resolveTagWithMeta(source, normalized);
     const resolved = resolution.canonical;
-    if (!resolved || resolved === source || resolution.cycleDetected || resolution.depthCapped) {
+    if (
+      !resolved ||
+      resolved === source ||
+      resolution.cycleDetected ||
+      resolution.depthCapped
+    ) {
       continue;
     }
     compressed[source] = resolved;
@@ -121,7 +131,10 @@ export function compressTagAliases(aliases: TagAliases): TagAliases {
   return compressed;
 }
 
-export function computeTagUsage(tasks: Task[], aliases: TagAliases): Map<string, number> {
+export function computeTagUsage(
+  tasks: Task[],
+  aliases: TagAliases,
+): Map<string, number> {
   const usage = new Map<string, number>();
   for (const task of tasks) {
     if (task.status === "archived") continue;
@@ -142,10 +155,12 @@ export function computeTagUsage(tasks: Task[], aliases: TagAliases): Map<string,
 export function computeTagStats(
   tasks: Task[],
   aliases: TagAliases,
-  selectedTagInput?: string
+  selectedTagInput?: string,
 ): TagStats {
   const usage = computeTagUsage(tasks, aliases);
-  const selectedCanonical = selectedTagInput ? resolveTag(selectedTagInput, aliases) ?? undefined : undefined;
+  const selectedCanonical = selectedTagInput
+    ? (resolveTag(selectedTagInput, aliases) ?? undefined)
+    : undefined;
 
   let taggedTaskCount = 0;
   const coTagCounts = new Map<string, number>();
@@ -180,12 +195,16 @@ export function computeTagStats(
 
   const incomingAliases = selectedCanonical
     ? Object.entries(aliases)
-        .filter(([, target]) => resolveTag(target, aliases) === selectedCanonical)
+        .filter(
+          ([, target]) => resolveTag(target, aliases) === selectedCanonical,
+        )
         .map(([source]) => source)
         .sort((a, b) => a.localeCompare(b))
     : [];
 
-  const outgoingAliasTarget = selectedCanonical ? aliases[selectedCanonical] : undefined;
+  const outgoingAliasTarget = selectedCanonical
+    ? aliases[selectedCanonical]
+    : undefined;
 
   const topCoTags = Array.from(coTagCounts.entries())
     .map(([tag, count]) => ({ tag, count }))
@@ -197,7 +216,9 @@ export function computeTagStats(
     })
     .slice(0, 5);
 
-  const usageCount = selectedCanonical ? usage.get(selectedCanonical) ?? 0 : 0;
+  const usageCount = selectedCanonical
+    ? (usage.get(selectedCanonical) ?? 0)
+    : 0;
 
   return {
     ...(selectedCanonical ? { selectedCanonical } : {}),
@@ -205,13 +226,14 @@ export function computeTagStats(
     usageCount,
     ...(selectedCanonical && taggedTaskCount > 0
       ? {
-          percentOfTaggedTasks: Math.round((usageCount / taggedTaskCount) * 1000) / 10
+          percentOfTaggedTasks:
+            Math.round((usageCount / taggedTaskCount) * 1000) / 10,
         }
       : {}),
     topCoTags,
     incomingAliases,
     ...(outgoingAliasTarget ? { outgoingAliasTarget } : {}),
-    normalizedCollisionCount: rawCollisions.size
+    normalizedCollisionCount: rawCollisions.size,
   };
 }
 
@@ -219,7 +241,7 @@ export function rewriteTagsOnTask(
   task: Task,
   rewriteMap: Map<string, string>,
   aliases: TagAliases,
-  now: number
+  now: number,
 ): Task {
   const nextTags: string[] = [];
   for (const rawTag of task.tags) {
@@ -237,6 +259,6 @@ export function rewriteTagsOnTask(
   return {
     ...task,
     tags: normalized,
-    updatedAt: now
+    updatedAt: now,
   };
 }

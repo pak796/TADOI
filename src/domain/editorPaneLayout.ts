@@ -57,7 +57,7 @@ type NormalizedEstimateOptions = {
 
 export function getEditorRecurrenceVisibility(
   repeatMode: EditorDraft["repeatMode"] | undefined,
-  repeatEndMode: EditorDraft["repeatEndMode"] | undefined
+  repeatEndMode: EditorDraft["repeatEndMode"] | undefined,
 ): EditorRecurrenceVisibility {
   const mode = repeatMode ?? "off";
   const endMode = repeatEndMode ?? "never";
@@ -73,7 +73,7 @@ export function getEditorRecurrenceVisibility(
       showRepeatEnd: false,
       showUntil: false,
       showCount: false,
-      showPreview: false
+      showPreview: false,
     };
   }
 
@@ -87,7 +87,7 @@ export function getEditorRecurrenceVisibility(
       showRepeatEnd: false,
       showUntil: false,
       showCount: false,
-      showPreview: true
+      showPreview: true,
     };
   }
 
@@ -104,12 +104,12 @@ export function getEditorRecurrenceVisibility(
     showRepeatEnd,
     showUntil,
     showCount,
-    showPreview: true
+    showPreview: true,
   };
 }
 
 export function getEditorReminderVisibility(
-  reminderKind: EditorDraft["reminderKind"] | undefined
+  reminderKind: EditorDraft["reminderKind"] | undefined,
 ): EditorReminderVisibility {
   const kind =
     reminderKind === "absolute" || reminderKind === "before_due"
@@ -118,12 +118,12 @@ export function getEditorReminderVisibility(
   return {
     kind,
     showAbsolute: kind === "absolute",
-    showBeforeDue: kind === "before_due"
+    showBeforeDue: kind === "before_due",
   };
 }
 
 function normalizeEstimateOptions(
-  options: EditorContentEstimateOptions = {}
+  options: EditorContentEstimateOptions = {},
 ): NormalizedEstimateOptions {
   return {
     hasTitleSuggestion: options.hasTitleSuggestion === true,
@@ -131,11 +131,17 @@ function normalizeEstimateOptions(
     hasTimeSuggestion: options.hasTimeSuggestion === true,
     reminderKind: options.reminderKind ?? "none",
     hasTagSuggestion: options.hasTagSuggestion === true,
-    checklistItemCount: Math.max(0, Math.floor(options.checklistItemCount ?? 0)),
+    checklistItemCount: Math.max(
+      0,
+      Math.floor(options.checklistItemCount ?? 0),
+    ),
     repeatMode: options.repeatMode ?? "off",
     repeatEndMode: options.repeatEndMode ?? "never",
     previewRows: Math.max(1, options.previewRows ?? DEFAULT_PREVIEW_ROWS),
-    notesVisibleRows: Math.max(1, options.notesVisibleRows ?? DEFAULT_NOTES_VISIBLE_ROWS)
+    notesVisibleRows: Math.max(
+      1,
+      options.notesVisibleRows ?? DEFAULT_NOTES_VISIBLE_ROWS,
+    ),
   };
 }
 
@@ -210,7 +216,8 @@ function buildEditorLineModel(options: NormalizedEstimateOptions): {
     markReminderAnchor("reminder_offset_unit");
   }
 
-  const reminderFallbackAnchor = firstVisibleReminderAnchor ?? anchors.reminder_kind;
+  const reminderFallbackAnchor =
+    firstVisibleReminderAnchor ?? anchors.reminder_kind;
   anchors.reminder_at_date ??= reminderFallbackAnchor;
   anchors.reminder_at_time ??= reminderFallbackAnchor;
   anchors.reminder_offset_value ??= reminderFallbackAnchor;
@@ -226,7 +233,7 @@ function buildEditorLineModel(options: NormalizedEstimateOptions): {
 
   const recurrenceVisibility = getEditorRecurrenceVisibility(
     options.repeatMode,
-    options.repeatEndMode
+    options.repeatEndMode,
   );
   let firstVisibleRecurrenceAnchor: number | null = null;
 
@@ -301,13 +308,15 @@ function buildEditorLineModel(options: NormalizedEstimateOptions): {
   }
 
   // Hidden recurrence targets anchor to the nearest visible recurrence row, or repeat mode.
-  const recurrenceFallbackAnchor = firstVisibleRecurrenceAnchor ?? anchors.repeat_mode;
+  const recurrenceFallbackAnchor =
+    firstVisibleRecurrenceAnchor ?? anchors.repeat_mode;
   anchors.repeat_interval ??= recurrenceFallbackAnchor;
   anchors.repeat_weekdays ??= recurrenceFallbackAnchor;
   anchors.repeat_monthday ??= recurrenceFallbackAnchor;
   anchors.repeat_custom ??= recurrenceFallbackAnchor;
   anchors.repeat_end_mode ??= recurrenceFallbackAnchor;
-  const repeatEndFallbackAnchor = anchors.repeat_end_mode ?? recurrenceFallbackAnchor;
+  const repeatEndFallbackAnchor =
+    anchors.repeat_end_mode ?? recurrenceFallbackAnchor;
   anchors.repeat_until ??= repeatEndFallbackAnchor;
   anchors.repeat_count ??= repeatEndFallbackAnchor;
 
@@ -359,15 +368,20 @@ function buildEditorLineModel(options: NormalizedEstimateOptions): {
   return { totalLines: line, anchors };
 }
 
-export function getEditorViewportHeights(totalHeightLines: number): EditorViewportHeights {
+export function getEditorViewportHeights(
+  totalHeightLines: number,
+): EditorViewportHeights {
   const safeTotal = Math.max(1, Math.floor(totalHeightLines));
-  const footerHeight = Math.min(EDITOR_FOOTER_HEIGHT, Math.max(0, safeTotal - 1));
+  const footerHeight = Math.min(
+    EDITOR_FOOTER_HEIGHT,
+    Math.max(0, safeTotal - 1),
+  );
   const contentHeight = Math.max(1, safeTotal - footerHeight);
   return { contentHeight, footerHeight };
 }
 
 export function estimateEditorContentLines(
-  options: EditorContentEstimateOptions = {}
+  options: EditorContentEstimateOptions = {},
 ): number {
   const normalized = normalizeEstimateOptions(options);
   return buildEditorLineModel(normalized).totalLines;
@@ -375,7 +389,7 @@ export function estimateEditorContentLines(
 
 export function getEditorFocusAnchorLine(
   focus: EditorFocus,
-  options: EditorContentEstimateOptions = {}
+  options: EditorContentEstimateOptions = {},
 ): number {
   const normalized = normalizeEstimateOptions(options);
   const model = buildEditorLineModel(normalized);
@@ -384,7 +398,7 @@ export function getEditorFocusAnchorLine(
 
 export function hasEditorOverflow(
   totalHeightLines: number,
-  estimatedContentLines: number
+  estimatedContentLines: number,
 ): boolean {
   const { contentHeight } = getEditorViewportHeights(totalHeightLines);
   return estimatedContentLines > contentHeight;

@@ -15,7 +15,10 @@ function stripCodeFences(markdown: string): string {
 function normalizeNestedTag(rawToken: string): string | null {
   const raw = rawToken.trim().replace(/^#+/, "");
   if (!raw) return null;
-  const parts = raw.split("/").map((part) => part.trim()).filter((part) => part.length > 0);
+  const parts = raw
+    .split("/")
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
   if (parts.length === 0) return null;
 
   if (parts.length === 1) {
@@ -47,8 +50,8 @@ function normalizeTagWithWarning(rawToken: string): {
       warning: {
         code: "tag_normalization",
         message: `Ignored invalid tag: ${rawToken}`,
-        raw: rawToken
-      }
+        raw: rawToken,
+      },
     };
   }
 
@@ -59,8 +62,8 @@ function normalizeTagWithWarning(rawToken: string): {
         code: "tag_normalization",
         message: `Normalized tag ${raw} -> ${normalized}`,
         raw,
-        normalized
-      }
+        normalized,
+      },
     };
   }
 
@@ -86,12 +89,14 @@ export function parseNoteTags(options: {
   markdown: string;
   frontmatterTags?: string[];
 }): ParsedNoteTags {
-  const warnings: Array<Pick<NoteWarning, "code" | "message" | "raw" | "normalized">> = [];
+  const warnings: Array<
+    Pick<NoteWarning, "code" | "message" | "raw" | "normalized">
+  > = [];
   const tags = new Set<string>();
 
   const candidates = [
     ...(options.frontmatterTags ?? []),
-    ...parseInlineTags(options.markdown)
+    ...parseInlineTags(options.markdown),
   ];
 
   for (const rawCandidate of candidates) {
@@ -106,14 +111,19 @@ export function parseNoteTags(options: {
 
   return {
     tags: Array.from(tags).sort((left, right) => left.localeCompare(right)),
-    warnings
+    warnings,
   };
 }
 
-export function noteTagMatchesFilter(noteTag: string, filterTag: string): boolean {
+export function noteTagMatchesFilter(
+  noteTag: string,
+  filterTag: string,
+): boolean {
   const normalizedFilter = normalizeNestedTag(filterTag);
   if (!normalizedFilter) return false;
-  return noteTag === normalizedFilter || noteTag.startsWith(`${normalizedFilter}/`);
+  return (
+    noteTag === normalizedFilter || noteTag.startsWith(`${normalizedFilter}/`)
+  );
 }
 
 export function rankNoteTags(options: {
@@ -127,15 +137,18 @@ export function rankNoteTags(options: {
       {
         tagName: tag,
         usageCount: 1,
-        lastUsedAt: now - index
-      }
-    ])
+        lastUsedAt: now - index,
+      },
+    ]),
   );
   return rankTags(tagIndex, options.query);
 }
 
 export function expandHierarchicalTagKeys(tag: string): string[] {
-  const parts = tag.split("/").map((part) => part.trim()).filter((part) => part.length > 0);
+  const parts = tag
+    .split("/")
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
   if (parts.length === 0) return [];
 
   const keys: string[] = [];

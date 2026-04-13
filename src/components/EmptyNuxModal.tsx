@@ -1,6 +1,10 @@
 import { themeForObject } from "../app/theme";
 import type { EmptyNuxStep } from "../ui/state";
-import { ModalActionButton, ModalActionRow, ModalContainer } from "./ModalPrimitives";
+import {
+  ModalActionButton,
+  ModalActionRow,
+  ModalContainer,
+} from "./ModalPrimitives";
 
 type EmptyNuxModalProps = {
   step: EmptyNuxStep;
@@ -31,7 +35,9 @@ export type EmptyNuxModalMeta = {
   closeAction: "dismiss_session" | "clear_walkthrough";
 };
 
-export function resolveEmptyNuxModalMeta(step: EmptyNuxStep): EmptyNuxModalMeta {
+export function resolveEmptyNuxModalMeta(
+  step: EmptyNuxStep,
+): EmptyNuxModalMeta {
   if (step === "shortcuts") {
     return { title: "TADOI SHORTCUTS", closeAction: "clear_walkthrough" };
   }
@@ -44,7 +50,9 @@ export function resolveEmptyNuxModalMeta(step: EmptyNuxStep): EmptyNuxModalMeta 
   return { title: "WELCOME TO TADOI", closeAction: "dismiss_session" };
 }
 
-export function describeOnboardingProgress(progress: EmptyNuxOnboardingProgress): {
+export function describeOnboardingProgress(
+  progress: EmptyNuxOnboardingProgress,
+): {
   label: string;
   chips: string[];
 } {
@@ -53,8 +61,8 @@ export function describeOnboardingProgress(progress: EmptyNuxOnboardingProgress)
     chips: [
       `${progress.firstTask ? "[x]" : "[ ]"} TASK`,
       `${progress.firstTome ? "[x]" : "[ ]"} TOME`,
-      `${progress.firstChecklistComplete ? "[x]" : "[ ]"} CHECKLIST`
-    ]
+      `${progress.firstChecklistComplete ? "[x]" : "[ ]"} CHECKLIST`,
+    ],
   };
 }
 
@@ -71,13 +79,15 @@ export function EmptyNuxModal({
   onClearWalkthrough,
   onGoToList,
   onboardingProgress,
-  showImportBackupAction = false
+  showImportBackupAction = false,
 }: EmptyNuxModalProps) {
   const theme = themeForObject("modal");
   const modalWidth = 64;
   const meta = resolveEmptyNuxModalMeta(step);
   const closeAction =
-    meta.closeAction === "dismiss_session" ? onDismissSession : onClearWalkthrough;
+    meta.closeAction === "dismiss_session"
+      ? onDismissSession
+      : onClearWalkthrough;
   const showOnboardingProgress = step === "celebrate" || step === "what_next";
   const onboardingDisplay = describeOnboardingProgress(onboardingProgress);
 
@@ -85,19 +95,30 @@ export function EmptyNuxModal({
     <ModalContainer theme={theme} minWidth={modalWidth}>
       <box style={{ flexDirection: "row", justifyContent: "space-between" }}>
         <text style={{ fontWeight: "bold" }}>{meta.title}</text>
-        <ModalActionButton theme={theme} label="CLOSE" onPress={closeAction} paddingX={2} />
+        <ModalActionButton
+          theme={theme}
+          label="CLOSE"
+          onPress={closeAction}
+          paddingX={2}
+        />
       </box>
 
       {showOnboardingProgress ? (
         <box style={{ marginTop: 1, flexDirection: "column" }}>
-          <text style={{ color: theme.text, fontWeight: "bold" }}>{onboardingDisplay.label}</text>
-          <text style={{ color: theme.muted }}>{onboardingDisplay.chips.join("  ")}</text>
+          <text style={{ color: theme.text, fontWeight: "bold" }}>
+            {onboardingDisplay.label}
+          </text>
+          <text style={{ color: theme.muted }}>
+            {onboardingDisplay.chips.join("  ")}
+          </text>
         </box>
       ) : null}
 
       {step === "welcome" ? (
         <>
-          <text style={{ marginTop: 1 }}>Press A or Enter to create your first task.</text>
+          <text style={{ marginTop: 1 }}>
+            Press A or Enter to create your first task.
+          </text>
           <text style={{ color: theme.muted }}>
             Press S or Esc to skip this walkthrough for now.
           </text>
@@ -140,7 +161,9 @@ export function EmptyNuxModal({
           <text style={{ marginTop: 1 }}>A or Enter: create a task.</text>
           <text>Esc: return to welcome.</text>
           <text>J/K or Arrow keys: move selection.</text>
-          <text style={{ color: theme.muted }}>Use ? anytime to open full help.</text>
+          <text style={{ color: theme.muted }}>
+            Use ? anytime to open full help.
+          </text>
           <ModalActionRow marginTop={1}>
             <ModalActionButton
               theme={theme}
@@ -161,7 +184,9 @@ export function EmptyNuxModal({
 
       {step === "celebrate" ? (
         <>
-          <text style={{ marginTop: 1 }}>Nice start. Your first task is saved.</text>
+          <text style={{ marginTop: 1 }}>
+            Nice start. Your first task is saved.
+          </text>
           <text style={{ color: theme.muted }}>
             Press Enter for next steps, or press A to create another task.
           </text>
@@ -199,9 +224,12 @@ export function EmptyNuxModal({
 
       {step === "what_next" ? (
         <>
-          <text style={{ marginTop: 1 }}>Complete onboarding with these quick actions.</text>
+          <text style={{ marginTop: 1 }}>
+            Complete onboarding with these quick actions.
+          </text>
           <text style={{ color: theme.muted }}>
-            Build your first TOME note, add checklist items, then return to list.
+            Build your first TOME note, add checklist items, then return to
+            list.
           </text>
           <ModalActionRow marginTop={1}>
             <ModalActionButton

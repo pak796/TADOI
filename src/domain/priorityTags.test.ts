@@ -7,7 +7,7 @@ import {
   normalizePriorityFilterValue,
   normalizePriorityFromTokens,
   normalizePriorityTags,
-  resolveTaskPriorityTag
+  resolveTaskPriorityTag,
 } from "./priorityTags";
 
 describe("priorityTags", () => {
@@ -43,7 +43,7 @@ describe("priorityTags", () => {
       "p2",
       "home",
       "#errand",
-      "p1"
+      "p1",
     ]);
     expect(result).toEqual(["#p1", "work", "home", "errand"]);
   });
@@ -52,12 +52,12 @@ describe("priorityTags", () => {
     expect(normalizePriorityTags(["work", "P3", "home", "#p1"])).toEqual([
       "#p1",
       "work",
-      "home"
+      "home",
     ]);
     expect(normalizePriorityTags(["p001", "work", "home"])).toEqual([
       "#p001",
       "work",
-      "home"
+      "home",
     ]);
   });
 

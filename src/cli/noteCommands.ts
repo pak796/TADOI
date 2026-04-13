@@ -2,7 +2,7 @@ import type { NoteCommand } from "../commands/types";
 import type { Task } from "../domain/models";
 import {
   executeNoteCommand,
-  type ExecuteNoteCommandResult
+  type ExecuteNoteCommandResult,
 } from "../notes/commands";
 import { createNotesService } from "../notes/service";
 import { resolveTaskNoteRef } from "../notes/taskNoteRef";
@@ -17,17 +17,19 @@ export type RunNoteCommandCliOptions = {
 export async function runNoteCommandCli(
   command: NoteCommand,
   dataFilePath: string,
-  options: RunNoteCommandCliOptions = {}
+  options: RunNoteCommandCliOptions = {},
 ): Promise<ExecuteNoteCommandResult> {
   const settingsResult = await loadSettings();
   const settings = settingsResult.settings;
   const notesSettings = settings.notes ?? { enabled: true, rootPath: null };
-  const tasksById = new Map((options.tasks ?? []).map((task) => [task.id, task]));
+  const tasksById = new Map(
+    (options.tasks ?? []).map((task) => [task.id, task]),
+  );
 
   const service = createNotesService({
     dataFilePath,
     rootPath: notesSettings.rootPath,
-    enabled: notesSettings.enabled
+    enabled: notesSettings.enabled,
   });
   await service.initialize();
 
@@ -51,7 +53,7 @@ export async function runNoteCommandCli(
       const inlineNotes = task.notes?.trim();
       return {
         ...(primaryNotePath ? { primaryNotePath } : {}),
-        ...(inlineNotes ? { inlineNotes } : {})
+        ...(inlineNotes ? { inlineNotes } : {}),
       };
     },
     createBackup: createDataBackup,
@@ -59,11 +61,11 @@ export async function runNoteCommandCli(
       await saveSettingsStrict(
         {
           ...settings,
-          notes: nextNotes
+          notes: nextNotes,
         },
-        { filePath: settingsResult.resolvedPath }
+        { filePath: settingsResult.resolvedPath },
       );
-    }
+    },
   });
 
   return result;

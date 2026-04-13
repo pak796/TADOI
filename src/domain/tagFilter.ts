@@ -5,7 +5,10 @@ import { resolveTag, type TagAliases } from "./tagAliases";
 
 export type TagFilterBucket = "all" | "any" | "none";
 
-export function normalizeTagToken(tag: string, aliases: TagAliases = {}): string | undefined {
+export function normalizeTagToken(
+  tag: string,
+  aliases: TagAliases = {},
+): string | undefined {
   const normalized = normalizeTag(tag);
   if (!normalized || isPriorityToken(normalized)) {
     return undefined;
@@ -19,21 +22,27 @@ function normalizeBucket(tags: string[] | undefined): string[] | undefined {
   return normalized.length > 0 ? normalized : undefined;
 }
 
-export function normalizeTagFilter(tagFilter?: TagFilter): TagFilter | undefined {
+export function normalizeTagFilter(
+  tagFilter?: TagFilter,
+): TagFilter | undefined {
   if (!tagFilter) return undefined;
   const normalized: TagFilter = {
     all: normalizeBucket(tagFilter.all),
     any: normalizeBucket(tagFilter.any),
-    none: normalizeBucket(tagFilter.none)
+    none: normalizeBucket(tagFilter.none),
   };
-  return normalized.all || normalized.any || normalized.none ? normalized : undefined;
+  return normalized.all || normalized.any || normalized.none
+    ? normalized
+    : undefined;
 }
 
 export function isEmptyTagFilter(tagFilter?: TagFilter): boolean {
   return !normalizeTagFilter(tagFilter);
 }
 
-export function stripPriorityTokensFromTagFilter(tagFilter?: TagFilter): TagFilter | undefined {
+export function stripPriorityTokensFromTagFilter(
+  tagFilter?: TagFilter,
+): TagFilter | undefined {
   const normalized = normalizeTagFilter(tagFilter);
   if (!normalized) return undefined;
 
@@ -46,7 +55,7 @@ export function stripPriorityTokensFromTagFilter(tagFilter?: TagFilter): TagFilt
   const stripped: TagFilter = {
     all: stripBucket(normalized.all),
     any: stripBucket(normalized.any),
-    none: stripBucket(normalized.none)
+    none: stripBucket(normalized.none),
   };
 
   return stripped.all || stripped.any || stripped.none ? stripped : undefined;
@@ -60,7 +69,7 @@ export function stripPriorityTokensFromTagFilter(tagFilter?: TagFilter): TagFilt
  */
 export function resolveEffectiveTagFilter(
   filters: Filters,
-  aliases: TagAliases = {}
+  aliases: TagAliases = {},
 ): TagFilter | undefined {
   const normalizedBoolean = stripPriorityTokensFromTagFilter(filters.tagFilter);
   if (normalizedBoolean) {
@@ -75,14 +84,16 @@ export function resolveEffectiveTagFilter(
       .filter((tag): tag is string => Boolean(tag));
     return normalizeTagFilter({ all, any, none });
   }
-  const legacyTag = filters.tag ? normalizeTagToken(filters.tag, aliases) : undefined;
+  const legacyTag = filters.tag
+    ? normalizeTagToken(filters.tag, aliases)
+    : undefined;
   return legacyTag ? { all: [legacyTag] } : undefined;
 }
 
 export function matchesTagFilter(
   taskTags: string[],
   filters: Filters,
-  aliases: TagAliases = {}
+  aliases: TagAliases = {},
 ): boolean {
   const activeFilter = resolveEffectiveTagFilter(filters, aliases);
   if (!activeFilter) return true;
@@ -90,7 +101,7 @@ export function matchesTagFilter(
   const tags = new Set(
     normalizeTags(taskTags)
       .map((tag) => resolveTag(tag, aliases) ?? tag)
-      .filter((tag) => !isPriorityToken(tag))
+      .filter((tag) => !isPriorityToken(tag)),
   );
 
   const none = activeFilter.none ?? [];
@@ -111,7 +122,9 @@ export function matchesTagFilter(
   return true;
 }
 
-export function formatTagFilterBooleanSummary(tagFilter?: TagFilter): string | undefined {
+export function formatTagFilterBooleanSummary(
+  tagFilter?: TagFilter,
+): string | undefined {
   const normalized = stripPriorityTokensFromTagFilter(tagFilter);
   if (!normalized) return undefined;
 

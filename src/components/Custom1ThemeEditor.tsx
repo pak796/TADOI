@@ -1,4 +1,10 @@
-import React, { useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import React, {
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { InputRenderable, KeyEvent } from "@opentui/core";
 import { themeForObject } from "../app/theme";
 import { THEME_OBJECT_IDS, type ThemeObjectId } from "../settings/settings";
@@ -9,7 +15,7 @@ import {
   hexToRgb,
   normalizeHexColor,
   rgbToHex,
-  stepRgbChannel
+  stepRgbChannel,
 } from "../theme/custom1ColorUtils";
 
 type ScopeState =
@@ -36,7 +42,7 @@ const FOCUS_ORDER: FocusTarget[] = [
   "rgbG",
   "rgbB",
   "save",
-  "cancel"
+  "cancel",
 ];
 
 export type Custom1ThemeEditorHandle = {
@@ -48,7 +54,9 @@ type Custom1ThemeEditorProps = {
   draftObjects: Partial<Record<ThemeObjectId, Partial<ThemeTokens>>>;
   persistedGlobal: ThemeTokens;
   onChangeGlobal: (global: ThemeTokens) => void;
-  onChangeObjects: (objects: Partial<Record<ThemeObjectId, Partial<ThemeTokens>>>) => void;
+  onChangeObjects: (
+    objects: Partial<Record<ThemeObjectId, Partial<ThemeTokens>>>,
+  ) => void;
   onSave: () => void;
   onCancel: () => void;
 };
@@ -64,7 +72,9 @@ function normalizeTokenJumpValue(value: string): string {
 function nextFocus(current: FocusTarget, direction: 1 | -1): FocusTarget {
   const index = FOCUS_ORDER.indexOf(current);
   const safeIndex = index === -1 ? 0 : index;
-  return FOCUS_ORDER[(safeIndex + direction + FOCUS_ORDER.length) % FOCUS_ORDER.length];
+  return FOCUS_ORDER[
+    (safeIndex + direction + FOCUS_ORDER.length) % FOCUS_ORDER.length
+  ];
 }
 
 export function tokenListEditorEntryFocusTarget(): FocusTarget {
@@ -73,7 +83,7 @@ export function tokenListEditorEntryFocusTarget(): FocusTarget {
 
 export function resolveCustom1EditorTabFocus(
   current: FocusTarget,
-  shiftPressed: boolean
+  shiftPressed: boolean,
 ): FocusTarget {
   if (!shiftPressed && current === "tokenList") {
     return tokenListEditorEntryFocusTarget();
@@ -81,18 +91,22 @@ export function resolveCustom1EditorTabFocus(
   return nextFocus(current, shiftPressed ? -1 : 1);
 }
 
-export function resolveCustom1EditorRightFocus(current: FocusTarget): FocusTarget | null {
+export function resolveCustom1EditorRightFocus(
+  current: FocusTarget,
+): FocusTarget | null {
   if (current !== "tokenList") return null;
   return tokenListEditorEntryFocusTarget();
 }
 
-export function resolveCustom1EditorLeftFocus(current: FocusTarget): FocusTarget | null {
+export function resolveCustom1EditorLeftFocus(
+  current: FocusTarget,
+): FocusTarget | null {
   if (current !== "hex") return null;
   return "tokenList";
 }
 
 export function resolveCustom1EditorHexCommitFocus(
-  commitSucceeded: boolean
+  commitSucceeded: boolean,
 ): FocusTarget | null {
   return commitSucceeded ? "tokenList" : null;
 }
@@ -109,9 +123,15 @@ export function shouldExitHexToTokenListOnLeft(params: {
 function resolveTokenJumpTarget(query: string): keyof ThemeTokens | null {
   const normalized = normalizeTokenJumpValue(query);
   if (!normalized) return null;
-  const exact = THEME_TOKEN_KEYS.find((token) => token.toLowerCase() === normalized);
+  const exact = THEME_TOKEN_KEYS.find(
+    (token) => token.toLowerCase() === normalized,
+  );
   if (exact) return exact;
-  return THEME_TOKEN_KEYS.find((token) => token.toLowerCase().includes(normalized)) ?? null;
+  return (
+    THEME_TOKEN_KEYS.find((token) =>
+      token.toLowerCase().includes(normalized),
+    ) ?? null
+  );
 }
 
 export const Custom1ThemeEditor = React.forwardRef<
@@ -125,9 +145,9 @@ export const Custom1ThemeEditor = React.forwardRef<
     onChangeGlobal,
     onChangeObjects,
     onSave,
-    onCancel
+    onCancel,
   },
-  ref
+  ref,
 ) {
   const helpTheme = themeForObject("help");
   const inputsTheme = themeForObject("inputs");
@@ -139,12 +159,16 @@ export const Custom1ThemeEditor = React.forwardRef<
   const [hexError, setHexError] = useState<string | null>(null);
   const hexInputRef = useRef<InputRenderable | null>(null);
 
-  const selectedToken = THEME_TOKEN_KEYS[selectedTokenIndex] ?? THEME_TOKEN_KEYS[0];
+  const selectedToken =
+    THEME_TOKEN_KEYS[selectedTokenIndex] ?? THEME_TOKEN_KEYS[0];
   const currentColor = useMemo(() => {
     if (scope.kind === "global") {
       return draftGlobal[selectedToken];
     }
-    return draftObjects[scope.objectId]?.[selectedToken] ?? draftGlobal[selectedToken];
+    return (
+      draftObjects[scope.objectId]?.[selectedToken] ??
+      draftGlobal[selectedToken]
+    );
   }, [draftGlobal, draftObjects, scope, selectedToken]);
 
   useEffect(() => {
@@ -156,18 +180,18 @@ export const Custom1ThemeEditor = React.forwardRef<
     if (scope.kind === "global") {
       onChangeGlobal({
         ...draftGlobal,
-        [selectedToken]: nextHex
+        [selectedToken]: nextHex,
       });
       return;
     }
     const objectId = scope.objectId;
     const nextForObject = {
       ...(draftObjects[objectId] ?? {}),
-      [selectedToken]: nextHex
+      [selectedToken]: nextHex,
     };
     onChangeObjects({
       ...draftObjects,
-      [objectId]: nextForObject
+      [objectId]: nextForObject,
     });
   }
 
@@ -176,7 +200,7 @@ export const Custom1ThemeEditor = React.forwardRef<
     if (!rgb) return;
     const nextRgb = {
       ...rgb,
-      [channel]: stepRgbChannel(rgb[channel], delta)
+      [channel]: stepRgbChannel(rgb[channel], delta),
     };
     applyScopeColor(rgbToHex(nextRgb));
   }
@@ -185,7 +209,7 @@ export const Custom1ThemeEditor = React.forwardRef<
     if (scope.kind === "global") {
       onChangeGlobal({
         ...draftGlobal,
-        [selectedToken]: persistedGlobal[selectedToken]
+        [selectedToken]: persistedGlobal[selectedToken],
       });
       return;
     }
@@ -228,7 +252,10 @@ export const Custom1ThemeEditor = React.forwardRef<
     if (scope.kind !== "object") return;
     const current = THEME_OBJECT_IDS.indexOf(scope.objectId);
     const safe = current === -1 ? 0 : current;
-    const next = THEME_OBJECT_IDS[(safe + delta + THEME_OBJECT_IDS.length) % THEME_OBJECT_IDS.length];
+    const next =
+      THEME_OBJECT_IDS[
+        (safe + delta + THEME_OBJECT_IDS.length) % THEME_OBJECT_IDS.length
+      ];
     setScope({ kind: "object", objectId: next });
   }
 
@@ -240,180 +267,221 @@ export const Custom1ThemeEditor = React.forwardRef<
     setFocusTarget("tokenList");
   }
 
-  useImperativeHandle(ref, () => ({
-    handleKey(key: KeyEvent): boolean {
-      const lowerName = (key.name ?? "").toLowerCase();
-      const lowerSequence = (key.sequence ?? "").toLowerCase();
-      const step = key.shift ? 10 : 1;
+  useImperativeHandle(
+    ref,
+    () => ({
+      handleKey(key: KeyEvent): boolean {
+        const lowerName = (key.name ?? "").toLowerCase();
+        const lowerSequence = (key.sequence ?? "").toLowerCase();
+        const step = key.shift ? 10 : 1;
 
-      if (lowerName === "escape" || lowerName === "c" || lowerSequence === "c") {
-        onCancel();
-        return true;
-      }
-      if (lowerName === "s" || lowerSequence === "s") {
-        onSave();
-        return true;
-      }
-      if (lowerName === "r" || lowerSequence === "r") {
-        resetSelectedToken();
-        return true;
-      }
+        if (
+          lowerName === "escape" ||
+          lowerName === "c" ||
+          lowerSequence === "c"
+        ) {
+          onCancel();
+          return true;
+        }
+        if (lowerName === "s" || lowerSequence === "s") {
+          onSave();
+          return true;
+        }
+        if (lowerName === "r" || lowerSequence === "r") {
+          resetSelectedToken();
+          return true;
+        }
 
-      if (key.name === "tab") {
-        if (!key.shift && focusTarget === "tokenList") {
-          focusTokenEditorForSelectedToken();
-          return true;
-        }
-        setFocusTarget((current) => resolveCustom1EditorTabFocus(current, key.shift === true));
-        return true;
-      }
-
-      if (focusTarget === "scope") {
-        if (key.name === "left") {
-          setScope((current) =>
-            current.kind === "object" ? { kind: "global" } : current
-          );
-          return true;
-        }
-        if (key.name === "right") {
-          setScope((current) =>
-            current.kind === "global"
-              ? { kind: "object", objectId: THEME_OBJECT_IDS[0] }
-              : current
-          );
-          return true;
-        }
-        if (key.name === "up") {
-          moveScopeObject(-1);
-          return true;
-        }
-        if (key.name === "down") {
-          moveScopeObject(1);
-          return true;
-        }
-      }
-
-      if (focusTarget === "tokenList") {
-        if (key.name === "up") {
-          setSelectedTokenIndex((current) =>
-            (current - 1 + THEME_TOKEN_KEYS.length) % THEME_TOKEN_KEYS.length
-          );
-          return true;
-        }
-        if (key.name === "down") {
-          setSelectedTokenIndex((current) => (current + 1) % THEME_TOKEN_KEYS.length);
-          return true;
-        }
-        if (key.name === "right") {
-          const next = resolveCustom1EditorRightFocus(focusTarget);
-          if (next) {
+        if (key.name === "tab") {
+          if (!key.shift && focusTarget === "tokenList") {
             focusTokenEditorForSelectedToken();
             return true;
           }
-        }
-      }
-
-      if (focusTarget === "tokenJump" && (key.name === "return" || key.name === "enter")) {
-        applyTokenJumpSelection();
-        return true;
-      }
-
-      if (focusTarget === "hex" && (key.name === "return" || key.name === "enter")) {
-        const commitSucceeded = commitHexInput();
-        const next = resolveCustom1EditorHexCommitFocus(commitSucceeded);
-        if (next) {
-          exitTokenEditorToList();
-        }
-        return true;
-      }
-
-      if (focusTarget === "hex" && key.name === "left") {
-        const inputRef = hexInputRef.current;
-        if (!inputRef) return false;
-        // Hex input keeps a leading "#" that remains editable, so left-boundary
-        // exit uses cursor position 0 (before "#"), not 1.
-        const shouldExit = shouldExitHexToTokenListOnLeft({
-          cursorOffset: inputRef.cursorOffset,
-          hasSelection: inputRef.hasSelection(),
-          leftBoundary: 0
-        });
-        if (!shouldExit) return false;
-        const next = resolveCustom1EditorLeftFocus(focusTarget);
-        if (next) {
-          setFocusTarget(next);
+          setFocusTarget((current) =>
+            resolveCustom1EditorTabFocus(current, key.shift === true),
+          );
           return true;
         }
+
+        if (focusTarget === "scope") {
+          if (key.name === "left") {
+            setScope((current) =>
+              current.kind === "object" ? { kind: "global" } : current,
+            );
+            return true;
+          }
+          if (key.name === "right") {
+            setScope((current) =>
+              current.kind === "global"
+                ? { kind: "object", objectId: THEME_OBJECT_IDS[0] }
+                : current,
+            );
+            return true;
+          }
+          if (key.name === "up") {
+            moveScopeObject(-1);
+            return true;
+          }
+          if (key.name === "down") {
+            moveScopeObject(1);
+            return true;
+          }
+        }
+
+        if (focusTarget === "tokenList") {
+          if (key.name === "up") {
+            setSelectedTokenIndex(
+              (current) =>
+                (current - 1 + THEME_TOKEN_KEYS.length) %
+                THEME_TOKEN_KEYS.length,
+            );
+            return true;
+          }
+          if (key.name === "down") {
+            setSelectedTokenIndex(
+              (current) => (current + 1) % THEME_TOKEN_KEYS.length,
+            );
+            return true;
+          }
+          if (key.name === "right") {
+            const next = resolveCustom1EditorRightFocus(focusTarget);
+            if (next) {
+              focusTokenEditorForSelectedToken();
+              return true;
+            }
+          }
+        }
+
+        if (
+          focusTarget === "tokenJump" &&
+          (key.name === "return" || key.name === "enter")
+        ) {
+          applyTokenJumpSelection();
+          return true;
+        }
+
+        if (
+          focusTarget === "hex" &&
+          (key.name === "return" || key.name === "enter")
+        ) {
+          const commitSucceeded = commitHexInput();
+          const next = resolveCustom1EditorHexCommitFocus(commitSucceeded);
+          if (next) {
+            exitTokenEditorToList();
+          }
+          return true;
+        }
+
+        if (focusTarget === "hex" && key.name === "left") {
+          const inputRef = hexInputRef.current;
+          if (!inputRef) return false;
+          // Hex input keeps a leading "#" that remains editable, so left-boundary
+          // exit uses cursor position 0 (before "#"), not 1.
+          const shouldExit = shouldExitHexToTokenListOnLeft({
+            cursorOffset: inputRef.cursorOffset,
+            hasSelection: inputRef.hasSelection(),
+            leftBoundary: 0,
+          });
+          if (!shouldExit) return false;
+          const next = resolveCustom1EditorLeftFocus(focusTarget);
+          if (next) {
+            setFocusTarget(next);
+            return true;
+          }
+          return false;
+        }
+
+        if (
+          focusTarget === "rgbR" ||
+          focusTarget === "rgbG" ||
+          focusTarget === "rgbB"
+        ) {
+          const channel =
+            focusTarget === "rgbR" ? "r" : focusTarget === "rgbG" ? "g" : "b";
+          if (key.name === "return" || key.name === "enter") {
+            exitTokenEditorToList();
+            return true;
+          }
+          if (key.name === "left") {
+            adjustRgbChannel(channel, -step);
+            return true;
+          }
+          if (key.name === "right") {
+            adjustRgbChannel(channel, step);
+            return true;
+          }
+          if (key.name === "up") {
+            setFocusTarget(
+              channel === "r" ? "rgbB" : channel === "g" ? "rgbR" : "rgbG",
+            );
+            return true;
+          }
+          if (key.name === "down") {
+            setFocusTarget(
+              channel === "r" ? "rgbG" : channel === "g" ? "rgbB" : "rgbR",
+            );
+            return true;
+          }
+        }
+
+        if (
+          (focusTarget === "save" || focusTarget === "cancel") &&
+          (key.name === "return" || key.name === "enter")
+        ) {
+          if (focusTarget === "save") {
+            onSave();
+          } else {
+            onCancel();
+          }
+          return true;
+        }
+
         return false;
-      }
-
-      if (focusTarget === "rgbR" || focusTarget === "rgbG" || focusTarget === "rgbB") {
-        const channel = focusTarget === "rgbR" ? "r" : focusTarget === "rgbG" ? "g" : "b";
-        if (key.name === "return" || key.name === "enter") {
-          exitTokenEditorToList();
-          return true;
-        }
-        if (key.name === "left") {
-          adjustRgbChannel(channel, -step);
-          return true;
-        }
-        if (key.name === "right") {
-          adjustRgbChannel(channel, step);
-          return true;
-        }
-        if (key.name === "up") {
-          setFocusTarget(channel === "r" ? "rgbB" : channel === "g" ? "rgbR" : "rgbG");
-          return true;
-        }
-        if (key.name === "down") {
-          setFocusTarget(channel === "r" ? "rgbG" : channel === "g" ? "rgbB" : "rgbR");
-          return true;
-        }
-      }
-
-      if ((focusTarget === "save" || focusTarget === "cancel") &&
-        (key.name === "return" || key.name === "enter")) {
-        if (focusTarget === "save") {
-          onSave();
-        } else {
-          onCancel();
-        }
-        return true;
-      }
-
-      return false;
-    }
-  }), [
-    currentColor,
-    draftGlobal,
-    draftObjects,
-    focusTarget,
-    hexInput,
-    onCancel,
-    onChangeGlobal,
-    onChangeObjects,
-    onSave,
-    persistedGlobal,
-    scope,
-    selectedToken,
-    tokenJumpInput
-  ]);
+      },
+    }),
+    [
+      currentColor,
+      draftGlobal,
+      draftObjects,
+      focusTarget,
+      hexInput,
+      onCancel,
+      onChangeGlobal,
+      onChangeObjects,
+      onSave,
+      persistedGlobal,
+      scope,
+      selectedToken,
+      tokenJumpInput,
+    ],
+  );
 
   const currentRgb = hexToRgb(currentColor) ?? { r: 0, g: 0, b: 0 };
 
   return (
     <box style={{ flexDirection: "column", gap: 1 }}>
-      <text style={{ color: helpTheme.text, fontWeight: "bold" }}>Custom1 Theme Editor</text>
+      <text style={{ color: helpTheme.text, fontWeight: "bold" }}>
+        Custom1 Theme Editor
+      </text>
       <box
         style={{
           flexDirection: "row",
           alignItems: "center",
-          backgroundColor: focusTarget === "scope" ? helpTheme.accentBlue : "transparent",
+          backgroundColor:
+            focusTarget === "scope" ? helpTheme.accentBlue : "transparent",
           paddingLeft: 1,
-          paddingRight: 1
+          paddingRight: 1,
         }}
       >
-        <text style={{ color: focusTarget === "scope" ? helpTheme.bg : helpTheme.text }}>
-          Scope: {scope.kind === "global" ? "Global" : `Object ${formatObjectLabel(scope.objectId)}`}
+        <text
+          style={{
+            color: focusTarget === "scope" ? helpTheme.bg : helpTheme.text,
+          }}
+        >
+          Scope:{" "}
+          {scope.kind === "global"
+            ? "Global"
+            : `Object ${formatObjectLabel(scope.objectId)}`}
         </text>
       </box>
       <box style={{ flexDirection: "row", gap: 2 }}>
@@ -426,9 +494,11 @@ export const Custom1ThemeEditor = React.forwardRef<
               <box
                 key={token}
                 style={{
-                  backgroundColor: focused ? helpTheme.accentBlue : "transparent",
+                  backgroundColor: focused
+                    ? helpTheme.accentBlue
+                    : "transparent",
                   paddingLeft: 1,
-                  paddingRight: 1
+                  paddingRight: 1,
                 }}
                 onMouseDown={(event) => {
                   if (event.button !== 0) return;
@@ -436,7 +506,9 @@ export const Custom1ThemeEditor = React.forwardRef<
                   setFocusTarget("tokenList");
                 }}
               >
-                <text style={{ color: focused ? helpTheme.bg : helpTheme.text }}>
+                <text
+                  style={{ color: focused ? helpTheme.bg : helpTheme.text }}
+                >
                   {selected ? "▶ " : "  "}
                   {token}
                 </text>
@@ -477,21 +549,30 @@ export const Custom1ThemeEditor = React.forwardRef<
             }}
             style={{ backgroundColor: inputsTheme.bg, color: inputsTheme.text }}
           />
-          {hexError ? <text style={{ color: helpTheme.warn }}>{hexError}</text> : null}
+          {hexError ? (
+            <text style={{ color: helpTheme.warn }}>{hexError}</text>
+          ) : null}
           <text style={{ color: helpTheme.muted }}>RGB</text>
           {(["r", "g", "b"] as const).map((channel) => {
             const channelFocus =
               channel === "r" ? "rgbR" : channel === "g" ? "rgbG" : "rgbB";
             const focused = focusTarget === channelFocus;
-            const value = channel === "r" ? currentRgb.r : channel === "g" ? currentRgb.g : currentRgb.b;
+            const value =
+              channel === "r"
+                ? currentRgb.r
+                : channel === "g"
+                  ? currentRgb.g
+                  : currentRgb.b;
             return (
               <box
                 key={channel}
                 style={{
                   flexDirection: "row",
-                  backgroundColor: focused ? helpTheme.accentBlue : "transparent",
+                  backgroundColor: focused
+                    ? helpTheme.accentBlue
+                    : "transparent",
                   paddingLeft: 1,
-                  paddingRight: 1
+                  paddingRight: 1,
                 }}
                 onMouseDown={(event) => {
                   if (event.button !== 0) return;
@@ -506,8 +587,13 @@ export const Custom1ThemeEditor = React.forwardRef<
                   }
                 }}
               >
-                <text style={{ color: focused ? helpTheme.bg : helpTheme.text }}>
-                  {formatRgbRow(channel.toUpperCase() as "R" | "G" | "B", value)}
+                <text
+                  style={{ color: focused ? helpTheme.bg : helpTheme.text }}
+                >
+                  {formatRgbRow(
+                    channel.toUpperCase() as "R" | "G" | "B",
+                    value,
+                  )}
                 </text>
               </box>
             );
@@ -515,38 +601,52 @@ export const Custom1ThemeEditor = React.forwardRef<
           <box style={{ flexDirection: "row", gap: 1 }}>
             <box
               style={{
-                backgroundColor: focusTarget === "save" ? helpTheme.accentBlue : helpTheme.outline,
+                backgroundColor:
+                  focusTarget === "save"
+                    ? helpTheme.accentBlue
+                    : helpTheme.outline,
                 paddingLeft: 1,
-                paddingRight: 1
+                paddingRight: 1,
               }}
               onMouseDown={(event) => {
                 if (event.button !== 0) return;
                 onSave();
               }}
             >
-              <text style={{ color: helpTheme.bg, fontWeight: "bold" }}>SAVE [S]</text>
+              <text style={{ color: helpTheme.bg, fontWeight: "bold" }}>
+                SAVE [S]
+              </text>
             </box>
             <box
               style={{
-                backgroundColor: focusTarget === "cancel" ? helpTheme.warn : helpTheme.outline,
+                backgroundColor:
+                  focusTarget === "cancel" ? helpTheme.warn : helpTheme.outline,
                 paddingLeft: 1,
-                paddingRight: 1
+                paddingRight: 1,
               }}
               onMouseDown={(event) => {
                 if (event.button !== 0) return;
                 onCancel();
               }}
             >
-              <text style={{ color: helpTheme.bg, fontWeight: "bold" }}>CANCEL [C/Esc]</text>
+              <text style={{ color: helpTheme.bg, fontWeight: "bold" }}>
+                CANCEL [C/Esc]
+              </text>
             </box>
             <box
-              style={{ backgroundColor: helpTheme.outline, paddingLeft: 1, paddingRight: 1 }}
+              style={{
+                backgroundColor: helpTheme.outline,
+                paddingLeft: 1,
+                paddingRight: 1,
+              }}
               onMouseDown={(event) => {
                 if (event.button !== 0) return;
                 resetSelectedToken();
               }}
             >
-              <text style={{ color: helpTheme.text, fontWeight: "bold" }}>RESET [R]</text>
+              <text style={{ color: helpTheme.text, fontWeight: "bold" }}>
+                RESET [R]
+              </text>
             </box>
           </box>
         </box>

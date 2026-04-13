@@ -6,7 +6,7 @@ import {
   inferTaskLinkKind,
   resolveTaskLinkOpenPolicy,
   requiresExternalSchemeConfirm,
-  updateTaskLink
+  updateTaskLink,
 } from "./taskLinks";
 
 function makeTask(partial: Partial<Task> & Pick<Task, "id" | "title">): Task {
@@ -23,7 +23,7 @@ function makeTask(partial: Partial<Task> & Pick<Task, "id" | "title">): Task {
     tags: partial.tags ?? [],
     links: partial.links,
     recurrence: partial.recurrence,
-    instance_of: partial.instance_of
+    instance_of: partial.instance_of,
   };
 }
 
@@ -47,22 +47,34 @@ describe("inferTaskLinkKind", () => {
 describe("requiresExternalSchemeConfirm", () => {
   it("requires confirmation for non-allowlisted schemes", () => {
     expect(
-      requiresExternalSchemeConfirm({ target: "vscode://file/path", kind: "url" })
+      requiresExternalSchemeConfirm({
+        target: "vscode://file/path",
+        kind: "url",
+      }),
     ).toBe(true);
   });
 
   it("does not require confirmation for allowlisted schemes", () => {
     expect(
-      requiresExternalSchemeConfirm({ target: "https://example.com", kind: "url" })
+      requiresExternalSchemeConfirm({
+        target: "https://example.com",
+        kind: "url",
+      }),
     ).toBe(false);
   });
 
   it("requires confirmation for file URLs and filesystem paths", () => {
     expect(
-      requiresExternalSchemeConfirm({ target: "file:///tmp/notes.txt", kind: "url" })
+      requiresExternalSchemeConfirm({
+        target: "file:///tmp/notes.txt",
+        kind: "url",
+      }),
     ).toBe(true);
     expect(
-      requiresExternalSchemeConfirm({ target: "/Users/a/file.txt", kind: "path" })
+      requiresExternalSchemeConfirm({
+        target: "/Users/a/file.txt",
+        kind: "path",
+      }),
     ).toBe(true);
   });
 
@@ -71,8 +83,8 @@ describe("requiresExternalSchemeConfirm", () => {
       requiresExternalSchemeConfirm({
         target: "https://example.com",
         kind: "url",
-        source: "calendar_import"
-      })
+        source: "calendar_import",
+      }),
     ).toBe(true);
   });
 });
@@ -82,32 +94,41 @@ describe("resolveTaskLinkOpenPolicy", () => {
     expect(
       resolveTaskLinkOpenPolicy(
         { target: "file:///tmp/a.txt", kind: "url" },
-        { nonHttpLinkPolicy: "block" }
-      )
+        { nonHttpLinkPolicy: "block" },
+      ),
     ).toBe("block");
     expect(
       resolveTaskLinkOpenPolicy(
         { target: "/tmp/a.txt", kind: "path" },
-        { nonHttpLinkPolicy: "block" }
-      )
+        { nonHttpLinkPolicy: "block" },
+      ),
     ).toBe("block");
   });
 
   it("keeps manual https links allowlisted", () => {
     expect(
-      resolveTaskLinkOpenPolicy({ target: "https://example.com", kind: "url" })
+      resolveTaskLinkOpenPolicy({ target: "https://example.com", kind: "url" }),
     ).toBe("allow");
   });
 
   it("treats file URLs and windows/UNC-style paths as risky", () => {
     expect(
-      resolveTaskLinkOpenPolicy({ target: "file:///C:/Docs/report.txt", kind: "url" })
+      resolveTaskLinkOpenPolicy({
+        target: "file:///C:/Docs/report.txt",
+        kind: "url",
+      }),
     ).toBe("confirm");
     expect(
-      resolveTaskLinkOpenPolicy({ target: "C:\\Users\\me\\notes.txt", kind: "path" })
+      resolveTaskLinkOpenPolicy({
+        target: "C:\\Users\\me\\notes.txt",
+        kind: "path",
+      }),
     ).toBe("confirm");
     expect(
-      resolveTaskLinkOpenPolicy({ target: "\\\\server\\share\\report.docx", kind: "path" })
+      resolveTaskLinkOpenPolicy({
+        target: "\\\\server\\share\\report.docx",
+        kind: "path",
+      }),
     ).toBe("confirm");
   });
 
@@ -117,10 +138,10 @@ describe("resolveTaskLinkOpenPolicy", () => {
         {
           target: "vscode://repo/file",
           kind: "url",
-          source: "calendar_import"
+          source: "calendar_import",
         },
-        { nonHttpLinkPolicy: "block" }
-      )
+        { nonHttpLinkPolicy: "block" },
+      ),
     ).toBe("block");
   });
 
@@ -129,8 +150,8 @@ describe("resolveTaskLinkOpenPolicy", () => {
       resolveTaskLinkOpenPolicy({
         target: "https://example.com",
         kind: "url",
-        source: "calendar_import"
-      })
+        source: "calendar_import",
+      }),
     ).toBe("confirm");
   });
 });
@@ -142,12 +163,12 @@ describe("task link mutations", () => {
       title: "Task",
       tags: ["work"],
       notes: "keep",
-      dueAt: 1234
+      dueAt: 1234,
     });
 
     const withLink = addTaskLink(base, {
       id: "link-1",
-      target: "https://example.com"
+      target: "https://example.com",
     });
 
     expect(withLink.links?.length).toBe(1);
@@ -155,7 +176,7 @@ describe("task link mutations", () => {
     expect(withLink.notes).toBe("keep");
 
     const updated = updateTaskLink(withLink, "link-1", {
-      label: "Docs"
+      label: "Docs",
     });
     expect(updated.links?.[0]?.label).toBe("Docs");
     expect(updated.dueAt).toBe(1234);

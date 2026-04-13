@@ -9,6 +9,7 @@ Baseline: runtime `v0.3.9`, package `0.3.9`, persistence schema `8`
 This pass reconciled active documentation against current implementation contracts and refreshed the deferred Notion sync package.
 
 Primary outcomes:
+
 - Corrected active schema drift (`7 -> 8`) across spec/feature/readme/governance docs.
 - Updated engagement notifications spec to match shipped reducer/actions, milestone copy, trigger paths, and overlay suppression rules.
 - Updated install/distribution spec to match current multi-target build/installer pipeline (`macos`, `windows`, `linux`) and manifest outputs.
@@ -35,6 +36,7 @@ Primary outcomes:
 No remote Notion write was executed in this pass.
 
 Staged artifacts:
+
 - `docs/notion/NOTION_SYNC_PAYLOAD.json`
 - `docs/notion/NOTION_SYNC_VERIFY_2026-03-03.json`
 - `docs/NOTION_SYNC.md`
@@ -44,6 +46,7 @@ Staged artifacts:
 - `docs/ops/NOTION_DEPLOY_PACKAGE_2026-03-03.md`
 
 Audit token for this pass:
+
 - `[AUDIT 2026-03-03] Full docs pass + implementation/spec drift reconciliation staged for deferred apply`
 
 ## 4) Validation Results
@@ -60,4 +63,5 @@ Audit token for this pass:
 - This pass is documentation/sync-artifact only; no runtime source behavior changes were made.
 
 ## Trademark Notice
+
 TADOI™ is a trademark of <OWNER>. Other names may be trademarks of their respective owners.

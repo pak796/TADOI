@@ -10,7 +10,7 @@ function makeParsed(path: string, content: string): ParsedNote {
       title: path,
       tags: [],
       aliases: [],
-      mtimeMs: 0
+      mtimeMs: 0,
     },
     content,
     outgoingNoteRefs: [],
@@ -18,7 +18,7 @@ function makeParsed(path: string, content: string): ParsedNote {
     rawTitle: path,
     titleKey: path,
     hash: "x",
-    warnings: []
+    warnings: [],
   };
 }
 
@@ -27,22 +27,22 @@ describe("findUnlinkedMentions", () => {
     const notes = new Map<string, ParsedNote>([
       ["A.md", makeParsed("A.md", "Mentions Note B here")],
       ["C.md", makeParsed("C.md", "```\nNote B\n```")],
-      ["B.md", makeParsed("B.md", "target")]
+      ["B.md", makeParsed("B.md", "target")],
     ]);
 
     const mentions = findUnlinkedMentions({
       targetPath: "B.md",
       targetTitle: "Note B",
       notes,
-      excludeCodeFences: true
+      excludeCodeFences: true,
     });
 
     expect(mentions).toEqual([
       {
         from: "A.md",
         line: 1,
-        excerpt: "Mentions Note B here"
-      }
+        excerpt: "Mentions Note B here",
+      },
     ]);
   });
 });

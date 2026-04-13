@@ -28,13 +28,15 @@ export function inferTaskLinkKind(target: string): TaskLinkKind {
   return extractUrlScheme(target) ? "url" : "path";
 }
 
-export function resolveTaskLinkKind(link: Pick<TaskLink, "target" | "kind">): TaskLinkKind {
+export function resolveTaskLinkKind(
+  link: Pick<TaskLink, "target" | "kind">,
+): TaskLinkKind {
   return link.kind ?? inferTaskLinkKind(link.target);
 }
 
 export function resolveTaskLinkOpenPolicy(
   link: Pick<TaskLink, "target" | "kind" | "source">,
-  options: { nonHttpLinkPolicy?: NonHttpLinkPolicy } = {}
+  options: { nonHttpLinkPolicy?: NonHttpLinkPolicy } = {},
 ): TaskLinkOpenPolicy {
   const nonHttpLinkPolicy = options.nonHttpLinkPolicy ?? "prompt";
   const kind = resolveTaskLinkKind(link);
@@ -61,7 +63,7 @@ export function resolveTaskLinkOpenPolicy(
 
 export function requiresExternalSchemeConfirm(
   link: Pick<TaskLink, "target" | "kind" | "source">,
-  options: { nonHttpLinkPolicy?: NonHttpLinkPolicy } = {}
+  options: { nonHttpLinkPolicy?: NonHttpLinkPolicy } = {},
 ): boolean {
   return resolveTaskLinkOpenPolicy(link, options) === "confirm";
 }
@@ -70,15 +72,21 @@ export function addTaskLink(task: Task, link: TaskLink): Task {
   const links = task.links ?? [];
   return {
     ...task,
-    links: [...links, link]
+    links: [...links, link],
   };
 }
 
-export function updateTaskLink(task: Task, linkId: string, patch: LinkUpdatePatch): Task {
+export function updateTaskLink(
+  task: Task,
+  linkId: string,
+  patch: LinkUpdatePatch,
+): Task {
   const links = task.links ?? [];
   return {
     ...task,
-    links: links.map((link) => (link.id === linkId ? { ...link, ...patch } : link))
+    links: links.map((link) =>
+      link.id === linkId ? { ...link, ...patch } : link,
+    ),
   };
 }
 
@@ -86,6 +94,6 @@ export function deleteTaskLink(task: Task, linkId: string): Task {
   const links = task.links ?? [];
   return {
     ...task,
-    links: links.filter((link) => link.id !== linkId)
+    links: links.filter((link) => link.id !== linkId),
   };
 }

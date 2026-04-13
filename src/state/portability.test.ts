@@ -5,7 +5,7 @@ import {
   importState,
   mergeTasksByIdNewestUpdatedAt,
   recomputeTagIndex,
-  redactStateForExport
+  redactStateForExport,
 } from "./portability";
 import type { PortableExportPayload } from "./portability";
 import type { Task } from "../domain/models";
@@ -15,7 +15,7 @@ const DEFAULT_NOTIFICATIONS = {
   inAppOverdueBanner: true,
   terminalBellOnOverdue: false,
   bannerDurationMs: 5000,
-  bellCooldownMs: 2000
+  bellCooldownMs: 2000,
 };
 
 const BASE_LOCAL_TASK: Task = {
@@ -24,7 +24,7 @@ const BASE_LOCAL_TASK: Task = {
   status: "open",
   createdAt: 100,
   updatedAt: 200,
-  tags: ["alpha"]
+  tags: ["alpha"],
 };
 
 const BASE_INCOMING_TASK: Task = {
@@ -33,7 +33,7 @@ const BASE_INCOMING_TASK: Task = {
   status: "open",
   createdAt: 100,
   updatedAt: 300,
-  tags: ["alpha"]
+  tags: ["alpha"],
 };
 
 describe("mergeTasksByIdNewestUpdatedAt", () => {
@@ -64,8 +64,8 @@ describe("mergeTasksByIdNewestUpdatedAt", () => {
     const local = [
       {
         ...BASE_LOCAL_TASK,
-        updatedAt: undefined
-      } as unknown as Task
+        updatedAt: undefined,
+      } as unknown as Task,
     ];
     const incoming = [{ ...BASE_INCOMING_TASK, updatedAt: 10 }];
 
@@ -77,21 +77,55 @@ describe("mergeTasksByIdNewestUpdatedAt", () => {
 
   it("uses createdAt tie-break and then incoming tie-break deterministically", () => {
     const localWins = mergeTasksByIdNewestUpdatedAt(
-      [{ ...BASE_LOCAL_TASK, updatedAt: 100, createdAt: 900, title: "Local wins" }],
-      [{ ...BASE_INCOMING_TASK, updatedAt: 100, createdAt: 100, title: "Incoming loses" }]
+      [
+        {
+          ...BASE_LOCAL_TASK,
+          updatedAt: 100,
+          createdAt: 900,
+          title: "Local wins",
+        },
+      ],
+      [
+        {
+          ...BASE_INCOMING_TASK,
+          updatedAt: 100,
+          createdAt: 100,
+          title: "Incoming loses",
+        },
+      ],
     );
     expect(localWins.merged[0]?.title).toBe("Local wins");
 
     const incomingWinsOnFinalTie = mergeTasksByIdNewestUpdatedAt(
-      [{ ...BASE_LOCAL_TASK, updatedAt: 100, createdAt: 500, title: "Local tie" }],
-      [{ ...BASE_INCOMING_TASK, updatedAt: 100, createdAt: 500, title: "Incoming tie" }]
+      [
+        {
+          ...BASE_LOCAL_TASK,
+          updatedAt: 100,
+          createdAt: 500,
+          title: "Local tie",
+        },
+      ],
+      [
+        {
+          ...BASE_INCOMING_TASK,
+          updatedAt: 100,
+          createdAt: 500,
+          title: "Incoming tie",
+        },
+      ],
     );
     expect(incomingWinsOnFinalTie.merged[0]?.title).toBe("Incoming tie");
   });
 
   it("preserves canonical priority tags when normalizing merged tasks", () => {
     const local = [{ ...BASE_LOCAL_TASK, tags: ["work"] }];
-    const incoming = [{ ...BASE_INCOMING_TASK, updatedAt: 999, tags: ["work", "P3", "#p1", "home"] }];
+    const incoming = [
+      {
+        ...BASE_INCOMING_TASK,
+        updatedAt: 999,
+        tags: ["work", "P3", "#p1", "home"],
+      },
+    ];
 
     const result = mergeTasksByIdNewestUpdatedAt(local, incoming);
 
@@ -111,10 +145,10 @@ describe("mergeTasksByIdNewestUpdatedAt", () => {
             isDone: false,
             createdAt: checklistIso,
             updatedAt: checklistIso,
-            sort: 0
-          }
-        ]
-      }
+            sort: 0,
+          },
+        ],
+      },
     ];
     const incoming = [
       {
@@ -128,10 +162,10 @@ describe("mergeTasksByIdNewestUpdatedAt", () => {
             createdAt: checklistIso,
             updatedAt: checklistIso,
             completedAt: checklistIso,
-            sort: 0
-          }
-        ]
-      }
+            sort: 0,
+          },
+        ],
+      },
     ];
 
     const result = mergeTasksByIdNewestUpdatedAt(local, incoming);
@@ -147,9 +181,9 @@ describe("mergeTasksByIdNewestUpdatedAt", () => {
         updatedAt: 100,
         reminder: {
           kind: "before_due" as const,
-          offsetMs: 10 * 60_000
-        }
-      }
+          offsetMs: 10 * 60_000,
+        },
+      },
     ];
     const incoming = [
       {
@@ -157,9 +191,9 @@ describe("mergeTasksByIdNewestUpdatedAt", () => {
         updatedAt: 100,
         reminder: {
           kind: "before_due" as const,
-          offsetMs: 5 * 60_000
-        }
-      }
+          offsetMs: 5 * 60_000,
+        },
+      },
     ];
 
     const result = mergeTasksByIdNewestUpdatedAt(local, incoming);
@@ -178,7 +212,7 @@ describe("recomputeTagIndex", () => {
         status: "open",
         createdAt: 10,
         updatedAt: 20,
-        tags: ["#Work", "alpha", "work"]
+        tags: ["#Work", "alpha", "work"],
       } as unknown as Task,
       {
         id: "b",
@@ -186,8 +220,8 @@ describe("recomputeTagIndex", () => {
         status: "open",
         createdAt: 11,
         updatedAt: 25,
-        tags: ["work", "beta"]
-      }
+        tags: ["work", "beta"],
+      },
     ];
 
     const tagIndex = recomputeTagIndex(tasks, 999);
@@ -205,7 +239,7 @@ describe("importState", () => {
     tasks,
     tagIndex: {},
     savedViews: [],
-    engagement: createDefaultEngagementState()
+    engagement: createDefaultEngagementState(),
   });
 
   it("produces merge stats and recomputes tagIndex", () => {
@@ -218,8 +252,8 @@ describe("importState", () => {
         status: "open",
         createdAt: 1,
         updatedAt: 2,
-        tags: ["new"]
-      }
+        tags: ["new"],
+      },
     ]);
 
     const result = importState(current, incoming, { mode: "merge", now: 1 });
@@ -238,10 +272,12 @@ describe("importState", () => {
       {
         ...BASE_LOCAL_TASK,
         id: "remove",
-        title: "remove"
-      }
+        title: "remove",
+      },
     ]);
-    const incoming = baseState([{ ...BASE_INCOMING_TASK, id: "keep", title: "updated" }]);
+    const incoming = baseState([
+      { ...BASE_INCOMING_TASK, id: "keep", title: "updated" },
+    ]);
 
     const result = importState(current, incoming, { mode: "replace" });
 
@@ -260,7 +296,7 @@ describe("importState", () => {
     expect(result.nextState.tagAliases).toEqual({
       incoming: "work",
       legacy: "work",
-      shared: "beta"
+      shared: "beta",
     });
   });
 
@@ -286,9 +322,9 @@ describe("importState", () => {
         filters: {
           status: "open",
           due: "today",
-          tagFilter: { all: ["work"] }
-        }
-      }
+          tagFilter: { all: ["work"] },
+        },
+      },
     ];
     const incoming = baseState([{ ...BASE_LOCAL_TASK }]);
     incoming.savedViews = [
@@ -300,14 +336,16 @@ describe("importState", () => {
         filters: {
           status: "open",
           due: "today",
-          tagFilter: { all: ["home"] }
-        }
-      }
+          tagFilter: { all: ["home"] },
+        },
+      },
     ];
 
     const result = importState(current, incoming, { mode: "merge", now: 1 });
     expect(result.stats.savedViews.updated).toBe(1);
-    expect(result.nextState.savedViews[0]?.filters.tagFilter?.all).toEqual(["home"]);
+    expect(result.nextState.savedViews[0]?.filters.tagFilter?.all).toEqual([
+      "home",
+    ]);
   });
 
   it("treats equivalent saved-view tagFilter values as unchanged", () => {
@@ -321,9 +359,9 @@ describe("importState", () => {
         filters: {
           status: "open",
           due: "today",
-          tagFilter: { all: ["work"] }
-        }
-      }
+          tagFilter: { all: ["work"] },
+        },
+      },
     ];
     const incoming = baseState([{ ...BASE_LOCAL_TASK }]);
     incoming.savedViews = [
@@ -335,9 +373,9 @@ describe("importState", () => {
         filters: {
           status: "open",
           due: "today",
-          tagFilter: { all: ["work"] }
-        }
-      }
+          tagFilter: { all: ["work"] },
+        },
+      },
     ];
 
     const result = importState(current, incoming, { mode: "merge", now: 1 });
@@ -356,9 +394,9 @@ describe("importState", () => {
         filters: {
           status: "open",
           due: "today",
-          tagFilter: { all: ["work", "#p2"] }
-        }
-      }
+          tagFilter: { all: ["work", "#p2"] },
+        },
+      },
     ];
     const incoming = baseState([{ ...BASE_LOCAL_TASK }]);
     incoming.savedViews = [
@@ -370,9 +408,9 @@ describe("importState", () => {
         filters: {
           status: "open",
           due: "today",
-          tagFilter: { all: ["work"] }
-        }
-      }
+          tagFilter: { all: ["work"] },
+        },
+      },
     ];
 
     const result = importState(current, incoming, { mode: "merge", now: 1 });
@@ -391,9 +429,9 @@ describe("importState", () => {
         filters: {
           status: "open",
           due: "today",
-          priority: "#p1"
-        }
-      }
+          priority: "#p1",
+        },
+      },
     ];
     const incoming = baseState([{ ...BASE_LOCAL_TASK }]);
     incoming.savedViews = [
@@ -405,9 +443,9 @@ describe("importState", () => {
         filters: {
           status: "open",
           due: "today",
-          priority: "#p2"
-        }
-      }
+          priority: "#p2",
+        },
+      },
     ];
 
     const result = importState(current, incoming, { mode: "merge", now: 1 });
@@ -426,9 +464,9 @@ describe("importState", () => {
         filters: {
           status: "open",
           due: "today",
-          priority: "#p2"
-        }
-      }
+          priority: "#p2",
+        },
+      },
     ];
     const incoming = baseState([{ ...BASE_LOCAL_TASK }]);
     incoming.savedViews = [
@@ -440,9 +478,9 @@ describe("importState", () => {
         filters: {
           status: "open",
           due: "today",
-          priority: "P2"
-        }
-      }
+          priority: "P2",
+        },
+      },
     ];
 
     const result = importState(current, incoming, { mode: "merge", now: 1 });
@@ -457,9 +495,9 @@ describe("importState", () => {
       achievements: {
         FIRST_TASK_DONE: {
           id: "FIRST_TASK_DONE",
-          unlockedAt: 100
-        }
-      }
+          unlockedAt: 100,
+        },
+      },
     };
     const incoming = baseState([{ ...BASE_LOCAL_TASK }]);
     incoming.engagement = {
@@ -467,13 +505,15 @@ describe("importState", () => {
       achievements: {
         FIRST_TASK_DONE: {
           id: "FIRST_TASK_DONE",
-          unlockedAt: 200
-        }
-      }
+          unlockedAt: 200,
+        },
+      },
     };
 
     const result = importState(current, incoming, { mode: "merge", now: 1 });
-    expect(result.nextState.engagement?.achievements.FIRST_TASK_DONE?.unlockedAt).toBe(200);
+    expect(
+      result.nextState.engagement?.achievements.FIRST_TASK_DONE?.unlockedAt,
+    ).toBe(200);
   });
 
   it("uses incoming engagement in replace mode", () => {
@@ -482,12 +522,14 @@ describe("importState", () => {
     const incoming = baseState([{ ...BASE_INCOMING_TASK }]);
     incoming.engagement = {
       ...createDefaultEngagementState(),
-      completionLog: [{ taskId: "incoming", at: 1234, tags: ["work"] }]
+      completionLog: [{ taskId: "incoming", at: 1234, tags: ["work"] }],
     };
 
     const result = importState(current, incoming, { mode: "replace", now: 1 });
     expect(result.nextState.engagement?.completionLog).toHaveLength(1);
-    expect(result.nextState.engagement?.completionLog[0]?.taskId).toBe("incoming");
+    expect(result.nextState.engagement?.completionLog[0]?.taskId).toBe(
+      "incoming",
+    );
   });
 
   it("rebuilds streak from merged completion logs in merge mode", () => {
@@ -501,8 +543,8 @@ describe("importState", () => {
       streak: {
         currentDays: 9,
         bestDays: 9,
-        lastCompletionDayKey: "2026-02-10"
-      }
+        lastCompletionDayKey: "2026-02-10",
+      },
     };
     const incoming = baseState([{ ...BASE_INCOMING_TASK }]);
     incoming.engagement = {
@@ -511,20 +553,25 @@ describe("importState", () => {
       streak: {
         currentDays: 1,
         bestDays: 1,
-        lastCompletionDayKey: "2026-02-11"
-      }
+        lastCompletionDayKey: "2026-02-11",
+      },
     };
 
-    const result = importState(current, incoming, { mode: "merge", now: day2 + oneDayMs });
+    const result = importState(current, incoming, {
+      mode: "merge",
+      now: day2 + oneDayMs,
+    });
     expect(result.nextState.engagement?.streak.currentDays).toBe(2);
     expect(result.nextState.engagement?.streak.bestDays).toBe(2);
-    expect(result.nextState.engagement?.streak.lastCompletionDayKey).toBe("2026-02-11");
+    expect(result.nextState.engagement?.streak.lastCompletionDayKey).toBe(
+      "2026-02-11",
+    );
   });
 
   it("normalizes incoming engagement in replace mode (retention + tag normalization)", () => {
     const oneDayMs = 24 * 60 * 60 * 1000;
     const now = Date.UTC(2026, 1, 20);
-    const oldEvent = now - (91 * oneDayMs);
+    const oldEvent = now - 91 * oneDayMs;
     const recentEvent = now - oneDayMs;
     const current = baseState([{ ...BASE_LOCAL_TASK }]);
     const incoming = baseState([{ ...BASE_INCOMING_TASK }]);
@@ -533,20 +580,20 @@ describe("importState", () => {
       streak: {
         currentDays: "stale-current-days" as unknown as number,
         bestDays: "stale-best-days" as unknown as number,
-        lastCompletionDayKey: "not-a-day"
+        lastCompletionDayKey: "not-a-day",
       },
       completionLog: [
         {
           taskId: "old",
           at: oldEvent,
-          tags: [" old", "work", "work"]
+          tags: [" old", "work", "work"],
         },
         {
           taskId: "recent",
           at: recentEvent,
-          tags: ["work", "work", ""]
-        }
-      ]
+          tags: ["work", "work", ""],
+        },
+      ],
     };
 
     const result = importState(current, incoming, { mode: "replace", now });
@@ -557,7 +604,9 @@ describe("importState", () => {
     expect(completionLog[0]?.tags).toEqual(["work"]);
     expect(result.nextState.engagement?.streak.currentDays).toBe(1);
     expect(result.nextState.engagement?.streak.bestDays).toBe(1);
-    expect(result.nextState.engagement?.streak.lastCompletionDayKey).toBe("2026-02-19");
+    expect(result.nextState.engagement?.streak.lastCompletionDayKey).toBe(
+      "2026-02-19",
+    );
   });
 });
 
@@ -573,8 +622,8 @@ describe("redactStateForExport", () => {
           createdAt: 1,
           updatedAt: 1,
           notes: "private",
-          tags: ["work"]
-        }
+          tags: ["work"],
+        },
       ],
       tagIndex: {},
       savedViews: [],
@@ -584,9 +633,9 @@ describe("redactStateForExport", () => {
         flashMode: "slow",
         notifications: DEFAULT_NOTIFICATIONS,
         security: {
-          nonHttpLinkPolicy: "prompt"
-        }
-      }
+          nonHttpLinkPolicy: "prompt",
+        },
+      },
     };
 
     const redacted = redactStateForExport(payload, "basic");
@@ -613,10 +662,21 @@ describe("redactStateForExport", () => {
           hasExplicitTime: true,
           notes: "private",
           tags: ["work"],
-          reminder: { kind: "absolute", at: 1700000000000, lastFiredAt: 1699999900000 },
-          links: [{ id: "link-1", target: "https://example.com", source: "manual" }],
-          external: { calendar: { uid: "uid-1", lastImportedAt: "2026-02-12T00:00:00.000Z" } }
-        }
+          reminder: {
+            kind: "absolute",
+            at: 1700000000000,
+            lastFiredAt: 1699999900000,
+          },
+          links: [
+            { id: "link-1", target: "https://example.com", source: "manual" },
+          ],
+          external: {
+            calendar: {
+              uid: "uid-1",
+              lastImportedAt: "2026-02-12T00:00:00.000Z",
+            },
+          },
+        },
       ],
       tagIndex: {},
       savedViews: [],
@@ -626,9 +686,9 @@ describe("redactStateForExport", () => {
         flashMode: "slow",
         notifications: DEFAULT_NOTIFICATIONS,
         security: {
-          nonHttpLinkPolicy: "block"
-        }
-      }
+          nonHttpLinkPolicy: "block",
+        },
+      },
     };
 
     const redacted = redactStateForExport(payload, "strict");
@@ -658,14 +718,16 @@ describe("redactStateForExport", () => {
           dueAt: 1700000000000,
           notes: "private",
           tags: ["work"],
-          links: [{ id: "link-1", target: "https://example.com", source: "manual" }]
-        }
+          links: [
+            { id: "link-1", target: "https://example.com", source: "manual" },
+          ],
+        },
       ],
       tagIndex: {
-        work: { tagName: "work", usageCount: 1, lastUsedAt: 1 }
+        work: { tagName: "work", usageCount: 1, lastUsedAt: 1 },
       },
       tagAliases: {
-        wrk: "work"
+        wrk: "work",
       },
       savedViews: [
         {
@@ -673,12 +735,12 @@ describe("redactStateForExport", () => {
           name: "Work",
           createdAt: 1,
           updatedAt: 1,
-          filters: { status: "open", due: "any", tag: "work" }
-        }
+          filters: { status: "open", due: "any", tag: "work" },
+        },
       ],
       engagement: {
         ...createDefaultEngagementState(),
-        completionLog: [{ taskId: "a", at: 1, tags: ["work"] }]
+        completionLog: [{ taskId: "a", at: 1, tags: ["work"] }],
       },
       settings: {
         themeId: "default",
@@ -686,9 +748,9 @@ describe("redactStateForExport", () => {
         flashMode: "slow",
         notifications: DEFAULT_NOTIFICATIONS,
         security: {
-          nonHttpLinkPolicy: "block"
-        }
-      }
+          nonHttpLinkPolicy: "block",
+        },
+      },
     };
 
     const redacted = redactStateForExport(payload, "strict-v2");
@@ -711,9 +773,9 @@ describe("redactStateForExport", () => {
         recurrence: {
           dtstart: "2026-02-10T09:00:00",
           rrule: "FREQ=DAILY;INTERVAL=1",
-          series_id: "series:task-1"
-        }
-      }
+          series_id: "series:task-1",
+        },
+      },
     ];
     const incoming = [
       {
@@ -721,9 +783,9 @@ describe("redactStateForExport", () => {
         recurrence: {
           dtstart: "2026-02-10T09:00:00",
           rrule: "FREQ=WEEKLY;INTERVAL=1;BYDAY=MO",
-          series_id: "series:task-1"
-        }
-      }
+          series_id: "series:task-1",
+        },
+      },
     ];
 
     const result = mergeTasksByIdNewestUpdatedAt(local, incoming);
@@ -735,18 +797,20 @@ describe("redactStateForExport", () => {
     const local = [
       {
         ...BASE_LOCAL_TASK,
-        links: [{ id: "link-1", target: "https://example.com" }]
-      }
+        links: [{ id: "link-1", target: "https://example.com" }],
+      },
     ];
     const incoming = [
       {
         ...BASE_INCOMING_TASK,
-        links: [{ id: "link-1", target: "https://example.com/new" }]
-      }
+        links: [{ id: "link-1", target: "https://example.com/new" }],
+      },
     ];
 
     const result = mergeTasksByIdNewestUpdatedAt(local, incoming);
     expect(result.stats.updated).toBe(1);
-    expect(result.merged[0]?.links?.[0]?.target).toBe("https://example.com/new");
+    expect(result.merged[0]?.links?.[0]?.target).toBe(
+      "https://example.com/new",
+    );
   });
 });

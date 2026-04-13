@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import {
   canonicalizeDueAtInput,
-  canonicalizeTimeOnlyInput
+  canonicalizeTimeOnlyInput,
 } from "./due_at_canonicalizer";
 
 const CHICAGO_TZ = "America/Chicago";
@@ -13,11 +13,11 @@ describe("canonicalizeDueAtInput", () => {
     expect(
       canonicalizeDueAtInput("today", undefined, {
         now: NOW_2026_03_02_10,
-        tz: CHICAGO_TZ
-      })
+        tz: CHICAGO_TZ,
+      }),
     ).toEqual({
       ok: true,
-      dueDate: "2026-03-02"
+      dueDate: "2026-03-02",
     });
   });
 
@@ -25,12 +25,12 @@ describe("canonicalizeDueAtInput", () => {
     expect(
       canonicalizeDueAtInput("tomorrow 3pm", undefined, {
         now: NOW_2026_03_02_10,
-        tz: CHICAGO_TZ
-      })
+        tz: CHICAGO_TZ,
+      }),
     ).toEqual({
       ok: true,
       dueDate: "2026-03-03",
-      atTime: "15:00"
+      atTime: "15:00",
     });
   });
 
@@ -38,23 +38,23 @@ describe("canonicalizeDueAtInput", () => {
     expect(
       canonicalizeDueAtInput("3pm", undefined, {
         now: NOW_2026_03_02_10,
-        tz: CHICAGO_TZ
-      })
+        tz: CHICAGO_TZ,
+      }),
     ).toEqual({
       ok: true,
       dueDate: "2026-03-02",
-      atTime: "15:00"
+      atTime: "15:00",
     });
 
     expect(
       canonicalizeDueAtInput("3pm", undefined, {
         now: NOW_2026_03_02_16,
-        tz: CHICAGO_TZ
-      })
+        tz: CHICAGO_TZ,
+      }),
     ).toEqual({
       ok: true,
       dueDate: "2026-03-03",
-      atTime: "15:00"
+      atTime: "15:00",
     });
   });
 
@@ -62,11 +62,11 @@ describe("canonicalizeDueAtInput", () => {
     expect(
       canonicalizeDueAtInput("2026-03-05", undefined, {
         now: NOW_2026_03_02_10,
-        tz: CHICAGO_TZ
-      })
+        tz: CHICAGO_TZ,
+      }),
     ).toEqual({
       ok: true,
-      dueDate: "2026-03-05"
+      dueDate: "2026-03-05",
     });
   });
 
@@ -74,12 +74,12 @@ describe("canonicalizeDueAtInput", () => {
     expect(
       canonicalizeDueAtInput("2026-03-05", "3pm", {
         now: NOW_2026_03_02_10,
-        tz: CHICAGO_TZ
-      })
+        tz: CHICAGO_TZ,
+      }),
     ).toEqual({
       ok: true,
       dueDate: "2026-03-05",
-      atTime: "15:00"
+      atTime: "15:00",
     });
   });
 
@@ -87,12 +87,12 @@ describe("canonicalizeDueAtInput", () => {
     expect(
       canonicalizeDueAtInput("tomorrow 3pm", "09:00", {
         now: NOW_2026_03_02_10,
-        tz: CHICAGO_TZ
-      })
+        tz: CHICAGO_TZ,
+      }),
     ).toEqual({
       ok: false,
       code: "DUPLICATE_TIME",
-      message: 'Error: due value already includes time; omit "at:"'
+      message: 'Error: due value already includes time; omit "at:"',
     });
   });
 
@@ -100,12 +100,12 @@ describe("canonicalizeDueAtInput", () => {
     expect(
       canonicalizeDueAtInput("next mon", undefined, {
         now: NOW_2026_03_02_10,
-        tz: CHICAGO_TZ
-      })
+        tz: CHICAGO_TZ,
+      }),
     ).toEqual({
       ok: false,
       code: "INVALID_DUE",
-      message: 'Error: invalid due date "next mon"'
+      message: 'Error: invalid due date "next mon"',
     });
   });
 });
@@ -115,15 +115,15 @@ describe("canonicalizeTimeOnlyInput", () => {
     expect(
       canonicalizeTimeOnlyInput("3pm", {
         now: NOW_2026_03_02_10,
-        tz: CHICAGO_TZ
-      })
+        tz: CHICAGO_TZ,
+      }),
     ).toEqual({ ok: true, time24: "15:00" });
 
     expect(
       canonicalizeTimeOnlyInput("09:15", {
         now: NOW_2026_03_02_10,
-        tz: CHICAGO_TZ
-      })
+        tz: CHICAGO_TZ,
+      }),
     ).toEqual({ ok: true, time24: "09:15" });
   });
 
@@ -131,12 +131,12 @@ describe("canonicalizeTimeOnlyInput", () => {
     expect(
       canonicalizeTimeOnlyInput("today", {
         now: NOW_2026_03_02_10,
-        tz: CHICAGO_TZ
-      })
+        tz: CHICAGO_TZ,
+      }),
     ).toEqual({
       ok: false,
       code: "INVALID_TIME",
-      message: 'Error: invalid time "today"'
+      message: 'Error: invalid time "today"',
     });
   });
 
@@ -144,12 +144,12 @@ describe("canonicalizeTimeOnlyInput", () => {
     expect(
       canonicalizeTimeOnlyInput("3", {
         now: NOW_2026_03_02_10,
-        tz: CHICAGO_TZ
-      })
+        tz: CHICAGO_TZ,
+      }),
     ).toEqual({
       ok: false,
       code: "AMBIGUOUS_TIME",
-      message: 'Error: ambiguous time "3"'
+      message: 'Error: ambiguous time "3"',
     });
   });
 });

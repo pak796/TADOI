@@ -7,12 +7,12 @@ import type {
   CommandResult,
   HelpTopic,
   NoteCommand,
-  ParseCommandResult
+  ParseCommandResult,
 } from "../commands/types";
 import { filterTasks } from "../domain/query";
 import {
   MINI_DEFAULT_TIMEZONE,
-  canonicalizeDueAtInput
+  canonicalizeDueAtInput,
 } from "../lib/datetime/due_at_canonicalizer";
 import { getVisibleTasks, initialState, reducer } from "../state/store";
 import {
@@ -20,14 +20,14 @@ import {
   getDataFilePath,
   safeLoadState,
   saveStateAtomic,
-  type LoadedData
+  type LoadedData,
 } from "../state/persistence";
 import {
   createDefaultLockPayload,
   getTadoiLockPath,
   removeTadoiLock,
   tryAcquireTadoiLock,
-  type TadoiLockPayload
+  type TadoiLockPayload,
 } from "../state/lockfile";
 import { CLI_EXIT_CODE } from "./exitCodes";
 import { parseSelectorTokens } from "./selectors";
@@ -70,25 +70,35 @@ type SaveDataOptions = {
 
 type TitsCliDeps = {
   now: () => number;
-  parseCommand: (input: string, options?: ParseCommandOptions) => ParseCommandResult;
+  parseCommand: (
+    input: string,
+    options?: ParseCommandOptions,
+  ) => ParseCommandResult;
   executeCommand: (
     command: Command,
-    ctx: Parameters<typeof executeCommand>[1]
+    ctx: Parameters<typeof executeCommand>[1],
   ) => CommandResult;
   getDataFilePath: () => string;
   getLockPath: (dataFilePath: string) => string;
   createLockPayload: (dataFilePath: string) => TadoiLockPayload;
-  acquireLock: (lockPath: string, payload: TadoiLockPayload) => Promise<boolean>;
+  acquireLock: (
+    lockPath: string,
+    payload: TadoiLockPayload,
+  ) => Promise<boolean>;
   releaseLock: (lockPath: string) => Promise<void>;
   loadData: (filePath: string) => Promise<LoadedData>;
-  saveData: (data: LoadedData, filePath: string, options?: SaveDataOptions) => Promise<void>;
+  saveData: (
+    data: LoadedData,
+    filePath: string,
+    options?: SaveDataOptions,
+  ) => Promise<void>;
   runNoteCommand: (
     command: NoteCommand,
     dataFilePath: string,
     options?: {
       tasks?: LoadedData["tasks"];
       selectedTaskId?: string;
-    }
+    },
   ) => Promise<ExecuteNoteCommandResult>;
   readStdin: () => Promise<string>;
   log: (line: string) => void;
@@ -108,7 +118,11 @@ const DEFAULT_DEPS: TitsCliDeps = {
     const result = await safeLoadState({ filePath });
     return result.data;
   },
-  saveData: async (data: LoadedData, filePath: string, options?: SaveDataOptions) => {
+  saveData: async (
+    data: LoadedData,
+    filePath: string,
+    options?: SaveDataOptions,
+  ) => {
     await saveStateAtomic(data, filePath, undefined, options);
   },
   runNoteCommand: runNoteCommandCli,
@@ -125,7 +139,7 @@ const DEFAULT_DEPS: TitsCliDeps = {
     return Buffer.concat(chunks).toString("utf8");
   },
   log: (line: string) => redactedLogger.log(line),
-  error: (line: string) => redactedLogger.error(line)
+  error: (line: string) => redactedLogger.error(line),
 };
 
 function isTitsCommandName(value: string): value is TitsCommandName {
@@ -164,7 +178,7 @@ function toSingleLine(value: string): string {
 
 function formatCliOutput(
   text: string,
-  options: { preserveMultiline?: boolean } = {}
+  options: { preserveMultiline?: boolean } = {},
 ): string {
   if (options.preserveMultiline) {
     return text.trimEnd();
@@ -178,7 +192,7 @@ function shouldPreserveHelpFormatting(command: Command): boolean {
 
 function formatDslToken(token: string): string {
   if (token.length === 0) {
-    return "\"\"";
+    return '""';
   }
   if (/\s/.test(token) && !token.includes('"')) {
     return `"${token}"`;
@@ -217,12 +231,12 @@ function resolveWrapperHelpCommand(argv: string[]): Command | null {
   ) as HelpTopic;
   return {
     type: "help",
-    topic
+    topic,
   };
 }
 
 export function resolveTitsCliInput(
-  argv: string[]
+  argv: string[],
 ): { mode: "raw" | "subcommand"; dsl: string } | null {
   if (argv.length === 0) return null;
 
@@ -252,7 +266,9 @@ export function resolveTitsCliInput(
 
 function commandRequiresInAppSelection(command: Command): boolean {
   if (
-    (command.type === "done" || command.type === "due" || command.type === "recur") &&
+    (command.type === "done" ||
+      command.type === "due" ||
+      command.type === "recur") &&
     command.target.type === "selected"
   ) {
     return true;
@@ -312,14 +328,17 @@ type SelectorCommandIntent =
 function parseSelectorIntent(
   argv: string[],
   now: number,
-  tz: string
-): {
-  ok: true;
-  intent: SelectorCommandIntent;
-} | {
-  ok: false;
-  error: string;
-} | null {
+  tz: string,
+):
+  | {
+      ok: true;
+      intent: SelectorCommandIntent;
+    }
+  | {
+      ok: false;
+      error: string;
+    }
+  | null {
   const command = argv[0]?.trim().toLowerCase();
   if (command !== "done" && command !== "due") {
     return null;
@@ -344,15 +363,15 @@ function parseSelectorIntent(
     if (idTokens.length > 0) {
       return {
         ok: false,
-        error: 'Error: selector mode does not accept "id:<task-id>" tokens.'
+        error: 'Error: selector mode does not accept "id:<task-id>" tokens.',
       };
     }
     return {
       ok: true,
       intent: {
         kind: "done",
-        selectorTokens: args
-      }
+        selectorTokens: args,
+      },
     };
   }
 
@@ -363,7 +382,7 @@ function parseSelectorIntent(
   if (args.some((token) => token.startsWith("id:"))) {
     return {
       ok: false,
-      error: 'Error: selector mode does not accept "id:<task-id>" tokens.'
+      error: 'Error: selector mode does not accept "id:<task-id>" tokens.',
     };
   }
 
@@ -382,7 +401,7 @@ function parseSelectorIntent(
   if (tail.length < 2) {
     return {
       ok: false,
-      error: "Error: due selector mode requires selectors and date/clear."
+      error: "Error: due selector mode requires selectors and date/clear.",
     };
   }
 
@@ -396,16 +415,21 @@ function parseSelectorIntent(
       intent: {
         kind: "due",
         selectorTokens: tail,
-        clear: true
-      }
+        clear: true,
+      },
     };
   }
 
   const dueCandidates = [
     { selectorTokens: tail, dueInput: dueArg },
     ...(tail.length > 0
-      ? [{ selectorTokens: tail.slice(0, -1), dueInput: `${tail[tail.length - 1]} ${dueArg}` }]
-      : [])
+      ? [
+          {
+            selectorTokens: tail.slice(0, -1),
+            dueInput: `${tail[tail.length - 1]} ${dueArg}`,
+          },
+        ]
+      : []),
   ];
 
   let firstSelectorError: string | undefined;
@@ -417,7 +441,7 @@ function parseSelectorIntent(
 
     const selectorCheck = parseSelectorTokens(candidate.selectorTokens, {
       status: "open",
-      due: "any"
+      due: "any",
     });
     if (!selectorCheck.ok) {
       if (!firstSelectorError) {
@@ -428,7 +452,7 @@ function parseSelectorIntent(
 
     const canonicalized = canonicalizeDueAtInput(candidate.dueInput, atInput, {
       now,
-      tz
+      tz,
     });
     if (!canonicalized.ok) {
       if (!firstDueError) {
@@ -444,8 +468,8 @@ function parseSelectorIntent(
         selectorTokens: candidate.selectorTokens,
         clear: false,
         dueDate: canonicalized.dueDate,
-        ...(canonicalized.atTime ? { atTime: canonicalized.atTime } : {})
-      }
+        ...(canonicalized.atTime ? { atTime: canonicalized.atTime } : {}),
+      },
     };
   }
 
@@ -458,24 +482,26 @@ function parseSelectorIntent(
 
   return {
     ok: false,
-    error: "Error: due selector mode requires selectors and date/clear."
+    error: "Error: due selector mode requires selectors and date/clear.",
   };
 }
 
 function buildSelectorCommand(
   intent: SelectorCommandIntent,
   state: Parameters<typeof reducer>[0],
-  now: number
-): { ok: true; command: BulkCommand } | { ok: false; error: string; exitCode: number } {
+  now: number,
+):
+  | { ok: true; command: BulkCommand }
+  | { ok: false; error: string; exitCode: number } {
   const selectorResult = parseSelectorTokens(intent.selectorTokens, {
     status: "open",
-    due: "any"
+    due: "any",
   });
   if (!selectorResult.ok) {
     return {
       ok: false,
       error: selectorResult.error,
-      exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION
+      exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION,
     };
   }
 
@@ -486,7 +512,7 @@ function buildSelectorCommand(
     return {
       ok: false,
       error: "Error: no tasks match selector.",
-      exitCode: TITS_CLI_EXIT_CODE.TARGET_RESOLUTION
+      exitCode: TITS_CLI_EXIT_CODE.TARGET_RESOLUTION,
     };
   }
 
@@ -496,8 +522,8 @@ function buildSelectorCommand(
       command: {
         type: "bulk",
         operation: "done",
-        target: { type: "ids", ids }
-      }
+        target: { type: "ids", ids },
+      },
     };
   }
 
@@ -508,8 +534,8 @@ function buildSelectorCommand(
         type: "bulk",
         operation: "due",
         target: { type: "ids", ids },
-        clear: true
-      }
+        clear: true,
+      },
     };
   }
 
@@ -521,14 +547,14 @@ function buildSelectorCommand(
       target: { type: "ids", ids },
       clear: false,
       dueDate: intent.dueDate,
-      ...(intent.atTime ? { atTime: intent.atTime } : {})
-    }
+      ...(intent.atTime ? { atTime: intent.atTime } : {}),
+    },
   };
 }
 
 export async function runTitsCommandCliWithDeps(
   argv: string[],
-  deps: TitsCliDeps
+  deps: TitsCliDeps,
 ): Promise<{ handled: boolean; exitCode?: number; data?: unknown }> {
   const invocationNow = deps.now();
   const wrapperHelpCommand = resolveWrapperHelpCommand(argv);
@@ -537,16 +563,19 @@ export async function runTitsCommandCliWithDeps(
       now: invocationNow,
       state: initialState,
       visibleTasks: [],
-      selectedTaskId: undefined
+      selectedTaskId: undefined,
     });
     if (result.output.kind === "error") {
       deps.error(toSingleLine(result.output.text));
-      return { handled: true, exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION };
+      return {
+        handled: true,
+        exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION,
+      };
     }
     deps.log(
       formatCliOutput(result.output.text, {
-        preserveMultiline: shouldPreserveHelpFormatting(wrapperHelpCommand)
-      })
+        preserveMultiline: shouldPreserveHelpFormatting(wrapperHelpCommand),
+      }),
     );
     return { handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS };
   }
@@ -554,7 +583,7 @@ export async function runTitsCommandCliWithDeps(
   const selectorIntentResult = parseSelectorIntent(
     argv,
     invocationNow,
-    MINI_DEFAULT_TIMEZONE
+    MINI_DEFAULT_TIMEZONE,
   );
   if (selectorIntentResult && !selectorIntentResult.ok) {
     deps.error(selectorIntentResult.error);
@@ -571,20 +600,27 @@ export async function runTitsCommandCliWithDeps(
     }
     const parsed = deps.parseCommand(resolved.dsl, {
       now: invocationNow,
-      tz: MINI_DEFAULT_TIMEZONE
+      tz: MINI_DEFAULT_TIMEZONE,
     });
     if (!parsed.ok) {
       deps.error(toSingleLine(parsed.error));
-      return { handled: true, exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION };
+      return {
+        handled: true,
+        exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION,
+      };
     }
     parsedCommand = parsed.command;
 
-    if (parsedCommand.type === "note" && parsedCommand.operation === "quick" && !parsedCommand.body) {
+    if (
+      parsedCommand.type === "note" &&
+      parsedCommand.operation === "quick" &&
+      !parsedCommand.body
+    ) {
       const stdinBody = (await deps.readStdin()).trimEnd();
       if (stdinBody.trim().length > 0) {
         parsedCommand = {
           ...parsedCommand,
-          stdinBody
+          stdinBody,
         };
       }
     }
@@ -596,17 +632,22 @@ export async function runTitsCommandCliWithDeps(
     ) {
       parsedCommand = {
         ...parsedCommand,
-        captureMode: "append"
+        captureMode: "append",
       };
     }
 
     if (commandRequiresInAppSelection(parsedCommand)) {
       if (parsedCommand.type === "bulk") {
-        deps.error('Error: CLI bulk commands require repeated "id:<task-id>" targets.');
+        deps.error(
+          'Error: CLI bulk commands require repeated "id:<task-id>" targets.',
+        );
       } else {
         deps.error("Error: @selected is only available in-app. Use id:<uuid>.");
       }
-      return { handled: true, exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION };
+      return {
+        handled: true,
+        exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION,
+      };
     }
 
     if (parsedCommand.type === "help") {
@@ -614,31 +655,42 @@ export async function runTitsCommandCliWithDeps(
         now: invocationNow,
         state: initialState,
         visibleTasks: [],
-        selectedTaskId: undefined
+        selectedTaskId: undefined,
       });
       if (result.output.kind === "error") {
         deps.error(toSingleLine(result.output.text));
-        return { handled: true, exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION };
+        return {
+          handled: true,
+          exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION,
+        };
       }
       deps.log(
         formatCliOutput(result.output.text, {
-          preserveMultiline: shouldPreserveHelpFormatting(parsedCommand)
-        })
+          preserveMultiline: shouldPreserveHelpFormatting(parsedCommand),
+        }),
       );
       return { handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS };
     }
 
     if (parsedCommand.type === "note" && parsedCommand.operation === "help") {
-      const result = await deps.runNoteCommand(parsedCommand, deps.getDataFilePath());
+      const result = await deps.runNoteCommand(
+        parsedCommand,
+        deps.getDataFilePath(),
+      );
       if (result.output.kind === "error") {
         deps.error(toSingleLine(result.output.text));
-        return { handled: true, exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION };
+        return {
+          handled: true,
+          exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION,
+        };
       }
-      deps.log(formatCliOutput(result.output.text, { preserveMultiline: true }));
+      deps.log(
+        formatCliOutput(result.output.text, { preserveMultiline: true }),
+      );
       return {
         handled: true,
         exitCode: TITS_CLI_EXIT_CODE.SUCCESS,
-        ...(result.data !== undefined ? { data: result.data } : {})
+        ...(result.data !== undefined ? { data: result.data } : {}),
       };
     }
   }
@@ -648,7 +700,10 @@ export async function runTitsCommandCliWithDeps(
   let lockAcquired = false;
 
   try {
-    lockAcquired = await deps.acquireLock(lockPath, deps.createLockPayload(dataFilePath));
+    lockAcquired = await deps.acquireLock(
+      lockPath,
+      deps.createLockPayload(dataFilePath),
+    );
     if (!lockAcquired) {
       deps.error("Error: TADOI is running (lock present).");
       return { handled: true, exitCode: TITS_CLI_EXIT_CODE.LOCKED };
@@ -663,15 +718,20 @@ export async function runTitsCommandCliWithDeps(
           ? loadedForNote.stateRevision
           : 0;
       const result = await deps.runNoteCommand(parsedCommand, dataFilePath, {
-        tasks: loadedForNote.tasks
+        tasks: loadedForNote.tasks,
       });
       if (result.output.kind === "error") {
         deps.error(toSingleLine(result.output.text));
-        return { handled: true, exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION };
+        return {
+          handled: true,
+          exitCode: TITS_CLI_EXIT_CODE.PARSE_OR_VALIDATION,
+        };
       }
       if (result.taskSideEffects) {
         const sideEffect = result.taskSideEffects;
-        const taskIndex = loadedForNote.tasks.findIndex((task) => task.id === sideEffect.taskId);
+        const taskIndex = loadedForNote.tasks.findIndex(
+          (task) => task.id === sideEffect.taskId,
+        );
         if (taskIndex >= 0) {
           const targetTask = loadedForNote.tasks[taskIndex];
           const nextNoteRef =
@@ -680,36 +740,41 @@ export async function runTitsCommandCliWithDeps(
                 ? { type: "id" as const, value: result.noteId }
                 : {
                     type: "filename" as const,
-                    value: path.posix.basename(sideEffect.primaryNotePath)
+                    value: path.posix.basename(sideEffect.primaryNotePath),
                   }
               : targetTask.noteRef;
-          const nextInlineNotes = sideEffect.clearInlineNotes ? undefined : targetTask.notes;
+          const nextInlineNotes = sideEffect.clearInlineNotes
+            ? undefined
+            : targetTask.notes;
           const shouldUpdateTask =
-            nextNoteRef !== targetTask.noteRef || nextInlineNotes !== targetTask.notes;
+            nextNoteRef !== targetTask.noteRef ||
+            nextInlineNotes !== targetTask.notes;
           if (shouldUpdateTask) {
             const nextTasks = [...loadedForNote.tasks];
             nextTasks[taskIndex] = {
               ...targetTask,
               noteRef: nextNoteRef,
               notes: nextInlineNotes,
-              updatedAt: invocationNow
+              updatedAt: invocationNow,
             };
             await deps.saveData(
               {
                 ...loadedForNote,
-                tasks: nextTasks
+                tasks: nextTasks,
               },
               dataFilePath,
-              { expectedStateRevision: noteExpectedStateRevision }
+              { expectedStateRevision: noteExpectedStateRevision },
             );
           }
         }
       }
-      deps.log(formatCliOutput(result.output.text, { preserveMultiline: true }));
+      deps.log(
+        formatCliOutput(result.output.text, { preserveMultiline: true }),
+      );
       return {
         handled: true,
         exitCode: TITS_CLI_EXIT_CODE.SUCCESS,
-        ...(result.data !== undefined ? { data: result.data } : {})
+        ...(result.data !== undefined ? { data: result.data } : {}),
       };
     }
 
@@ -737,7 +802,7 @@ export async function runTitsCommandCliWithDeps(
     if ("ok" in command && command.ok === false) {
       return {
         handled: true,
-        exitCode: command.exitCode
+        exitCode: command.exitCode,
       };
     }
 
@@ -745,14 +810,14 @@ export async function runTitsCommandCliWithDeps(
       now,
       state,
       visibleTasks: getVisibleTasks(state, now),
-      selectedTaskId: undefined
+      selectedTaskId: undefined,
     });
 
     if (result.output.kind === "error") {
       deps.error(toSingleLine(result.output.text));
       return {
         handled: true,
-        exitCode: classifyExecutionError(command, result.output.text)
+        exitCode: classifyExecutionError(command, result.output.text),
       };
     }
 
@@ -766,17 +831,17 @@ export async function runTitsCommandCliWithDeps(
         tasks: state.tasks,
         tagIndex: state.tagIndex,
         savedViews: state.savedViews,
-        engagement: state.engagement
+        engagement: state.engagement,
       },
       dataFilePath,
-      { expectedStateRevision }
+      { expectedStateRevision },
     );
 
     deps.log(toSingleLine(result.output.text));
     return { handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS };
   } catch (error: unknown) {
     deps.error(
-      `Error: could not read/write data file (${error instanceof Error ? error.message : String(error)})`
+      `Error: could not read/write data file (${error instanceof Error ? error.message : String(error)})`,
     );
     return { handled: true, exitCode: TITS_CLI_EXIT_CODE.IO_ERROR };
   } finally {
@@ -785,7 +850,7 @@ export async function runTitsCommandCliWithDeps(
         await deps.releaseLock(lockPath);
       } catch (error: unknown) {
         deps.error(
-          `Warning: could not release lock file (${error instanceof Error ? error.message : String(error)})`
+          `Warning: could not release lock file (${error instanceof Error ? error.message : String(error)})`,
         );
       }
     }
@@ -793,7 +858,7 @@ export async function runTitsCommandCliWithDeps(
 }
 
 export async function runTitsCommandCli(
-  argv: string[]
+  argv: string[],
 ): Promise<{ handled: boolean; exitCode?: number; data?: unknown }> {
   return runTitsCommandCliWithDeps(argv, DEFAULT_DEPS);
 }

@@ -2,7 +2,11 @@ import { formatLocalTimeHHmm } from "../domain/dates";
 import type { ReminderIndexEvent } from "../reminders/types";
 import { themeForObject } from "../app/theme";
 import { formatDate } from "../state/store";
-import { ModalActionButton, ModalActionRow, ModalContainer } from "./ModalPrimitives";
+import {
+  ModalActionButton,
+  ModalActionRow,
+  ModalContainer,
+} from "./ModalPrimitives";
 
 export type OutOfAppReminderActionId =
   | "complete"
@@ -38,7 +42,7 @@ export function OutOfAppReminderModal({
   event,
   notesSnippet,
   selectedAction,
-  onChooseAction
+  onChooseAction,
 }: OutOfAppReminderModalProps) {
   const theme = themeForObject("notifications");
 
@@ -48,9 +52,15 @@ export function OutOfAppReminderModal({
         REMINDER [ESC close | ENTER confirm | TAB/ARROWS move]
       </text>
       <text style={{ color: theme.bg }}>Task: {event.title}</text>
-      <text style={{ color: theme.bg }}>Due: {formatDateTimeLabel(event.dueAt)}</text>
-      <text style={{ color: theme.bg }}>Reminder: {formatDateTimeLabel(event.remindAt)}</text>
-      <text style={{ color: theme.bg }}>Priority: {priorityLabel(event.priority)}</text>
+      <text style={{ color: theme.bg }}>
+        Due: {formatDateTimeLabel(event.dueAt)}
+      </text>
+      <text style={{ color: theme.bg }}>
+        Reminder: {formatDateTimeLabel(event.remindAt)}
+      </text>
+      <text style={{ color: theme.bg }}>
+        Priority: {priorityLabel(event.priority)}
+      </text>
       <text style={{ color: theme.bg }}>Tags: {formatTags(event.tags)}</text>
       {notesSnippet ? (
         <text style={{ color: theme.bg }}>Notes: {notesSnippet}</text>

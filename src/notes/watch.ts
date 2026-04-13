@@ -3,7 +3,7 @@ import path from "path";
 
 type ReaddirWithDirent = (
   dirPath: string,
-  options: { withFileTypes: true }
+  options: { withFileTypes: true },
 ) => Promise<Array<{ isDirectory: () => boolean; name: string }>>;
 
 export type WatchMarkdownTreeDeps = {
@@ -34,7 +34,7 @@ function normalizeWatcherKey(dirPath: string): string {
 
 async function collectDirectories(
   rootPath: string,
-  readdirImpl: ReaddirWithDirent
+  readdirImpl: ReaddirWithDirent,
 ): Promise<string[]> {
   const rootResolved = path.resolve(rootPath);
   const queue = [rootResolved];
@@ -62,7 +62,7 @@ async function collectDirectories(
 }
 
 export async function watchMarkdownTree(
-  options: WatchMarkdownTreeOptions
+  options: WatchMarkdownTreeOptions,
 ): Promise<WatchMarkdownTreeHandle> {
   const watchImpl = options.deps?.watchImpl ?? watch;
   const readdirImpl =
@@ -169,8 +169,13 @@ export async function watchMarkdownTree(
     }
     syncInFlight = true;
     try {
-      const directories = await collectDirectories(options.rootPath, readdirImpl);
-      const nextKeys = new Set(directories.map((dirPath) => normalizeWatcherKey(dirPath)));
+      const directories = await collectDirectories(
+        options.rootPath,
+        readdirImpl,
+      );
+      const nextKeys = new Set(
+        directories.map((dirPath) => normalizeWatcherKey(dirPath)),
+      );
 
       for (const [key, watcher] of watchersByKey.entries()) {
         if (nextKeys.has(key)) continue;
@@ -206,6 +211,6 @@ export async function watchMarkdownTree(
       closed = true;
       clearTimers();
       closeWatchers();
-    }
+    },
   };
 }

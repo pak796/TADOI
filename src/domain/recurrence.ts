@@ -8,7 +8,7 @@ const WEEKDAY_ORDER: RecurrenceWeekday[] = [
   "thu",
   "fri",
   "sat",
-  "sun"
+  "sun",
 ];
 
 const WEEKDAY_TO_INDEX: Record<RecurrenceWeekday, number> = {
@@ -18,7 +18,7 @@ const WEEKDAY_TO_INDEX: Record<RecurrenceWeekday, number> = {
   thu: 3,
   fri: 4,
   sat: 5,
-  sun: 6
+  sun: 6,
 };
 
 function toWeekdayIndex(date: Date): number {
@@ -27,7 +27,7 @@ function toWeekdayIndex(date: Date): number {
 
 function toSortedWeekdays(values: RecurrenceWeekday[]): RecurrenceWeekday[] {
   return Array.from(new Set(values)).sort(
-    (left, right) => WEEKDAY_TO_INDEX[left] - WEEKDAY_TO_INDEX[right]
+    (left, right) => WEEKDAY_TO_INDEX[left] - WEEKDAY_TO_INDEX[right],
   );
 }
 
@@ -42,13 +42,16 @@ function nextDailyDueAt(date: Date, interval: number): number {
     date.getMonth(),
     date.getDate() + interval,
     date.getHours(),
-    date.getMinutes()
+    date.getMinutes(),
   ).getTime();
 }
 
 function nextWeeklyDueAt(date: Date, rule: RecurrenceRule): number {
   const interval = Math.max(1, Math.floor(rule.interval));
-  const sourceDays = rule.byDay && rule.byDay.length > 0 ? rule.byDay : [WEEKDAY_ORDER[toWeekdayIndex(date)]];
+  const sourceDays =
+    rule.byDay && rule.byDay.length > 0
+      ? rule.byDay
+      : [WEEKDAY_ORDER[toWeekdayIndex(date)]];
   const byDay = toSortedWeekdays(sourceDays);
   const currentIndex = toWeekdayIndex(date);
   const sameWeekOffset = byDay
@@ -63,7 +66,7 @@ function nextWeeklyDueAt(date: Date, rule: RecurrenceRule): number {
       date.getMonth(),
       date.getDate() + sameWeekOffset,
       date.getHours(),
-      date.getMinutes()
+      date.getMinutes(),
     ).getTime();
   }
 
@@ -74,26 +77,29 @@ function nextWeeklyDueAt(date: Date, rule: RecurrenceRule): number {
     date.getMonth(),
     date.getDate() - daysUntilWeekStart,
     date.getHours(),
-    date.getMinutes()
+    date.getMinutes(),
   );
   return new Date(
     weekStart.getFullYear(),
     weekStart.getMonth(),
     weekStart.getDate() + interval * 7 + firstTarget,
     weekStart.getHours(),
-    weekStart.getMinutes()
+    weekStart.getMinutes(),
   ).getTime();
 }
 
 function nextMonthlyDueAt(date: Date, rule: RecurrenceRule): number {
   const interval = Math.max(1, Math.floor(rule.interval));
-  const sourceDays = rule.byMonthDay && rule.byMonthDay.length > 0 ? rule.byMonthDay : [date.getDate()];
+  const sourceDays =
+    rule.byMonthDay && rule.byMonthDay.length > 0
+      ? rule.byMonthDay
+      : [date.getDate()];
   const byMonthDay = Array.from(
     new Set(
       sourceDays
         .map((value) => Math.floor(value))
-        .filter((value) => Number.isFinite(value) && value >= 1 && value <= 31)
-    )
+        .filter((value) => Number.isFinite(value) && value >= 1 && value <= 31),
+    ),
   ).sort((left, right) => left - right);
   const year = date.getFullYear();
   const monthIndex = date.getMonth();
@@ -107,7 +113,7 @@ function nextMonthlyDueAt(date: Date, rule: RecurrenceRule): number {
         monthIndex,
         clamped,
         date.getHours(),
-        date.getMinutes()
+        date.getMinutes(),
       ).getTime();
     }
   }
@@ -117,24 +123,28 @@ function nextMonthlyDueAt(date: Date, rule: RecurrenceRule): number {
     monthIndex + interval,
     1,
     date.getHours(),
-    date.getMinutes()
+    date.getMinutes(),
   );
   const nextYear = shifted.getFullYear();
   const nextMonth = shifted.getMonth();
-  const targetDay = clampMonthDay(nextYear, nextMonth, byMonthDay[0] ?? date.getDate());
+  const targetDay = clampMonthDay(
+    nextYear,
+    nextMonth,
+    byMonthDay[0] ?? date.getDate(),
+  );
   return new Date(
     nextYear,
     nextMonth,
     targetDay,
     date.getHours(),
-    date.getMinutes()
+    date.getMinutes(),
   ).getTime();
 }
 
 type TaskRecurrenceWithRule = NonNullable<Task["recurrence"]> & RecurrenceRule;
 
 function hasRuleFrequency(
-  recurrence: Task["recurrence"]
+  recurrence: Task["recurrence"],
 ): recurrence is TaskRecurrenceWithRule {
   return (
     Boolean(recurrence) &&
@@ -159,7 +169,7 @@ export function computeNextDueAt(dueAt: number, rule: RecurrenceRule): number {
 export function completeTaskWithRecurrence(
   tasks: Task[],
   taskId: string,
-  now: number
+  now: number,
 ): { tasks: Task[]; spawnedId?: string } {
   const task = tasks.find((candidate) => candidate.id === taskId);
   if (!task || task.status !== "open") {
@@ -181,7 +191,7 @@ export function completeTaskWithRecurrence(
       ...candidate,
       status: "done" as const,
       updatedAt: now,
-      closedAt: candidate.closedAt ?? now
+      closedAt: candidate.closedAt ?? now,
     };
   });
 
@@ -199,7 +209,7 @@ export function completeTaskWithRecurrence(
       ...(task.notes !== undefined ? { notes: task.notes } : {}),
       ...(task.noteRef !== undefined ? { noteRef: { ...task.noteRef } } : {}),
       ...(reminder ? { reminder } : {}),
-      recurrence
+      recurrence,
     };
     nextTasks.push(spawnedTask);
   }

@@ -26,7 +26,10 @@ function areTaskLinksEqual(left: TaskLink[], right: TaskLink[]): boolean {
   return true;
 }
 
-function areChecklistItemsEqual(left: ChecklistItem[], right: ChecklistItem[]): boolean {
+function areChecklistItemsEqual(
+  left: ChecklistItem[],
+  right: ChecklistItem[],
+): boolean {
   if (left.length !== right.length) return false;
   for (let index = 0; index < left.length; index += 1) {
     const leftItem = left[index];
@@ -51,11 +54,14 @@ export function cloneEditorDraft(draft: EditorDraft): EditorDraft {
     ...draft,
     repeatWeekdays: [...draft.repeatWeekdays],
     links: draft.links.map((link) => ({ ...link })),
-    checklist: draft.checklist.map((item) => ({ ...item }))
+    checklist: draft.checklist.map((item) => ({ ...item })),
   };
 }
 
-export function areEditorDraftsEqual(left: EditorDraft, right: EditorDraft): boolean {
+export function areEditorDraftsEqual(
+  left: EditorDraft,
+  right: EditorDraft,
+): boolean {
   return (
     left.id === right.id &&
     left.title === right.title &&
@@ -90,7 +96,7 @@ export function areEditorDraftsEqual(left: EditorDraft, right: EditorDraft): boo
 
 export function isEditorDraftDirty(
   draft: EditorDraft | null | undefined,
-  baseline: EditorDraft | null | undefined
+  baseline: EditorDraft | null | undefined,
 ): boolean {
   if (!draft && !baseline) return false;
   if (!draft || !baseline) return true;

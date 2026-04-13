@@ -19,26 +19,26 @@
 
 ## New Skill Scores
 
-| Skill | Trigger | Workflow | Determinism | Safety | Reuse | Total |
-|---|---:|---:|---:|---:|---:|---:|
-| `atomic-change-planner` | 20 | 16 | 20 | 14 | 20 | 90 |
-| `keybind-source-of-truth` | 20 | 20 | 20 | 20 | 20 | 100 |
-| `release-readiness-gate` | 12 | 20 | 20 | 20 | 20 | 92 |
-| `safe-scope-enforcer` | 12 | 20 | 20 | 20 | 20 | 92 |
-| `session-handoff-capture` | 20 | 20 | 20 | 14 | 20 | 94 |
-| `spec-task-drift-guard` | 20 | 20 | 20 | 20 | 20 | 100 |
+| Skill                     | Trigger | Workflow | Determinism | Safety | Reuse | Total |
+| ------------------------- | ------: | -------: | ----------: | -----: | ----: | ----: |
+| `atomic-change-planner`   |      20 |       16 |          20 |     14 |    20 |    90 |
+| `keybind-source-of-truth` |      20 |       20 |          20 |     20 |    20 |   100 |
+| `release-readiness-gate`  |      12 |       20 |          20 |     20 |    20 |    92 |
+| `safe-scope-enforcer`     |      12 |       20 |          20 |     20 |    20 |    92 |
+| `session-handoff-capture` |      20 |       20 |          20 |     14 |    20 |    94 |
+| `spec-task-drift-guard`   |      20 |       20 |          20 |     20 |    20 |   100 |
 
 ## Relevant Slice Scores
 
-| Skill | Total |
-|---|---:|
-| `brainstorming` | 30 |
-| `find-skills` | 26 |
-| `playwright` | 81 |
-| `sentry` | 70 |
-| `speech` | 86 |
-| `ui-ux-pro-max` | 50 |
-| `writing-clearly-and-concisely` | 42 |
+| Skill                           | Total |
+| ------------------------------- | ----: |
+| `brainstorming`                 |    30 |
+| `find-skills`                   |    26 |
+| `playwright`                    |    81 |
+| `sentry`                        |    70 |
+| `speech`                        |    86 |
+| `ui-ux-pro-max`                 |    50 |
+| `writing-clearly-and-concisely` |    42 |
 
 ## Notes
 

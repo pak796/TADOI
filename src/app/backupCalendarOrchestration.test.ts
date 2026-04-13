@@ -3,7 +3,7 @@ import { initialBackupCenterState } from "../state/backupCenterFlow";
 import {
   parseCalendarImportHorizonOrThrow,
   resolveCalendarViewSelectionDigit,
-  shouldRequireBackupReplaceConfirmation
+  shouldRequireBackupReplaceConfirmation,
 } from "./backupCalendarOrchestration";
 
 describe("backupCalendarOrchestration helpers", () => {
@@ -11,7 +11,15 @@ describe("backupCalendarOrchestration helpers", () => {
     expect(resolveCalendarViewSelectionDigit(0, [])).toBeNull();
     expect(resolveCalendarViewSelectionDigit(1, [])).toBeUndefined();
     expect(
-      resolveCalendarViewSelectionDigit(2, [{ id: "1", name: "Work", filters: { status: "open", due: "any" }, createdAt: 0, updatedAt: 0 }])
+      resolveCalendarViewSelectionDigit(2, [
+        {
+          id: "1",
+          name: "Work",
+          filters: { status: "open", due: "any" },
+          createdAt: 0,
+          updatedAt: 0,
+        },
+      ]),
     ).toBe("Work");
   });
 
@@ -23,20 +31,22 @@ describe("backupCalendarOrchestration helpers", () => {
   });
 
   it("requires replace confirmation only in replace mode without confirmation", () => {
-    expect(shouldRequireBackupReplaceConfirmation(initialBackupCenterState)).toBe(false);
+    expect(
+      shouldRequireBackupReplaceConfirmation(initialBackupCenterState),
+    ).toBe(false);
     expect(
       shouldRequireBackupReplaceConfirmation({
         ...initialBackupCenterState,
         importMode: "replace",
-        replaceConfirmed: false
-      })
+        replaceConfirmed: false,
+      }),
     ).toBe(true);
     expect(
       shouldRequireBackupReplaceConfirmation({
         ...initialBackupCenterState,
         importMode: "replace",
-        replaceConfirmed: true
-      })
+        replaceConfirmed: true,
+      }),
     ).toBe(false);
   });
 });

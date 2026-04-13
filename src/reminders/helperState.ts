@@ -4,7 +4,7 @@ import { writeJsonAtomic } from "../state/persistence";
 import {
   REMINDER_HELPER_STATE_TTL_MS,
   REMINDER_HELPER_STATE_VERSION,
-  type ReminderHelperState
+  type ReminderHelperState,
 } from "./types";
 import { getReminderStatePath } from "./paths";
 
@@ -25,11 +25,14 @@ function defaultState(nowMs = Date.now()): ReminderHelperState {
   return {
     version: REMINDER_HELPER_STATE_VERSION,
     updatedAt: new Date(nowMs).toISOString(),
-    fired: {}
+    fired: {},
   };
 }
 
-function normalizeState(input: unknown, nowMs = Date.now()): ReminderHelperState {
+function normalizeState(
+  input: unknown,
+  nowMs = Date.now(),
+): ReminderHelperState {
   if (!isRecord(input)) {
     return defaultState(nowMs);
   }
@@ -46,7 +49,7 @@ function normalizeState(input: unknown, nowMs = Date.now()): ReminderHelperState
   return {
     version: REMINDER_HELPER_STATE_VERSION,
     updatedAt: normalizeIso(input.updatedAt) ?? new Date(nowMs).toISOString(),
-    fired
+    fired,
   };
 }
 
@@ -84,7 +87,7 @@ export async function loadReminderHelperState(options: {
 export function pruneReminderHelperState(
   state: ReminderHelperState,
   nowMs = Date.now(),
-  ttlMs = REMINDER_HELPER_STATE_TTL_MS
+  ttlMs = REMINDER_HELPER_STATE_TTL_MS,
 ): ReminderHelperState {
   const cutoffMs = nowMs - Math.max(0, Math.floor(ttlMs));
   const nextFired: Record<string, string> = {};
@@ -98,7 +101,7 @@ export function pruneReminderHelperState(
   return {
     version: REMINDER_HELPER_STATE_VERSION,
     updatedAt: new Date(nowMs).toISOString(),
-    fired: nextFired
+    fired: nextFired,
   };
 }
 
@@ -106,27 +109,28 @@ export function markReminderEventFired(
   state: ReminderHelperState,
   eventId: string,
   firedAtIso: string,
-  nowMs = Date.now()
+  nowMs = Date.now(),
 ): ReminderHelperState {
   if (eventId.trim().length === 0) {
     return pruneReminderHelperState(state, nowMs);
   }
 
-  const normalizedFiredAt = normalizeIso(firedAtIso) ?? new Date(nowMs).toISOString();
+  const normalizedFiredAt =
+    normalizeIso(firedAtIso) ?? new Date(nowMs).toISOString();
   const nextState: ReminderHelperState = {
     version: REMINDER_HELPER_STATE_VERSION,
     updatedAt: new Date(nowMs).toISOString(),
     fired: {
       ...state.fired,
-      [eventId]: normalizedFiredAt
-    }
+      [eventId]: normalizedFiredAt,
+    },
   };
   return pruneReminderHelperState(nextState, nowMs);
 }
 
 export function isReminderEventAlreadyFired(
   state: ReminderHelperState,
-  eventId: string
+  eventId: string,
 ): boolean {
   return typeof state.fired[eventId] === "string";
 }
@@ -134,7 +138,7 @@ export function isReminderEventAlreadyFired(
 export function clearReminderEventFired(
   state: ReminderHelperState,
   eventId: string,
-  nowMs = Date.now()
+  nowMs = Date.now(),
 ): ReminderHelperState {
   if (!(eventId in state.fired)) {
     return pruneReminderHelperState(state, nowMs);
@@ -145,9 +149,9 @@ export function clearReminderEventFired(
     {
       version: REMINDER_HELPER_STATE_VERSION,
       updatedAt: new Date(nowMs).toISOString(),
-      fired: nextFired
+      fired: nextFired,
     },
-    nowMs
+    nowMs,
   );
 }
 
@@ -163,6 +167,6 @@ export async function saveReminderHelperState(options: {
     filePath: getReminderStatePath(options.dataFilePath),
     fsOps: options.fsOps,
     pretty: true,
-    fsyncBeforeRename: true
+    fsyncBeforeRename: true,
   });
 }

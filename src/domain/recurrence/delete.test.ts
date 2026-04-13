@@ -1,6 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import { Task } from "../models";
-import { deleteRecurringOccurrence, deleteRecurringOccurrenceAndFuture } from "./delete";
+import {
+  deleteRecurringOccurrence,
+  deleteRecurringOccurrenceAndFuture,
+} from "./delete";
 import { parseRRule } from "./rruleAdapter";
 
 function makeSeriesTask(overrides: Partial<Task> = {}): Task {
@@ -17,9 +20,9 @@ function makeSeriesTask(overrides: Partial<Task> = {}): Task {
       dtstart: "2026-02-10T09:00:00",
       rrule: "FREQ=DAILY;INTERVAL=1;COUNT=10",
       series_id: "series:standup",
-      exdates: ["2026-02-11T09:00:00", "2026-02-13T09:00:00"]
+      exdates: ["2026-02-11T09:00:00", "2026-02-13T09:00:00"],
     },
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -35,8 +38,8 @@ function makeInstanceTask(id: string, occurrence: string): Task {
     tags: [],
     instance_of: {
       series_id: "series:standup",
-      occurrence
-    }
+      occurrence,
+    },
   };
 }
 
@@ -46,14 +49,14 @@ describe("recurring delete helpers", () => {
     const tasks = [
       { ...seriesTask, recurrence: { ...seriesTask.recurrence!, exdates: [] } },
       makeInstanceTask("i-1", "2026-02-12T09:00:00"),
-      makeInstanceTask("i-2", "2026-02-14T09:00:00")
+      makeInstanceTask("i-2", "2026-02-14T09:00:00"),
     ];
 
     const updated = deleteRecurringOccurrence(tasks, {
       seriesTaskId: "series-1",
       seriesId: "series:standup",
       occurrenceIso: "2026-02-12T09:00:00",
-      nowMs: 42
+      nowMs: 42,
     });
 
     const series = updated.find((task) => task.id === "series-1");
@@ -68,14 +71,14 @@ describe("recurring delete helpers", () => {
       makeSeriesTask(),
       makeInstanceTask("i-prev", "2026-02-12T09:00:00"),
       makeInstanceTask("i-target", "2026-02-13T09:00:00"),
-      makeInstanceTask("i-future", "2026-02-14T09:00:00")
+      makeInstanceTask("i-future", "2026-02-14T09:00:00"),
     ];
 
     const updated = deleteRecurringOccurrenceAndFuture(tasks, {
       seriesTaskId: "series-1",
       seriesId: "series:standup",
       occurrenceIso: "2026-02-13T09:00:00",
-      nowMs: 77
+      nowMs: 77,
     });
 
     const series = updated.find((task) => task.id === "series-1");
@@ -92,14 +95,14 @@ describe("recurring delete helpers", () => {
     const tasks = [
       makeSeriesTask(),
       makeInstanceTask("i-first", "2026-02-10T09:00:00"),
-      makeInstanceTask("i-next", "2026-02-11T09:00:00")
+      makeInstanceTask("i-next", "2026-02-11T09:00:00"),
     ];
 
     const updated = deleteRecurringOccurrenceAndFuture(tasks, {
       seriesTaskId: "series-1",
       seriesId: "series:standup",
       occurrenceIso: "2026-02-10T09:00:00",
-      nowMs: 99
+      nowMs: 99,
     });
 
     expect(updated.some((task) => task.id === "series-1")).toBe(false);
@@ -111,14 +114,14 @@ describe("recurring delete helpers", () => {
     const tasks = [
       makeSeriesTask(),
       makeInstanceTask("i-past", "2026-02-12T09:00:00"),
-      makeInstanceTask("i-selected", "2026-02-13T09:00:00")
+      makeInstanceTask("i-selected", "2026-02-13T09:00:00"),
     ];
 
     const updated = deleteRecurringOccurrenceAndFuture(tasks, {
       seriesTaskId: "series-1",
       seriesId: "series:standup",
       occurrenceIso: "2026-02-13T09:00:00",
-      nowMs: 123
+      nowMs: 123,
     });
 
     expect(updated.some((task) => task.id === "i-past")).toBe(true);

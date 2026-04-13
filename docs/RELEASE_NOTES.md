@@ -5,6 +5,7 @@ Current release baseline: `v0.4.0-beta.2` (`package.json`: `0.4.0-beta.2`).
 Primary changelog lives at `CHANGELOG.md` in the repo root.
 
 ## Latest Notes (v0.4.0-beta.2)
+
 - Version: `v0.4.0-beta.2`
 - Date: `2026-03-11`
 - Release scope:

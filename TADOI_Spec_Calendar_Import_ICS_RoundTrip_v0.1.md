@@ -30,6 +30,7 @@ This is still **one-way per action** (explicit import operation). No OAuth, no s
 ## 3) Goals / Non-Goals
 
 ### Goals
+
 - Expose user-facing CLI command: `tadoi calendar:import --in <file.ics> [...]`
 - Parse `.ics` robustly enough to support:
   - VEVENT all-day + timed
@@ -42,6 +43,7 @@ This is still **one-way per action** (explicit import operation). No OAuth, no s
 - Deterministic + auditable: produce an import summary + optional JSON report.
 
 ### Non-Goals
+
 - No live sync.
 - No external calendar API integration.
 - No attendee/organizer scheduling semantics; these may be preserved in notes only.
@@ -54,16 +56,19 @@ This is still **one-way per action** (explicit import operation). No OAuth, no s
 Calendar command plumbing and export path already exist; import should mirror patterns and reuse domain utilities.
 
 ### CLI wiring & commands
+
 - `src/cli.ts`
 - `src/cli/calendarCommands.ts`
-- `src/commands/calendarExport.ts` *(pattern for exit codes + validation)*
+- `src/commands/calendarExport.ts` _(pattern for exit codes + validation)_
 - Exit code pattern: `0` success, `1` usage/validation, `2` filesystem
 
 ### Service layer (mirror for import)
-- `src/state/calendarExportService.ts` *(pattern: orchestration + reuse saved views path)*
-- `src/state/calendarImportService.ts` *(implemented import orchestration baseline)*
+
+- `src/state/calendarExportService.ts` _(pattern: orchestration + reuse saved views path)_
+- `src/state/calendarImportService.ts` _(implemented import orchestration baseline)_
 
 ### Domain modules (reuse contracts/parity)
+
 - `src/calendar/range.ts`
 - `src/calendar/rrule.ts`
 - `src/calendar/calendarMapper.ts`
@@ -72,9 +77,10 @@ Calendar command plumbing and export path already exist; import should mirror pa
 - `src/calendar/importMapper.ts`
 
 ### Test baseline
+
 - `src/state/__fixtures__/calendar-export.golden.ics`
 - `src/state/calendarExportService.test.ts`
-- `src/calendar/calendarMapper.test.ts` *(includes DST wall-clock check for America/Chicago)*
+- `src/calendar/calendarMapper.test.ts` _(includes DST wall-clock check for America/Chicago)_
 - `src/calendar/icsWriter.test.ts`
 - `src/calendar/range.test.ts`
 - `src/calendar/rrule.test.ts`
@@ -87,6 +93,7 @@ Calendar command plumbing and export path already exist; import should mirror pa
 ## 5) CLI Interface
 
 ### Command
+
 ```bash
 tadoi calendar:import --in tadoi.ics [--view <name>] [--range next7|month|all]
                     [--mode merge|update|create] [--horizon-days <n>]
@@ -94,42 +101,45 @@ tadoi calendar:import --in tadoi.ics [--view <name>] [--range next7|month|all]
 ```
 
 Status note:
+
 - This CLI signature is the target contract.
 - Current implementation supports this contract at service level (`importCalendarIcs`) but is not yet routed from `src/cli.ts`.
 
 ### Flags
-- `--in <path>` *(required)*  
+
+- `--in <path>` _(required)_  
   Input `.ics` file.
 
-- `--view <name>` *(optional)*  
+- `--view <name>` _(optional)_  
   Restrict import to events that would correspond to tasks visible under a Saved View.  
   **Rule:** view filtering uses the same semantics as export/list: `applySavedView` + visible rows pipeline.
 
-- `--range next7|month|all` *(optional; default `next7`)*  
+- `--range next7|month|all` _(optional; default `next7`)_  
   Local start-of-day semantics, consistent with export:
   - `next7`: [startOfDay(today), startOfDay(today+7))
   - `month`: [startOfDay(today), startOfDay(today+30))
   - `all`: no time window filter (still applies recurrence safeguards)
 
-- `--mode merge|update|create` *(optional; default `merge`)*  
+- `--mode merge|update|create` _(optional; default `merge`)_
   - `merge`: conservative append/union; only overwrite when safe (see §9)
   - `update`: calendar wins for mapped fields
   - `create`: never update existing tasks; always create new tasks
 
-- `--horizon-days <n>` *(optional; default `365`)*  
+- `--horizon-days <n>` _(optional; default `365`)_  
   Upper bound for any **materialization** work (RDATE expansion, unsupported recurrence fallback).  
   **Required usage:** if import must expand a schedule to occurrences, it must not exceed horizon.
 
-- `--dry-run` *(optional)*  
+- `--dry-run` _(optional)_  
   Parse and compute actions; do not persist changes.
 
-- `--tag <name>` *(optional)*  
+- `--tag <name>` _(optional)_  
   Apply a tag to newly created tasks (default: none). Suggested: `imported`.
 
-- `--report <path.json>` *(optional)*  
+- `--report <path.json>` _(optional)_  
   Write machine-readable report including per-event decisions and any conflicts.
 
 ### Output / Exit Codes
+
 - Exit `0` on success.
 - Exit `1` on validation/parse errors.
 - Exit `2` on filesystem errors.
@@ -147,6 +157,7 @@ Status note:
 ## 6) Parser Requirements (ICS → Normalized Model)
 
 ### Required parsing features
+
 - Line **unfolding** (RFC5545 folded lines).
 - Property parsing with **parameters**:
   - `DTSTART;VALUE=DATE:...`
@@ -158,6 +169,7 @@ Status note:
   - VTIMEZONE parsing is optional for v1 if DTSTART contains TZID and app uses a canonical tz database; however, v1 should behave correctly for the exporter’s generated files (which include VTIMEZONE).
 
 ### Minimum supported components
+
 - `VCALENDAR`
 - `VEVENT`
 
@@ -166,6 +178,7 @@ Status note:
 ## 7) Identity & Idempotency
 
 ### Identity precedence (match order)
+
 1. `X-TADOI-TASK-ID` → match that exact task id (primary round-trip).
 2. If absent, parse TADOI UID conventions (back-compat):
    - `UID:tadoi-{taskId}@local`
@@ -176,7 +189,9 @@ Status note:
 4. Else: treat as new and create a task (unless filtered out by range/view).
 
 ### Required persisted metadata
+
 Add (or extend) task metadata to support repeatable imports:
+
 ```ts
 task.external?.calendar = {
   uid: string,                 // VEVENT UID
@@ -194,6 +209,7 @@ task.external?.calendar = {
 ## 8) Field Mapping (VEVENT → Task)
 
 ### Core mapping
+
 - `SUMMARY` → `task.title`
 - `DESCRIPTION` → `task.notes` (merge strategy in §9)
 - `CATEGORIES` → `task.tags` (normalize; de-dupe)
@@ -202,11 +218,13 @@ task.external?.calendar = {
 - Timed DTSTART → **due date+time**
 
 ### Time interpretation
+
 - If DTSTART has `TZID`: interpret as that timezone.
 - If DTSTART ends with `Z`: interpret as UTC and convert to app timezone for storage.
 - Store due as the canonical TADOI due representation (date-only vs date+time).
 
 ### Status mapping
+
 - If VEVENT has `STATUS:CANCELLED`:
   - For non-recurring events: default to **skip** (or optionally create closed task — out of scope v1).
   - For recurring exceptions with `RECURRENCE-ID`: treat as a **cancellation** of that occurrence (see §10).
@@ -218,6 +236,7 @@ task.external?.calendar = {
 Applies when an incoming VEVENT maps to an existing task (by X-TADOI-TASK-ID, UID, or external mapping).
 
 ### `--mode merge` (default)
+
 - **title**:
   - If incoming differs and task was previously imported from this UID (optional `lastImportedHash` indicates), update title.
   - Otherwise keep local title and record conflict in report.
@@ -237,9 +256,11 @@ Applies when an incoming VEVENT maps to an existing task (by X-TADOI-TASK-ID, UI
     - `--- Imported from Calendar (UID … at <timestamp>) ---`
 
 ### `--mode update`
+
 Calendar wins for all mapped fields (title, due, tags, links, notes overwritten by imported content).
 
 ### `--mode create`
+
 Never update; always create new tasks.
 
 ---
@@ -247,7 +268,9 @@ Never update; always create new tasks.
 ## 10) Recurrence Import (RRULE, EXDATE, RECURRENCE-ID)
 
 ### 10.1 Base recurring series (RRULE)
+
 If a VEVENT has `RRULE`:
+
 - **RRULE must be valid** (parseable by `src/calendar/rrule.ts`).
   - If invalid → error (exit 1) with a clear message and per-event details in report.
 - Create/update a **series root task**:
@@ -256,17 +279,21 @@ If a VEVENT has `RRULE`:
   - `task.recurrence.exdates[]` union with imported EXDATE (normalized)
 
 **Range interaction**
+
 - `next7`/`month`: import the series only if it yields at least one occurrence in the window.
 - `all`: import series regardless (no materialization required).
 
 ### 10.2 EXDATE (excluded occurrences)
+
 - Normalize each EXDATE value to the series timezone semantics and add to `task.recurrence.exdates[]`.
 - If an override instance task already exists for that recurrenceId, mark it **closed** (v1 default) and record in report.
 
 ### 10.3 RECURRENCE-ID overrides (edited single occurrences)
+
 Support VEVENTs that include `RECURRENCE-ID`.
 
 **Import behavior**
+
 - Resolve the base series task (prefer X-TADOI-TASK-ID; else group by UID).
 - For each override VEVENT:
   - Compute `overrideKey = (baseSeriesTaskId, recurrenceIdValue)`
@@ -279,12 +306,15 @@ Support VEVENTs that include `RECURRENCE-ID`.
     - add recurrenceId as EXDATE (if not already present)
 
 **Cancellation overrides**
+
 - If override VEVENT has `STATUS:CANCELLED`:
   - Add the recurrenceId to base EXDATE
   - Close any matching instance task if it exists
 
 ### 10.4 RDATE (optional v1)
+
 If VEVENT includes `RDATE`:
+
 - Only supported if bounded (must not exceed `--horizon-days` and a hard count cap).
 - Import as discrete tasks for each RDATE within range.
 
@@ -301,6 +331,7 @@ If VEVENT includes `RDATE`:
 ## 12) Implementation Plan (Repo-Concrete)
 
 ### Current implementation state
+
 - Implemented:
   - `src/state/calendarImportService.ts`
   - `src/calendar/icsParser.ts`
@@ -310,6 +341,7 @@ If VEVENT includes `RDATE`:
   - CLI route integration in `src/cli.ts` / `src/cli/calendarCommands.ts`
 
 ### Integrate command
+
 - Add subcommand in `src/cli/calendarCommands.ts` (mirroring export wiring).
 - Reuse:
   - range semantics from `src/calendar/range.ts`
@@ -321,6 +353,7 @@ If VEVENT includes `RDATE`:
 ## 13) Testing Plan
 
 ### Unit tests
+
 - `icsParser.test.ts`: unfolding, params, DTSTART parsing (DATE/TZID/Z), RRULE/EXDATE/RECURRENCE-ID parsing.
 - `calendarImportService.test.ts`:
   - idempotency (import same file twice)
@@ -329,12 +362,14 @@ If VEVENT includes `RDATE`:
   - horizon cap for RDATE / materialization paths
 
 ### Fixtures
+
 - Reuse export fixture: `src/state/__fixtures__/calendar-export.golden.ics`
 - Add:
   - `calendar-import.override-recurrence-id.ics`
   - `calendar-import.cancelled-occurrence.ics`
 
 ### DST regression
+
 - Import timed event spanning DST boundary and assert stored local wall-clock time.
 
 ---
@@ -350,4 +385,4 @@ If VEVENT includes `RDATE`:
 
 ---
 
-*End of spec.*
+_End of spec._

@@ -6,7 +6,7 @@ const EVENT = {
   taskId: "task-1",
   title: "Task",
   dueAt: "2026-02-10T09:00:00.000Z",
-  firedAt: "2026-02-10T09:00:01.000Z"
+  firedAt: "2026-02-10T09:00:01.000Z",
 };
 
 describe("TerminalBellNotifier", () => {
@@ -17,7 +17,7 @@ describe("TerminalBellNotifier", () => {
       writeBell: () => {
         rings += 1;
       },
-      nowProvider: () => 1
+      nowProvider: () => 1,
     });
 
     notifier.notify(EVENT);
@@ -30,7 +30,7 @@ describe("TerminalBellNotifier", () => {
       isEnabled: () => false,
       writeBell: () => {
         rings += 1;
-      }
+      },
     });
 
     notifier.notify(EVENT);
@@ -46,7 +46,7 @@ describe("TerminalBellNotifier", () => {
       nowProvider: () => now,
       writeBell: () => {
         rings += 1;
-      }
+      },
     });
 
     notifier.notify(EVENT);

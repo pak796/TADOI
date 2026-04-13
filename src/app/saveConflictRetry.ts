@@ -1,7 +1,7 @@
 import {
   StateRevisionConflictError,
   type LoadedData,
-  type SaveStateAtomicOptions
+  type SaveStateAtomicOptions,
 } from "../state/persistence";
 
 export type SaveConflictRetrySnapshot = Pick<
@@ -14,7 +14,7 @@ export type SaveConflictRetryDeps = {
   saveAtomic: (
     data: LoadedData,
     filePath: string,
-    options: SaveStateAtomicOptions
+    options: SaveStateAtomicOptions,
   ) => Promise<number>;
 };
 
@@ -62,12 +62,12 @@ export async function retrySaveAfterConflictReload(params: {
     const stateRevision = await params.deps.saveAtomic(
       params.snapshot as LoadedData,
       params.filePath,
-      { expectedStateRevision }
+      { expectedStateRevision },
     );
     return {
       ok: true,
       filePath: params.filePath,
-      stateRevision
+      stateRevision,
     };
   } catch (error: unknown) {
     if (error instanceof StateRevisionConflictError) {
@@ -76,14 +76,14 @@ export async function retrySaveAfterConflictReload(params: {
         kind: "conflict",
         filePath: params.filePath,
         expectedStateRevision: error.expectedRevision,
-        actualStateRevision: error.actualRevision
+        actualStateRevision: error.actualRevision,
       };
     }
     return {
       ok: false,
       kind: "error",
       filePath: params.filePath,
-      error: error instanceof Error ? error : new Error(String(error))
+      error: error instanceof Error ? error : new Error(String(error)),
     };
   }
 }

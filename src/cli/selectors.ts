@@ -10,7 +10,12 @@ export type SelectorParseResult =
   | { ok: true; filters: Filters }
   | { ok: false; error: string };
 
-const VALID_STATUS = new Set<Filters["status"]>(["all", "open", "done", "archived"]);
+const VALID_STATUS = new Set<Filters["status"]>([
+  "all",
+  "open",
+  "done",
+  "archived",
+]);
 const VALID_DUE = new Set<Filters["due"]>(["any", "overdue", "today", "next7"]);
 const VALID_STAGE = new Set([
   "backlog",
@@ -20,7 +25,7 @@ const VALID_STAGE = new Set([
   "in-progress",
   "blocked",
   "review",
-  "done"
+  "done",
 ]);
 
 function mapStageToken(raw: string): Filters["workflowStage"] | null {
@@ -43,12 +48,14 @@ function normalizeSingletonValue(token: string, prefix: string): string | null {
 }
 
 function dedupeSorted(values: string[]): string[] {
-  return Array.from(new Set(values)).sort((left, right) => left.localeCompare(right));
+  return Array.from(new Set(values)).sort((left, right) =>
+    left.localeCompare(right),
+  );
 }
 
 export function parseSelectorTokens(
   tokens: string[],
-  defaults: SelectorDefaults
+  defaults: SelectorDefaults,
 ): SelectorParseResult {
   const seenSingleton = new Set<string>();
   const includeTags: string[] = [];
@@ -68,7 +75,7 @@ export function parseSelectorTokens(
     if (token.startsWith("id:")) {
       return {
         ok: false,
-        error: 'Error: selector mode does not accept "id:<task-id>" tokens.'
+        error: 'Error: selector mode does not accept "id:<task-id>" tokens.',
       };
     }
 
@@ -76,7 +83,10 @@ export function parseSelectorTokens(
       const polarity = token[0];
       const normalized = normalizeTagToken(token.slice(1));
       if (!normalized) {
-        return { ok: false, error: `Error: invalid tag selector "${rawToken}"` };
+        return {
+          ok: false,
+          error: `Error: invalid tag selector "${rawToken}"`,
+        };
       }
       if (polarity === "+") {
         includeTags.push(normalized);
@@ -92,7 +102,10 @@ export function parseSelectorTokens(
       }
       const value = normalizeSingletonValue(token, "status:");
       if (!value || !VALID_STATUS.has(value as Filters["status"])) {
-        return { ok: false, error: `Error: invalid status selector "${rawToken}"` };
+        return {
+          ok: false,
+          error: `Error: invalid status selector "${rawToken}"`,
+        };
       }
       status = value as Filters["status"];
       seenSingleton.add("status");
@@ -105,7 +118,10 @@ export function parseSelectorTokens(
       }
       const value = normalizeSingletonValue(token, "due:");
       if (!value || !VALID_DUE.has(value as Filters["due"])) {
-        return { ok: false, error: `Error: invalid due selector "${rawToken}"` };
+        return {
+          ok: false,
+          error: `Error: invalid due selector "${rawToken}"`,
+        };
       }
       due = value as Filters["due"];
       seenSingleton.add("due");
@@ -118,7 +134,10 @@ export function parseSelectorTokens(
       }
       const value = normalizeSingletonValue(token, "project:");
       if (!value) {
-        return { ok: false, error: `Error: invalid project selector "${rawToken}"` };
+        return {
+          ok: false,
+          error: `Error: invalid project selector "${rawToken}"`,
+        };
       }
       project = value;
       seenSingleton.add("project");
@@ -127,11 +146,17 @@ export function parseSelectorTokens(
 
     if (token.startsWith("assignee:")) {
       if (seenSingleton.has("assignee")) {
-        return { ok: false, error: 'Error: duplicate selector for "assignee".' };
+        return {
+          ok: false,
+          error: 'Error: duplicate selector for "assignee".',
+        };
       }
       const value = normalizeSingletonValue(token, "assignee:");
       if (!value) {
-        return { ok: false, error: `Error: invalid assignee selector "${rawToken}"` };
+        return {
+          ok: false,
+          error: `Error: invalid assignee selector "${rawToken}"`,
+        };
       }
       assignee = value;
       seenSingleton.add("assignee");
@@ -145,7 +170,10 @@ export function parseSelectorTokens(
       const value = normalizeSingletonValue(token, "stage:");
       const mapped = value ? mapStageToken(value) : null;
       if (!mapped) {
-        return { ok: false, error: `Error: invalid stage selector "${rawToken}"` };
+        return {
+          ok: false,
+          error: `Error: invalid stage selector "${rawToken}"`,
+        };
       }
       workflowStage = mapped;
       seenSingleton.add("stage");
@@ -161,7 +189,7 @@ export function parseSelectorTokens(
   if (conflicts.length > 0) {
     return {
       ok: false,
-      error: `Error: conflicting selectors for tag(s): ${conflicts.join(", ")}`
+      error: `Error: conflicting selectors for tag(s): ${conflicts.join(", ")}`,
     };
   }
 
@@ -169,7 +197,7 @@ export function parseSelectorTokens(
     include.length > 0 || exclude.length > 0
       ? {
           ...(include.length > 0 ? { all: include } : {}),
-          ...(exclude.length > 0 ? { none: exclude } : {})
+          ...(exclude.length > 0 ? { none: exclude } : {}),
         }
       : undefined;
 
@@ -181,8 +209,7 @@ export function parseSelectorTokens(
       ...(tagFilter ? { tagFilter } : {}),
       ...(project ? { project } : {}),
       ...(assignee ? { assignee } : {}),
-      ...(workflowStage ? { workflowStage } : {})
-    }
+      ...(workflowStage ? { workflowStage } : {}),
+    },
   };
 }
-

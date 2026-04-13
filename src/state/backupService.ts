@@ -7,7 +7,7 @@ import {
   resolveDataPath,
   saveStateAtomic,
   writeJsonAtomic,
-  type LoadedData
+  type LoadedData,
 } from "./persistence";
 import {
   createDefaultLockPayload,
@@ -15,7 +15,7 @@ import {
   isTadoiLockOwnedByProcess,
   removeTadoiLock,
   tryAcquireTadoiLock,
-  TadoiLockBusyError
+  TadoiLockBusyError,
 } from "./lockfile";
 import { migratePersistedStateToCurrent } from "./migrations";
 import { validatePersistedState } from "./validation";
@@ -25,7 +25,7 @@ import {
   redactStateForExport,
   type ImportMode,
   type RedactMode,
-  type PortableExportPayload
+  type PortableExportPayload,
 } from "./portability";
 import {
   getDefaultSettings,
@@ -33,14 +33,12 @@ import {
   isLogoMode,
   loadSettings,
   saveSettingsStrict,
-  type TadoiSettings
+  type TadoiSettings,
 } from "../settings/settings";
 import { normalizePriorityTags } from "../domain/priorityTags";
 import { isThemeId } from "../theme/themes";
 
-type ParseResult<T> =
-  | { ok: true; value: T }
-  | { ok: false; error: string };
+type ParseResult<T> = { ok: true; value: T } | { ok: false; error: string };
 
 export type BackupExportOptions = {
   outputPath?: string;
@@ -138,7 +136,8 @@ export class BackupImportFilesystemError extends Error {
 
 export const DEFAULT_MAX_IMPORT_BYTES_JSON = 25 * 1024 * 1024;
 const BACKUP_FILE_NAME_PATTERN = /^tadoi-backup-\d{8}-\d{6}(?:\.\d+)?\.json$/i;
-const TAG_NORMALIZATION_VALIDATION_FRAGMENT = "task.tags must be normalized/deduped";
+const TAG_NORMALIZATION_VALIDATION_FRAGMENT =
+  "task.tags must be normalized/deduped";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -157,11 +156,15 @@ function toSingleLineDetail(error: unknown): string {
 function isTagNormalizationOnlyValidationErrors(errors: string[]): boolean {
   return (
     errors.length > 0 &&
-    errors.every((error) => error.includes(TAG_NORMALIZATION_VALIDATION_FRAGMENT))
+    errors.every((error) =>
+      error.includes(TAG_NORMALIZATION_VALIDATION_FRAGMENT),
+    )
   );
 }
 
-async function loadStateStrictForImportWithTagRepair(filePath: string): Promise<{
+async function loadStateStrictForImportWithTagRepair(
+  filePath: string,
+): Promise<{
   state: Awaited<ReturnType<typeof loadStateStrict>>;
   warnings: string[];
 }> {
@@ -169,9 +172,9 @@ async function loadStateStrictForImportWithTagRepair(filePath: string): Promise<
     return {
       state: await loadStateStrict({
         filePath,
-        allowTagNormalizationRepair: false
+        allowTagNormalizationRepair: false,
       }),
-      warnings: []
+      warnings: [],
     };
   } catch (originalError: unknown) {
     let raw = "";
@@ -195,7 +198,10 @@ async function loadStateStrictForImportWithTagRepair(filePath: string): Promise<
 
     let migrated: LoadedData;
     try {
-      migrated = migratePersistedStateToCurrent(preValidation.data, CURRENT_SCHEMA_VERSION);
+      migrated = migratePersistedStateToCurrent(
+        preValidation.data,
+        CURRENT_SCHEMA_VERSION,
+      );
     } catch {
       throw originalError;
     }
@@ -210,12 +216,12 @@ async function loadStateStrictForImportWithTagRepair(filePath: string): Promise<
 
     const normalizedTasks = migrated.tasks.map((task) => ({
       ...task,
-      tags: normalizePriorityTags(Array.isArray(task.tags) ? task.tags : [])
+      tags: normalizePriorityTags(Array.isArray(task.tags) ? task.tags : []),
     }));
     const repaired: LoadedData = {
       ...migrated,
       tasks: normalizedTasks,
-      tagIndex: recomputeTagIndex(normalizedTasks)
+      tagIndex: recomputeTagIndex(normalizedTasks),
     };
     const repairedValidation = validatePersistedState(repaired, "strict");
     if (!repairedValidation.ok) {
@@ -227,11 +233,13 @@ async function loadStateStrictForImportWithTagRepair(filePath: string): Promise<
       state: {
         data: repairedValidation.data,
         resolvedPath: filePath,
-        didMigrate: preValidation.data.schemaVersion !== repairedValidation.data.schemaVersion
+        didMigrate:
+          preValidation.data.schemaVersion !==
+          repairedValidation.data.schemaVersion,
       },
       warnings: [
-        `Recovered ${String(issueCount)} local task tag normalization issue(s) before import.`
-      ]
+        `Recovered ${String(issueCount)} local task tag normalization issue(s) before import.`,
+      ],
     };
   }
 }
@@ -259,24 +267,28 @@ function buildStaleLockRecoveredWarning(event: {
 async function withDataFileLock<T>(
   dataPath: string,
   task: () => Promise<T>,
-  options: { warnings?: string[] } = {}
+  options: { warnings?: string[] } = {},
 ): Promise<T> {
   const lockPath = getTadoiLockPath(dataPath);
   const lockOwnedByCurrentProcess = await isTadoiLockOwnedByProcess(
     lockPath,
     process.pid,
-    dataPath
+    dataPath,
   );
   if (lockOwnedByCurrentProcess) {
     return task();
   }
 
-  const lockAcquired = await tryAcquireTadoiLock(lockPath, createDefaultLockPayload(dataPath), {
-    onStaleLockRecovered: (event) => {
-      const warning = buildStaleLockRecoveredWarning(event);
-      options.warnings?.push(warning);
-    }
-  });
+  const lockAcquired = await tryAcquireTadoiLock(
+    lockPath,
+    createDefaultLockPayload(dataPath),
+    {
+      onStaleLockRecovered: (event) => {
+        const warning = buildStaleLockRecoveredWarning(event);
+        options.warnings?.push(warning);
+      },
+    },
+  );
   if (!lockAcquired) {
     throw new TadoiLockBusyError(lockPath);
   }
@@ -298,18 +310,20 @@ export function getDefaultBackupDir(dataPath = resolveDataPath()): string {
 }
 
 export async function ensureDefaultBackupDirExists(
-  dataPath = resolveDataPath()
+  dataPath = resolveDataPath(),
 ): Promise<string> {
   const backupDir = getDefaultBackupDir(dataPath);
   await fs.mkdir(backupDir, { recursive: true });
   return backupDir;
 }
 
-export async function listBackupFiles(options: {
-  dataPath?: string;
-  dirPath?: string;
-  cwd?: string;
-} = {}): Promise<BackupFileInfo[]> {
+export async function listBackupFiles(
+  options: {
+    dataPath?: string;
+    dirPath?: string;
+    cwd?: string;
+  } = {},
+): Promise<BackupFileInfo[]> {
   const cwd = options.cwd ?? process.cwd();
   const dirPathRaw = options.dirPath?.trim();
   const backupDir = dirPathRaw
@@ -320,7 +334,9 @@ export async function listBackupFiles(options: {
   const entries = await fs.readdir(backupDir, { withFileTypes: true });
   const fileInfos = await Promise.all(
     entries
-      .filter((entry) => entry.isFile() && isRecognizedBackupFilename(entry.name))
+      .filter(
+        (entry) => entry.isFile() && isRecognizedBackupFilename(entry.name),
+      )
       .map(async (entry): Promise<BackupFileInfo | undefined> => {
         const fullPath = path.normalize(path.join(backupDir, entry.name));
         try {
@@ -329,19 +345,20 @@ export async function listBackupFiles(options: {
             path: fullPath,
             filename: entry.name,
             mtimeMs: stat.mtimeMs,
-            sizeBytes: stat.size
+            sizeBytes: stat.size,
           };
         } catch {
           return undefined;
         }
-      })
+      }),
   );
 
   return fileInfos
     .filter((entry): entry is BackupFileInfo => entry !== undefined)
     .sort(
       (left, right) =>
-        right.mtimeMs - left.mtimeMs || left.filename.localeCompare(right.filename)
+        right.mtimeMs - left.mtimeMs ||
+        left.filename.localeCompare(right.filename),
     );
 }
 
@@ -359,20 +376,23 @@ function withSchemaVersionZeroIfMissing(input: unknown): unknown {
   if (typeof input.schemaVersion === "number") return input;
   return {
     ...input,
-    schemaVersion: 0
+    schemaVersion: 0,
   };
 }
 
 function parsePositiveMsSetting(
   value: unknown,
   label: string,
-  fallback: number
+  fallback: number,
 ): ParseResult<number> {
   if (value === undefined) {
     return { ok: true, value: fallback };
   }
   if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
-    return { ok: false, error: `${label} must be a positive number when present` };
+    return {
+      ok: false,
+      error: `${label} must be a positive number when present`,
+    };
   }
   return { ok: true, value: Math.floor(value) };
 }
@@ -383,7 +403,9 @@ function parseOptionalTrimmedString(value: unknown): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
-function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | undefined> {
+function extractIncomingSettings(
+  input: unknown,
+): ParseResult<TadoiSettings | undefined> {
   if (!isRecord(input) || input.settings === undefined) {
     return { ok: true, value: undefined };
   }
@@ -408,7 +430,10 @@ function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | un
   }
   const customThemesRaw = settings.customThemes;
   if (customThemesRaw !== undefined && !isRecord(customThemesRaw)) {
-    return { ok: false, error: "settings.customThemes must be an object when present" };
+    return {
+      ok: false,
+      error: "settings.customThemes must be an object when present",
+    };
   }
 
   const defaultSettings = getDefaultSettings();
@@ -416,9 +441,14 @@ function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | un
   const defaultSecurity = defaultSettings.security;
   const notificationsRaw = settings.notifications;
   if (notificationsRaw !== undefined && !isRecord(notificationsRaw)) {
-    return { ok: false, error: "settings.notifications must be an object when present" };
+    return {
+      ok: false,
+      error: "settings.notifications must be an object when present",
+    };
   }
-  const notificationsRecord = notificationsRaw as Record<string, unknown> | undefined;
+  const notificationsRecord = notificationsRaw as
+    | Record<string, unknown>
+    | undefined;
 
   const enabledRaw = notificationsRecord?.enabled;
   if (enabledRaw !== undefined && typeof enabledRaw !== "boolean") {
@@ -426,20 +456,23 @@ function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | un
   }
   const inAppRaw = notificationsRecord?.inAppOverdueBanner;
   if (inAppRaw !== undefined && typeof inAppRaw !== "boolean") {
-    return { ok: false, error: "settings.notifications.inAppOverdueBanner is invalid" };
+    return {
+      ok: false,
+      error: "settings.notifications.inAppOverdueBanner is invalid",
+    };
   }
   const bellRaw = notificationsRecord?.terminalBellOnOverdue;
   if (bellRaw !== undefined && typeof bellRaw !== "boolean") {
     return {
       ok: false,
-      error: "settings.notifications.terminalBellOnOverdue is invalid"
+      error: "settings.notifications.terminalBellOnOverdue is invalid",
     };
   }
 
   const bannerDurationResult = parsePositiveMsSetting(
     notificationsRecord?.bannerDurationMs,
     "settings.notifications.bannerDurationMs",
-    defaultNotifications.bannerDurationMs
+    defaultNotifications.bannerDurationMs,
   );
   if (!bannerDurationResult.ok) {
     return bannerDurationResult;
@@ -448,7 +481,7 @@ function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | un
   const bellCooldownResult = parsePositiveMsSetting(
     notificationsRecord?.bellCooldownMs,
     "settings.notifications.bellCooldownMs",
-    defaultNotifications.bellCooldownMs
+    defaultNotifications.bellCooldownMs,
   );
   if (!bellCooldownResult.ok) {
     return bellCooldownResult;
@@ -456,10 +489,14 @@ function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | un
 
   const securityRaw = settings.security;
   if (securityRaw !== undefined && !isRecord(securityRaw)) {
-    return { ok: false, error: "settings.security must be an object when present" };
+    return {
+      ok: false,
+      error: "settings.security must be an object when present",
+    };
   }
-  const nonHttpLinkPolicyRaw = (securityRaw as Record<string, unknown> | undefined)
-    ?.nonHttpLinkPolicy;
+  const nonHttpLinkPolicyRaw = (
+    securityRaw as Record<string, unknown> | undefined
+  )?.nonHttpLinkPolicy;
   if (
     nonHttpLinkPolicyRaw !== undefined &&
     nonHttpLinkPolicyRaw !== "prompt" &&
@@ -467,15 +504,20 @@ function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | un
   ) {
     return {
       ok: false,
-      error: "settings.security.nonHttpLinkPolicy is invalid"
+      error: "settings.security.nonHttpLinkPolicy is invalid",
     };
   }
 
   const githubBackupRaw = settings.githubBackup;
   if (githubBackupRaw !== undefined && !isRecord(githubBackupRaw)) {
-    return { ok: false, error: "settings.githubBackup must be an object when present" };
+    return {
+      ok: false,
+      error: "settings.githubBackup must be an object when present",
+    };
   }
-  const githubBackupRecord = githubBackupRaw as Record<string, unknown> | undefined;
+  const githubBackupRecord = githubBackupRaw as
+    | Record<string, unknown>
+    | undefined;
   const githubDefaults = defaultSettings.githubBackup;
 
   const githubEnabledRaw = githubBackupRecord?.enabled;
@@ -509,13 +551,21 @@ function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | un
     autoPushPolicyRaw !== "onExit" &&
     autoPushPolicyRaw !== "interval15m"
   ) {
-    return { ok: false, error: "settings.githubBackup.autoPushPolicy is invalid" };
+    return {
+      ok: false,
+      error: "settings.githubBackup.autoPushPolicy is invalid",
+    };
   }
   const lastPushedRaw = githubBackupRecord?.lastPushed;
   if (lastPushedRaw !== undefined && !isRecord(lastPushedRaw)) {
-    return { ok: false, error: "settings.githubBackup.lastPushed must be an object when present" };
+    return {
+      ok: false,
+      error: "settings.githubBackup.lastPushed must be an object when present",
+    };
   }
-  const stateRevisionRaw = (lastPushedRaw as Record<string, unknown> | undefined)?.stateRevision;
+  const stateRevisionRaw = (
+    lastPushedRaw as Record<string, unknown> | undefined
+  )?.stateRevision;
   if (
     stateRevisionRaw !== undefined &&
     (typeof stateRevisionRaw !== "number" ||
@@ -523,22 +573,37 @@ function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | un
       !Number.isInteger(stateRevisionRaw) ||
       stateRevisionRaw < 0)
   ) {
-    return { ok: false, error: "settings.githubBackup.lastPushed.stateRevision is invalid" };
-  }
-  const settingsHashRaw = (lastPushedRaw as Record<string, unknown> | undefined)?.settingsHash;
-  if (settingsHashRaw !== undefined && typeof settingsHashRaw !== "string") {
-    return { ok: false, error: "settings.githubBackup.lastPushed.settingsHash is invalid" };
-  }
-  const timestampRaw = (lastPushedRaw as Record<string, unknown> | undefined)?.timestamp;
-  if (timestampRaw !== undefined && typeof timestampRaw !== "string") {
-    return { ok: false, error: "settings.githubBackup.lastPushed.timestamp is invalid" };
-  }
-  const remoteCommitShaRaw =
-    (lastPushedRaw as Record<string, unknown> | undefined)?.remoteCommitSha;
-  if (remoteCommitShaRaw !== undefined && typeof remoteCommitShaRaw !== "string") {
     return {
       ok: false,
-      error: "settings.githubBackup.lastPushed.remoteCommitSha is invalid"
+      error: "settings.githubBackup.lastPushed.stateRevision is invalid",
+    };
+  }
+  const settingsHashRaw = (lastPushedRaw as Record<string, unknown> | undefined)
+    ?.settingsHash;
+  if (settingsHashRaw !== undefined && typeof settingsHashRaw !== "string") {
+    return {
+      ok: false,
+      error: "settings.githubBackup.lastPushed.settingsHash is invalid",
+    };
+  }
+  const timestampRaw = (lastPushedRaw as Record<string, unknown> | undefined)
+    ?.timestamp;
+  if (timestampRaw !== undefined && typeof timestampRaw !== "string") {
+    return {
+      ok: false,
+      error: "settings.githubBackup.lastPushed.timestamp is invalid",
+    };
+  }
+  const remoteCommitShaRaw = (
+    lastPushedRaw as Record<string, unknown> | undefined
+  )?.remoteCommitSha;
+  if (
+    remoteCommitShaRaw !== undefined &&
+    typeof remoteCommitShaRaw !== "string"
+  ) {
+    return {
+      ok: false,
+      error: "settings.githubBackup.lastPushed.remoteCommitSha is invalid",
     };
   }
 
@@ -546,9 +611,13 @@ function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | un
     githubBackupRecord && githubDefaults
       ? (() => {
           const ownerRepo =
-            ownerRepoRaw === null ? null : parseOptionalTrimmedString(ownerRepoRaw) ?? null;
-          const branch = parseOptionalTrimmedString(branchRaw) ?? githubDefaults.branch;
-          const deviceId = parseOptionalTrimmedString(deviceIdRaw) ?? githubDefaults.deviceId;
+            ownerRepoRaw === null
+              ? null
+              : (parseOptionalTrimmedString(ownerRepoRaw) ?? null);
+          const branch =
+            parseOptionalTrimmedString(branchRaw) ?? githubDefaults.branch;
+          const deviceId =
+            parseOptionalTrimmedString(deviceIdRaw) ?? githubDefaults.deviceId;
           const pathPrefix =
             parseOptionalTrimmedString(pathPrefixRaw) ??
             `tadoi/devices/${deviceId}`;
@@ -559,12 +628,15 @@ function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | un
             deviceId,
             pathPrefix,
             autoPushPolicy:
-              autoPushPolicyRaw === "onExit" || autoPushPolicyRaw === "interval15m"
+              autoPushPolicyRaw === "onExit" ||
+              autoPushPolicyRaw === "interval15m"
                 ? autoPushPolicyRaw
-                : "off"
+                : "off",
           } as NonNullable<TadoiSettings["githubBackup"]>;
 
-          const nextLastPushed: NonNullable<TadoiSettings["githubBackup"]>["lastPushed"] = {};
+          const nextLastPushed: NonNullable<
+            TadoiSettings["githubBackup"]
+          >["lastPushed"] = {};
           if (typeof stateRevisionRaw === "number") {
             nextLastPushed.stateRevision = Math.floor(stateRevisionRaw);
           }
@@ -576,7 +648,8 @@ function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | un
           if (timestamp) {
             nextLastPushed.timestamp = timestamp;
           }
-          const remoteCommitSha = parseOptionalTrimmedString(remoteCommitShaRaw);
+          const remoteCommitSha =
+            parseOptionalTrimmedString(remoteCommitShaRaw);
           if (remoteCommitSha) {
             nextLastPushed.remoteCommitSha = remoteCommitSha;
           }
@@ -589,7 +662,10 @@ function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | un
 
   const notesRaw = settings.notes;
   if (notesRaw !== undefined && !isRecord(notesRaw)) {
-    return { ok: false, error: "settings.notes must be an object when present" };
+    return {
+      ok: false,
+      error: "settings.notes must be an object when present",
+    };
   }
   const notesRecord = notesRaw as Record<string, unknown> | undefined;
   const notesEnabledRaw = notesRecord?.enabled;
@@ -604,7 +680,10 @@ function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | un
   ) {
     return { ok: false, error: "settings.notes.rootPath is invalid" };
   }
-  const defaultNotes = defaultSettings.notes ?? { enabled: true, rootPath: null };
+  const defaultNotes = defaultSettings.notes ?? {
+    enabled: true,
+    rootPath: null,
+  };
   const notesRootPath =
     typeof notesRootPathRaw === "string"
       ? (() => {
@@ -619,11 +698,15 @@ function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | un
     ok: true,
     value: {
       themeId,
-      logoMode: isLogoMode(logoModeRaw) ? logoModeRaw : defaultSettings.logoMode,
+      logoMode: isLogoMode(logoModeRaw)
+        ? logoModeRaw
+        : defaultSettings.logoMode,
       flashMode: isFlashMode(flashModeRaw) ? flashModeRaw : "slow",
       notifications: {
         enabled:
-          typeof enabledRaw === "boolean" ? enabledRaw : defaultNotifications.enabled,
+          typeof enabledRaw === "boolean"
+            ? enabledRaw
+            : defaultNotifications.enabled,
         inAppOverdueBanner:
           typeof inAppRaw === "boolean"
             ? inAppRaw
@@ -633,13 +716,13 @@ function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | un
             ? bellRaw
             : defaultNotifications.terminalBellOnOverdue,
         bannerDurationMs: bannerDurationResult.value,
-        bellCooldownMs: bellCooldownResult.value
+        bellCooldownMs: bellCooldownResult.value,
       },
       security: {
         nonHttpLinkPolicy:
           nonHttpLinkPolicyRaw === "block"
             ? "block"
-            : defaultSecurity.nonHttpLinkPolicy
+            : defaultSecurity.nonHttpLinkPolicy,
       },
       customThemes:
         customThemesRaw === undefined
@@ -648,16 +731,18 @@ function extractIncomingSettings(input: unknown): ParseResult<TadoiSettings | un
       githubBackup,
       notes: {
         enabled:
-          typeof notesEnabledRaw === "boolean" ? notesEnabledRaw : defaultNotes.enabled,
-        rootPath: notesRootPath
-      }
-    }
+          typeof notesEnabledRaw === "boolean"
+            ? notesEnabledRaw
+            : defaultNotes.enabled,
+        rootPath: notesRootPath,
+      },
+    },
   };
 }
 
 async function parseIncomingStateFromFile(
   inPath: string,
-  maxImportBytes = DEFAULT_MAX_IMPORT_BYTES_JSON
+  maxImportBytes = DEFAULT_MAX_IMPORT_BYTES_JSON,
 ): Promise<{
   state: LoadedData;
   settings?: TadoiSettings;
@@ -667,12 +752,12 @@ async function parseIncomingStateFromFile(
     stat = await fs.stat(inPath);
   } catch (error: unknown) {
     throw new BackupImportFilesystemError(
-      `Failed to access import file at ${inPath}: ${toSingleLineDetail(error)}`
+      `Failed to access import file at ${inPath}: ${toSingleLineDetail(error)}`,
     );
   }
   if (stat.size > maxImportBytes) {
     throw new BackupImportUsageError(
-      `Import file exceeds maximum size (${String(stat.size)} bytes > ${String(maxImportBytes)} bytes): ${inPath}`
+      `Import file exceeds maximum size (${String(stat.size)} bytes > ${String(maxImportBytes)} bytes): ${inPath}`,
     );
   }
 
@@ -681,7 +766,7 @@ async function parseIncomingStateFromFile(
     raw = await fs.readFile(inPath, "utf8");
   } catch (error: unknown) {
     throw new BackupImportFilesystemError(
-      `Failed to read import file at ${inPath}: ${toSingleLineDetail(error)}`
+      `Failed to read import file at ${inPath}: ${toSingleLineDetail(error)}`,
     );
   }
   let parsed: unknown;
@@ -690,14 +775,14 @@ async function parseIncomingStateFromFile(
     parsed = JSON.parse(raw);
   } catch (error: unknown) {
     throw new BackupImportUsageError(
-      `Failed to parse import JSON at ${inPath}: ${toSingleLineDetail(error)}`
+      `Failed to parse import JSON at ${inPath}: ${toSingleLineDetail(error)}`,
     );
   }
 
   const incomingSettingsResult = extractIncomingSettings(parsed);
   if (!incomingSettingsResult.ok) {
     throw new BackupImportUsageError(
-      `Invalid import settings payload: ${incomingSettingsResult.error}`
+      `Invalid import settings payload: ${incomingSettingsResult.error}`,
     );
   }
 
@@ -705,27 +790,32 @@ async function parseIncomingStateFromFile(
   const preValidation = validatePersistedState(normalizedStateInput, "minimal");
   if (!preValidation.ok) {
     throw new BackupImportUsageError(
-      `Import minimal validation failed: ${preValidation.errors.join("; ")}`
+      `Import minimal validation failed: ${preValidation.errors.join("; ")}`,
     );
   }
 
   let migrated: LoadedData;
   try {
-    migrated = migratePersistedStateToCurrent(preValidation.data, CURRENT_SCHEMA_VERSION);
+    migrated = migratePersistedStateToCurrent(
+      preValidation.data,
+      CURRENT_SCHEMA_VERSION,
+    );
   } catch (error: unknown) {
-    throw new BackupImportUsageError(`Import migration failed: ${toSingleLineDetail(error)}`);
+    throw new BackupImportUsageError(
+      `Import migration failed: ${toSingleLineDetail(error)}`,
+    );
   }
 
   const postValidation = validatePersistedState(migrated, "strict");
   if (!postValidation.ok) {
     throw new BackupImportUsageError(
-      `Import strict validation failed: ${postValidation.errors.join("; ")}`
+      `Import strict validation failed: ${postValidation.errors.join("; ")}`,
     );
   }
 
   return {
     state: postValidation.data,
-    settings: incomingSettingsResult.value
+    settings: incomingSettingsResult.value,
   };
 }
 
@@ -733,13 +823,15 @@ export function getResolvedDataPath(): string {
   return resolveDataPath();
 }
 
-export async function buildTimestampedBackupPath(opts: {
-  dataPath?: string;
-  outputDir?: string;
-  filename?: string;
-  cwd?: string;
-  now?: Date;
-} = {}): Promise<string> {
+export async function buildTimestampedBackupPath(
+  opts: {
+    dataPath?: string;
+    outputDir?: string;
+    filename?: string;
+    cwd?: string;
+    now?: Date;
+  } = {},
+): Promise<string> {
   const cwd = opts.cwd ?? process.cwd();
   const now = opts.now ?? new Date();
   const dataPath = opts.dataPath ?? resolveDataPath();
@@ -764,7 +856,7 @@ export async function buildTimestampedBackupPath(opts: {
 }
 
 export async function exportBackup(
-  opts: BackupExportOptions = {}
+  opts: BackupExportOptions = {},
 ): Promise<BackupExportResult> {
   try {
     const cwd = opts.cwd ?? process.cwd();
@@ -775,7 +867,7 @@ export async function exportBackup(
           outputDir: opts.outputDir,
           filename: opts.filename,
           cwd,
-          now: opts.now
+          now: opts.now,
         });
     const resolvedDataPath = resolveDataPath();
     const stateResult = await loadStateStrict({ filePath: resolvedDataPath });
@@ -787,14 +879,16 @@ export async function exportBackup(
       tagIndex: stateResult.data.tagIndex,
       savedViews: stateResult.data.savedViews,
       engagement: stateResult.data.engagement,
-      settings: settingsResult.settings
+      settings: settingsResult.settings,
     };
 
     const redactMode = opts.redactMode ?? (opts.redact ? "strict" : undefined);
-    const exportPayload = redactMode ? redactStateForExport(payload, redactMode) : payload;
+    const exportPayload = redactMode
+      ? redactStateForExport(payload, redactMode)
+      : payload;
     await writeJsonAtomic(exportPayload, {
       filePath: outputPath,
-      pretty: opts.pretty === true
+      pretty: opts.pretty === true,
     });
 
     let bytesWritten: number | undefined;
@@ -810,7 +904,7 @@ export async function exportBackup(
       resolvedDataPath,
       schemaVersion: exportPayload.schemaVersion,
       taskCount: exportPayload.tasks.length,
-      bytesWritten
+      bytesWritten,
     };
   } catch (error: unknown) {
     if (error instanceof BackupExportFilesystemError) {
@@ -821,7 +915,7 @@ export async function exportBackup(
 }
 
 export async function importBackup(
-  opts: BackupImportOptions
+  opts: BackupImportOptions,
 ): Promise<BackupImportSummary> {
   const cwd = opts.cwd ?? process.cwd();
   const inPath = resolvePathFromCwd(opts.inputPath, cwd);
@@ -841,7 +935,8 @@ export async function importBackup(
     let currentSettings: Awaited<ReturnType<typeof loadSettings>>;
     let loadWarnings: string[] = [];
     try {
-      const loaded = await loadStateStrictForImportWithTagRepair(resolvedDataPath);
+      const loaded =
+        await loadStateStrictForImportWithTagRepair(resolvedDataPath);
       currentState = loaded.state;
       loadWarnings = loaded.warnings;
       currentSettings = await loadSettings();
@@ -851,7 +946,7 @@ export async function importBackup(
 
     const importResult = importState(currentState.data, incoming.state, {
       mode: opts.mode,
-      now: opts.now ?? Date.now()
+      now: opts.now ?? Date.now(),
     });
 
     const summaryWarnings = [...lockWarnings, ...loadWarnings];
@@ -861,13 +956,14 @@ export async function importBackup(
       schemaVersion: importResult.stats.schemaVersion,
       resolvedDataPath,
       tasks: importResult.stats.tasks,
-      conflictsResolvedByUpdatedAt: importResult.stats.conflictsResolvedByUpdatedAt,
+      conflictsResolvedByUpdatedAt:
+        importResult.stats.conflictsResolvedByUpdatedAt,
       savedViews: importResult.stats.savedViews,
       settings: {
         includedInImport: Boolean(incoming.settings),
-        applied: false
+        applied: false,
       },
-      ...(summaryWarnings.length > 0 ? { warnings: summaryWarnings } : {})
+      ...(summaryWarnings.length > 0 ? { warnings: summaryWarnings } : {}),
     };
 
     if (opts.dryRun) {
@@ -878,7 +974,7 @@ export async function importBackup(
       let backupPath: string | undefined;
       try {
         backupPath = await createDataBackup(resolvedDataPath, {
-          now: new Date()
+          now: new Date(),
         });
       } catch (error: unknown) {
         throw new BackupImportFilesystemError(toSingleLineDetail(error));
@@ -892,13 +988,13 @@ export async function importBackup(
       await saveStateAtomic(
         {
           ...importResult.nextState,
-          stateRevision: currentState.data.stateRevision
+          stateRevision: currentState.data.stateRevision,
         },
         resolvedDataPath,
         undefined,
         {
-          expectedStateRevision: currentState.data.stateRevision
-        }
+          expectedStateRevision: currentState.data.stateRevision,
+        },
       );
     } catch (error: unknown) {
       throw new BackupImportFilesystemError(toSingleLineDetail(error));
@@ -910,7 +1006,7 @@ export async function importBackup(
 
     try {
       const settingsWriteResult = await saveSettingsStrict(incoming.settings, {
-        filePath: currentSettings.resolvedPath
+        filePath: currentSettings.resolvedPath,
       });
       summary.settings.applied = true;
       summary.settings.path = settingsWriteResult.resolvedPath;
@@ -919,7 +1015,7 @@ export async function importBackup(
       summary.settings.error = toSingleLineDetail(error);
       throw new BackupImportPartialError(
         `Data import succeeded but settings apply failed: ${summary.settings.error}`,
-        summary
+        summary,
       );
     }
   };
@@ -941,7 +1037,7 @@ export async function importBackup(
   }
   try {
     return await withDataFileLock(resolvedDataPath, executeImport, {
-      warnings: lockWarnings
+      warnings: lockWarnings,
     });
   } catch (error: unknown) {
     if (

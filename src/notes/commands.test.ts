@@ -1,5 +1,9 @@
 import { describe, expect, it } from "bun:test";
-import { executeNoteCommand, findNoteSearchMatches, parseNoteSearchQuery } from "./commands";
+import {
+  executeNoteCommand,
+  findNoteSearchMatches,
+  parseNoteSearchQuery,
+} from "./commands";
 import { normalizeTitleKey } from "./links";
 import type {
   Note,
@@ -8,7 +12,7 @@ import type {
   NotePath,
   NoteRef,
   ParsedNote,
-  TaskRef
+  TaskRef,
 } from "./types";
 import type { NotesService } from "./service";
 
@@ -21,7 +25,7 @@ function createEmptyGraphIndex(): NoteGraphIndex {
     outgoingNoteRefs: new Map<NotePath, NoteRef[]>(),
     outgoingTaskRefs: new Map<NotePath, TaskRef[]>(),
     backlinks: new Map<NotePath, Set<NotePath>>(),
-    warningsByPath: new Map()
+    warningsByPath: new Map(),
   };
 }
 
@@ -43,23 +47,23 @@ function createStubService(options: {
   let reindexCount = 0;
   const migratedRoots: string[] = [];
   const idsByPath = new Map<string, string | undefined>(
-    Object.entries(options.idsByPath ?? {})
+    Object.entries(options.idsByPath ?? {}),
   );
   const aliasesByPath = new Map<string, string[]>(
-    Object.entries(options.aliasesByPath ?? {})
+    Object.entries(options.aliasesByPath ?? {}),
   );
   const parsedContentByPath = new Map<string, string>(
-    Object.entries(options.parsedContentByPath ?? {})
+    Object.entries(options.parsedContentByPath ?? {}),
   );
   const templatesByPath = new Map<string, string>(
-    Object.entries(options.templatesByPath ?? {})
+    Object.entries(options.templatesByPath ?? {}),
   );
   const createdContentByPath = new Map<string, string>();
   const outgoingByPath = new Map<string, string[]>(
-    Object.entries(options.outgoingByPath ?? {})
+    Object.entries(options.outgoingByPath ?? {}),
   );
   const backlinksByPath = new Map<string, string[]>(
-    Object.entries(options.backlinksByPath ?? {})
+    Object.entries(options.backlinksByPath ?? {}),
   );
 
   const service = {
@@ -76,14 +80,20 @@ function createStubService(options: {
           title: note.title,
           tags: [...note.tags],
           aliases: [...aliases],
-          mtimeMs: note.mtimeMs
+          mtimeMs: note.mtimeMs,
         });
         if (id) {
           index.notesById.set(id, note.path);
         }
-        const keys = new Set([normalizeTitleKey(note.title), ...aliases.map((alias) => normalizeTitleKey(alias))]);
+        const keys = new Set([
+          normalizeTitleKey(note.title),
+          ...aliases.map((alias) => normalizeTitleKey(alias)),
+        ]);
         for (const key of keys) {
-          index.notesByTitle.set(key, [...(index.notesByTitle.get(key) ?? []), note.path]);
+          index.notesByTitle.set(key, [
+            ...(index.notesByTitle.get(key) ?? []),
+            note.path,
+          ]);
         }
       }
       return index;
@@ -101,7 +111,7 @@ function createStubService(options: {
           title: note.title,
           tags: note.tags,
           aliases,
-          mtimeMs: note.mtimeMs
+          mtimeMs: note.mtimeMs,
         },
         content: parsedContentByPath.get(note.path) ?? "",
         outgoingNoteRefs: [],
@@ -109,7 +119,7 @@ function createStubService(options: {
         rawTitle: note.title,
         titleKey: normalizeTitleKey(note.title),
         hash: "",
-        warnings: []
+        warnings: [],
       };
       return parsed as ParsedNote;
     },
@@ -119,16 +129,19 @@ function createStubService(options: {
         return {
           path: notePath,
           content: templateContent,
-          mtimeMs: Date.now()
+          mtimeMs: Date.now(),
         };
       }
       const note = notes.find((item) => item.path === notePath);
       if (!note) return null;
-      const content = parsedContentByPath.get(notePath) ?? createdContentByPath.get(notePath) ?? "";
+      const content =
+        parsedContentByPath.get(notePath) ??
+        createdContentByPath.get(notePath) ??
+        "";
       return {
         path: notePath,
         content,
-        mtimeMs: note.mtimeMs
+        mtimeMs: note.mtimeMs,
       };
     },
     createNote: async (title: string, content: string) => {
@@ -140,20 +153,20 @@ function createStubService(options: {
       return {
         path,
         content,
-        mtimeMs: createdAt
+        mtimeMs: createdAt,
       };
     },
     saveNote: async (notePath: string, content: string) => {
       const savedAt = Date.now();
       notes = notes.map((note) =>
-        note.path === notePath ? { ...note, mtimeMs: savedAt } : note
+        note.path === notePath ? { ...note, mtimeMs: savedAt } : note,
       );
       createdContentByPath.set(notePath, content);
       parsedContentByPath.set(notePath, content);
       return {
         path: notePath,
         content,
-        mtimeMs: savedAt
+        mtimeMs: savedAt,
       };
     },
     reindexAll: async () => {
@@ -167,7 +180,7 @@ function createStubService(options: {
     restoreDefaultGuideDocs: async () => ({
       mode: "restore_missing" as const,
       createdPaths: [] as string[],
-      skippedPaths: [] as string[]
+      skippedPaths: [] as string[],
     }),
     migrateNotesRootCopyFirst: async (nextRoot: string) => {
       migratedRoots.push(nextRoot);
@@ -177,17 +190,18 @@ function createStubService(options: {
         from: notePath,
         toRaw: toResolved,
         toResolved,
-        kind: "wikilink" as const
+        kind: "wikilink" as const,
       })),
     getBacklinks: (notePath: string) => backlinksByPath.get(notePath) ?? [],
-    getLinkedTasksForNote: () => []
+    getLinkedTasksForNote: () => [],
   } as unknown as NotesService;
 
   return {
     service,
-    getCreatedContentByPath: (notePath: string) => createdContentByPath.get(notePath),
+    getCreatedContentByPath: (notePath: string) =>
+      createdContentByPath.get(notePath),
     getReindexCount: () => reindexCount,
-    getMigratedRoots: () => [...migratedRoots]
+    getMigratedRoots: () => [...migratedRoots],
   };
 }
 
@@ -195,9 +209,17 @@ describe("notes command helpers", () => {
   it("parses note search filters", () => {
     const now = new Date();
     const today = `${String(now.getFullYear())}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-    const tomorrowDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const tomorrowDate = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + 1,
+    );
     const tomorrow = `${String(tomorrowDate.getFullYear())}-${String(tomorrowDate.getMonth() + 1).padStart(2, "0")}-${String(tomorrowDate.getDate()).padStart(2, "0")}`;
-    expect(parseNoteSearchQuery("tag:work title:retro -tag:closed created:today limit:20")).toEqual({
+    expect(
+      parseNoteSearchQuery(
+        "tag:work title:retro -tag:closed created:today limit:20",
+      ),
+    ).toEqual({
       textTerms: [],
       titleFilters: ["retro"],
       pathFilters: [],
@@ -205,15 +227,25 @@ describe("notes command helpers", () => {
       excludedTagFilters: ["closed"],
       createdAfter: today,
       createdBefore: tomorrow,
-      limit: 20
+      limit: 20,
     });
   });
 
   it("returns ranked note search matches with limit", () => {
     const notes: NoteListItem[] = [
-      { path: "Retro Meeting.md", title: "Retro Meeting", tags: ["work"], mtimeMs: 10 },
-      { path: "Retro Notes.md", title: "Retro Notes", tags: ["work"], mtimeMs: 20 },
-      { path: "Other.md", title: "Other", tags: ["home"], mtimeMs: 30 }
+      {
+        path: "Retro Meeting.md",
+        title: "Retro Meeting",
+        tags: ["work"],
+        mtimeMs: 10,
+      },
+      {
+        path: "Retro Notes.md",
+        title: "Retro Notes",
+        tags: ["work"],
+        mtimeMs: 20,
+      },
+      { path: "Other.md", title: "Other", tags: ["home"], mtimeMs: 30 },
     ];
     const matches = findNoteSearchMatches(
       notes,
@@ -223,9 +255,9 @@ describe("notes command helpers", () => {
         pathFilters: [],
         tagFilters: ["work"],
         excludedTagFilters: [],
-        limit: 1
+        limit: 1,
       },
-      {}
+      {},
     );
     expect(matches).toHaveLength(1);
   });
@@ -233,7 +265,9 @@ describe("notes command helpers", () => {
 
 describe("executeNoteCommand", () => {
   it("captures quick notes with metadata and selected-task linking", async () => {
-    const { service, getCreatedContentByPath } = createStubService({ notes: [] });
+    const { service, getCreatedContentByPath } = createStubService({
+      notes: [],
+    });
     const result = await executeNoteCommand(
       {
         type: "note",
@@ -244,15 +278,15 @@ describe("executeNoteCommand", () => {
         aliases: ["d1"],
         status: "done",
         metadata: { source: "cli", "x-custom": "1" },
-        target: { type: "selected" }
+        target: { type: "selected" },
       },
       {
         service,
         dataFilePath: "/tmp/tadoi_data.json",
         notesSettings: { enabled: true, rootPath: null },
         selectedTaskId: "task-1",
-        captureSource: "tits"
-      }
+        captureSource: "tits",
+      },
     );
 
     expect(result.output.kind).toBe("ok");
@@ -265,14 +299,14 @@ describe("executeNoteCommand", () => {
     expect(result.taskSideEffects).toEqual({
       taskId: "task-1",
       primaryNoteAction: "set",
-      primaryNotePath: "Daily.md"
+      primaryNotePath: "Daily.md",
     });
   });
 
   it("supports append capture mode against an existing task primary note", async () => {
     const { service, getCreatedContentByPath } = createStubService({
       notes: [{ path: "Primary.md", title: "Primary", tags: [], mtimeMs: 1 }],
-      parsedContentByPath: { "Primary.md": "# Primary\n\nExisting body" }
+      parsedContentByPath: { "Primary.md": "# Primary\n\nExisting body" },
     });
     const result = await executeNoteCommand(
       {
@@ -285,7 +319,7 @@ describe("executeNoteCommand", () => {
         metadata: {},
         target: { type: "id", id: "task-1" },
         captureMode: "append",
-        fromTaskNotes: true
+        fromTaskNotes: true,
       },
       {
         service,
@@ -293,9 +327,9 @@ describe("executeNoteCommand", () => {
         notesSettings: { enabled: true, rootPath: null },
         resolveTaskContext: () => ({
           primaryNotePath: "Primary.md",
-          inlineNotes: "Inline note text"
-        })
-      }
+          inlineNotes: "Inline note text",
+        }),
+      },
     );
 
     expect(result.output.kind).toBe("ok");
@@ -309,12 +343,14 @@ describe("executeNoteCommand", () => {
     expect(result.taskSideEffects).toEqual({
       taskId: "task-1",
       primaryNoteAction: "keep",
-      primaryNotePath: "Primary.md"
+      primaryNotePath: "Primary.md",
     });
   });
 
   it("keeps primary-note linkage by default in new mode and supports explicit clear-inline side effect", async () => {
-    const { service, getCreatedContentByPath } = createStubService({ notes: [] });
+    const { service, getCreatedContentByPath } = createStubService({
+      notes: [],
+    });
     const result = await executeNoteCommand(
       {
         type: "note",
@@ -326,7 +362,7 @@ describe("executeNoteCommand", () => {
         metadata: {},
         target: { type: "id", id: "task-1" },
         captureMode: "new",
-        clearTaskNotes: true
+        clearTaskNotes: true,
       },
       {
         service,
@@ -334,9 +370,9 @@ describe("executeNoteCommand", () => {
         notesSettings: { enabled: true, rootPath: null },
         resolveTaskContext: () => ({
           primaryNotePath: "Primary.md",
-          inlineNotes: "Legacy inline"
-        })
-      }
+          inlineNotes: "Legacy inline",
+        }),
+      },
     );
 
     expect(result.output.kind).toBe("ok");
@@ -347,7 +383,7 @@ describe("executeNoteCommand", () => {
       taskId: "task-1",
       primaryNoteAction: "keep",
       primaryNotePath: "Primary.md",
-      clearInlineNotes: true
+      clearInlineNotes: true,
     });
   });
 
@@ -358,17 +394,17 @@ describe("executeNoteCommand", () => {
         type: "note",
         operation: "new",
         title: "With Template",
-        template: "meeting"
+        template: "meeting",
       },
       {
         service,
         dataFilePath: "/tmp/tadoi_data.json",
-        notesSettings: { enabled: true, rootPath: null }
-      }
+        notesSettings: { enabled: true, rootPath: null },
+      },
     );
 
     expect(result.output.kind).toBe("ok");
-    expect(result.output.text).toContain("template \"meeting\" not found");
+    expect(result.output.text).toContain('template "meeting" not found');
   });
 
   it("executes graph/links discoverability queries", async () => {
@@ -376,14 +412,14 @@ describe("executeNoteCommand", () => {
       notes: [
         { path: "A.md", title: "A", tags: [], mtimeMs: 1 },
         { path: "B.md", title: "B", tags: [], mtimeMs: 1 },
-        { path: "C.md", title: "C", tags: [], mtimeMs: 1 }
+        { path: "C.md", title: "C", tags: [], mtimeMs: 1 },
       ],
       outgoingByPath: {
-        "A.md": ["B.md"]
+        "A.md": ["B.md"],
       },
       backlinksByPath: {
-        "A.md": ["C.md"]
-      }
+        "A.md": ["C.md"],
+      },
     });
 
     const result = await executeNoteCommand(
@@ -391,13 +427,13 @@ describe("executeNoteCommand", () => {
         type: "note",
         operation: "graph",
         query: "A",
-        direction: "both"
+        direction: "both",
       },
       {
         service,
         dataFilePath: "/tmp/tadoi_data.json",
-        notesSettings: { enabled: true, rootPath: null }
-      }
+        notesSettings: { enabled: true, rootPath: null },
+      },
     );
 
     expect(result.output.kind).toBe("ok");
@@ -407,7 +443,7 @@ describe("executeNoteCommand", () => {
 
   it("applies root migration with backup + settings persistence", async () => {
     const { service, getMigratedRoots } = createStubService({
-      notes: [{ path: "A.md", title: "A", tags: [], mtimeMs: 1 }]
+      notes: [{ path: "A.md", title: "A", tags: [], mtimeMs: 1 }],
     });
     const backups: string[] = [];
     const persisted: Array<{ enabled: boolean; rootPath: string | null }> = [];
@@ -416,7 +452,7 @@ describe("executeNoteCommand", () => {
       {
         type: "note",
         operation: "root_set",
-        path: "./next-notes"
+        path: "./next-notes",
       },
       {
         service,
@@ -427,8 +463,8 @@ describe("executeNoteCommand", () => {
         },
         persistNotesSettings: async (next) => {
           persisted.push(next);
-        }
-      }
+        },
+      },
     );
 
     expect(result.output.kind).toBe("ok");
@@ -446,18 +482,18 @@ describe("executeNoteCommand", () => {
         title: "Blocked",
         tags: [],
         aliases: [],
-        metadata: {}
+        metadata: {},
       },
       {
         service,
         dataFilePath: "/tmp/tadoi_data.json",
-        notesSettings: { enabled: false, rootPath: null }
-      }
+        notesSettings: { enabled: false, rootPath: null },
+      },
     );
 
     expect(result.output).toEqual({
       kind: "error",
-      text: "Error: TOME is disabled in settings"
+      text: "Error: TOME is disabled in settings",
     });
   });
 });

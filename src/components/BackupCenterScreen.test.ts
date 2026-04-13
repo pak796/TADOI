@@ -5,7 +5,7 @@ import {
   getStepLabel,
   isScreenForInput,
   resolveBackupWheelDelta,
-  resolveImportPickerWindow
+  resolveImportPickerWindow,
 } from "./BackupCenterScreen";
 
 describe("BackupCenterScreen helpers", () => {
@@ -30,10 +30,21 @@ describe("BackupCenterScreen helpers", () => {
 
   it("resolves focusable input screens by kind", () => {
     expect(isScreenForInput("import_path", "data-import-path")).toBe(true);
-    expect(isScreenForInput("calendar_import_horizon", "calendar-import-horizon")).toBe(true);
-    expect(isScreenForInput("github_connect_mode", "github-repo-name")).toBe(true);
-    expect(isScreenForInput("github_connect_repo_input", "github-owner-repo")).toBe(true);
-    expect(isScreenForInput("github_connect_public_confirm", "github-public-confirm")).toBe(true);
+    expect(
+      isScreenForInput("calendar_import_horizon", "calendar-import-horizon"),
+    ).toBe(true);
+    expect(isScreenForInput("github_connect_mode", "github-repo-name")).toBe(
+      true,
+    );
+    expect(
+      isScreenForInput("github_connect_repo_input", "github-owner-repo"),
+    ).toBe(true);
+    expect(
+      isScreenForInput(
+        "github_connect_public_confirm",
+        "github-public-confirm",
+      ),
+    ).toBe(true);
     expect(isScreenForInput("menu", "calendar-import-horizon")).toBe(false);
   });
 
@@ -42,7 +53,7 @@ describe("BackupCenterScreen helpers", () => {
       fileCount: 20,
       selectedIndex: 19,
       scrollOffset: 0,
-      visibleRows: 4
+      visibleRows: 4,
     });
     expect(deepWindow).toEqual({ selectedIndex: 19, start: 16, end: 20 });
 
@@ -50,7 +61,7 @@ describe("BackupCenterScreen helpers", () => {
       fileCount: 2,
       selectedIndex: 9,
       scrollOffset: 9,
-      visibleRows: 8
+      visibleRows: 8,
     });
     expect(shortWindow).toEqual({ selectedIndex: 1, start: 0, end: 2 });
   });

@@ -3,17 +3,20 @@
 This list reflects current runtime behavior as of **2026-02-27**.
 
 ## Core Workflow
+
 - Create, edit, duplicate, complete/reopen, and delete tasks.
 - Keyboard-first navigation with wrap-around movement, paging, and jump shortcuts.
 - Mouse support for key UI surfaces (task rows, menu rows, editor actions, quick filters, overdue modal actions).
 
 ## Task Links and Attachments
+
 - Per-task links/attachments with optional labels and inferred kind (`url` or `path`).
 - Details pane links focus mode with open, copy, add, edit, and delete flows.
 - Add-mode shortcut `Ctrl+L` to attach links before saving a new task.
 - External unknown-scheme URL opens are gated behind an explicit confirmation modal.
 
 ## Filtering and Views
+
 - Status filter (`f`): `all`, `open`, `done`, `archived`.
 - Due filter (`g`): `any`, `overdue`, `today`, `next7`.
 - Analytics window (`w`, dashboard): `7d`, `14d`, `30d`.
@@ -24,6 +27,7 @@ This list reflects current runtime behavior as of **2026-02-27**.
 - Saved views preserve dashboard analytics filters (`analyticsWindow`, `dueDayOffset`) and slice filters (`assignee`, `project`, `workflowStage`).
 
 ## Tag Filtering
+
 - Priority cycle (`r`) for priority tokens on open tasks.
 - Legacy single-tag cycle (`t`) over non-priority tags on open tasks.
 - Boolean tag panel (`p`) with three buckets:
@@ -34,6 +38,7 @@ This list reflects current runtime behavior as of **2026-02-27**.
 - Matching precedence: non-empty boolean `tagFilter` overrides legacy single `tag`.
 
 ## Left Rail and Branding Surface
+
 - Left rail menu includes `TAG PANEL (P)` with the same action as keyboard `p`.
 - Left rail hint strip includes `p: TAG PANEL` for discoverability.
 - Logo mode supports `default`, `alternate32`, `alternate_slash32`, `alternate_blocks32`, and `rotating`.
@@ -41,6 +46,7 @@ This list reflects current runtime behavior as of **2026-02-27**.
 - Blocks logo uses contrast-safe dark ink when accent colors are too light.
 
 ## Recurring Tasks
+
 - Recurrence model: `dtstart`, `rrule`, `exdates`, `series_id`.
 - Modes: daily, weekly, monthly, custom RRULE.
 - End rules: never, until date, count.
@@ -48,6 +54,7 @@ This list reflects current runtime behavior as of **2026-02-27**.
 - Sparse materialization: virtual occurrences render without storing every future instance.
 
 ## Dashboard and Analytics
+
 - Dashboard toggle (`b`/`B`) with shared filter parity.
 - KPI strip with window-aware labels: `OVERDUE`, `TODAY`, `NEXT{7|14|30}`, `OPEN`, `DONE{7|14|30}D`.
 - Due buckets panel (`OVD`, `TOD`, `+1..+6`) with mouse/keyboard drill-through; `+N` applies exact `dueDayOffset`.
@@ -61,6 +68,7 @@ This list reflects current runtime behavior as of **2026-02-27**.
 - Deterministic height-priority collapse strategy to avoid border overlap on compressed heights.
 
 ## Data Safety and Portability
+
 - JSON persistence with schema migration and strict validation (current schema 7).
 - Task schema includes optional analytics dimensions: `assignee`, `project`, `workflowStage`.
 - Corrupt file recovery with timestamped `.corrupt.*` backups.
@@ -68,6 +76,7 @@ This list reflects current runtime behavior as of **2026-02-27**.
 - In-app Backup Center for export/import with dry-run and replace confirmation gate.
 
 ## Calendar Integration
+
 - User-facing CLI export: `calendar:export` with `--out`, `--view`, `--range`, and `--privacy`.
 - User-facing in-app calendar flows in Backup Center:
   - `Export Calendar (.ics)`
@@ -81,6 +90,7 @@ This list reflects current runtime behavior as of **2026-02-27**.
 - Import implementation is recurrence-aware (`icsParser`, `importMapper`, `calendarImportService`) with bounded expansion and deterministic identity precedence.
 
 ## Security and Privacy Enhancements
+
 - Persisted security policy: `security.nonHttpLinkPolicy` (`prompt` or `block`).
 - Link-open policy is source-aware:
   - calendar-imported links require confirmation before open.
@@ -89,6 +99,7 @@ This list reflects current runtime behavior as of **2026-02-27**.
 - Startup path logs are redacted by default; opt-in full paths with `TADOI_VERBOSE_PATH_LOGS=1`.
 
 ## Notifications and Settings
+
 - Overdue modal queue with actions: snooze, done, go-to, dismiss.
 - Optional terminal bell with cooldown.
 - Non-interactive engagement toast milestones in the bottom bar (queued, priority-ordered, auto-dismissed).
@@ -100,10 +111,12 @@ This list reflects current runtime behavior as of **2026-02-27**.
 - Persisted engagement state and unlock tracking for milestone toasts.
 
 ## Platform and Runtime Contracts
+
 - Supported baseline terminals: macOS Terminal/iTerm2, Windows Terminal, GNOME Terminal.
 - Minimum supported terminal size: `104x24`.
 - Below minimum, app shows blocking guard: `Terminal too small (min 104x24)`.
 
 ## Version Surface
+
 - App version: `v0.3.8`.
 - Package version: `0.3.8`.

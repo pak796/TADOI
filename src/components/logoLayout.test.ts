@@ -12,7 +12,7 @@ describe("centerLogoInBox", () => {
       "  AA  ",
       "  BB  ",
       "      ",
-      "      "
+      "      ",
     ]);
   });
 
@@ -32,7 +32,7 @@ describe("centerLogoInBox", () => {
       "       ",
       "  BBB  ",
       "       ",
-      "       "
+      "       ",
     ]);
   });
 
@@ -58,7 +58,9 @@ describe("centerLogoInBox", () => {
   });
 
   it("keeps all centered logo variants within fixed width/height constraints", () => {
-    const boxHeight = Math.max(...Object.values(LOGO_VARIANTS).map((lines) => lines.length));
+    const boxHeight = Math.max(
+      ...Object.values(LOGO_VARIANTS).map((lines) => lines.length),
+    );
 
     for (const lines of Object.values(LOGO_VARIANTS)) {
       const centered = centerLogoInBox(lines, LOGO_MAX_WIDTH, boxHeight);

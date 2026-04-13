@@ -14,7 +14,7 @@ import {
   safeLoadState,
   saveStateAtomic,
   saveStateDebounced,
-  writeJsonAtomic
+  writeJsonAtomic,
 } from "./persistence";
 
 function sleep(ms: number): Promise<void> {
@@ -32,7 +32,9 @@ async function expectUnixPrivateFileMode(filePath: string): Promise<void> {
 }
 
 async function loadFixture(name: string): Promise<string> {
-  const fixturePath = fileURLToPath(new URL(`./__fixtures__/${name}`, import.meta.url).href);
+  const fixturePath = fileURLToPath(
+    new URL(`./__fixtures__/${name}`, import.meta.url).href,
+  );
   return fs.readFile(fixturePath, "utf8");
 }
 
@@ -42,7 +44,7 @@ describe("resolveDataPath", () => {
       platform: "linux",
       env: { TADOI_DATA_PATH: "data/custom.json" },
       cwd: "/repo",
-      homeDir: "/home/patrick"
+      homeDir: "/home/patrick",
     });
     expect(resolved).toBe("/repo/data/custom.json");
   });
@@ -51,7 +53,7 @@ describe("resolveDataPath", () => {
     const resolved = resolveDataPath({
       platform: "linux",
       env: { XDG_DATA_HOME: "/xdg/data" },
-      homeDir: "/home/patrick"
+      homeDir: "/home/patrick",
     });
     expect(resolved).toBe("/xdg/data/tadoi/tadoi_data.json");
   });
@@ -60,7 +62,7 @@ describe("resolveDataPath", () => {
     const resolved = resolveDataPath({
       platform: "linux",
       env: {},
-      homeDir: "/home/patrick"
+      homeDir: "/home/patrick",
     });
     expect(resolved).toBe("/home/patrick/.local/share/tadoi/tadoi_data.json");
   });
@@ -69,9 +71,11 @@ describe("resolveDataPath", () => {
     const resolved = resolveDataPath({
       platform: "darwin",
       env: {},
-      homeDir: "/Users/patrick"
+      homeDir: "/Users/patrick",
     });
-    expect(resolved).toBe("/Users/patrick/Library/Application Support/tadoi/tadoi_data.json");
+    expect(resolved).toBe(
+      "/Users/patrick/Library/Application Support/tadoi/tadoi_data.json",
+    );
   });
 
   it("uses windows APPDATA or fallback", () => {
@@ -79,17 +83,21 @@ describe("resolveDataPath", () => {
       platform: "win32",
       env: { APPDATA: "C:\\\\Users\\\\Patrick\\\\AppData\\\\Roaming" },
       homeDir: "C:\\\\Users\\\\Patrick",
-      cwd: "C:\\\\repo"
+      cwd: "C:\\\\repo",
     });
-    expect(withAppData).toBe("C:\\Users\\Patrick\\AppData\\Roaming\\tadoi\\tadoi_data.json");
+    expect(withAppData).toBe(
+      "C:\\Users\\Patrick\\AppData\\Roaming\\tadoi\\tadoi_data.json",
+    );
 
     const fallback = resolveDataPath({
       platform: "win32",
       env: {},
       homeDir: "C:\\\\Users\\\\Patrick",
-      cwd: "C:\\\\repo"
+      cwd: "C:\\\\repo",
     });
-    expect(fallback).toBe("C:\\Users\\Patrick\\AppData\\Roaming\\tadoi\\tadoi_data.json");
+    expect(fallback).toBe(
+      "C:\\Users\\Patrick\\AppData\\Roaming\\tadoi\\tadoi_data.json",
+    );
   });
 });
 
@@ -119,23 +127,28 @@ describe("safeLoadState", () => {
               workflowStage: "todo",
               createdAt: 1,
               updatedAt: 1,
-              tags: ["team", "team", "#p1", "#p2"]
-            }
+              tags: ["team", "team", "#p1", "#p2"],
+            },
           ],
           tagIndex: {},
-          savedViews: []
+          savedViews: [],
         },
         null,
-        2
+        2,
       ),
-      "utf8"
+      "utf8",
     );
 
-    const result = await safeLoadState({ filePath, now: new Date("2026-02-28T10:00:00") });
+    const result = await safeLoadState({
+      filePath,
+      now: new Date("2026-02-28T10:00:00"),
+    });
     expect(result.shouldPersistRecoveredState).toBe(false);
     expect(result.corruptBackupPath).toBeUndefined();
     expect(result.didMigrate).toBe(true);
-    expect(result.bannerMessage).toContain("Recovered 1 legacy task tag normalization issue(s).");
+    expect(result.bannerMessage).toContain(
+      "Recovered 1 legacy task tag normalization issue(s).",
+    );
     expect(result.data.tasks[0]?.tags).toEqual(["#p2", "team"]);
 
     const files = await fs.readdir(dir);
@@ -145,13 +158,17 @@ describe("safeLoadState", () => {
   it("does not treat non-ENOENT read failures as corruption recovery", async () => {
     const dir = await makeTempDir();
     const filePath = path.join(dir, "tadoi_data.json");
-    await fs.writeFile(filePath, await loadFixture("persisted.v5.json"), "utf8");
+    await fs.writeFile(
+      filePath,
+      await loadFixture("persisted.v5.json"),
+      "utf8",
+    );
 
     const fsOps: PersistenceFsOps = {
       ...fs,
       readFile: (async () => {
         throw Object.assign(new Error("permission denied"), { code: "EACCES" });
-      }) as PersistenceFsOps["readFile"]
+      }) as PersistenceFsOps["readFile"],
     };
 
     const result = await safeLoadState({ filePath, fsOps });
@@ -170,23 +187,39 @@ describe("safeLoadState", () => {
     const filePath = path.join(dir, "tadoi_data.json");
     await fs.writeFile(filePath, "{broken json", "utf8");
 
-    const result = await safeLoadState({ filePath, now: new Date("2026-02-09T10:00:00") });
+    const result = await safeLoadState({
+      filePath,
+      now: new Date("2026-02-09T10:00:00"),
+    });
     expect(result.shouldPersistRecoveredState).toBe(true);
-    expect(result.bannerMessage).toContain("Data file was corrupt and was backed up to");
+    expect(result.bannerMessage).toContain(
+      "Data file was corrupt and was backed up to",
+    );
 
     const files = await fs.readdir(dir);
-    expect(files.some((name) => name.startsWith("tadoi_data.json.corrupt."))).toBe(true);
+    expect(
+      files.some((name) => name.startsWith("tadoi_data.json.corrupt.")),
+    ).toBe(true);
   });
 
   it("routes invalid shape to corruption recovery path", async () => {
     const dir = await makeTempDir();
     const filePath = path.join(dir, "tadoi_data.json");
-    await fs.writeFile(filePath, await loadFixture("persisted.invalid.json"), "utf8");
+    await fs.writeFile(
+      filePath,
+      await loadFixture("persisted.invalid.json"),
+      "utf8",
+    );
 
-    const result = await safeLoadState({ filePath, now: new Date("2026-02-09T11:00:00") });
+    const result = await safeLoadState({
+      filePath,
+      now: new Date("2026-02-09T11:00:00"),
+    });
     expect(result.shouldPersistRecoveredState).toBe(true);
     expect(result.data.tasks).toHaveLength(0);
-    expect(result.bannerMessage).toContain("Data file was corrupt and was backed up to");
+    expect(result.bannerMessage).toContain(
+      "Data file was corrupt and was backed up to",
+    );
   });
 
   it("routes migration failures to corruption recovery path", async () => {
@@ -194,11 +227,19 @@ describe("safeLoadState", () => {
     const filePath = path.join(dir, "tadoi_data.json");
     await fs.writeFile(
       filePath,
-      JSON.stringify({ schemaVersion: 99, tasks: [], tagIndex: {}, savedViews: [] }),
-      "utf8"
+      JSON.stringify({
+        schemaVersion: 99,
+        tasks: [],
+        tagIndex: {},
+        savedViews: [],
+      }),
+      "utf8",
     );
 
-    const result = await safeLoadState({ filePath, now: new Date("2026-02-09T12:00:00") });
+    const result = await safeLoadState({
+      filePath,
+      now: new Date("2026-02-09T12:00:00"),
+    });
     expect(result.shouldPersistRecoveredState).toBe(true);
     expect(result.data.tasks).toHaveLength(0);
   });
@@ -212,13 +253,13 @@ describe("safeLoadState", () => {
       ...fs,
       rename: async () => {
         throw Object.assign(new Error("rename failed"), { code: "EXDEV" });
-      }
+      },
     };
 
     const result = await safeLoadState({
       filePath,
       now: new Date("2026-02-09T13:00:00"),
-      fsOps
+      fsOps,
     });
     expect(result.shouldPersistRecoveredState).toBe(true);
     expect(result.corruptBackupPath).toBeDefined();
@@ -240,23 +281,23 @@ describe("safeLoadState", () => {
       ...fs,
       rename: async () => {
         throw Object.assign(new Error("rename failed"), { code: "EXDEV" });
-      }
+      },
     };
 
     await safeLoadState({
       filePath,
       now: new Date("2026-02-09T14:00:00"),
-      fsOps
+      fsOps,
     });
     await safeLoadState({
       filePath,
       now: new Date("2026-02-09T14:10:00"),
-      fsOps
+      fsOps,
     });
 
     const files = await fs.readdir(dir);
     const backups = files.filter((name) =>
-      name.startsWith("tadoi_data.json.corrupt.")
+      name.startsWith("tadoi_data.json.corrupt."),
     );
     expect(backups).toHaveLength(1);
   });
@@ -270,11 +311,11 @@ describe("safeLoadState", () => {
 
     await safeLoadState({
       filePath: firstPath,
-      now: new Date("2026-02-09T15:00:00")
+      now: new Date("2026-02-09T15:00:00"),
     });
     await safeLoadState({
       filePath: secondPath,
-      now: new Date("2026-02-09T15:01:00")
+      now: new Date("2026-02-09T15:01:00"),
     });
 
     const files = await fs.readdir(dir);
@@ -304,11 +345,11 @@ describe("loadStateStrict", () => {
           status: "open",
           createdAt: 1,
           updatedAt: 1,
-          tags: ["#p2", "work", "home"]
-        }
+          tags: ["#p2", "work", "home"],
+        },
       ],
       tagIndex: {},
-      savedViews: []
+      savedViews: [],
     };
     await fs.writeFile(filePath, JSON.stringify(payload), "utf8");
 
@@ -332,16 +373,16 @@ describe("loadStateStrict", () => {
               workflowStage: "todo",
               createdAt: 1,
               updatedAt: 1,
-              tags: ["team", "team", "#p1", "#p2"]
-            }
+              tags: ["team", "team", "#p1", "#p2"],
+            },
           ],
           tagIndex: {},
-          savedViews: []
+          savedViews: [],
         },
         null,
-        2
+        2,
       ),
-      "utf8"
+      "utf8",
     );
 
     const result = await loadStateStrict({ filePath });
@@ -365,20 +406,20 @@ describe("loadStateStrict", () => {
               workflowStage: "todo",
               createdAt: 1,
               updatedAt: 1,
-              tags: ["team", "team", "#p1", "#p2"]
-            }
+              tags: ["team", "team", "#p1", "#p2"],
+            },
           ],
           tagIndex: {},
-          savedViews: []
+          savedViews: [],
         },
         null,
-        2
+        2,
       ),
-      "utf8"
+      "utf8",
     );
 
     await expect(
-      loadStateStrict({ filePath, allowTagNormalizationRepair: false })
+      loadStateStrict({ filePath, allowTagNormalizationRepair: false }),
     ).rejects.toThrow("task.tags must be normalized/deduped");
   });
 
@@ -387,7 +428,9 @@ describe("loadStateStrict", () => {
     const filePath = path.join(dir, "tadoi_data.json");
     await fs.writeFile(filePath, "{broken", "utf8");
 
-    await expect(loadStateStrict({ filePath })).rejects.toThrow("Failed to parse JSON");
+    await expect(loadStateStrict({ filePath })).rejects.toThrow(
+      "Failed to parse JSON",
+    );
     const files = await fs.readdir(dir);
     expect(files.some((name) => name.includes(".corrupt."))).toBe(false);
   });
@@ -397,7 +440,7 @@ describe("backup helpers", () => {
   it("creates timestamped backup copies with deterministic suffixing", async () => {
     const dir = await makeTempDir();
     const filePath = path.join(dir, "tadoi_data.json");
-    await fs.writeFile(filePath, "{\"ok\":true}", "utf8");
+    await fs.writeFile(filePath, '{"ok":true}', "utf8");
 
     const now = new Date("2026-02-10T12:34:56");
     const firstBackup = await createDataBackup(filePath, { now });
@@ -406,38 +449,52 @@ describe("backup helpers", () => {
     expect(firstBackup).toBeDefined();
     expect(secondBackup).toBeDefined();
     expect(path.basename(firstBackup as string)).toMatch(
-      /^tadoi_data\.json\.backup\.20260210-123456$/
+      /^tadoi_data\.json\.backup\.20260210-123456$/,
     );
     expect(path.basename(secondBackup as string)).toMatch(
-      /^tadoi_data\.json\.backup\.20260210-123456\.1$/
+      /^tadoi_data\.json\.backup\.20260210-123456\.1$/,
     );
 
     const copiedRaw = await fs.readFile(firstBackup as string, "utf8");
-    expect(copiedRaw).toBe("{\"ok\":true}");
+    expect(copiedRaw).toBe('{"ok":true}');
   });
 
   it("returns undefined when source backup file is missing", async () => {
     const dir = await makeTempDir();
     const filePath = path.join(dir, "missing.json");
-    const backup = await createDataBackup(filePath, { now: new Date("2026-02-10T00:00:00") });
+    const backup = await createDataBackup(filePath, {
+      now: new Date("2026-02-10T00:00:00"),
+    });
     expect(backup).toBeUndefined();
   });
 
   it("builds next timestamped sibling path for backup and corrupt labels", async () => {
     const dir = await makeTempDir();
     const filePath = path.join(dir, "tadoi_data.json");
-    await fs.writeFile(path.join(dir, "tadoi_data.json.backup.20260210-120000"), "", "utf8");
-    await fs.writeFile(path.join(dir, "tadoi_data.json.corrupt.20260210-120000"), "", "utf8");
+    await fs.writeFile(
+      path.join(dir, "tadoi_data.json.backup.20260210-120000"),
+      "",
+      "utf8",
+    );
+    await fs.writeFile(
+      path.join(dir, "tadoi_data.json.corrupt.20260210-120000"),
+      "",
+      "utf8",
+    );
 
     const backupPath = await nextTimestampedSiblingPath(filePath, "backup", {
-      now: new Date("2026-02-10T12:00:00")
+      now: new Date("2026-02-10T12:00:00"),
     });
     const corruptPath = await nextTimestampedSiblingPath(filePath, "corrupt", {
-      now: new Date("2026-02-10T12:00:00")
+      now: new Date("2026-02-10T12:00:00"),
     });
 
-    expect(path.basename(backupPath)).toBe("tadoi_data.json.backup.20260210-120000.1");
-    expect(path.basename(corruptPath)).toBe("tadoi_data.json.corrupt.20260210-120000.1");
+    expect(path.basename(backupPath)).toBe(
+      "tadoi_data.json.backup.20260210-120000.1",
+    );
+    expect(path.basename(corruptPath)).toBe(
+      "tadoi_data.json.corrupt.20260210-120000.1",
+    );
   });
 });
 
@@ -458,19 +515,21 @@ describe("writeJsonAtomic", () => {
         return fs.writeFile(
           targetPath,
           data as Parameters<typeof fs.writeFile>[1],
-          options as Parameters<typeof fs.writeFile>[2]
+          options as Parameters<typeof fs.writeFile>[2],
         );
-      }) as PersistenceFsOps["writeFile"]
+      }) as PersistenceFsOps["writeFile"],
     };
 
     await Promise.all([
       writeJsonAtomic({ marker: "one" }, { filePath, fsOps }),
-      writeJsonAtomic({ marker: "two" }, { filePath, fsOps })
+      writeJsonAtomic({ marker: "two" }, { filePath, fsOps }),
     ]);
 
     expect(tempWrites.length).toBeGreaterThanOrEqual(2);
     expect(new Set(tempWrites).size).toBe(tempWrites.length);
-    const parsed = JSON.parse(await fs.readFile(filePath, "utf8")) as { marker: string };
+    const parsed = JSON.parse(await fs.readFile(filePath, "utf8")) as {
+      marker: string;
+    };
     expect(["one", "two"]).toContain(parsed.marker);
     await expectUnixPrivateFileMode(filePath);
   });
@@ -487,13 +546,13 @@ describe("writeJsonAtomic", () => {
           sync: async () => {
             syncCalled = true;
           },
-          close: async () => {}
-        }) as Awaited<ReturnType<typeof fs.open>>) as PersistenceFsOps["open"]
+          close: async () => {},
+        }) as Awaited<ReturnType<typeof fs.open>>) as PersistenceFsOps["open"],
     };
 
     await writeJsonAtomic(
       { ok: true },
-      { filePath, fsOps, fsyncBeforeRename: true, pretty: false }
+      { filePath, fsOps, fsyncBeforeRename: true, pretty: false },
     );
     expect(syncCalled).toBe(true);
   });
@@ -513,7 +572,7 @@ describe("saveStateAtomic", () => {
         openedPaths.push(target);
         const handle = await fs.open(
           targetPath,
-          flags as Parameters<typeof fs.open>[1]
+          flags as Parameters<typeof fs.open>[1],
         );
         return {
           ...handle,
@@ -527,33 +586,47 @@ describe("saveStateAtomic", () => {
             await handle.close();
           },
         } as Awaited<ReturnType<typeof fs.open>>;
-      }) as PersistenceFsOps["open"]
+      }) as PersistenceFsOps["open"],
     };
 
     await saveStateAtomic(
       {
         schemaVersion: 5,
         tasks: [
-          { id: "atomic", title: "atomic", status: "open", createdAt: 1, updatedAt: 1, tags: [] }
+          {
+            id: "atomic",
+            title: "atomic",
+            status: "open",
+            createdAt: 1,
+            updatedAt: 1,
+            tags: [],
+          },
         ],
         tagIndex: {},
-        savedViews: []
+        savedViews: [],
       },
       filePath,
-      fsOps
+      fsOps,
     );
 
     expect(tempFsyncCalled).toBe(true);
-    expect(openedPaths.some((entry) => entry.includes(`.tmp.${process.pid}`))).toBe(true);
+    expect(
+      openedPaths.some((entry) => entry.includes(`.tmp.${process.pid}`)),
+    ).toBe(true);
 
     const raw = await fs.readFile(filePath, "utf8");
-    const parsed = JSON.parse(raw) as { schemaVersion: number; tasks: Array<{ id: string }> };
+    const parsed = JSON.parse(raw) as {
+      schemaVersion: number;
+      tasks: Array<{ id: string }>;
+    };
     expect(parsed.schemaVersion).toBe(5);
     expect(parsed.tasks[0]?.id).toBe("atomic");
     await expectUnixPrivateFileMode(filePath);
 
     const files = await fs.readdir(dir);
-    expect(files.some((name) => name.startsWith("tadoi_data.json.tmp."))).toBe(false);
+    expect(files.some((name) => name.startsWith("tadoi_data.json.tmp."))).toBe(
+      false,
+    );
   });
 
   it("attempts temp cleanup on save failure", async () => {
@@ -570,13 +643,13 @@ describe("saveStateAtomic", () => {
         return fs.writeFile(
           targetPath,
           data as Parameters<typeof fs.writeFile>[1],
-          options as Parameters<typeof fs.writeFile>[2]
+          options as Parameters<typeof fs.writeFile>[2],
         );
       }) as PersistenceFsOps["writeFile"],
       unlink: (async (targetPath) => {
         unlinked.push(String(targetPath));
         return fs.unlink(targetPath);
-      }) as PersistenceFsOps["unlink"]
+      }) as PersistenceFsOps["unlink"],
     };
 
     await expect(
@@ -585,15 +658,17 @@ describe("saveStateAtomic", () => {
           schemaVersion: 5,
           tasks: [],
           tagIndex: {},
-          savedViews: []
+          savedViews: [],
         },
         filePath,
-        fsOps
-      )
+        fsOps,
+      ),
     ).rejects.toThrow("disk fail");
 
     expect(unlinked).toHaveLength(1);
-    expect(unlinked[0]?.startsWith(`${filePath}.tmp.${process.pid}`)).toBe(true);
+    expect(unlinked[0]?.startsWith(`${filePath}.tmp.${process.pid}`)).toBe(
+      true,
+    );
   });
 
   it("rejects stale expected stateRevision values", async () => {
@@ -603,11 +678,20 @@ describe("saveStateAtomic", () => {
     await saveStateAtomic(
       {
         schemaVersion: 4,
-        tasks: [{ id: "rev-1", title: "first", status: "open", createdAt: 1, updatedAt: 1, tags: [] }],
+        tasks: [
+          {
+            id: "rev-1",
+            title: "first",
+            status: "open",
+            createdAt: 1,
+            updatedAt: 1,
+            tags: [],
+          },
+        ],
         tagIndex: {},
-        savedViews: []
+        savedViews: [],
       },
-      filePath
+      filePath,
     );
 
     let conflict: StateRevisionConflictError | undefined;
@@ -615,13 +699,22 @@ describe("saveStateAtomic", () => {
       await saveStateAtomic(
         {
           schemaVersion: 4,
-          tasks: [{ id: "rev-2", title: "second", status: "open", createdAt: 2, updatedAt: 2, tags: [] }],
+          tasks: [
+            {
+              id: "rev-2",
+              title: "second",
+              status: "open",
+              createdAt: 2,
+              updatedAt: 2,
+              tags: [],
+            },
+          ],
           tagIndex: {},
-          savedViews: []
+          savedViews: [],
         },
         filePath,
         fs,
-        { expectedStateRevision: 0 }
+        { expectedStateRevision: 0 },
       );
     } catch (error: unknown) {
       conflict = error as StateRevisionConflictError;
@@ -639,15 +732,33 @@ describe("saveStateDebounced", () => {
     const filePath = path.join(dir, "tadoi_data.json");
     const first: LoadedData = {
       schemaVersion: 4,
-      tasks: [{ id: "a", title: "a", status: "open", createdAt: 1, updatedAt: 1, tags: [] }],
+      tasks: [
+        {
+          id: "a",
+          title: "a",
+          status: "open",
+          createdAt: 1,
+          updatedAt: 1,
+          tags: [],
+        },
+      ],
       tagIndex: {},
-      savedViews: []
+      savedViews: [],
     };
     const second: LoadedData = {
       schemaVersion: 4,
-      tasks: [{ id: "b", title: "b", status: "open", createdAt: 1, updatedAt: 1, tags: [] }],
+      tasks: [
+        {
+          id: "b",
+          title: "b",
+          status: "open",
+          createdAt: 1,
+          updatedAt: 1,
+          tags: [],
+        },
+      ],
       tagIndex: {},
-      savedViews: []
+      savedViews: [],
     };
 
     saveStateDebounced(first, 25, filePath);
@@ -668,25 +779,34 @@ describe("saveStateDebounced", () => {
       mkdir: (async (targetPath, options) => {
         mkdirCalls.push(String(targetPath));
         return fs.mkdir(targetPath, options as Parameters<typeof fs.mkdir>[1]);
-      }) as PersistenceFsOps["mkdir"]
+      }) as PersistenceFsOps["mkdir"],
     };
 
     saveStateDebounced(
       {
         schemaVersion: 4,
         tasks: [
-          { id: "nested", title: "nested", status: "open", createdAt: 1, updatedAt: 1, tags: [] }
+          {
+            id: "nested",
+            title: "nested",
+            status: "open",
+            createdAt: 1,
+            updatedAt: 1,
+            tags: [],
+          },
         ],
         tagIndex: {},
-        savedViews: []
+        savedViews: [],
       } satisfies LoadedData,
       25,
       nestedFilePath,
-      fsOps
+      fsOps,
     );
 
     await sleep(100);
-    expect(mkdirCalls.some((call) => call.endsWith(path.join("nested", "deep")))).toBe(true);
+    expect(
+      mkdirCalls.some((call) => call.endsWith(path.join("nested", "deep"))),
+    ).toBe(true);
     const exists = await fs
       .stat(nestedFilePath)
       .then(() => true)
@@ -697,14 +817,24 @@ describe("saveStateDebounced", () => {
   it("emits save result callback on success", async () => {
     const dir = await makeTempDir();
     const filePath = path.join(dir, "tadoi_data.json");
-    const events: Array<{ ok: boolean; filePath: string; savedAt?: number }> = [];
+    const events: Array<{ ok: boolean; filePath: string; savedAt?: number }> =
+      [];
 
     saveStateDebounced(
       {
         schemaVersion: 4,
-        tasks: [{ id: "ok", title: "ok", status: "open", createdAt: 1, updatedAt: 1, tags: [] }],
+        tasks: [
+          {
+            id: "ok",
+            title: "ok",
+            status: "open",
+            createdAt: 1,
+            updatedAt: 1,
+            tags: [],
+          },
+        ],
         tagIndex: {},
-        savedViews: []
+        savedViews: [],
       } satisfies LoadedData,
       25,
       filePath,
@@ -713,9 +843,9 @@ describe("saveStateDebounced", () => {
         events.push({
           ok: result.ok,
           filePath: result.filePath,
-          savedAt: result.ok ? result.savedAt : undefined
+          savedAt: result.ok ? result.savedAt : undefined,
         });
-      }
+      },
     );
 
     await sleep(100);
@@ -733,17 +863,24 @@ describe("saveStateDebounced", () => {
       ...fs,
       writeFile: async () => {
         throw new Error("disk full");
-      }
+      },
     };
 
     saveStateDebounced(
       {
         schemaVersion: 4,
         tasks: [
-          { id: "fail", title: "fail", status: "open", createdAt: 1, updatedAt: 1, tags: [] }
+          {
+            id: "fail",
+            title: "fail",
+            status: "open",
+            createdAt: 1,
+            updatedAt: 1,
+            tags: [],
+          },
         ],
         tagIndex: {},
-        savedViews: []
+        savedViews: [],
       } satisfies LoadedData,
       25,
       filePath,
@@ -753,7 +890,7 @@ describe("saveStateDebounced", () => {
           errors.push(result.error);
           expect(result.filePath).toBe(filePath);
         }
-      }
+      },
     );
 
     await sleep(100);
@@ -774,19 +911,37 @@ describe("saveStateDebounced", () => {
     await saveStateAtomic(
       {
         schemaVersion: 4,
-        tasks: [{ id: "seed", title: "seed", status: "open", createdAt: 1, updatedAt: 1, tags: [] }],
+        tasks: [
+          {
+            id: "seed",
+            title: "seed",
+            status: "open",
+            createdAt: 1,
+            updatedAt: 1,
+            tags: [],
+          },
+        ],
         tagIndex: {},
-        savedViews: []
+        savedViews: [],
       },
-      filePath
+      filePath,
     );
 
     saveStateDebounced(
       {
         schemaVersion: 4,
-        tasks: [{ id: "stale", title: "stale", status: "open", createdAt: 2, updatedAt: 2, tags: [] }],
+        tasks: [
+          {
+            id: "stale",
+            title: "stale",
+            status: "open",
+            createdAt: 2,
+            updatedAt: 2,
+            tags: [],
+          },
+        ],
         tagIndex: {},
-        savedViews: []
+        savedViews: [],
       } satisfies LoadedData,
       25,
       filePath,
@@ -799,11 +954,11 @@ describe("saveStateDebounced", () => {
             : {
                 isRevisionConflict: result.isRevisionConflict,
                 expectedStateRevision: result.expectedStateRevision,
-                actualStateRevision: result.actualStateRevision
-              })
+                actualStateRevision: result.actualStateRevision,
+              }),
         });
       },
-      { expectedStateRevision: 0 }
+      { expectedStateRevision: 0 },
     );
 
     await sleep(100);

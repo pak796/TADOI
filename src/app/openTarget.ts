@@ -1,11 +1,15 @@
-import { spawn, type ChildProcess, type SpawnOptionsWithoutStdio } from "node:child_process";
+import {
+  spawn,
+  type ChildProcess,
+  type SpawnOptionsWithoutStdio,
+} from "node:child_process";
 
 const CONTROL_CHARS_RE = /[\u0000-\u001F\u007F]/;
 
 export type OpenTargetSpawn = (
   command: string,
   args: string[],
-  options: SpawnOptionsWithoutStdio
+  options: SpawnOptionsWithoutStdio,
 ) => Pick<ChildProcess, "on" | "once" | "unref">;
 
 export type OpenTargetOptions = {
@@ -13,7 +17,10 @@ export type OpenTargetOptions = {
   spawnImpl?: OpenTargetSpawn;
 };
 
-function resolveOpenCommand(target: string, platform: NodeJS.Platform): {
+function resolveOpenCommand(
+  target: string,
+  platform: NodeJS.Platform,
+): {
   command: string;
   args: string[];
   options: SpawnOptionsWithoutStdio;
@@ -21,14 +28,14 @@ function resolveOpenCommand(target: string, platform: NodeJS.Platform): {
   const baseOptions: SpawnOptionsWithoutStdio = {
     stdio: "ignore",
     detached: true,
-    windowsHide: true
+    windowsHide: true,
   };
 
   if (platform === "darwin") {
     return {
       command: "open",
       args: [target],
-      options: baseOptions
+      options: baseOptions,
     };
   }
 
@@ -36,7 +43,7 @@ function resolveOpenCommand(target: string, platform: NodeJS.Platform): {
     return {
       command: "xdg-open",
       args: [target],
-      options: baseOptions
+      options: baseOptions,
     };
   }
 
@@ -44,7 +51,7 @@ function resolveOpenCommand(target: string, platform: NodeJS.Platform): {
     return {
       command: "explorer",
       args: [target],
-      options: baseOptions
+      options: baseOptions,
     };
   }
 
@@ -53,7 +60,7 @@ function resolveOpenCommand(target: string, platform: NodeJS.Platform): {
 
 export function getOpenTargetCommandForPlatform(
   target: string,
-  platform: NodeJS.Platform
+  platform: NodeJS.Platform,
 ): { command: string; args: string[] } {
   const resolved = resolveOpenCommand(target, platform);
   return { command: resolved.command, args: resolved.args };
@@ -61,7 +68,7 @@ export function getOpenTargetCommandForPlatform(
 
 export async function openTarget(
   target: string,
-  options: OpenTargetOptions = {}
+  options: OpenTargetOptions = {},
 ): Promise<void> {
   const trimmed = target.trim();
   if (!trimmed) {

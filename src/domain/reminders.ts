@@ -2,9 +2,14 @@ import {
   combineLocalDateAndTime,
   formatLocalTimeHHmm,
   parseDateToLocalMidnight,
-  parseTimeToMinutes
+  parseTimeToMinutes,
 } from "./dates";
-import type { EditorDraft, Task, TaskReminder, TaskReminderOffsetUnit } from "./models";
+import type {
+  EditorDraft,
+  Task,
+  TaskReminder,
+  TaskReminderOffsetUnit,
+} from "./models";
 
 const MINUTE_MS = 60_000;
 const HOUR_MS = 60 * MINUTE_MS;
@@ -15,7 +20,7 @@ const DEFAULT_REMINDER_OFFSET_UNIT: TaskReminderOffsetUnit = "minutes";
 const OFFSET_UNIT_MS: Record<TaskReminderOffsetUnit, number> = {
   minutes: MINUTE_MS,
   hours: HOUR_MS,
-  days: DAY_MS
+  days: DAY_MS,
 };
 
 export type ReminderDraftFields = Pick<
@@ -43,7 +48,9 @@ function normalizeTaskReminderKind(value: unknown): TaskReminder["kind"] {
   return value === "absolute" || value === "before_due" ? value : "none";
 }
 
-export function normalizeReminderOffsetUnit(value: unknown): TaskReminderOffsetUnit {
+export function normalizeReminderOffsetUnit(
+  value: unknown,
+): TaskReminderOffsetUnit {
   return value === "hours" || value === "days" ? value : "minutes";
 }
 
@@ -53,13 +60,13 @@ export function createDefaultReminderDraftFields(): ReminderDraftFields {
     reminderAtDateText: "",
     reminderAtTimeText: "",
     reminderOffsetText: DEFAULT_REMINDER_OFFSET_TEXT,
-    reminderOffsetUnit: DEFAULT_REMINDER_OFFSET_UNIT
+    reminderOffsetUnit: DEFAULT_REMINDER_OFFSET_UNIT,
   };
 }
 
 export function parseReminderOffsetMs(
   offsetText: string,
-  unit: TaskReminderOffsetUnit
+  unit: TaskReminderOffsetUnit,
 ): number | undefined {
   const parsed = Number.parseInt(offsetText.trim(), 10);
   if (!Number.isFinite(parsed) || parsed <= 0) return undefined;
@@ -73,24 +80,24 @@ function deriveOffsetDraftFromMs(offsetMs: number | undefined): {
   if (!offsetMs || offsetMs <= 0) {
     return {
       reminderOffsetText: DEFAULT_REMINDER_OFFSET_TEXT,
-      reminderOffsetUnit: DEFAULT_REMINDER_OFFSET_UNIT
+      reminderOffsetUnit: DEFAULT_REMINDER_OFFSET_UNIT,
     };
   }
   if (offsetMs % DAY_MS === 0) {
     return {
       reminderOffsetText: String(offsetMs / DAY_MS),
-      reminderOffsetUnit: "days"
+      reminderOffsetUnit: "days",
     };
   }
   if (offsetMs % HOUR_MS === 0) {
     return {
       reminderOffsetText: String(offsetMs / HOUR_MS),
-      reminderOffsetUnit: "hours"
+      reminderOffsetUnit: "hours",
     };
   }
   return {
     reminderOffsetText: String(Math.max(1, Math.floor(offsetMs / MINUTE_MS))),
-    reminderOffsetUnit: "minutes"
+    reminderOffsetUnit: "minutes",
   };
 }
 
@@ -106,7 +113,7 @@ export function reminderDraftFieldsFromTask(task: Task): ReminderDraftFields {
       reminderKind: "absolute",
       reminderAtDateText: dateText,
       reminderAtTimeText: timeText,
-      ...deriveOffsetDraftFromMs(reminder.offsetMs)
+      ...deriveOffsetDraftFromMs(reminder.offsetMs),
     };
   }
 
@@ -115,7 +122,7 @@ export function reminderDraftFieldsFromTask(task: Task): ReminderDraftFields {
       reminderKind: "before_due",
       reminderAtDateText: "",
       reminderAtTimeText: "",
-      ...deriveOffsetDraftFromMs(reminder.offsetMs)
+      ...deriveOffsetDraftFromMs(reminder.offsetMs),
     };
   }
 
@@ -124,7 +131,7 @@ export function reminderDraftFieldsFromTask(task: Task): ReminderDraftFields {
 
 function parseReminderAbsoluteAt(
   dateText: string,
-  timeText: string
+  timeText: string,
 ): number | undefined {
   const date = parseDateToLocalMidnight(dateText);
   if (!date) return undefined;
@@ -142,7 +149,7 @@ function parseReminderAbsoluteAt(
 
 function reminderRuleMatches(
   left: ReminderComparableRule | undefined,
-  right: ReminderComparableRule | undefined
+  right: ReminderComparableRule | undefined,
 ): boolean {
   if (!left && !right) return true;
   if (!left || !right) return false;
@@ -158,7 +165,7 @@ function reminderRuleMatches(
 
 function withReminderRuntimeState(
   reminder: TaskReminder | undefined,
-  previous: TaskReminder | undefined
+  previous: TaskReminder | undefined,
 ): TaskReminder | undefined {
   if (!reminder) return undefined;
   if (!previous) return reminder;
@@ -172,7 +179,7 @@ function withReminderRuntimeState(
       : {}),
     ...(isFiniteTimestamp(previous.snoozedUntilAt)
       ? { snoozedUntilAt: previous.snoozedUntilAt }
-      : {})
+      : {}),
   };
 }
 
@@ -194,36 +201,36 @@ export function buildReminderFromDraft(input: {
   if (kind === "absolute") {
     const at = parseReminderAbsoluteAt(
       input.draft.reminderAtDateText,
-      input.draft.reminderAtTimeText
+      input.draft.reminderAtTimeText,
     );
     const reminder: TaskReminder = {
       kind: "absolute",
-      ...(isFiniteTimestamp(at) ? { at } : {})
+      ...(isFiniteTimestamp(at) ? { at } : {}),
     };
     return {
-      reminder: withReminderRuntimeState(reminder, normalizedPrevious)
+      reminder: withReminderRuntimeState(reminder, normalizedPrevious),
     };
   }
 
   const offsetMs = parseReminderOffsetMs(
     input.draft.reminderOffsetText,
-    input.draft.reminderOffsetUnit
+    input.draft.reminderOffsetUnit,
   );
   const reminder: TaskReminder = {
     kind: "before_due",
-    ...(offsetMs !== undefined ? { offsetMs } : {})
+    ...(offsetMs !== undefined ? { offsetMs } : {}),
   };
   return {
     reminder: withReminderRuntimeState(reminder, normalizedPrevious),
     validationMessage:
       input.dueAt === undefined
         ? "Set a due date to use 'before due' reminders"
-        : undefined
+        : undefined,
   };
 }
 
 export function normalizeTaskReminder(
-  reminder: Task["reminder"] | undefined
+  reminder: Task["reminder"] | undefined,
 ): TaskReminder | undefined {
   if (!reminder || typeof reminder !== "object") return undefined;
   const kind = normalizeTaskReminderKind(reminder.kind);
@@ -239,7 +246,7 @@ export function normalizeTaskReminder(
       kind,
       ...(at !== undefined ? { at } : {}),
       ...(lastFiredAt !== undefined ? { lastFiredAt } : {}),
-      ...(snoozedUntilAt !== undefined ? { snoozedUntilAt } : {})
+      ...(snoozedUntilAt !== undefined ? { snoozedUntilAt } : {}),
     };
   }
 
@@ -247,29 +254,31 @@ export function normalizeTaskReminder(
     kind,
     ...(offsetMs !== undefined ? { offsetMs } : {}),
     ...(lastFiredAt !== undefined ? { lastFiredAt } : {}),
-    ...(snoozedUntilAt !== undefined ? { snoozedUntilAt } : {})
+    ...(snoozedUntilAt !== undefined ? { snoozedUntilAt } : {}),
   };
 }
 
 export function stripReminderRuntimeState(
-  reminder: Task["reminder"] | undefined
+  reminder: Task["reminder"] | undefined,
 ): TaskReminder | undefined {
   const normalized = normalizeTaskReminder(reminder);
   if (!normalized) return undefined;
   if (normalized.kind === "absolute") {
     return {
       kind: "absolute",
-      ...(normalized.at !== undefined ? { at: normalized.at } : {})
+      ...(normalized.at !== undefined ? { at: normalized.at } : {}),
     };
   }
   return {
     kind: "before_due",
-    ...(normalized.offsetMs !== undefined ? { offsetMs: normalized.offsetMs } : {})
+    ...(normalized.offsetMs !== undefined
+      ? { offsetMs: normalized.offsetMs }
+      : {}),
   };
 }
 
 export function resolveEffectiveReminderAt(
-  task: Pick<Task, "dueAt" | "reminder">
+  task: Pick<Task, "dueAt" | "reminder">,
 ): number | undefined {
   const reminder = normalizeTaskReminder(task.reminder);
   if (!reminder) return undefined;
@@ -291,7 +300,7 @@ export function resolveEffectiveReminderAt(
 
 export function isReminderPendingForEffectiveAt(
   reminder: Task["reminder"] | undefined,
-  effectiveReminderAt: number | undefined
+  effectiveReminderAt: number | undefined,
 ): boolean {
   if (!isFiniteTimestamp(effectiveReminderAt)) return false;
   const normalized = normalizeTaskReminder(reminder);
@@ -300,7 +309,10 @@ export function isReminderPendingForEffectiveAt(
   return normalized.lastFiredAt < effectiveReminderAt;
 }
 
-export function nextPendingReminderAt(tasks: Task[], nowMs = Date.now()): number | undefined {
+export function nextPendingReminderAt(
+  tasks: Task[],
+  nowMs = Date.now(),
+): number | undefined {
   let nextAt: number | undefined;
   for (const task of tasks) {
     if (task.status !== "open") continue;
@@ -320,7 +332,7 @@ export function nextPendingReminderAt(tasks: Task[], nowMs = Date.now()): number
 export function applyReminderFired(
   tasks: Task[],
   taskId: string,
-  effectiveReminderAt: number
+  effectiveReminderAt: number,
 ): Task[] {
   let changed = false;
   const nextTasks = tasks.map((task) => {
@@ -340,8 +352,8 @@ export function applyReminderFired(
       reminder: {
         ...reminder,
         lastFiredAt: effectiveReminderAt,
-        snoozedUntilAt: undefined
-      }
+        snoozedUntilAt: undefined,
+      },
     };
   });
   return changed ? nextTasks : tasks;
@@ -351,10 +363,11 @@ export function applyReminderDismiss(
   tasks: Task[],
   taskId: string,
   effectiveReminderAt: number,
-  nowMs = Date.now()
+  nowMs = Date.now(),
 ): Task[] {
-  const targetFiredAt =
-    isFiniteTimestamp(effectiveReminderAt) ? effectiveReminderAt : nowMs;
+  const targetFiredAt = isFiniteTimestamp(effectiveReminderAt)
+    ? effectiveReminderAt
+    : nowMs;
   return applyReminderFired(tasks, taskId, targetFiredAt);
 }
 
@@ -362,7 +375,7 @@ export function applyReminderSnooze(
   tasks: Task[],
   taskId: string,
   deltaMs: number,
-  nowMs = Date.now()
+  nowMs = Date.now(),
 ): Task[] {
   const snoozeMs = Math.max(MINUTE_MS, Math.floor(deltaMs));
   const snoozedUntilAt = nowMs + snoozeMs;
@@ -377,8 +390,8 @@ export function applyReminderSnooze(
       ...task,
       reminder: {
         ...reminder,
-        snoozedUntilAt
-      }
+        snoozedUntilAt,
+      },
     };
   });
   return changed ? nextTasks : tasks;

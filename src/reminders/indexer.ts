@@ -5,23 +5,20 @@ import type { Task, TaskReminder } from "../domain/models";
 import { getOccurrences } from "../domain/recurrence/engine";
 import {
   formatDateToLocalIso,
-  parseLocalIsoToDate
+  parseLocalIsoToDate,
 } from "../domain/recurrence/rruleAdapter";
 import {
   isReminderPendingForEffectiveAt,
   normalizeTaskReminder,
-  resolveEffectiveReminderAt
+  resolveEffectiveReminderAt,
 } from "../domain/reminders";
 import { resolveTaskPriorityTag } from "../domain/priorityTags";
-import {
-  writeJsonAtomic,
-  type PersistenceFsOps
-} from "../state/persistence";
+import { writeJsonAtomic, type PersistenceFsOps } from "../state/persistence";
 import {
   REMINDER_INDEX_LOOKAHEAD_DAYS,
   REMINDER_INDEX_VERSION,
   type ReminderIndex,
-  type ReminderIndexEvent
+  type ReminderIndexEvent,
 } from "./types";
 import { getReminderIndexPath } from "./paths";
 
@@ -39,11 +36,14 @@ function normalizeIsoString(value: unknown): string | undefined {
   return new Date(parsed).toISOString();
 }
 
-function normalizeReminderIndexEvent(input: unknown): ReminderIndexEvent | undefined {
+function normalizeReminderIndexEvent(
+  input: unknown,
+): ReminderIndexEvent | undefined {
   if (!isRecord(input)) return undefined;
   const eventId = typeof input.eventId === "string" ? input.eventId : "";
   const taskId = typeof input.taskId === "string" ? input.taskId : "";
-  const occurrenceKey = typeof input.occurrenceKey === "string" ? input.occurrenceKey : "";
+  const occurrenceKey =
+    typeof input.occurrenceKey === "string" ? input.occurrenceKey : "";
   const remindAt = normalizeIsoString(input.remindAt);
   const dueAt = normalizeIsoString(input.dueAt);
   const title = typeof input.title === "string" ? input.title : "";
@@ -64,7 +64,7 @@ function normalizeReminderIndexEvent(input: unknown): ReminderIndexEvent | undef
     dueAt,
     title,
     priority,
-    tags
+    tags,
   };
 }
 
@@ -73,7 +73,7 @@ function normalizeReminderIndex(input: unknown, nowMs: number): ReminderIndex {
     return {
       version: REMINDER_INDEX_VERSION,
       generatedAt: new Date(nowMs).toISOString(),
-      events: []
+      events: [],
     };
   }
 
@@ -85,8 +85,9 @@ function normalizeReminderIndex(input: unknown, nowMs: number): ReminderIndex {
 
   return {
     version: REMINDER_INDEX_VERSION,
-    generatedAt: normalizeIsoString(input.generatedAt) ?? new Date(nowMs).toISOString(),
-    events
+    generatedAt:
+      normalizeIsoString(input.generatedAt) ?? new Date(nowMs).toISOString(),
+    events,
   };
 }
 
@@ -101,7 +102,11 @@ function toIso(valueMs: number): string {
   return new Date(valueMs).toISOString();
 }
 
-function hashEventId(taskId: string, occurrenceKey: string, remindAtIso: string): string {
+function hashEventId(
+  taskId: string,
+  occurrenceKey: string,
+  remindAtIso: string,
+): string {
   return createHash("sha256")
     .update(taskId)
     .update("|")
@@ -130,13 +135,13 @@ function buildEvent(params: {
     dueAt: toIso(params.dueAtMs),
     title: params.task.title,
     priority: resolveEventPriority(params.task),
-    tags: [...params.task.tags]
+    tags: [...params.task.tags],
   };
 }
 
 function resolveSeriesReminderAtMs(
   reminder: TaskReminder,
-  dueAtMs: number
+  dueAtMs: number,
 ): number | undefined {
   if (reminder.kind === "absolute") {
     return reminder.at;
@@ -160,7 +165,7 @@ function buildMaterializedOccurrenceSet(tasks: Task[]): Set<string> {
 
 function pushUniqueEvent(
   event: ReminderIndexEvent,
-  map: Map<string, ReminderIndexEvent>
+  map: Map<string, ReminderIndexEvent>,
 ): void {
   if (!map.has(event.eventId)) {
     map.set(event.eventId, event);
@@ -194,7 +199,7 @@ function buildNonSeriesEvent(task: Task): ReminderIndexEvent | undefined {
       task,
       occurrenceKey,
       remindAtMs: reminderAtMs,
-      dueAtMs
+      dueAtMs,
     });
   }
 
@@ -202,16 +207,20 @@ function buildNonSeriesEvent(task: Task): ReminderIndexEvent | undefined {
     task,
     occurrenceKey: `task:${task.id}`,
     remindAtMs: reminderAtMs,
-    dueAtMs
+    dueAtMs,
   });
 }
 
 function buildSeriesEvents(
   seriesTask: Task,
   nowMs: number,
-  materializedOccurrenceKeys: Set<string>
+  materializedOccurrenceKeys: Set<string>,
 ): ReminderIndexEvent[] {
-  if (seriesTask.status !== "open" || !seriesTask.recurrence || seriesTask.instance_of) {
+  if (
+    seriesTask.status !== "open" ||
+    !seriesTask.recurrence ||
+    seriesTask.instance_of
+  ) {
     return [];
   }
 
@@ -231,7 +240,7 @@ function buildSeriesEvents(
 
     const occurrenceKey = buildSeriesOccurrenceRowId(
       seriesTask.recurrence.series_id,
-      normalizedIso
+      normalizedIso,
     );
     if (materializedOccurrenceKeys.has(occurrenceKey)) {
       continue;
@@ -251,21 +260,28 @@ function buildSeriesEvents(
         task: seriesTask,
         occurrenceKey,
         remindAtMs,
-        dueAtMs
-      })
+        dueAtMs,
+      }),
     );
   }
 
   return events;
 }
 
-export function buildReminderIndex(tasks: Task[], nowMs = Date.now()): ReminderIndex {
+export function buildReminderIndex(
+  tasks: Task[],
+  nowMs = Date.now(),
+): ReminderIndex {
   const materializedOccurrenceKeys = buildMaterializedOccurrenceSet(tasks);
   const eventById = new Map<string, ReminderIndexEvent>();
 
   for (const task of tasks) {
     if (task.recurrence && !task.instance_of) {
-      const seriesEvents = buildSeriesEvents(task, nowMs, materializedOccurrenceKeys);
+      const seriesEvents = buildSeriesEvents(
+        task,
+        nowMs,
+        materializedOccurrenceKeys,
+      );
       for (const event of seriesEvents) {
         pushUniqueEvent(event, eventById);
       }
@@ -287,7 +303,7 @@ export function buildReminderIndex(tasks: Task[], nowMs = Date.now()): ReminderI
   return {
     version: REMINDER_INDEX_VERSION,
     generatedAt: new Date(nowMs).toISOString(),
-    events
+    events,
   };
 }
 
@@ -303,7 +319,7 @@ export async function writeReminderIndexForDataFile(options: {
     filePath: getReminderIndexPath(options.dataFilePath),
     fsOps: options.fsOps,
     pretty: true,
-    fsyncBeforeRename: true
+    fsyncBeforeRename: true,
   });
   return index;
 }
@@ -330,7 +346,7 @@ export async function loadReminderIndexForDataFile(options: {
       return {
         version: REMINDER_INDEX_VERSION,
         generatedAt: new Date(nowMs).toISOString(),
-        events: []
+        events: [],
       };
     }
     throw error;
@@ -342,7 +358,7 @@ export async function loadReminderIndexForDataFile(options: {
     return {
       version: REMINDER_INDEX_VERSION,
       generatedAt: new Date(nowMs).toISOString(),
-      events: []
+      events: [],
     };
   }
 }
@@ -356,6 +372,6 @@ export async function saveReminderIndexForDataFile(options: {
     filePath: getReminderIndexPath(options.dataFilePath),
     fsOps: options.fsOps,
     pretty: true,
-    fsyncBeforeRename: true
+    fsyncBeforeRename: true,
   });
 }

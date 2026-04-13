@@ -49,7 +49,14 @@ function toRichText(text: string) {
 
 function pushLineBlocks(
   blocks: any[],
-  type: "paragraph" | "heading_1" | "heading_2" | "heading_3" | "quote" | "bulleted_list_item" | "numbered_list_item",
+  type:
+    | "paragraph"
+    | "heading_1"
+    | "heading_2"
+    | "heading_3"
+    | "quote"
+    | "bulleted_list_item"
+    | "numbered_list_item",
   text: string,
 ) {
   const richText = toRichText(text);
@@ -121,10 +128,9 @@ function markdownToBlocks(markdown: string): any[] {
     const heading = line.match(/^(#{1,3})\s+(.+)$/);
     if (heading) {
       const level = heading[1].length;
-      const type = (level === 1 ? "heading_1" : level === 2 ? "heading_2" : "heading_3") as
-        | "heading_1"
-        | "heading_2"
-        | "heading_3";
+      const type = (
+        level === 1 ? "heading_1" : level === 2 ? "heading_2" : "heading_3"
+      ) as "heading_1" | "heading_2" | "heading_3";
       pushLineBlocks(blocks, type, heading[2].trim());
       continue;
     }
@@ -199,10 +205,16 @@ async function notionRequest<T>(
   return (await res.json()) as T;
 }
 
-async function clearPageContent(token: string, notionVersion: string, pageId: string) {
+async function clearPageContent(
+  token: string,
+  notionVersion: string,
+  pageId: string,
+) {
   let cursor: string | null = null;
   do {
-    const query = cursor ? `?page_size=100&start_cursor=${encodeURIComponent(cursor)}` : "?page_size=100";
+    const query = cursor
+      ? `?page_size=100&start_cursor=${encodeURIComponent(cursor)}`
+      : "?page_size=100";
     const list = await notionRequest<NotionListResponse<{ id: string }>>(
       token,
       notionVersion,
@@ -212,7 +224,13 @@ async function clearPageContent(token: string, notionVersion: string, pageId: st
 
     if (!dryRun) {
       for (const block of list.results) {
-        await notionRequest(token, notionVersion, "PATCH", `/v1/blocks/${block.id}`, { archived: true });
+        await notionRequest(
+          token,
+          notionVersion,
+          "PATCH",
+          `/v1/blocks/${block.id}`,
+          { archived: true },
+        );
       }
     }
 
@@ -220,14 +238,25 @@ async function clearPageContent(token: string, notionVersion: string, pageId: st
   } while (cursor);
 }
 
-async function appendBlocks(token: string, notionVersion: string, pageId: string, blocks: any[]) {
+async function appendBlocks(
+  token: string,
+  notionVersion: string,
+  pageId: string,
+  blocks: any[],
+) {
   if (!blocks.length) {
     return;
   }
   for (let i = 0; i < blocks.length; i += 100) {
     const children = blocks.slice(i, i + 100);
     if (!dryRun) {
-      await notionRequest(token, notionVersion, "PATCH", `/v1/blocks/${pageId}/children`, { children });
+      await notionRequest(
+        token,
+        notionVersion,
+        "PATCH",
+        `/v1/blocks/${pageId}/children`,
+        { children },
+      );
     }
   }
 }
@@ -237,15 +266,25 @@ async function loadJson<T>(path: string): Promise<T> {
 }
 
 async function main() {
-  const payloadPath = resolve(process.cwd(), process.env.NOTION_SYNC_PAYLOAD_PATH || DEFAULT_PAYLOAD_PATH);
-  const configPath = resolve(process.cwd(), process.env.NOTION_SYNC_CONFIG_PATH || DEFAULT_CONFIG_PATH);
+  const payloadPath = resolve(
+    process.cwd(),
+    process.env.NOTION_SYNC_PAYLOAD_PATH || DEFAULT_PAYLOAD_PATH,
+  );
+  const configPath = resolve(
+    process.cwd(),
+    process.env.NOTION_SYNC_CONFIG_PATH || DEFAULT_CONFIG_PATH,
+  );
 
   const payload = await loadJson<Payload>(payloadPath);
   const config = await loadJson<SyncConfig>(configPath);
 
-  const missingPageIds = payload.items.filter((item) => !item.page_id).map((item) => item.title);
+  const missingPageIds = payload.items
+    .filter((item) => !item.page_id)
+    .map((item) => item.title);
   if (missingPageIds.length > 0) {
-    throw new Error(`Missing page_id for payload titles: ${missingPageIds.join(", ")}`);
+    throw new Error(
+      `Missing page_id for payload titles: ${missingPageIds.join(", ")}`,
+    );
   }
 
   if (validateOnly) {
@@ -268,7 +307,9 @@ async function main() {
     }
 
     const blocks = markdownToBlocks(item.markdown);
-    console.log(`[sync] ${dryRun ? "plan" : "apply"} ${item.title} -> ${item.page_id} blocks=${blocks.length}`);
+    console.log(
+      `[sync] ${dryRun ? "plan" : "apply"} ${item.title} -> ${item.page_id} blocks=${blocks.length}`,
+    );
     await clearPageContent(token, notionVersion, item.page_id);
     await appendBlocks(token, notionVersion, item.page_id, blocks);
     updated += 1;
@@ -278,6 +319,8 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error(`[sync] FAILED: ${err instanceof Error ? err.message : String(err)}`);
+  console.error(
+    `[sync] FAILED: ${err instanceof Error ? err.message : String(err)}`,
+  );
   process.exitCode = 1;
 });
