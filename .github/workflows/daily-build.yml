@@ -39,9 +39,6 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Host preflight (release)
-        run: bun run preflight:host:release
-
       - name: Verify macOS packaging prerequisites
         if: matrix.target == 'macos'
         shell: bash
@@ -100,6 +97,9 @@ jobs:
             echo "appimagetool wrapper install failed." >&2
             exit 1
           fi
+
+      - name: Host preflight (release)
+        run: bun run preflight:host:release
 
       - name: Build daily artifacts
         run: bun run build:daily
