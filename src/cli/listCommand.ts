@@ -5,6 +5,7 @@ import { parseSelectorTokens } from "./selectors";
 import { getDataFilePath, safeLoadState, type LoadedData } from "../state/persistence";
 import { initialState, reducer } from "../state/store";
 import { redactedLogger } from "../logging/redactedLogger";
+import { formatDueDisplay } from "../lib/datetime/formatDueDisplay";
 
 export type ListTaskRecord = {
   id: string;
@@ -35,6 +36,7 @@ type ListParseResult =
       selectors: string[];
       sortMode: SortMode;
       limit?: number;
+      isoDates: boolean;
       help: boolean;
     }
   | { ok: false; error: string };
@@ -75,12 +77,18 @@ export function parseListArgs(args: string[]): ListParseResult {
   const selectors: string[] = [];
   let sortMode: SortMode = "due";
   let limit: number | undefined;
+  let isoDates = false;
   let help = false;
 
   for (let i = 0; i < args.length; i += 1) {
     const arg = args[i] ?? "";
     if (arg === "--help" || arg === "-h") {
       help = true;
+      continue;
+    }
+
+    if (arg === "--iso-dates") {
+      isoDates = true;
       continue;
     }
 
@@ -140,12 +148,15 @@ export function parseListArgs(args: string[]): ListParseResult {
     selectors,
     sortMode,
     ...(limit !== undefined ? { limit } : {}),
+    isoDates,
     help
   };
 }
 
 export function printListHelp(log: (line: string) => void = redactedLogger.log): void {
-  log("Usage: tadoi list [selectors...] [--sort <due|updated|created|title>] [--limit <n>] [--json]");
+  log(
+    "Usage: tadoi list [selectors...] [--sort <due|updated|created|title>] [--limit <n>] [--iso-dates] [--json]"
+  );
   log("");
   log("Selectors:");
   log("  +tag            Require tag");
@@ -156,8 +167,39 @@ export function printListHelp(log: (line: string) => void = redactedLogger.log):
   log("  due:any|overdue|today|next7");
   log("  stage:backlog|todo|doing|in_progress|blocked|review|done");
   log("");
+  log("Display:");
+  log("  --iso-dates     Show due dates as YYYY-MM-DD instead of friendly form");
+  log("                  (today, tomorrow, in 3d, 2d overdue, Fri 15 May)");
+  log("");
   log("Defaults:");
   log("  status:open, due:any, sort:due");
+}
+
+export function formatEmptyListHint(
+  totalTasksInStore: number,
+  selectors: string[]
+): string {
+  if (totalTasksInStore === 0) {
+    return "No tasks yet. Add one with: tadoi add \"Your first task\" due:tomorrow";
+  }
+  if (selectors.length === 0) {
+    return "No open tasks match the default view. Try: tadoi list status:all";
+  }
+  const summary = selectors.join(" ");
+  return `No tasks match the active filter (${summary}). Try removing a selector or: tadoi list status:all`;
+}
+
+function formatIsoDueDate(dueAt: number, hasExplicitTime: boolean): string {
+  const date = new Date(dueAt);
+  const yyyy = String(date.getFullYear());
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  if (!hasExplicitTime) {
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mi = String(date.getMinutes()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
 }
 
 function toListTaskRecord(task: Task): ListTaskRecord {
@@ -225,7 +267,19 @@ export async function runListCommandWithDeps(
 
     deps.log(`[list] count: ${records.length}`);
     for (const task of records) {
-      deps.log(`[${task.status}] ${task.id} ${task.title}`);
+      const dueText =
+        task.dueAt === null
+          ? ""
+          : ` due:${
+              parsed.isoDates
+                ? formatIsoDueDate(task.dueAt, task.hasExplicitTime)
+                : formatDueDisplay(task.dueAt, now, task.hasExplicitTime)
+            }`;
+      deps.log(`[${task.status}] ${task.id} ${task.title}${dueText}`);
+    }
+
+    if (records.length === 0) {
+      deps.log(formatEmptyListHint(state.tasks.length, parsed.selectors));
     }
     return { exitCode: CLI_EXIT_CODE.SUCCESS };
   } catch (error: unknown) {

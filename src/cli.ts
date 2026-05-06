@@ -14,7 +14,7 @@ import { runUninstallCommand } from "./cli/uninstallCommand";
 import { runRemindersCommand } from "./cli/remindersCommands";
 import { runRemindCommand } from "./reminders/remindCommand";
 import { runTui, runTuiSmoke, type RunTuiOptions } from "./tui/runTui";
-import { TadoiLockBusyError } from "./state/lockfile";
+import { formatTadoiLockBusyMessage, TadoiLockBusyError } from "./state/lockfile";
 import { redactedLogger } from "./logging/redactedLogger";
 
 type CliOptions = {
@@ -28,8 +28,14 @@ type RuntimeCliOptions = {
   interactive: boolean;
   json: boolean;
   quiet: boolean;
+  noColor: boolean;
   dataFilePath?: string;
 };
+
+function detectNoColorEnv(env: NodeJS.ProcessEnv = process.env): boolean {
+  const value = env["NO_COLOR"];
+  return typeof value === "string" && value.length > 0;
+}
 
 export type CliRoute =
   | { kind: "help"; showLogo: boolean }
@@ -132,6 +138,7 @@ function parseRuntimeCliOptions(argv: string[]): {
   let interactive = false;
   let json = false;
   let quiet = false;
+  let noColor = detectNoColorEnv();
   let dataFilePath: string | undefined;
   const nextArgv: string[] = [];
   let passthrough = false;
@@ -158,6 +165,10 @@ function parseRuntimeCliOptions(argv: string[]): {
     }
     if (arg === "--quiet") {
       quiet = true;
+      continue;
+    }
+    if (arg === "--no-color") {
+      noColor = true;
       continue;
     }
     if (arg === "--data-file") {
@@ -188,6 +199,7 @@ function parseRuntimeCliOptions(argv: string[]): {
       interactive,
       json,
       quiet,
+      noColor,
       ...(dataFilePath ? { dataFilePath } : {})
     }
   };
@@ -209,6 +221,28 @@ async function withDataFileOverride<T>(
       delete process.env[ENV_VARS.DATA_PATH];
     } else {
       process.env[ENV_VARS.DATA_PATH] = previous;
+    }
+  }
+}
+
+async function withNoColorEnv<T>(
+  noColor: boolean,
+  run: () => Promise<T>
+): Promise<T> {
+  if (!noColor) {
+    return run();
+  }
+  const previous = process.env["NO_COLOR"];
+  if (previous === undefined || previous.length === 0) {
+    process.env["NO_COLOR"] = "1";
+  }
+  try {
+    return await run();
+  } finally {
+    if (previous === undefined) {
+      delete process.env["NO_COLOR"];
+    } else {
+      process.env["NO_COLOR"] = previous;
     }
   }
 }
@@ -331,6 +365,7 @@ export function printHelp(showLogo: boolean): void {
   redactedLogger.log("      --json      Emit machine-readable output for non-interactive commands");
   redactedLogger.log("      --quiet     Suppress non-essential non-error output");
   redactedLogger.log("      --data-file <path> Override data file path for this invocation");
+  redactedLogger.log("      --no-color  Suppress ANSI color in non-interactive output (also: NO_COLOR env)");
   redactedLogger.log("      --no-logo   Hide ASCII logo in app header");
   redactedLogger.log("");
   redactedLogger.log("Commands:");
@@ -367,6 +402,7 @@ export function printHelp(showLogo: boolean): void {
   redactedLogger.log("Environment:");
   redactedLogger.log(`  ${ENV_VARS.DATA_PATH}=<path>   Override data file location`);
   redactedLogger.log(`  ${ENV_VARS.PERF_DEBUG}=1        Enable perf debug logs`);
+  redactedLogger.log("  NO_COLOR=<any>            Suppress ANSI color in non-interactive output");
 }
 
 function printVersion(): void {
@@ -481,8 +517,9 @@ export async function runCli(
   const runtime = runtimeParsed.runtime;
   const route = resolveCliRoute(runtimeArgv);
 
-  return withDataFileOverride(runtime.dataFilePath, () =>
-    withOutputMode(runtime, async () => {
+  return withNoColorEnv(runtime.noColor, () =>
+    withDataFileOverride(runtime.dataFilePath, () =>
+      withOutputMode(runtime, async () => {
       if (route.kind === "portability") {
         return deps.runPortability(route.command, route.args);
       }
@@ -551,12 +588,13 @@ export async function runCli(
         return undefined;
       } catch (error: unknown) {
         if (error instanceof TadoiLockBusyError) {
-          redactedLogger.error("Error: TADOI is running (lock present).");
+          redactedLogger.error(await formatTadoiLockBusyMessage(error.lockPath));
           return TITS_CLI_EXIT_CODE.LOCKED;
         }
         throw error;
       }
     })
+    )
   );
 }
 

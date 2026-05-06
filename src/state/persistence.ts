@@ -165,6 +165,38 @@ let lastSuccessfulSaveAt: number | undefined;
 const corruptionRecoveryByPath = new Map<string, string | undefined>();
 const atomicWriteQueueByPath = new Map<string, Promise<void>>();
 
+/**
+ * Seed three preset saved views (Today, Upcoming, Inbox) so newcomers see
+ * useful filter shortcuts on first launch instead of an empty saved-view list.
+ * Each preset is a stable Filters payload — the in-app saved-view UI applies
+ * them like any user-created view.
+ */
+export function getDefaultPresetSavedViews(now: number = Date.now()): SavedView[] {
+  return [
+    {
+      id: "preset-today",
+      name: "Today",
+      filters: { status: "open", due: "today" },
+      createdAt: now,
+      updatedAt: now
+    },
+    {
+      id: "preset-upcoming",
+      name: "Upcoming",
+      filters: { status: "open", due: "next7" },
+      createdAt: now,
+      updatedAt: now
+    },
+    {
+      id: "preset-inbox",
+      name: "Inbox",
+      filters: { status: "open", due: "any" },
+      createdAt: now,
+      updatedAt: now
+    }
+  ];
+}
+
 function emptyData(): LoadedData {
   return {
     schemaVersion: CURRENT_SCHEMA_VERSION,
@@ -172,7 +204,7 @@ function emptyData(): LoadedData {
     tasks: [],
     tagIndex: {},
     tagAliases: {},
-    savedViews: [],
+    savedViews: getDefaultPresetSavedViews(),
     engagement: createDefaultEngagementState()
   };
 }

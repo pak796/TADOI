@@ -4,6 +4,7 @@ import { formatTagForReadOnlyDisplay } from "../domain/priorityTags";
 import { VisibleTaskRow } from "../domain/taskRows";
 import { Mode } from "../domain/models";
 import { formatDate, getDueInLabel } from "../state/store";
+import { formatDueDisplay } from "../lib/datetime/formatDueDisplay";
 import { colorForTag, themeForObject } from "../app/theme";
 import type { FlashMode } from "../settings/settings";
 
@@ -197,7 +198,7 @@ function TaskRow({
       ? getDueInLabel(task, now)
       : dayDiff === 0
         ? "DUE TODAY"
-        : `DUE ${formatDate(task.dueAt)}`
+        : `DUE ${formatDueDisplay(task.dueAt, now, hasExplicitTime)}`
     : "NO DUE DATE";
   const dueInLabel = task.status === "open" && task.dueAt ? getDueInLabel(task, now) : "";
   const checklistProgress = getChecklistProgress(task.checklist);

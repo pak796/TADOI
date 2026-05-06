@@ -824,9 +824,9 @@ describe("loadSettings", () => {
     const result = await loadSettings({ homeDir, platform: "linux" });
     expect(result.settings.themeId).toBe("retro");
     expect(result.resolvedPath).toBe(fallback);
-    expect(result.warnings).toContain(
-      "primary settings file is not valid JSON; using fallback/default settings"
-    );
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0]).toMatch(/^primary settings file is not valid JSON/);
+    expect(result.warnings[0]).toContain("using fallback/default settings");
   });
 
   it("reports both warnings and returns defaults when primary/fallback are malformed", async () => {
@@ -840,10 +840,51 @@ describe("loadSettings", () => {
     const result = await loadSettings({ homeDir, platform: "linux" });
     expect(result.resolvedPath).toBe(primary);
     expect(result.settings).toEqual(getDefaultSettings());
-    expect(result.warnings).toEqual([
-      "primary settings file is not valid JSON; using fallback/default settings",
-      "fallback settings file is not valid JSON; using fallback/default settings"
-    ]);
+    expect(result.warnings).toHaveLength(2);
+    expect(result.warnings[0]).toMatch(/^primary settings file is not valid JSON/);
+    expect(result.warnings[1]).toMatch(/^fallback settings file is not valid JSON/);
+  });
+
+  it("round-trips firstRunWalkthroughDismissedAt through normalize", async () => {
+    const homeDir = await makeTempDir();
+    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    await fs.mkdir(path.dirname(primary), { recursive: true });
+    await fs.writeFile(
+      primary,
+      JSON.stringify({
+        themeId: "default",
+        logoMode: "default",
+        flashMode: "slow",
+        notifications: { enabled: true },
+        security: { nonHttpLinkPolicy: "prompt" },
+        firstRunWalkthroughDismissedAt: 1733412600000
+      }),
+      "utf8"
+    );
+
+    const result = await loadSettings({ homeDir, platform: "linux" });
+    expect(result.settings.firstRunWalkthroughDismissedAt).toBe(1733412600000);
+  });
+
+  it("ignores invalid firstRunWalkthroughDismissedAt values", async () => {
+    const homeDir = await makeTempDir();
+    const { primary } = resolveSettingsPaths({ homeDir, platform: "linux" });
+    await fs.mkdir(path.dirname(primary), { recursive: true });
+    await fs.writeFile(
+      primary,
+      JSON.stringify({
+        themeId: "default",
+        logoMode: "default",
+        flashMode: "slow",
+        notifications: { enabled: true },
+        security: { nonHttpLinkPolicy: "prompt" },
+        firstRunWalkthroughDismissedAt: "not-a-number"
+      }),
+      "utf8"
+    );
+
+    const result = await loadSettings({ homeDir, platform: "linux" });
+    expect(result.settings.firstRunWalkthroughDismissedAt).toBeUndefined();
   });
 });
 

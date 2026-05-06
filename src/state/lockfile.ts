@@ -360,6 +360,26 @@ export async function acquireTadoiLockOrThrow(
   }
 }
 
+/**
+ * Build a friendly error message for a busy lock. Best-effort reads the lock
+ * payload to include the holding PID + how long it's held so the user can
+ * decide whether to wait or investigate.
+ */
+export async function formatTadoiLockBusyMessage(lockPath: string): Promise<string> {
+  const payload = await readTadoiLockPayload(lockPath).catch(() => undefined);
+  const pid = payload?.pid;
+  const heartbeatMs =
+    parseIsoTimeMs(payload?.heartbeatAt) ?? parseIsoTimeMs(payload?.startedAt);
+  const ageSeconds =
+    heartbeatMs !== undefined ? Math.max(0, Math.round((Date.now() - heartbeatMs) / 1000)) : undefined;
+
+  const who = pid !== undefined ? ` (PID ${String(pid)})` : "";
+  const since = ageSeconds !== undefined ? `, last heartbeat ${String(ageSeconds)}s ago` : "";
+  const hint =
+    "Wait ~2 minutes and retry — TADOI will recover automatically if that process is gone.";
+  return `Error: another tadoi process is editing this data file${who}${since}. ${hint}`;
+}
+
 export async function refreshTadoiLockHeartbeat(
   lockPath: string,
   options: TadoiLockHeartbeatOptions = {}

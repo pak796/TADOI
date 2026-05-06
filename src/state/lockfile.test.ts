@@ -5,6 +5,7 @@ import path from "path";
 import {
   acquireTadoiLockOrThrow,
   createDefaultLockPayload,
+  formatTadoiLockBusyMessage,
   getTadoiLockPath,
   isTadoiLockOwnedByProcess,
   isTadoiLockPayloadStale,
@@ -189,5 +190,30 @@ describe("lockfile helpers", () => {
     await removeTadoiLock(missingLock);
     removeTadoiLockSync(missingLock);
     expect(await isTadoiLockPresent(missingLock)).toBe(false);
+  });
+});
+
+describe("formatTadoiLockBusyMessage", () => {
+  it("includes the holding PID and heartbeat age when payload is readable", async () => {
+    const dir = await makeTempDir();
+    const lockPath = path.join(dir, "tadoi.lock");
+    const payload = createDefaultLockPayload(path.join(dir, "tadoi_data.json"));
+    payload.pid = 4242;
+    payload.heartbeatAt = new Date(Date.now() - 5000).toISOString();
+    await writeTadoiLock(lockPath, payload);
+
+    const message = await formatTadoiLockBusyMessage(lockPath);
+    expect(message).toContain("another tadoi process is editing this data file");
+    expect(message).toContain("PID 4242");
+    expect(message).toContain("last heartbeat");
+    expect(message).toContain("Wait ~2 minutes");
+  });
+
+  it("falls back gracefully when payload cannot be read", async () => {
+    const dir = await makeTempDir();
+    const lockPath = path.join(dir, "missing.lock");
+    const message = await formatTadoiLockBusyMessage(lockPath);
+    expect(message).toContain("another tadoi process is editing this data file");
+    expect(message).not.toContain("PID");
   });
 });

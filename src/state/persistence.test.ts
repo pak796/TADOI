@@ -103,6 +103,20 @@ describe("safeLoadState", () => {
     expect(result.shouldPersistRecoveredState).toBe(false);
   });
 
+  it("seeds Today/Upcoming/Inbox preset views on a fresh data file", async () => {
+    const dir = await makeTempDir();
+    const filePath = path.join(dir, "missing.json");
+    const result = await safeLoadState({ filePath });
+    const names = result.data.savedViews.map((view) => view.name);
+    expect(names).toEqual(["Today", "Upcoming", "Inbox"]);
+    const today = result.data.savedViews.find((v) => v.name === "Today");
+    const upcoming = result.data.savedViews.find((v) => v.name === "Upcoming");
+    const inbox = result.data.savedViews.find((v) => v.name === "Inbox");
+    expect(today?.filters.due).toBe("today");
+    expect(upcoming?.filters.due).toBe("next7");
+    expect(inbox?.filters.due).toBe("any");
+  });
+
   it("repairs legacy task tag normalization issues without corruption fallback", async () => {
     const dir = await makeTempDir();
     const filePath = path.join(dir, "tadoi_data.json");

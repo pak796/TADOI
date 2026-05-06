@@ -39,6 +39,7 @@ export type SettingsState = {
   keymapAliases?: KeymapAliases;
   githubBackup?: GitHubBackupSettings;
   notes: NotesSettings;
+  firstRunWalkthroughDismissedAt?: number;
 };
 
 export type SettingsAction =
@@ -69,7 +70,8 @@ export type SettingsAction =
   | { type: "toggleNotificationsEnabled" }
   | { type: "toggleInAppOverdueBanner" }
   | { type: "toggleTerminalBellOnOverdue" }
-  | { type: "toggleOutOfAppRemindersEnabled" };
+  | { type: "toggleOutOfAppRemindersEnabled" }
+  | { type: "setFirstRunWalkthroughDismissedAt"; dismissedAt: number | undefined };
 
 export const initialSettingsState: SettingsState = {
   themeId: "default",
@@ -211,6 +213,13 @@ export function settingsReducer(
           outOfAppRemindersEnabled: !state.notifications.outOfAppRemindersEnabled
         }
       };
+    case "setFirstRunWalkthroughDismissedAt":
+      if (action.dismissedAt === undefined) {
+        const next = { ...state };
+        delete next.firstRunWalkthroughDismissedAt;
+        return next;
+      }
+      return { ...state, firstRunWalkthroughDismissedAt: action.dismissedAt };
     default:
       return state;
   }

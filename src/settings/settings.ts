@@ -87,6 +87,12 @@ export type TadoiSettings = {
   keymapAliases?: KeymapAliases;
   githubBackup?: GitHubBackupSettings;
   notes?: NotesSettings;
+  /**
+   * Epoch ms at which the user dismissed the First Task Walkthrough modal
+   * (welcome / shortcuts / celebrate / what_next). Once set, the modal does
+   * not auto-open on subsequent launches even when the task list is empty.
+   */
+  firstRunWalkthroughDismissedAt?: number;
 };
 
 export type NotesSettings = {
@@ -773,6 +779,10 @@ function normalizeSettings(input: unknown): TadoiSettings {
   if (retroFxMode && retroFxMode !== DEFAULT_RETRO_FX_MODE) {
     normalized.retroFxMode = retroFxMode;
   }
+  const dismissedAt = input.firstRunWalkthroughDismissedAt;
+  if (typeof dismissedAt === "number" && Number.isFinite(dismissedAt) && dismissedAt > 0) {
+    normalized.firstRunWalkthroughDismissedAt = Math.floor(dismissedAt);
+  }
   return normalized;
 }
 
@@ -802,10 +812,17 @@ async function readSettingsFile(
   try {
     const parsed = JSON.parse(raw) as unknown;
     return { settings: normalizeSettings(parsed) };
-  } catch {
+  } catch (parseError: unknown) {
+    const detail =
+      parseError instanceof Error && parseError.message
+        ? ` (${parseError.message})`
+        : "";
     return {
       settings: null,
-      warning: `${label} settings file is not valid JSON; using fallback/default settings`
+      warning:
+        `${label} settings file is not valid JSON${detail}; ` +
+        `using fallback/default settings. ` +
+        `Edit ${filePath} to fix the syntax error, or move it aside to regenerate with defaults.`
     };
   }
 }

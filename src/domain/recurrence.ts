@@ -187,6 +187,16 @@ export function completeTaskWithRecurrence(
 
   if (shouldSpawn && nextDueAt !== undefined) {
     const reminder = stripReminderRuntimeState(task.reminder);
+    const nowIso = new Date(now).toISOString();
+    const freshChecklist = task.checklist?.map((item) => {
+      const next = {
+        ...item,
+        isDone: false,
+        updatedAt: nowIso
+      };
+      delete next.completedAt;
+      return next;
+    });
     spawnedTask = {
       id: crypto.randomUUID(),
       title: task.title,
@@ -199,6 +209,9 @@ export function completeTaskWithRecurrence(
       ...(task.notes !== undefined ? { notes: task.notes } : {}),
       ...(task.noteRef !== undefined ? { noteRef: { ...task.noteRef } } : {}),
       ...(reminder ? { reminder } : {}),
+      ...(freshChecklist && freshChecklist.length > 0
+        ? { checklist: freshChecklist }
+        : {}),
       recurrence
     };
     nextTasks.push(spawnedTask);
