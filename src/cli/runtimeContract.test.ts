@@ -127,7 +127,7 @@ describe("runtime CLI contract", () => {
 
     const result = await runCliProcess(["--data-file", dataPath, "add", "x"]);
     expect(result.exitCode).toBe(4);
-    expect(result.stderr).toContain("TADOI is running (lock present)");
+    expect(result.stderr).toContain("another tadoi process is editing this data file");
   });
 
   it("supports selector mode for done", async () => {

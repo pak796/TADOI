@@ -103,7 +103,8 @@ describe("runCli", () => {
       smoke: 0,
       help: 0,
       version: 0,
-      seenDataPath: ""
+      seenDataPath: "",
+      seenNoColor: ""
     };
 
     const deps: CliRunDeps = {
@@ -124,6 +125,7 @@ describe("runCli", () => {
       async runPortability() {
         calls.portability += 1;
         calls.seenDataPath = process.env.TADOI_DATA_PATH ?? "";
+        calls.seenNoColor = process.env.NO_COLOR ?? "";
         return 0;
       },
       async runCalendar() {
@@ -267,6 +269,75 @@ describe("runCli", () => {
     const code = await runCli(["--json"], deps);
     expect(code).toBe(2);
     expect(calls.tui).toBe(0);
+  });
+
+  it("propagates --no-color into NO_COLOR env for command duration", async () => {
+    const { calls, deps } = createDeps();
+    const previous = process.env.NO_COLOR;
+    delete process.env.NO_COLOR;
+    try {
+      const code = await runCli(["--no-color", "export", "--help"], deps);
+      expect(code).toBe(0);
+      expect(calls.seenNoColor).toBe("1");
+      expect(process.env.NO_COLOR).toBeUndefined();
+    } finally {
+      if (previous === undefined) {
+        delete process.env.NO_COLOR;
+      } else {
+        process.env.NO_COLOR = previous;
+      }
+    }
+  });
+
+  it("auto-detects NO_COLOR env without an explicit flag", async () => {
+    const { calls, deps } = createDeps();
+    const previous = process.env.NO_COLOR;
+    process.env.NO_COLOR = "true";
+    try {
+      const code = await runCli(["export", "--help"], deps);
+      expect(code).toBe(0);
+      expect(calls.seenNoColor).toBe("true");
+    } finally {
+      if (previous === undefined) {
+        delete process.env.NO_COLOR;
+      } else {
+        process.env.NO_COLOR = previous;
+      }
+    }
+  });
+
+  it("does not enable NO_COLOR when env is unset and flag absent", async () => {
+    const { calls, deps } = createDeps();
+    const previous = process.env.NO_COLOR;
+    delete process.env.NO_COLOR;
+    try {
+      const code = await runCli(["export", "--help"], deps);
+      expect(code).toBe(0);
+      expect(calls.seenNoColor).toBe("");
+    } finally {
+      if (previous === undefined) {
+        delete process.env.NO_COLOR;
+      } else {
+        process.env.NO_COLOR = previous;
+      }
+    }
+  });
+
+  it("preserves an empty NO_COLOR env value (treated as unset)", async () => {
+    const { calls, deps } = createDeps();
+    const previous = process.env.NO_COLOR;
+    process.env.NO_COLOR = "";
+    try {
+      const code = await runCli(["export", "--help"], deps);
+      expect(code).toBe(0);
+      expect(calls.seenNoColor).toBe("");
+    } finally {
+      if (previous === undefined) {
+        delete process.env.NO_COLOR;
+      } else {
+        process.env.NO_COLOR = previous;
+      }
+    }
   });
 
   it("applies --data-file override for the command invocation", async () => {

@@ -206,7 +206,8 @@ describe("runTitsCommandCliWithDeps", () => {
     const result = await runTitsCommandCliWithDeps(["add", "X"], deps);
 
     expect(result).toEqual({ handled: true, exitCode: TITS_CLI_EXIT_CODE.LOCKED });
-    expect(errors).toEqual(["Error: TADOI is running (lock present)."]);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain("another tadoi process is editing this data file");
     expect(saved).toHaveLength(0);
   });
 
@@ -215,7 +216,8 @@ describe("runTitsCommandCliWithDeps", () => {
     const result = await runTitsCommandCliWithDeps(["bulk:done", "id:task-a"], deps);
 
     expect(result).toEqual({ handled: true, exitCode: TITS_CLI_EXIT_CODE.LOCKED });
-    expect(errors).toEqual(["Error: TADOI is running (lock present)."]);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain("another tadoi process is editing this data file");
     expect(saved).toHaveLength(0);
   });
 
@@ -493,9 +495,8 @@ describe("runTitsCommandCliWithDeps", () => {
     const result = await runTitsCommandCliWithDeps(["help"], deps);
 
     expect(result).toEqual({ handled: true, exitCode: TITS_CLI_EXIT_CODE.SUCCESS });
-    expect(logs).toEqual([
-      "Commands: add, done, due, recur, check, bulk, note, capture, nq, tag, help. Try: help tag"
-    ]);
+    expect(logs).toHaveLength(1);
+    expect(logs[0]).toContain("Topics: add, done, due, recur, check, bulk, note, tag");
     expect(saved).toHaveLength(0);
   });
 
@@ -721,7 +722,8 @@ describe("runTitsCommandCliWithDeps", () => {
 
     const secondRun = await runTitsCommandCliWithDeps(["add", "Second"], second.deps);
     expect(secondRun).toEqual({ handled: true, exitCode: TITS_CLI_EXIT_CODE.LOCKED });
-    expect(second.errors).toEqual(["Error: TADOI is running (lock present)."]);
+    expect(second.errors).toHaveLength(1);
+    expect(second.errors[0]).toContain("another tadoi process is editing this data file");
     expect(second.saved).toHaveLength(0);
 
     allowFirstSave = true;

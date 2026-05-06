@@ -4118,7 +4118,13 @@ export function App({
         customThemes: settingsState.customThemes,
         keymapAliases: settingsState.keymapAliases,
         githubBackup: settingsState.githubBackup,
-        notes: settingsState.notes
+        notes: settingsState.notes,
+        ...(settingsState.firstRunWalkthroughDismissedAt !== undefined
+          ? {
+              firstRunWalkthroughDismissedAt:
+                settingsState.firstRunWalkthroughDismissedAt
+            }
+          : {})
       },
       150,
       settingsPath ? { filePath: settingsPath } : {}
@@ -4139,7 +4145,8 @@ export function App({
     settingsState.notifications,
     settingsState.security,
     settingsState.showPrefixHintPopup,
-    settingsState.themeId
+    settingsState.themeId,
+    settingsState.firstRunWalkthroughDismissedAt
   ]);
 
   useEffect(() => {
@@ -4831,6 +4838,16 @@ export function App({
       type: "setNotes",
       notes: settingsResult.settings.notes ?? DEFAULT_NOTES_SETTINGS
     });
+    settingsDispatch({
+      type: "setFirstRunWalkthroughDismissedAt",
+      dismissedAt: settingsResult.settings.firstRunWalkthroughDismissedAt
+    });
+    if (
+      typeof settingsResult.settings.firstRunWalkthroughDismissedAt === "number" &&
+      settingsResult.settings.firstRunWalkthroughDismissedAt > 0
+    ) {
+      uiDispatch(dismissEmptyNux());
+    }
   }
 
   async function handleRetrySaveAfterConflictReload() {
@@ -11362,7 +11379,16 @@ export function App({
     modalFlow.startEmptyNuxAddFlow();
   }
 
+  function persistFirstRunWalkthroughDismissal() {
+    if (settingsState.firstRunWalkthroughDismissedAt !== undefined) return;
+    settingsDispatch({
+      type: "setFirstRunWalkthroughDismissedAt",
+      dismissedAt: Date.now()
+    });
+  }
+
   function dismissEmptyNuxModal() {
+    persistFirstRunWalkthroughDismissal();
     modalFlow.dismissEmptyNuxModal();
   }
 
@@ -11383,6 +11409,7 @@ export function App({
   }
 
   function clearEmptyNuxWalkthrough() {
+    persistFirstRunWalkthroughDismissal();
     modalFlow.clearEmptyNuxWalkthrough();
   }
 

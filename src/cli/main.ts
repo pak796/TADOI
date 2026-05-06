@@ -28,6 +28,7 @@ import {
 } from "../state/persistence";
 import {
   createDefaultLockPayload,
+  formatTadoiLockBusyMessage,
   getTadoiLockPath,
   removeTadoiLock,
   tryAcquireTadoiLock,
@@ -118,15 +119,23 @@ const DEFAULT_DEPS: TitsCliDeps = {
   runNoteCommand: runNoteCommandCli,
   readStdin: async () => {
     if (process.stdin.isTTY) return "";
-    const chunks: Buffer[] = [];
-    for await (const chunk of process.stdin) {
-      if (typeof chunk === "string") {
-        chunks.push(Buffer.from(chunk));
-      } else {
-        chunks.push(chunk);
+    try {
+      const chunks: Buffer[] = [];
+      for await (const chunk of process.stdin) {
+        if (typeof chunk === "string") {
+          chunks.push(Buffer.from(chunk));
+        } else {
+          chunks.push(chunk);
+        }
       }
+      return Buffer.concat(chunks).toString("utf8");
+    } catch (error: unknown) {
+      const reason = error instanceof Error ? error.message : String(error);
+      redactedLogger.error(
+        `Warning: could not read stdin (${reason}); continuing without piped input.`
+      );
+      return "";
     }
-    return Buffer.concat(chunks).toString("utf8");
   },
   log: (line: string) => redactedLogger.log(line),
   error: (line: string) => redactedLogger.error(line)
@@ -177,7 +186,7 @@ function formatCliOutput(
 }
 
 function shouldPreserveHelpFormatting(command: Command): boolean {
-  return command.type === "help" && command.topic === "note";
+  return command.type === "help";
 }
 
 function formatDslToken(token: string): string {
@@ -654,7 +663,7 @@ export async function runTitsCommandCliWithDeps(
   try {
     lockAcquired = await deps.acquireLock(lockPath, deps.createLockPayload(dataFilePath));
     if (!lockAcquired) {
-      deps.error("Error: TADOI is running (lock present).");
+      deps.error(await formatTadoiLockBusyMessage(lockPath));
       return { handled: true, exitCode: TITS_CLI_EXIT_CODE.LOCKED };
     }
 

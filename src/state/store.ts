@@ -24,6 +24,7 @@ import {
   reminderDraftFieldsFromTask
 } from "../domain/reminders";
 import { canonicalizeDueAtInput } from "../lib/datetime/due_at_canonicalizer";
+import { formatDueDisplay } from "../lib/datetime/formatDueDisplay";
 import {
   AppState,
   EditorDraft,
@@ -378,7 +379,7 @@ export function getDueLabel(task: Task, now: number): string {
     return "DUE TODAY";
   }
 
-  return `DUE ${formatDate(task.dueAt)}`;
+  return `DUE ${formatDueDisplay(task.dueAt, now, task.hasExplicitTime === true)}`;
 }
 
 export function getDueInLabel(task: Task, now: number): string {

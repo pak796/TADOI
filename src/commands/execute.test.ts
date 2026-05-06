@@ -314,10 +314,10 @@ describe("executeCommand", () => {
       }
     );
     expect(result.actions).toEqual([]);
-    expect(result.output).toEqual({
-      kind: "ok",
-      text: 'add <title> [due:<date|mini>] [at:<time>] [#tag ...] [notes:"..."]'
-    });
+    expect(result.output.kind).toBe("ok");
+    expect(result.output.text).toContain('add <title>');
+    expect(result.output.text).toContain('Examples:');
+    expect(result.output.text).toContain('add Buy milk');
   });
 
   it("executes note help without mutations", () => {
