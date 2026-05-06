@@ -1,4 +1,8 @@
-import { parseCommand, type ParseCommandOptions } from "../commands/parse";
+import {
+  parseCommand,
+  resolveTitsCommandAlias,
+  type ParseCommandOptions
+} from "../commands/parse";
 import { executeCommand } from "../commands/execute";
 import path from "path";
 import type {
@@ -194,7 +198,7 @@ function resolveWrapperHelpCommand(argv: string[]): Command | null {
   if (argv.length < 2) {
     return null;
   }
-  const first = argv[0]?.trim().toLowerCase() ?? "";
+  const first = resolveTitsCommandAlias(argv[0]?.trim() ?? "");
   if (!isTitsCommandName(first)) {
     return null;
   }
@@ -226,7 +230,7 @@ export function resolveTitsCliInput(
 ): { mode: "raw" | "subcommand"; dsl: string } | null {
   if (argv.length === 0) return null;
 
-  const first = argv[0]?.trim().toLowerCase() ?? "";
+  const first = resolveTitsCommandAlias(argv[0]?.trim() ?? "");
   if (isTitsCommandName(first)) {
     const tail = argv.slice(1);
     const delimiterIndex = tail.indexOf("--");
@@ -241,7 +245,7 @@ export function resolveTitsCliInput(
   if (argv.length === 1) {
     const raw = argv[0]?.trim() ?? "";
     if (!raw) return null;
-    const rawFirst = raw.split(/\s+/)[0]?.toLowerCase() ?? "";
+    const rawFirst = resolveTitsCommandAlias(raw.split(/\s+/)[0] ?? "");
     if (isTitsCommandName(rawFirst)) {
       return { mode: "raw", dsl: raw };
     }
@@ -320,7 +324,7 @@ function parseSelectorIntent(
   ok: false;
   error: string;
 } | null {
-  const command = argv[0]?.trim().toLowerCase();
+  const command = resolveTitsCommandAlias(argv[0]?.trim() ?? "");
   if (command !== "done" && command !== "due") {
     return null;
   }

@@ -94,9 +94,19 @@ function parseCliOptions(argv: string[]): CliOptions {
   return { showHelp, showLogo, showVersion, smokeTui };
 }
 
+const CLI_ROUTE_ALIASES: Readonly<Record<string, string>> = {
+  ls: "list",
+  l: "list"
+};
+
 function normalizeCliCommandAlias(argv: string[]): string[] {
+  if (argv.length === 0) return argv;
   if (argv[0] === "--uninstall") {
     return ["uninstall", ...argv.slice(1)];
+  }
+  const aliased = CLI_ROUTE_ALIASES[argv[0].toLowerCase()];
+  if (aliased) {
+    return [aliased, ...argv.slice(1)];
   }
   return argv;
 }
@@ -342,7 +352,15 @@ export function printHelp(showLogo: boolean): void {
   redactedLogger.log("  import          Import state from a JSON export");
   redactedLogger.log("  calendar:export Export one-way calendar ICS file");
   redactedLogger.log("  calendar:import Import one-way calendar ICS file");
+  redactedLogger.log("");
+  redactedLogger.log("Aliases:");
+  redactedLogger.log("  a  -> add        ls -> list       d  -> done");
+  redactedLogger.log("  r  -> recur      h  -> help       ?  -> help");
+  redactedLogger.log("");
+  redactedLogger.log("Examples:");
   redactedLogger.log(`  ${CLI_NAME} 'add \"Task\" due:2026-03-05 #tag'`);
+  redactedLogger.log(`  ${CLI_NAME} a \"Buy milk\" due:tomorrow at:17:30 #errands`);
+  redactedLogger.log(`  ${CLI_NAME} ls`);
   redactedLogger.log(`  Run '${CLI_NAME} <command> --help' for command-specific flags`);
   redactedLogger.log(`  Use '--' to pass literal tokens (example: ${CLI_NAME} add -- --help)`);
   redactedLogger.log("");

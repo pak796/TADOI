@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { parseCommand, tokenize } from "./parse";
+import { parseCommand, resolveTitsCommandAlias, tokenize } from "./parse";
 
 const MINI_OPTIONS_10 = {
   now: Date.parse("2026-03-02T10:00:00-06:00"),
@@ -23,6 +23,69 @@ describe("tokenize", () => {
 
   it("throws for unmatched quotes", () => {
     expect(() => tokenize('add "Buy milk')).toThrow("Error: unmatched quote");
+  });
+});
+
+describe("resolveTitsCommandAlias", () => {
+  it("resolves single-letter aliases to canonical command names", () => {
+    expect(resolveTitsCommandAlias("a")).toBe("add");
+    expect(resolveTitsCommandAlias("d")).toBe("done");
+    expect(resolveTitsCommandAlias("r")).toBe("recur");
+    expect(resolveTitsCommandAlias("h")).toBe("help");
+    expect(resolveTitsCommandAlias("?")).toBe("help");
+  });
+
+  it("returns lowercased input for non-aliases", () => {
+    expect(resolveTitsCommandAlias("ADD")).toBe("add");
+    expect(resolveTitsCommandAlias("note")).toBe("note");
+    expect(resolveTitsCommandAlias("xyz")).toBe("xyz");
+  });
+});
+
+describe("parseCommand alias dispatch", () => {
+  it("treats 'a' as 'add'", () => {
+    const parsed = parseCommand('a "Buy milk" #errands', MINI_OPTIONS_10);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.command).toEqual({
+      type: "add",
+      title: "Buy milk",
+      tags: ["#errands"]
+    });
+  });
+
+  it("treats 'd id:abc' as 'done id:abc'", () => {
+    const parsed = parseCommand("d id:abc-123");
+    expect(parsed).toEqual({
+      ok: true,
+      command: {
+        type: "done",
+        target: { type: "id", id: "abc-123" }
+      }
+    });
+  });
+
+  it("treats 'r id:abc clear' as 'recur id:abc clear'", () => {
+    const parsed = parseCommand("r id:abc-123 clear");
+    expect(parsed).toEqual({
+      ok: true,
+      command: {
+        type: "recur",
+        target: { type: "id", id: "abc-123" },
+        clear: true
+      }
+    });
+  });
+
+  it("treats '?' and 'h' as 'help'", () => {
+    expect(parseCommand("?")).toEqual({
+      ok: true,
+      command: { type: "help" }
+    });
+    expect(parseCommand("h add")).toEqual({
+      ok: true,
+      command: { type: "help", topic: "add" }
+    });
   });
 });
 

@@ -24,6 +24,20 @@ describe("resolveCliRoute", () => {
     expect(route.args).toEqual([]);
   });
 
+  it("routes ls alias to list", () => {
+    const route = resolveCliRoute(["ls", "+work"]);
+    expect(route.kind).toBe("list");
+    if (route.kind !== "list") return;
+    expect(route.args).toEqual(["+work"]);
+  });
+
+  it("routes l alias to list", () => {
+    const route = resolveCliRoute(["l"]);
+    expect(route.kind).toBe("list");
+    if (route.kind !== "list") return;
+    expect(route.args).toEqual([]);
+  });
+
   it("routes reminders before global flags", () => {
     const route = resolveCliRoute(["reminders", "status"]);
     expect(route.kind).toBe("reminders");

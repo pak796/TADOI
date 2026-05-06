@@ -1521,6 +1521,19 @@ function parseRecurCommand(tokens: string[]): ParseCommandResult {
   };
 }
 
+const TITS_COMMAND_ALIASES: Readonly<Record<string, string>> = {
+  a: "add",
+  d: "done",
+  r: "recur",
+  "?": "help",
+  h: "help"
+};
+
+export function resolveTitsCommandAlias(name: string): string {
+  const lowered = name.toLowerCase();
+  return TITS_COMMAND_ALIASES[lowered] ?? lowered;
+}
+
 export function tokenize(input: string): string[] {
   const tokens: string[] = [];
   let current = "";
@@ -1566,7 +1579,7 @@ export function parseCommand(
   if (tokens.length === 0) return error("Error: command is empty");
 
   const commandToken = tokens[0];
-  const commandName = commandToken.toLowerCase();
+  const commandName = resolveTitsCommandAlias(commandToken);
   const args = tokens.slice(1);
   const remainder = trimmed.slice(commandToken.length).trimStart();
   const firstTokenQuoted = remainder.startsWith('"');
